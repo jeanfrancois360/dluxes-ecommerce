@@ -55,12 +55,13 @@ export function useProducts(options: UseProductsOptions = {}): UseProductsReturn
       setIsLoading(true);
       setError(null);
       const response = await productsAPI.getAll(memoizedFilters);
-      setProducts(response);
+      // Extract products array from response
+      setProducts(response.products || []);
       setMeta({
-        total: response.total,
-        page: response.page,
-        limit: response.limit,
-        totalPages: response.totalPages,
+        total: response.total || 0,
+        page: response.page || 1,
+        limit: response.pageSize || response.limit || 12,
+        totalPages: response.totalPages || 0,
       });
     } catch (err) {
       const apiError = err instanceof APIError ? err : new APIError('Failed to fetch products', 500);

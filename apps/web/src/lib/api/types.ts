@@ -311,7 +311,8 @@ export interface SearchFilters {
   inStock?: boolean;
   onSale?: boolean;
   rating?: number;
-  sortBy?: 'relevance' | 'price-asc' | 'price-desc' | 'newest' | 'popular';
+  sortBy?: 'relevance' | 'price' | 'createdAt' | 'viewCount' | 'rating' | 'name';
+  sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
 }
