@@ -14,7 +14,7 @@ import { SearchFilters } from '@/lib/api/types';
 export default function ProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [layout, setLayout] = useState<'grid' | 'masonry'>('grid');
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -49,19 +49,25 @@ export default function ProductsPage() {
   // Transform products for UI
   const products = useMemo(() => transformToQuickViewProducts(productsData), [productsData]);
 
-  // Extract unique brands from categories (or hardcode for now)
-  const brands = ['LUXURY', 'ARTISAN', 'ELEGANCE', 'Illuminate', 'Sleep Elegance'];
+  // Extract unique brands from products
+  const brands = useMemo(() => {
+    if (!productsData) return [];
+    const brandSet = new Set(productsData.map(p => p.brand).filter(Boolean));
+    return Array.from(brandSet) as string[];
+  }, [productsData]);
 
   // Local filter state for UI
   const [priceRange, setPriceRange] = useState([
     filters.minPrice || 0,
-    filters.maxPrice || 5000
+    filters.maxPrice || 10000
   ]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     filters.category ? [filters.category] : []
   );
   const [selectedBrands, setSelectedBrands] = useState<string[]>(filters.brands || []);
   const [sortBy, setSortBy] = useState(filters.sortBy || 'relevance');
+  const [inStockOnly, setInStockOnly] = useState(filters.inStock || false);
+  const [onSaleOnly, setOnSaleOnly] = useState(filters.onSale || false);
 
   // Update URL when filters change
   const updateFilters = (newFilters: Partial<SearchFilters>) => {
@@ -86,8 +92,10 @@ export default function ProductsPage() {
     updateFilters({
       category: selectedCategories[0],
       brands: selectedBrands,
-      minPrice: priceRange[0],
-      maxPrice: priceRange[1],
+      minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+      maxPrice: priceRange[1] < 10000 ? priceRange[1] : undefined,
+      inStock: inStockOnly || undefined,
+      onSale: onSaleOnly || undefined,
       page: 1, // Reset to first page when filters change
     });
   };
@@ -96,10 +104,11 @@ export default function ProductsPage() {
   const clearFilters = () => {
     setSelectedCategories([]);
     setSelectedBrands([]);
-    setPriceRange([0, 5000]);
+    setPriceRange([0, 10000]);
+    setInStockOnly(false);
+    setOnSaleOnly(false);
     router.push('/products');
   };
-
 
   // Handlers
   const handleQuickView = (id: string) => {
@@ -123,7 +132,38 @@ export default function ProductsPage() {
 
   const handleSortChange = (value: string) => {
     setSortBy(value as any);
-    updateFilters({ sortBy: value as any, page: 1 });
+
+    // Map frontend sort values to backend values
+    let sortByValue = 'relevance';
+    let sortOrder: 'asc' | 'desc' = 'desc';
+
+    switch (value) {
+      case 'price-asc':
+        sortByValue = 'price';
+        sortOrder = 'asc';
+        break;
+      case 'price-desc':
+        sortByValue = 'price';
+        sortOrder = 'desc';
+        break;
+      case 'newest':
+        sortByValue = 'createdAt';
+        sortOrder = 'desc';
+        break;
+      case 'popular':
+        sortByValue = 'viewCount';
+        sortOrder = 'desc';
+        break;
+      case 'rating':
+        sortByValue = 'rating';
+        sortOrder = 'desc';
+        break;
+      default:
+        sortByValue = 'relevance';
+        sortOrder = 'desc';
+    }
+
+    updateFilters({ sortBy: sortByValue as any, sortOrder, page: 1 });
   };
 
   const handlePageChange = (newPage: number) => {
@@ -131,20 +171,22 @@ export default function ProductsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const hasActiveFilters = selectedCategories.length > 0 || selectedBrands.length > 0 || inStockOnly || onSaleOnly || priceRange[0] > 0 || priceRange[1] < 10000;
+
   return (
     <PageLayout>
       {/* Hero Banner */}
-      <section className="relative h-[40vh] min-h-[300px] flex items-center justify-center bg-gradient-to-br from-neutral-900 to-black text-white overflow-hidden">
+      <section className="relative h-[40vh] min-h-[300px] flex items-center justify-center bg-gradient-to-br from-neutral-900 via-black to-neutral-800 text-white overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-center z-10"
+          className="text-center z-10 px-4"
         >
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold mb-4">
             Luxury Collection
           </h1>
-          <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto px-4">
+          <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto">
             Curated furniture and decor for distinguished living spaces
           </p>
         </motion.div>
@@ -168,11 +210,23 @@ export default function ProductsPage() {
       <div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-12">
         <div className="flex gap-8">
           {/* Sidebar Filters - Desktop */}
-          <aside className="hidden lg:block w-64 flex-shrink-0">
-            <div className="sticky top-24 space-y-8">
+          <aside className="hidden lg:block w-72 flex-shrink-0">
+            <div className="sticky top-24 space-y-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-serif font-bold text-black">Filters</h3>
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="text-sm text-neutral-600 hover:text-gold transition-colors underline"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+
               {/* Categories Filter */}
-              <div>
-                <h3 className="text-lg font-semibold text-black mb-4">Categories</h3>
+              <div className="pb-6 border-b border-neutral-200">
+                <h4 className="text-lg font-semibold text-black mb-4">Categories</h4>
                 <div className="space-y-3">
                   {categories && categories.length > 0 && categories.map((category) => (
                     <label key={category.id} className="flex items-center gap-3 cursor-pointer group">
@@ -183,72 +237,112 @@ export default function ProductsPage() {
                           if (e.target.checked) {
                             setSelectedCategories([category.slug]);
                           } else {
-                            setSelectedCategories(selectedCategories.filter(c => c !== category.slug));
+                            setSelectedCategories([]);
                           }
                         }}
-                        className="w-4 h-4 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                        className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
                       />
-                      <span className="text-neutral-700 group-hover:text-black transition-colors">{category.name}</span>
+                      <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">{category.name}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
               {/* Price Range */}
-              <div>
-                <h3 className="text-lg font-semibold text-black mb-4">Price Range</h3>
+              <div className="pb-6 border-b border-neutral-200">
+                <h4 className="text-lg font-semibold text-black mb-4">Price Range</h4>
                 <div className="space-y-4">
                   <input
                     type="range"
                     min="0"
-                    max="5000"
+                    max="10000"
+                    step="100"
                     value={priceRange[1]}
                     onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                    className="w-full"
+                    className="w-full accent-gold"
                   />
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-neutral-600">${priceRange[0]}</span>
-                    <span className="text-black font-semibold">${priceRange[1]}</span>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label className="text-xs text-neutral-600 mb-1 block">Min</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max={priceRange[1]}
+                        value={priceRange[0]}
+                        onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:border-gold"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-neutral-600 mb-1 block">Max</label>
+                      <input
+                        type="number"
+                        min={priceRange[0]}
+                        max="10000"
+                        value={priceRange[1]}
+                        onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 10000])}
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:border-gold"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Brands */}
-              <div>
-                <h3 className="text-lg font-semibold text-black mb-4">Brands</h3>
+              {brands.length > 0 && (
+                <div className="pb-6 border-b border-neutral-200">
+                  <h4 className="text-lg font-semibold text-black mb-4">Brands</h4>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {brands.map((brand) => (
+                      <label key={brand} className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={selectedBrands.includes(brand)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedBrands([...selectedBrands, brand]);
+                            } else {
+                              setSelectedBrands(selectedBrands.filter(b => b !== brand));
+                            }
+                          }}
+                          className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                        />
+                        <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">{brand}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Availability */}
+              <div className="pb-6 border-b border-neutral-200">
+                <h4 className="text-lg font-semibold text-black mb-4">Availability</h4>
                 <div className="space-y-3">
-                  {brands.map((brand) => (
-                    <label key={brand} className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={selectedBrands.includes(brand)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedBrands([...selectedBrands, brand]);
-                          } else {
-                            setSelectedBrands(selectedBrands.filter(b => b !== brand));
-                          }
-                        }}
-                        className="w-4 h-4 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
-                      />
-                      <span className="text-neutral-700 group-hover:text-black transition-colors">{brand}</span>
-                    </label>
-                  ))}
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={inStockOnly}
+                      onChange={(e) => setInStockOnly(e.target.checked)}
+                      className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                    />
+                    <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">In Stock Only</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={onSaleOnly}
+                      onChange={(e) => setOnSaleOnly(e.target.checked)}
+                      className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                    />
+                    <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">On Sale</span>
+                  </label>
                 </div>
               </div>
-
-              {/* Clear Filters */}
-              <button
-                onClick={clearFilters}
-                className="w-full px-4 py-2 text-sm text-neutral-600 hover:text-black border border-neutral-200 rounded-lg hover:border-gold transition-colors"
-              >
-                Clear All Filters
-              </button>
 
               {/* Apply Filters */}
               <button
                 onClick={applyFilters}
-                className="w-full px-4 py-2 text-sm bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors font-semibold"
+                className="w-full px-6 py-3 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors font-semibold"
               >
                 Apply Filters
               </button>
@@ -258,23 +352,23 @@ export default function ProductsPage() {
           {/* Main Content */}
           <div className="flex-1 min-w-0">
             {/* Toolbar */}
-            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 mb-8">
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 mb-8">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4 flex-wrap">
-                  <span className="text-sm text-neutral-600">
+                  <div className="flex items-center gap-2">
                     {isLoading ? (
-                      <span>Loading...</span>
+                      <div className="h-6 w-32 bg-neutral-200 animate-pulse rounded" />
                     ) : (
-                      <>
+                      <span className="text-sm text-neutral-600">
                         <span className="font-semibold text-black">{total}</span> products
                         {total > 0 && (
-                          <span className="text-neutral-400">
+                          <span className="text-neutral-400 ml-2">
                             (Page {page} of {totalPages})
                           </span>
                         )}
-                      </>
+                      </span>
                     )}
-                  </span>
+                  </div>
 
                   {/* Mobile Filter Button */}
                   <button
@@ -286,65 +380,73 @@ export default function ProductsPage() {
                     </svg>
                     Filters
                   </button>
+                </div>
 
+                <div className="flex items-center gap-3">
                   {/* Layout Toggle */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-1">
                     <button
                       onClick={() => setLayout('grid')}
-                      className={`p-2 rounded-lg transition-colors ${layout === 'grid'
-                        ? 'bg-black text-white'
-                        : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                      className={`p-2 rounded-md transition-all ${layout === 'grid'
+                        ? 'bg-white text-black shadow-sm'
+                        : 'text-neutral-600 hover:text-black'
                         }`}
                       aria-label="Grid layout"
+                      title="Grid View"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                       </svg>
                     </button>
                     <button
-                      onClick={() => setLayout('masonry')}
-                      className={`p-2 rounded-lg transition-colors ${layout === 'masonry'
-                        ? 'bg-black text-white'
-                        : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                      onClick={() => setLayout('list')}
+                      className={`p-2 rounded-md transition-all ${layout === 'list'
+                        ? 'bg-white text-black shadow-sm'
+                        : 'text-neutral-600 hover:text-black'
                         }`}
-                      aria-label="Masonry layout"
+                      aria-label="List layout"
+                      title="List View"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 12a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1v-7z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                       </svg>
                     </button>
                   </div>
-                </div>
 
-                {/* Sort Dropdown */}
-                <select
-                  value={sortBy}
-                  onChange={(e) => handleSortChange(e.target.value)}
-                  className="px-4 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-gold bg-white"
-                >
-                  <option value="relevance">Relevance</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="newest">Newest First</option>
-                  <option value="popular">Best Selling</option>
-                </select>
+                  {/* Sort Dropdown */}
+                  <select
+                    value={sortBy}
+                    onChange={(e) => handleSortChange(e.target.value)}
+                    className="px-4 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-gold bg-white"
+                  >
+                    <option value="relevance">Relevance</option>
+                    <option value="popular">Best Selling</option>
+                    <option value="rating">Highest Rated</option>
+                    <option value="newest">Newest First</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                  </select>
+                </div>
               </div>
             </div>
 
             {/* Active Filters */}
-            {(selectedCategories.length > 0 || selectedBrands.length > 0) && (
+            {hasActiveFilters && (
               <div className="mb-6 flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-neutral-600">Active filters:</span>
+                <span className="text-sm text-neutral-600 font-medium">Active filters:</span>
                 {selectedCategories.map((cat) => (
                   <motion.span
                     key={cat}
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="px-3 py-1 bg-gold/10 text-gold text-sm rounded-full flex items-center gap-2"
+                    className="px-3 py-1.5 bg-gold/10 text-gold text-sm rounded-full flex items-center gap-2 font-medium"
                   >
                     {cat}
                     <button
-                      onClick={() => setSelectedCategories(selectedCategories.filter(c => c !== cat))}
+                      onClick={() => {
+                        setSelectedCategories([]);
+                        applyFilters();
+                      }}
                       className="hover:text-gold/70"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -358,11 +460,14 @@ export default function ProductsPage() {
                     key={brand}
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="px-3 py-1 bg-gold/10 text-gold text-sm rounded-full flex items-center gap-2"
+                    className="px-3 py-1.5 bg-gold/10 text-gold text-sm rounded-full flex items-center gap-2 font-medium"
                   >
                     {brand}
                     <button
-                      onClick={() => setSelectedBrands(selectedBrands.filter(b => b !== brand))}
+                      onClick={() => {
+                        setSelectedBrands(selectedBrands.filter(b => b !== brand));
+                        applyFilters();
+                      }}
                       className="hover:text-gold/70"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -371,6 +476,46 @@ export default function ProductsPage() {
                     </button>
                   </motion.span>
                 ))}
+                {inStockOnly && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="px-3 py-1.5 bg-gold/10 text-gold text-sm rounded-full flex items-center gap-2 font-medium"
+                  >
+                    In Stock
+                    <button
+                      onClick={() => {
+                        setInStockOnly(false);
+                        applyFilters();
+                      }}
+                      className="hover:text-gold/70"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </motion.span>
+                )}
+                {onSaleOnly && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="px-3 py-1.5 bg-gold/10 text-gold text-sm rounded-full flex items-center gap-2 font-medium"
+                  >
+                    On Sale
+                    <button
+                      onClick={() => {
+                        setOnSaleOnly(false);
+                        applyFilters();
+                      }}
+                      className="hover:text-gold/70"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </motion.span>
+                )}
               </div>
             )}
 
@@ -411,12 +556,12 @@ export default function ProductsPage() {
               <>
                 <ProductGrid
                   products={products}
-                  layout={layout}
+                  layout={layout === 'list' ? 'masonry' : layout}
                   onQuickView={handleQuickView}
                   onAddToWishlist={handleAddToWishlist}
                   onQuickAdd={handleAddToCart}
                   onNavigate={handleNavigate}
-                // isLoading={isLoading}
+                  isLoading={isLoading}
                 />
 
                 {/* Pagination */}
@@ -425,7 +570,7 @@ export default function ProductsPage() {
                     <button
                       onClick={() => handlePageChange(page - 1)}
                       disabled={page === 1}
-                      className="px-4 py-2 border border-neutral-200 rounded-lg text-sm hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 border border-neutral-200 rounded-lg text-sm hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-neutral-200"
                     >
                       Previous
                     </button>
@@ -457,7 +602,7 @@ export default function ProductsPage() {
                     <button
                       onClick={() => handlePageChange(page + 1)}
                       disabled={page === totalPages}
-                      className="px-4 py-2 border border-neutral-200 rounded-lg text-sm hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 border border-neutral-200 rounded-lg text-sm hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-neutral-200"
                     >
                       Next
                     </button>
@@ -499,10 +644,10 @@ export default function ProductsPage() {
               </div>
 
               {/* Mobile filter content - same as desktop sidebar */}
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {/* Categories */}
-                <div>
-                  <h3 className="text-lg font-semibold text-black mb-4">Categories</h3>
+                <div className="pb-6 border-b border-neutral-200">
+                  <h4 className="text-lg font-semibold text-black mb-4">Categories</h4>
                   <div className="space-y-3">
                     {categories.map((category) => (
                       <label key={category.id} className="flex items-center gap-3 cursor-pointer group">
@@ -513,38 +658,65 @@ export default function ProductsPage() {
                             if (e.target.checked) {
                               setSelectedCategories([category.slug]);
                             } else {
-                              setSelectedCategories(selectedCategories.filter(c => c !== category.slug));
+                              setSelectedCategories([]);
                             }
                           }}
-                          className="w-4 h-4 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                          className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
                         />
-                        <span className="text-neutral-700 group-hover:text-black transition-colors">{category.name}</span>
+                        <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">{category.name}</span>
                       </label>
                     ))}
                   </div>
                 </div>
 
                 {/* Brands */}
-                <div>
-                  <h3 className="text-lg font-semibold text-black mb-4">Brands</h3>
+                {brands.length > 0 && (
+                  <div className="pb-6 border-b border-neutral-200">
+                    <h4 className="text-lg font-semibold text-black mb-4">Brands</h4>
+                    <div className="space-y-3">
+                      {brands.map((brand) => (
+                        <label key={brand} className="flex items-center gap-3 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={selectedBrands.includes(brand)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedBrands([...selectedBrands, brand]);
+                              } else {
+                                setSelectedBrands(selectedBrands.filter(b => b !== brand));
+                              }
+                            }}
+                            className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                          />
+                          <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">{brand}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Availability */}
+                <div className="pb-6 border-b border-neutral-200">
+                  <h4 className="text-lg font-semibold text-black mb-4">Availability</h4>
                   <div className="space-y-3">
-                    {brands.map((brand) => (
-                      <label key={brand} className="flex items-center gap-3 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={selectedBrands.includes(brand)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedBrands([...selectedBrands, brand]);
-                            } else {
-                              setSelectedBrands(selectedBrands.filter(b => b !== brand));
-                            }
-                          }}
-                          className="w-4 h-4 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
-                        />
-                        <span className="text-neutral-700 group-hover:text-black transition-colors">{brand}</span>
-                      </label>
-                    ))}
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={inStockOnly}
+                        onChange={(e) => setInStockOnly(e.target.checked)}
+                        className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                      />
+                      <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">In Stock Only</span>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={onSaleOnly}
+                        onChange={(e) => setOnSaleOnly(e.target.checked)}
+                        className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                      />
+                      <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">On Sale</span>
+                    </label>
                   </div>
                 </div>
               </div>

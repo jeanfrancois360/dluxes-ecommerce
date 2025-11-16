@@ -25,7 +25,7 @@ export const productsAPI = {
 
   // Get product by slug
   getBySlug: (slug: string) =>
-    api.get<Product>(`/products/slug/${slug}`),
+    api.get<Product>(`/products/${slug}`),
 
   // Get featured products
   getFeatured: (limit: number = 8) =>

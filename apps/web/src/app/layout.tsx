@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import { AuthProvider } from '@/contexts/auth-context';
 import { CartProvider } from '@/contexts/cart-context';
+import { LocaleProvider } from '@/contexts/locale-context';
 import { ToastListener } from '@/components/toast-listener';
 import { siteConfig } from '@/lib/seo';
 import './globals.css';
@@ -104,12 +105,14 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${playfair.variable} overflow-x-hidden`}>
       <body className="font-sans antialiased bg-white text-black overflow-x-hidden">
-        <AuthProvider>
-          <CartProvider>
-            {children}
-            <ToastListener />
-          </CartProvider>
-        </AuthProvider>
+        <LocaleProvider>
+          <AuthProvider>
+            <CartProvider>
+              {children}
+              <ToastListener />
+            </CartProvider>
+          </AuthProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

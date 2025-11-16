@@ -74,7 +74,8 @@ export function useRelatedProducts(productId: string, limit: number = 4): UseRel
         setIsLoading(true);
         setError(null);
         const response = await productsAPI.getRelated(productId, limit);
-        setProducts(response);
+        // Extract products array from SearchResult response
+        setProducts(response.products || []);
       } catch (err) {
         const apiError = err instanceof APIError ? err : new APIError('Failed to fetch related products', 500);
         setError(apiError);
