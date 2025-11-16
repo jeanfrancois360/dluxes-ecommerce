@@ -1,0 +1,16 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  :root {
+    --color-black: #000000;
+    --color-gold: #cbb57b;
+    --color-gray: #c3c9c0;
+    --color-white: #ffffff;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
