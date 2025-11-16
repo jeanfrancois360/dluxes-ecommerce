@@ -1,0 +1,1548 @@
+import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Seeding database...');
+  console.log('');
+
+  // Hash passwords for test accounts
+  const testPassword = await bcrypt.hash('Test@123', 10); // Standard test password
+  const defaultPassword = await bcrypt.hash('Password123!', 10); // Legacy password
+
+  // Create Super Admin user
+  const superAdmin = await prisma.user.upsert({
+    where: { email: 'admin@luxury.com' },
+    update: {},
+    create: {
+      email: 'admin@luxury.com',
+      firstName: 'Super',
+      lastName: 'Admin',
+      password: defaultPassword,
+      role: 'SUPER_ADMIN',
+      emailVerified: true,
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'dark',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Created super admin user:', superAdmin.email);
+
+  // ========================================
+  // CREATE TEST ACCOUNTS (Test@123)
+  // ========================================
+  console.log('');
+  console.log('📝 Creating test accounts...');
+
+  // 1. BUYER Test Account
+  const testBuyer = await prisma.user.upsert({
+    where: { email: 'buyer@test.com' },
+    update: {},
+    create: {
+      email: 'buyer@test.com',
+      firstName: 'Test',
+      lastName: 'Buyer',
+      password: testPassword,
+      role: 'BUYER',
+      emailVerified: true,
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'light',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+  console.log('✅ Created BUYER test account:', testBuyer.email);
+
+  // 2. CUSTOMER Test Account (Legacy)
+  const testCustomer = await prisma.user.upsert({
+    where: { email: 'customer@test.com' },
+    update: {},
+    create: {
+      email: 'customer@test.com',
+      firstName: 'Test',
+      lastName: 'Customer',
+      password: testPassword,
+      role: 'CUSTOMER',
+      emailVerified: true,
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'light',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+  console.log('✅ Created CUSTOMER test account:', testCustomer.email);
+
+  // 3. SELLER Test Account with Store
+  const testSeller = await prisma.user.upsert({
+    where: { email: 'seller@test.com' },
+    update: {},
+    create: {
+      email: 'seller@test.com',
+      firstName: 'Test',
+      lastName: 'Seller',
+      password: testPassword,
+      role: 'SELLER',
+      emailVerified: true,
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'light',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+  console.log('✅ Created SELLER test account:', testSeller.email);
+
+  // Create seller's store
+  const testSellerStore = await prisma.store.upsert({
+    where: { userId: testSeller.id },
+    update: {},
+    create: {
+      name: 'Test Seller Store',
+      slug: 'test-seller-store',
+      description: 'A test store for product management and seller features',
+      userId: testSeller.id,
+      status: 'ACTIVE', // Pre-approved for testing
+      email: 'seller@test.com',
+      phone: '+1234567890',
+    },
+  });
+  console.log('✅ Created ACTIVE store for seller:', testSellerStore.name);
+
+  // 4. ADMIN Test Account
+  const testAdmin = await prisma.user.upsert({
+    where: { email: 'admin@test.com' },
+    update: {},
+    create: {
+      email: 'admin@test.com',
+      firstName: 'Test',
+      lastName: 'Admin',
+      password: testPassword,
+      role: 'ADMIN',
+      emailVerified: true,
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'dark',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+  console.log('✅ Created ADMIN test account:', testAdmin.email);
+
+  // 5. SUPER_ADMIN Test Account
+  const testSuperAdmin = await prisma.user.upsert({
+    where: { email: 'superadmin@test.com' },
+    update: {},
+    create: {
+      email: 'superadmin@test.com',
+      firstName: 'Test',
+      lastName: 'SuperAdmin',
+      password: testPassword,
+      role: 'SUPER_ADMIN',
+      emailVerified: true,
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'dark',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+  console.log('✅ Created SUPER_ADMIN test account:', testSuperAdmin.email);
+
+  console.log('');
+  console.log('📝 Creating additional demo accounts...');
+
+  // Create Regular Admin user
+  const admin = await prisma.user.upsert({
+    where: { email: 'john.admin@luxury.com' },
+    update: {},
+    create: {
+      email: 'john.admin@luxury.com',
+      firstName: 'John',
+      lastName: 'Administrator',
+      password: defaultPassword,
+      role: 'ADMIN',
+      emailVerified: true,
+      phone: '+1234567890',
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'light',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Created admin user:', admin.email);
+
+  // Create Test Customer Users
+  const customer1 = await prisma.user.upsert({
+    where: { email: 'sarah.customer@luxury.com' },
+    update: {},
+    create: {
+      email: 'sarah.customer@luxury.com',
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      password: defaultPassword,
+      role: 'CUSTOMER',
+      emailVerified: true,
+      phone: '+1234567891',
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'dark',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Created customer user:', customer1.email);
+
+  const customer2 = await prisma.user.upsert({
+    where: { email: 'michael.smith@luxury.com' },
+    update: {},
+    create: {
+      email: 'michael.smith@luxury.com',
+      firstName: 'Michael',
+      lastName: 'Smith',
+      password: defaultPassword,
+      role: 'CUSTOMER',
+      emailVerified: true,
+      phone: '+1234567892',
+      preferences: {
+        create: {
+          newsletter: false,
+          notifications: true,
+          currency: 'EUR',
+          language: 'en',
+          theme: 'light',
+          layoutMode: 'compact',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Created customer user:', customer2.email);
+
+  const customer3 = await prisma.user.upsert({
+    where: { email: 'emma.wilson@luxury.com' },
+    update: {},
+    create: {
+      email: 'emma.wilson@luxury.com',
+      firstName: 'Emma',
+      lastName: 'Wilson',
+      password: defaultPassword,
+      role: 'CUSTOMER',
+      emailVerified: false,
+      phone: '+1234567893',
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: false,
+          currency: 'GBP',
+          language: 'en',
+          theme: 'dark',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Created customer user:', customer3.email);
+
+  // Create Categories
+  const watchesCategory = await prisma.category.upsert({
+    where: { slug: 'watches' },
+    update: {},
+    create: {
+      name: 'Watches',
+      slug: 'watches',
+      description: 'Luxury timepieces and watches from the finest brands',
+      image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49',
+      icon: 'Watch',
+      displayOrder: 1,
+      isActive: true,
+    },
+  });
+
+  const jewelryCategory = await prisma.category.upsert({
+    where: { slug: 'jewelry' },
+    update: {},
+    create: {
+      name: 'Jewelry',
+      slug: 'jewelry',
+      description: 'Exquisite jewelry and precious gems',
+      image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338',
+      icon: 'Gem',
+      displayOrder: 2,
+      isActive: true,
+    },
+  });
+
+  const accessoriesCategory = await prisma.category.upsert({
+    where: { slug: 'accessories' },
+    update: {},
+    create: {
+      name: 'Accessories',
+      slug: 'accessories',
+      description: 'Premium accessories and leather goods',
+      image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7',
+      icon: 'ShoppingBag',
+      displayOrder: 3,
+      isActive: true,
+    },
+  });
+
+  const fashionCategory = await prisma.category.upsert({
+    where: { slug: 'fashion' },
+    update: {},
+    create: {
+      name: 'Fashion',
+      slug: 'fashion',
+      description: 'Luxury fashion and designer clothing',
+      image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b',
+      icon: 'Shirt',
+      displayOrder: 4,
+      isActive: true,
+    },
+  });
+
+  console.log('✅ Created categories');
+
+  console.log('');
+  console.log('📦 Creating luxury products...');
+
+  // Create sample products (6+ per category)
+  const products = await Promise.all([
+    // ========================================
+    // WATCHES CATEGORY (8 products)
+    // ========================================
+    prisma.product.create({
+      data: {
+        name: 'Chronograph Master Collection',
+        slug: 'chronograph-master-collection',
+        description:
+          'A masterpiece of Swiss engineering, this timepiece combines precision with timeless elegance. Features automatic movement, sapphire crystal, and water resistance up to 100m. The intricate chronograph mechanism showcases horological excellence.',
+        shortDescription: 'Swiss-made luxury chronograph with automatic movement',
+        categoryId: watchesCategory.id,
+        storeId: testSellerStore.id,
+        price: 12500.0,
+        compareAtPrice: 15000.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 5,
+        heroImage: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49',
+        badges: ['Featured', 'Sale'],
+        colors: ['Silver', 'Gold', 'Rose Gold'],
+        sizes: ['40mm', '42mm'],
+        materials: ['Stainless Steel', 'Sapphire Crystal'],
+        rating: 4.8,
+        reviewCount: 24,
+        viewCount: 450,
+        likeCount: 89,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49',
+              alt: 'Chronograph Master Collection',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'luxury' }, { name: 'swiss-made' }, { name: 'automatic' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Royal Pilot Heritage',
+        slug: 'royal-pilot-heritage',
+        description:
+          'Inspired by aviation heritage, this pilot watch features a distinctive oversized crown, luminous markers, and exceptional readability. Built for adventurers who demand precision and style.',
+        shortDescription: 'Aviation-inspired luxury timepiece',
+        categoryId: watchesCategory.id,
+        storeId: testSellerStore.id,
+        price: 9800.0,
+        compareAtPrice: 11500.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 8,
+        heroImage: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d',
+        badges: ['New Arrival'],
+        colors: ['Black', 'Blue', 'Bronze'],
+        sizes: ['42mm', '44mm'],
+        materials: ['Titanium', 'Ceramic'],
+        rating: 4.7,
+        reviewCount: 31,
+        viewCount: 520,
+        likeCount: 102,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d',
+              alt: 'Royal Pilot Heritage',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'pilot' }, { name: 'aviation' }, { name: 'heritage' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Elegance Dress Watch',
+        slug: 'elegance-dress-watch',
+        description:
+          'Ultra-thin dress watch with minimalist design. Perfect for formal occasions, featuring a hand-finished dial, alligator leather strap, and elegant Roman numerals.',
+        shortDescription: 'Ultra-thin dress watch with minimalist design',
+        categoryId: watchesCategory.id,
+        storeId: testSellerStore.id,
+        price: 6500.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 12,
+        heroImage: 'https://images.unsplash.com/photo-1547996160-81dfa63595aa',
+        badges: ['Best Seller'],
+        colors: ['White', 'Black', 'Champagne'],
+        sizes: ['38mm', '40mm'],
+        materials: ['White Gold', 'Alligator Leather'],
+        rating: 4.9,
+        reviewCount: 45,
+        viewCount: 680,
+        likeCount: 145,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1547996160-81dfa63595aa',
+              alt: 'Elegance Dress Watch',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'dress' }, { name: 'formal' }, { name: 'minimalist' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Diver Professional 300M',
+        slug: 'diver-professional-300m',
+        description:
+          'Professional diving watch with 300m water resistance, helium escape valve, and unidirectional rotating bezel. Built to withstand the most demanding underwater conditions.',
+        shortDescription: 'Professional dive watch with 300m resistance',
+        categoryId: watchesCategory.id,
+        storeId: testSellerStore.id,
+        price: 8900.0,
+        compareAtPrice: 10200.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 6,
+        heroImage: 'https://images.unsplash.com/photo-1639006570490-79c0c53f1080',
+        badges: ['Sale'],
+        colors: ['Black', 'Blue', 'Green'],
+        sizes: ['42mm', '44mm'],
+        materials: ['Stainless Steel', 'Ceramic Bezel'],
+        rating: 4.8,
+        reviewCount: 28,
+        viewCount: 390,
+        likeCount: 76,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1639006570490-79c0c53f1080',
+              alt: 'Diver Professional 300M',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'dive' }, { name: 'professional' }, { name: 'waterproof' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Moonphase Complication',
+        slug: 'moonphase-complication',
+        description:
+          'Sophisticated moonphase watch with perpetual calendar. This masterpiece displays the lunar cycle with poetic precision, complemented by date, day, and month indicators.',
+        shortDescription: 'Moonphase watch with perpetual calendar',
+        categoryId: watchesCategory.id,
+        storeId: testSellerStore.id,
+        price: 18500.0,
+        compareAtPrice: 22000.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 3,
+        heroImage: 'https://images.unsplash.com/photo-1587836374441-4cfbdf08a17d',
+        badges: ['Limited Edition', 'Featured'],
+        colors: ['Rose Gold', 'White Gold'],
+        sizes: ['40mm'],
+        materials: ['18k Gold', 'Sapphire Crystal'],
+        rating: 5.0,
+        reviewCount: 12,
+        viewCount: 290,
+        likeCount: 98,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1587836374441-4cfbdf08a17d',
+              alt: 'Moonphase Complication',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'moonphase' }, { name: 'complication' }, { name: 'calendar' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Skeleton Automatic Reserve',
+        slug: 'skeleton-automatic-reserve',
+        description:
+          'Architectural masterpiece with skeletonized dial revealing the intricate automatic movement. Features 72-hour power reserve and exhibition case back.',
+        shortDescription: 'Skeletonized automatic with power reserve',
+        categoryId: watchesCategory.id,
+        storeId: testSellerStore.id,
+        price: 14200.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 4,
+        heroImage: 'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3',
+        badges: ['New'],
+        colors: ['Black', 'Silver'],
+        sizes: ['42mm', '44mm'],
+        materials: ['Titanium', 'Sapphire'],
+        rating: 4.7,
+        reviewCount: 19,
+        viewCount: 340,
+        likeCount: 71,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3',
+              alt: 'Skeleton Automatic Reserve',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'skeleton' }, { name: 'automatic' }, { name: 'exhibition' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'GMT World Timer',
+        slug: 'gmt-world-timer',
+        description:
+          'Perfect for the global traveler. Features dual time zones, 24-hour GMT hand, and world cities ring. Track time across continents with elegance and precision.',
+        shortDescription: 'Dual timezone GMT watch for travelers',
+        categoryId: watchesCategory.id,
+        storeId: testSellerStore.id,
+        price: 11800.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 7,
+        heroImage: 'https://images.unsplash.com/photo-1533139502658-0198f920d8e8',
+        badges: ['Travel'],
+        colors: ['Blue', 'Black', 'Pepsi'],
+        sizes: ['40mm', '42mm'],
+        materials: ['Stainless Steel', 'Ceramic'],
+        rating: 4.6,
+        reviewCount: 35,
+        viewCount: 420,
+        likeCount: 88,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1533139502658-0198f920d8e8',
+              alt: 'GMT World Timer',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'gmt' }, { name: 'travel' }, { name: 'dual-timezone' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Racing Chronograph Carbon',
+        slug: 'racing-chronograph-carbon',
+        description:
+          'Inspired by motorsports, this carbon fiber chronograph delivers exceptional performance. Features tachymeter scale, carbon composite case, and racing strap.',
+        shortDescription: 'Motorsport-inspired carbon chronograph',
+        categoryId: watchesCategory.id,
+        storeId: testSellerStore.id,
+        price: 10500.0,
+        compareAtPrice: 12800.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 9,
+        heroImage: 'https://images.unsplash.com/photo-1614164185128-e4ec99c436d7',
+        badges: ['Sport', 'Sale'],
+        colors: ['Black', 'Red', 'Blue'],
+        sizes: ['44mm', '46mm'],
+        materials: ['Carbon Fiber', 'Titanium'],
+        rating: 4.7,
+        reviewCount: 27,
+        viewCount: 510,
+        likeCount: 94,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1614164185128-e4ec99c436d7',
+              alt: 'Racing Chronograph Carbon',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'racing' }, { name: 'sport' }, { name: 'carbon' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Diamond Pendant Necklace',
+        slug: 'diamond-pendant-necklace',
+        description:
+          'Exquisite 18k white gold necklace featuring a stunning 2-carat diamond pendant. Certified conflict-free diamond with excellent cut and clarity.',
+        shortDescription: '18k white gold with 2ct diamond',
+        categoryId: jewelryCategory.id,
+        price: 8750.0,
+        compareAtPrice: 10500.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 3,
+        heroImage: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338',
+        badges: ['New', 'Limited Edition'],
+        colors: ['White Gold', 'Yellow Gold', 'Rose Gold'],
+        materials: ['18k Gold', 'Diamond'],
+        rating: 4.9,
+        reviewCount: 18,
+        viewCount: 320,
+        likeCount: 67,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338',
+              alt: 'Diamond Pendant Necklace',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'jewelry' }, { name: 'diamonds' }, { name: '18k-gold' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Italian Leather Handbag',
+        slug: 'italian-leather-handbag',
+        description:
+          'Handcrafted from the finest Italian leather, this handbag is the epitome of sophistication. Features gold-plated hardware and signature interior lining.',
+        shortDescription: 'Handcrafted Italian leather',
+        categoryId: accessoriesCategory.id,
+        price: 2850.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 12,
+        heroImage: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7',
+        badges: ['Bestseller'],
+        colors: ['Black', 'Brown', 'Navy', 'Burgundy'],
+        materials: ['Italian Leather', 'Gold-Plated Hardware'],
+        rating: 4.7,
+        reviewCount: 42,
+        viewCount: 680,
+        likeCount: 123,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7',
+              alt: 'Italian Leather Handbag',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'accessories' }, { name: 'leather' }, { name: 'italian' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Cashmere Sweater',
+        slug: 'cashmere-sweater',
+        description:
+          '100% pure cashmere sweater from the finest Mongolian goats. Ultra-soft, lightweight, and incredibly warm.',
+        shortDescription: '100% pure Mongolian cashmere',
+        categoryId: fashionCategory.id,
+        price: 895.0,
+        compareAtPrice: 1200.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 25,
+        heroImage: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105',
+        badges: ['Sale'],
+        colors: ['Charcoal', 'Camel', 'Navy', 'Ivory'],
+        sizes: ['XS', 'S', 'M', 'L', 'XL'],
+        materials: ['100% Cashmere'],
+        rating: 4.6,
+        reviewCount: 31,
+        viewCount: 290,
+        likeCount: 56,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105',
+              alt: 'Cashmere Sweater',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'fashion' }, { name: 'cashmere' }, { name: 'knitwear' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Designer Sunglasses',
+        slug: 'designer-sunglasses',
+        description:
+          'Iconic aviator sunglasses with polarized lenses and titanium frame. UV400 protection with anti-reflective coating.',
+        shortDescription: 'Polarized titanium aviators',
+        categoryId: accessoriesCategory.id,
+        price: 495.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 40,
+        heroImage: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083',
+        badges: ['New'],
+        colors: ['Gold', 'Silver', 'Black'],
+        materials: ['Titanium', 'Polarized Glass'],
+        rating: 4.5,
+        reviewCount: 15,
+        viewCount: 185,
+        likeCount: 34,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083',
+              alt: 'Designer Sunglasses',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'accessories' }, { name: 'sunglasses' }, { name: 'eyewear' }],
+        },
+      },
+    }),
+
+    // Additional Jewelry Products
+    prisma.product.create({
+      data: {
+        name: 'Emerald Drop Earrings',
+        slug: 'emerald-drop-earrings',
+        description:
+          'Stunning Colombian emerald drop earrings set in platinum. Each earring features a 1.5-carat emerald surrounded by brilliant-cut diamonds. Handcrafted by master jewelers with a secure screw-back closure.',
+        shortDescription: 'Platinum earrings with Colombian emeralds',
+        categoryId: jewelryCategory.id,
+        storeId: testSellerStore.id,
+        price: 15500.0,
+        compareAtPrice: 18000.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 2,
+        heroImage: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908',
+        badges: ['Limited Edition', 'Sale'],
+        colors: ['Platinum', 'White Gold'],
+        materials: ['Platinum', 'Emerald', 'Diamond'],
+        rating: 5.0,
+        reviewCount: 12,
+        viewCount: 280,
+        likeCount: 92,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908',
+              alt: 'Emerald Drop Earrings',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'jewelry' }, { name: 'emerald' }, { name: 'platinum' }, { name: 'earrings' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Diamond Tennis Bracelet',
+        slug: 'diamond-tennis-bracelet',
+        description:
+          'Classic tennis bracelet featuring 50 round brilliant diamonds totaling 10 carats. Set in 18k white gold with a secure clasp. Perfect for any occasion, from casual to formal.',
+        shortDescription: '10ct diamond tennis bracelet in 18k white gold',
+        categoryId: jewelryCategory.id,
+        storeId: testSellerStore.id,
+        price: 22500.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 4,
+        heroImage: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a',
+        badges: ['Bestseller', 'Featured'],
+        colors: ['White Gold', 'Yellow Gold', 'Platinum'],
+        materials: ['18k Gold', 'Diamond'],
+        rating: 4.9,
+        reviewCount: 28,
+        viewCount: 520,
+        likeCount: 145,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a',
+              alt: 'Diamond Tennis Bracelet',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'jewelry' }, { name: 'diamonds' }, { name: 'bracelet' }, { name: 'luxury' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Sapphire Cocktail Ring',
+        slug: 'sapphire-cocktail-ring',
+        description:
+          'Bold statement ring featuring a 5-carat Ceylon sapphire center stone surrounded by a halo of white diamonds. Crafted in 18k yellow gold with intricate filigree details on the band.',
+        shortDescription: '5ct Ceylon sapphire with diamond halo',
+        categoryId: jewelryCategory.id,
+        storeId: testSellerStore.id,
+        price: 12800.0,
+        compareAtPrice: 15000.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 6,
+        heroImage: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e',
+        badges: ['Sale', 'New'],
+        colors: ['Yellow Gold', 'White Gold', 'Rose Gold'],
+        sizes: ['5', '6', '7', '8', '9'],
+        materials: ['18k Gold', 'Sapphire', 'Diamond'],
+        rating: 4.8,
+        reviewCount: 19,
+        viewCount: 340,
+        likeCount: 78,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e',
+              alt: 'Sapphire Cocktail Ring',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'jewelry' }, { name: 'sapphire' }, { name: 'ring' }, { name: 'cocktail' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Pearl Strand Necklace',
+        slug: 'pearl-strand-necklace',
+        description:
+          'Timeless South Sea pearl necklace with 18-inch strand of perfectly matched 10-11mm pearls. Features a 14k white gold clasp adorned with diamonds. Comes with authentication certificate.',
+        shortDescription: 'South Sea pearl necklace with diamond clasp',
+        categoryId: jewelryCategory.id,
+        storeId: testSellerStore.id,
+        price: 9500.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 5,
+        heroImage: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f',
+        badges: ['Classic', 'Certified'],
+        colors: ['White', 'Golden', 'Black'],
+        materials: ['South Sea Pearl', '14k Gold', 'Diamond'],
+        rating: 4.7,
+        reviewCount: 22,
+        viewCount: 410,
+        likeCount: 95,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f',
+              alt: 'Pearl Strand Necklace',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'jewelry' }, { name: 'pearls' }, { name: 'necklace' }, { name: 'classic' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Ruby Stud Earrings',
+        slug: 'ruby-stud-earrings',
+        description:
+          'Elegant Burmese ruby stud earrings showcasing two perfectly matched 2-carat rubies. Set in platinum with secure push-back closures. Pigeon blood red color with exceptional clarity.',
+        shortDescription: 'Burmese ruby studs in platinum',
+        categoryId: jewelryCategory.id,
+        storeId: testSellerStore.id,
+        price: 18500.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 3,
+        heroImage: 'https://images.unsplash.com/photo-1617038220319-276d3cfab638',
+        badges: ['Limited Edition', 'Premium'],
+        colors: ['Platinum', 'White Gold'],
+        materials: ['Platinum', 'Ruby'],
+        rating: 4.9,
+        reviewCount: 14,
+        viewCount: 295,
+        likeCount: 88,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1617038220319-276d3cfab638',
+              alt: 'Ruby Stud Earrings',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'jewelry' }, { name: 'ruby' }, { name: 'earrings' }, { name: 'premium' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Gold Chain Bracelet',
+        slug: 'gold-chain-bracelet',
+        description:
+          'Luxurious 18k yellow gold curb chain bracelet with substantial weight and presence. Features a secure lobster clasp. Unisex design suitable for stacking or wearing alone.',
+        shortDescription: '18k gold curb chain bracelet',
+        categoryId: jewelryCategory.id,
+        storeId: testSellerStore.id,
+        price: 4500.0,
+        compareAtPrice: 5200.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 10,
+        heroImage: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a',
+        badges: ['Bestseller'],
+        colors: ['Yellow Gold', 'White Gold', 'Rose Gold'],
+        materials: ['18k Gold'],
+        rating: 4.6,
+        reviewCount: 35,
+        viewCount: 580,
+        likeCount: 112,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a',
+              alt: 'Gold Chain Bracelet',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'jewelry' }, { name: 'gold' }, { name: 'bracelet' }, { name: 'unisex' }],
+        },
+      },
+    }),
+
+    // Additional Accessories Products
+    prisma.product.create({
+      data: {
+        name: 'Silk Scarf Collection',
+        slug: 'silk-scarf-collection',
+        description:
+          'Exquisite hand-painted silk scarf featuring an original artistic design. Made from 100% mulberry silk with hand-rolled edges. Perfect accessory to elevate any outfit.',
+        shortDescription: 'Hand-painted 100% mulberry silk scarf',
+        categoryId: accessoriesCategory.id,
+        storeId: testSellerStore.id,
+        price: 395.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 20,
+        heroImage: 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26',
+        badges: ['New Arrival', 'Artisan'],
+        colors: ['Multi-Color', 'Navy', 'Burgundy', 'Forest Green'],
+        materials: ['100% Silk'],
+        rating: 4.8,
+        reviewCount: 26,
+        viewCount: 340,
+        likeCount: 67,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26',
+              alt: 'Silk Scarf Collection',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'accessories' }, { name: 'silk' }, { name: 'scarf' }, { name: 'artisan' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Premium Leather Belt',
+        slug: 'premium-leather-belt',
+        description:
+          'Full-grain Italian leather belt with brushed nickel buckle. Handcrafted with attention to detail and reinforced stitching. Available in classic colors to complement any wardrobe.',
+        shortDescription: 'Italian leather belt with nickel buckle',
+        categoryId: accessoriesCategory.id,
+        storeId: testSellerStore.id,
+        price: 285.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 35,
+        heroImage: 'https://images.unsplash.com/photo-1624222247344-550fb60583bb',
+        badges: ['Bestseller'],
+        colors: ['Black', 'Brown', 'Cognac'],
+        sizes: ['30', '32', '34', '36', '38', '40'],
+        materials: ['Italian Leather', 'Nickel'],
+        rating: 4.5,
+        reviewCount: 48,
+        viewCount: 620,
+        likeCount: 89,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1624222247344-550fb60583bb',
+              alt: 'Premium Leather Belt',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'accessories' }, { name: 'leather' }, { name: 'belt' }, { name: 'menswear' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Designer Wallet',
+        slug: 'designer-wallet',
+        description:
+          'Minimalist bi-fold wallet crafted from premium Saffiano leather. Features RFID protection, multiple card slots, and a bill compartment. Sleek design fits comfortably in any pocket.',
+        shortDescription: 'Saffiano leather wallet with RFID protection',
+        categoryId: accessoriesCategory.id,
+        storeId: testSellerStore.id,
+        price: 425.0,
+        compareAtPrice: 550.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 28,
+        heroImage: 'https://images.unsplash.com/photo-1627123424574-724758594e93',
+        badges: ['Sale', 'RFID'],
+        colors: ['Black', 'Navy', 'Brown'],
+        materials: ['Saffiano Leather', 'RFID Shield'],
+        rating: 4.7,
+        reviewCount: 52,
+        viewCount: 780,
+        likeCount: 134,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1627123424574-724758594e93',
+              alt: 'Designer Wallet',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'accessories' }, { name: 'wallet' }, { name: 'leather' }, { name: 'rfid' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Platinum Cufflinks Set',
+        slug: 'platinum-cufflinks-set',
+        description:
+          'Sophisticated cufflinks crafted from solid platinum with subtle diamond accents. Presented in a luxury gift box. Perfect for formal occasions or as a distinguished gift.',
+        shortDescription: 'Platinum cufflinks with diamond accents',
+        categoryId: accessoriesCategory.id,
+        storeId: testSellerStore.id,
+        price: 1850.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 15,
+        heroImage: 'https://images.unsplash.com/photo-1603561596112-0a132b757442',
+        badges: ['Premium', 'Gift Ready'],
+        colors: ['Platinum'],
+        materials: ['Platinum', 'Diamond'],
+        rating: 4.9,
+        reviewCount: 17,
+        viewCount: 210,
+        likeCount: 56,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1603561596112-0a132b757442',
+              alt: 'Platinum Cufflinks Set',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'accessories' }, { name: 'cufflinks' }, { name: 'platinum' }, { name: 'formal' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Leather Travel Duffle',
+        slug: 'leather-travel-duffle',
+        description:
+          'Spacious weekend duffle bag handcrafted from full-grain leather. Features brass hardware, adjustable shoulder strap, and multiple interior pockets. Ages beautifully with use.',
+        shortDescription: 'Full-grain leather weekend duffle',
+        categoryId: accessoriesCategory.id,
+        storeId: testSellerStore.id,
+        price: 1650.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 8,
+        heroImage: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62',
+        badges: ['Bestseller', 'Premium'],
+        colors: ['Brown', 'Black', 'Tan'],
+        materials: ['Full-Grain Leather', 'Brass Hardware'],
+        rating: 4.8,
+        reviewCount: 31,
+        viewCount: 495,
+        likeCount: 98,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62',
+              alt: 'Leather Travel Duffle',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'accessories' }, { name: 'leather' }, { name: 'duffle' }, { name: 'travel' }],
+        },
+      },
+    }),
+
+    // Additional Fashion Products
+    prisma.product.create({
+      data: {
+        name: 'Tailored Blazer',
+        slug: 'tailored-blazer',
+        description:
+          'Impeccably tailored single-breasted blazer crafted from Italian wool. Features peak lapels, working cuff buttons, and a slim modern fit. Fully lined with interior pockets.',
+        shortDescription: 'Italian wool tailored blazer',
+        categoryId: fashionCategory.id,
+        storeId: testSellerStore.id,
+        price: 1450.0,
+        compareAtPrice: 1800.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 18,
+        heroImage: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf',
+        badges: ['Sale', 'Tailored'],
+        colors: ['Navy', 'Charcoal', 'Black'],
+        sizes: ['36', '38', '40', '42', '44', '46'],
+        materials: ['Italian Wool', 'Viscose Lining'],
+        rating: 4.7,
+        reviewCount: 29,
+        viewCount: 520,
+        likeCount: 87,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf',
+              alt: 'Tailored Blazer',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'fashion' }, { name: 'blazer' }, { name: 'tailored' }, { name: 'menswear' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Silk Evening Dress',
+        slug: 'silk-evening-dress',
+        description:
+          'Stunning floor-length evening gown in luxurious silk charmeuse. Features an elegant A-line silhouette, cowl neckline, and invisible side zipper. Perfect for galas and special occasions.',
+        shortDescription: 'Silk charmeuse evening gown',
+        categoryId: fashionCategory.id,
+        storeId: testSellerStore.id,
+        price: 2850.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 12,
+        heroImage: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae',
+        badges: ['Evening', 'Premium'],
+        colors: ['Midnight Blue', 'Emerald', 'Burgundy', 'Black'],
+        sizes: ['0', '2', '4', '6', '8', '10', '12'],
+        materials: ['100% Silk Charmeuse'],
+        rating: 4.9,
+        reviewCount: 16,
+        viewCount: 380,
+        likeCount: 124,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae',
+              alt: 'Silk Evening Dress',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'fashion' }, { name: 'dress' }, { name: 'evening' }, { name: 'silk' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Designer Silk Blouse',
+        slug: 'designer-silk-blouse',
+        description:
+          'Timeless silk blouse with French cuffs and mother-of-pearl buttons. Made from premium mulberry silk with a relaxed fit. Versatile piece suitable for business or evening wear.',
+        shortDescription: 'Premium mulberry silk blouse',
+        categoryId: fashionCategory.id,
+        storeId: testSellerStore.id,
+        price: 685.0,
+        compareAtPrice: 850.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 22,
+        heroImage: 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e',
+        badges: ['Sale', 'Versatile'],
+        colors: ['Ivory', 'Blush', 'Navy', 'Black'],
+        sizes: ['XS', 'S', 'M', 'L', 'XL'],
+        materials: ['100% Mulberry Silk'],
+        rating: 4.6,
+        reviewCount: 38,
+        viewCount: 460,
+        likeCount: 72,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e',
+              alt: 'Designer Silk Blouse',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'fashion' }, { name: 'blouse' }, { name: 'silk' }, { name: 'versatile' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Premium Denim Jeans',
+        slug: 'premium-denim-jeans',
+        description:
+          'Japanese selvedge denim jeans with a modern slim fit. Crafted on vintage shuttle looms for superior quality. Features leather patch, copper rivets, and meticulous construction.',
+        shortDescription: 'Japanese selvedge denim slim fit',
+        categoryId: fashionCategory.id,
+        storeId: testSellerStore.id,
+        price: 385.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 40,
+        heroImage: 'https://images.unsplash.com/photo-1542272604-787c3835535d',
+        badges: ['Bestseller', 'Japanese Denim'],
+        colors: ['Indigo', 'Black', 'Light Wash'],
+        sizes: ['28', '29', '30', '31', '32', '33', '34', '36'],
+        materials: ['Japanese Selvedge Denim', 'Leather', 'Copper'],
+        rating: 4.8,
+        reviewCount: 67,
+        viewCount: 890,
+        likeCount: 156,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1542272604-787c3835535d',
+              alt: 'Premium Denim Jeans',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'fashion' }, { name: 'jeans' }, { name: 'denim' }, { name: 'japanese' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Merino Wool Coat',
+        slug: 'merino-wool-coat',
+        description:
+          'Elegant double-breasted coat made from 100% Australian merino wool. Features a luxurious belted waist, notch collar, and satin lining. Timeless design for any wardrobe.',
+        shortDescription: '100% merino wool double-breasted coat',
+        categoryId: fashionCategory.id,
+        storeId: testSellerStore.id,
+        price: 1850.0,
+        status: 'ACTIVE',
+        featured: true,
+        inventory: 14,
+        heroImage: 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3',
+        badges: ['Premium', 'Timeless'],
+        colors: ['Camel', 'Navy', 'Black', 'Grey'],
+        sizes: ['XS', 'S', 'M', 'L', 'XL'],
+        materials: ['100% Merino Wool', 'Satin Lining'],
+        rating: 4.9,
+        reviewCount: 23,
+        viewCount: 410,
+        likeCount: 102,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3',
+              alt: 'Merino Wool Coat',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'fashion' }, { name: 'coat' }, { name: 'wool' }, { name: 'outerwear' }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Cashmere Turtleneck',
+        slug: 'cashmere-turtleneck',
+        description:
+          '2-ply cashmere turtleneck sweater from Italian yarn. Ultra-soft with a refined ribbed texture. Perfect layering piece that combines comfort with sophistication.',
+        shortDescription: 'Italian 2-ply cashmere turtleneck',
+        categoryId: fashionCategory.id,
+        storeId: testSellerStore.id,
+        price: 695.0,
+        compareAtPrice: 850.0,
+        status: 'ACTIVE',
+        featured: false,
+        inventory: 30,
+        heroImage: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27',
+        badges: ['Sale', 'Italian'],
+        colors: ['Black', 'Navy', 'Camel', 'Grey', 'Cream'],
+        sizes: ['XS', 'S', 'M', 'L', 'XL'],
+        materials: ['100% Italian Cashmere'],
+        rating: 4.7,
+        reviewCount: 44,
+        viewCount: 580,
+        likeCount: 93,
+        images: {
+          create: [
+            {
+              url: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27',
+              alt: 'Cashmere Turtleneck',
+              width: 1200,
+              height: 1200,
+              isPrimary: true,
+              displayOrder: 1,
+            },
+          ],
+        },
+        tags: {
+          create: [{ name: 'fashion' }, { name: 'cashmere' }, { name: 'turtleneck' }, { name: 'knitwear' }],
+        },
+      },
+    }),
+  ]);
+
+  console.log(`✅ Created ${products.length} sample products`);
+
+  console.log('');
+  console.log('🎉 Seeding completed!');
+  console.log('');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('📋 TEST ACCOUNT CREDENTIALS (Password: Test@123)');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('');
+  console.log('1. BUYER Account:');
+  console.log('   Email:     buyer@test.com');
+  console.log('   Password:  Test@123');
+  console.log('   Dashboard: http://localhost:3000/dashboard/buyer');
+  console.log('');
+  console.log('2. CUSTOMER Account (Legacy):');
+  console.log('   Email:     customer@test.com');
+  console.log('   Password:  Test@123');
+  console.log('   Dashboard: http://localhost:3000/dashboard/buyer');
+  console.log('');
+  console.log('3. SELLER Account:');
+  console.log('   Email:     seller@test.com');
+  console.log('   Password:  Test@123');
+  console.log('   Dashboard: http://localhost:3000/dashboard/seller');
+  console.log('   Products:  http://localhost:3000/seller/products');
+  console.log('');
+  console.log('4. ADMIN Account:');
+  console.log('   Email:     admin@test.com');
+  console.log('   Password:  Test@123');
+  console.log('   Dashboard: http://localhost:3000/admin/dashboard');
+  console.log('');
+  console.log('5. SUPER_ADMIN Account:');
+  console.log('   Email:     superadmin@test.com');
+  console.log('   Password:  Test@123');
+  console.log('   Dashboard: http://localhost:3000/admin/dashboard');
+  console.log('');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('🔗 Login URL: http://localhost:3000/auth/login');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('');
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Seeding failed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

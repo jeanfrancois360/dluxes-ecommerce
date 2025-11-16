@@ -1,0 +1,38 @@
+{
+  "name": "luxury-ecommerce",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Modern elegant enterprise e-commerce platform",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "storybook": "pnpm --filter @luxury/ui storybook",
+    "prisma:generate": "pnpm --filter @luxury/database prisma:generate",
+    "prisma:migrate": "pnpm --filter @luxury/database prisma:migrate"
+  },
+  "devDependencies": {
+    "@turbo/gen": "^2.3.3",
+    "@types/multer": "^2.0.0",
+    "@types/uuid": "^11.0.0",
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@nestjs/platform-express": "^10.4.15",
+    "meilisearch": "^0.54.0",
+    "uuid": "^13.0.0"
+  }
+}
