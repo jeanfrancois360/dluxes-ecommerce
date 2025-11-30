@@ -116,7 +116,7 @@ function AnalyticsContent() {
                 cx="50%"
                 cy="50%"
                 outerRadius={100}
-                label={(entry) => `${entry.category}: $${entry.sales.toLocaleString()}`}
+                label={(entry: any) => `${entry.category}: $${entry.sales.toLocaleString()}`}
               >
                 {salesByCategory.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

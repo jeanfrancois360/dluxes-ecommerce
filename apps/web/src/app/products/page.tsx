@@ -1,15 +1,22 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ProductGrid, QuickViewModal, type QuickViewProduct } from '@luxury/ui';
 import { PageLayout } from '@/components/layout/page-layout';
 import Link from 'next/link';
 import { useProducts } from '@/hooks/use-products';
-import { useCategories } from '@/hooks/use-categories';
+import { useSidebarCategories } from '@/hooks/use-categories';
+import { useCart } from '@/hooks/use-cart';
+import { useAddToWishlist } from '@/hooks/use-wishlist';
+import { useCurrencyProducts } from '@/hooks/use-currency-products';
+import { useSelectedCurrency } from '@/hooks/use-currency';
+import { toast } from '@/lib/toast';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 import { SearchFilters } from '@/lib/api/types';
+import { SidebarAd, CategoryBannerAd } from '@/components/ads';
+import { ProductGridSkeleton } from '@/components/loading/skeleton';
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -17,6 +24,16 @@ export default function ProductsPage() {
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const [addingToWishlist, setAddingToWishlist] = useState<string | null>(null);
+
+  // Cart and Wishlist hooks
+  const { addItem: addToCartApi } = useCart();
+  const { addToWishlist: addToWishlistApi } = useAddToWishlist();
+
+  // Get currency symbol
+  const { currency } = useSelectedCurrency();
+  const currencySymbol = currency?.symbol || '$';
 
   // Parse URL parameters
   const [filters, setFilters] = useState<SearchFilters>({
@@ -44,17 +61,19 @@ export default function ProductsPage() {
 
   // Fetch products and categories
   const { products: productsData, isLoading, error, total, totalPages, page } = useProducts(filters);
-  const { categories } = useCategories();
+  const { categories, isLoading: categoriesLoading } = useSidebarCategories();
 
   // Transform products for UI
-  const products = useMemo(() => transformToQuickViewProducts(productsData), [productsData]);
+  const transformedProducts = useMemo(() => transformToQuickViewProducts(productsData), [productsData]);
+
+  // Convert prices to selected currency
+  const products = useCurrencyProducts(transformedProducts);
 
   // Extract unique brands from products
+  // Note: Brand field not implemented in database yet
   const brands = useMemo(() => {
-    if (!productsData) return [];
-    const brandSet = new Set(productsData.map(p => p.brand).filter(Boolean));
-    return Array.from(brandSet) as string[];
-  }, [productsData]);
+    return [];
+  }, []);
 
   // Local filter state for UI
   const [priceRange, setPriceRange] = useState([
@@ -68,6 +87,16 @@ export default function ProductsPage() {
   const [sortBy, setSortBy] = useState(filters.sortBy || 'relevance');
   const [inStockOnly, setInStockOnly] = useState(filters.inStock || false);
   const [onSaleOnly, setOnSaleOnly] = useState(filters.onSale || false);
+
+  // Sync local state with URL parameters
+  useEffect(() => {
+    setPriceRange([filters.minPrice || 0, filters.maxPrice || 10000]);
+    setSelectedCategories(filters.category ? [filters.category] : []);
+    setSelectedBrands(filters.brands || []);
+    setSortBy(filters.sortBy || 'relevance');
+    setInStockOnly(filters.inStock || false);
+    setOnSaleOnly(filters.onSale || false);
+  }, [filters]);
 
   // Update URL when filters change
   const updateFilters = (newFilters: Partial<SearchFilters>) => {
@@ -110,25 +139,53 @@ export default function ProductsPage() {
     router.push('/products');
   };
 
-  // Handlers
-  const handleQuickView = (id: string) => {
+  // Handlers - memoized for performance
+  const handleQuickView = useCallback((id: string) => {
     const product = products.find(p => p.id === id);
     if (product) setQuickViewProduct(product);
-  };
+  }, [products]);
 
-  const handleNavigate = (slug: string) => {
+  const handleNavigate = useCallback((slug: string) => {
     router.push(`/products/${slug}`);
-  };
+  }, [router]);
 
-  const handleAddToCart = (productId: string, variant?: { color?: string; size?: string }) => {
-    console.log('Add to cart:', { productId, variant });
-    // TODO: Implement cart context
-  };
+  const handleAddToCart = useCallback(async (productId: string, variant?: { color?: string; size?: string }) => {
+    if (addingToCart) return; // Prevent double-click
 
-  const handleAddToWishlist = (id: string) => {
-    console.log('Add to wishlist:', id);
-    // TODO: Implement wishlist context
-  };
+    setAddingToCart(productId);
+    try {
+      await addToCartApi(productId, 1);
+      toast.success('Added to Cart', 'Item has been added to your cart');
+    } catch (error: any) {
+      console.error('Failed to add to cart:', error);
+      toast.error('Error', error.message || 'Failed to add item to cart');
+    } finally {
+      setAddingToCart(null);
+    }
+  }, [addingToCart, addToCartApi]);
+
+  const handleAddToWishlist = useCallback(async (id: string) => {
+    if (addingToWishlist) return; // Prevent double-click
+
+    // Check if user is logged in
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (!token) {
+      toast.error('Login Required', 'Please login to add items to wishlist');
+      router.push('/auth/login');
+      return;
+    }
+
+    setAddingToWishlist(id);
+    try {
+      await addToWishlistApi(id);
+      toast.success('Added to Wishlist', 'Item has been added to your wishlist');
+    } catch (error: any) {
+      console.error('Failed to add to wishlist:', error);
+      toast.error('Error', error.message || 'Failed to add item to wishlist');
+    } finally {
+      setAddingToWishlist(null);
+    }
+  }, [addingToWishlist, addToWishlistApi, router]);
 
   const handleSortChange = (value: string) => {
     setSortBy(value as any);
@@ -176,21 +233,43 @@ export default function ProductsPage() {
   return (
     <PageLayout>
       {/* Hero Banner */}
-      <section className="relative h-[40vh] min-h-[300px] flex items-center justify-center bg-gradient-to-br from-neutral-900 via-black to-neutral-800 text-white overflow-hidden">
+      <section className="relative h-[45vh] min-h-[350px] flex items-center justify-center bg-gradient-to-br from-neutral-900 via-black to-neutral-800 text-white overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-center z-10 px-4"
+          className="text-center z-10 px-4 max-w-4xl mx-auto"
         >
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold mb-4">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold mb-6 bg-gradient-to-r from-white via-white to-gold bg-clip-text text-transparent">
             Luxury Collection
           </h1>
-          <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto">
-            Curated furniture and decor for distinguished living spaces
+          <p className="text-lg md:text-xl text-white/90 mb-6 max-w-2xl mx-auto leading-relaxed">
+            Discover our exquisite selection of premium watches, jewelry, accessories, and fashion
           </p>
+          <div className="flex items-center justify-center gap-6 text-sm text-white/70">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Authentic Products</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Free Shipping</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Secure Payment</span>
+            </div>
+          </div>
         </motion.div>
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px]" />
+        {/* Gradient overlay */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
       </section>
 
       {/* Breadcrumb */}
@@ -227,62 +306,104 @@ export default function ProductsPage() {
               {/* Categories Filter */}
               <div className="pb-6 border-b border-neutral-200">
                 <h4 className="text-lg font-semibold text-black mb-4">Categories</h4>
-                <div className="space-y-3">
-                  {categories && categories.length > 0 && categories.map((category) => (
-                    <label key={category.id} className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={selectedCategories.includes(category.slug)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedCategories([category.slug]);
-                          } else {
-                            setSelectedCategories([]);
-                          }
-                        }}
-                        className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
-                      />
-                      <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">{category.name}</span>
-                    </label>
-                  ))}
-                </div>
+                {categoriesLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="w-5 h-5 bg-neutral-200 rounded animate-pulse" />
+                        <div className="h-4 bg-neutral-200 rounded animate-pulse flex-1" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {categories && categories.length > 0 ? (
+                      categories.map((category) => (
+                        <label key={category.id} className="flex items-center gap-3 cursor-pointer group hover:bg-neutral-50 -mx-3 px-3 py-2 rounded-lg transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={selectedCategories.includes(category.slug)}
+                            onChange={(e) => {
+                              const newCategories = e.target.checked ? [category.slug] : [];
+                              setSelectedCategories(newCategories);
+                              // Apply filter immediately
+                              updateFilters({
+                                category: newCategories[0],
+                                brands: selectedBrands,
+                                minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+                                maxPrice: priceRange[1] < 10000 ? priceRange[1] : undefined,
+                                inStock: inStockOnly || undefined,
+                                onSale: onSaleOnly || undefined,
+                                page: 1,
+                              });
+                            }}
+                            className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 cursor-pointer"
+                          />
+                          <div className="flex items-center gap-2 flex-1">
+                            <span className="text-neutral-800 group-hover:text-black transition-colors font-medium">
+                              {category.name}
+                            </span>
+                            {category._count && category._count.products > 0 && (
+                              <span className="ml-auto text-xs font-semibold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-full">
+                                {category._count.products}
+                              </span>
+                            )}
+                          </div>
+                        </label>
+                      ))
+                    ) : (
+                      <p className="text-sm text-neutral-500 italic">No categories available</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Price Range */}
               <div className="pb-6 border-b border-neutral-200">
                 <h4 className="text-lg font-semibold text-black mb-4">Price Range</h4>
                 <div className="space-y-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max="10000"
-                    step="100"
-                    value={priceRange[1]}
-                    onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                    className="w-full accent-gold"
-                  />
+                  <div className="relative pt-1">
+                    <input
+                      type="range"
+                      min="0"
+                      max="10000"
+                      step="100"
+                      value={priceRange[1]}
+                      onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+                      className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-gold"
+                      style={{
+                        background: `linear-gradient(to right, #CBB57B 0%, #CBB57B ${(priceRange[1] / 10000) * 100}%, #e5e5e5 ${(priceRange[1] / 10000) * 100}%, #e5e5e5 100%)`
+                      }}
+                    />
+                  </div>
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
-                      <label className="text-xs text-neutral-600 mb-1 block">Min</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max={priceRange[1]}
-                        value={priceRange[0]}
-                        onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:border-gold"
-                      />
+                      <label className="text-xs font-semibold text-neutral-700 mb-1.5 block">Min Price</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-semibold">$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={priceRange[1]}
+                          value={priceRange[0]}
+                          onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
+                          className="w-full pl-7 pr-3 py-2.5 border-2 border-neutral-300 rounded-lg text-sm font-semibold text-black focus:outline-none focus:border-gold transition-colors"
+                        />
+                      </div>
                     </div>
                     <div className="flex-1">
-                      <label className="text-xs text-neutral-600 mb-1 block">Max</label>
-                      <input
-                        type="number"
-                        min={priceRange[0]}
-                        max="10000"
-                        value={priceRange[1]}
-                        onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 10000])}
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:border-gold"
-                      />
+                      <label className="text-xs font-semibold text-neutral-700 mb-1.5 block">Max Price</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-semibold">$</span>
+                        <input
+                          type="number"
+                          min={priceRange[0]}
+                          max="10000"
+                          value={priceRange[1]}
+                          onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 10000])}
+                          className="w-full pl-7 pr-3 py-2.5 border-2 border-neutral-300 rounded-lg text-sm font-semibold text-black focus:outline-none focus:border-gold transition-colors"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -318,23 +439,37 @@ export default function ProductsPage() {
               <div className="pb-6 border-b border-neutral-200">
                 <h4 className="text-lg font-semibold text-black mb-4">Availability</h4>
                 <div className="space-y-3">
-                  <label className="flex items-center gap-3 cursor-pointer group">
+                  <label className="flex items-center gap-3 cursor-pointer group hover:bg-neutral-50 -mx-3 px-3 py-2 rounded-lg transition-colors">
                     <input
                       type="checkbox"
                       checked={inStockOnly}
                       onChange={(e) => setInStockOnly(e.target.checked)}
-                      className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                      className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 cursor-pointer"
                     />
-                    <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">In Stock Only</span>
+                    <span className="text-neutral-800 group-hover:text-black transition-colors font-medium flex items-center gap-2">
+                      In Stock Only
+                      {inStockOnly && (
+                        <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </span>
                   </label>
-                  <label className="flex items-center gap-3 cursor-pointer group">
+                  <label className="flex items-center gap-3 cursor-pointer group hover:bg-neutral-50 -mx-3 px-3 py-2 rounded-lg transition-colors">
                     <input
                       type="checkbox"
                       checked={onSaleOnly}
                       onChange={(e) => setOnSaleOnly(e.target.checked)}
-                      className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                      className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 cursor-pointer"
                     />
-                    <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">On Sale</span>
+                    <span className="text-neutral-800 group-hover:text-black transition-colors font-medium flex items-center gap-2">
+                      On Sale
+                      {onSaleOnly && (
+                        <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                        </svg>
+                      )}
+                    </span>
                   </label>
                 </div>
               </div>
@@ -342,7 +477,7 @@ export default function ProductsPage() {
               {/* Apply Filters */}
               <button
                 onClick={applyFilters}
-                className="w-full px-6 py-3 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors font-semibold"
+                className="w-full px-6 py-3.5 bg-gradient-to-r from-black to-neutral-800 text-white rounded-lg hover:from-gold hover:to-accent-700 hover:text-black transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
                 Apply Filters
               </button>
@@ -352,44 +487,55 @@ export default function ProductsPage() {
           {/* Main Content */}
           <div className="flex-1 min-w-0">
             {/* Toolbar */}
-            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 mb-8">
+            <div className="bg-white rounded-xl shadow-md border border-neutral-200 p-5 mb-8">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
                     {isLoading ? (
                       <div className="h-6 w-32 bg-neutral-200 animate-pulse rounded" />
                     ) : (
-                      <span className="text-sm text-neutral-600">
-                        <span className="font-semibold text-black">{total}</span> products
-                        {total > 0 && (
-                          <span className="text-neutral-400 ml-2">
-                            (Page {page} of {totalPages})
-                          </span>
-                        )}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        <span className="text-sm text-neutral-700">
+                          <span className="font-bold text-black text-lg">{total.toLocaleString()}</span>
+                          <span className="text-neutral-600 ml-1">product{total !== 1 ? 's' : ''}</span>
+                          {total > 0 && (
+                            <span className="text-neutral-500 ml-2 text-xs">
+                              • Page {page} of {totalPages}
+                            </span>
+                          )}
+                        </span>
+                      </div>
                     )}
                   </div>
 
                   {/* Mobile Filter Button */}
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className="lg:hidden px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors flex items-center gap-2"
+                    className="lg:hidden px-4 py-2.5 bg-black text-white rounded-lg hover:bg-gold hover:text-black transition-all duration-300 flex items-center gap-2 font-semibold shadow-md"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
                     Filters
+                    {hasActiveFilters && (
+                      <span className="bg-gold text-black rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                        {[selectedCategories.length, selectedBrands.length, inStockOnly ? 1 : 0, onSaleOnly ? 1 : 0].reduce((a, b) => a + b, 0)}
+                      </span>
+                    )}
                   </button>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                   {/* Layout Toggle */}
-                  <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-1">
+                  <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-1 shadow-sm">
                     <button
                       onClick={() => setLayout('grid')}
-                      className={`p-2 rounded-md transition-all ${layout === 'grid'
-                        ? 'bg-white text-black shadow-sm'
-                        : 'text-neutral-600 hover:text-black'
+                      className={`p-2.5 rounded-md transition-all ${layout === 'grid'
+                        ? 'bg-white text-black shadow-md ring-2 ring-gold/20'
+                        : 'text-neutral-600 hover:text-black hover:bg-white/50'
                         }`}
                       aria-label="Grid layout"
                       title="Grid View"
@@ -400,9 +546,9 @@ export default function ProductsPage() {
                     </button>
                     <button
                       onClick={() => setLayout('list')}
-                      className={`p-2 rounded-md transition-all ${layout === 'list'
-                        ? 'bg-white text-black shadow-sm'
-                        : 'text-neutral-600 hover:text-black'
+                      className={`p-2.5 rounded-md transition-all ${layout === 'list'
+                        ? 'bg-white text-black shadow-md ring-2 ring-gold/20'
+                        : 'text-neutral-600 hover:text-black hover:bg-white/50'
                         }`}
                       aria-label="List layout"
                       title="List View"
@@ -417,7 +563,7 @@ export default function ProductsPage() {
                   <select
                     value={sortBy}
                     onChange={(e) => handleSortChange(e.target.value)}
-                    className="px-4 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-gold bg-white"
+                    className="flex-1 sm:flex-initial px-4 py-2.5 border-2 border-neutral-200 rounded-lg text-sm font-semibold text-black focus:outline-none focus:border-gold bg-white shadow-sm hover:border-neutral-300 transition-colors cursor-pointer"
                   >
                     <option value="relevance">Relevance</option>
                     <option value="popular">Best Selling</option>
@@ -434,27 +580,38 @@ export default function ProductsPage() {
             {hasActiveFilters && (
               <div className="mb-6 flex items-center gap-2 flex-wrap">
                 <span className="text-sm text-neutral-600 font-medium">Active filters:</span>
-                {selectedCategories.map((cat) => (
-                  <motion.span
-                    key={cat}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="px-3 py-1.5 bg-gold/10 text-gold text-sm rounded-full flex items-center gap-2 font-medium"
-                  >
-                    {cat}
-                    <button
-                      onClick={() => {
-                        setSelectedCategories([]);
-                        applyFilters();
-                      }}
-                      className="hover:text-gold/70"
+                {selectedCategories.map((cat) => {
+                  const category = categories.find(c => c.slug === cat);
+                  return (
+                    <motion.span
+                      key={cat}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="px-3 py-1.5 bg-gold/10 text-gold text-sm rounded-full flex items-center gap-2 font-medium"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </motion.span>
-                ))}
+                      {category?.name || cat}
+                      <button
+                        onClick={() => {
+                          setSelectedCategories([]);
+                          updateFilters({
+                            category: undefined,
+                            brands: selectedBrands,
+                            minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+                            maxPrice: priceRange[1] < 10000 ? priceRange[1] : undefined,
+                            inStock: inStockOnly || undefined,
+                            onSale: onSaleOnly || undefined,
+                            page: 1,
+                          });
+                        }}
+                        className="hover:text-gold/70"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </motion.span>
+                  );
+                })}
                 {selectedBrands.map((brand) => (
                   <motion.span
                     key={brand}
@@ -465,8 +622,17 @@ export default function ProductsPage() {
                     {brand}
                     <button
                       onClick={() => {
-                        setSelectedBrands(selectedBrands.filter(b => b !== brand));
-                        applyFilters();
+                        const newBrands = selectedBrands.filter(b => b !== brand);
+                        setSelectedBrands(newBrands);
+                        updateFilters({
+                          category: selectedCategories[0],
+                          brands: newBrands,
+                          minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+                          maxPrice: priceRange[1] < 10000 ? priceRange[1] : undefined,
+                          inStock: inStockOnly || undefined,
+                          onSale: onSaleOnly || undefined,
+                          page: 1,
+                        });
                       }}
                       className="hover:text-gold/70"
                     >
@@ -486,7 +652,15 @@ export default function ProductsPage() {
                     <button
                       onClick={() => {
                         setInStockOnly(false);
-                        applyFilters();
+                        updateFilters({
+                          category: selectedCategories[0],
+                          brands: selectedBrands,
+                          minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+                          maxPrice: priceRange[1] < 10000 ? priceRange[1] : undefined,
+                          inStock: undefined,
+                          onSale: onSaleOnly || undefined,
+                          page: 1,
+                        });
                       }}
                       className="hover:text-gold/70"
                     >
@@ -506,7 +680,15 @@ export default function ProductsPage() {
                     <button
                       onClick={() => {
                         setOnSaleOnly(false);
-                        applyFilters();
+                        updateFilters({
+                          category: selectedCategories[0],
+                          brands: selectedBrands,
+                          minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+                          maxPrice: priceRange[1] < 10000 ? priceRange[1] : undefined,
+                          inStock: inStockOnly || undefined,
+                          onSale: undefined,
+                          page: 1,
+                        });
                       }}
                       className="hover:text-gold/70"
                     >
@@ -520,49 +702,95 @@ export default function ProductsPage() {
             )}
 
             {/* Product Grid */}
-            {error ? (
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mb-4">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-black mb-2">Error loading products</h3>
-                <p className="text-neutral-600 mb-6">{error.message}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-6 py-3 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors"
+            {isLoading ? (
+              <ProductGridSkeleton count={12} />
+            ) : error ? (
+              <div className="text-center py-20">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                  className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-red-600 text-white mb-6 shadow-xl"
                 >
-                  Try Again
-                </button>
+                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </motion.div>
+                <h3 className="text-2xl font-serif font-bold text-black mb-3">Error Loading Products</h3>
+                <p className="text-neutral-700 mb-2 font-medium">{error.message}</p>
+                {error.status && (
+                  <p className="text-sm text-neutral-600 mb-8 max-w-md mx-auto">
+                    {error.status === 0 || error.message.includes('Network')
+                      ? 'Cannot connect to the server. Please make sure the API is running on port 4000.'
+                      : `Error code: ${error.status}`}
+                  </p>
+                )}
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-8 py-3.5 bg-gradient-to-r from-black to-neutral-800 text-white rounded-lg hover:from-gold hover:to-accent-700 hover:text-black transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Try Again
+                  </button>
+                  <Link href="/" className="px-8 py-3.5 border-2 border-neutral-300 text-neutral-700 rounded-lg hover:border-gold hover:text-black transition-all duration-300 font-semibold flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Go Home
+                  </Link>
+                </div>
               </div>
-            ) : products && products.length === 0 && !isLoading ? (
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-neutral-100 text-neutral-400 mb-4">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-black mb-2">No products found</h3>
-                <p className="text-neutral-600 mb-6">Try adjusting your filters or search criteria</p>
-                <button
-                  onClick={clearFilters}
-                  className="px-6 py-3 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors"
+            ) : products && products.length === 0 ? (
+              <div className="text-center py-20">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                  className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-neutral-200 to-neutral-300 text-neutral-500 mb-6 shadow-lg"
                 >
-                  Clear Filters
-                </button>
+                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                </motion.div>
+                <h3 className="text-2xl font-serif font-bold text-black mb-3">No Products Found</h3>
+                <p className="text-neutral-600 mb-8 max-w-md mx-auto">We couldn't find any products matching your criteria. Try adjusting your filters or search terms.</p>
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    onClick={clearFilters}
+                    className="px-8 py-3.5 bg-gradient-to-r from-black to-neutral-800 text-white rounded-lg hover:from-gold hover:to-accent-700 hover:text-black transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Clear All Filters
+                  </button>
+                  <Link href="/products" className="px-8 py-3.5 border-2 border-neutral-300 text-neutral-700 rounded-lg hover:border-gold hover:text-black transition-all duration-300 font-semibold flex items-center gap-2">
+                    View All Products
+                  </Link>
+                </div>
               </div>
             ) : (
               <>
-                <ProductGrid
-                  products={products}
-                  layout={layout === 'list' ? 'masonry' : layout}
-                  onQuickView={handleQuickView}
-                  onAddToWishlist={handleAddToWishlist}
-                  onQuickAdd={handleAddToCart}
-                  onNavigate={handleNavigate}
-                  isLoading={isLoading}
-                />
+                <div className="flex gap-8">
+                  <div className="flex-1">
+                    <ProductGrid
+                      products={products}
+                      layout={layout}
+                      onQuickView={handleQuickView}
+                      onAddToWishlist={handleAddToWishlist}
+                      onQuickAdd={handleAddToCart}
+                      onNavigate={handleNavigate}
+                      isLoading={false}
+                      currencySymbol={currencySymbol}
+                    />
+                  </div>
+                  <div className="hidden xl:block w-64 flex-shrink-0">
+                    <SidebarAd className="sticky top-40" />
+                  </div>
+                </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && !isLoading && (
@@ -648,25 +876,58 @@ export default function ProductsPage() {
                 {/* Categories */}
                 <div className="pb-6 border-b border-neutral-200">
                   <h4 className="text-lg font-semibold text-black mb-4">Categories</h4>
-                  <div className="space-y-3">
-                    {categories.map((category) => (
-                      <label key={category.id} className="flex items-center gap-3 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={selectedCategories.includes(category.slug)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedCategories([category.slug]);
-                            } else {
-                              setSelectedCategories([]);
-                            }
-                          }}
-                          className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
-                        />
-                        <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">{category.name}</span>
-                      </label>
-                    ))}
-                  </div>
+                  {categoriesLoading ? (
+                    <div className="space-y-3">
+                      {[...Array(6)].map((_, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <div className="w-5 h-5 bg-neutral-200 rounded animate-pulse" />
+                          <div className="h-4 bg-neutral-200 rounded animate-pulse flex-1" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {categories && categories.length > 0 ? (
+                        categories.map((category) => (
+                          <label key={category.id} className="flex items-center gap-3 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={selectedCategories.includes(category.slug)}
+                              onChange={(e) => {
+                                const newCategories = e.target.checked ? [category.slug] : [];
+                                setSelectedCategories(newCategories);
+                                // Apply filter immediately
+                                updateFilters({
+                                  category: newCategories[0],
+                                  brands: selectedBrands,
+                                  minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+                                  maxPrice: priceRange[1] < 10000 ? priceRange[1] : undefined,
+                                  inStock: inStockOnly || undefined,
+                                  onSale: onSaleOnly || undefined,
+                                  page: 1,
+                                });
+                                // Close mobile modal after selecting
+                                setShowFilters(false);
+                              }}
+                              className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
+                            />
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">
+                                {category.name}
+                              </span>
+                              {category._count && category._count.products > 0 && (
+                                <span className="ml-auto text-xs text-neutral-500">
+                                  ({category._count.products})
+                                </span>
+                              )}
+                            </div>
+                          </label>
+                        ))
+                      ) : (
+                        <p className="text-sm text-neutral-500">No categories available</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Brands */}
@@ -754,6 +1015,7 @@ export default function ProductsPage() {
         product={quickViewProduct}
         onAddToCart={handleAddToCart}
         onViewDetails={handleNavigate}
+        currencySymbol={currencySymbol}
       />
     </PageLayout>
   );

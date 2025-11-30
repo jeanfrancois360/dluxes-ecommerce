@@ -18,7 +18,7 @@ export const languages: LanguageOption[] = [
 ];
 
 // Currency types
-export type Currency = 'USD' | 'EUR' | 'RWF';
+export type Currency = 'USD' | 'EUR';
 
 export interface CurrencyOption {
   code: Currency;
@@ -30,7 +30,6 @@ export interface CurrencyOption {
 export const currencies: CurrencyOption[] = [
   { code: 'USD', name: 'US Dollar', symbol: '$', rate: 1 },
   { code: 'EUR', name: 'Euro', symbol: '€', rate: 0.92 },
-  { code: 'RWF', name: 'Rwandan Franc', symbol: 'FRw', rate: 1280 },
 ];
 
 // Context types

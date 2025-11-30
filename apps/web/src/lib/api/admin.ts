@@ -123,6 +123,34 @@ export interface Category {
   productCount: number;
   featured: boolean;
   image?: string;
+  showInNavbar?: boolean;
+  showInFooter?: boolean;
+  showOnHomepage?: boolean;
+  isFeatured?: boolean;
+  priority?: number;
+  createdAt: string;
+}
+
+export interface Advertisement {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl: string;
+  videoUrl?: string;
+  linkUrl?: string;
+  linkText?: string;
+  placement: string;
+  pricingModel: string;
+  price: number;
+  startDate?: string;
+  endDate?: string;
+  status: string;
+  isActive: boolean;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  advertiser?: { id: string; firstName: string; lastName: string; email: string };
+  category?: { id: string; name: string; slug: string };
   createdAt: string;
 }
 
@@ -310,22 +338,79 @@ export const adminCustomersApi = {
 // Categories APIs
 export const adminCategoriesApi = {
   async getAll(): Promise<Category[]> {
-    const response = await api.get('/admin/categories');
-    return response;
+    const response = await api.get('/categories');
+    return response.data || response;
   },
 
   async create(data: Partial<Category>): Promise<Category> {
-    const response = await api.post('/admin/categories', data);
-    return response;
+    const response = await api.post('/categories', data);
+    return response.data || response;
   },
 
   async update(id: string, data: Partial<Category>): Promise<Category> {
-    const response = await api.put(`/admin/categories/${id}`, data);
-    return response;
+    const response = await api.patch(`/categories/${id}`, data);
+    return response.data || response;
+  },
+
+  async updateVisibility(id: string, data: { showInNavbar?: boolean; showInFooter?: boolean; showOnHomepage?: boolean; isFeatured?: boolean }): Promise<Category> {
+    const response = await api.patch(`/categories/${id}/visibility`, data);
+    return response.data || response;
+  },
+
+  async reorder(categoryIds: string[]): Promise<Category[]> {
+    const response = await api.patch('/categories/reorder', { categoryIds });
+    return response.data || response;
   },
 
   async delete(id: string): Promise<void> {
-    await api.delete(`/admin/categories/${id}`);
+    await api.delete(`/categories/${id}`);
+  },
+};
+
+// Advertisements APIs
+export const adminAdvertisementsApi = {
+  async getAll(params?: { status?: string; placement?: string }): Promise<Advertisement[]> {
+    const response = await api.get('/advertisements', { params });
+    return response.data || response;
+  },
+
+  async getPending(): Promise<Advertisement[]> {
+    const response = await api.get('/advertisements/pending');
+    return response.data || response;
+  },
+
+  async getById(id: string): Promise<Advertisement> {
+    const response = await api.get(`/advertisements/${id}`);
+    return response.data || response;
+  },
+
+  async create(data: Partial<Advertisement>): Promise<Advertisement> {
+    const response = await api.post('/advertisements', data);
+    return response.data || response;
+  },
+
+  async update(id: string, data: Partial<Advertisement>): Promise<Advertisement> {
+    const response = await api.put(`/advertisements/${id}`, data);
+    return response.data || response;
+  },
+
+  async approve(id: string, approved: boolean, rejectionReason?: string): Promise<Advertisement> {
+    const response = await api.patch(`/advertisements/${id}/approve`, { approved, rejectionReason });
+    return response.data || response;
+  },
+
+  async toggle(id: string, isActive: boolean): Promise<Advertisement> {
+    const response = await api.patch(`/advertisements/${id}/toggle`, { isActive });
+    return response.data || response;
+  },
+
+  async getAnalytics(id: string): Promise<any> {
+    const response = await api.get(`/advertisements/${id}/analytics`);
+    return response.data || response;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/advertisements/${id}`);
   },
 };
 

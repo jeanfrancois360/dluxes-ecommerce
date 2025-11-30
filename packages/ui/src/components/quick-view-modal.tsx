@@ -31,6 +31,7 @@ export interface QuickViewModalProps {
   product: QuickViewProduct | null;
   onAddToCart?: (productId: string, variant?: { color?: string; size?: string }) => void;
   onViewDetails?: (slug: string) => void;
+  currencySymbol?: string;
 }
 
 export const QuickViewModal: React.FC<QuickViewModalProps> = ({
@@ -39,6 +40,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   product,
   onAddToCart,
   onViewDetails,
+  currencySymbol = '$',
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const [selectedColor, setSelectedColor] = React.useState<string | null>(null);
@@ -265,10 +267,10 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
                     {/* Price */}
                     <div className="flex items-center gap-4 mb-6 pb-6 border-b border-neutral-200">
-                      <span className="font-serif text-4xl font-bold text-black">${product.price.toFixed(2)}</span>
+                      <span className="font-serif text-4xl font-bold text-black">{currencySymbol}{Number(product.price || 0).toFixed(2)}</span>
                       {product.compareAtPrice && (
                         <span className="text-xl text-neutral-400 line-through font-medium">
-                          ${product.compareAtPrice.toFixed(2)}
+                          {currencySymbol}{Number(product.compareAtPrice || 0).toFixed(2)}
                         </span>
                       )}
                     </div>

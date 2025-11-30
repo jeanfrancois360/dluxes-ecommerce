@@ -1,4 +1,9 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsBoolean } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsBoolean, IsEnum } from 'class-validator';
+
+export enum UserRole {
+  BUYER = 'BUYER',
+  SELLER = 'SELLER',
+}
 
 export class RegisterDto {
   @IsEmail()
@@ -17,6 +22,14 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
+
+  @IsOptional()
+  @IsString()
+  sessionId?: string;
 }
 
 export class LoginDto {
@@ -33,6 +46,10 @@ export class LoginDto {
   @IsOptional()
   @IsString()
   twoFactorCode?: string;
+
+  @IsOptional()
+  @IsString()
+  sessionId?: string;
 }
 
 export class MagicLinkDto {

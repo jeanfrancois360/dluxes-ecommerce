@@ -8,9 +8,11 @@ import {
   RawBodyRequest,
   Req,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('payment')
 export class PaymentController {
@@ -21,8 +23,9 @@ export class PaymentController {
    * POST /payment/create-intent
    */
   @Post('create-intent')
-  async createPaymentIntent(@Body() dto: CreatePaymentIntentDto) {
-    return this.paymentService.createPaymentIntent(dto);
+  @UseGuards(JwtAuthGuard)
+  async createPaymentIntent(@Body() dto: CreatePaymentIntentDto, @Request() req: any) {
+    return this.paymentService.createPaymentIntent(dto, req.user.userId || req.user.id);
   }
 
   /**
@@ -53,14 +56,25 @@ export class PaymentController {
   }
 
   /**
-   * Create a refund (Admin only - should add auth guard)
+   * Create a refund (Admin only)
    * POST /payment/refund/:orderId
    */
   @Post('refund/:orderId')
+  @UseGuards(JwtAuthGuard)
   async createRefund(
     @Param('orderId') orderId: string,
-    @Body() body: { amount?: number },
+    @Body() body: { amount?: number; reason?: string },
   ) {
-    return this.paymentService.createRefund(orderId, body.amount);
+    return this.paymentService.createRefund(orderId, body.amount, body.reason);
+  }
+
+  /**
+   * Get transaction history for an order
+   * GET /payment/transactions/:orderId
+   */
+  @Get('transactions/:orderId')
+  @UseGuards(JwtAuthGuard)
+  async getTransactionHistory(@Param('orderId') orderId: string) {
+    return this.paymentService.getTransactionHistory(orderId);
   }
 }

@@ -47,6 +47,66 @@ export class CategoriesController {
   }
 
   /**
+   * Get navbar categories
+   * @route GET /categories/navbar
+   */
+  @Get('navbar')
+  async getNavCategories() {
+    const data = await this.categoriesService.findNavCategories();
+    return { success: true, data };
+  }
+
+  /**
+   * Get footer categories
+   * @route GET /categories/footer
+   */
+  @Get('footer')
+  async getFooterCategories() {
+    const data = await this.categoriesService.findFooterCategories();
+    return { success: true, data };
+  }
+
+  /**
+   * Get homepage categories
+   * @route GET /categories/homepage
+   */
+  @Get('homepage')
+  async getHomepageCategories() {
+    const data = await this.categoriesService.findHomepageCategories();
+    return { success: true, data };
+  }
+
+  /**
+   * Get featured categories
+   * @route GET /categories/featured
+   */
+  @Get('featured')
+  async getFeaturedCategories() {
+    const data = await this.categoriesService.findFeatured();
+    return { success: true, data };
+  }
+
+  /**
+   * Get top bar categories
+   * @route GET /categories/topbar
+   */
+  @Get('topbar')
+  async getTopBarCategories() {
+    const data = await this.categoriesService.findTopBarCategories();
+    return { success: true, data };
+  }
+
+  /**
+   * Get sidebar categories
+   * @route GET /categories/sidebar
+   */
+  @Get('sidebar')
+  async getSidebarCategories() {
+    const data = await this.categoriesService.findSidebarCategories();
+    return { success: true, data };
+  }
+
+  /**
    * Get category by slug
    * @route GET /categories/:slug
    */
@@ -130,6 +190,109 @@ export class CategoriesController {
         success: true,
         message: 'Category deleted successfully',
       };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Update category visibility (Admin only)
+   * @route PATCH /categories/:id/visibility
+   */
+  @Patch(':id/visibility')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async updateVisibility(
+    @Param('id') id: string,
+    @Body() dto: {
+      showInNavbar?: boolean;
+      showInTopBar?: boolean;
+      showInSidebar?: boolean;
+      showInFooter?: boolean;
+      showOnHomepage?: boolean;
+      isFeatured?: boolean;
+    }
+  ) {
+    try {
+      const data = await this.categoriesService.updateVisibility(id, dto);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Update category priority (Admin only)
+   * @route PATCH /categories/:id/priority
+   */
+  @Patch(':id/priority')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async updatePriority(
+    @Param('id') id: string,
+    @Body() body: { priority: number }
+  ) {
+    try {
+      const data = await this.categoriesService.updatePriority(id, body.priority);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Bulk update categories visibility (Admin only)
+   * @route PATCH /categories/bulk-visibility
+   */
+  @Patch('bulk-visibility')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async bulkUpdateVisibility(
+    @Body() body: {
+      updates: Array<{
+        id: string;
+        visibility: {
+          showInNavbar?: boolean;
+          showInTopBar?: boolean;
+          showInSidebar?: boolean;
+          showInFooter?: boolean;
+          showOnHomepage?: boolean;
+          isFeatured?: boolean;
+        };
+      }>;
+    }
+  ) {
+    try {
+      const data = await this.categoriesService.bulkUpdateVisibility(body.updates);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Reorder categories (Admin only)
+   * @route PATCH /categories/reorder
+   */
+  @Patch('reorder')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async reorder(@Body() body: { categoryIds: string[] }) {
+    try {
+      const data = await this.categoriesService.reorder(body.categoryIds);
+      return { success: true, data };
     } catch (error) {
       return {
         success: false,

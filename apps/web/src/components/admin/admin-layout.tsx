@@ -9,6 +9,7 @@
 
 import React, { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useUser } from '@/hooks/use-user';
 import { AdminHeader } from './admin-header';
 
@@ -72,9 +73,27 @@ const SettingsIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const MegaphoneIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+  </svg>
+);
+
+const CurrencyIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
 const LogoutIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+  </svg>
+);
+
+const GlobeIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
 
@@ -84,6 +103,8 @@ const navigation: NavItem[] = [
   { name: 'Orders', href: '/admin/orders', icon: ShoppingBagIcon },
   { name: 'Customers', href: '/admin/customers', icon: UsersIcon },
   { name: 'Categories', href: '/admin/categories', icon: FolderIcon },
+  { name: 'Currencies', href: '/admin/currencies', icon: CurrencyIcon },
+  { name: 'Advertisements', href: '/admin/advertisements', icon: MegaphoneIcon },
   { name: 'Reviews', href: '/admin/reviews', icon: StarIcon },
   { name: 'Analytics', href: '/admin/analytics', icon: ChartIcon },
   { name: 'Settings', href: '/admin/settings', icon: SettingsIcon },
@@ -113,7 +134,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
       {/* Mobile menu backdrop */}
       {mobileMenuOpen && (
         <div
@@ -151,7 +172,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {navigation.map((item) => {
             const active = isActive(item.href);
             return (
-              <a
+              <Link
                 key={item.name}
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative ${
@@ -167,7 +188,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     {item.badge}
                   </span>
                 )}
-              </a>
+              </Link>
             );
           })}
         </nav>
@@ -185,13 +206,24 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <p className="text-xs text-gray-400 truncate">{user?.email || 'admin@luxury.com'}</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
-          >
-            <LogoutIcon className="w-4 h-4" />
-            <span>Logout</span>
-          </button>
+          <div className="space-y-1">
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
+            >
+              <GlobeIcon className="w-4 h-4" />
+              <span>View Website</span>
+            </a>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
+            >
+              <LogoutIcon className="w-4 h-4" />
+              <span>Logout</span>
+            </button>
+          </div>
         </div>
       </aside>
 

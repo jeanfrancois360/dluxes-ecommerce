@@ -8,6 +8,7 @@ export interface CartItem {
   productId: string;
   variantId?: string;
   name: string;
+  slug: string;
   brand?: string;
   image: string;
   price: number;
@@ -98,11 +99,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
 
       const cart = response.data;
-      setItems(cart.items || []);
+
+      // Transform items to include slug from product
+      const transformedItems = (cart.items || []).map((item: any) => ({
+        id: item.id,
+        productId: item.productId,
+        variantId: item.variantId,
+        name: item.name,
+        slug: item.product?.slug || item.slug || item.productId,
+        brand: item.brand,
+        image: item.image || item.product?.heroImage,
+        price: Number(item.price),
+        quantity: item.quantity,
+        sku: item.sku,
+      }));
+
+      setItems(transformedItems);
 
       // Sync to localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem('cart_items', JSON.stringify(cart.items || []));
+        localStorage.setItem('cart_items', JSON.stringify(transformedItems));
       }
     } catch (err: any) {
       console.error('Error fetching cart:', err);

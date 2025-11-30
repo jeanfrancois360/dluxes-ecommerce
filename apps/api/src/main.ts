@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import compression from 'compression';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -11,6 +12,9 @@ async function bootstrap() {
   });
 
   const configService = app.get(ConfigService);
+
+  // Enable compression for responses
+  app.use(compression());
 
   // Serve static files from public/uploads directory
   app.useStaticAssets(join(process.cwd(), 'public'), {

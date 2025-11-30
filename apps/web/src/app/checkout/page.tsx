@@ -7,6 +7,7 @@ import { Elements } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe';
 import { useCart } from '@/hooks/use-cart';
 import { useCheckout } from '@/hooks/use-checkout';
+import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/lib/toast';
 import { CheckoutStepper, CheckoutStep } from '@/components/checkout/checkout-stepper';
 import { AddressForm, Address } from '@/components/checkout/address-form';
@@ -22,6 +23,7 @@ const SHIPPING_METHODS = {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const { items, totals, clearCart } = useCart();
   const {
     step,
@@ -29,37 +31,64 @@ export default function CheckoutPage() {
     shippingAddress,
     shippingMethod,
     clientSecret,
+    orderId,
     isLoading,
+    error: checkoutError,
     goToStep,
     saveShippingAddress,
     saveShippingMethod,
-    createPaymentIntent,
-    processPayment,
+    createOrderAndPaymentIntent,
+    handlePaymentSuccess,
+    resetCheckout,
   } = useCheckout();
 
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>('standard');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      toast.error('Login Required', 'Please login to continue checkout');
+      router.push('/auth/login?redirect=/checkout');
+    }
+  }, [user, authLoading, router]);
+
   // Redirect if cart is empty
   useEffect(() => {
-    if (items.length === 0) {
+    if (items.length === 0 && !authLoading && user) {
       toast.error('Empty Cart', 'Your cart is empty. Please add items before checkout.');
       router.push('/cart');
     }
-  }, [items, router]);
+  }, [items, router, authLoading, user]);
 
-  // Create payment intent when moving to payment step
+  // Create order and payment intent when moving to payment step
   useEffect(() => {
-    if (step === 'payment' && !clientSecret && items.length > 0) {
+    if (step === 'payment' && !clientSecret && items.length > 0 && shippingAddress && user) {
       const method = SHIPPING_METHODS[selectedShippingMethod as keyof typeof SHIPPING_METHODS];
-      const totalWithShipping = totals.total - totals.shipping + method.price;
 
-      createPaymentIntent(totalWithShipping).catch((err) => {
-        toast.error('Payment Error', 'Failed to initialize payment. Please try again.');
+      createOrderAndPaymentIntent(items, {
+        ...totals,
+        shipping: method.price,
+      }).catch((err) => {
+        toast.error('Checkout Error', err.message || 'Failed to initialize checkout. Please try again.');
         goToStep('shipping');
       });
     }
-  }, [step, clientSecret, items.length, selectedShippingMethod, totals, createPaymentIntent, goToStep]);
+  }, [step, clientSecret, items, selectedShippingMethod, totals, shippingAddress, createOrderAndPaymentIntent, goToStep, user]);
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold"></div>
+      </div>
+    );
+  }
+
+  // Don't render checkout if not authenticated
+  if (!user) {
+    return null;
+  }
 
   const handleAddressSubmit = async (address: Address) => {
     try {
@@ -76,29 +105,23 @@ export default function CheckoutPage() {
     goToStep('payment');
   };
 
-  const handlePaymentSuccess = async (paymentIntentId: string) => {
+  const onPaymentSuccess = async (paymentIntentId: string) => {
     setIsProcessing(true);
 
     try {
-      const method = SHIPPING_METHODS[selectedShippingMethod as keyof typeof SHIPPING_METHODS];
-      const totalWithShipping = totals.total - totals.shipping + method.price;
+      // Payment succeeded - order was already created
+      await handlePaymentSuccess(paymentIntentId);
 
-      const order = await processPayment(paymentIntentId, items, {
-        ...totals,
-        shipping: method.price,
-        total: totalWithShipping,
-      });
-
-      // Clear cart after successful order
+      // Clear cart after successful payment
       await clearCart();
 
       // Redirect to success page
-      router.push(`/checkout/success?orderId=${order.id}`);
+      router.push(`/checkout/success?orderId=${orderId}`);
 
       toast.success('Order Placed', 'Your order has been placed successfully!');
     } catch (error: any) {
-      console.error('Order creation failed:', error);
-      toast.error('Order Failed', error.message || 'Failed to create order. Please contact support.');
+      console.error('Payment completion failed:', error);
+      toast.error('Order Failed', error.message || 'Failed to complete order. Please contact support.');
     } finally {
       setIsProcessing(false);
     }
@@ -201,7 +224,7 @@ export default function CheckoutPage() {
                           <PaymentForm
                             amount={totalWithShipping}
                             clientSecret={clientSecret}
-                            onSuccess={handlePaymentSuccess}
+                            onSuccess={onPaymentSuccess}
                             onError={handlePaymentError}
                             onBack={() => goToStep('shipping')}
                           />

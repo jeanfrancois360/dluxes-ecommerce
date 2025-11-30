@@ -72,4 +72,14 @@ export class ProductQueryDto {
   @IsOptional()
   @IsString()
   materials?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  inStock?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  onSale?: boolean;
 }

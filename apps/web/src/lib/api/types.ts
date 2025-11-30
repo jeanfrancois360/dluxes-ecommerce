@@ -26,11 +26,14 @@ export interface LoginCredentials {
   rememberMe?: boolean;
 }
 
+export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN';
+
 export interface RegisterData {
   email: string;
   password: string;
   firstName?: string;
   lastName?: string;
+  role?: UserRole;
 }
 
 // Type aliases for compatibility
@@ -94,7 +97,7 @@ export interface Product {
 export interface ProductImage {
   id: string;
   url: string;
-  altText?: string;
+  alt?: string;
   blurHash?: string;
   displayOrder: number;
 }

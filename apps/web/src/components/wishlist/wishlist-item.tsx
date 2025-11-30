@@ -18,13 +18,25 @@ export function WishlistItemComponent({
   onAddToCart,
   onQuickView,
 }: WishlistItemProps) {
-  const { product, addedAt } = item;
+  const { product, addedAt, createdAt } = item as any;
   const isOnSale = product.compareAtPrice && product.compareAtPrice > product.price;
   const discountPercent = isOnSale
     ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
     : 0;
 
-  const relativeDate = formatDistanceToNow(new Date(addedAt), { addSuffix: true });
+  // Handle both addedAt and createdAt field names, with fallback
+  const dateValue = addedAt || createdAt;
+  let relativeDate = 'Recently added';
+  if (dateValue) {
+    try {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        relativeDate = formatDistanceToNow(date, { addSuffix: true });
+      }
+    } catch {
+      // Keep default value
+    }
+  }
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }).map((_, index) => (
@@ -137,9 +149,9 @@ export function WishlistItemComponent({
 
         {/* Price */}
         <div className="flex items-baseline gap-2 mb-3">
-          <span className="text-xl font-bold text-black">${product.price.toFixed(2)}</span>
+          <span className="text-xl font-bold text-black">${Number(product.price || 0).toFixed(2)}</span>
           {product.compareAtPrice && (
-            <span className="text-sm text-neutral-400 line-through">${product.compareAtPrice.toFixed(2)}</span>
+            <span className="text-sm text-neutral-400 line-through">${Number(product.compareAtPrice || 0).toFixed(2)}</span>
           )}
         </div>
 

@@ -204,7 +204,7 @@ export const ProductQuickView: React.FC<ProductQuickViewProps> = ({
                         ))}
                       </div>
                       <span className="text-sm text-neutral-600">
-                        {product.rating.toFixed(1)} ({product.reviewCount} reviews)
+                        {(product.rating || 0).toFixed(1)} ({product.reviewCount || 0} reviews)
                       </span>
                     </div>
                   )}
@@ -212,12 +212,12 @@ export const ProductQuickView: React.FC<ProductQuickViewProps> = ({
                   {/* Price */}
                   <div className="flex items-baseline gap-4 mb-6">
                     <span className="font-display text-4xl font-bold text-black">
-                      €{product.price.toFixed(2)}
+                      €{(product.price || 0).toFixed(2)}
                     </span>
                     {product.compareAtPrice && (
                       <>
                         <span className="text-lg text-neutral-400 line-through">
-                          €{product.compareAtPrice.toFixed(2)}
+                          €{(product.compareAtPrice || 0).toFixed(2)}
                         </span>
                         <span className="text-sm font-semibold text-error-DEFAULT">
                           Save {discount}%

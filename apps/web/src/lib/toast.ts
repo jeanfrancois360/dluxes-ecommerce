@@ -25,18 +25,38 @@ export function showToast({ type, title, message, duration = 5000 }: ToastOption
 }
 
 /**
- * Convenience methods
+ * Convenience methods - supports both (title, message) and (message) signatures
  */
 export const toast = {
-  success: (title: string, message: string, duration?: number) =>
-    showToast({ type: 'success', title, message, duration }),
+  success: (titleOrMessage: string, message?: string, duration?: number) =>
+    showToast({
+      type: 'success',
+      title: message ? titleOrMessage : 'Success',
+      message: message || titleOrMessage,
+      duration
+    }),
 
-  error: (title: string, message: string, duration?: number) =>
-    showToast({ type: 'error', title, message, duration }),
+  error: (titleOrMessage: string, message?: string, duration?: number) =>
+    showToast({
+      type: 'error',
+      title: message ? titleOrMessage : 'Error',
+      message: message || titleOrMessage,
+      duration
+    }),
 
-  warning: (title: string, message: string, duration?: number) =>
-    showToast({ type: 'warning', title, message, duration }),
+  warning: (titleOrMessage: string, message?: string, duration?: number) =>
+    showToast({
+      type: 'warning',
+      title: message ? titleOrMessage : 'Warning',
+      message: message || titleOrMessage,
+      duration
+    }),
 
-  info: (title: string, message: string, duration?: number) =>
-    showToast({ type: 'info', title, message, duration }),
+  info: (titleOrMessage: string, message?: string, duration?: number) =>
+    showToast({
+      type: 'info',
+      title: message ? titleOrMessage : 'Info',
+      message: message || titleOrMessage,
+      duration
+    }),
 };

@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/auth-context';
 import { CartProvider } from '@/contexts/cart-context';
 import { LocaleProvider } from '@/contexts/locale-context';
 import { ToastListener } from '@/components/toast-listener';
+import { RouteLoadingProvider } from '@/components/providers/route-loading-provider';
 import { siteConfig } from '@/lib/seo';
 import './globals.css';
 
@@ -104,15 +105,29 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${playfair.variable} overflow-x-hidden`}>
+      <head>
+        {/* Preconnect to critical origins */}
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'} />
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+
+        {/* DNS prefetch for external domains */}
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+      </head>
       <body className="font-sans antialiased bg-white text-black overflow-x-hidden">
-        <LocaleProvider>
-          <AuthProvider>
-            <CartProvider>
-              {children}
-              <ToastListener />
-            </CartProvider>
-          </AuthProvider>
-        </LocaleProvider>
+        <RouteLoadingProvider>
+          <LocaleProvider>
+            <AuthProvider>
+              <CartProvider>
+                {children}
+                <ToastListener />
+              </CartProvider>
+            </AuthProvider>
+          </LocaleProvider>
+        </RouteLoadingProvider>
       </body>
     </html>
   );

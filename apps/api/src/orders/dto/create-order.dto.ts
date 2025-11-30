@@ -41,4 +41,8 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  currency?: string; // Currency code for the order (e.g., USD, EUR, RWF)
 }

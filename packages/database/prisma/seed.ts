@@ -293,6 +293,99 @@ async function main() {
 
   console.log('✅ Created customer user:', customer3.email);
 
+  // ========================================
+  // CREATE CURRENCY RATES
+  // ========================================
+  console.log('');
+  console.log('💱 Creating currency exchange rates...');
+
+  const currencies = [
+    {
+      currencyCode: 'USD',
+      currencyName: 'US Dollar',
+      symbol: '$',
+      rate: 1.000000, // Base currency
+      decimalDigits: 2,
+      position: 'before',
+      isActive: true,
+    },
+    {
+      currencyCode: 'EUR',
+      currencyName: 'Euro',
+      symbol: '€',
+      rate: 0.920000, // 1 USD = 0.92 EUR
+      decimalDigits: 2,
+      position: 'before',
+      isActive: true,
+    },
+    {
+      currencyCode: 'GBP',
+      currencyName: 'British Pound',
+      symbol: '£',
+      rate: 0.790000, // 1 USD = 0.79 GBP
+      decimalDigits: 2,
+      position: 'before',
+      isActive: true,
+    },
+    {
+      currencyCode: 'RWF',
+      currencyName: 'Rwandan Franc',
+      symbol: 'Fr',
+      rate: 1350.000000, // 1 USD = 1350 RWF
+      decimalDigits: 0,
+      position: 'after',
+      isActive: true,
+    },
+    {
+      currencyCode: 'JPY',
+      currencyName: 'Japanese Yen',
+      symbol: '¥',
+      rate: 150.000000, // 1 USD = 150 JPY
+      decimalDigits: 0,
+      position: 'before',
+      isActive: true,
+    },
+    {
+      currencyCode: 'CHF',
+      currencyName: 'Swiss Franc',
+      symbol: 'CHF',
+      rate: 0.880000, // 1 USD = 0.88 CHF
+      decimalDigits: 2,
+      position: 'after',
+      isActive: true,
+    },
+    {
+      currencyCode: 'CAD',
+      currencyName: 'Canadian Dollar',
+      symbol: 'C$',
+      rate: 1.360000, // 1 USD = 1.36 CAD
+      decimalDigits: 2,
+      position: 'before',
+      isActive: true,
+    },
+    {
+      currencyCode: 'AUD',
+      currencyName: 'Australian Dollar',
+      symbol: 'A$',
+      rate: 1.530000, // 1 USD = 1.53 AUD
+      decimalDigits: 2,
+      position: 'before',
+      isActive: true,
+    },
+  ];
+
+  for (const currency of currencies) {
+    await prisma.currencyRate.upsert({
+      where: { currencyCode: currency.currencyCode },
+      update: {
+        rate: currency.rate,
+        lastUpdated: new Date(),
+      },
+      create: currency,
+    });
+    console.log(`✅ Created currency: ${currency.currencyCode} (${currency.currencyName})`);
+  }
+
   // Create Categories
   const watchesCategory = await prisma.category.upsert({
     where: { slug: 'watches' },

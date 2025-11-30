@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import { cn } from '../lib/utils';
 
 export interface ProductCardProps {
@@ -23,9 +24,10 @@ export interface ProductCardProps {
   inWishlist?: boolean;
   className?: string;
   priority?: boolean;
+  currencySymbol?: string;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({
+export const ProductCard: React.FC<ProductCardProps> = React.memo(({
   id,
   name,
   brand,
@@ -44,13 +46,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   inWishlist = false,
   className,
   priority = false,
+  currencySymbol = '$',
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const [isWishlisted, setIsWishlisted] = React.useState(inWishlist);
   const [isHovered, setIsHovered] = React.useState(false);
 
+  // Ensure price is always a valid number
+  const validPrice = typeof price === 'number' && !isNaN(price) ? price : 0;
+  const validCompareAtPrice = typeof compareAtPrice === 'number' && !isNaN(compareAtPrice) ? compareAtPrice : undefined;
+
   const allImages = [image, ...images].filter(Boolean);
-  const discount = compareAtPrice && price && price > 0 && compareAtPrice > price ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
+  const discount = validCompareAtPrice && validPrice > 0 && validCompareAtPrice > validPrice ? Math.round(((validCompareAtPrice - validPrice) / validCompareAtPrice) * 100) : 0;
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -78,10 +85,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -8 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
@@ -91,8 +96,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       className={cn(
         'group relative bg-white rounded-2xl overflow-hidden cursor-pointer',
         'border-2 border-neutral-100 hover:border-gold/50',
-        'shadow-sm hover:shadow-2xl',
-        'transition-all duration-500 ease-out',
+        'shadow-sm hover:shadow-xl',
+        'transition-all duration-300 ease-out',
+        'gpu-accelerated will-change-transform',
         className
       )}
       role="button"
@@ -184,11 +190,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             }}
             className="relative w-full h-full"
           >
-            <img
-              src={allImages[currentImageIndex]}
+            <Image
+              src={allImages[currentImageIndex] || '/images/placeholder-product.jpg'}
               alt={name}
-              className="w-full h-full object-cover"
-              loading={priority ? 'eager' : 'lazy'}
+              fill
+              className="object-cover"
+              priority={priority}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              quality={85}
             />
           </motion.div>
         </AnimatePresence>
@@ -277,26 +286,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </h3>
 
         {/* Rating */}
-        {rating && (
+        {rating !== undefined && rating > 0 && (
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-0.5">
               {[...Array(5)].map((_, i) => (
-                <motion.svg
+                <svg
                   key={i}
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
                   className={cn(
-                    'w-4 h-4 transition-colors',
+                    'w-4 h-4',
                     i < Math.floor(rating) ? 'fill-gold text-gold' : 'fill-neutral-200 text-neutral-200'
                   )}
                   viewBox="0 0 20 20"
                 >
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </motion.svg>
+                </svg>
               ))}
             </div>
-            {reviewCount && (
+            {reviewCount !== undefined && reviewCount > 0 && (
               <span className="text-xs text-neutral-500 font-medium">
                 ({reviewCount})
               </span>
@@ -307,11 +313,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Price */}
         <div className="flex items-center gap-3 pt-2">
           <span className="font-serif text-2xl font-bold text-black">
-            ${(price ?? 0).toFixed(2)}
+            {currencySymbol}{validPrice.toFixed(2)}
           </span>
-          {compareAtPrice && (
+          {validCompareAtPrice && (
             <span className="text-sm text-neutral-400 line-through font-medium">
-              ${(compareAtPrice ?? 0).toFixed(2)}
+              {currencySymbol}{validCompareAtPrice.toFixed(2)}
             </span>
           )}
         </div>
@@ -347,4 +353,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </motion.div>
     </motion.article>
   );
-};
+});
+
+ProductCard.displayName = 'ProductCard';

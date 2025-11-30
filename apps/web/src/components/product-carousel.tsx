@@ -1,7 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useRef, useState, memo, useCallback } from 'react';
 import { ProductCard, type QuickViewProduct } from '@luxury/ui';
 
 export interface ProductCarouselProps {
@@ -12,9 +11,11 @@ export interface ProductCarouselProps {
   onAddToWishlist?: (productId: string) => void;
   onQuickAdd?: (productId: string) => void;
   onNavigate?: (slug: string) => void;
+  isLoading?: boolean;
+  currencySymbol?: string;
 }
 
-export function ProductCarousel({
+export const ProductCarousel = memo(function ProductCarousel({
   title,
   products,
   viewAllHref,
@@ -22,20 +23,22 @@ export function ProductCarousel({
   onAddToWishlist,
   onQuickAdd,
   onNavigate,
+  isLoading = false,
+  currencySymbol = '$',
 }: ProductCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  const checkScrollPosition = () => {
+  const checkScrollPosition = useCallback(() => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
       setCanScrollLeft(scrollLeft > 0);
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
     }
-  };
+  }, []);
 
-  const scroll = (direction: 'left' | 'right') => {
+  const scroll = useCallback((direction: 'left' | 'right') => {
     if (scrollRef.current) {
       const scrollAmount = scrollRef.current.clientWidth * 0.8;
       const newScrollLeft =
@@ -48,14 +51,39 @@ export function ProductCarousel({
         behavior: 'smooth',
       });
 
-      // Update scroll buttons after animation
       setTimeout(checkScrollPosition, 300);
     }
-  };
+  }, [checkScrollPosition]);
 
-  // Show empty state if no products
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="relative py-12">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-serif font-bold text-black">{title}</h2>
+            <div className="h-1 w-20 bg-gradient-to-r from-[#CBB57B] to-transparent mt-3" />
+          </div>
+        </div>
+        <div className="flex gap-6 overflow-hidden">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex-none w-[280px] animate-pulse">
+              <div className="bg-gray-200 rounded-2xl aspect-[3/4]" />
+              <div className="mt-4 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-1/3" />
+                <div className="h-5 bg-gray-200 rounded w-3/4" />
+                <div className="h-6 bg-gray-200 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
   if (!products || products.length === 0) {
-    return null; // Don't render the carousel if there are no products
+    return null;
   }
 
   return (
@@ -88,9 +116,7 @@ export function ProductCarousel({
       <div className="relative group">
         {/* Scroll Left Button */}
         {canScrollLeft && (
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+          <button
             onClick={() => scroll('left')}
             className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#CBB57B] hover:text-white"
             aria-label="Scroll left"
@@ -98,14 +124,12 @@ export function ProductCarousel({
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-          </motion.button>
+          </button>
         )}
 
         {/* Scroll Right Button */}
         {canScrollRight && (
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+          <button
             onClick={() => scroll('right')}
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#CBB57B] hover:text-white"
             aria-label="Scroll right"
@@ -113,7 +137,7 @@ export function ProductCarousel({
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-          </motion.button>
+          </button>
         )}
 
         {/* Products Scroll Container */}
@@ -127,11 +151,8 @@ export function ProductCarousel({
           }}
         >
           {products.map((product, index) => (
-            <motion.div
+            <div
               key={product.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
               className="flex-none w-[280px] snap-start"
             >
               <ProductCard
@@ -146,21 +167,20 @@ export function ProductCarousel({
                 rating={product.rating}
                 reviewCount={product.reviewCount}
                 slug={product.slug}
+                priority={index < 4}
+                currencySymbol={currencySymbol}
                 onQuickView={onQuickView ? () => onQuickView(product.id) : undefined}
                 onAddToWishlist={onAddToWishlist ? () => onAddToWishlist(product.id) : undefined}
                 onQuickAdd={onQuickAdd ? () => onQuickAdd(product.id) : undefined}
                 onNavigate={onNavigate ? () => onNavigate(product.slug) : undefined}
               />
-            </motion.div>
+            </div>
           ))}
 
           {/* View All Card */}
           {viewAllHref && (
-            <motion.a
+            <a
               href={viewAllHref}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: products.length * 0.1 }}
               className="flex-none w-[280px] snap-start"
             >
               <div className="h-full min-h-[400px] bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-4 hover:border-[#CBB57B] hover:bg-[#CBB57B]/5 transition-all duration-300 cursor-pointer group">
@@ -179,7 +199,7 @@ export function ProductCarousel({
                   <p className="text-sm text-gray-600">Discover more amazing items</p>
                 </div>
               </div>
-            </motion.a>
+            </a>
           )}
         </div>
 
@@ -191,4 +211,4 @@ export function ProductCarousel({
       </div>
     </div>
   );
-}
+});

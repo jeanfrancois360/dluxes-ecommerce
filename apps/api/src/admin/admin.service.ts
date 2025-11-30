@@ -38,7 +38,7 @@ export class AdminService {
       // Total customers
       this.prisma.user.count({
         where: {
-          role: UserRole.CUSTOMER,
+          role: UserRole.BUYER,
         },
       }),
       // Total products

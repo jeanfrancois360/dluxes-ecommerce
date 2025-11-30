@@ -18,6 +18,10 @@ import { SearchModule } from './search/search.module';
 import { WebsocketModule } from './websocket/websocket.module';
 import { StoresModule } from './stores/stores.module';
 import { SellerModule } from './seller/seller.module';
+import { CommissionModule } from './commission/commission.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { AdvertisementModule } from './advertisements/advertisement.module';
+import { CurrencyModule } from './currency/currency.module';
 // import { QueueModule } from './queue/queue.module'; // Commented out - requires Redis setup
 
 @Module({
@@ -49,6 +53,10 @@ import { SellerModule } from './seller/seller.module';
     WebsocketModule,
     StoresModule,
     SellerModule,
+    CommissionModule,
+    InventoryModule,
+    AdvertisementModule,
+    CurrencyModule,
     // QueueModule, // Commented out - requires Redis setup
   ],
 })

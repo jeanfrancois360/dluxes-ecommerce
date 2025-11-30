@@ -3,21 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-
-const categories = [
-  { name: 'All Products', value: '', icon: '🔍' },
-  { name: 'Fashion', value: 'fashion', icon: '👔' },
-  { name: 'Home & Décor', value: 'home-decor', icon: '🏠' },
-  { name: 'Electronics', value: 'electronics', icon: '📱' },
-  { name: 'Beauty', value: 'beauty', icon: '💄' },
-  { name: 'Sports', value: 'sports', icon: '⚽' },
-  { name: 'Books', value: 'books', icon: '📚' },
-  { name: 'Toys', value: 'toys', icon: '🧸' },
-  { name: 'Jewelry', value: 'jewelry', icon: '💍' },
-  { name: 'Watches', value: 'watches', icon: '⌚' },
-  { name: 'Bags', value: 'bags', icon: '👜' },
-  { name: 'Shoes', value: 'shoes', icon: '👟' },
-];
+import { useTopBarCategories } from '@/hooks/use-categories';
 
 export function CategoryNav() {
   const router = useRouter();
@@ -27,6 +13,9 @@ export function CategoryNav() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('');
+
+  // Fetch dynamic categories
+  const { categories, isLoading } = useTopBarCategories();
 
   useEffect(() => {
     const category = searchParams.get('category') || '';
@@ -64,15 +53,39 @@ export function CategoryNav() {
     }
   };
 
-  const handleCategoryClick = (value: string) => {
+  const handleCategoryClick = (slug: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (value) {
-      params.set('category', value);
+    if (slug) {
+      params.set('category', slug);
     } else {
       params.delete('category');
     }
     router.push(`/products${params.toString() ? `?${params.toString()}` : ''}`);
   };
+
+  // Show loading skeleton
+  if (isLoading) {
+    return (
+      <div className="sticky top-[128px] z-30 bg-white/90 backdrop-blur-sm border-b border-gray-100 shadow-sm">
+        <div className="relative max-w-[1920px] mx-auto">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 lg:px-8 py-3">
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className="flex-shrink-0 h-9 px-5 bg-neutral-200 rounded-full animate-pulse"
+                style={{ width: `${Math.random() * 60 + 80}px` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't show if no categories
+  if (!categories || categories.length === 0) {
+    return null;
+  }
 
   return (
     <div className="sticky top-[128px] z-30 bg-white/90 backdrop-blur-sm border-b border-gray-100 shadow-sm">
@@ -113,19 +126,46 @@ export function CategoryNav() {
             msOverflowStyle: 'none',
           }}
         >
+          {/* All Products - Always first */}
+          <motion.button
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0 }}
+            onClick={() => handleCategoryClick('')}
+            className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedCategory === ''
+              ? 'bg-[#CBB57B] text-white shadow-md'
+              : 'bg-white/60 text-gray-700 hover:bg-white hover:shadow-sm'
+              }`}
+          >
+            <span>All Products</span>
+          </motion.button>
+
+          {/* Dynamic Categories */}
           {categories.map((category, index) => (
             <motion.button
-              key={category.value}
+              key={category.id}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03 }}
-              onClick={() => handleCategoryClick(category.value)}
-              className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedCategory === category.value
-                ? 'bg-[#CBB57B] text-white shadow-md'
-                : 'bg-white/60 text-gray-700 hover:bg-white hover:shadow-sm'
+              transition={{ delay: (index + 1) * 0.03 }}
+              onClick={() => handleCategoryClick(category.slug)}
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedCategory === category.slug
+                ? category.isFeatured
+                  ? 'bg-gradient-to-r from-[#CBB57B] to-[#D4C08C] text-white shadow-md'
+                  : 'bg-[#CBB57B] text-white shadow-md'
+                : category.isFeatured
+                  ? 'bg-[#CBB57B]/10 text-[#CBB57B] hover:bg-[#CBB57B]/20'
+                  : 'bg-white/60 text-gray-700 hover:bg-white hover:shadow-sm'
                 }`}
             >
               <span>{category.name}</span>
+              {category._count && category._count.products > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${selectedCategory === category.slug
+                  ? 'bg-white/20 text-white'
+                  : 'bg-gray-100 text-gray-600'
+                  }`}>
+                  {category._count.products}
+                </span>
+              )}
             </motion.button>
           ))}
         </div>

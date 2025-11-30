@@ -79,11 +79,11 @@ export function SearchAutocompleteItem({
         <div className="flex-shrink-0 text-right">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-[#CBB57B]">
-              ${product.price.toFixed(2)}
+              ${(product.price || 0).toFixed(2)}
             </span>
             {product.compareAtPrice && (
               <span className="text-xs text-gray-400 line-through">
-                ${product.compareAtPrice.toFixed(2)}
+                ${(product.compareAtPrice || 0).toFixed(2)}
               </span>
             )}
           </div>

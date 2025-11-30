@@ -51,6 +51,8 @@ export class ProductsService {
       colors,
       sizes,
       materials,
+      inStock,
+      onSale,
     } = query;
 
     // Use limit if provided, otherwise fall back to pageSize, with default of 24
@@ -60,9 +62,16 @@ export class ProductsService {
       status,
     };
 
-    // Category filter
+    // Category filter - lookup by slug
     if (category) {
-      where.categoryId = category;
+      const categoryRecord = await this.prisma.category.findUnique({
+        where: { slug: category },
+        select: { id: true },
+      });
+
+      if (categoryRecord) {
+        where.categoryId = categoryRecord.id;
+      }
     }
 
     // Price range filter
@@ -75,6 +84,20 @@ export class ProductsService {
     // Featured filter
     if (featured !== undefined) {
       where.featured = featured;
+    }
+
+    // In Stock filter
+    if (inStock !== undefined && inStock === true) {
+      where.inventory = {
+        gt: 0,
+      };
+    }
+
+    // On Sale filter (has compareAtPrice)
+    if (onSale !== undefined && onSale === true) {
+      where.compareAtPrice = {
+        not: null,
+      };
     }
 
     // Colors filter
@@ -139,7 +162,23 @@ export class ProductsService {
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          shortDescription: true,
+          price: true,
+          compareAtPrice: true,
+          heroImage: true,
+          featured: true,
+          rating: true,
+          reviewCount: true,
+          colors: true,
+          sizes: true,
+          materials: true,
+          inventory: true,
+          status: true,
           category: {
             select: {
               id: true,
@@ -148,13 +187,21 @@ export class ProductsService {
             },
           },
           images: {
+            select: {
+              id: true,
+              url: true,
+              alt: true,
+              displayOrder: true,
+            },
             orderBy: { displayOrder: 'asc' },
-            take: 3,
+            take: 5,
           },
           tags: {
             select: {
+              id: true,
               name: true,
             },
+            take: 10,
           },
         },
         skip: (page - 1) * take,
@@ -182,7 +229,19 @@ export class ProductsService {
         featured: true,
         status: ProductStatus.ACTIVE,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        shortDescription: true,
+        price: true,
+        compareAtPrice: true,
+        heroImage: true,
+        featured: true,
+        rating: true,
+        reviewCount: true,
+        inventory: true,
         category: {
           select: {
             id: true,
@@ -191,8 +250,14 @@ export class ProductsService {
           },
         },
         images: {
+          select: {
+            id: true,
+            url: true,
+            alt: true,
+            displayOrder: true,
+          },
           orderBy: { displayOrder: 'asc' },
-          take: 2,
+          take: 3,
         },
       },
       take: limit,
@@ -212,7 +277,20 @@ export class ProductsService {
           has: 'New',
         },
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        shortDescription: true,
+        price: true,
+        compareAtPrice: true,
+        heroImage: true,
+        featured: true,
+        rating: true,
+        reviewCount: true,
+        inventory: true,
+        badges: true,
         category: {
           select: {
             id: true,
@@ -221,8 +299,14 @@ export class ProductsService {
           },
         },
         images: {
+          select: {
+            id: true,
+            url: true,
+            alt: true,
+            displayOrder: true,
+          },
           orderBy: { displayOrder: 'asc' },
-          take: 2,
+          take: 3,
         },
       },
       take: limit,
@@ -239,7 +323,21 @@ export class ProductsService {
       where: {
         status: ProductStatus.ACTIVE,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        shortDescription: true,
+        price: true,
+        compareAtPrice: true,
+        heroImage: true,
+        featured: true,
+        rating: true,
+        reviewCount: true,
+        inventory: true,
+        viewCount: true,
+        likeCount: true,
         category: {
           select: {
             id: true,
@@ -248,8 +346,14 @@ export class ProductsService {
           },
         },
         images: {
+          select: {
+            id: true,
+            url: true,
+            alt: true,
+            displayOrder: true,
+          },
           orderBy: { displayOrder: 'asc' },
-          take: 2,
+          take: 3,
         },
       },
       take: limit,
@@ -269,7 +373,19 @@ export class ProductsService {
           not: null,
         },
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        shortDescription: true,
+        price: true,
+        compareAtPrice: true,
+        heroImage: true,
+        featured: true,
+        rating: true,
+        reviewCount: true,
+        inventory: true,
         category: {
           select: {
             id: true,
@@ -278,8 +394,14 @@ export class ProductsService {
           },
         },
         images: {
+          select: {
+            id: true,
+            url: true,
+            alt: true,
+            displayOrder: true,
+          },
           orderBy: { displayOrder: 'asc' },
-          take: 2,
+          take: 3,
         },
       },
       take: limit,
