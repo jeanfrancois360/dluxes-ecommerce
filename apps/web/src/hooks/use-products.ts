@@ -1,9 +1,21 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
+import useSWR from 'swr';
 import { productsAPI } from '@/lib/api/products';
 import { Product, SearchFilters, SearchResult } from '@/lib/api/types';
 import { APIError } from '@/lib/api/client';
+
+// SWR configuration for optimal caching
+const swrConfig = {
+  revalidateOnFocus: false,
+  revalidateOnReconnect: false,
+  dedupingInterval: 60000, // Dedupe requests within 1 minute
+  keepPreviousData: true,
+  revalidateIfStale: false,
+  revalidateOnMount: true,
+  focusThrottleInterval: 5000,
+};
 
 interface UseProductsOptions extends SearchFilters {
   enabled?: boolean;
@@ -22,180 +34,109 @@ interface UseProductsReturn {
 
 export function useProducts(options: UseProductsOptions = {}): UseProductsReturn {
   const { enabled = true, ...filters } = options;
-  const [products, setProducts] = useState<Product[]>([]);
-  const [meta, setMeta] = useState({
-    total: 0,
-    page: 1,
-    limit: 12,
-    totalPages: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<APIError | null>(null);
 
-  // Memoize filters to prevent infinite loops
-  const memoizedFilters = useMemo(() => filters, [
-    filters.query,
-    filters.category,
-    filters.minPrice,
-    filters.maxPrice,
-    filters.brands?.join(','),
-    filters.tags?.join(','),
-    filters.inStock,
-    filters.onSale,
-    filters.rating,
-    filters.sortBy,
-    filters.page,
-    filters.limit,
-  ]);
+  // Create a stable cache key from filters
+  const cacheKey = useMemo(() => {
+    if (!enabled) return null;
+    return ['products', JSON.stringify(filters)];
+  }, [enabled, filters]);
 
-  const fetchProducts = useCallback(async () => {
-    if (!enabled) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await productsAPI.getAll(memoizedFilters);
-      // Extract products array from response
-      setProducts(response.products || []);
-      setMeta({
-        total: response.total || 0,
-        page: response.page || 1,
-        limit: response.pageSize || response.limit || 12,
-        totalPages: response.totalPages || 0,
-      });
-    } catch (err) {
-      const apiError = err instanceof APIError ? err : new APIError('Failed to fetch products', 500);
-      setError(apiError);
-      setProducts([]);
-    } finally {
-      setIsLoading(false);
+  const { data, error, isLoading, mutate } = useSWR(
+    cacheKey,
+    async () => {
+      const response = await productsAPI.getAll(filters);
+      return response;
+    },
+    {
+      ...swrConfig,
+      revalidateIfStale: true,
     }
-  }, [enabled, memoizedFilters]);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+  );
 
   return {
-    products,
-    total: meta.total,
-    page: meta.page,
-    limit: meta.limit,
-    totalPages: meta.totalPages,
+    products: data?.products || [],
+    total: data?.total || 0,
+    page: data?.page || 1,
+    limit: data?.pageSize || data?.limit || filters.limit || 12,
+    totalPages: data?.totalPages || 0,
     isLoading,
-    error,
-    refetch: fetchProducts,
+    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch products', 500) : null,
+    refetch: async () => { await mutate(); },
   };
 }
 
-// Hook for featured products
+// Hook for featured products with SWR caching
 export function useFeaturedProducts(limit: number = 8) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<APIError | null>(null);
+  const { data, error, isLoading } = useSWR(
+    ['products', 'featured', limit],
+    () => productsAPI.getFeatured(limit),
+    swrConfig
+  );
 
-  useEffect(() => {
-    const fetchFeatured = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const response = await productsAPI.getFeatured(limit);
-        setProducts(response);
-      } catch (err) {
-        const apiError = err instanceof APIError ? err : new APIError('Failed to fetch featured products', 500);
-        setError(apiError);
-        setProducts([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchFeatured();
-  }, [limit]);
-
-  return { products, isLoading, error };
+  return {
+    products: data || [],
+    isLoading,
+    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch featured products', 500) : null,
+  };
 }
 
-// Hook for new arrivals
+// Hook for new arrivals with SWR caching
 export function useNewArrivals(limit: number = 8) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<APIError | null>(null);
+  const { data, error, isLoading } = useSWR(
+    ['products', 'new-arrivals', limit],
+    () => productsAPI.getNewArrivals(limit),
+    swrConfig
+  );
 
-  useEffect(() => {
-    const fetchNewArrivals = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const response = await productsAPI.getNewArrivals(limit);
-        setProducts(response);
-      } catch (err) {
-        const apiError = err instanceof APIError ? err : new APIError('Failed to fetch new arrivals', 500);
-        setError(apiError);
-        setProducts([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchNewArrivals();
-  }, [limit]);
-
-  return { products, isLoading, error };
+  return {
+    products: data || [],
+    isLoading,
+    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch new arrivals', 500) : null,
+  };
 }
 
-// Hook for trending products
+// Hook for trending products with SWR caching
 export function useTrendingProducts(limit: number = 8) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<APIError | null>(null);
+  const { data, error, isLoading } = useSWR(
+    ['products', 'trending', limit],
+    () => productsAPI.getTrending(limit),
+    swrConfig
+  );
 
-  useEffect(() => {
-    const fetchTrending = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const response = await productsAPI.getTrending(limit);
-        setProducts(response);
-      } catch (err) {
-        const apiError = err instanceof APIError ? err : new APIError('Failed to fetch trending products', 500);
-        setError(apiError);
-        setProducts([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTrending();
-  }, [limit]);
-
-  return { products, isLoading, error };
+  return {
+    products: data || [],
+    isLoading,
+    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch trending products', 500) : null,
+  };
 }
 
-// Hook for products on sale
+// Hook for products on sale with SWR caching
 export function useOnSaleProducts(limit: number = 8) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<APIError | null>(null);
+  const { data, error, isLoading } = useSWR(
+    ['products', 'sale', limit],
+    () => productsAPI.getOnSale(limit),
+    swrConfig
+  );
 
-  useEffect(() => {
-    const fetchOnSale = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const response = await productsAPI.getOnSale(limit);
-        setProducts(response);
-      } catch (err) {
-        const apiError = err instanceof APIError ? err : new APIError('Failed to fetch sale products', 500);
-        setError(apiError);
-        setProducts([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  return {
+    products: data || [],
+    isLoading,
+    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch sale products', 500) : null,
+  };
+}
 
-    fetchOnSale();
-  }, [limit]);
+// Combined hook for homepage - fetches all sections in parallel with shared cache
+export function useHomepageProducts(limit: number = 8) {
+  const featured = useFeaturedProducts(limit);
+  const newArrivals = useNewArrivals(limit);
+  const trending = useTrendingProducts(limit);
+  const onSale = useOnSaleProducts(limit);
 
-  return { products, isLoading, error };
+  return {
+    featured,
+    newArrivals,
+    trending,
+    onSale,
+    isLoading: featured.isLoading || newArrivals.isLoading || trending.isLoading || onSale.isLoading,
+  };
 }

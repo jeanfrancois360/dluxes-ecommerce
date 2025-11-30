@@ -112,7 +112,7 @@ export function CartDrawer({
                   className="mt-6 p-4 bg-accent-50 border border-accent-200 rounded-lg"
                 >
                   <p className="text-sm text-neutral-700">
-                    Add <strong className="text-black">${(200 - totals.subtotal).toFixed(2)}</strong> more for <strong className="text-gold">free shipping</strong>
+                    Add <strong className="text-black">${(200 - (totals.subtotal || 0)).toFixed(2)}</strong> more for <strong className="text-gold">free shipping</strong>
                   </p>
                   <div className="mt-2 h-2 bg-neutral-200 rounded-full overflow-hidden">
                     <motion.div
@@ -136,21 +136,21 @@ export function CartDrawer({
                 <div className="space-y-2 pt-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-600">Subtotal</span>
-                    <span className="text-black">${totals.subtotal.toFixed(2)}</span>
+                    <span className="text-black">${(totals.subtotal || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-600">Shipping</span>
                     <span className="text-black">
-                      {totals.shipping === 0 ? 'Free' : `$${totals.shipping.toFixed(2)}`}
+                      {(totals.shipping || 0) === 0 ? 'Free' : `$${(totals.shipping || 0).toFixed(2)}`}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-600">Tax</span>
-                    <span className="text-black">${totals.tax.toFixed(2)}</span>
+                    <span className="text-black">${(totals.tax || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-xl font-serif font-bold pt-2 border-t border-neutral-200">
                     <span>Total</span>
-                    <span className="text-gold">${totals.total.toFixed(2)}</span>
+                    <span className="text-gold">${(totals.total || 0).toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -233,7 +233,7 @@ function CartItemComponent({
         {item.sku && (
           <p className="text-xs text-neutral-500 mt-1">SKU: {item.sku}</p>
         )}
-        <p className="text-gold font-serif mt-2">${item.price.toFixed(2)}</p>
+        <p className="text-gold font-serif mt-2">${(item.price || 0).toFixed(2)}</p>
       </div>
 
       {/* Quantity & Remove */}

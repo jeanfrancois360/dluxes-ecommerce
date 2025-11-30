@@ -1,9 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { api } from '@/lib/api/client';
-import { Category } from '@/lib/api/types';
+import { categoriesAPI } from '@/lib/api/categories';
+import type { Category } from '@/lib/api/categories';
 import { APIError } from '@/lib/api/client';
+
+// SWR configuration for optimal caching
+const swrConfig = {
+  revalidateOnFocus: false,
+  revalidateOnReconnect: false,
+  dedupingInterval: 300000, // 5 minutes - categories don't change often
+  keepPreviousData: true,
+  revalidateIfStale: false,
+  revalidateOnMount: true,
+};
 
 interface UseCategoriesReturn {
   categories: Category[];
@@ -86,4 +98,81 @@ export function useCategory(slugOrId: string, bySlug: boolean = true): UseCatego
   }, [slugOrId, bySlug]);
 
   return { category, isLoading, error };
+}
+
+// New SWR-based hooks for better performance
+
+export function useTopBarCategories(): UseCategoriesReturn {
+  const { data, error, isLoading, mutate } = useSWR(
+    'categories-topbar',
+    () => categoriesAPI.getTopBar(),
+    swrConfig
+  );
+
+  return {
+    categories: data || [],
+    isLoading,
+    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch top bar categories', 500) : null,
+    refetch: async () => { await mutate(); },
+  };
+}
+
+export function useSidebarCategories(): UseCategoriesReturn {
+  const { data, error, isLoading, mutate } = useSWR(
+    'categories-sidebar',
+    () => categoriesAPI.getSidebar(),
+    swrConfig
+  );
+
+  return {
+    categories: data || [],
+    isLoading,
+    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch sidebar categories', 500) : null,
+    refetch: async () => { await mutate(); },
+  };
+}
+
+export function useNavbarCategories(): UseCategoriesReturn {
+  const { data, error, isLoading, mutate } = useSWR(
+    'categories-navbar',
+    () => categoriesAPI.getNavbar(),
+    swrConfig
+  );
+
+  return {
+    categories: data || [],
+    isLoading,
+    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch navbar categories', 500) : null,
+    refetch: async () => { await mutate(); },
+  };
+}
+
+export function useHomepageCategories(): UseCategoriesReturn {
+  const { data, error, isLoading, mutate } = useSWR(
+    'categories-homepage',
+    () => categoriesAPI.getHomepage(),
+    swrConfig
+  );
+
+  return {
+    categories: data || [],
+    isLoading,
+    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch homepage categories', 500) : null,
+    refetch: async () => { await mutate(); },
+  };
+}
+
+export function useFeaturedCategories(): UseCategoriesReturn {
+  const { data, error, isLoading, mutate } = useSWR(
+    'categories-featured',
+    () => categoriesAPI.getFeatured(),
+    swrConfig
+  );
+
+  return {
+    categories: data || [],
+    isLoading,
+    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch featured categories', 500) : null,
+    refetch: async () => { await mutate(); },
+  };
 }

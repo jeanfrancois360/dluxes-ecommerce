@@ -6,6 +6,8 @@ import { PageLayout } from '@/components/layout/page-layout';
 import { WishlistItemComponent } from '@/components/wishlist/wishlist-item';
 import { QuickViewModal, type QuickViewProduct } from '@luxury/ui';
 import { useWishlist, useRemoveFromWishlist, useClearWishlist } from '@/hooks/use-wishlist';
+import { useCart } from '@/hooks/use-cart';
+import { toast } from '@/lib/toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -14,16 +16,20 @@ export default function WishlistPage() {
   const { items, total, isLoading, updateFilters, refetch } = useWishlist();
   const { removeFromWishlist } = useRemoveFromWishlist();
   const { clearWishlist } = useClearWishlist();
+  const { addItem: addToCart } = useCart();
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'priceAsc' | 'priceDesc'>('recent');
   const [filterAvailability, setFilterAvailability] = useState<'all' | 'inStock' | 'outOfStock'>('all');
+  const [addingToCart, setAddingToCart] = useState<string | null>(null);
 
   const handleRemove = async (productId: string) => {
     try {
       await removeFromWishlist(productId);
       refetch();
+      toast.success('Removed', 'Item removed from wishlist');
     } catch (error) {
       console.error('Failed to remove from wishlist:', error);
+      toast.error('Error', 'Failed to remove from wishlist');
     }
   };
 
@@ -32,19 +38,74 @@ export default function WishlistPage() {
       try {
         await clearWishlist();
         refetch();
+        toast.success('Cleared', 'Wishlist cleared successfully');
       } catch (error) {
         console.error('Failed to clear wishlist:', error);
+        toast.error('Error', 'Failed to clear wishlist');
       }
     }
   };
 
-  const handleAddToCart = (productId: string) => {
-    console.log('Add to cart:', productId);
-    // TODO: Implement cart functionality
+  const handleAddToCart = async (productId: string) => {
+    setAddingToCart(productId);
+    try {
+      // Add to cart
+      await addToCart(productId, 1);
+
+      // Optionally remove from wishlist after adding to cart
+      // await removeFromWishlist(productId);
+      // refetch();
+
+      toast.success('Added to Cart', 'Item has been added to your cart');
+    } catch (error: any) {
+      console.error('Failed to add to cart:', error);
+      toast.error('Error', error.message || 'Failed to add to cart');
+    } finally {
+      setAddingToCart(null);
+    }
+  };
+
+  const handleMoveAllToCart = async () => {
+    // Handle both isAvailable and inventory fields
+    const inStockItems = (items || []).filter(item =>
+      item.product.isAvailable !== false &&
+      (item.product.inventory === undefined || item.product.inventory > 0)
+    );
+
+    if (inStockItems.length === 0) {
+      toast.error('No Items', 'No items available to add to cart');
+      return;
+    }
+
+    try {
+      let successCount = 0;
+      let failedCount = 0;
+
+      for (const item of inStockItems) {
+        try {
+          await addToCart(item.productId, 1);
+          successCount++;
+        } catch (error) {
+          failedCount++;
+          console.error(`Failed to add ${item.product.name} to cart:`, error);
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success('Success', `${successCount} item${successCount > 1 ? 's' : ''} added to cart`);
+      }
+
+      if (failedCount > 0) {
+        toast.error('Partial Failure', `Failed to add ${failedCount} item${failedCount > 1 ? 's' : ''}`);
+      }
+    } catch (error) {
+      console.error('Failed to move items to cart:', error);
+      toast.error('Error', 'Failed to add items to cart');
+    }
   };
 
   const handleQuickView = (productId: string) => {
-    const item = items.find((i) => i.productId === productId);
+    const item = (items || []).find((i) => i.productId === productId);
     if (item) {
       setQuickViewProduct({
         id: item.product.id,
@@ -71,7 +132,7 @@ export default function WishlistPage() {
     updateFilters({ availability });
   };
 
-  const totalValue = items.reduce((sum, item) => sum + item.product.price, 0);
+  const totalValue = (items || []).reduce((sum, item) => sum + (Number(item.product?.price) || 0), 0);
 
   return (
     <PageLayout>
@@ -80,7 +141,7 @@ export default function WishlistPage() {
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-2 text-sm text-neutral-600 mb-4">
-              <Link href="/account" className="hover:text-gold transition-colors">Account</Link>
+              <Link href="/" className="hover:text-gold transition-colors">Home</Link>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -92,11 +153,23 @@ export default function WishlistPage() {
                   My Wishlist
                 </h1>
                 <p className="text-neutral-600">
-                  {total} item{total !== 1 ? 's' : ''} • Total value: ${totalValue.toFixed(2)}
+                  {total ?? 0} item{(total ?? 0) !== 1 ? 's' : ''} • Total value: ${Number(totalValue || 0).toFixed(2)}
                 </p>
               </div>
-              {total > 0 && (
+              {((total ?? 0) > 0 || (items || []).length > 0) && (
                 <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleMoveAllToCart}
+                    disabled={(items || []).filter(i => i.product.isAvailable !== false && (i.product.inventory === undefined || i.product.inventory > 0)).length === 0}
+                    className="px-6 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Add All to Cart
+                  </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -111,7 +184,7 @@ export default function WishlistPage() {
           </div>
 
           {/* Filters & Sort */}
-          {total > 0 && (
+          {((total ?? 0) > 0 || (items || []).length > 0) && (
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <select
                 value={sortBy}
@@ -148,7 +221,7 @@ export default function WishlistPage() {
                 </div>
               ))}
             </div>
-          ) : total === 0 ? (
+          ) : (total ?? 0) === 0 && (items || []).length === 0 ? (
             /* Empty Wishlist */
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -176,7 +249,7 @@ export default function WishlistPage() {
             /* Wishlist Grid */
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               <AnimatePresence>
-                {items.map((item, index) => (
+                {(items || []).map((item, index) => (
                   <WishlistItemComponent
                     key={item.id}
                     item={item}
@@ -190,7 +263,7 @@ export default function WishlistPage() {
           )}
 
           {/* Share Wishlist Section */}
-          {total > 0 && (
+          {((total ?? 0) > 0 || (items || []).length > 0) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

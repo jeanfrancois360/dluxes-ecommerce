@@ -1,8 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, InventoryTransactionType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { InventoryService } from '../inventory/inventory.service';
+import { ShippingTaxService } from './shipping-tax.service';
+import { CurrencyService } from '../currency/currency.service';
 
 /**
  * Orders Service
@@ -10,7 +13,70 @@ import { Decimal } from '@prisma/client/runtime/library';
  */
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(OrdersService.name);
+  private readonly inventoryService: InventoryService;
+  private readonly shippingTaxService: ShippingTaxService;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => CurrencyService))
+    private readonly currencyService: CurrencyService
+  ) {
+    this.inventoryService = new InventoryService(prisma);
+    this.shippingTaxService = new ShippingTaxService(null as any);
+  }
+
+  /**
+   * Get shipping options for checkout
+   */
+  async getShippingOptions(addressId: string, items: any[]) {
+    const address = await this.prisma.address.findUnique({
+      where: { id: addressId },
+    });
+
+    if (!address) {
+      throw new BadRequestException('Address not found');
+    }
+
+    const subtotal = items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+
+    return this.shippingTaxService.calculateShippingOptions(
+      {
+        country: address.country,
+        state: address.province || undefined,
+        postalCode: address.postalCode,
+        city: address.city,
+      },
+      items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: Number(item.price),
+      })),
+      subtotal
+    );
+  }
+
+  /**
+   * Calculate tax for checkout
+   */
+  async calculateTax(addressId: string, subtotal: number) {
+    const address = await this.prisma.address.findUnique({
+      where: { id: addressId },
+    });
+
+    if (!address) {
+      throw new BadRequestException('Address not found');
+    }
+
+    return this.shippingTaxService.calculateTax(
+      {
+        country: address.country,
+        state: address.province || undefined,
+        postalCode: address.postalCode,
+      },
+      subtotal
+    );
+  }
 
   /**
    * Get all orders for a user
@@ -82,7 +148,7 @@ export class OrdersService {
    * Create new order from cart
    */
   async create(userId: string, createOrderDto: CreateOrderDto) {
-    const { items, shippingAddressId, billingAddressId, paymentMethod, notes } =
+    const { items, shippingAddressId, billingAddressId, paymentMethod, notes, currency: orderCurrency } =
       createOrderDto;
 
     // Verify shipping address exists and belongs to user
@@ -145,13 +211,54 @@ export class OrdersService {
       });
     }
 
-    // Calculate shipping and tax (simplified)
-    const shipping = new Decimal(15.0); // Fixed shipping for now
-    const tax = subtotal.mul(0.1); // 10% tax
+    // Calculate shipping and tax using actual rates
+    const taxCalc = this.shippingTaxService.calculateTax(
+      {
+        country: shippingAddress?.country || 'US',
+        state: shippingAddress?.province || undefined,
+        postalCode: shippingAddress?.postalCode || undefined,
+      },
+      Number(subtotal)
+    );
+
+    // Get shipping options and use standard by default
+    const shippingOptions = this.shippingTaxService.calculateShippingOptions(
+      {
+        country: shippingAddress?.country || 'US',
+        state: shippingAddress?.province || undefined,
+        postalCode: shippingAddress?.postalCode || undefined,
+      },
+      orderItems.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: Number(item.price),
+      })),
+      Number(subtotal)
+    );
+
+    const selectedShipping = shippingOptions[0]; // Default to standard shipping
+    const shipping = new Decimal(selectedShipping?.price || 15);
+    const tax = new Decimal(taxCalc.amount);
     const total = subtotal.add(shipping).add(tax);
 
     // Generate order number
     const orderNumber = `LUX-${Date.now()}`;
+
+    // Get currency and exchange rate for order
+    const currency = orderCurrency || 'USD';
+    const baseCurrency = 'USD';
+    let exchangeRate: Decimal | null = null;
+
+    // Get the exchange rate at time of order if currency is different from base
+    if (currency !== baseCurrency) {
+      try {
+        const currencyRate = await this.currencyService.getRateByCode(currency);
+        exchangeRate = new Decimal(Number(currencyRate.rate));
+      } catch (error) {
+        this.logger.error(`Failed to get exchange rate for currency ${currency}:`, error);
+        // Continue with order creation without exchange rate
+      }
+    }
 
     // Create order with transaction
     const order = await this.prisma.$transaction(async (prisma) => {
@@ -164,6 +271,9 @@ export class OrdersService {
           shipping,
           tax,
           total,
+          currency,
+          exchangeRate,
+          baseCurrency,
           status: OrderStatus.PENDING,
           paymentStatus: PaymentStatus.PENDING,
           paymentMethod,
@@ -196,31 +306,28 @@ export class OrdersService {
         },
       });
 
-      // Update product inventory
-      for (const item of items) {
-        if (item.variantId) {
-          await prisma.productVariant.update({
-            where: { id: item.variantId },
-            data: {
-              inventory: {
-                decrement: item.quantity,
-              },
-            },
-          });
-        } else {
-          await prisma.product.update({
-            where: { id: item.productId },
-            data: {
-              inventory: {
-                decrement: item.quantity,
-              },
-            },
-          });
-        }
-      }
-
       return newOrder;
     });
+
+    // Record inventory transactions outside the main transaction
+    // This creates proper audit trail
+    for (const item of items) {
+      try {
+        await this.inventoryService.recordTransaction({
+          productId: item.productId,
+          variantId: item.variantId || undefined,
+          type: InventoryTransactionType.SALE,
+          quantity: -item.quantity, // Negative for decrement
+          orderId: order.id,
+          userId,
+          reason: 'order_placed',
+          notes: `Order ${order.orderNumber}`,
+        });
+      } catch (invError) {
+        this.logger.error(`Error recording inventory transaction for product ${item.productId}:`, invError);
+        // Don't fail the order, just log the error
+      }
+    }
 
     // TODO: Send order confirmation email via queue
 
@@ -284,30 +391,23 @@ export class OrdersService {
       throw new BadRequestException('Order already cancelled');
     }
 
-    // Restore inventory
-    await this.prisma.$transaction(async (prisma) => {
-      for (const item of order.items) {
-        if (item.variantId) {
-          await prisma.productVariant.update({
-            where: { id: item.variantId },
-            data: {
-              inventory: {
-                increment: item.quantity,
-              },
-            },
-          });
-        } else {
-          await prisma.product.update({
-            where: { id: item.productId },
-            data: {
-              inventory: {
-                increment: item.quantity,
-              },
-            },
-          });
-        }
+    // Restore inventory with proper transaction tracking
+    for (const item of order.items) {
+      try {
+        await this.inventoryService.recordTransaction({
+          productId: item.productId,
+          variantId: item.variantId || undefined,
+          type: InventoryTransactionType.RETURN,
+          quantity: item.quantity, // Positive for increment
+          orderId: id,
+          userId,
+          reason: 'order_cancelled',
+          notes: `Order ${order.orderNumber} cancelled`,
+        });
+      } catch (invError) {
+        this.logger.error(`Error restoring inventory for product ${item.productId}:`, invError);
       }
-    });
+    }
 
     return this.updateStatus(id, OrderStatus.CANCELLED);
   }

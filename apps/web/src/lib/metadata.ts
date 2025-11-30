@@ -123,7 +123,7 @@ export const ordersMetadata: Metadata = generateSeoMetadata({
 export const wishlistMetadata: Metadata = generateSeoMetadata({
   title: 'My Wishlist',
   description: 'View and manage your saved products.',
-  url: '/account/wishlist',
+  url: '/wishlist',
   noIndex: true,
 });
 

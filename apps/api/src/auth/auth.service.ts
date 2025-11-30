@@ -1,13 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
+import { CartService } from '../cart/cart.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
-    private jwtService: JwtService
+    private jwtService: JwtService,
+    private cartService: CartService
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -27,8 +31,19 @@ export class AuthService {
     return result;
   }
 
-  async login(user: any) {
+  async login(user: any, sessionId?: string) {
     const payload = { email: user.email, sub: user.id, role: user.role };
+
+    // Merge guest cart with user cart if sessionId provided
+    let cart = null;
+    if (sessionId) {
+      try {
+        cart = await this.cartService.mergeGuestCart(sessionId, user.id);
+        this.logger.log(`Merged cart for user ${user.id} from session ${sessionId}`);
+      } catch (cartError) {
+        this.logger.error(`Error merging cart for user ${user.id}:`, cartError);
+      }
+    }
 
     return {
       access_token: this.jwtService.sign(payload),
@@ -39,6 +54,10 @@ export class AuthService {
         lastName: user.lastName,
         role: user.role,
       },
+      cart: cart ? {
+        id: cart.id,
+        itemCount: cart.items?.length || 0,
+      } : null,
     };
   }
 
@@ -47,14 +66,19 @@ export class AuthService {
     password: string;
     firstName: string;
     lastName: string;
+    role?: any;
+    sessionId?: string;
   }) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     const user = await this.usersService.create({
-      ...data,
+      email: data.email,
       password: hashedPassword,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      role: data.role || ('BUYER' as any),
     });
 
-    return this.login(user);
+    return this.login(user, data.sessionId);
   }
 }

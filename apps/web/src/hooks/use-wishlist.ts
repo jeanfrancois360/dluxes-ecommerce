@@ -2,9 +2,51 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import type { WishlistItem, WishlistResponse, WishlistFilters } from '@luxury/shared';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+
+// Type definitions (should be in @luxury/shared)
+interface WishlistProduct {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  compareAtPrice?: number;
+  heroImage: string;
+  isAvailable?: boolean;
+  inventory?: number;
+  rating?: number;
+  reviewCount?: number;
+}
+
+export interface WishlistItem {
+  id: string;
+  productId: string;
+  product: WishlistProduct;
+  createdAt: string;
+}
+
+interface WishlistResponse {
+  items: WishlistItem[];
+  total: number;
+}
+
+interface WishlistFilters {
+  sortBy?: 'recent' | 'priceAsc' | 'priceDesc';
+  availability?: 'all' | 'inStock' | 'outOfStock';
+}
+
+// Helper to get auth token
+const getAuthToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('auth_token');
+};
+
+// Helper to get auth headers
+const getAuthHeaders = () => {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 export function useWishlist(options: WishlistFilters = {}) {
   const { user } = useAuth();
@@ -31,16 +73,47 @@ export function useWishlist(options: WishlistFilters = {}) {
       if (filters.availability) params.append('availability', filters.availability);
 
       const response = await fetch(`${API_BASE_URL}/wishlist?${params.toString()}`, {
-        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
         throw new Error('Failed to fetch wishlist');
       }
 
-      const data: WishlistResponse = await response.json();
-      setItems(data.items);
-      setTotal(data.total);
+      const responseData = await response.json();
+
+      // Handle API response format: { success, data } or { items, total }
+      let wishlistItems: WishlistItem[] = [];
+
+      if (responseData.data) {
+        // API returns { success: true, data: [...] }
+        wishlistItems = Array.isArray(responseData.data) ? responseData.data : [];
+      } else if (responseData.items) {
+        // API returns { items: [...], total: number }
+        wishlistItems = responseData.items;
+      }
+
+      // Transform items to match expected format
+      const transformedItems = wishlistItems.map((item: any) => ({
+        id: item.id,
+        productId: item.productId,
+        createdAt: item.createdAt,
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          slug: item.product.slug,
+          price: item.product.price,
+          compareAtPrice: item.product.compareAtPrice,
+          heroImage: item.product.images?.[0]?.url || item.product.heroImage || '',
+          isAvailable: item.product.isAvailable ?? item.product.inventory > 0,
+          inventory: item.product.inventory,
+          rating: item.product.averageRating || item.product.rating,
+          reviewCount: item.product.reviewCount,
+        },
+      }));
+
+      setItems(transformedItems);
+      setTotal(responseData.total ?? transformedItems.length);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch wishlist');
     } finally {
@@ -81,9 +154,9 @@ export function useAddToWishlist() {
     try {
       const response = await fetch(`${API_BASE_URL}/wishlist`, {
         method: 'POST',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({ productId }),
       });
@@ -122,15 +195,20 @@ export function useRemoveFromWishlist() {
     try {
       const response = await fetch(`${API_BASE_URL}/wishlist/${productId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
         throw new Error('Failed to remove from wishlist');
       }
 
-      const result = await response.json();
-      return result;
+      // Handle 204 No Content responses
+      if (response.status === 204) {
+        return { success: true };
+      }
+
+      const text = await response.text();
+      return text ? JSON.parse(text) : { success: true };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to remove from wishlist';
       setError(errorMessage);
@@ -158,15 +236,20 @@ export function useClearWishlist() {
     try {
       const response = await fetch(`${API_BASE_URL}/wishlist/clear`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
         throw new Error('Failed to clear wishlist');
       }
 
-      const result = await response.json();
-      return result;
+      // Handle 204 No Content responses
+      if (response.status === 204) {
+        return { success: true };
+      }
+
+      const text = await response.text();
+      return text ? JSON.parse(text) : { success: true };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to clear wishlist';
       setError(errorMessage);
@@ -198,7 +281,7 @@ export function useIsInWishlist(productId: string) {
 
       try {
         const response = await fetch(`${API_BASE_URL}/wishlist/check/${productId}`, {
-          credentials: 'include',
+          headers: getAuthHeaders(),
         });
 
         if (response.ok) {

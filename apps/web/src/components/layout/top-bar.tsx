@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
-import { useLocale, languages, currencies, type Language, type Currency } from '@/contexts/locale-context';
+import { useLocale, languages } from '@/contexts/locale-context';
+import { useCurrencyRates, useSelectedCurrency } from '@/hooks/use-currency';
 
 const promoMessages = [
   { text: 'Exclusive Spring Collection Now Live', icon: '✨' },
@@ -18,7 +19,9 @@ export function TopBar() {
   const languageRef = useRef<HTMLDivElement>(null);
   const currencyRef = useRef<HTMLDivElement>(null);
 
-  const { language, setLanguage, currency, setCurrency } = useLocale();
+  const { language, setLanguage } = useLocale();
+  const { currencies, isLoading: currenciesLoading } = useCurrencyRates();
+  const { currency, selectedCurrency, setSelectedCurrency } = useSelectedCurrency();
 
   // Rotating promos
   useEffect(() => {
@@ -44,7 +47,6 @@ export function TopBar() {
   }, []);
 
   const currentLanguage = languages.find(l => l.code === language);
-  const currentCurrency = currencies.find(c => c.code === currency);
 
   return (
     <div className="sticky top-0 z-50 h-12 bg-gradient-to-r from-black via-neutral-900 to-black overflow-visible">
@@ -131,72 +133,82 @@ export function TopBar() {
 
             {/* Currency Selector */}
             <div ref={currencyRef} className="relative">
-              <button
-                onClick={() => {
-                  setCurrencyOpen(!currencyOpen);
-                  setLanguageOpen(false);
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/10 transition-all duration-300 group border border-white/10 hover:border-[#CBB57B]/50"
-              >
-                <span className="text-xs font-medium text-white/90 tracking-wide">
-                  {currentCurrency?.code}
-                </span>
-                <motion.svg
-                  animate={{ rotate: currencyOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="w-3 h-3 text-white/60 group-hover:text-[#CBB57B]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </motion.svg>
-              </button>
-
-              <AnimatePresence>
-                {currencyOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute top-full left-0 mt-2 w-44 bg-neutral-900 border border-white/10 rounded-lg shadow-2xl overflow-hidden z-[100]"
+              {currenciesLoading || !currency ? (
+                <div className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10">
+                  <div className="w-12 h-4 bg-white/10 rounded animate-pulse" />
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setCurrencyOpen(!currencyOpen);
+                      setLanguageOpen(false);
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/10 transition-all duration-300 group border border-white/10 hover:border-[#CBB57B]/50"
                   >
-                    <div className="py-1">
-                      {currencies.map((curr) => (
-                        <button
-                          key={curr.code}
-                          onClick={() => {
-                            setCurrency(curr.code);
-                            setCurrencyOpen(false);
-                          }}
-                          className={`w-full px-4 py-2.5 flex items-center gap-3 transition-all duration-200 ${
-                            currency === curr.code
-                              ? 'bg-[#CBB57B]/20 text-[#CBB57B]'
-                              : 'text-white/80 hover:bg-white/5 hover:text-white'
-                          }`}
-                        >
-                          <span className="text-sm font-medium">{curr.symbol}</span>
-                          <span className="text-sm">{curr.code}</span>
-                          <span className="text-xs text-white/40 ml-auto">{curr.name}</span>
-                          {currency === curr.code && (
-                            <motion.svg
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="w-4 h-4 text-[#CBB57B]"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                    <span className="text-xs font-medium text-white/90 tracking-wide">
+                      {currency.currencyCode}
+                    </span>
+                    <motion.svg
+                      animate={{ rotate: currencyOpen ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="w-3 h-3 text-white/60 group-hover:text-[#CBB57B]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </motion.svg>
+                  </button>
+
+                  <AnimatePresence>
+                    {currencyOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute top-full left-0 mt-2 w-52 bg-neutral-900 border border-white/10 rounded-lg shadow-2xl overflow-hidden z-[100]"
+                      >
+                        <div className="py-1 max-h-80 overflow-y-auto">
+                          {currencies.map((curr) => (
+                            <button
+                              key={curr.currencyCode}
+                              onClick={() => {
+                                setSelectedCurrency(curr.currencyCode);
+                                setCurrencyOpen(false);
+                              }}
+                              className={`w-full px-4 py-2.5 flex items-center gap-3 transition-all duration-200 ${
+                                selectedCurrency === curr.currencyCode
+                                  ? 'bg-[#CBB57B]/20 text-[#CBB57B]'
+                                  : 'text-white/80 hover:bg-white/5 hover:text-white'
+                              }`}
                             >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </motion.svg>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                              <span className="text-sm font-medium">{curr.symbol}</span>
+                              <div className="flex flex-col items-start flex-1">
+                                <span className="text-sm font-medium">{curr.currencyCode}</span>
+                                <span className="text-xs text-white/40">{curr.currencyName}</span>
+                              </div>
+                              {selectedCurrency === curr.currencyCode && (
+                                <motion.svg
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="w-4 h-4 text-[#CBB57B]"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </motion.svg>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              )}
             </div>
           </div>
 
@@ -242,40 +254,10 @@ export function TopBar() {
             </div>
           </div>
 
-          {/* Right - Icon Cluster */}
+          {/* Right - Account Link */}
           <div className="flex items-center justify-end gap-4">
-            {/* Wishlist */}
-            <Link href="/account/wishlist" className="group relative">
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                className="relative"
-              >
-                <svg
-                  className="w-5 h-5 text-white/80 group-hover:text-[#CBB57B] transition-colors duration-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                  />
-                </svg>
-                <span className="absolute inset-0 bg-[#CBB57B] blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-300 rounded-full pointer-events-none" />
-              </motion.div>
-              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[60] pointer-events-none">
-                Wishlist
-              </span>
-            </Link>
-
-            {/* Divider */}
-            <div className="h-5 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent hidden sm:block" />
-
             {/* Account */}
-            <Link href="/account" className="group relative hidden sm:block">
+            <Link href="/account" className="group relative">
               <motion.div
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
@@ -298,45 +280,6 @@ export function TopBar() {
               </motion.div>
               <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[60] pointer-events-none">
                 Account
-              </span>
-            </Link>
-
-            {/* Divider */}
-            <div className="h-5 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent hidden sm:block" />
-
-            {/* Cart */}
-            <Link href="/cart" className="group relative">
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                className="relative"
-              >
-                <svg
-                  className="w-5 h-5 text-white/80 group-hover:text-[#CBB57B] transition-colors duration-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                  />
-                </svg>
-                {/* Cart badge */}
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  whileHover={{ scale: 1.2 }}
-                  className="absolute -top-2 -right-2 w-5 h-5 bg-[#CBB57B] text-black text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-[#CBB57B]/50"
-                >
-                  3
-                </motion.div>
-                <span className="absolute inset-0 bg-[#CBB57B] blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-300 rounded-full pointer-events-none" />
-              </motion.div>
-              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[60] pointer-events-none">
-                Cart
               </span>
             </Link>
           </div>

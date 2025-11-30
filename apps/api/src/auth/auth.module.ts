@@ -11,12 +11,14 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
 import { DatabaseModule } from '../database/database.module';
+import { CartModule } from '../cart/cart.module';
 
 @Module({
   imports: [
     UsersModule,
     EmailModule,
     DatabaseModule,
+    CartModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

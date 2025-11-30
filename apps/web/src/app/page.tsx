@@ -1,19 +1,38 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { PageLayout } from '@/components/layout/page-layout';
 import { ProductCarousel } from '@/components/product-carousel';
-import { QuickViewModal, type QuickViewProduct } from '@luxury/ui';
+import { type QuickViewProduct } from '@luxury/ui';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useFeaturedProducts, useNewArrivals, useTrendingProducts, useOnSaleProducts } from '@/hooks/use-products';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
+import { useCart } from '@/hooks/use-cart';
+import { useAddToWishlist } from '@/hooks/use-wishlist';
+import { useCurrencyProducts } from '@/hooks/use-currency-products';
+import { useSelectedCurrency } from '@/hooks/use-currency';
+import { toast } from '@/lib/toast';
+
+// Lazy load heavy components
+const QuickViewModal = lazy(() => import('@luxury/ui').then(m => ({ default: m.QuickViewModal })));
+const InlineAd = lazy(() => import('@/components/ads').then(m => ({ default: m.InlineAd })));
 
 export default function Home() {
   const router = useRouter();
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
+  const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const [addingToWishlist, setAddingToWishlist] = useState<string | null>(null);
+
+  // Cart and Wishlist hooks
+  const { addItem: addToCartApi } = useCart();
+  const { addToWishlist: addToWishlistApi } = useAddToWishlist();
+
+  // Get currency symbol
+  const { currency } = useSelectedCurrency();
+  const currencySymbol = currency?.symbol || '$';
 
   // Fetch data from API
   const { products: featuredData, isLoading: featuredLoading } = useFeaturedProducts(8);
@@ -22,28 +41,60 @@ export default function Home() {
   const { products: onSaleData, isLoading: onSaleLoading } = useOnSaleProducts(8);
 
   // Transform products to UI format
-  const featuredProducts = useMemo(() => transformToQuickViewProducts(featuredData), [featuredData]);
-  const newArrivals = useMemo(() => transformToQuickViewProducts(newArrivalsData), [newArrivalsData]);
-  const trendingProducts = useMemo(() => transformToQuickViewProducts(trendingData), [trendingData]);
-  const onSaleProducts = useMemo(() => transformToQuickViewProducts(onSaleData), [onSaleData]);
+  const featuredTransformed = useMemo(() => transformToQuickViewProducts(featuredData), [featuredData]);
+  const newArrivalsTransformed = useMemo(() => transformToQuickViewProducts(newArrivalsData), [newArrivalsData]);
+  const trendingTransformed = useMemo(() => transformToQuickViewProducts(trendingData), [trendingData]);
+  const onSaleTransformed = useMemo(() => transformToQuickViewProducts(onSaleData), [onSaleData]);
 
-  const handleQuickView = (productId: string) => {
+  // Convert prices to selected currency
+  const featuredProducts = useCurrencyProducts(featuredTransformed);
+  const newArrivals = useCurrencyProducts(newArrivalsTransformed);
+  const trendingProducts = useCurrencyProducts(trendingTransformed);
+  const onSaleProducts = useCurrencyProducts(onSaleTransformed);
+
+  const handleQuickView = useCallback((productId: string) => {
     const allProducts = [...featuredProducts, ...newArrivals, ...trendingProducts, ...onSaleProducts];
     const product = allProducts.find((p) => p.id === productId);
     if (product) setQuickViewProduct(product);
-  };
+  }, [featuredProducts, newArrivals, trendingProducts, onSaleProducts]);
 
-  const handleNavigate = (slug: string) => {
+  const handleNavigate = useCallback((slug: string) => {
     router.push(`/products/${slug}`);
-  };
+  }, [router]);
 
-  const handleAddToCart = (productId: string) => {
-    console.log('Add to cart:', productId);
-  };
+  const handleAddToCart = useCallback(async (productId: string) => {
+    if (addingToCart) return;
+    setAddingToCart(productId);
+    try {
+      await addToCartApi(productId, 1);
+      toast.success('Added to Cart', 'Item has been added to your cart');
+    } catch (error: any) {
+      console.error('Failed to add to cart:', error);
+      toast.error('Error', error.message || 'Failed to add item to cart');
+    } finally {
+      setAddingToCart(null);
+    }
+  }, [addingToCart, addToCartApi]);
 
-  const handleAddToWishlist = (productId: string) => {
-    console.log('Add to wishlist:', productId);
-  };
+  const handleAddToWishlist = useCallback(async (productId: string) => {
+    if (addingToWishlist) return;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (!token) {
+      toast.error('Login Required', 'Please login to add items to wishlist');
+      router.push('/auth/login');
+      return;
+    }
+    setAddingToWishlist(productId);
+    try {
+      await addToWishlistApi(productId);
+      toast.success('Added to Wishlist', 'Item has been added to your wishlist');
+    } catch (error: any) {
+      console.error('Failed to add to wishlist:', error);
+      toast.error('Error', error.message || 'Failed to add item to wishlist');
+    } finally {
+      setAddingToWishlist(null);
+    }
+  }, [addingToWishlist, addToWishlistApi, router]);
 
   return (
     <PageLayout>
@@ -120,7 +171,15 @@ export default function Home() {
           onQuickAdd={handleAddToCart}
           onNavigate={handleNavigate}
           isLoading={featuredLoading}
+          currencySymbol={currencySymbol}
         />
+      </section>
+
+      {/* Sponsored Content - After Featured */}
+      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 py-8">
+        <Suspense fallback={<div className="h-32 bg-gray-100 animate-pulse rounded-lg" />}>
+          <InlineAd placement="HOMEPAGE_FEATURED" />
+        </Suspense>
       </section>
 
       {/* New Arrivals */}
@@ -135,8 +194,16 @@ export default function Home() {
             onQuickAdd={handleAddToCart}
             onNavigate={handleNavigate}
             isLoading={newArrivalsLoading}
+            currencySymbol={currencySymbol}
           />
         </div>
+      </section>
+
+      {/* Sponsored Content - After New Arrivals */}
+      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 py-8">
+        <Suspense fallback={<div className="h-32 bg-gray-100 animate-pulse rounded-lg" />}>
+          <InlineAd placement="PRODUCTS_INLINE" />
+        </Suspense>
       </section>
 
       {/* Trending Products */}
@@ -150,7 +217,15 @@ export default function Home() {
           onQuickAdd={handleAddToCart}
           onNavigate={handleNavigate}
           isLoading={trendingLoading}
+          currencySymbol={currencySymbol}
         />
+      </section>
+
+      {/* Sponsored Content - After Trending */}
+      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 py-8">
+        <Suspense fallback={<div className="h-32 bg-gray-100 animate-pulse rounded-lg" />}>
+          <InlineAd placement="PRODUCTS_BANNER" />
+        </Suspense>
       </section>
 
       {/* On Sale Products */}
@@ -165,6 +240,7 @@ export default function Home() {
             onQuickAdd={handleAddToCart}
             onNavigate={handleNavigate}
             isLoading={onSaleLoading}
+            currencySymbol={currencySymbol}
           />
         </div>
       </section>
@@ -200,13 +276,16 @@ export default function Home() {
       </section>
 
       {/* Quick View Modal */}
-      <QuickViewModal
-        isOpen={!!quickViewProduct}
-        onClose={() => setQuickViewProduct(null)}
-        product={quickViewProduct}
-        onAddToCart={handleAddToCart}
-        onViewDetails={handleNavigate}
-      />
+      <Suspense fallback={null}>
+        <QuickViewModal
+          isOpen={!!quickViewProduct}
+          onClose={() => setQuickViewProduct(null)}
+          product={quickViewProduct}
+          onAddToCart={handleAddToCart}
+          onViewDetails={handleNavigate}
+          currencySymbol={currencySymbol}
+        />
+      </Suspense>
     </PageLayout>
   );
 }

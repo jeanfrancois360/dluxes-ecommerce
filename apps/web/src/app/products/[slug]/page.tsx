@@ -11,10 +11,13 @@ import { ReviewForm } from '@/components/reviews/review-form';
 import { WishlistButton } from '@/components/wishlist/wishlist-button';
 import { useReviews, useCreateReview, useMarkHelpful, useReportReview } from '@/hooks/use-reviews';
 import { useIsInWishlist, useToggleWishlist } from '@/hooks/use-wishlist';
+import { useCart } from '@/hooks/use-cart';
+import { toast } from '@/lib/toast';
 import Link from 'next/link';
 import { useParams, useRouter, notFound } from 'next/navigation';
 import { useProduct, useRelatedProducts } from '@/hooks/use-product';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
+import { Price } from '@/components/price';
 
 // Reviews Section Component
 function ReviewsSection({ productId }: { productId: string }) {
@@ -92,6 +95,9 @@ export default function ProductDetailPage() {
   const { isInWishlist } = useIsInWishlist(product?.id || '');
   const { toggleWishlist } = useToggleWishlist();
 
+  // Cart
+  const { addItem: addToCart } = useCart();
+
   // Transform related products
   const relatedProducts = useMemo(() => transformToQuickViewProducts(relatedData), [relatedData]);
 
@@ -160,14 +166,27 @@ export default function ProductDetailPage() {
     ));
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
-    console.log('Add to cart:', {
-      productId: product.id,
-      variant: selectedVariant,
-      quantity,
-    });
-    // TODO: Implement cart context
+
+    try {
+      // Find the selected variant ID if variants exist
+      let variantId: string | undefined;
+      if (product.variants?.length) {
+        const selectedVar = product.variants.find(
+          v =>
+            (!selectedVariant.color || v.attributes.color?.toLowerCase() === selectedVariant.color) &&
+            (!selectedVariant.size || v.attributes.size?.toLowerCase() === selectedVariant.size)
+        );
+        variantId = selectedVar?.id;
+      }
+
+      await addToCart(product.id, quantity, variantId);
+      toast.success('Added to Cart', `${product.name} has been added to your cart`);
+    } catch (error: any) {
+      console.error('Failed to add to cart:', error);
+      toast.error('Error', error.message || 'Failed to add item to cart');
+    }
   };
 
   const handleToggleWishlist = async (productId: string, isAdding: boolean) => {
@@ -333,10 +352,10 @@ export default function ProductDetailPage() {
 
                 {/* Price */}
                 <div className="flex items-baseline gap-3 mb-6">
-                  <span className="text-4xl font-bold text-black">${product.price.toFixed(2)}</span>
+                  <Price amount={product.price || 0} className="text-4xl font-bold text-black" />
                   {product.compareAtPrice && (
                     <>
-                      <span className="text-2xl text-neutral-400 line-through">${product.compareAtPrice.toFixed(2)}</span>
+                      <Price amount={product.compareAtPrice || 0} className="text-2xl text-neutral-400 line-through" />
                       <span className="px-3 py-1 bg-red-100 text-red-600 text-sm font-semibold rounded-full">
                         Save {discountPercent}%
                       </span>

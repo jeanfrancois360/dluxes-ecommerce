@@ -232,13 +232,13 @@ function DashboardContent() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={ordersByStatus}
+                  data={ordersByStatus as any}
                   dataKey="count"
                   nameKey="status"
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
-                  label={(entry) => entry.status}
+                  label={(entry: any) => entry.status}
                 >
                   {ordersByStatus.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

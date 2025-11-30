@@ -329,7 +329,7 @@ export default function BuyerDashboard() {
                 </Link>
 
                 <Link
-                  href="/account/wishlist"
+                  href="/wishlist"
                   className="flex items-center justify-between p-4 rounded-xl hover:bg-neutral-50 transition-colors group"
                 >
                   <div className="flex items-center gap-3">

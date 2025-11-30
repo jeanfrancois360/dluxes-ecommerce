@@ -174,7 +174,7 @@ export function Navbar({ className }: NavbarProps) {
                 </button>
 
                 {/* Wishlist Icon */}
-                <Link href="/account/wishlist">
+                <Link href="/wishlist">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}

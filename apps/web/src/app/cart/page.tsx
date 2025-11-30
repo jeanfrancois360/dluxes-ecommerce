@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useCart } from '@/hooks/use-cart';
 import { toast } from '@/lib/toast';
 import { useRouter } from 'next/navigation';
+import { Price } from '@/components/price';
 
 export default function CartPage() {
   const router = useRouter();
@@ -112,7 +113,7 @@ export default function CartPage() {
                         <div className="flex-1">
                           <div className="flex justify-between items-start mb-2">
                             <div>
-                              <Link href={`/products/${item.productId}`} className="text-lg font-semibold text-black hover:text-gold transition-colors">
+                              <Link href={`/products/${item.slug || item.productId}`} className="text-lg font-semibold text-black hover:text-gold transition-colors">
                                 {item.name}
                               </Link>
                               {item.brand && <p className="text-sm text-neutral-600">{item.brand}</p>}
@@ -154,9 +155,11 @@ export default function CartPage() {
 
                             {/* Price */}
                             <div className="text-right">
-                              <p className="text-2xl font-bold text-black">${(item.price * item.quantity).toFixed(2)}</p>
+                              <Price amount={Number(item.price) * item.quantity} className="text-2xl font-bold text-black block" />
                               {item.quantity > 1 && (
-                                <p className="text-sm text-neutral-500">${item.price.toFixed(2)} each</p>
+                                <p className="text-sm text-neutral-500">
+                                  <Price amount={Number(item.price)} className="inline" /> each
+                                </p>
                               )}
                             </div>
                           </div>
@@ -189,24 +192,24 @@ export default function CartPage() {
                   <div className="space-y-4 py-4 border-y border-neutral-200">
                     <div className="flex justify-between text-neutral-600">
                       <span>Subtotal ({totals.itemCount} items)</span>
-                      <span className="font-semibold text-black">${totals.subtotal.toFixed(2)}</span>
+                      <Price amount={totals.subtotal} className="font-semibold text-black" />
                     </div>
                     <div className="flex justify-between text-neutral-600">
                       <span>Shipping</span>
                       <span className="font-semibold text-black">
-                        {totals.shipping === 0 ? 'FREE' : `$${totals.shipping.toFixed(2)}`}
+                        {totals.shipping === 0 ? 'FREE' : <Price amount={totals.shipping} className="inline" />}
                       </span>
                     </div>
                     <div className="flex justify-between text-neutral-600">
                       <span>Tax (10%)</span>
-                      <span className="font-semibold text-black">${totals.tax.toFixed(2)}</span>
+                      <Price amount={totals.tax} className="font-semibold text-black" />
                     </div>
                   </div>
 
                   {/* Total */}
                   <div className="flex justify-between items-center py-4">
                     <span className="text-lg font-semibold text-black">Total</span>
-                    <span className="text-3xl font-bold text-black">${totals.total.toFixed(2)}</span>
+                    <Price amount={totals.total} className="text-3xl font-bold text-black" />
                   </div>
 
                   {/* Free Shipping Message */}
@@ -216,7 +219,7 @@ export default function CartPage() {
                       animate={{ opacity: 1 }}
                       className="mb-4 p-3 bg-accent-50 border border-accent-200 rounded-lg text-sm text-neutral-700"
                     >
-                      Add <span className="font-semibold text-gold">${(200 - totals.subtotal).toFixed(2)}</span> more to get free shipping!
+                      Add <Price amount={200 - totals.subtotal} className="font-semibold text-gold inline" /> more to get free shipping!
                     </motion.div>
                   )}
 

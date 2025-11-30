@@ -17,6 +17,10 @@ function CategoriesContent() {
     description: '',
     parentId: undefined,
     featured: false,
+    showInNavbar: true,
+    showInFooter: false,
+    showOnHomepage: false,
+    isFeatured: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,7 +36,7 @@ function CategoriesContent() {
       }
       setIsCreating(false);
       setEditingId(null);
-      setFormData({ name: '', slug: '', description: '', parentId: undefined, featured: false });
+      setFormData({ name: '', slug: '', description: '', parentId: undefined, featured: false, showInNavbar: true, showInFooter: false, showOnHomepage: false, isFeatured: false });
       refetch();
     } catch (error) {
       toast.error('Failed to save category');
@@ -47,6 +51,10 @@ function CategoriesContent() {
       description: category.description,
       parentId: category.parentId,
       featured: category.featured,
+      showInNavbar: category.showInNavbar ?? true,
+      showInFooter: category.showInFooter ?? false,
+      showOnHomepage: category.showOnHomepage ?? false,
+      isFeatured: category.isFeatured ?? false,
     });
     setIsCreating(true);
   };
@@ -71,20 +79,33 @@ function CategoriesContent() {
   const handleCancel = () => {
     setIsCreating(false);
     setEditingId(null);
-    setFormData({ name: '', slug: '', description: '', parentId: undefined, featured: false });
+    setFormData({ name: '', slug: '', description: '', parentId: undefined, featured: false, showInNavbar: true, showInFooter: false, showOnHomepage: false, isFeatured: false });
+  };
+
+  const handleVisibilityToggle = async (id: string, field: string, value: boolean) => {
+    try {
+      await adminCategoriesApi.updateVisibility(id, { [field]: value });
+      toast.success('Visibility updated');
+      refetch();
+    } catch (error) {
+      toast.error('Failed to update visibility');
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
-          <p className="text-gray-600 mt-1">Organize your products into categories</p>
+          <h1 className="text-2xl font-bold text-black">Categories</h1>
+          <p className="text-neutral-600 mt-1">Organize your products into categories</p>
         </div>
         <button
           onClick={() => setIsCreating(true)}
-          className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors shadow-lg"
         >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
           Add Category
         </button>
       </div>
@@ -149,15 +170,42 @@ function CategoriesContent() {
                     ))}
                 </select>
               </div>
-              <div className="flex items-center">
+              <div className="space-y-2">
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={formData.featured}
-                    onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                    checked={formData.showInNavbar}
+                    onChange={(e) => setFormData({ ...formData, showInNavbar: e.target.checked })}
                     className="rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]"
                   />
-                  <span className="text-sm font-medium text-gray-700">Featured Category</span>
+                  <span className="text-sm font-medium text-gray-700">Show in Navbar</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.showInFooter}
+                    onChange={(e) => setFormData({ ...formData, showInFooter: e.target.checked })}
+                    className="rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Show in Footer</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.showOnHomepage}
+                    onChange={(e) => setFormData({ ...formData, showOnHomepage: e.target.checked })}
+                    className="rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Show on Homepage</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.isFeatured}
+                    onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
+                    className="rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Featured</span>
                 </label>
               </div>
             </div>
@@ -181,68 +229,124 @@ function CategoriesContent() {
       )}
 
       {/* Categories List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#CBB57B] mx-auto" />
-          </div>
-        ) : categories.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="text-gray-500">No categories found</p>
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slug</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Parent</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Products</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Featured</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {categories.map((category) => (
-                <tr key={category.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{category.name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.slug}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {category.parentId
-                      ? categories.find((c) => c.id === category.parentId)?.name || '-'
-                      : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{category.productCount}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {category.featured && (
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-[#CBB57B] text-black">
-                        Featured
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => handleEdit(category)}
-                        className="text-[#CBB57B] hover:text-[#a89158] font-medium"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(category.id)}
-                        className="text-red-600 hover:text-red-800 font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+      <div className="relative bg-white rounded-2xl shadow-lg border border-neutral-200 overflow-hidden">
+        {/* Subtle top accent */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#CBB57B] to-transparent"></div>
+
+        <div className="overflow-x-auto relative">
+          {loading ? (
+            <div className="p-16 text-center">
+              <div className="relative w-16 h-16 mx-auto">
+                <div className="absolute inset-0 rounded-full border-4 border-neutral-200"></div>
+                <div className="absolute inset-0 rounded-full border-4 border-[#CBB57B] border-t-transparent animate-spin"></div>
+              </div>
+              <p className="mt-4 text-neutral-700 font-semibold">Loading categories...</p>
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="p-16 text-center">
+              <svg className="w-16 h-16 mx-auto text-neutral-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              <p className="text-neutral-600 font-medium">No categories found</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b-2 border-neutral-200 bg-neutral-50">
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-black">Name <div className="w-1.5 h-1.5 rounded-full bg-[#CBB57B]"></div></div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-black">Slug <div className="w-1.5 h-1.5 rounded-full bg-[#CBB57B]"></div></div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-black">Parent <div className="w-1.5 h-1.5 rounded-full bg-[#CBB57B]"></div></div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-black">Products <div className="w-1.5 h-1.5 rounded-full bg-[#CBB57B]"></div></div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-black">Visibility <div className="w-1.5 h-1.5 rounded-full bg-[#CBB57B]"></div></div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-black">Actions <div className="w-1.5 h-1.5 rounded-full bg-[#CBB57B]"></div></div>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody className="divide-y divide-neutral-200">
+                {categories.map((category) => (
+                  <tr key={category.id} className="group transition-all duration-200 hover:bg-neutral-50">
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">{category.name}</div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-neutral-700">
+                      <span className="font-mono text-xs bg-neutral-100 px-2 py-1 rounded font-semibold text-neutral-800">{category.slug}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-neutral-700">
+                      {category.parentId
+                        ? categories.find((c) => c.id === category.parentId)?.name || '-'
+                        : '-'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-neutral-800 font-bold">{category.productCount}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-1">
+                        <button
+                          onClick={() => handleVisibilityToggle(category.id, 'showInNavbar', !category.showInNavbar)}
+                          className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${category.showInNavbar ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-neutral-100 text-neutral-600 border border-neutral-300'}`}
+                        >
+                          Nav
+                        </button>
+                        <button
+                          onClick={() => handleVisibilityToggle(category.id, 'showInFooter', !category.showInFooter)}
+                          className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${category.showInFooter ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-neutral-100 text-neutral-600 border border-neutral-300'}`}
+                        >
+                          Footer
+                        </button>
+                        <button
+                          onClick={() => handleVisibilityToggle(category.id, 'showOnHomepage', !category.showOnHomepage)}
+                          className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${category.showOnHomepage ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-neutral-100 text-neutral-600 border border-neutral-300'}`}
+                        >
+                          Home
+                        </button>
+                        <button
+                          onClick={() => handleVisibilityToggle(category.id, 'isFeatured', !category.isFeatured)}
+                          className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${category.isFeatured ? 'bg-[#CBB57B]/20 text-[#9a8854] border border-[#CBB57B]' : 'bg-neutral-100 text-neutral-600 border border-neutral-300'}`}
+                        >
+                          Featured
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEdit(category)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#CBB57B]/20 hover:bg-[#CBB57B]/30 border border-[#CBB57B]/30 text-[#CBB57B] rounded-lg text-xs font-semibold transition-all hover:scale-105"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(category.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-lg text-xs font-semibold transition-all hover:scale-105"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Bottom accent border */}
+        <div className="h-1 bg-gradient-to-r from-transparent via-[#CBB57B]/50 to-transparent"></div>
       </div>
     </div>
   );

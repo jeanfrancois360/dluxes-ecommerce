@@ -18,7 +18,9 @@ interface CheckoutState {
   step: CheckoutStep;
   completedSteps: CheckoutStep[];
   shippingAddress: Address | null;
+  shippingAddressId: string | null;
   shippingMethod: ShippingMethod | null;
+  orderId: string | null;
   paymentIntentId: string | null;
   clientSecret: string | null;
 }
@@ -28,13 +30,20 @@ export function useCheckout() {
     step: 'shipping',
     completedSteps: [],
     shippingAddress: null,
+    shippingAddressId: null,
     shippingMethod: null,
+    orderId: null,
     paymentIntentId: null,
     clientSecret: null,
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Get auth token
+  const getAuthToken = useCallback(() => {
+    return typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  }, []);
 
   // Navigate to a specific step
   const goToStep = useCallback((step: CheckoutStep) => {
@@ -60,31 +69,60 @@ export function useCheckout() {
     });
   }, []);
 
-  // Save shipping address
+  // Save shipping address to backend
   const saveShippingAddress = useCallback(
     async (address: Address) => {
       setIsLoading(true);
       setError(null);
 
       try {
-        // Save to backend (optional)
-        // await axios.post(`${API_URL}/checkout/shipping-address`, address);
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('Please login to continue checkout');
+        }
+
+        // Save address to backend
+        const response = await axios.post(
+          `${API_URL}/addresses`,
+          {
+            firstName: address.firstName,
+            lastName: address.lastName,
+            address1: address.addressLine1,
+            address2: address.addressLine2 || '',
+            city: address.city,
+            province: address.state,
+            postalCode: address.postalCode,
+            country: address.country,
+            phone: address.phone || '',
+            isDefault: false,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const savedAddress = response.data;
 
         setState((prev) => ({
           ...prev,
-          shippingAddress: address,
+          shippingAddress: { ...address, id: savedAddress.id },
+          shippingAddressId: savedAddress.id,
         }));
 
         completeStep('shipping');
+        return savedAddress;
       } catch (err: any) {
         console.error('Error saving shipping address:', err);
-        setError(err.response?.data?.message || err.message || 'Failed to save shipping address');
-        throw err;
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to save shipping address';
+        setError(errorMessage);
+        throw new Error(errorMessage);
       } finally {
         setIsLoading(false);
       }
     },
-    [completeStep]
+    [completeStep, getAuthToken]
   );
 
   // Save shipping method
@@ -95,71 +133,124 @@ export function useCheckout() {
     }));
   }, []);
 
-  // Create payment intent
-  const createPaymentIntent = useCallback(
-    async (amount: number, currency: string = 'usd') => {
+  // Create order and then payment intent (CORRECT FLOW)
+  const createOrderAndPaymentIntent = useCallback(
+    async (cartItems: any[], totals: any) => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const response = await axios.post(`${API_URL}/payments/create-intent`, {
-          amount: Math.round(amount * 100), // Convert to cents
-          currency,
-        });
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('Please login to complete your order');
+        }
 
-        const { clientSecret, paymentIntentId } = response.data;
+        if (!state.shippingAddressId) {
+          throw new Error('Please provide a shipping address');
+        }
+
+        // Step 1: Validate stock for all items
+        for (const item of cartItems) {
+          const stockResponse = await axios.get(
+            `${API_URL}/inventory/status/${item.productId}`,
+            {
+              params: item.variantId ? { variantId: item.variantId } : undefined,
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const stockData = stockResponse.data;
+          if (stockData.quantity < item.quantity) {
+            throw new Error(`Insufficient stock for ${item.name}. Only ${stockData.quantity} available.`);
+          }
+        }
+
+        // Step 2: Create order from cart items
+        const orderItems = cartItems.map(item => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+          price: item.price,
+        }));
+
+        const orderResponse = await axios.post(
+          `${API_URL}/orders`,
+          {
+            items: orderItems,
+            shippingAddressId: state.shippingAddressId,
+            paymentMethod: 'STRIPE',
+            notes: '',
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const order = orderResponse.data;
+
+        // Step 3: Create payment intent with orderId
+        const paymentResponse = await axios.post(
+          `${API_URL}/payment/create-intent`,
+          {
+            amount: Number(order.total),
+            currency: 'usd',
+            orderId: order.id,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const { clientSecret, paymentIntentId, transactionId } = paymentResponse.data;
 
         setState((prev) => ({
           ...prev,
+          orderId: order.id,
           clientSecret,
           paymentIntentId,
         }));
 
-        return { clientSecret, paymentIntentId };
+        return { order, clientSecret, paymentIntentId, transactionId };
       } catch (err: any) {
-        console.error('Error creating payment intent:', err);
-        const errorMessage =
-          err.response?.data?.message || err.message || 'Failed to create payment intent';
+        console.error('Error creating order and payment intent:', err);
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to initialize checkout';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [state.shippingAddressId, getAuthToken]
   );
 
-  // Process payment and create order
-  const processPayment = useCallback(
-    async (paymentIntentId: string, cartItems: any[], totals: any) => {
+  // Handle successful payment (update order status)
+  const handlePaymentSuccess = useCallback(
+    async (paymentIntentId: string) => {
       setIsLoading(true);
       setError(null);
 
       try {
-        // Create order
-        const orderResponse = await axios.post(`${API_URL}/orders`, {
-          paymentIntentId,
-          shippingAddress: state.shippingAddress,
-          shippingMethod: state.shippingMethod,
-          items: cartItems,
-          totals,
-        });
-
-        const order = orderResponse.data;
+        // Payment was successful, order status will be updated via webhook
+        // Just mark the step as complete and return the order
         completeStep('payment');
 
-        return order;
+        return { orderId: state.orderId };
       } catch (err: any) {
-        console.error('Error processing payment:', err);
-        const errorMessage =
-          err.response?.data?.message || err.message || 'Failed to process payment';
+        console.error('Error handling payment success:', err);
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to complete order';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
         setIsLoading(false);
       }
     },
-    [state.shippingAddress, state.shippingMethod, completeStep]
+    [state.orderId, completeStep]
   );
 
   // Reset checkout state
@@ -168,7 +259,9 @@ export function useCheckout() {
       step: 'shipping',
       completedSteps: [],
       shippingAddress: null,
+      shippingAddressId: null,
       shippingMethod: null,
+      orderId: null,
       paymentIntentId: null,
       clientSecret: null,
     });
@@ -180,7 +273,9 @@ export function useCheckout() {
     step: state.step,
     completedSteps: state.completedSteps,
     shippingAddress: state.shippingAddress,
+    shippingAddressId: state.shippingAddressId,
     shippingMethod: state.shippingMethod,
+    orderId: state.orderId,
     paymentIntentId: state.paymentIntentId,
     clientSecret: state.clientSecret,
     isLoading,
@@ -191,8 +286,8 @@ export function useCheckout() {
     completeStep,
     saveShippingAddress,
     saveShippingMethod,
-    createPaymentIntent,
-    processPayment,
+    createOrderAndPaymentIntent,
+    handlePaymentSuccess,
     resetCheckout,
   };
 }

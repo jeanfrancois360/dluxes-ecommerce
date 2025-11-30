@@ -1,7 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+
+interface UpdateVisibilityDto {
+  showInNavbar?: boolean;
+  showInTopBar?: boolean;
+  showInSidebar?: boolean;
+  showInFooter?: boolean;
+  showOnHomepage?: boolean;
+  isFeatured?: boolean;
+}
 
 /**
  * Categories Service
@@ -195,6 +204,180 @@ export class CategoriesService {
 
     return this.prisma.category.delete({
       where: { id },
+    });
+  }
+
+  /**
+   * Get categories for navbar
+   */
+  async findNavCategories() {
+    return this.prisma.category.findMany({
+      where: { showInNavbar: true },
+      include: {
+        children: {
+          where: { showInNavbar: true },
+          orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+        },
+      },
+      orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  /**
+   * Get categories for footer
+   */
+  async findFooterCategories() {
+    return this.prisma.category.findMany({
+      where: { showInFooter: true },
+      orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  /**
+   * Get categories for homepage
+   */
+  async findHomepageCategories() {
+    return this.prisma.category.findMany({
+      where: { showOnHomepage: true },
+      include: {
+        products: {
+          where: { status: 'ACTIVE' },
+          take: 8,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            images: { take: 1, orderBy: { displayOrder: 'asc' } },
+          },
+        },
+        _count: { select: { products: true } },
+      },
+      orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  /**
+   * Get featured categories
+   */
+  async findFeatured() {
+    return this.prisma.category.findMany({
+      where: { isFeatured: true },
+      include: {
+        _count: { select: { products: true } },
+      },
+      orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  /**
+   * Update category visibility settings
+   */
+  async updateVisibility(id: string, dto: UpdateVisibilityDto) {
+    await this.findById(id);
+    return this.prisma.category.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  /**
+   * Reorder categories
+   */
+  async reorder(categoryIds: string[]) {
+    const updates = categoryIds.map((id, index) =>
+      this.prisma.category.update({
+        where: { id },
+        data: { priority: categoryIds.length - index },
+      })
+    );
+
+    await this.prisma.$transaction(updates);
+    return this.findAll();
+  }
+
+  /**
+   * Get categories for top category bar
+   */
+  async findTopBarCategories() {
+    return this.prisma.category.findMany({
+      where: {
+        showInTopBar: true,
+        isActive: true,
+      },
+      include: {
+        children: {
+          where: {
+            showInTopBar: true,
+            isActive: true,
+          },
+          orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }],
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            icon: true,
+            isFeatured: true,
+          },
+        },
+        _count: {
+          select: { products: true },
+        },
+      },
+      orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }],
+    });
+  }
+
+  /**
+   * Get categories for products page sidebar
+   */
+  async findSidebarCategories() {
+    return this.prisma.category.findMany({
+      where: {
+        showInSidebar: true,
+        isActive: true,
+        parentId: null, // Only top-level categories for sidebar
+      },
+      include: {
+        children: {
+          where: {
+            showInSidebar: true,
+            isActive: true,
+          },
+          orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }],
+        },
+        _count: {
+          select: { products: true },
+        },
+      },
+      orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }],
+    });
+  }
+
+  /**
+   * Bulk update categories visibility
+   */
+  async bulkUpdateVisibility(updates: Array<{ id: string; visibility: UpdateVisibilityDto }>) {
+    const transactions = updates.map(({ id, visibility }) =>
+      this.prisma.category.update({
+        where: { id },
+        data: visibility,
+      })
+    );
+
+    await this.prisma.$transaction(transactions);
+    return this.findAll();
+  }
+
+  /**
+   * Update category priority/display order
+   */
+  async updatePriority(id: string, priority: number) {
+    await this.findById(id);
+    return this.prisma.category.update({
+      where: { id },
+      data: { priority },
+      include: {
+        parent: true,
+        children: true,
+      },
     });
   }
 }

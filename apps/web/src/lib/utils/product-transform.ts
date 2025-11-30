@@ -7,6 +7,12 @@ import { QuickViewProduct } from '@luxury/ui';
 export function transformToQuickViewProduct(product: any | null | undefined): QuickViewProduct | null {
   if (!product) return null;
 
+  // Validate required fields
+  if (!product.id || !product.name || !product.slug) {
+    console.warn('Product missing required fields:', product);
+    return null;
+  }
+
   // Handle both API format and frontend format
   const isFeatured = product.isFeatured ?? product.featured ?? false;
   const stock = product.stock ?? product.inventory ?? 0;
@@ -73,13 +79,37 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
   const rating = product.rating ? parseFloat(product.rating) : 0;
   const reviewCount = product.reviewCount ?? 0;
 
+  // Ensure price is always a valid number
+  let price = 0;
+  try {
+    if (product.price !== null && product.price !== undefined) {
+      const parsedPrice = typeof product.price === 'number' ? product.price : parseFloat(product.price);
+      price = isNaN(parsedPrice) ? 0 : parsedPrice;
+    }
+  } catch (e) {
+    console.warn('Failed to parse price for product:', product.id, product.name, e);
+  }
+
+  let compareAtPrice = undefined;
+  try {
+    if (product.compareAtPrice !== null && product.compareAtPrice !== undefined) {
+      const parsedComparePrice = typeof product.compareAtPrice === 'number' ? product.compareAtPrice : parseFloat(product.compareAtPrice);
+      compareAtPrice = isNaN(parsedComparePrice) ? undefined : parsedComparePrice;
+    }
+  } catch (e) {
+    console.warn('Failed to parse compareAtPrice for product:', product.id, product.name, e);
+  }
+
+  // Ensure heroImage has a fallback
+  const heroImage = product.heroImage || images[0] || '/images/placeholder-product.jpg';
+
   return {
     id: product.id,
     name: product.name,
     brand: product.brand ?? product.category?.name,
-    price: product.price ?? 0,
-    compareAtPrice: product.compareAtPrice,
-    image: product.heroImage,
+    price,
+    compareAtPrice,
+    image: heroImage,
     images,
     badges,
     rating,
