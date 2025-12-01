@@ -1,0 +1,9 @@
+-- AlterTable
+ALTER TABLE "product_images" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "format" TEXT,
+ADD COLUMN     "mimeType" TEXT,
+ADD COLUMN     "optimizedUrl" TEXT,
+ADD COLUMN     "originalSize" INTEGER,
+ADD COLUMN     "size" INTEGER,
+ADD COLUMN     "storagePath" TEXT,
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

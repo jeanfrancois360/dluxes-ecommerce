@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -30,6 +31,8 @@ import { DeliveryProviderModule } from './delivery-provider/delivery-provider.mo
 import { DeliveryModule } from './delivery/delivery.module';
 import { DeliveryPartnerModule } from './delivery-partner/delivery-partner.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
+import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
 // import { QueueModule } from './queue/queue.module'; // Commented out - requires Redis setup
 
 @Module({
@@ -74,6 +77,16 @@ import { SupabaseModule } from './supabase/supabase.module';
     DeliveryModule,
     DeliveryPartnerModule,
     // QueueModule, // Commented out - requires Redis setup
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: MaintenanceModeGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: Admin2FAGuard,
+    },
   ],
 })
 export class AppModule {}

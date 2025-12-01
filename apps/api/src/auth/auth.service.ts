@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { CartService } from '../cart/cart.service';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class AuthService {
@@ -11,7 +12,8 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    private cartService: CartService
+    private cartService: CartService,
+    private settingsService: SettingsService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -69,6 +71,9 @@ export class AuthService {
     role?: any;
     sessionId?: string;
   }) {
+    // Validate password meets requirements
+    await this.validatePassword(data.password);
+
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     const user = await this.usersService.create({
@@ -80,5 +85,34 @@ export class AuthService {
     });
 
     return this.login(user, data.sessionId);
+  }
+
+  /**
+   * Get minimum password length from settings
+   */
+  private async getMinPasswordLength(): Promise<number> {
+    try {
+      const setting = await this.settingsService.getSetting('password_min_length');
+      return Number(setting.value) || 8;
+    } catch (error) {
+      this.logger.warn('Password min length setting not found, using 8');
+      return 8;
+    }
+  }
+
+  /**
+   * Validate password meets requirements
+   */
+  async validatePassword(password: string): Promise<void> {
+    const minLength = await this.getMinPasswordLength();
+
+    if (password.length < minLength) {
+      throw new BadRequestException(
+        `Password must be at least ${minLength} characters long`
+      );
+    }
+
+    // Additional validation rules can be added here
+    // For example: require uppercase, lowercase, numbers, special chars
   }
 }

@@ -9,14 +9,15 @@ export interface ProductCardProps {
   id: string;
   name: string;
   brand?: string;
-  price?: number;
-  compareAtPrice?: number;
+  price?: number | null;
+  compareAtPrice?: number | null;
   image: string;
   images?: string[];
   badges?: string[];
   rating?: number;
   reviewCount?: number;
   slug: string;
+  purchaseType?: 'INSTANT' | 'INQUIRY';
   onQuickView?: (id: string) => void;
   onAddToWishlist?: (id: string) => void;
   onQuickAdd?: (id: string) => void;
@@ -39,6 +40,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
   rating,
   reviewCount,
   slug,
+  purchaseType = 'INSTANT',
   onQuickView,
   onAddToWishlist,
   onQuickAdd,
@@ -52,9 +54,12 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
   const [isWishlisted, setIsWishlisted] = React.useState(inWishlist);
   const [isHovered, setIsHovered] = React.useState(false);
 
-  // Ensure price is always a valid number
-  const validPrice = typeof price === 'number' && !isNaN(price) ? price : 0;
-  const validCompareAtPrice = typeof compareAtPrice === 'number' && !isNaN(compareAtPrice) ? compareAtPrice : undefined;
+  // Check if this is an inquiry product or has no price
+  const isInquiryProduct = purchaseType === 'INQUIRY' || price === null || price === undefined;
+
+  // Ensure price is always a valid number for INSTANT products with multiple safeguards
+  const validPrice = typeof price === 'number' && !isNaN(price) && isFinite(price) ? price : 0;
+  const validCompareAtPrice = typeof compareAtPrice === 'number' && !isNaN(compareAtPrice) && isFinite(compareAtPrice) ? compareAtPrice : undefined;
 
   const allImages = [image, ...images].filter(Boolean);
   const discount = validCompareAtPrice && validPrice > 0 && validCompareAtPrice > validPrice ? Math.round(((validCompareAtPrice - validPrice) / validCompareAtPrice) * 100) : 0;
@@ -312,44 +317,80 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
         {/* Price */}
         <div className="flex items-center gap-3 pt-2">
-          <span className="font-serif text-2xl font-bold text-black">
-            {currencySymbol}{validPrice.toFixed(2)}
-          </span>
-          {validCompareAtPrice && (
-            <span className="text-sm text-neutral-400 line-through font-medium">
-              {currencySymbol}{validCompareAtPrice.toFixed(2)}
-            </span>
+          {isInquiryProduct ? (
+            <div className="flex flex-col">
+              <span className="font-serif text-xl font-bold text-gold">
+                Contact for Price
+              </span>
+              <span className="text-xs text-neutral-500 mt-0.5">
+                Inquiry Required
+              </span>
+            </div>
+          ) : (
+            <>
+              <span className="font-serif text-2xl font-bold text-black">
+                {currencySymbol}{validPrice.toFixed(2)}
+              </span>
+              {validCompareAtPrice && (
+                <span className="text-sm text-neutral-400 line-through font-medium">
+                  {currencySymbol}{validCompareAtPrice.toFixed(2)}
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* Quick Add Button */}
+      {/* Quick Add Button / Contact Button */}
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: isHovered ? 0 : '100%' }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         className="absolute bottom-0 left-0 right-0"
       >
-        <button
-          onClick={handleQuickAdd}
-          className={cn(
-            'w-full py-4 bg-gradient-to-r from-black to-neutral-800',
-            'text-white font-bold text-sm',
-            'flex items-center justify-center gap-2.5',
-            'hover:from-gold hover:to-accent-700 hover:text-black',
-            'transition-all duration-300',
-            'shadow-2xl'
-          )}
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-            />
-          </svg>
-          Add to Bag
-        </button>
+        {isInquiryProduct ? (
+          <button
+            onClick={handleCardClick}
+            className={cn(
+              'w-full py-4 bg-gradient-to-r from-gold to-accent-700',
+              'text-black font-bold text-sm',
+              'flex items-center justify-center gap-2.5',
+              'hover:from-black hover:to-neutral-800 hover:text-white',
+              'transition-all duration-300',
+              'shadow-2xl'
+            )}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
+            </svg>
+            Contact Seller
+          </button>
+        ) : (
+          <button
+            onClick={handleQuickAdd}
+            className={cn(
+              'w-full py-4 bg-gradient-to-r from-black to-neutral-800',
+              'text-white font-bold text-sm',
+              'flex items-center justify-center gap-2.5',
+              'hover:from-gold hover:to-accent-700 hover:text-black',
+              'transition-all duration-300',
+              'shadow-2xl'
+            )}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+              />
+            </svg>
+            Add to Bag
+          </button>
+        )}
       </motion.div>
     </motion.article>
   );

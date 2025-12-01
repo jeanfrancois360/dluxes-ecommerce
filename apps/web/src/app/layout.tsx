@@ -5,6 +5,7 @@ import { CartProvider } from '@/contexts/cart-context';
 import { LocaleProvider } from '@/contexts/locale-context';
 import { ToastListener } from '@/components/toast-listener';
 import { RouteLoadingProvider } from '@/components/providers/route-loading-provider';
+import { WhatsAppChat } from '@/components/whatsapp-chat';
 import { Toaster } from 'sonner';
 import { siteConfig } from '@/lib/seo';
 import './globals.css';
@@ -126,6 +127,13 @@ export default function RootLayout({
                 {children}
                 <ToastListener />
                 <Toaster position="top-right" richColors />
+                <WhatsAppChat
+                  phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890'}
+                  businessName={process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'Luxury Marketplace'}
+                  defaultMessage={process.env.NEXT_PUBLIC_WHATSAPP_DEFAULT_MESSAGE || "Hello! I'm interested in your luxury products."}
+                  position="bottom-right"
+                  showOnMobile={true}
+                />
               </CartProvider>
             </AuthProvider>
           </LocaleProvider>

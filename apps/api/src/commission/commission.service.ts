@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import {
   CommissionRuleType,
   CommissionStatus,
@@ -16,7 +17,10 @@ import { Decimal } from '@prisma/client/runtime/library';
 export class CommissionService {
   private readonly logger = new Logger(CommissionService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   /**
    * Calculate and create commission entries for a successful payment transaction
@@ -67,7 +71,13 @@ export class CommissionService {
         itemTotal
       );
 
-      const commissionAmount = this.calculateAmount(itemTotal, rule);
+      const commissionAmount = await this.calculateAmount(itemTotal, rule);
+
+      // Get default commission rate if no rule found
+      let ruleValue = rule?.value;
+      if (!ruleValue) {
+        ruleValue = await this.getDefaultCommissionRate();
+      }
 
       // Create commission entry
       await this.prisma.commission.create({
@@ -79,7 +89,7 @@ export class CommissionService {
           storeId: item.product.storeId!,
           ruleId: rule?.id,
           ruleType: rule?.type || CommissionRuleType.PERCENTAGE,
-          ruleValue: rule?.value || new Decimal(10), // Default 10%
+          ruleValue,
           orderAmount: itemTotal,
           commissionAmount,
           currency: transaction.currency,
@@ -186,10 +196,11 @@ export class CommissionService {
   /**
    * Calculate commission amount based on rule
    */
-  private calculateAmount(orderAmount: Decimal, rule: any | null): Decimal {
+  private async calculateAmount(orderAmount: Decimal, rule: any | null): Promise<Decimal> {
     if (!rule) {
-      // Default 10% commission
-      return orderAmount.mul(0.1);
+      // Get default commission rate from settings
+      const defaultRate = await this.getDefaultCommissionRate();
+      return orderAmount.mul(defaultRate.toNumber() / 100);
     }
 
     if (rule.type === CommissionRuleType.PERCENTAGE) {
@@ -198,6 +209,30 @@ export class CommissionService {
       // Fixed amount
       return new Decimal(rule.value);
     }
+  }
+
+  /**
+   * Get default commission rate from settings
+   * Falls back to env variable or hardcoded value
+   */
+  private async getDefaultCommissionRate(): Promise<Decimal> {
+    try {
+      const setting = await this.settingsService.getSetting('commission.default_rate');
+      const rate = Number(setting.value);
+      if (rate && !isNaN(rate)) {
+        return new Decimal(rate);
+      }
+    } catch (error) {
+      this.logger.warn('Commission default rate setting not found, using fallback');
+    }
+
+    // Fallback to env variable or hardcoded 10%
+    const envRate = process.env.DEFAULT_COMMISSION_RATE;
+    if (envRate) {
+      return new Decimal(parseFloat(envRate));
+    }
+
+    return new Decimal(10);
   }
 
   /**

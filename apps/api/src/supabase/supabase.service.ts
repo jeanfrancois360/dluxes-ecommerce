@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
 
 @Injectable()
 export class SupabaseService {
@@ -210,6 +211,271 @@ export class SupabaseService {
       return data;
     } catch (error) {
       this.logger.error(`Error listing files: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate folder path based on entity type and ID
+   * @param entityType - Type of entity (product, seller, category, etc.)
+   * @param entityId - ID of the entity
+   * @returns Folder path
+   */
+  generateFolderPath(entityType: string, entityId?: string): string {
+    const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    if (entityId) {
+      return `${entityType}/${entityId}/${timestamp}`;
+    }
+    return `${entityType}/${timestamp}`;
+  }
+
+  /**
+   * Optimize and resize image
+   * @param buffer - Image buffer
+   * @param options - Optimization options
+   * @returns Optimized image buffer
+   */
+  async optimizeImage(
+    buffer: Buffer,
+    options: {
+      width?: number;
+      height?: number;
+      quality?: number;
+      format?: 'jpeg' | 'png' | 'webp';
+    } = {}
+  ): Promise<Buffer> {
+    const {
+      width = 1920,
+      height,
+      quality = 80,
+      format = 'webp',
+    } = options;
+
+    try {
+      let pipeline = sharp(buffer)
+        .resize(width, height, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        });
+
+      // Convert to specified format
+      switch (format) {
+        case 'jpeg':
+          pipeline = pipeline.jpeg({ quality, progressive: true });
+          break;
+        case 'png':
+          pipeline = pipeline.png({ quality, compressionLevel: 9 });
+          break;
+        case 'webp':
+        default:
+          pipeline = pipeline.webp({ quality });
+          break;
+      }
+
+      return await pipeline.toBuffer();
+    } catch (error) {
+      this.logger.error(`Image optimization failed: ${error.message}`);
+      throw new Error('Image optimization failed');
+    }
+  }
+
+  /**
+   * Upload file with optimization
+   * @param file - File buffer
+   * @param fileName - File name
+   * @param folder - Folder path
+   * @param contentType - MIME type
+   * @param optimize - Whether to optimize image
+   * @returns Object with URL and metadata
+   */
+  async uploadFileWithOptimization(
+    file: Buffer,
+    fileName: string,
+    folder: string = 'products',
+    contentType: string = 'image/jpeg',
+    optimize: boolean = true
+  ): Promise<{
+    url: string;
+    fileName: string;
+    size: number;
+    originalSize: number;
+    width?: number;
+    height?: number;
+    format: string;
+  }> {
+    if (!this.isConfigured()) {
+      throw new Error('Supabase is not configured');
+    }
+
+    const originalSize = file.length;
+    let processedBuffer = file;
+    let metadata: { width?: number; height?: number; format?: string } = {};
+
+    // Optimize if requested and it's an image
+    if (optimize && contentType.startsWith('image/')) {
+      try {
+        // Get original image metadata
+        const imageMetadata = await sharp(file).metadata();
+        metadata = {
+          width: imageMetadata.width,
+          height: imageMetadata.height,
+          format: imageMetadata.format,
+        };
+
+        // Optimize image
+        processedBuffer = await this.optimizeImage(file, {
+          format: 'webp',
+          quality: 85,
+        });
+
+        // Update filename extension to webp
+        fileName = fileName.replace(/\.(jpg|jpeg|png|gif)$/i, '.webp');
+        contentType = 'image/webp';
+      } catch (error) {
+        this.logger.warn(`Image optimization failed, using original: ${error.message}`);
+        processedBuffer = file;
+      }
+    }
+
+    // Upload to Supabase
+    const url = await this.uploadFile(processedBuffer, fileName, folder, contentType);
+
+    return {
+      url,
+      fileName,
+      size: processedBuffer.length,
+      originalSize,
+      width: metadata.width,
+      height: metadata.height,
+      format: metadata.format || 'unknown',
+    };
+  }
+
+  /**
+   * Create signed upload URL for client-side upload
+   * @param filePath - Path where file will be uploaded
+   * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour)
+   * @returns Signed upload URL and token
+   */
+  async createSignedUploadUrl(
+    filePath: string,
+    expiresIn: number = 3600
+  ): Promise<{ signedUrl: string; token: string; path: string }> {
+    if (!this.isConfigured()) {
+      throw new Error('Supabase is not configured');
+    }
+
+    try {
+      const { data, error } = await this.supabase.storage
+        .from(this.bucketName)
+        .createSignedUploadUrl(filePath);
+
+      if (error) {
+        this.logger.error(`Failed to create signed upload URL: ${error.message}`, error.stack);
+        throw new Error(`Signed upload URL creation failed: ${error.message}`);
+      }
+
+      return {
+        signedUrl: data.signedUrl,
+        token: data.token,
+        path: data.path,
+      };
+    } catch (error) {
+      this.logger.error(`Error creating signed upload URL: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate thumbnail from image
+   * @param buffer - Original image buffer
+   * @param size - Thumbnail size (default: 300x300)
+   * @returns Thumbnail buffer
+   */
+  async generateThumbnail(
+    buffer: Buffer,
+    size: number = 300
+  ): Promise<Buffer> {
+    try {
+      return await sharp(buffer)
+        .resize(size, size, {
+          fit: 'cover',
+          position: 'center',
+        })
+        .webp({ quality: 75 })
+        .toBuffer();
+    } catch (error) {
+      this.logger.error(`Thumbnail generation failed: ${error.message}`);
+      throw new Error('Thumbnail generation failed');
+    }
+  }
+
+  /**
+   * Upload image with multiple sizes (original, optimized, thumbnail)
+   * @param file - Original file buffer
+   * @param baseFileName - Base file name (without extension)
+   * @param folder - Folder path
+   * @returns URLs for all versions
+   */
+  async uploadMultipleSizes(
+    file: Buffer,
+    baseFileName: string,
+    folder: string = 'products'
+  ): Promise<{
+    original: string;
+    optimized: string;
+    thumbnail: string;
+    metadata: any;
+  }> {
+    if (!this.isConfigured()) {
+      throw new Error('Supabase is not configured');
+    }
+
+    try {
+      // Upload original
+      const originalResult = await this.uploadFileWithOptimization(
+        file,
+        `${baseFileName}-original.webp`,
+        folder,
+        'image/webp',
+        true
+      );
+
+      // Generate and upload thumbnail
+      const thumbnailBuffer = await this.generateThumbnail(file, 300);
+      const thumbnailUrl = await this.uploadFile(
+        thumbnailBuffer,
+        `${baseFileName}-thumb.webp`,
+        `${folder}/thumbnails`,
+        'image/webp'
+      );
+
+      // Generate medium size
+      const mediumBuffer = await this.optimizeImage(file, {
+        width: 800,
+        quality: 85,
+        format: 'webp',
+      });
+      const mediumUrl = await this.uploadFile(
+        mediumBuffer,
+        `${baseFileName}-medium.webp`,
+        folder,
+        'image/webp'
+      );
+
+      return {
+        original: originalResult.url,
+        optimized: mediumUrl,
+        thumbnail: thumbnailUrl,
+        metadata: {
+          originalSize: originalResult.originalSize,
+          optimizedSize: originalResult.size,
+          width: originalResult.width,
+          height: originalResult.height,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Multiple sizes upload failed: ${error.message}`, error.stack);
       throw error;
     }
   }

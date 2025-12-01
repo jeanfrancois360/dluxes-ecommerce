@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { EmailService } from '../email/email.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { ProductStatus, Prisma } from '@prisma/client';
+import { ProductInquiryDto } from './dto/product-inquiry.dto';
+import { ProductStatus, Prisma, PurchaseType } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -13,7 +15,10 @@ import * as path from 'path';
  */
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   /**
    * Transform Decimal values to numbers for JSON serialization
@@ -542,17 +547,33 @@ export class ProductsService {
    * Create new product
    */
   async create(createProductDto: CreateProductDto) {
-    const { badges, seoKeywords, colors, sizes, materials, ...productData } =
+    const { badges, seoKeywords, colors, sizes, materials, categoryId, purchaseType, price, inventory, ...productData } =
       createProductDto;
+
+    // Set defaults based on purchaseType
+    const finalPurchaseType = purchaseType || PurchaseType.INSTANT;
+
+    // For INSTANT products, ensure price and inventory have defaults if not provided
+    const finalPrice = price !== undefined ? price : (finalPurchaseType === PurchaseType.INSTANT ? 0 : null);
+    const finalInventory = inventory !== undefined ? inventory : (finalPurchaseType === PurchaseType.INSTANT ? 0 : null);
 
     return this.prisma.product.create({
       data: {
         ...productData,
+        purchaseType: finalPurchaseType,
+        price: finalPrice,
+        inventory: finalInventory,
         badges: badges || [],
         seoKeywords: seoKeywords || [],
         colors: colors || [],
         sizes: sizes || [],
         materials: materials || [],
+        // Connect category using relation if provided
+        ...(categoryId && {
+          category: {
+            connect: { id: categoryId },
+          },
+        }),
       },
       include: {
         category: true,
@@ -627,6 +648,62 @@ export class ProductsService {
     return {
       url: `/uploads/products/${fileName}`,
       fileName,
+    };
+  }
+
+  /**
+   * Submit product inquiry
+   * Sends email notification to admin and returns success status
+   */
+  async submitInquiry(productId: string, inquiryDto: ProductInquiryDto) {
+    // Verify product exists and get product details
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        purchaseType: true,
+        status: true,
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    // Check if product is active
+    if (product.status !== ProductStatus.ACTIVE) {
+      throw new BadRequestException('This product is not available for inquiries');
+    }
+
+    // Optional: You can restrict inquiries to INQUIRY type products only
+    // Uncomment the following if you want to enforce this:
+    // if (product.purchaseType !== PurchaseType.INQUIRY) {
+    //   throw new BadRequestException('This product does not accept inquiries');
+    // }
+
+    // Get admin email from environment or use default
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@luxury-ecommerce.com';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    // Send email notification
+    const emailSent = await this.emailService.sendProductInquiry(adminEmail, {
+      customerName: inquiryDto.name,
+      customerEmail: inquiryDto.email,
+      customerPhone: inquiryDto.phone,
+      productName: product.name,
+      productUrl: `${frontendUrl}/products/${product.slug}`,
+      message: inquiryDto.message,
+    });
+
+    // You could optionally store the inquiry in the database here
+    // For now, we'll just rely on email notifications
+
+    return {
+      success: true,
+      message: 'Your inquiry has been submitted successfully. We will contact you soon.',
+      emailSent,
     };
   }
 }

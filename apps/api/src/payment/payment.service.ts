@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { PrismaService } from '../database/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { PaymentStatus, PaymentTransactionStatus, PaymentMethod, WebhookStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -16,6 +17,7 @@ export class PaymentService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly settingsService: SettingsService,
   ) {
     const stripeSecretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
 
@@ -364,7 +366,7 @@ export class PaymentService {
       try {
         const { CommissionService } = await import('../commission/commission.service');
         const { EnhancedCommissionService } = await import('../commission/enhanced-commission.service');
-        const commissionService = new CommissionService(this.prisma);
+        const commissionService = new CommissionService(this.prisma, this.settingsService);
         await commissionService.calculateCommissionForTransaction(transaction.id);
         this.logger.log(`Commissions calculated for transaction ${transaction.id}`);
       } catch (commissionError) {
@@ -437,7 +439,7 @@ export class PaymentService {
               // Single seller order
               const sellerOrder = Array.from(sellerOrders.values())[0];
               const { EscrowService } = await import('../escrow/escrow.service');
-              const escrowService = new EscrowService(this.prisma);
+              const escrowService = new EscrowService(this.prisma, this.settingsService);
 
               await escrowService.createEscrowTransaction({
                 orderId,
@@ -582,7 +584,7 @@ export class PaymentService {
       // Cancel associated commissions
       try {
         const { CommissionService } = await import('../commission/commission.service');
-        const commissionService = new CommissionService(this.prisma);
+        const commissionService = new CommissionService(this.prisma, this.settingsService);
         await commissionService.cancelCommissionsForOrder(transaction.orderId);
         this.logger.log(`Cancelled commissions for refunded order ${transaction.orderId}`);
       } catch (commissionError) {
@@ -743,7 +745,7 @@ export class PaymentService {
       if (isFullRefund) {
         try {
           const { CommissionService } = await import('../commission/commission.service');
-          const commissionService = new CommissionService(this.prisma);
+          const commissionService = new CommissionService(this.prisma, this.settingsService);
           await commissionService.cancelCommissionsForOrder(orderId);
         } catch (commissionError) {
           this.logger.error(`Error cancelling commissions for order ${orderId}:`, commissionError);

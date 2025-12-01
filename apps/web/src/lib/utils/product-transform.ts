@@ -79,15 +79,22 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
   const rating = product.rating ? parseFloat(product.rating) : 0;
   const reviewCount = product.reviewCount ?? 0;
 
-  // Ensure price is always a valid number
-  let price = 0;
+  // Handle price - for INQUIRY products, price can be null/undefined
+  let price: number | undefined = undefined;
+  const purchaseType = product.purchaseType || 'INSTANT';
+
   try {
     if (product.price !== null && product.price !== undefined) {
       const parsedPrice = typeof product.price === 'number' ? product.price : parseFloat(product.price);
-      price = isNaN(parsedPrice) ? 0 : parsedPrice;
+      price = isNaN(parsedPrice) ? undefined : parsedPrice;
+    } else if (purchaseType === 'INSTANT') {
+      // For INSTANT products, default to 0 if no price
+      price = 0;
     }
+    // For INQUIRY products, leave price as undefined
   } catch (e) {
     console.warn('Failed to parse price for product:', product.id, product.name, e);
+    price = purchaseType === 'INSTANT' ? 0 : undefined;
   }
 
   let compareAtPrice = undefined;
@@ -115,6 +122,7 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
     rating,
     reviewCount,
     slug: product.slug,
+    purchaseType,
     description: product.description ?? product.shortDescription,
     inStock: trackInventory ? stock > 0 : true,
     variants: Object.keys(variants || {}).length > 0 ? variants : undefined,
