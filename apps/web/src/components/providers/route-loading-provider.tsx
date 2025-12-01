@@ -19,8 +19,8 @@ export function RouteLoadingProvider({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout>();
-  const completionTimeoutRef = useRef<NodeJS.Timeout>();
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const completionTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     // Clear any existing timeouts

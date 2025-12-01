@@ -1,5 +1,5 @@
 import { IsString, IsNumber, IsOptional, IsBoolean, IsArray, IsEnum, Min } from 'class-validator';
-import { ProductStatus } from '@prisma/client';
+import { ProductStatus, ProductType, PurchaseType } from '@prisma/client';
 import { Type } from 'class-transformer';
 
 export class CreateProductDto {
@@ -48,6 +48,23 @@ export class CreateProductDto {
   @IsNumber()
   @Type(() => Number)
   weight?: number;
+
+  // Product Type & Purchase Model
+  @IsOptional()
+  @IsEnum(ProductType)
+  productType?: ProductType;
+
+  @IsOptional()
+  @IsEnum(PurchaseType)
+  purchaseType?: PurchaseType;
+
+  @IsOptional()
+  @IsBoolean()
+  isPreOrder?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  contactRequired?: boolean;
 
   @IsOptional()
   @IsString()

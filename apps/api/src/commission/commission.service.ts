@@ -95,6 +95,7 @@ export class CommissionService {
 
   /**
    * Find the most applicable commission rule based on priority
+   * Priority: Seller Override > Seller Rule > Category Rule > Default Rule
    */
   private async findApplicableRule(
     sellerId: string,
@@ -104,6 +105,48 @@ export class CommissionService {
     const now = new Date();
     const orderAmountNumber = orderAmount.toNumber();
 
+    // 1. Check for seller-specific override (HIGHEST PRIORITY)
+    const sellerOverride = await this.prisma.sellerCommissionOverride.findFirst({
+      where: {
+        sellerId,
+        isActive: true,
+        OR: [
+          { categoryId },
+          { categoryId: null }, // Global override for seller
+        ],
+        AND: [
+          { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+          { OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
+          {
+            OR: [
+              { minOrderValue: null },
+              { minOrderValue: { lte: orderAmountNumber } },
+            ],
+          },
+          {
+            OR: [
+              { maxOrderValue: null },
+              { maxOrderValue: { gte: orderAmountNumber } },
+            ],
+          },
+        ],
+      },
+      orderBy: { priority: 'desc' },
+    });
+
+    if (sellerOverride) {
+      this.logger.log(
+        `Using seller override for ${sellerId}: ${sellerOverride.commissionRate}%`
+      );
+      // Convert override to rule format
+      return {
+        id: sellerOverride.id,
+        type: sellerOverride.commissionType,
+        value: sellerOverride.commissionRate,
+      };
+    }
+
+    // 2. Fall back to standard commission rules (category/global rules)
     const rules = await this.prisma.commissionRule.findMany({
       where: {
         isActive: true,

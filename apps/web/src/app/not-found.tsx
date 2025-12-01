@@ -142,6 +142,7 @@ export default function NotFound() {
                 <p className="text-lg text-neutral-600">Check out our most loved items</p>
               </div>
               <ProductCarousel
+                title="Popular Products"
                 products={popularProducts}
                 onNavigate={handleNavigate}
                 onQuickView={(id) => console.log('Quick view:', id)}

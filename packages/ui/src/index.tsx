@@ -9,6 +9,13 @@ export * from './components/card';
 export * from './components/input';
 export * from './components/dialog';
 export * from './components/toast';
+export * from './components/badge';
+export * from './components/label';
+export * from './components/table';
+export * from './components/select';
+export * from './components/switch';
+export * from './components/tabs';
+export * from './components/textarea';
 
 // Auth Components
 export * from './components/floating-input';

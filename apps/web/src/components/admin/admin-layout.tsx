@@ -20,7 +20,7 @@ interface AdminLayoutProps {
 interface NavItem {
   name: string;
   href: string;
-  icon: (props: { className?: string }) => JSX.Element;
+  icon: (props: { className?: string }) => React.ReactElement;
   badge?: number;
 }
 
@@ -97,6 +97,37 @@ const GlobeIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const ShieldCheckIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+  </svg>
+);
+
+const PercentIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+  </svg>
+);
+
+const TruckIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+  </svg>
+);
+
+const CashIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+  </svg>
+);
+
+const DeliveryIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+  </svg>
+);
+
 const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
   { name: 'Products', href: '/admin/products', icon: PackageIcon },
@@ -104,6 +135,13 @@ const navigation: NavItem[] = [
   { name: 'Customers', href: '/admin/customers', icon: UsersIcon },
   { name: 'Categories', href: '/admin/categories', icon: FolderIcon },
   { name: 'Currencies', href: '/admin/currencies', icon: CurrencyIcon },
+  { name: 'Escrow', href: '/admin/escrow', icon: ShieldCheckIcon },
+  { name: 'Commissions', href: '/admin/commissions', icon: PercentIcon },
+  { name: 'Shipping', href: '/admin/shipping', icon: TruckIcon },
+  { name: 'Payouts', href: '/admin/payouts', icon: CashIcon },
+  { name: 'Delivery Providers', href: '/admin/delivery-providers', icon: TruckIcon },
+  { name: 'Deliveries', href: '/admin/deliveries', icon: DeliveryIcon },
+  { name: 'Delivery Payouts', href: '/admin/delivery-payouts', icon: CashIcon },
   { name: 'Advertisements', href: '/admin/advertisements', icon: MegaphoneIcon },
   { name: 'Reviews', href: '/admin/reviews', icon: StarIcon },
   { name: 'Analytics', href: '/admin/analytics', icon: ChartIcon },
@@ -145,12 +183,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-[#1a1a1a] text-white transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 h-full w-64 bg-[#1a1a1a] text-white transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-lg">L</span>
@@ -167,7 +205,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </button>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation - Scrollable */}
         <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
           {navigation.map((item) => {
             const active = isActive(item.href);
@@ -193,16 +231,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           })}
         </nav>
 
-        {/* User Profile */}
-        <div className="border-t border-gray-800 p-4">
+        {/* User Profile - Fixed at bottom */}
+        <div className="border-t border-gray-800 p-4 flex-shrink-0">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-full flex items-center justify-center">
               <span className="text-white font-semibold text-sm">
-                {user?.name?.charAt(0).toUpperCase() || 'A'}
+                {(user as any)?.name?.charAt(0).toUpperCase() || user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'A'}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user?.name || 'Admin User'}</p>
+              <p className="text-sm font-medium text-white truncate">{(user as any)?.name || user?.firstName || user?.email || 'Admin User'}</p>
               <p className="text-xs text-gray-400 truncate">{user?.email || 'admin@luxury.com'}</p>
             </div>
           </div>

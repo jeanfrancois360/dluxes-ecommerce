@@ -114,6 +114,7 @@ export default function WishlistPage() {
         price: item.product.price,
         compareAtPrice: item.product.compareAtPrice,
         description: '',
+        image: item.product.heroImage,
         images: [item.product.heroImage],
         inStock: item.product.isAvailable,
         rating: item.product.rating,
@@ -252,7 +253,7 @@ export default function WishlistPage() {
                 {(items || []).map((item, index) => (
                   <WishlistItemComponent
                     key={item.id}
-                    item={item}
+                    item={item as any}
                     onRemove={handleRemove}
                     onAddToCart={handleAddToCart}
                     onQuickView={handleQuickView}

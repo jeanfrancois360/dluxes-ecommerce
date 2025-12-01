@@ -1592,6 +1592,379 @@ async function main() {
 
   console.log(`✅ Created ${products.length} sample products`);
 
+  // ============================================================================
+  // SYSTEM SETTINGS - Escrow & Payout Configuration
+  // ============================================================================
+  console.log('⚙️  Seeding system settings...');
+
+  const settings = await Promise.all([
+    // Escrow Settings
+    prisma.systemSetting.upsert({
+      where: { key: 'escrow.enabled' },
+      update: {},
+      create: {
+        key: 'escrow.enabled',
+        category: 'PAYMENT',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable Escrow (Default Payment Model)',
+        description: 'When enabled, all payments go through escrow and funds are held until delivery confirmation. This is the core payment mechanism and should remain enabled for marketplace security.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'escrow.immediate_payout_enabled' },
+      update: {},
+      create: {
+        key: 'escrow.immediate_payout_enabled',
+        category: 'PAYMENT',
+        value: false,
+        valueType: 'BOOLEAN',
+        label: 'Enable Immediate Payouts (Testing/Trusted Sellers)',
+        description: 'When enabled, allows immediate payouts bypassing escrow for trusted sellers. Should be DISABLED in production. Only enable for testing or specific trusted seller accounts.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: false,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'escrow.hold_period_days' },
+      update: {},
+      create: {
+        key: 'escrow.hold_period_days',
+        category: 'PAYMENT',
+        value: 7,
+        valueType: 'NUMBER',
+        label: 'Escrow Hold Period (Days)',
+        description: 'Number of days to hold funds in escrow after delivery confirmation before auto-releasing to seller. Recommended: 3-7 days for buyer protection.',
+        isPublic: true,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 7,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'escrow.auto_release_enabled' },
+      update: {},
+      create: {
+        key: 'escrow.auto_release_enabled',
+        category: 'PAYMENT',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable Auto-Release of Escrow',
+        description: 'Automatically release funds to seller after hold period expires. If disabled, requires manual admin approval for every payout.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    // Payout Settings
+    prisma.systemSetting.upsert({
+      where: { key: 'payout.minimum_amount' },
+      update: {},
+      create: {
+        key: 'payout.minimum_amount',
+        category: 'PAYOUT',
+        value: 50.00,
+        valueType: 'NUMBER',
+        label: 'Minimum Payout Amount (USD)',
+        description: 'Minimum accumulated earnings required before triggering a payout to seller. Prevents small transaction fees.',
+        isPublic: true,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 50.00,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'payout.default_frequency' },
+      update: {},
+      create: {
+        key: 'payout.default_frequency',
+        category: 'PAYOUT',
+        value: 'WEEKLY',
+        valueType: 'STRING',
+        label: 'Default Payout Frequency',
+        description: 'Default frequency for automated seller payouts: DAILY, WEEKLY, BIWEEKLY, or MONTHLY. Sellers can customize their preference.',
+        isPublic: true,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 'WEEKLY',
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'payout.auto_schedule_enabled' },
+      update: {},
+      create: {
+        key: 'payout.auto_schedule_enabled',
+        category: 'PAYOUT',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable Automated Payout Scheduler',
+        description: 'Automatically process payouts based on seller frequency preferences and minimum thresholds. If disabled, all payouts require manual processing.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    // Audit & Logging
+    prisma.systemSetting.upsert({
+      where: { key: 'audit.log_all_escrow_actions' },
+      update: {},
+      create: {
+        key: 'audit.log_all_escrow_actions',
+        category: 'SECURITY',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Log All Escrow Actions',
+        description: 'Maintain full audit trail of all escrow releases, refunds, and modifications. Required for financial compliance and dispute resolution.',
+        isPublic: false,
+        isEditable: false,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'audit.log_retention_days' },
+      update: {},
+      create: {
+        key: 'audit.log_retention_days',
+        category: 'SECURITY',
+        value: 2555, // 7 years
+        valueType: 'NUMBER',
+        label: 'Audit Log Retention (Days)',
+        description: 'Number of days to retain audit logs. Financial regulations typically require 7 years (2555 days) for transaction records.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 2555,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    // Commission & Fee Settings
+    prisma.systemSetting.upsert({
+      where: { key: 'commission.default_rate' },
+      update: {},
+      create: {
+        key: 'commission.default_rate',
+        category: 'COMMISSION',
+        value: 10.0,
+        valueType: 'NUMBER',
+        label: 'Default Platform Commission (%)',
+        description: 'Default commission percentage charged on each transaction. Can be overridden per category or seller.',
+        isPublic: true,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 10.0,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+  ]);
+
+  console.log(`✅ Created ${settings.length} system settings`);
+
+  // ============================================================================
+  // DELIVERY PROVIDERS & PARTNERS
+  // ============================================================================
+  console.log('');
+  console.log('🚚 Seeding delivery providers...');
+
+  // Create Delivery Providers
+  const fedex = await prisma.deliveryProvider.upsert({
+    where: { slug: 'fedex' },
+    update: {},
+    create: {
+      name: 'FedEx',
+      slug: 'fedex',
+      type: 'API_INTEGRATED',
+      description: 'Leading international courier delivery services',
+      contactEmail: 'support@fedex.com',
+      contactPhone: '+1-800-463-3339',
+      website: 'https://www.fedex.com',
+      apiEnabled: true,
+      apiEndpoint: 'https://apis.fedex.com',
+      countries: ['US', 'CA', 'UK', 'FR', 'DE', 'JP', 'AU', 'RW'],
+      commissionType: 'PERCENTAGE',
+      commissionRate: 8.0,
+      isActive: true,
+      verificationStatus: 'VERIFIED',
+      logo: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d',
+    },
+  });
+
+  const ups = await prisma.deliveryProvider.upsert({
+    where: { slug: 'ups' },
+    update: {},
+    create: {
+      name: 'UPS',
+      slug: 'ups',
+      type: 'API_INTEGRATED',
+      description: 'United Parcel Service - Global shipping and logistics',
+      contactEmail: 'support@ups.com',
+      contactPhone: '+1-800-742-5877',
+      website: 'https://www.ups.com',
+      apiEnabled: true,
+      apiEndpoint: 'https://onlinetools.ups.com',
+      countries: ['US', 'CA', 'UK', 'FR', 'DE', 'JP', 'AU'],
+      commissionType: 'PERCENTAGE',
+      commissionRate: 7.5,
+      isActive: true,
+      verificationStatus: 'VERIFIED',
+      logo: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088',
+    },
+  });
+
+  const dhl = await prisma.deliveryProvider.upsert({
+    where: { slug: 'dhl' },
+    update: {},
+    create: {
+      name: 'DHL Express',
+      slug: 'dhl',
+      type: 'API_INTEGRATED',
+      description: 'DHL Express - International shipping and courier services',
+      contactEmail: 'support@dhl.com',
+      contactPhone: '+1-800-225-5345',
+      website: 'https://www.dhl.com',
+      apiEnabled: true,
+      apiEndpoint: 'https://api.dhl.com',
+      countries: ['US', 'CA', 'UK', 'FR', 'DE', 'JP', 'AU', 'RW', 'KE', 'UG'],
+      commissionType: 'PERCENTAGE',
+      commissionRate: 9.0,
+      isActive: true,
+      verificationStatus: 'VERIFIED',
+      logo: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec',
+    },
+  });
+
+  const localCourier = await prisma.deliveryProvider.upsert({
+    where: { slug: 'luxury-express' },
+    update: {},
+    create: {
+      name: 'Luxury Express',
+      slug: 'luxury-express',
+      type: 'PARTNER',
+      description: 'Premium local delivery service for luxury goods - Serving Rwanda, Uganda, and Kenya',
+      contactEmail: 'contact@luxuryexpress.com',
+      contactPhone: '+250-788-123-456',
+      website: 'https://luxuryexpress.com',
+      apiEnabled: false,
+      countries: ['RW', 'UG', 'KE'],
+      commissionType: 'PERCENTAGE',
+      commissionRate: 10.0,
+      isActive: true,
+      verificationStatus: 'VERIFIED',
+      logo: 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55',
+    },
+  });
+
+  console.log('✅ Created 4 delivery providers (FedEx, UPS, DHL, Luxury Express)');
+
+  // Create Delivery Partner Test Accounts
+  console.log('');
+  console.log('👷 Creating delivery partner accounts...');
+
+  const partner1 = await prisma.user.upsert({
+    where: { email: 'partner1@test.com' },
+    update: {},
+    create: {
+      email: 'partner1@test.com',
+      firstName: 'John',
+      lastName: 'Courier',
+      password: testPassword,
+      role: 'DELIVERY_PARTNER',
+      emailVerified: true,
+      phone: '+250-788-111-111',
+      deliveryProviderId: localCourier.id,
+      preferences: {
+        create: {
+          newsletter: false,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'light',
+          layoutMode: 'compact',
+        },
+      },
+    },
+  });
+
+  const partner2 = await prisma.user.upsert({
+    where: { email: 'partner2@test.com' },
+    update: {},
+    create: {
+      email: 'partner2@test.com',
+      firstName: 'Sarah',
+      lastName: 'Delivery',
+      password: testPassword,
+      role: 'DELIVERY_PARTNER',
+      emailVerified: true,
+      phone: '+250-788-222-222',
+      deliveryProviderId: localCourier.id,
+      preferences: {
+        create: {
+          newsletter: false,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'dark',
+          layoutMode: 'compact',
+        },
+      },
+    },
+  });
+
+  const partner3 = await prisma.user.upsert({
+    where: { email: 'partner3@test.com' },
+    update: {},
+    create: {
+      email: 'partner3@test.com',
+      firstName: 'Mike',
+      lastName: 'Express',
+      password: testPassword,
+      role: 'DELIVERY_PARTNER',
+      emailVerified: true,
+      phone: '+250-788-333-333',
+      deliveryProviderId: fedex.id,
+      preferences: {
+        create: {
+          newsletter: false,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'light',
+          layoutMode: 'compact',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Created 3 delivery partner accounts (partner1-3@test.com)');
+  console.log(`   - ${partner1.email} → Luxury Express`);
+  console.log(`   - ${partner2.email} → Luxury Express`);
+  console.log(`   - ${partner3.email} → FedEx`);
+
   console.log('');
   console.log('🎉 Seeding completed!');
   console.log('');
@@ -1624,6 +1997,13 @@ async function main() {
   console.log('   Email:     superadmin@test.com');
   console.log('   Password:  Test@123');
   console.log('   Dashboard: http://localhost:3000/admin/dashboard');
+  console.log('');
+  console.log('6. DELIVERY PARTNER Accounts:');
+  console.log('   Email:     partner1@test.com (Luxury Express)');
+  console.log('   Email:     partner2@test.com (Luxury Express)');
+  console.log('   Email:     partner3@test.com (FedEx)');
+  console.log('   Password:  Test@123');
+  console.log('   Dashboard: http://localhost:3000/delivery-partner/dashboard');
   console.log('');
   console.log('═══════════════════════════════════════════════════════');
   console.log('🔗 Login URL: http://localhost:3000/auth/login');

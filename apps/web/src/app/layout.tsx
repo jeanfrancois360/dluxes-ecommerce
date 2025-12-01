@@ -5,6 +5,7 @@ import { CartProvider } from '@/contexts/cart-context';
 import { LocaleProvider } from '@/contexts/locale-context';
 import { ToastListener } from '@/components/toast-listener';
 import { RouteLoadingProvider } from '@/components/providers/route-loading-provider';
+import { Toaster } from 'sonner';
 import { siteConfig } from '@/lib/seo';
 import './globals.css';
 
@@ -124,6 +125,7 @@ export default function RootLayout({
               <CartProvider>
                 {children}
                 <ToastListener />
+                <Toaster position="top-right" richColors />
               </CartProvider>
             </AuthProvider>
           </LocaleProvider>

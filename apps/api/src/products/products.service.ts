@@ -53,6 +53,8 @@ export class ProductsService {
       materials,
       inStock,
       onSale,
+      productType,
+      purchaseType,
     } = query;
 
     // Use limit if provided, otherwise fall back to pageSize, with default of 24
@@ -119,6 +121,16 @@ export class ProductsService {
       where.materials = {
         hasSome: materials.split(','),
       };
+    }
+
+    // Product Type filter
+    if (productType !== undefined) {
+      where.productType = productType;
+    }
+
+    // Purchase Type filter
+    if (purchaseType !== undefined) {
+      where.purchaseType = purchaseType;
     }
 
     // Tags filter

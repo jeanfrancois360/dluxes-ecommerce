@@ -61,6 +61,7 @@ export function BannerAd({ className = '' }: { className?: string }) {
       }, 5000);
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [ads.length]);
 
   useEffect(() => {

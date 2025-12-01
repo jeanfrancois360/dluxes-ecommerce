@@ -1,6 +1,6 @@
 import { IsOptional, IsString, IsNumber, IsEnum, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ProductStatus } from '@prisma/client';
+import { ProductStatus, ProductType, PurchaseType } from '@prisma/client';
 
 export class ProductQueryDto {
   @IsOptional()
@@ -82,4 +82,12 @@ export class ProductQueryDto {
   @IsBoolean()
   @Type(() => Boolean)
   onSale?: boolean;
+
+  @IsOptional()
+  @IsEnum(ProductType)
+  productType?: ProductType;
+
+  @IsOptional()
+  @IsEnum(PurchaseType)
+  purchaseType?: PurchaseType;
 }

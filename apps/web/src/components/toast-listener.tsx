@@ -49,7 +49,8 @@ export function ToastListener() {
 
     const handleToast = (event: Event) => {
       const customEvent = event as CustomEvent<ToastMessage>;
-      const { type, title, message, duration = 5000 } = customEvent.detail;
+      const { type, title, message } = customEvent.detail;
+      const duration = (customEvent.detail as any).duration || 5000;
 
       const id = `toast-${Date.now()}-${Math.random()}`;
       const newToast: ToastProps = {

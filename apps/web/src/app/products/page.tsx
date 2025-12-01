@@ -233,43 +233,93 @@ export default function ProductsPage() {
   return (
     <PageLayout>
       {/* Hero Banner */}
-      <section className="relative h-[45vh] min-h-[350px] flex items-center justify-center bg-gradient-to-br from-neutral-900 via-black to-neutral-800 text-white overflow-hidden">
+      <section className="relative h-[50vh] min-h-[400px] flex items-center justify-center bg-gradient-to-br from-black via-neutral-900 to-neutral-800 text-white overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-center z-10 px-4 max-w-4xl mx-auto"
+          className="text-center z-10 px-4 max-w-5xl mx-auto"
         >
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold mb-6 bg-gradient-to-r from-white via-white to-gold bg-clip-text text-transparent">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
+            className="inline-block mb-4"
+          >
+            <span className="px-4 py-2 bg-[#CBB57B]/20 border border-[#CBB57B]/30 rounded-full text-[#CBB57B] text-sm font-semibold backdrop-blur-sm">
+              Premium Collection 2025
+            </span>
+          </motion.div>
+          <h1 className="text-5xl md:text-6xl lg:text-8xl font-serif font-bold mb-6 bg-gradient-to-r from-white via-white to-[#CBB57B] bg-clip-text text-transparent leading-tight">
             Luxury Collection
           </h1>
-          <p className="text-lg md:text-xl text-white/90 mb-6 max-w-2xl mx-auto leading-relaxed">
-            Discover our exquisite selection of premium watches, jewelry, accessories, and fashion
+          <p className="text-base md:text-xl text-white/80 mb-8 max-w-3xl mx-auto leading-relaxed">
+            Discover our exquisite selection of premium watches, jewelry, accessories, and fashion pieces crafted for the discerning individual
           </p>
-          <div className="flex items-center justify-center gap-6 text-sm text-white/70">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 text-sm md:text-base">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/10"
+            >
+              <svg className="w-5 h-5 text-[#CBB57B]" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              <span>Authentic Products</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <span className="text-white/90 font-medium">Authentic Products</span>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/10"
+            >
+              <svg className="w-5 h-5 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
               </svg>
-              <span>Free Shipping</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <span className="text-white/90 font-medium">Free Shipping</span>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/10"
+            >
+              <svg className="w-5 h-5 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <span>Secure Payment</span>
-            </div>
+              <span className="text-white/90 font-medium">Secure Payment</span>
+            </motion.div>
           </div>
         </motion.div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px]" />
-        {/* Gradient overlay */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#CBB57B08_1px,transparent_1px),linear-gradient(to_bottom,#CBB57B08_1px,transparent_1px)] bg-[size:64px_64px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white" />
+        {/* Animated gradient orbs */}
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="absolute top-10 left-10 w-72 h-72 bg-[#CBB57B]/10 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            opacity: [0.2, 0.4, 0.2],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+          className="absolute bottom-10 right-10 w-96 h-96 bg-[#CBB57B]/10 rounded-full blur-3xl"
+        />
       </section>
 
       {/* Breadcrumb */}
@@ -487,94 +537,108 @@ export default function ProductsPage() {
           {/* Main Content */}
           <div className="flex-1 min-w-0">
             {/* Toolbar */}
-            <div className="bg-white rounded-xl shadow-md border border-neutral-200 p-5 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6 mb-8 backdrop-blur-sm"
+            >
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     {isLoading ? (
                       <div className="h-6 w-32 bg-neutral-200 animate-pulse rounded" />
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
-                        <span className="text-sm text-neutral-700">
-                          <span className="font-bold text-black text-lg">{total.toLocaleString()}</span>
-                          <span className="text-neutral-600 ml-1">product{total !== 1 ? 's' : ''}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#CBB57B] to-[#A89968] flex items-center justify-center shadow-md">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-bold text-black text-2xl">{total.toLocaleString()}</span>
+                            <span className="text-neutral-600 text-sm font-medium">product{total !== 1 ? 's' : ''}</span>
+                          </div>
                           {total > 0 && (
-                            <span className="text-neutral-500 ml-2 text-xs">
-                              • Page {page} of {totalPages}
+                            <span className="text-neutral-500 text-xs">
+                              Page {page} of {totalPages}
                             </span>
                           )}
-                        </span>
+                        </div>
                       </div>
                     )}
                   </div>
 
                   {/* Mobile Filter Button */}
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setShowFilters(!showFilters)}
-                    className="lg:hidden px-4 py-2.5 bg-black text-white rounded-lg hover:bg-gold hover:text-black transition-all duration-300 flex items-center gap-2 font-semibold shadow-md"
+                    className="lg:hidden px-5 py-3 bg-gradient-to-r from-black to-neutral-800 text-white rounded-xl hover:from-[#CBB57B] hover:to-[#A89968] transition-all duration-300 flex items-center gap-2.5 font-semibold shadow-lg"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
                     Filters
                     {hasActiveFilters && (
-                      <span className="bg-gold text-black rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                      <span className="bg-white text-black rounded-full min-w-[24px] h-6 flex items-center justify-center text-xs font-bold px-2">
                         {[selectedCategories.length, selectedBrands.length, inStockOnly ? 1 : 0, onSaleOnly ? 1 : 0].reduce((a, b) => a + b, 0)}
                       </span>
                     )}
-                  </button>
+                  </motion.button>
                 </div>
 
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   {/* Layout Toggle */}
-                  <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-1 shadow-sm">
-                    <button
+                  <div className="flex items-center gap-1 bg-neutral-100 rounded-xl p-1.5 shadow-inner">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => setLayout('grid')}
-                      className={`p-2.5 rounded-md transition-all ${layout === 'grid'
-                        ? 'bg-white text-black shadow-md ring-2 ring-gold/20'
-                        : 'text-neutral-600 hover:text-black hover:bg-white/50'
+                      className={`p-3 rounded-lg transition-all ${layout === 'grid'
+                        ? 'bg-gradient-to-br from-[#CBB57B] to-[#A89968] text-white shadow-lg'
+                        : 'text-neutral-600 hover:text-black hover:bg-white/80'
                         }`}
                       aria-label="Grid layout"
                       title="Grid View"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                       </svg>
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => setLayout('list')}
-                      className={`p-2.5 rounded-md transition-all ${layout === 'list'
-                        ? 'bg-white text-black shadow-md ring-2 ring-gold/20'
-                        : 'text-neutral-600 hover:text-black hover:bg-white/50'
+                      className={`p-3 rounded-lg transition-all ${layout === 'list'
+                        ? 'bg-gradient-to-br from-[#CBB57B] to-[#A89968] text-white shadow-lg'
+                        : 'text-neutral-600 hover:text-black hover:bg-white/80'
                         }`}
                       aria-label="List layout"
                       title="List View"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
                       </svg>
-                    </button>
+                    </motion.button>
                   </div>
 
                   {/* Sort Dropdown */}
                   <select
                     value={sortBy}
                     onChange={(e) => handleSortChange(e.target.value)}
-                    className="flex-1 sm:flex-initial px-4 py-2.5 border-2 border-neutral-200 rounded-lg text-sm font-semibold text-black focus:outline-none focus:border-gold bg-white shadow-sm hover:border-neutral-300 transition-colors cursor-pointer"
+                    className="flex-1 sm:flex-initial px-4 py-3 border-2 border-neutral-200 rounded-xl text-sm font-semibold text-black focus:outline-none focus:border-[#CBB57B] focus:ring-2 focus:ring-[#CBB57B]/20 bg-white shadow-sm hover:border-neutral-300 transition-all cursor-pointer"
                   >
-                    <option value="relevance">Relevance</option>
-                    <option value="popular">Best Selling</option>
-                    <option value="rating">Highest Rated</option>
-                    <option value="newest">Newest First</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
+                    <option value="relevance">🎯 Relevance</option>
+                    <option value="popular">⭐ Best Selling</option>
+                    <option value="rating">💎 Highest Rated</option>
+                    <option value="newest">✨ Newest First</option>
+                    <option value="price-asc">💰 Price: Low to High</option>
+                    <option value="price-desc">💸 Price: High to Low</option>
                   </select>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Active Filters */}
             {hasActiveFilters && (
@@ -783,7 +847,7 @@ export default function ProductsPage() {
                       onAddToWishlist={handleAddToWishlist}
                       onQuickAdd={handleAddToCart}
                       onNavigate={handleNavigate}
-                      isLoading={false}
+                      loading={false}
                       currencySymbol={currencySymbol}
                     />
                   </div>
@@ -794,15 +858,24 @@ export default function ProductsPage() {
 
                 {/* Pagination */}
                 {totalPages > 1 && !isLoading && (
-                  <div className="flex justify-center items-center gap-2 mt-12">
-                    <button
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex justify-center items-center gap-3 mt-16"
+                  >
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => handlePageChange(page - 1)}
                       disabled={page === 1}
-                      className="px-4 py-2 border border-neutral-200 rounded-lg text-sm hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-neutral-200"
+                      className="px-6 py-3 border-2 border-neutral-200 rounded-xl text-sm font-semibold hover:border-[#CBB57B] hover:bg-[#CBB57B]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-neutral-200 disabled:hover:bg-transparent flex items-center gap-2"
                     >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
                       Previous
-                    </button>
-                    <div className="flex items-center gap-1">
+                    </motion.button>
+                    <div className="flex items-center gap-2">
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
                         if (
                           pageNum === 1 ||
@@ -810,31 +883,38 @@ export default function ProductsPage() {
                           (pageNum >= page - 1 && pageNum <= page + 1)
                         ) {
                           return (
-                            <button
+                            <motion.button
                               key={pageNum}
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
                               onClick={() => handlePageChange(pageNum)}
-                              className={`px-4 py-2 rounded-lg text-sm transition-colors ${pageNum === page
-                                ? 'bg-black text-white'
-                                : 'border border-neutral-200 hover:border-gold'
+                              className={`min-w-[44px] h-11 rounded-xl text-sm font-bold transition-all shadow-sm ${pageNum === page
+                                ? 'bg-gradient-to-br from-[#CBB57B] to-[#A89968] text-white shadow-lg scale-110'
+                                : 'border-2 border-neutral-200 hover:border-[#CBB57B] hover:bg-[#CBB57B]/5'
                                 }`}
                             >
                               {pageNum}
-                            </button>
+                            </motion.button>
                           );
                         } else if (pageNum === page - 2 || pageNum === page + 2) {
-                          return <span key={pageNum} className="px-2">...</span>;
+                          return <span key={pageNum} className="px-2 text-neutral-400 font-bold">...</span>;
                         }
                         return null;
                       })}
                     </div>
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => handlePageChange(page + 1)}
                       disabled={page === totalPages}
-                      className="px-4 py-2 border border-neutral-200 rounded-lg text-sm hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-neutral-200"
+                      className="px-6 py-3 border-2 border-neutral-200 rounded-xl text-sm font-semibold hover:border-[#CBB57B] hover:bg-[#CBB57B]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-neutral-200 disabled:hover:bg-transparent flex items-center gap-2"
                     >
                       Next
-                    </button>
-                  </div>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </motion.button>
+                  </motion.div>
                 )}
               </>
             )}

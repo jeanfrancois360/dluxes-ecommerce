@@ -33,7 +33,7 @@ export interface ProtectedRouteProps {
  *     <ProtectedRoute>
  *       <div>
  *         <h1>My Account</h1>
- *         {/* Protected content */}
+ *         // Protected content here
  *       </div>
  *     </ProtectedRoute>
  *   );
@@ -78,7 +78,7 @@ export function ProtectedRoute({
     }
 
     // Check email verification if required
-    if (requireEmailVerification && user && !user.isEmailVerified) {
+    if (requireEmailVerification && user && !user.emailVerified) {
       router.push('/account/verify-email');
       return;
     }
@@ -111,7 +111,7 @@ export function ProtectedRoute({
   }
 
   // Email verification required but not verified - show nothing while redirecting
-  if (requireEmailVerification && user && !user.isEmailVerified) {
+  if (requireEmailVerification && user && !user.emailVerified) {
     return null;
   }
 

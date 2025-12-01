@@ -22,6 +22,14 @@ import { CommissionModule } from './commission/commission.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { AdvertisementModule } from './advertisements/advertisement.module';
 import { CurrencyModule } from './currency/currency.module';
+import { EscrowModule } from './escrow/escrow.module';
+import { SettingsModule } from './settings/settings.module';
+import { ShippingModule } from './shipping/shipping.module';
+import { PayoutModule } from './payout/payout.module';
+import { DeliveryProviderModule } from './delivery-provider/delivery-provider.module';
+import { DeliveryModule } from './delivery/delivery.module';
+import { DeliveryPartnerModule } from './delivery-partner/delivery-partner.module';
+import { SupabaseModule } from './supabase/supabase.module';
 // import { QueueModule } from './queue/queue.module'; // Commented out - requires Redis setup
 
 @Module({
@@ -30,6 +38,7 @@ import { CurrencyModule } from './currency/currency.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    SupabaseModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 60 seconds
@@ -57,6 +66,13 @@ import { CurrencyModule } from './currency/currency.module';
     InventoryModule,
     AdvertisementModule,
     CurrencyModule,
+    EscrowModule,
+    SettingsModule,
+    ShippingModule,
+    PayoutModule,
+    DeliveryProviderModule,
+    DeliveryModule,
+    DeliveryPartnerModule,
     // QueueModule, // Commented out - requires Redis setup
   ],
 })
