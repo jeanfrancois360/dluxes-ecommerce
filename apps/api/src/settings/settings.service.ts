@@ -1,0 +1,307 @@
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../database/prisma.service';
+import { SettingValueType, AuditAction } from '@prisma/client';
+
+@Injectable()
+export class SettingsService {
+  private readonly logger = new Logger(SettingsService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Get setting by key
+   */
+  async getSetting(key: string) {
+    const setting = await this.prisma.systemSetting.findUnique({
+      where: { key },
+    });
+
+    if (!setting) {
+      throw new NotFoundException(`Setting '${key}' not found`);
+    }
+
+    return {
+      key: setting.key,
+      value: setting.value,
+      label: setting.label,
+      description: setting.description,
+      valueType: setting.valueType,
+      isPublic: setting.isPublic,
+      isEditable: setting.isEditable,
+      requiresRestart: setting.requiresRestart,
+    };
+  }
+
+  /**
+   * Get all public settings (for frontend)
+   */
+  async getPublicSettings() {
+    const settings = await this.prisma.systemSetting.findMany({
+      where: { isPublic: true },
+      select: {
+        key: true,
+        value: true,
+        label: true,
+        description: true,
+        valueType: true,
+      },
+    });
+
+    return settings;
+  }
+
+  /**
+   * Get settings by category
+   */
+  async getSettingsByCategory(category: string) {
+    return this.prisma.systemSetting.findMany({
+      where: { category },
+      orderBy: { key: 'asc' },
+    });
+  }
+
+  /**
+   * Get all settings (Admin only)
+   */
+  async getAllSettings() {
+    return this.prisma.systemSetting.findMany({
+      orderBy: [{ category: 'asc' }, { key: 'asc' }],
+    });
+  }
+
+  /**
+   * Create new setting (Admin only)
+   */
+  async createSetting(data: {
+    key: string;
+    category: string;
+    value: any;
+    valueType: SettingValueType;
+    label: string;
+    description?: string;
+    isPublic?: boolean;
+    isEditable?: boolean;
+    requiresRestart?: boolean;
+    defaultValue?: any;
+    createdBy: string;
+  }) {
+    const setting = await this.prisma.systemSetting.create({
+      data: {
+        key: data.key,
+        category: data.category,
+        value: data.value,
+        valueType: data.valueType,
+        label: data.label,
+        description: data.description,
+        isPublic: data.isPublic ?? false,
+        isEditable: data.isEditable ?? true,
+        requiresRestart: data.requiresRestart ?? false,
+        defaultValue: data.defaultValue,
+        lastUpdatedBy: data.createdBy,
+      },
+    });
+
+    this.logger.log(`Setting created: ${data.key} by ${data.createdBy}`);
+
+    return setting;
+  }
+
+  /**
+   * Update setting with audit log
+   */
+  async updateSetting(
+    key: string,
+    newValue: any,
+    changedBy: string,
+    changedByEmail: string,
+    ipAddress?: string,
+    userAgent?: string,
+    reason?: string
+  ) {
+    const setting = await this.prisma.systemSetting.findUnique({
+      where: { key },
+    });
+
+    if (!setting) {
+      throw new NotFoundException(`Setting '${key}' not found`);
+    }
+
+    if (!setting.isEditable) {
+      throw new BadRequestException('This setting cannot be edited');
+    }
+
+    const oldValue = setting.value;
+
+    await this.prisma.$transaction(async (prisma) => {
+      // Update setting
+      await prisma.systemSetting.update({
+        where: { key },
+        data: {
+          value: newValue,
+          lastUpdatedBy: changedBy,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create audit log
+      await prisma.settingsAuditLog.create({
+        data: {
+          settingId: setting.id,
+          settingKey: key,
+          oldValue,
+          newValue,
+          changedBy,
+          changedByEmail,
+          ipAddress,
+          userAgent,
+          action: AuditAction.UPDATE,
+          reason,
+          canRollback: true,
+        },
+      });
+    });
+
+    this.logger.log(`Setting updated: ${key} by ${changedByEmail}`);
+
+    return this.getSetting(key);
+  }
+
+  /**
+   * Rollback setting to previous value
+   */
+  async rollbackSetting(auditLogId: string, rolledBackBy: string, rolledBackByEmail: string) {
+    const auditLog = await this.prisma.settingsAuditLog.findUnique({
+      where: { id: auditLogId },
+      include: { setting: true },
+    });
+
+    if (!auditLog) {
+      throw new NotFoundException('Audit log not found');
+    }
+
+    if (!auditLog.canRollback) {
+      throw new BadRequestException('This change cannot be rolled back');
+    }
+
+    if (auditLog.rolledBackAt) {
+      throw new BadRequestException('This change has already been rolled back');
+    }
+
+    if (!auditLog.setting) {
+      throw new NotFoundException('Original setting not found');
+    }
+
+    await this.prisma.$transaction(async (prisma) => {
+      // Rollback to old value
+      await prisma.systemSetting.update({
+        where: { id: auditLog.settingId! },
+        data: {
+          value: auditLog.oldValue,
+          lastUpdatedBy: rolledBackBy,
+        },
+      });
+
+      // Mark as rolled back
+      await prisma.settingsAuditLog.update({
+        where: { id: auditLogId },
+        data: {
+          rolledBackAt: new Date(),
+          rolledBackBy,
+        },
+      });
+
+      // Create rollback audit entry
+      await prisma.settingsAuditLog.create({
+        data: {
+          settingId: auditLog.settingId,
+          settingKey: auditLog.settingKey,
+          oldValue: auditLog.newValue,
+          newValue: auditLog.oldValue,
+          changedBy: rolledBackBy,
+          changedByEmail: rolledBackByEmail,
+          action: AuditAction.ROLLBACK,
+          reason: `Rolled back change from ${auditLog.changedByEmail}`,
+          canRollback: false,
+        },
+      });
+    });
+
+    this.logger.log(`Setting rolled back: ${auditLog.settingKey} by ${rolledBackByEmail}`);
+
+    return {
+      success: true,
+      message: `Setting '${auditLog.settingKey}' rolled back successfully`,
+    };
+  }
+
+  /**
+   * Get audit log for a setting
+   */
+  async getSettingAuditLog(settingKey: string, limit: number = 50) {
+    return this.prisma.settingsAuditLog.findMany({
+      where: { settingKey },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  /**
+   * Get all recent audit logs (Admin)
+   */
+  async getAllAuditLogs(limit: number = 100) {
+    return this.prisma.settingsAuditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        setting: {
+          select: {
+            key: true,
+            label: true,
+            category: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Delete setting (Admin only)
+   */
+  async deleteSetting(key: string, deletedBy: string, deletedByEmail: string) {
+    const setting = await this.prisma.systemSetting.findUnique({
+      where: { key },
+    });
+
+    if (!setting) {
+      throw new NotFoundException(`Setting '${key}' not found`);
+    }
+
+    await this.prisma.$transaction(async (prisma) => {
+      // Create audit log before deletion
+      await prisma.settingsAuditLog.create({
+        data: {
+          settingKey: key,
+          oldValue: setting.value,
+          newValue: null,
+          changedBy: deletedBy,
+          changedByEmail: deletedByEmail,
+          action: AuditAction.DELETE,
+          reason: 'Setting deleted',
+          canRollback: false,
+        },
+      });
+
+      // Delete setting
+      await prisma.systemSetting.delete({
+        where: { key },
+      });
+    });
+
+    this.logger.log(`Setting deleted: ${key} by ${deletedByEmail}`);
+
+    return {
+      success: true,
+      message: `Setting '${key}' deleted successfully`,
+    };
+  }
+}

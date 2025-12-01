@@ -1,19 +1,28 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { SupabaseService } from '../supabase/supabase.service';
 
 /**
  * Upload Service
- * Handles file upload operations
+ * Handles file upload operations with Supabase integration
+ * Falls back to local storage if Supabase is not configured
  */
 @Injectable()
 export class UploadService {
+  private readonly logger = new Logger(UploadService.name);
   private readonly uploadDir = path.join(process.cwd(), 'public', 'uploads');
 
-  constructor() {
-    // Ensure upload directories exist
+  constructor(private readonly supabaseService: SupabaseService) {
+    // Ensure upload directories exist (for fallback)
     this.ensureDirectories();
+
+    if (this.supabaseService.isConfigured()) {
+      this.logger.log('Using Supabase Storage for file uploads');
+    } else {
+      this.logger.warn('Supabase not configured. Using local file storage');
+    }
   }
 
   /**
@@ -37,6 +46,7 @@ export class UploadService {
 
   /**
    * Upload single image
+   * Uses Supabase if configured, falls back to local storage
    */
   async uploadImage(file: Express.Multer.File, folder: string = 'images') {
     if (!file) {
@@ -57,6 +67,32 @@ export class UploadService {
       throw new BadRequestException('File size exceeds 5MB limit');
     }
 
+    const fileExtension = path.extname(file.originalname);
+    const fileName = `${uuidv4()}${fileExtension}`;
+
+    // Use Supabase if configured
+    if (this.supabaseService.isConfigured()) {
+      try {
+        const publicUrl = await this.supabaseService.uploadFile(
+          file.buffer,
+          fileName,
+          folder,
+          file.mimetype,
+        );
+
+        return {
+          url: publicUrl,
+          fileName,
+          size: file.size,
+          mimeType: file.mimetype,
+        };
+      } catch (error) {
+        this.logger.error(`Supabase upload failed, falling back to local storage: ${error.message}`);
+        // Fall through to local storage
+      }
+    }
+
+    // Local storage fallback
     const uploadPath = path.join(this.uploadDir, folder);
 
     // Ensure folder exists
@@ -64,8 +100,6 @@ export class UploadService {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
 
-    const fileExtension = path.extname(file.originalname);
-    const fileName = `${uuidv4()}${fileExtension}`;
     const filePath = path.join(uploadPath, fileName);
 
     // Save file
@@ -126,8 +160,30 @@ export class UploadService {
 
   /**
    * Delete file by URL
+   * Handles both Supabase and local file URLs
    */
   async deleteFileByUrl(fileUrl: string) {
+    // Check if it's a Supabase URL
+    if (this.supabaseService.isConfigured() && fileUrl.includes('supabase.co')) {
+      try {
+        // Extract file path from Supabase URL
+        // Example: https://project.supabase.co/storage/v1/object/public/bucket/folder/file.jpg
+        const urlParts = fileUrl.split('/');
+        const bucketIndex = urlParts.findIndex((part) => part === 'public') + 1;
+        const filePath = urlParts.slice(bucketIndex + 1).join('/');
+
+        await this.supabaseService.deleteFile(filePath);
+        return {
+          success: true,
+          message: 'File deleted successfully from Supabase',
+        };
+      } catch (error) {
+        this.logger.error(`Failed to delete file from Supabase: ${error.message}`);
+        throw new BadRequestException('Failed to delete file from Supabase');
+      }
+    }
+
+    // Local storage fallback
     // Extract path from URL
     // Example: /uploads/images/filename.jpg -> images/filename.jpg
     const urlPath = fileUrl.replace('/uploads/', '');

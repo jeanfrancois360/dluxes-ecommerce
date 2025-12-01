@@ -250,7 +250,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-full flex items-center justify-center">
                   <span className="text-white font-semibold text-sm">
-                    {user?.name?.charAt(0).toUpperCase() || 'A'}
+                    {(user as any)?.name?.charAt(0).toUpperCase() || user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'A'}
                   </span>
                 </div>
                 <svg
@@ -267,7 +267,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
               {showProfileMenu && (
                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-200">
-                    <p className="text-sm font-medium text-gray-900">{user?.name || 'Admin User'}</p>
+                    <p className="text-sm font-medium text-gray-900">{(user as any)?.name || user?.firstName || user?.email || 'Admin User'}</p>
                     <p className="text-xs text-gray-500 mt-1">{user?.email || 'admin@luxury.com'}</p>
                   </div>
                   <div className="py-2">

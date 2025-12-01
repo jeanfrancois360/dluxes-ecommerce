@@ -97,7 +97,7 @@ function ProductsContent() {
     // Export to CSV logic
     const csv = [
       ['ID', 'Name', 'SKU', 'Category', 'Price', 'Stock', 'Status'],
-      ...products.map((p) => [p.id, p.name, p.sku, p.category?.name || 'N/A', p.price, p.stock, p.status]),
+      ...products.map((p) => [p.id, p.name, p.sku, typeof p.category === 'string' ? p.category : (p.category as any)?.name || 'N/A', p.price, p.stock, p.status]),
     ]
       .map((row) => row.join(','))
       .join('\n');
@@ -291,10 +291,10 @@ function ProductsContent() {
                       />
                     </td>
                     <td className="px-6 py-4">
-                      {product.heroImage || (product.images && product.images.length > 0) ? (
+                      {(product as any).heroImage || (product.images && product.images.length > 0) ? (
                         <div className="relative w-14 h-14 rounded-lg overflow-hidden ring-2 ring-neutral-300 hover:ring-[#CBB57B] transition-all group">
                           <img
-                            src={product.heroImage || (product.images[0]?.url || product.images[0])}
+                            src={(product as any).heroImage || ((product.images[0] as any)?.url || product.images[0])}
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                             onError={(e) => {
@@ -327,7 +327,7 @@ function ProductsContent() {
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#CBB57B]/10 border border-[#CBB57B] rounded-lg text-xs font-semibold text-[#9a8854]">
                         <div className="w-1.5 h-1.5 rounded-full bg-[#CBB57B]"></div>
-                        {product.category?.name || 'N/A'}
+                        {typeof product.category === 'string' ? product.category : (product.category as any)?.name || 'N/A'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-black">${Number(product.price).toFixed(2)}</td>

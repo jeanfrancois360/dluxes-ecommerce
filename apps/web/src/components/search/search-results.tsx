@@ -66,6 +66,18 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
     setPage(1);
   };
 
+  const handleClearAll = () => {
+    setFilters({
+      minPrice: undefined,
+      maxPrice: undefined,
+      brands: [],
+      tags: [],
+      inStock: undefined,
+      onSale: undefined,
+    });
+    setPage(1);
+  };
+
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -131,8 +143,9 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
         <aside className="lg:w-64 flex-shrink-0">
           <div className="sticky top-32">
             <FiltersSidebar
-              onFilterChange={handleFilterChange}
-              initialFilters={filters}
+              filters={filters as any}
+              onFiltersChange={handleFilterChange}
+              onClearAll={handleClearAll}
             />
           </div>
         </aside>

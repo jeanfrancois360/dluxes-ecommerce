@@ -131,8 +131,9 @@ export default function SellerProductsPage() {
     try {
       setBulkActionLoading(true);
       await api.delete('/seller/products/bulk/delete', {
-        data: { productIds: Array.from(selectedProducts) },
-      });
+        body: JSON.stringify({ productIds: Array.from(selectedProducts) }),
+        headers: { 'Content-Type': 'application/json' },
+      } as any);
 
       // Refresh products
       await fetchProducts();

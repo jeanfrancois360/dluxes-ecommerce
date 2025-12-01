@@ -9,7 +9,7 @@ export interface QuickViewProduct {
   id: string;
   name: string;
   brand?: string;
-  price: number;
+  price?: number;
   compareAtPrice?: number;
   image: string;
   images?: string[];
@@ -81,8 +81,10 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   if (!product || !mounted) return null;
 
   const allImages = [product.image, ...(product.images || [])].filter(Boolean);
-  const discount = product.compareAtPrice
-    ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
+  const validPrice = typeof product.price === 'number' && !isNaN(product.price) ? product.price : 0;
+  const validCompareAtPrice = typeof product.compareAtPrice === 'number' && !isNaN(product.compareAtPrice) ? product.compareAtPrice : undefined;
+  const discount = validCompareAtPrice && validPrice > 0 && validCompareAtPrice > validPrice
+    ? Math.round(((validCompareAtPrice - validPrice) / validCompareAtPrice) * 100)
     : 0;
 
   const handleAddToCart = () => {

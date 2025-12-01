@@ -30,6 +30,51 @@ export class PaymentService {
   }
 
   /**
+   * Check if escrow is enabled (system setting)
+   */
+  private async isEscrowEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'escrow.enabled' },
+      });
+      return setting?.value === true;
+    } catch (error) {
+      this.logger.warn('Failed to check escrow setting, defaulting to true', error);
+      return true; // Default to escrow enabled for safety
+    }
+  }
+
+  /**
+   * Check if immediate payouts are enabled (for testing/trusted sellers)
+   */
+  private async isImmediatePayoutEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'escrow.immediate_payout_enabled' },
+      });
+      return setting?.value === true;
+    } catch (error) {
+      this.logger.warn('Failed to check immediate payout setting, defaulting to false', error);
+      return false; // Default to disabled for safety
+    }
+  }
+
+  /**
+   * Get escrow hold period days from system settings
+   */
+  private async getEscrowHoldPeriodDays(): Promise<number> {
+    try {
+      const setting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'escrow.hold_period_days' },
+      });
+      return typeof setting?.value === 'number' ? setting.value : 7;
+    } catch (error) {
+      this.logger.warn('Failed to get hold period setting, defaulting to 7 days', error);
+      return 7; // Default to 7 days
+    }
+  }
+
+  /**
    * Create a Stripe Payment Intent with transaction logging
    */
   async createPaymentIntent(dto: CreatePaymentIntentDto, userId: string) {
@@ -318,12 +363,112 @@ export class PaymentService {
       // For now, we'll trigger it directly but wrapped in try-catch
       try {
         const { CommissionService } = await import('../commission/commission.service');
+        const { EnhancedCommissionService } = await import('../commission/enhanced-commission.service');
         const commissionService = new CommissionService(this.prisma);
         await commissionService.calculateCommissionForTransaction(transaction.id);
         this.logger.log(`Commissions calculated for transaction ${transaction.id}`);
       } catch (commissionError) {
         this.logger.error(`Error calculating commissions for transaction ${transaction.id}:`, commissionError);
         // Don't fail the payment if commission calculation fails
+      }
+
+      // Create Escrow Transaction (DEFAULT PAYMENT MODEL)
+      // Funds are held until delivery confirmation
+      // Check system settings for escrow configuration
+      const escrowEnabled = await this.isEscrowEnabled();
+      const immediatePayoutEnabled = await this.isImmediatePayoutEnabled();
+      const holdPeriodDays = await this.getEscrowHoldPeriodDays();
+
+      if (!escrowEnabled) {
+        this.logger.warn(
+          `Escrow is disabled in system settings. Payment processed without escrow for order ${orderId}`
+        );
+      }
+
+      if (escrowEnabled && !immediatePayoutEnabled) {
+        try {
+          const order = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+              items: {
+                include: {
+                  product: {
+                    include: {
+                      store: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          if (order && order.items.length > 0) {
+            // For multi-vendor orders, create escrow per seller
+            const sellerOrders = new Map<string, any>();
+
+            for (const item of order.items) {
+              if (item.product.store) {
+                const sellerId = item.product.store.userId;
+                if (!sellerOrders.has(sellerId)) {
+                  sellerOrders.set(sellerId, {
+                    sellerId,
+                    storeId: item.product.storeId!,
+                    totalAmount: 0,
+                    platformFee: 0,
+                  });
+                }
+                const sellerOrder = sellerOrders.get(sellerId)!;
+                sellerOrder.totalAmount += Number(item.total);
+              }
+            }
+
+            // Calculate platform fee from commissions
+            const commissions = await this.prisma.commission.findMany({
+              where: { transactionId: transaction.id },
+            });
+
+            const totalPlatformFee = commissions.reduce(
+              (sum, c) => sum + Number(c.commissionAmount),
+              0
+            );
+
+            // Create escrow transaction with hold period from settings
+            if (sellerOrders.size === 1) {
+              // Single seller order
+              const sellerOrder = Array.from(sellerOrders.values())[0];
+              const { EscrowService } = await import('../escrow/escrow.service');
+              const escrowService = new EscrowService(this.prisma);
+
+              await escrowService.createEscrowTransaction({
+                orderId,
+                paymentTransactionId: transaction.id,
+                sellerId: sellerOrder.sellerId,
+                storeId: sellerOrder.storeId,
+                totalAmount: Number(transaction.amount),
+                platformFee: totalPlatformFee,
+                currency: transaction.currency,
+                holdPeriodDays, // Use hold period from system settings
+              });
+
+              this.logger.log(
+                `Escrow created for order ${orderId}: ${transaction.amount} ${transaction.currency} (platform fee: ${totalPlatformFee}, hold period: ${holdPeriodDays} days)`
+              );
+            } else {
+              // Multi-vendor order - create escrow with split allocations
+              // TODO: Implement multi-vendor escrow split
+              this.logger.warn(`Multi-vendor escrow not yet implemented for order ${orderId}`);
+            }
+          }
+        } catch (escrowError) {
+          this.logger.error(`Error creating escrow for transaction ${transaction.id}:`, escrowError);
+          // Don't fail the payment if escrow creation fails
+        }
+      } else if (immediatePayoutEnabled) {
+        this.logger.warn(
+          `IMMEDIATE PAYOUT MODE ENABLED: Funds will be paid to seller immediately for order ${orderId}. This should only be used for testing or trusted sellers!`
+        );
+        // In immediate payout mode, funds would be transferred immediately
+        // This requires additional payout service integration
       }
 
       // TODO: Send payment confirmation email via email service

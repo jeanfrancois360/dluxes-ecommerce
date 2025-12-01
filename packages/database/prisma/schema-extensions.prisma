@@ -1,0 +1,549 @@
+// ============================================================================
+// ESCROW & PAYMENT EXTENSIONS
+// Non-Destructive Extensions for Production-Ready Escrow System
+// ============================================================================
+
+// NOTE: This file contains schema extensions. Merge these into the main schema.prisma file.
+// These are ADDITIVE changes only - no existing models are modified.
+
+// ============================================================================
+// Escrow Transaction System (Default Payment Model)
+// ============================================================================
+
+model EscrowTransaction {
+  id                String   @id @default(cuid())
+
+  // Transaction References
+  orderId           String
+  paymentTransactionId String @unique
+  sellerId          String
+  storeId           String
+
+  // Amounts
+  totalAmount       Decimal  @db.Decimal(10, 2)  // Total order amount
+  platformFee       Decimal  @db.Decimal(10, 2)  // Commission amount
+  sellerAmount      Decimal  @db.Decimal(10, 2)  // Amount to be paid to seller
+  currency          String   @default("USD")
+
+  // Escrow Status
+  status            EscrowStatus @default(HELD)
+
+  // Release Conditions
+  deliveryConfirmed Boolean  @default(false)
+  deliveryConfirmedAt DateTime?
+  deliveryConfirmedBy String?  // User ID who confirmed
+
+  holdPeriodDays    Int      @default(7)  // Days to hold funds after delivery
+  autoReleaseAt     DateTime?  // Auto-release date
+
+  // Release/Refund
+  releasedAt        DateTime?
+  releasedBy        String?  // Admin user ID
+  refundedAt        DateTime?
+  refundReason      String?  @db.Text
+
+  // Metadata
+  notes             String?  @db.Text
+  metadata          Json?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  order             Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  paymentTransaction PaymentTransaction @relation(fields: [paymentTransactionId], references: [id], onDelete: Cascade)
+  seller            User              @relation("SellerEscrow", fields: [sellerId], references: [id], onDelete: Cascade)
+  store             Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  splitAllocations  EscrowSplitAllocation[]
+
+  @@index([orderId])
+  @@index([sellerId])
+  @@index([storeId])
+  @@index([status])
+  @@index([autoReleaseAt])
+  @@index([deliveryConfirmed])
+  @@map("escrow_transactions")
+}
+
+enum EscrowStatus {
+  HELD              // Funds held in escrow (default)
+  PENDING_RELEASE   // Delivery confirmed, waiting for hold period
+  RELEASED          // Funds released to seller
+  REFUNDED          // Funds refunded to buyer
+  DISPUTED          // Dispute raised
+  PARTIALLY_RELEASED // Partial release (for multi-vendor orders)
+}
+
+// ============================================================================
+// Escrow Split Allocation (Multi-Vendor Support)
+// ============================================================================
+
+model EscrowSplitAllocation {
+  id                String   @id @default(cuid())
+  escrowTransactionId String
+
+  // Allocation Details
+  sellerId          String
+  storeId           String
+  amount            Decimal  @db.Decimal(10, 2)
+  platformFee       Decimal  @db.Decimal(10, 2)
+  sellerAmount      Decimal  @db.Decimal(10, 2)
+
+  // Item Reference
+  orderItemId       String?
+
+  // Status
+  status            EscrowStatus @default(HELD)
+  releasedAt        DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  escrowTransaction EscrowTransaction @relation(fields: [escrowTransactionId], references: [id], onDelete: Cascade)
+  seller            User              @relation("SellerEscrowAllocations", fields: [sellerId], references: [id])
+  store             Store             @relation("StoreEscrowAllocations", fields: [storeId], references: [id])
+
+  @@index([escrowTransactionId])
+  @@index([sellerId])
+  @@index([storeId])
+  @@map("escrow_split_allocations")
+}
+
+// ============================================================================
+// Seller Commission Overrides (Individual Seller Rates)
+// ============================================================================
+
+model SellerCommissionOverride {
+  id                String   @id @default(cuid())
+  sellerId          String   @unique
+
+  // Override Settings
+  commissionType    CommissionRuleType @default(PERCENTAGE)
+  commissionRate    Decimal  @db.Decimal(5, 2)  // Percentage or fixed amount
+
+  // Conditions (Optional)
+  minOrderValue     Decimal? @db.Decimal(10, 2)
+  maxOrderValue     Decimal? @db.Decimal(10, 2)
+  categoryId        String?  // Apply to specific category only
+
+  // Status
+  isActive          Boolean  @default(true)
+  priority          Int      @default(100)  // Higher than category rules
+
+  // Validity
+  validFrom         DateTime?
+  validUntil        DateTime?
+
+  // Metadata
+  notes             String?  @db.Text
+  approvedBy        String?  // Admin user ID
+  approvedAt        DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  seller            User     @relation("SellerCommissionOverrides", fields: [sellerId], references: [id], onDelete: Cascade)
+  category          Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([sellerId])
+  @@index([isActive])
+  @@index([priority])
+  @@map("seller_commission_overrides")
+}
+
+// ============================================================================
+// Shipping Zones (Regional Delivery Settings)
+// ============================================================================
+
+model ShippingZone {
+  id                String   @id @default(cuid())
+
+  // Zone Details
+  name              String   // e.g., "North America", "Europe", "Rwanda"
+  code              String   @unique // e.g., "NA", "EU", "RW"
+  description       String?  @db.Text
+
+  // Geographic Coverage
+  countries         String[] // ISO country codes: ["US", "CA", "MX"]
+  states            String[] // State/Province codes (optional)
+  cities            String[] // Specific cities (optional)
+  postalCodes       String[] // Postal code patterns (optional)
+
+  // Pricing
+  baseFee           Decimal  @db.Decimal(10, 2)  // Base shipping fee
+  perKgFee          Decimal? @db.Decimal(10, 2)  // Per kilogram fee
+  freeShippingThreshold Decimal? @db.Decimal(10, 2) // Free shipping above this amount
+
+  // Delivery Estimates
+  minDeliveryDays   Int      @default(3)
+  maxDeliveryDays   Int      @default(7)
+
+  // Status
+  isActive          Boolean  @default(true)
+  priority          Int      @default(0)
+
+  // Metadata
+  metadata          Json?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  rates             ShippingRate[]
+
+  @@index([code])
+  @@index([isActive])
+  @@index([priority])
+  @@map("shipping_zones")
+}
+
+// ============================================================================
+// Shipping Rates (Tiered Pricing)
+// ============================================================================
+
+model ShippingRate {
+  id                String   @id @default(cuid())
+  zoneId            String
+
+  // Rate Tiers
+  name              String   // e.g., "Standard", "Express", "Next Day"
+  minOrderValue     Decimal? @db.Decimal(10, 2)
+  maxOrderValue     Decimal? @db.Decimal(10, 2)
+
+  // Pricing
+  rate              Decimal  @db.Decimal(10, 2)
+  perKgRate         Decimal? @db.Decimal(10, 2)
+
+  // Delivery Time
+  minDeliveryDays   Int      @default(3)
+  maxDeliveryDays   Int      @default(7)
+
+  // Status
+  isActive          Boolean  @default(true)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  zone              ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@index([zoneId])
+  @@index([isActive])
+  @@map("shipping_rates")
+}
+
+// ============================================================================
+// System Settings (Dynamic Configuration)
+// ============================================================================
+
+model SystemSetting {
+  id                String   @id @default(cuid())
+
+  // Setting Identification
+  key               String   @unique  // e.g., "escrow_default_hold_days"
+  category          String   // e.g., "payment", "shipping", "commission"
+
+  // Value (supports multiple types via JSON)
+  value             Json     // Can store string, number, boolean, object, array
+  valueType         SettingValueType @default(STRING)
+
+  // Description & Validation
+  label             String
+  description       String?  @db.Text
+  validationRule    Json?    // JSON schema for validation
+
+  // Access Control
+  isPublic          Boolean  @default(false)  // Can be accessed by frontend
+  isEditable        Boolean  @default(true)   // Can be edited via admin UI
+  requiresRestart   Boolean  @default(false)  // Requires app restart
+
+  // Metadata
+  defaultValue      Json?
+  lastUpdatedBy     String?  // Admin user ID
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  auditLogs         SettingsAuditLog[]
+
+  @@index([key])
+  @@index([category])
+  @@index([isPublic])
+  @@map("system_settings")
+}
+
+enum SettingValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  ARRAY
+}
+
+// ============================================================================
+// Settings Audit Log (Change Tracking)
+// ============================================================================
+
+model SettingsAuditLog {
+  id                String   @id @default(cuid())
+  settingId         String?
+
+  // Change Details
+  settingKey        String
+  oldValue          Json?
+  newValue          Json
+
+  // Actor
+  changedBy         String   // User ID (admin)
+  changedByEmail    String
+  ipAddress         String?
+  userAgent         String?
+
+  // Metadata
+  action            AuditAction @default(UPDATE)
+  reason            String?  @db.Text
+  metadata          Json?
+
+  // Rollback Support
+  canRollback       Boolean  @default(true)
+  rolledBackAt      DateTime?
+  rolledBackBy      String?
+
+  createdAt         DateTime @default(now())
+
+  // Relations
+  setting           SystemSetting? @relation(fields: [settingId], references: [id], onDelete: SetNull)
+
+  @@index([settingId])
+  @@index([settingKey])
+  @@index([changedBy])
+  @@index([createdAt])
+  @@map("settings_audit_logs")
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  ROLLBACK
+}
+
+// ============================================================================
+// Payout Schedule Configuration
+// ============================================================================
+
+model PayoutScheduleConfig {
+  id                String   @id @default(cuid())
+
+  // Schedule Settings
+  frequency         PayoutFrequency @default(WEEKLY)
+  dayOfWeek         Int?     // 0-6 (Sunday-Saturday) for weekly
+  dayOfMonth        Int?     // 1-31 for monthly
+
+  // Thresholds
+  minPayoutAmount   Decimal  @db.Decimal(10, 2) @default(50)  // Minimum amount to trigger payout
+  holdPeriodDays    Int      @default(7)  // Days to hold after delivery confirmation
+
+  // Automation
+  isAutomatic       Boolean  @default(true)
+  isActive          Boolean  @default(true)
+
+  // Notification
+  notifyBeforeDays  Int      @default(1)  // Notify sellers X days before payout
+
+  // Metadata
+  description       String?  @db.Text
+  lastProcessedAt   DateTime?
+  nextProcessAt     DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("payout_schedule_config")
+}
+
+enum PayoutFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  ON_DEMAND
+}
+
+// ============================================================================
+// Delivery Confirmation Log
+// ============================================================================
+
+model DeliveryConfirmation {
+  id                String   @id @default(cuid())
+  orderId           String   @unique
+
+  // Confirmation Details
+  confirmedBy       String   // User ID (buyer or admin)
+  confirmationType  DeliveryConfirmationType
+
+  // Proof
+  signature         String?
+  photos            String[] // Array of photo URLs
+  notes             String?  @db.Text
+
+  // Location
+  latitude          Decimal? @db.Decimal(10, 6)
+  longitude         Decimal? @db.Decimal(10, 6)
+  deliveryAddress   String?  @db.Text
+
+  // Timing
+  scheduledDeliveryDate DateTime?
+  actualDeliveryDate    DateTime
+  confirmedAt       DateTime @default(now())
+
+  // Relations
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([confirmedBy])
+  @@index([actualDeliveryDate])
+  @@map("delivery_confirmations")
+}
+
+enum DeliveryConfirmationType {
+  BUYER_CONFIRMED       // Buyer confirmed receipt
+  AUTO_CONFIRMED        // Auto-confirmed after X days
+  ADMIN_CONFIRMED       // Admin manually confirmed
+  COURIER_CONFIRMED     // Courier/delivery partner confirmed
+}
+
+// ============================================================================
+// Advertisement Plans (Seller Promotion Tiers)
+// ============================================================================
+
+model AdvertisementPlan {
+  id                String   @id @default(cuid())
+
+  // Plan Details
+  name              String   // e.g., "Free", "Basic", "Premium"
+  slug              String   @unique
+  description       String?  @db.Text
+
+  // Features
+  maxActiveAds      Int      @default(1)
+  maxImpressions    Int?     // null = unlimited
+  priorityBoost     Int      @default(0)  // 0-10 priority boost
+
+  // Placement Access
+  allowedPlacements Json     // Array of allowed AdPlacement enum values
+
+  // Pricing
+  price             Decimal  @db.Decimal(10, 2)
+  currency          String   @default("USD")
+  billingPeriod     PlanBillingPeriod @default(MONTHLY)
+
+  // Trial
+  trialDays         Int      @default(0)
+
+  // Status
+  isActive          Boolean  @default(true)
+  isFeatured        Boolean  @default(false)
+  displayOrder      Int      @default(0)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  subscriptions     SellerPlanSubscription[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@index([displayOrder])
+  @@map("advertisement_plans")
+}
+
+enum PlanBillingPeriod {
+  FREE
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+// ============================================================================
+// Seller Plan Subscriptions
+// ============================================================================
+
+model SellerPlanSubscription {
+  id                String   @id @default(cuid())
+
+  // Subscription Details
+  sellerId          String
+  planId            String
+
+  // Status
+  status            SubscriptionStatus @default(ACTIVE)
+
+  // Billing
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  autoRenew         Boolean  @default(true)
+
+  // Payment
+  stripeSubscriptionId String?
+  lastPaymentAt     DateTime?
+  nextPaymentAt     DateTime?
+
+  // Usage Tracking
+  adsCreated        Int      @default(0)
+  impressionsUsed   Int      @default(0)
+
+  // Cancellation
+  cancelledAt       DateTime?
+  cancelledBy       String?
+  cancellationReason String? @db.Text
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  seller            User     @relation("SellerPlanSubscriptions", fields: [sellerId], references: [id], onDelete: Cascade)
+  plan              AdvertisementPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([planId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@map("seller_plan_subscriptions")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIAL
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+// ============================================================================
+// Add Relations to Existing Models
+// ============================================================================
+
+// NOTE: Add these to the existing User model:
+//   escrowTransactions     EscrowTransaction[]     @relation("SellerEscrow")
+//   escrowAllocations      EscrowSplitAllocation[] @relation("SellerEscrowAllocations")
+//   commissionOverride     SellerCommissionOverride? @relation("SellerCommissionOverrides")
+//   planSubscriptions      SellerPlanSubscription[] @relation("SellerPlanSubscriptions")
+
+// NOTE: Add these to the existing Store model:
+//   escrowTransactions     EscrowTransaction[]
+//   escrowAllocations      EscrowSplitAllocation[] @relation("StoreEscrowAllocations")
+
+// NOTE: Add these to the existing Order model:
+//   escrowTransaction      EscrowTransaction?
+//   deliveryConfirmation   DeliveryConfirmation?
+
+// NOTE: Add these to the existing PaymentTransaction model:
+//   escrowTransaction      EscrowTransaction?
+
+// NOTE: Add these to the existing Category model:
+//   commissionOverrides    SellerCommissionOverride[]

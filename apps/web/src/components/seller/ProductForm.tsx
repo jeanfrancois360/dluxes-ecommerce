@@ -107,10 +107,10 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
         weight: weight ? Number(weight) : null,
         metaTitle: metaTitle || null,
         metaDescription: metaDescription || null,
-        seoKeywords: seoKeywords ? seoKeywords.split(',').map(k => k.trim()).filter(Boolean) : [],
-        colors: colors ? colors.split(',').map(c => c.trim()).filter(Boolean) : [],
-        sizes: sizes ? sizes.split(',').map(s => s.trim()).filter(Boolean) : [],
-        materials: materials ? materials.split(',').map(m => m.trim()).filter(Boolean) : [],
+        seoKeywords: seoKeywords ? seoKeywords.split(',').map((k: string) => k.trim()).filter(Boolean) : [],
+        colors: colors ? colors.split(',').map((c: string) => c.trim()).filter(Boolean) : [],
+        sizes: sizes ? sizes.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+        materials: materials ? materials.split(',').map((m: string) => m.trim()).filter(Boolean) : [],
       };
 
       await onSubmit(formData);

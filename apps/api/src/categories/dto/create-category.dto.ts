@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsBoolean, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsNumber, IsEnum, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CategoryType } from '@prisma/client';
 
 export class CreateCategoryDto {
   @IsString()
@@ -32,4 +33,13 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  // Category Type & Settings
+  @IsOptional()
+  @IsEnum(CategoryType)
+  categoryType?: CategoryType;
+
+  @IsOptional()
+  @IsObject()
+  typeSettings?: Record<string, any>; // Type-specific configuration
 }
