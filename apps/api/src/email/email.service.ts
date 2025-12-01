@@ -279,4 +279,136 @@ export class EmailService {
       return false;
     }
   }
+
+  /**
+   * Send product inquiry notification to admin
+   */
+  async sendProductInquiry(
+    adminEmail: string,
+    inquiryData: {
+      customerName: string;
+      customerEmail: string;
+      customerPhone?: string;
+      productName: string;
+      productUrl: string;
+      message: string;
+    }
+  ): Promise<boolean> {
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.log(`Product inquiry from ${inquiryData.customerEmail} for ${inquiryData.productName}`);
+        return false;
+      }
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F9FAFB;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+              <div style="background: linear-gradient(135deg, #000000 0%, #1A1A1A 100%); padding: 40px; text-align: center; border-radius: 16px 16px 0 0;">
+                <h1 style="color: #FFFFFF; font-size: 28px; margin: 0; font-weight: 700;">New Product Inquiry</h1>
+                <p style="color: #D4AF37; font-size: 16px; margin: 12px 0 0;">A customer is interested in a product</p>
+              </div>
+
+              <div style="background-color: #FFFFFF; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);">
+                <div style="background-color: #FAFAFA; border-left: 4px solid #D4AF37; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+                  <p style="color: #000000; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">
+                    Product: ${inquiryData.productName}
+                  </p>
+                  <a href="${inquiryData.productUrl}" style="color: #3B82F6; font-size: 14px; text-decoration: none;">
+                    View Product →
+                  </a>
+                </div>
+
+                <h3 style="color: #000000; font-size: 18px; margin: 24px 0 12px 0; font-weight: 600;">Customer Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5;">
+                      <strong style="color: #737373; font-size: 14px;">Name:</strong>
+                    </td>
+                    <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; text-align: right;">
+                      <span style="color: #000000; font-size: 14px;">${inquiryData.customerName}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5;">
+                      <strong style="color: #737373; font-size: 14px;">Email:</strong>
+                    </td>
+                    <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; text-align: right;">
+                      <a href="mailto:${inquiryData.customerEmail}" style="color: #3B82F6; font-size: 14px; text-decoration: none;">
+                        ${inquiryData.customerEmail}
+                      </a>
+                    </td>
+                  </tr>
+                  ${inquiryData.customerPhone ? `
+                  <tr>
+                    <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5;">
+                      <strong style="color: #737373; font-size: 14px;">Phone:</strong>
+                    </td>
+                    <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; text-align: right;">
+                      <a href="tel:${inquiryData.customerPhone}" style="color: #3B82F6; font-size: 14px; text-decoration: none;">
+                        ${inquiryData.customerPhone}
+                      </a>
+                    </td>
+                  </tr>
+                  ` : ''}
+                </table>
+
+                <h3 style="color: #000000; font-size: 18px; margin: 24px 0 12px 0; font-weight: 600;">Message</h3>
+                <div style="background-color: #FAFAFA; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+                  <p style="color: #525252; font-size: 14px; line-height: 1.6; margin: 0; white-space: pre-wrap;">
+                    ${inquiryData.message}
+                  </p>
+                </div>
+
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="mailto:${inquiryData.customerEmail}?subject=Re: ${inquiryData.productName}"
+                     style="display: inline-block; background: linear-gradient(135deg, #000000 0%, #262626 100%); color: #FFFFFF; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                    Reply to Customer
+                  </a>
+                </div>
+
+                <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 20px; border-radius: 8px; margin: 24px 0;">
+                  <p style="color: #92400E; font-size: 14px; line-height: 1.6; margin: 0;">
+                    <strong style="color: #000000;">⚡ Action Required:</strong><br/>
+                    Please respond to this customer inquiry within 24 hours to maintain excellent service standards.
+                  </p>
+                </div>
+              </div>
+
+              <div style="text-align: center; padding-top: 24px;">
+                <p style="color: #A3A3A3; font-size: 12px; margin: 0;">
+                  © ${new Date().getFullYear()} Luxury E-commerce. All rights reserved.
+                </p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: adminEmail,
+        replyTo: inquiryData.customerEmail,
+        subject: `🛍️ New Product Inquiry - ${inquiryData.productName}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send product inquiry email', error);
+        return false;
+      }
+
+      this.logger.log(`Product inquiry email sent to ${adminEmail} (ID: ${data?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending product inquiry email', error);
+      return false;
+    }
+  }
 }

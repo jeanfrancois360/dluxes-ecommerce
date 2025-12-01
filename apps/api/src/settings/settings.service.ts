@@ -304,4 +304,94 @@ export class SettingsService {
       message: `Setting '${key}' deleted successfully`,
     };
   }
+
+  /**
+   * Get site information (name, tagline, contact email, timezone)
+   * Public endpoint - safe to expose
+   */
+  async getSiteInfo() {
+    try {
+      const [siteName, siteTagline, contactEmail, timezone] = await Promise.all([
+        this.getSetting('site_name').catch(() => ({ key: 'site_name', value: 'Luxury E-commerce' })),
+        this.getSetting('site_tagline').catch(() => ({ key: 'site_tagline', value: 'Where Elegance Meets Excellence' })),
+        this.getSetting('contact_email').catch(() => ({ key: 'contact_email', value: 'support@luxury.com' })),
+        this.getSetting('timezone').catch(() => ({ key: 'timezone', value: 'UTC' })),
+      ]);
+
+      return {
+        siteName: String(siteName.value),
+        siteTagline: String(siteTagline.value),
+        contactEmail: String(contactEmail.value),
+        timezone: String(timezone.value),
+      };
+    } catch (error) {
+      this.logger.error('Failed to get site info:', error);
+      return {
+        siteName: 'Luxury E-commerce',
+        siteTagline: 'Where Elegance Meets Excellence',
+        contactEmail: 'support@luxury.com',
+        timezone: 'UTC',
+      };
+    }
+  }
+
+  /**
+   * Get site name
+   */
+  async getSiteName(): Promise<string> {
+    try {
+      const setting = await this.getSetting('site_name');
+      return String(setting.value) || 'Luxury E-commerce';
+    } catch (error) {
+      return 'Luxury E-commerce';
+    }
+  }
+
+  /**
+   * Get site tagline
+   */
+  async getSiteTagline(): Promise<string> {
+    try {
+      const setting = await this.getSetting('site_tagline');
+      return String(setting.value) || 'Where Elegance Meets Excellence';
+    } catch (error) {
+      return 'Where Elegance Meets Excellence';
+    }
+  }
+
+  /**
+   * Get contact email
+   */
+  async getContactEmail(): Promise<string> {
+    try {
+      const setting = await this.getSetting('contact_email');
+      return String(setting.value) || 'support@luxury.com';
+    } catch (error) {
+      return 'support@luxury.com';
+    }
+  }
+
+  /**
+   * Get timezone
+   */
+  async getTimezone(): Promise<string> {
+    try {
+      const setting = await this.getSetting('timezone');
+      return String(setting.value) || 'UTC';
+    } catch (error) {
+      return 'UTC';
+    }
+  }
+
+  /**
+   * Get audit log retention days
+   */
+  async getAuditLogRetentionDays(): Promise<number> {
+    try {
+      const setting = await this.getSetting('audit.log_retention_days');
+      return Number(setting.value) || 2555; // Default 7 years
+    } catch (error) {
+      return 2555; // 7 years
+    }
+  }
 }

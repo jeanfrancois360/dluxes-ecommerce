@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import { EscrowStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -7,7 +8,10 @@ import { Decimal } from '@prisma/client/runtime/library';
 export class EscrowService {
   private readonly logger = new Logger(EscrowService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   /**
    * Create escrow transaction after successful payment
@@ -21,10 +25,39 @@ export class EscrowService {
     totalAmount: number;
     platformFee: number;
     currency: string;
-    holdPeriodDays?: number; // Optional, defaults from system settings or env var
+    holdPeriodDays?: number; // Optional, defaults from system settings
+    bypassEscrow?: boolean; // For trusted sellers with immediate payout enabled
   }) {
+    // Check if escrow system is enabled
+    const escrowEnabled = await this.isEscrowEnabled();
+    if (!escrowEnabled) {
+      throw new BadRequestException('Escrow system is currently disabled. Please contact support.');
+    }
+
+    // Check if immediate payout is enabled and allowed for this seller
+    if (data.bypassEscrow) {
+      const immediatePayoutEnabled = await this.isImmediatePayoutEnabled();
+      if (!immediatePayoutEnabled) {
+        this.logger.warn(`Immediate payout attempted but disabled: Seller ${data.sellerId}`);
+        throw new BadRequestException('Immediate payout is not available at this time.');
+      }
+    }
+
     const sellerAmount = new Decimal(data.totalAmount).minus(data.platformFee);
-    const holdPeriodDays = data.holdPeriodDays || parseInt(process.env.ESCROW_DEFAULT_HOLD_DAYS || '7');
+
+    // Get hold period from settings (with fallback to env var for backwards compatibility)
+    let holdPeriodDays = data.holdPeriodDays;
+    if (!holdPeriodDays) {
+      try {
+        const setting = await this.settingsService.getSetting('escrow.hold_period_days');
+        holdPeriodDays = Number(setting.value) || 7;
+      } catch (error) {
+        // Fallback to env var if setting not found
+        this.logger.warn('Escrow hold period setting not found, using env variable');
+        holdPeriodDays = parseInt(process.env.ESCROW_DEFAULT_HOLD_DAYS || '7');
+      }
+    }
+
     const autoReleaseDate = new Date(Date.now() + holdPeriodDays * 24 * 60 * 60 * 1000);
 
     const escrow = await this.prisma.escrowTransaction.create({
@@ -46,6 +79,18 @@ export class EscrowService {
     this.logger.log(
       `Escrow created for order ${data.orderId}: ${sellerAmount} ${data.currency} (held until ${autoReleaseDate.toISOString()})`
     );
+
+    // Audit log
+    await this.logEscrowAction('CREATE', escrow.id, {
+      orderId: data.orderId,
+      sellerId: data.sellerId,
+      totalAmount: data.totalAmount,
+      platformFee: data.platformFee,
+      sellerAmount: sellerAmount.toString(),
+      currency: data.currency,
+      holdPeriodDays,
+      autoReleaseAt: autoReleaseDate.toISOString(),
+    });
 
     return escrow;
   }
@@ -154,6 +199,14 @@ export class EscrowService {
       throw new BadRequestException(`Cannot release escrow with status ${escrow.status}`);
     }
 
+    // CHECK IF DELIVERY CONFIRMATION IS REQUIRED
+    const confirmationRequired = await this.isDeliveryConfirmationRequired();
+    if (confirmationRequired && !escrow.deliveryConfirmed) {
+      throw new BadRequestException(
+        'Delivery confirmation is required before releasing escrow. Please confirm delivery first.'
+      );
+    }
+
     await this.prisma.$transaction(async (prisma) => {
       // Update escrow status
       await prisma.escrowTransaction.update({
@@ -188,6 +241,16 @@ export class EscrowService {
     this.logger.log(
       `Escrow released for ${escrow.sellerId}: ${escrow.sellerAmount} ${escrow.currency} (Order: ${escrow.orderId})`
     );
+
+    // Audit log
+    await this.logEscrowAction('RELEASE', escrow.id, {
+      sellerId: escrow.sellerId,
+      sellerAmount: escrow.sellerAmount.toString(),
+      currency: escrow.currency,
+      orderId: escrow.orderId,
+      releasedBy,
+      releasedAt: new Date().toISOString(),
+    }, releasedBy);
 
     return escrow;
   }
@@ -245,6 +308,15 @@ export class EscrowService {
 
     this.logger.log(`Escrow refunded for order ${escrow.orderId}: ${refundReason}`);
 
+    // Audit log
+    await this.logEscrowAction('REFUND', escrow.id, {
+      orderId: escrow.orderId,
+      totalAmount: escrow.totalAmount.toString(),
+      currency: escrow.currency,
+      refundReason,
+      refundedAt: new Date().toISOString(),
+    });
+
     return escrow;
   }
 
@@ -253,6 +325,17 @@ export class EscrowService {
    * Called by cron job/scheduler
    */
   async autoReleaseExpiredEscrows() {
+    // Check if auto-release is enabled
+    const autoReleaseEnabled = await this.isAutoReleaseEnabled();
+    if (!autoReleaseEnabled) {
+      this.logger.log('Auto-release is disabled, skipping escrow auto-release');
+      return {
+        processed: 0,
+        successful: 0,
+        failed: 0,
+      };
+    }
+
     const now = new Date();
 
     const expiredEscrows = await this.prisma.escrowTransaction.findMany({
@@ -512,5 +595,104 @@ export class EscrowService {
         count: disputed._count,
       },
     };
+  }
+
+  /**
+   * Check if escrow system is enabled
+   * Critical security setting - if disabled, no escrow transactions can be created
+   */
+  private async isEscrowEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.settingsService.getSetting('escrow.enabled');
+      return setting.value === 'true' || setting.value === true;
+    } catch (error) {
+      this.logger.warn('Escrow enabled setting not found, defaulting to true');
+      return true; // Default to enabled for safety
+    }
+  }
+
+  /**
+   * Check if automatic release is enabled
+   * Controls whether autoReleaseExpiredEscrows() should process releases
+   */
+  private async isAutoReleaseEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.settingsService.getSetting('escrow.auto_release_enabled');
+      return setting.value === 'true' || setting.value === true;
+    } catch (error) {
+      this.logger.warn('Auto release setting not found, defaulting to true');
+      return true;
+    }
+  }
+
+  /**
+   * Check if immediate payout is enabled
+   * Allows bypassing escrow for trusted sellers
+   */
+  private async isImmediatePayoutEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.settingsService.getSetting('escrow.immediate_payout_enabled');
+      return setting.value === 'true' || setting.value === true;
+    } catch (error) {
+      this.logger.warn('Immediate payout setting not found, defaulting to false');
+      return false; // Default to disabled for security
+    }
+  }
+
+  /**
+   * Check if delivery confirmation is required before releasing escrow
+   * Critical security setting - prevents premature fund release
+   */
+  private async isDeliveryConfirmationRequired(): Promise<boolean> {
+    try {
+      const setting = await this.settingsService.getSetting('delivery_confirmation_required');
+      return setting.value === 'true' || setting.value === true;
+    } catch (error) {
+      this.logger.warn('Delivery confirmation setting not found, defaulting to true');
+      return true; // Default to required for security
+    }
+  }
+
+  /**
+   * Check if audit logging is enabled for escrow actions
+   */
+  private async isAuditLoggingEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.settingsService.getSetting('audit.log_all_escrow_actions');
+      return setting.value === 'true' || setting.value === true;
+    } catch (error) {
+      this.logger.warn('Audit logging setting not found, defaulting to true');
+      return true; // Default to enabled for security/compliance
+    }
+  }
+
+  /**
+   * Log escrow action if audit logging is enabled
+   * Does not throw errors - failures are logged but don't affect escrow operations
+   */
+  private async logEscrowAction(action: string, escrowId: string, details: any, userId?: string) {
+    try {
+      const loggingEnabled = await this.isAuditLoggingEnabled();
+
+      if (loggingEnabled) {
+        // Log to console (database audit log model can be added later if needed)
+        const auditEntry = {
+          timestamp: new Date().toISOString(),
+          action,
+          entityType: 'ESCROW',
+          entityId: escrowId,
+          userId: userId || 'SYSTEM',
+          details: JSON.stringify(details),
+        };
+
+        this.logger.log(`[AUDIT] ${action} - Escrow ${escrowId}: ${JSON.stringify(auditEntry)}`);
+
+        // TODO: If AuditLog model exists in Prisma schema, uncomment:
+        // await this.prisma.auditLog.create({ data: auditEntry });
+      }
+    } catch (error) {
+      // Don't fail escrow operation if logging fails
+      this.logger.error(`Failed to log escrow action ${action}:`, error);
+    }
   }
 }

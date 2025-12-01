@@ -17,6 +17,7 @@ export interface QuickViewProduct {
   rating?: number;
   reviewCount?: number;
   slug: string;
+  purchaseType?: 'INSTANT' | 'INQUIRY';
   variants?: {
     colors?: Array<{ name: string; value: string; hex: string }>;
     sizes?: Array<{ name: string; value: string; inStock: boolean }>;

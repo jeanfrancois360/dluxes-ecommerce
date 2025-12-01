@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import { CommissionStatus, PayoutStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -11,7 +12,10 @@ import { Decimal } from '@prisma/client/runtime/library';
 export class PayoutService {
   private readonly logger = new Logger(PayoutService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   /**
    * Create a payout batch for a seller
@@ -47,6 +51,14 @@ export class PayoutService {
       (sum, commission) => sum.add(commission.commissionAmount),
       new Decimal(0)
     );
+
+    // Check minimum payout amount from settings
+    const minPayoutAmount = await this.getMinimumPayoutAmount();
+    if (totalAmount.lessThan(minPayoutAmount)) {
+      throw new BadRequestException(
+        `Payout amount $${totalAmount} is less than minimum required $${minPayoutAmount}`
+      );
+    }
 
     // Create payout in a transaction
     const payout = await this.prisma.$transaction(async (prisma) => {
@@ -501,5 +513,55 @@ export class PayoutService {
       orderBy: { createdAt: 'asc' },
       take: limit,
     });
+  }
+
+  /**
+   * Get minimum payout amount from settings
+   * Falls back to env variable or hardcoded value
+   */
+  private async getMinimumPayoutAmount(): Promise<Decimal> {
+    try {
+      const setting = await this.settingsService.getSetting('payout.minimum_amount');
+      const amount = Number(setting.value);
+      if (amount && !isNaN(amount)) {
+        return new Decimal(amount);
+      }
+    } catch (error) {
+      this.logger.warn('Minimum payout amount setting not found, using fallback');
+    }
+
+    // Fallback to env variable or hardcoded $50
+    const envAmount = process.env.PAYOUT_MIN_AMOUNT;
+    if (envAmount) {
+      return new Decimal(parseFloat(envAmount));
+    }
+
+    return new Decimal(50);
+  }
+
+  /**
+   * Check if automated payout scheduling is enabled
+   */
+  private async isAutoScheduleEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.settingsService.getSetting('payout.auto_schedule_enabled');
+      return setting.value === 'true' || setting.value === true;
+    } catch (error) {
+      this.logger.warn('Auto schedule setting not found, defaulting to true');
+      return true;
+    }
+  }
+
+  /**
+   * Get default payout frequency from settings
+   */
+  private async getDefaultPayoutFrequency(): Promise<string> {
+    try {
+      const setting = await this.settingsService.getSetting('payout.default_frequency');
+      return String(setting.value) || 'WEEKLY';
+    } catch (error) {
+      this.logger.warn('Default payout frequency setting not found, using WEEKLY');
+      return 'WEEKLY';
+    }
   }
 }

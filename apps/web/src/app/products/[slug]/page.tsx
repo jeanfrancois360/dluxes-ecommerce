@@ -9,6 +9,7 @@ import { ReviewSummaryComponent } from '@/components/reviews/review-summary';
 import { ReviewsList } from '@/components/reviews/reviews-list';
 import { ReviewForm } from '@/components/reviews/review-form';
 import { WishlistButton } from '@/components/wishlist/wishlist-button';
+import { ProductInquiryForm } from '@/components/product-inquiry-form';
 import { useReviews, useCreateReview, useMarkHelpful, useReportReview } from '@/hooks/use-reviews';
 import { useIsInWishlist, useToggleWishlist } from '@/hooks/use-wishlist';
 import { useCart } from '@/hooks/use-cart';
@@ -90,6 +91,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>('description');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
+  const [showInquiryForm, setShowInquiryForm] = useState(false);
 
   // Wishlist
   const { isInWishlist } = useIsInWishlist(product?.id || '');
@@ -151,6 +153,12 @@ export default function ProductDetailPage() {
     return product.images?.length > 0
       ? product.images.map(img => img.url)
       : [product.heroImage];
+  }, [product]);
+
+  // Check if this is an inquiry product
+  const isInquiryProduct = useMemo(() => {
+    if (!product) return false;
+    return product.purchaseType === 'INQUIRY' || product.price === null || product.price === undefined;
   }, [product]);
 
   const renderStars = (rating: number) => {
@@ -352,13 +360,26 @@ export default function ProductDetailPage() {
 
                 {/* Price */}
                 <div className="flex items-baseline gap-3 mb-6">
-                  <Price amount={product.price || 0} className="text-4xl font-bold text-black" />
-                  {product.compareAtPrice && (
-                    <>
-                      <Price amount={product.compareAtPrice || 0} className="text-2xl text-neutral-400 line-through" />
-                      <span className="px-3 py-1 bg-red-100 text-red-600 text-sm font-semibold rounded-full">
-                        Save {discountPercent}%
+                  {isInquiryProduct ? (
+                    <div className="flex flex-col">
+                      <span className="text-4xl font-serif font-bold text-gold">
+                        Contact for Price
                       </span>
+                      <span className="text-sm text-neutral-600 mt-2">
+                        Submit an inquiry to get pricing information
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <Price amount={product.price || 0} className="text-4xl font-bold text-black" />
+                      {product.compareAtPrice && (
+                        <>
+                          <Price amount={product.compareAtPrice || 0} className="text-2xl text-neutral-400 line-through" />
+                          <span className="px-3 py-1 bg-red-100 text-red-600 text-sm font-semibold rounded-full">
+                            Save {discountPercent}%
+                          </span>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -370,8 +391,35 @@ export default function ProductDetailPage() {
               {/* Description */}
               <p className="text-neutral-700 mb-8 leading-relaxed">{product.description}</p>
 
-              {/* Color Selection */}
-              {availableColors.length > 0 && (
+              {/* Inquiry Form or Product Options */}
+              {isInquiryProduct ? (
+                <div className="mb-8">
+                  {!showInquiryForm ? (
+                    <button
+                      onClick={() => setShowInquiryForm(true)}
+                      className="w-full py-4 px-8 bg-gradient-to-r from-gold to-accent-700 text-black font-bold text-lg rounded-xl hover:from-black hover:to-neutral-800 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Contact About This Product
+                    </button>
+                  ) : (
+                    <ProductInquiryForm
+                      productId={product.id}
+                      productName={product.name}
+                      onSuccess={() => {
+                        toast.success('Inquiry Submitted', 'We will contact you soon!');
+                        setShowInquiryForm(false);
+                      }}
+                      onCancel={() => setShowInquiryForm(false)}
+                    />
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Color Selection */}
+                  {availableColors.length > 0 && (
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-black mb-3">
                     Color
@@ -511,6 +559,8 @@ export default function ProductDetailPage() {
                     ))}
                   </div>
                 </div>
+              )}
+                </>
               )}
             </div>
           </div>

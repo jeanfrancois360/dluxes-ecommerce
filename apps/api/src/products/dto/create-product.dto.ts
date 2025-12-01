@@ -1,6 +1,7 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, IsArray, IsEnum, Min } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsBoolean, IsArray, IsEnum, Min, IsObject, ValidateNested, Validate } from 'class-validator';
 import { ProductStatus, ProductType, PurchaseType } from '@prisma/client';
 import { Type } from 'class-transformer';
+import { RequiresPriceForInstantConstraint, RequiresInventoryForInstantConstraint } from './validators/product-validation';
 
 export class CreateProductDto {
   @IsString()
@@ -20,10 +21,12 @@ export class CreateProductDto {
   @IsString()
   categoryId?: string;
 
+  @IsOptional() // Optional for INQUIRY purchase type
+  @Validate(RequiresPriceForInstantConstraint)
   @IsNumber()
   @Min(0)
   @Type(() => Number)
-  price: number;
+  price?: number;
 
   @IsOptional()
   @IsNumber()
@@ -39,10 +42,12 @@ export class CreateProductDto {
   @IsBoolean()
   featured?: boolean;
 
+  @IsOptional() // Optional for INQUIRY purchase type
+  @Validate(RequiresInventoryForInstantConstraint)
   @IsNumber()
   @Min(0)
   @Type(() => Number)
-  inventory: number;
+  inventory?: number;
 
   @IsOptional()
   @IsNumber()
@@ -69,6 +74,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   heroImage?: string;
+
+  @IsOptional()
+  @IsObject()
+  gallery?: any; // Array of {type: 'image'|'video'|'360', url: string, thumbnail?: string}
 
   @IsOptional()
   @IsArray()

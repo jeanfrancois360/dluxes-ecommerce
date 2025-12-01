@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
 /**
@@ -11,7 +12,10 @@ import { Decimal } from '@prisma/client/runtime/library';
 export class ShippingService {
   private readonly logger = new Logger(ShippingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   /**
    * Create shipping zone (Admin only)
@@ -295,7 +299,7 @@ export class ShippingService {
 
     if (!zoneBasedShipping) {
       // No zone found - return default options
-      return this.getDefaultShippingOptions(orderTotal);
+      return await this.getDefaultShippingOptions(orderTotal);
     }
 
     // Get zone rates if available
@@ -334,9 +338,13 @@ export class ShippingService {
   /**
    * Default shipping options (fallback when no zones configured)
    */
-  private getDefaultShippingOptions(orderTotal: number) {
-    const freeShippingThreshold = 200;
+  private async getDefaultShippingOptions(orderTotal: number) {
+    const freeShippingThreshold = await this.getFreeShippingThreshold();
     const isFreeShipping = orderTotal >= freeShippingThreshold;
+
+    if (isFreeShipping) {
+      this.logger.log(`Free shipping applied (order: ${orderTotal} >= threshold: ${freeShippingThreshold})`);
+    }
 
     return [
       {
@@ -358,6 +366,33 @@ export class ShippingService {
         estimatedDays: { min: 1, max: 1 },
       },
     ];
+  }
+
+  /**
+   * Get free shipping threshold from settings
+   */
+  async getFreeShippingThreshold(): Promise<number> {
+    try {
+      const setting = await this.settingsService.getSetting('free_shipping_threshold');
+      return Number(setting.value) || 200;
+    } catch (error) {
+      this.logger.warn('Free shipping threshold not found, using $200');
+      return 200;
+    }
+  }
+
+  /**
+   * Calculate shipping cost based on order total
+   */
+  async calculateShipping(orderTotal: Decimal, baseShippingCost: Decimal): Promise<Decimal> {
+    const threshold = await this.getFreeShippingThreshold();
+
+    if (orderTotal.greaterThanOrEqualTo(threshold)) {
+      this.logger.log(`Free shipping applied (order: ${orderTotal} >= threshold: ${threshold})`);
+      return new Decimal(0);
+    }
+
+    return baseShippingCost;
   }
 
   /**

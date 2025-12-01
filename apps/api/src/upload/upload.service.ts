@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { SupabaseService } from '../supabase/supabase.service';
+import { PLACEHOLDER_IMAGES, IMAGE_CONFIG, FOLDER_PATHS } from './upload.constants';
 
 /**
  * Upload Service
@@ -202,6 +203,117 @@ export class UploadService {
     } catch (error) {
       throw new BadRequestException('Failed to delete file');
     }
+  }
+
+  /**
+   * Upload with optimization and full metadata
+   * Uses new Supabase optimization features
+   */
+  async uploadImageWithOptimization(
+    file: Express.Multer.File,
+    entityType: string = 'products',
+    entityId?: string
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    // Validate file type
+    if (!IMAGE_CONFIG.allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.'
+      );
+    }
+
+    // Validate file size
+    if (file.size > IMAGE_CONFIG.maxSize) {
+      throw new BadRequestException('File size exceeds 5MB limit');
+    }
+
+    // Use Supabase if configured
+    if (this.supabaseService.isConfigured()) {
+      try {
+        const folder = this.supabaseService.generateFolderPath(entityType, entityId);
+        const baseFileName = `${uuidv4()}`;
+
+        // Upload multiple sizes
+        const result = await this.supabaseService.uploadMultipleSizes(
+          file.buffer,
+          baseFileName,
+          folder
+        );
+
+        return {
+          url: result.optimized,
+          originalUrl: result.original,
+          thumbnail: result.thumbnail,
+          fileName: `${baseFileName}.webp`,
+          size: result.metadata.optimizedSize,
+          originalSize: result.metadata.originalSize,
+          width: result.metadata.width,
+          height: result.metadata.height,
+          mimeType: 'image/webp',
+          format: 'webp',
+          storagePath: `${folder}/${baseFileName}.webp`,
+        };
+      } catch (error) {
+        this.logger.error(`Supabase upload failed: ${error.message}`);
+        throw new BadRequestException('Failed to upload image');
+      }
+    }
+
+    // Fall back to basic upload if Supabase not configured
+    return this.uploadImage(file, entityType);
+  }
+
+  /**
+   * Get signed upload URL for client-side direct upload
+   */
+  async getSignedUploadUrl(
+    entityType: string = 'products',
+    entityId?: string,
+    fileName?: string
+  ): Promise<{
+    signedUrl: string;
+    token: string;
+    path: string;
+    publicUrl: string;
+  }> {
+    if (!this.supabaseService.isConfigured()) {
+      throw new BadRequestException('Supabase is not configured');
+    }
+
+    const folder = this.supabaseService.generateFolderPath(entityType, entityId);
+    const finalFileName = fileName || `${uuidv4()}.webp`;
+    const filePath = `${folder}/${finalFileName}`;
+
+    const result = await this.supabaseService.createSignedUploadUrl(filePath);
+
+    // Generate public URL structure
+    const bucketName = 'product-images'; // from config
+    const publicUrl = `https://${process.env.SUPABASE_URL}/storage/v1/object/public/${bucketName}/${filePath}`;
+
+    return {
+      ...result,
+      publicUrl,
+    };
+  }
+
+  /**
+   * Get placeholder image URL
+   */
+  getPlaceholderImage(type: keyof typeof PLACEHOLDER_IMAGES = 'product'): string {
+    return PLACEHOLDER_IMAGES[type] || PLACEHOLDER_IMAGES.product;
+  }
+
+  /**
+   * Get placeholder with fallback for product
+   */
+  getProductImageOrPlaceholder(imageUrl?: string | null): string {
+    if (imageUrl && imageUrl.trim().length > 0) {
+      return imageUrl;
+    }
+    return this.getPlaceholderImage('product');
   }
 
   /**

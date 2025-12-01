@@ -22,6 +22,7 @@ import { UserRole } from '@prisma/client';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ProductInquiryDto } from './dto/product-inquiry.dto';
 
 /**
  * Products Controller
@@ -270,6 +271,32 @@ export class ProductsController {
         success: true,
         data,
         message: 'Image uploaded successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Submit product inquiry (Public endpoint)
+   * Allows customers to inquire about products (especially INQUIRY type products)
+   * @route POST /products/:id/inquiry
+   */
+  @Post(':id/inquiry')
+  @HttpCode(HttpStatus.OK)
+  async submitInquiry(
+    @Param('id') productId: string,
+    @Body() inquiryDto: ProductInquiryDto,
+  ) {
+    try {
+      const data = await this.productsService.submitInquiry(productId, inquiryDto);
+      return {
+        success: true,
+        data,
+        message: data.message,
       };
     } catch (error) {
       return {

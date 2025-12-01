@@ -26,6 +26,7 @@ export default function ProductsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const [addingToWishlist, setAddingToWishlist] = useState<string | null>(null);
+  const [applyingFilters, setApplyingFilters] = useState(false);
 
   // Cart and Wishlist hooks
   const { addItem: addToCartApi } = useCart();
@@ -116,8 +117,9 @@ export default function ProductsPage() {
     router.push(`/products?${params.toString()}`);
   };
 
-  // Apply filters
-  const applyFilters = () => {
+  // Apply filters with loading state
+  const applyFilters = async () => {
+    setApplyingFilters(true);
     updateFilters({
       category: selectedCategories[0],
       brands: selectedBrands,
@@ -127,6 +129,8 @@ export default function ProductsPage() {
       onSale: onSaleOnly || undefined,
       page: 1, // Reset to first page when filters change
     });
+    // Short delay for visual feedback
+    setTimeout(() => setApplyingFilters(false), 300);
   };
 
   // Clear filters
@@ -410,7 +414,12 @@ export default function ProductsPage() {
 
               {/* Price Range */}
               <div className="pb-6 border-b border-neutral-200">
-                <h4 className="text-lg font-semibold text-black mb-4">Price Range</h4>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-black">Price Range</h4>
+                  <span className="text-sm font-bold text-gold">
+                    ${priceRange[0].toLocaleString()} - ${priceRange[1].toLocaleString()}
+                  </span>
+                </div>
                 <div className="space-y-4">
                   <div className="relative pt-1">
                     <input
@@ -527,9 +536,20 @@ export default function ProductsPage() {
               {/* Apply Filters */}
               <button
                 onClick={applyFilters}
-                className="w-full px-6 py-3.5 bg-gradient-to-r from-black to-neutral-800 text-white rounded-lg hover:from-gold hover:to-accent-700 hover:text-black transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                disabled={applyingFilters}
+                className="w-full px-6 py-3.5 bg-gradient-to-r from-black to-neutral-800 text-white rounded-lg hover:from-gold hover:to-accent-700 hover:text-black transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
               >
-                Apply Filters
+                {applyingFilters ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Applying...
+                  </>
+                ) : (
+                  'Apply Filters'
+                )}
               </button>
             </div>
           </aside>
@@ -769,7 +789,11 @@ export default function ProductsPage() {
             {isLoading ? (
               <ProductGridSkeleton count={12} />
             ) : error ? (
-              <div className="text-center py-20">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-20"
+              >
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -780,12 +804,12 @@ export default function ProductsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </motion.div>
-                <h3 className="text-2xl font-serif font-bold text-black mb-3">Error Loading Products</h3>
+                <h3 className="text-2xl font-serif font-bold text-black mb-3">Unable to Load Products</h3>
                 <p className="text-neutral-700 mb-2 font-medium">{error.message}</p>
                 {error.status && (
                   <p className="text-sm text-neutral-600 mb-8 max-w-md mx-auto">
                     {error.status === 0 || error.message.includes('Network')
-                      ? 'Cannot connect to the server. Please make sure the API is running on port 4000.'
+                      ? 'Unable to connect to the server. Please ensure the API is running on http://localhost:4000 and try again.'
                       : `Error code: ${error.status}`}
                   </p>
                 )}
@@ -806,7 +830,7 @@ export default function ProductsPage() {
                     Go Home
                   </Link>
                 </div>
-              </div>
+              </motion.div>
             ) : products && products.length === 0 ? (
               <div className="text-center py-20">
                 <motion.div
@@ -1069,9 +1093,20 @@ export default function ProductsPage() {
                     applyFilters();
                     setShowFilters(false);
                   }}
-                  className="w-full px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-colors"
+                  disabled={applyingFilters}
+                  className="w-full px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Apply Filters
+                  {applyingFilters ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Applying...
+                    </>
+                  ) : (
+                    'Apply Filters'
+                  )}
                 </button>
                 <button
                   onClick={() => {

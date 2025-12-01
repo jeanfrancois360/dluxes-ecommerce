@@ -12,6 +12,7 @@ import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
 import { DatabaseModule } from '../database/database.module';
 import { CartModule } from '../cart/cart.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { CartModule } from '../cart/cart.module';
     EmailModule,
     DatabaseModule,
     CartModule,
+    SettingsModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

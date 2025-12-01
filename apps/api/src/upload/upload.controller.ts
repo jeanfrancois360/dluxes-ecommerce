@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Get,
   Delete,
   Param,
   UseGuards,
@@ -8,6 +9,7 @@ import {
   UploadedFile,
   UploadedFiles,
   Query,
+  Body,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { UploadService } from './upload.service';
@@ -72,6 +74,83 @@ export class UploadController {
       return {
         success: false,
         message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Upload image with optimization
+   * @route POST /upload/optimized
+   */
+  @Post('optimized')
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadOptimized(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('entityType') entityType?: string,
+    @Query('entityId') entityId?: string
+  ) {
+    try {
+      const data = await this.uploadService.uploadImageWithOptimization(
+        file,
+        entityType || 'products',
+        entityId
+      );
+      return {
+        success: true,
+        data,
+        message: 'Image uploaded and optimized successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Get signed upload URL for client-side direct upload
+   * @route POST /upload/signed-url
+   */
+  @Post('signed-url')
+  async getSignedUploadUrl(
+    @Body() body: { entityType?: string; entityId?: string; fileName?: string }
+  ) {
+    try {
+      const data = await this.uploadService.getSignedUploadUrl(
+        body.entityType || 'products',
+        body.entityId,
+        body.fileName
+      );
+      return {
+        success: true,
+        data,
+        message: 'Signed upload URL generated successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Get placeholder image URL
+   * @route GET /upload/placeholder/:type
+   */
+  @Get('placeholder/:type')
+  getPlaceholder(@Param('type') type: string) {
+    try {
+      const url = this.uploadService.getPlaceholderImage(type as any);
+      return {
+        success: true,
+        data: { url },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }

@@ -650,6 +650,16 @@ model ProductImage {
   thumbnail    String? // Optimized thumbnail for galleries
   blurHash     String? // BlurHash for elegant loading states
 
+  // Enhanced Metadata
+  size         Int?    // File size in bytes (optimized)
+  originalSize Int?    // Original file size before optimization
+  format       String? // Image format (webp, jpeg, png, etc.)
+  mimeType     String? // MIME type
+  optimizedUrl String? // Optimized version URL
+  storagePath  String? // Path in Supabase storage
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
