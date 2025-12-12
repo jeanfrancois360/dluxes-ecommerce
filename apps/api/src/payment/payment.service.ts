@@ -37,7 +37,7 @@ export class PaymentService {
   private async isEscrowEnabled(): Promise<boolean> {
     try {
       const setting = await this.prisma.systemSetting.findUnique({
-        where: { key: 'escrow.enabled' },
+        where: { key: 'escrow_enabled' },
       });
       return setting?.value === true;
     } catch (error) {
@@ -67,7 +67,7 @@ export class PaymentService {
   private async getEscrowHoldPeriodDays(): Promise<number> {
     try {
       const setting = await this.prisma.systemSetting.findUnique({
-        where: { key: 'escrow.hold_period_days' },
+        where: { key: 'escrow_default_hold_days' },
       });
       return typeof setting?.value === 'number' ? setting.value : 7;
     } catch (error) {
