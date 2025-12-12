@@ -24,7 +24,7 @@ export interface ValidationResult {
  */
 export const REQUIRED_SETTINGS: SettingRequirement[] = [
   {
-    key: 'escrow.enabled',
+    key: 'escrow_enabled',
     category: 'payment',
     label: 'Escrow System',
     description: 'Escrow must be enabled for secure payments',
@@ -32,7 +32,7 @@ export const REQUIRED_SETTINGS: SettingRequirement[] = [
     severity: 'critical',
   },
   {
-    key: 'escrow.hold_period_days',
+    key: 'escrow_default_hold_days',
     category: 'payment',
     label: 'Escrow Hold Period',
     description: 'Default days to hold payment after delivery',
@@ -40,7 +40,7 @@ export const REQUIRED_SETTINGS: SettingRequirement[] = [
     severity: 'critical',
   },
   {
-    key: 'payout.minimum_amount',
+    key: 'min_payout_amount',
     category: 'payment',
     label: 'Minimum Payout Amount',
     description: 'Minimum amount required for seller payouts',
@@ -48,7 +48,7 @@ export const REQUIRED_SETTINGS: SettingRequirement[] = [
     severity: 'warning',
   },
   {
-    key: 'commission.default_rate',
+    key: 'global_commission_rate',
     category: 'commission',
     label: 'Commission Rate',
     description: 'Platform commission rate on sales',

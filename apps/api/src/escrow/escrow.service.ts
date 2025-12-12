@@ -49,7 +49,7 @@ export class EscrowService {
     let holdPeriodDays = data.holdPeriodDays;
     if (!holdPeriodDays) {
       try {
-        const setting = await this.settingsService.getSetting('escrow.hold_period_days');
+        const setting = await this.settingsService.getSetting('escrow_default_hold_days');
         holdPeriodDays = Number(setting.value) || 7;
       } catch (error) {
         // Fallback to env var if setting not found
@@ -603,7 +603,7 @@ export class EscrowService {
    */
   private async isEscrowEnabled(): Promise<boolean> {
     try {
-      const setting = await this.settingsService.getSetting('escrow.enabled');
+      const setting = await this.settingsService.getSetting('escrow_enabled');
       return setting.value === 'true' || setting.value === true;
     } catch (error) {
       this.logger.warn('Escrow enabled setting not found, defaulting to true');
