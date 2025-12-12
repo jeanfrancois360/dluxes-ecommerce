@@ -78,9 +78,6 @@ export {
   register,
   logout,
   refreshToken,
-  isAuthenticated as isAuthenticatedApi,
-  getAccessToken,
-  clearAuth,
 
   // Password
   requestPasswordReset,
@@ -122,15 +119,10 @@ export type { ToastType, ToastMessage } from '@/lib/api/client';
 // Types
 export type {
   User,
-  AuthTokens,
   LoginRequest,
   RegisterRequest,
   MagicLinkRequest,
   PasswordResetRequest,
   PasswordResetConfirm,
-  ChangePasswordRequest,
-  TwoFactorSetupResponse,
-  TwoFactorVerifyRequest,
-  UpdateProfileRequest,
   UserPreferences,
 } from '@/lib/api/types';

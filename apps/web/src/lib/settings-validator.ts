@@ -24,7 +24,7 @@ export interface ValidationResult {
  */
 export const REQUIRED_SETTINGS: SettingRequirement[] = [
   {
-    key: 'escrow_enabled',
+    key: 'escrow.enabled',
     category: 'payment',
     label: 'Escrow System',
     description: 'Escrow must be enabled for secure payments',
@@ -32,7 +32,7 @@ export const REQUIRED_SETTINGS: SettingRequirement[] = [
     severity: 'critical',
   },
   {
-    key: 'escrow_default_hold_days',
+    key: 'escrow.hold_period_days',
     category: 'payment',
     label: 'Escrow Hold Period',
     description: 'Default days to hold payment after delivery',
@@ -40,7 +40,7 @@ export const REQUIRED_SETTINGS: SettingRequirement[] = [
     severity: 'critical',
   },
   {
-    key: 'min_payout_amount',
+    key: 'payout.minimum_amount',
     category: 'payment',
     label: 'Minimum Payout Amount',
     description: 'Minimum amount required for seller payouts',
@@ -48,7 +48,7 @@ export const REQUIRED_SETTINGS: SettingRequirement[] = [
     severity: 'warning',
   },
   {
-    key: 'global_commission_rate',
+    key: 'commission.default_rate',
     category: 'commission',
     label: 'Commission Rate',
     description: 'Platform commission rate on sales',
@@ -94,9 +94,37 @@ export const REQUIRED_SETTINGS: SettingRequirement[] = [
  */
 function isSettingConfigured(value: any): boolean {
   if (value === null || value === undefined) return false;
-  if (typeof value === 'string' && value.trim() === '') return false;
-  if (typeof value === 'number' && isNaN(value)) return false;
-  if (Array.isArray(value) && value.length === 0) return false;
+
+  // Handle string values
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') return false;
+
+    // Try to parse JSON strings
+    try {
+      const parsed = JSON.parse(trimmed);
+      // If it's a parsed empty array, it's not configured
+      if (Array.isArray(parsed) && parsed.length === 0) return false;
+      // If it's a parsed null or undefined, it's not configured
+      if (parsed === null || parsed === undefined) return false;
+      return true;
+    } catch {
+      // Not JSON, just a regular string - if it's not empty, it's configured
+      return true;
+    }
+  }
+
+  if (typeof value === 'number') {
+    if (isNaN(value)) return false;
+    return true;
+  }
+
+  if (typeof value === 'boolean') return true;
+
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
   return true;
 }
 

@@ -23,7 +23,7 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
   if (isFeatured) badgeSet.add('Featured');
   if (product.compareAtPrice && product.compareAtPrice > product.price) badgeSet.add('Sale');
   if (product.badges && Array.isArray(product.badges)) {
-    product.badges.forEach(badge => badgeSet.add(badge));
+    product.badges.forEach((badge: string) => badgeSet.add(badge));
   }
   const badges = Array.from(badgeSet);
 
@@ -58,7 +58,7 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
     };
   } else if (product.colors || product.sizes) {
     // Handle sizes and colors arrays from API
-    variants = {};
+    variants = {} as any;
     if (product.sizes?.length > 0) {
       variants.sizes = product.sizes.map((size: string) => ({
         name: size,

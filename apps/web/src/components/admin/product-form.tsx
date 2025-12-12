@@ -28,8 +28,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     stock: product?.stock || 0,
     status: product?.status || 'draft',
     tags: product?.tags || [],
-    purchaseType: (product as any)?.purchaseType || 'INSTANT',
-    productType: (product as any)?.productType || 'PHYSICAL',
   });
 
   const [loading, setLoading] = useState(false);

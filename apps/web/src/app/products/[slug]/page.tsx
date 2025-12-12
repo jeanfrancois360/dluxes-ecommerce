@@ -158,7 +158,7 @@ export default function ProductDetailPage() {
   // Check if this is an inquiry product
   const isInquiryProduct = useMemo(() => {
     if (!product) return false;
-    return product.purchaseType === 'INQUIRY' || product.price === null || product.price === undefined;
+    return product.price === null || product.price === undefined || product.price === 0;
   }, [product]);
 
   const renderStars = (rating: number) => {

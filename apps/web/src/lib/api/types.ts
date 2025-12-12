@@ -321,10 +321,10 @@ export interface SearchFilters {
 }
 
 export interface SearchResult<T> {
-  data: T[];
+  products: T[];
   total: number;
   page: number;
-  limit: number;
+  pageSize: number;
   totalPages: number;
 }
 

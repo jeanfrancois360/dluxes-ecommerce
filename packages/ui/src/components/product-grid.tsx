@@ -159,17 +159,17 @@ const ListView: React.FC<{
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
-              {product.badge && (
+              {product.badges && product.badges.length > 0 && (
                 <div className="absolute top-4 left-4">
                   <span className="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-full">
-                    {product.badge}
+                    {product.badges[0]}
                   </span>
                 </div>
               )}
-              {product.discount && (
+              {product.compareAtPrice && product.price && product.compareAtPrice > product.price && (
                 <div className="absolute bottom-4 right-4">
                   <span className="px-3 py-1 bg-black text-white text-sm font-medium rounded-full">
-                    -{product.discount}%
+                    -{Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)}%
                   </span>
                 </div>
               )}
@@ -178,19 +178,14 @@ const ListView: React.FC<{
             {/* Product Details */}
             <div className="flex-1 p-6 flex flex-col justify-between">
               <div>
-                {product.category && (
+                {product.brand && (
                   <p className="text-xs text-neutral-500 uppercase tracking-wider mb-2">
-                    {product.category}
+                    {product.brand}
                   </p>
                 )}
                 <h3 className="text-xl font-semibold text-black mb-2 line-clamp-2 cursor-pointer hover:text-gold transition-colors" onClick={() => onNavigate?.(product.slug || product.id)}>
                   {product.name}
                 </h3>
-                {product.description && (
-                  <p className="text-neutral-600 text-sm mb-4 line-clamp-2">
-                    {product.description}
-                  </p>
-                )}
 
                 {/* Rating */}
                 {product.rating && (
@@ -207,7 +202,7 @@ const ListView: React.FC<{
                       ))}
                     </div>
                     <span className="text-sm text-neutral-600">
-                      {product.rating} {product.reviews && `(${product.reviews})`}
+                      {product.rating} {product.reviewCount && `(${product.reviewCount})`}
                     </span>
                   </div>
                 )}
@@ -272,6 +267,7 @@ const MasonryGrid: React.FC<ProductGridProps> = ({
   columns = 3,
   gap = 'md',
   className,
+  currencySymbol = '$',
   onQuickView,
   onAddToWishlist,
   onQuickAdd,

@@ -10,6 +10,9 @@ import { Toaster } from 'sonner';
 import { siteConfig } from '@/lib/seo';
 import './globals.css';
 
+// Force dynamic rendering to avoid static generation issues with client contexts
+export const dynamic = 'force-dynamic';
+
 const inter = Inter({
   subsets: ['latin'],
   display: 'swap',

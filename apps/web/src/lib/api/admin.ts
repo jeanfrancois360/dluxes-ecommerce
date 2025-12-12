@@ -6,6 +6,19 @@
 
 import { api } from './client';
 
+// Helper function to build query string from params
+function buildQueryString(params?: Record<string, any>): string {
+  if (!params) return '';
+  const queryParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      queryParams.append(key, String(value));
+    }
+  });
+  const queryString = queryParams.toString();
+  return queryString ? `?${queryString}` : '';
+}
+
 export interface DashboardStats {
   totalRevenue: number;
   totalOrders: number;
@@ -244,7 +257,7 @@ export const adminProductsApi = {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   }): Promise<{ products: AdminProduct[]; total: number; pages: number }> {
-    const response = await api.get('/admin/products', { params });
+    const response = await api.get(`/admin/products${buildQueryString(params)}`);
     return response;
   },
 
@@ -289,7 +302,7 @@ export const adminOrdersApi = {
     startDate?: string;
     endDate?: string;
   }): Promise<{ orders: AdminOrder[]; total: number; pages: number }> {
-    const response = await api.get('/admin/orders', { params });
+    const response = await api.get(`/admin/orders${buildQueryString(params)}`);
     return response;
   },
 
@@ -316,7 +329,7 @@ export const adminCustomersApi = {
     search?: string;
     status?: string;
   }): Promise<{ customers: AdminCustomer[]; total: number; pages: number }> {
-    const response = await api.get('/admin/customers', { params });
+    const response = await api.get(`/admin/customers${buildQueryString(params)}`);
     return response;
   },
 
@@ -370,7 +383,7 @@ export const adminCategoriesApi = {
 // Advertisements APIs
 export const adminAdvertisementsApi = {
   async getAll(params?: { status?: string; placement?: string }): Promise<Advertisement[]> {
-    const response = await api.get('/advertisements', { params });
+    const response = await api.get(`/advertisements${buildQueryString(params)}`);
     return response.data || response;
   },
 
@@ -422,7 +435,7 @@ export const adminReviewsApi = {
     status?: string;
     productId?: string;
   }): Promise<{ reviews: Review[]; total: number; pages: number }> {
-    const response = await api.get('/admin/reviews', { params });
+    const response = await api.get(`/admin/reviews${buildQueryString(params)}`);
     return response;
   },
 
@@ -449,18 +462,14 @@ export const adminAnalyticsApi = {
     conversionRate: number;
     averageOrderValue: number;
   }> {
-    const response = await api.get('/admin/analytics/metrics', {
-      params: { startDate, endDate },
-    });
+    const response = await api.get(`/admin/analytics/metrics${buildQueryString({ startDate, endDate })}`);
     return response;
   },
 
   async getSalesByCategory(startDate: string, endDate: string): Promise<
     Array<{ category: string; sales: number; orders: number }>
   > {
-    const response = await api.get('/admin/analytics/sales-by-category', {
-      params: { startDate, endDate },
-    });
+    const response = await api.get(`/admin/analytics/sales-by-category${buildQueryString({ startDate, endDate })}`);
     return response;
   },
 
@@ -469,9 +478,7 @@ export const adminAnalyticsApi = {
     endDate: string,
     limit: number = 10
   ): Promise<Array<{ productId: string; name: string; sales: number; orders: number }>> {
-    const response = await api.get('/admin/analytics/sales-by-product', {
-      params: { startDate, endDate, limit },
-    });
+    const response = await api.get(`/admin/analytics/sales-by-product${buildQueryString({ startDate, endDate, limit })}`);
     return response;
   },
 };

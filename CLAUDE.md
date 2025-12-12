@@ -1,56 +1,48 @@
-- # Error Type
-Runtime TypeError
+# Project Instructions for Claude Code
 
-## Error Message
-can't access property "toFixed", price is undefined
+## Overview
+This is a luxury e-commerce platform built with Next.js 15, NestJS, PostgreSQL, and Prisma.
 
+## Important Notes
 
-    at ProductCard (webpack-internal:///(app-pages-browser)/../../packages/ui/src/components/product-card.tsx:432:37)
-    at ProductCarousel/<.children<.children<.children< (src/components/product-carousel.tsx:132:15)
-    at ProductCarousel (src/components/product-carousel.tsx:124:21)
-    at Home (src/app/page.tsx:209:9)
+### Database
+- PostgreSQL runs on port **5433** (not 5432)
+- Use credentials: `postgres:User@123!@localhost:5433`
 
-## Code Frame
-  130 |               className="flex-none w-[280px] snap-start"
-  131 |             >
-> 132 |               <ProductCard
-      |               ^
-  133 |                 product={product}
-  134 |                 onQuickView={onQuickView ? () => onQuickView(product.id) : undefined}
-  135 |                 onAddToWishlist={onAddToWishlist ? () => onAddToWishlist(product.id) : undefined}
+### Storage
+- Using **Supabase Storage** (not Cloudflare R2)
+- Configure SUPABASE_URL and SUPABASE_SERVICE_KEY
 
-Next.js version: 15.5.6 (Webpack)
-- # Error Type
-Runtime TypeError
+### Package Namespaces
+- Root package: `luxury-ecommerce`
+- Workspace packages use `@luxury-ecommerce` namespace
+- Example: `@luxury-ecommerce/database`, `@luxury-ecommerce/api`, `@luxury-ecommerce/web`
 
-## Error Message
-can't access property "toFixed", price is undefined
+### Current Status
+- Multi-vendor marketplace is fully implemented
+- Escrow payment system active
+- Delivery partner system complete
+- System settings module operational
 
+## Documentation
+- **Comprehensive Guide**: `COMPREHENSIVE_TECHNICAL_DOCUMENTATION.md`
+- **Deployment**: `DEPLOYMENT_GUIDE.md`
+- **Quick Start**: `QUICK_START_GUIDE.md`
+- **Testing**: `TEST_ACCOUNTS_AND_GUIDE.md`
 
-    at ProductCard (webpack-internal:///(app-pages-browser)/../../packages/ui/src/components/product-card.tsx:432:37)
-    at ProductCarousel/<.children<.children<.children< (src/components/product-carousel.tsx:132:15)
-    at ProductCarousel (src/components/product-carousel.tsx:124:21)
-    at Home (src/app/page.tsx:209:9)
+## Common Commands
+```bash
+# Start all services
+pnpm docker:up
+pnpm dev
 
-## Code Frame
-  130 |               className="flex-none w-[280px] snap-start"
-  131 |             >
-> 132 |               <ProductCard
-      |               ^
-  133 |                 product={product}
-  134 |                 onQuickView={onQuickView ? () => onQuickView(product.id) : undefined}
-  135 |                 onAddToWishlist={onAddToWishlist ? () => onAddToWishlist(product.id) : undefined}
+# Database operations
+pnpm prisma:generate
+pnpm prisma:migrate
 
-Next.js version: 15.5.6 (Webpack)
-- Go back to the state we were before we implemented the below"
+# Build
+pnpm build
+```
 
-# Error Type
-Console AxiosError
-
-## Error Message
-Network Error
-
-Next.js version: 15.5.6 (Webpack)
-
-
-the above error is on the public products page http://localhost:3000/products  fix it and improve the UI/UX of it, all components/elements should be functional
+## Test Accounts
+See `TEST_CREDENTIALS.md` for all test account credentials.

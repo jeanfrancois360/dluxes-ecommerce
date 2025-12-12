@@ -52,6 +52,8 @@ export function generateSeoMetadata({
   if (noIndex) robotsContent.push('noindex');
   if (noFollow) robotsContent.push('nofollow');
 
+  const ogType = type === 'product' ? 'website' : type;
+
   return {
     title: metaTitle,
     description: metaDescription,
@@ -61,7 +63,7 @@ export function generateSeoMetadata({
     publisher: siteConfig.name,
     robots: robotsContent.length > 0 ? robotsContent.join(', ') : undefined,
     openGraph: {
-      type,
+      type: ogType,
       locale: 'en_US',
       url: metaUrl,
       title: metaTitle,

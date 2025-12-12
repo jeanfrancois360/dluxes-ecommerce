@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
 import { cn } from '../lib/utils';
 
 export interface ProductCardProps {
@@ -195,14 +194,10 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
             }}
             className="relative w-full h-full"
           >
-            <Image
+            <img
               src={allImages[currentImageIndex] || '/images/placeholder-product.jpg'}
               alt={name}
-              fill
-              className="object-cover"
-              priority={priority}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              quality={85}
+              className="absolute inset-0 w-full h-full object-cover"
             />
           </motion.div>
         </AnimatePresence>

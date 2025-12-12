@@ -25,7 +25,7 @@ Complete deployment guide for the luxury e-commerce platform to production.
 - **Database**: PostgreSQL 16+ (Neon, Supabase, or AWS RDS)
 - **Cache/Queue**: Redis (Upstash, Redis Cloud, or AWS ElastiCache)
 - **Search**: Meilisearch Cloud or self-hosted
-- **Storage**: Cloudflare R2 or AWS S3
+- **Storage**: Supabase Storage (or AWS S3)
 - **Email**: Resend or SendGrid
 - **Payments**: Stripe account
 
@@ -34,7 +34,7 @@ Complete deployment guide for the luxury e-commerce platform to production.
 1. Stripe account (test and live keys)
 2. Resend account for email
 3. Meilisearch Cloud (or server for self-hosting)
-4. Cloudflare account (for R2 storage)
+4. Supabase account (for storage)
 5. Domain name with DNS access
 
 ---
@@ -78,12 +78,10 @@ RESEND_API_KEY=re_xxxxx
 FROM_EMAIL=noreply@yourdomain.com
 SUPPORT_EMAIL=support@yourdomain.com
 
-# Cloudflare R2
-R2_ACCOUNT_ID=your-account-id
-R2_ACCESS_KEY_ID=your-access-key
-R2_SECRET_ACCESS_KEY=your-secret-key
-R2_BUCKET_NAME=luxury-ecommerce
-R2_PUBLIC_URL=https://cdn.yourdomain.com
+# Supabase Storage
+SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_BUCKET_NAME=luxury-ecommerce
 
 # CORS
 FRONTEND_URL=https://yourdomain.com
@@ -374,11 +372,12 @@ docker run -d -p 7700:7700 \
   getmeili/meilisearch:latest
 ```
 
-### 3. Cloudflare R2 Setup
+### 3. Supabase Storage Setup
 
-1. Create R2 bucket: `luxury-ecommerce`
-2. Set public access policy
-3. Configure CORS:
+1. Create Supabase project at supabase.com
+2. Create storage bucket: `luxury-ecommerce`
+3. Set bucket to public
+4. Configure CORS in Supabase dashboard:
 ```json
 {
   "AllowedOrigins": ["https://yourdomain.com"],
@@ -387,6 +386,7 @@ docker run -d -p 7700:7700 \
   "MaxAgeSeconds": 3600
 }
 ```
+5. Get your project URL and service key from Settings → API
 
 ### 4. Resend Setup
 
@@ -639,5 +639,10 @@ curl -X POST 'https://api.yourdomain.com/api/v1/search/index'
 
 ---
 
-**Last Updated:** November 11, 2024
-**Version:** 1.0.0
+**Last Updated:** December 12, 2025
+**Version:** 1.1.0
+
+**Changes in v1.1.0:**
+- Updated storage references from Cloudflare R2 to Supabase Storage
+- Corrected package namespace references
+- Updated environment variable examples

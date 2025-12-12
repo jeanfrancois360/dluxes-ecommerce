@@ -43,7 +43,7 @@ const getAuthToken = () => {
 };
 
 // Helper to get auth headers
-const getAuthHeaders = () => {
+const getAuthHeaders = (): Record<string, string> => {
   const token = getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 };

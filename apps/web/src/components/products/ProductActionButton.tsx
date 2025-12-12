@@ -22,7 +22,7 @@ interface ProductActionButtonProps {
   };
   sellerId?: string;
   onAddToCart?: () => void;
-  size?: 'sm' | 'default' | 'lg';
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
   showBadge?: boolean;
 }
@@ -40,7 +40,7 @@ export default function ProductActionButton({
   product,
   sellerId,
   onAddToCart,
-  size = 'default',
+  size = 'md',
   className = '',
   showBadge = false,
 }: ProductActionButtonProps) {
