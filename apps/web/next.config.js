@@ -7,6 +7,10 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  typescript: {
+    // Ignore TypeScript errors during build (already type-checked separately)
+    ignoreBuildErrors: false,
+  },
   experimental: {
     optimizePackageImports: ['@luxury/ui', '@luxury/design-system'],
   },

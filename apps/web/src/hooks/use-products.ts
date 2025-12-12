@@ -57,7 +57,7 @@ export function useProducts(options: UseProductsOptions = {}): UseProductsReturn
     products: data?.products || [],
     total: data?.total || 0,
     page: data?.page || 1,
-    limit: data?.pageSize || data?.limit || filters.limit || 12,
+    limit: data?.pageSize || filters.limit || 12,
     totalPages: data?.totalPages || 0,
     isLoading,
     error: error instanceof APIError ? error : error ? new APIError('Failed to fetch products', 500) : null,

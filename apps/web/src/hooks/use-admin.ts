@@ -258,8 +258,10 @@ export function useAdminOrders(params?: Parameters<typeof adminOrdersApi.getAll>
     params?.page,
     params?.limit,
     params?.status,
-    params?.sortBy,
-    params?.sortOrder,
+    params?.paymentStatus,
+    params?.search,
+    params?.startDate,
+    params?.endDate,
   ]);
 
   const fetchOrders = useCallback(async () => {
@@ -324,9 +326,7 @@ export function useAdminCustomers(params?: Parameters<typeof adminCustomersApi.g
     params?.page,
     params?.limit,
     params?.search,
-    params?.role,
-    params?.sortBy,
-    params?.sortOrder,
+    params?.status,
   ]);
 
   const fetchCustomers = useCallback(async () => {
@@ -390,10 +390,7 @@ export function useAdminReviews(params?: Parameters<typeof adminReviewsApi.getAl
     params?.page,
     params?.limit,
     params?.productId,
-    params?.isApproved,
-    params?.rating,
-    params?.sortBy,
-    params?.sortOrder,
+    params?.status,
   ]);
 
   const fetchReviews = useCallback(async () => {

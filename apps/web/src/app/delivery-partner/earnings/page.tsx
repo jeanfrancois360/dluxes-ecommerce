@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
 import { Button } from '@luxury/ui';
 import { Badge } from '@luxury/ui';
+import { Input } from '@luxury/ui';
 import {
   Table,
   TableBody,

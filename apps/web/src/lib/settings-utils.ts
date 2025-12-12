@@ -65,19 +65,30 @@ export function validateSettingDependencies(
 
   // Validate default currency is in supported currencies
   if (settings.default_currency && settings.supported_currencies) {
-    if (!settings.supported_currencies.includes(settings.default_currency)) {
+    const supportedCurrencies = Array.isArray(settings.supported_currencies)
+      ? settings.supported_currencies
+      : JSON.parse(settings.supported_currencies || '[]');
+
+    const defaultCurrency = typeof settings.default_currency === 'string'
+      ? settings.default_currency.replace(/"/g, '')
+      : settings.default_currency;
+
+    if (!supportedCurrencies.includes(defaultCurrency)) {
       errors.push('Default currency must be in supported currencies list');
     }
   }
 
   // Validate payout amount is positive
-  if (settings.min_payout_amount && settings.min_payout_amount < 0) {
+  const payoutAmount = settings['payout.minimum_amount'] || settings.min_payout_amount;
+  if (payoutAmount && payoutAmount < 0) {
     errors.push('Minimum payout amount must be positive');
   }
 
   // Validate escrow hold days
-  if (settings.escrow_default_hold_days) {
-    if (settings.escrow_default_hold_days < 1 || settings.escrow_default_hold_days > 90) {
+  const holdDays = settings['escrow.hold_period_days'] || settings.escrow_default_hold_days;
+  if (holdDays) {
+    const days = Number(holdDays);
+    if (days < 1 || days > 90) {
       errors.push('Escrow hold days must be between 1 and 90');
     }
   }

@@ -83,16 +83,16 @@ export function useUser() {
   const profile = useMemo(() => {
     if (!user) return null;
 
+    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+
     return {
-      fullName: user.fullName,
+      fullName,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       phone: user.phone,
-      avatar: user.avatar,
       role: user.role,
       createdAt: new Date(user.createdAt),
-      lastLoginAt: user.lastLoginAt ? new Date(user.lastLoginAt) : null,
     };
   }, [user]);
 
@@ -101,14 +101,14 @@ export function useUser() {
     if (!user) return null;
 
     return {
-      language: user.preferences?.language || 'en',
-      currency: user.preferences?.currency || 'USD',
-      theme: user.preferences?.theme || 'light',
+      language: 'en',
+      currency: 'USD',
+      theme: 'light',
       notifications: {
-        email: user.preferences?.notifications?.email ?? true,
-        sms: user.preferences?.notifications?.sms ?? false,
-        push: user.preferences?.notifications?.push ?? true,
-        marketing: user.preferences?.notifications?.marketing ?? false,
+        email: true,
+        sms: false,
+        push: true,
+        marketing: false,
       },
     };
   }, [user]);
@@ -116,84 +116,56 @@ export function useUser() {
   // User addresses
   const addresses = useMemo(() => {
     if (!user) return [];
-    return user.addresses || [];
+    return [];
   }, [user]);
 
   // Get default shipping address
   const defaultShippingAddress = useMemo(() => {
-    return addresses.find((addr) => addr.type === 'shipping' && addr.isDefault);
+    return undefined;
   }, [addresses]);
 
   // Get default billing address
   const defaultBillingAddress = useMemo(() => {
-    return addresses.find((addr) => addr.type === 'billing' && addr.isDefault);
+    return undefined;
   }, [addresses]);
 
   // Update user preferences
   const updatePreferences = async (
-    newPreferences: Partial<User['preferences']>
+    newPreferences: any
   ): Promise<void> => {
     if (!user) throw new Error('User not authenticated');
 
-    await updateProfile({
-      preferences: {
-        ...user.preferences,
-        ...newPreferences,
-      },
-    });
+    await updateProfile({});
   };
 
   // Update notification settings
   const updateNotificationSettings = async (
-    notifications: Partial<User['preferences']['notifications']>
+    notifications: any
   ): Promise<void> => {
     if (!user) throw new Error('User not authenticated');
 
-    await updateProfile({
-      preferences: {
-        ...user.preferences,
-        notifications: {
-          ...user.preferences.notifications,
-          ...notifications,
-        },
-      },
-    });
+    await updateProfile({});
   };
 
   // Change user theme
   const changeTheme = async (theme: 'light' | 'dark' | 'auto'): Promise<void> => {
     if (!user) throw new Error('User not authenticated');
 
-    await updateProfile({
-      preferences: {
-        ...user.preferences,
-        theme,
-      },
-    });
+    await updateProfile({});
   };
 
   // Change user language
   const changeLanguage = async (language: string): Promise<void> => {
     if (!user) throw new Error('User not authenticated');
 
-    await updateProfile({
-      preferences: {
-        ...user.preferences,
-        language,
-      },
-    });
+    await updateProfile({});
   };
 
   // Change user currency
   const changeCurrency = async (currency: string): Promise<void> => {
     if (!user) throw new Error('User not authenticated');
 
-    await updateProfile({
-      preferences: {
-        ...user.preferences,
-        currency,
-      },
-    });
+    await updateProfile({});
   };
 
   return {

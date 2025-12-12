@@ -92,9 +92,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     const { symbol, code } = currencyOption;
 
     // Format based on currency
-    if (code === 'RWF') {
-      return `${symbol} ${Math.round(convertedPrice).toLocaleString()}`;
-    } else if (code === 'EUR') {
+    if (code === 'EUR') {
       return `${convertedPrice.toFixed(2).replace('.', ',')} ${symbol}`;
     } else {
       return `${symbol}${convertedPrice.toFixed(2)}`;

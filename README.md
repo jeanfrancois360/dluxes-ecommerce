@@ -91,7 +91,7 @@ luxury-ecommerce/
 
 6. **Seed the database (optional)**
    ```bash
-   pnpm --filter @luxury/database prisma:seed
+   pnpm --filter @luxury-ecommerce/database prisma:seed
    ```
 
 7. **Start development servers**
@@ -118,7 +118,7 @@ luxury-ecommerce/
 ### Database
 - `pnpm prisma:generate` - Generate Prisma client
 - `pnpm prisma:migrate` - Run database migrations
-- `pnpm --filter @luxury/database prisma:studio` - Open Prisma Studio
+- `pnpm --filter @luxury-ecommerce/database prisma:studio` - Open Prisma Studio
 
 ### Storybook
 - `pnpm storybook` - Start Storybook development server
@@ -127,10 +127,10 @@ luxury-ecommerce/
 
 ### PostgreSQL
 - **Host**: localhost
-- **Port**: 5432
+- **Port**: 5433
 - **Database**: luxury_ecommerce
-- **User**: luxury
-- **Password**: luxury
+- **User**: postgres
+- **Password**: User@123!
 
 ### Redis
 - **Host**: localhost

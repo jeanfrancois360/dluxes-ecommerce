@@ -63,7 +63,7 @@ export interface AuthContextValue {
   regenerateBackupCodes: () => Promise<{ backupCodes: string[] }>;
 
   // Profile Methods
-  updateProfile: (data: Partial<User>) => Promise<void>;
+  updateProfile: (data: Partial<RegisterRequest>) => Promise<void>;
   uploadAvatar: (file: File, onProgress?: (progress: number) => void) => Promise<void>;
   deleteAvatar: () => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
@@ -284,11 +284,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsLoading(true);
         setError(null);
 
-        const { user: userData, tokens } = await authApi.register(data);
+        const response = await authApi.register(data);
+
+        // Handle different response formats
+        const userData = response.user;
+        const token = response.token || response.access_token;
+        const refreshToken = response.refreshToken;
+
+        // Store tokens if present
+        if (token) {
+          TokenManager.setAccessToken(token);
+          if (refreshToken) {
+            TokenManager.setRefreshToken(refreshToken);
+          }
+        }
 
         setUser(userData);
         storeUser(userData);
-        setTokenExpiry(tokens.expiresIn);
+
+        // Set token expiry if available (default to 24 hours if not provided)
+        const expiresIn = response.expiresIn || 24 * 60 * 60 * 1000;
+        setTokenExpiry(expiresIn);
 
         // Start session timer
         startSessionTimer(handleSessionTimeout);
@@ -408,7 +424,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsLoading(true);
         setError(null);
 
-        await authApi.changePassword({ currentPassword, newPassword, confirmPassword });
+        await authApi.changePassword(currentPassword, newPassword, confirmPassword);
         ToastNotifier.success(
           'Password Changed',
           'Your password has been changed successfully'
@@ -635,7 +651,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Profile Methods
   // ============================================================================
 
-  const updateProfile = useCallback(async (data: Partial<User>) => {
+  const updateProfile = useCallback(async (data: Partial<RegisterRequest>) => {
     try {
       setIsLoading(true);
       setError(null);

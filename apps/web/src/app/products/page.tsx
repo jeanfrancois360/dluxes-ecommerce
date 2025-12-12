@@ -17,6 +17,7 @@ import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 import { SearchFilters } from '@/lib/api/types';
 import { SidebarAd, CategoryBannerAd } from '@/components/ads';
 import { ProductGridSkeleton } from '@/components/loading/skeleton';
+import { ScrollToTop } from '@/components/scroll-to-top';
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -350,7 +351,7 @@ export default function ProductsPage() {
                 {hasActiveFilters && (
                   <button
                     onClick={clearFilters}
-                    className="text-sm text-neutral-600 hover:text-gold transition-colors underline"
+                    className="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors shadow-sm hover:shadow-md"
                   >
                     Clear All
                   </button>
@@ -1132,6 +1133,9 @@ export default function ProductsPage() {
         onViewDetails={handleNavigate}
         currencySymbol={currencySymbol}
       />
+
+      {/* Scroll to Top Button */}
+      <ScrollToTop />
     </PageLayout>
   );
 }

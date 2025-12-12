@@ -351,7 +351,7 @@ export function isJwtExpired(token: string): boolean {
  */
 export function isEmailVerified(user: User | null): boolean {
   if (!user) return false;
-  return user.isEmailVerified;
+  return user.emailVerified;
 }
 
 /**
@@ -362,7 +362,7 @@ export function isEmailVerified(user: User | null): boolean {
  */
 export function needsEmailVerification(user: User | null): boolean {
   if (!user) return false;
-  return !user.isEmailVerified;
+  return !user.emailVerified;
 }
 
 // ============================================================================

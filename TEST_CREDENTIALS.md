@@ -64,4 +64,4 @@ SUPER_ADMIN → ADMIN → SELLER → BUYER/CUSTOMER
 
 ---
 
-**Last Updated:** 2025-11-16
+**Last Updated:** 2024-11-16
