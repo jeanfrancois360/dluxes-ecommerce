@@ -43,7 +43,7 @@ import {
 import axios from 'axios';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface Delivery {
   id: string;
   trackingNumber: string;
@@ -335,7 +335,7 @@ export default function DeliveryPartnerDeliveriesPage() {
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-semibold text-green-600">
-                            +${Number(delivery.partnerCommission).toFixed(2)}
+                            +${formatCurrencyAmount(Number(delivery.partnerCommission), 2)}
                           </div>
                           <div className="text-xs text-muted-foreground">Your commission</div>
                         </div>
@@ -447,7 +447,7 @@ export default function DeliveryPartnerDeliveriesPage() {
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-semibold text-green-600">
-                            +${Number(delivery.partnerCommission).toFixed(2)}
+                            +${formatCurrencyAmount(Number(delivery.partnerCommission), 2)}
                           </div>
                           <div className="text-xs text-muted-foreground">Commission</div>
                         </div>

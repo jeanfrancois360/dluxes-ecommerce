@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxu
 import { Button } from '@luxury/ui';
 import { useSettingsValidation } from '@/hooks/use-settings-validation';
 import { REQUIRED_SETTINGS } from '@/lib/settings-validator';
+import { formatNumber } from '@/lib/utils/number-format';
 
 interface SettingsOverviewDashboardProps {
   onNavigateToTab?: (tab: string) => void;
@@ -160,7 +161,7 @@ export function SettingsOverviewDashboard({ onNavigateToTab }: SettingsOverviewD
                 <div className="flex items-baseline gap-2">
                   <p className="text-4xl font-bold text-black">{configuredSettings}</p>
                   <p className="text-sm font-bold text-[#6B5840]">
-                    {((configuredSettings / totalSettings) * 100).toFixed(0)}%
+                    {formatNumber((configuredSettings / totalSettings) * 100, 0)}%
                   </p>
                 </div>
               </div>

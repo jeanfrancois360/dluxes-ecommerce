@@ -32,7 +32,7 @@ import {
 } from '@luxury/ui';
 import { toast } from 'sonner';
 import { ShieldCheck, DollarSign, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 type EscrowStatus = 'HELD' | 'PENDING_RELEASE' | 'RELEASED' | 'REFUNDED' | 'DISPUTED';
 
 interface EscrowTransaction {
@@ -407,13 +407,13 @@ function EscrowManagementContent() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        ${escrow.totalAmount.toFixed(2)} {escrow.currency}
+                        ${formatCurrencyAmount(escrow.totalAmount, 2)} {escrow.currency}
                       </TableCell>
                       <TableCell>
-                        ${escrow.platformFee.toFixed(2)}
+                        ${formatCurrencyAmount(escrow.platformFee, 2)}
                       </TableCell>
                       <TableCell className="font-medium">
-                        ${escrow.sellerAmount.toFixed(2)}
+                        ${formatCurrencyAmount(escrow.sellerAmount, 2)}
                       </TableCell>
                       <TableCell>{getStatusBadge(escrow.status)}</TableCell>
                       <TableCell>
@@ -485,8 +485,8 @@ function EscrowManagementContent() {
                   <span className="text-sm text-muted-foreground">Amount:</span>
                   <span className="font-medium">
                     ${actionDialog.action === 'release'
-                      ? selectedEscrow.sellerAmount.toFixed(2)
-                      : selectedEscrow.totalAmount.toFixed(2)} {selectedEscrow.currency}
+                      ? formatCurrencyAmount(selectedEscrow.sellerAmount, 2)
+                      : formatCurrencyAmount(selectedEscrow.totalAmount, 2)} {selectedEscrow.currency}
                   </span>
                 </div>
               </div>

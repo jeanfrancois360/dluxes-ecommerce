@@ -1,20 +1,26 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import useSWR from 'swr';
-import { currencyApi, CurrencyRate } from '@/lib/api/currency';
-import { useCallback, useMemo } from 'react';
+import { currencyApi, currencyAdminApi, CurrencyRate } from '@/lib/api/currency';
+import { settingsApi } from '@/lib/api/settings';
+import { useCallback, useMemo, useEffect } from 'react';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 // Currency store for managing selected currency
 interface CurrencyStore {
   selectedCurrency: string;
   setSelectedCurrency: (currency: string) => void;
+  defaultCurrency: string;
+  setDefaultCurrency: (currency: string) => void;
 }
 
 export const useCurrencyStore = create<CurrencyStore>()(
   persist(
     (set) => ({
-      selectedCurrency: 'USD',
+      selectedCurrency: '',
+      defaultCurrency: 'USD',
       setSelectedCurrency: (currency) => set({ selectedCurrency: currency }),
+      setDefaultCurrency: (currency) => set({ defaultCurrency: currency }),
     }),
     {
       name: 'currency-storage',
@@ -23,23 +29,68 @@ export const useCurrencyStore = create<CurrencyStore>()(
 );
 
 /**
- * Hook to get all available currency rates
+ * Hook to get system settings for currencies
+ */
+export function useCurrencySettings() {
+  const { data: settings, error, isLoading } = useSWR(
+    '/settings/public',
+    settingsApi.getPublicSettings,
+    {
+      revalidateOnFocus: true, // ✅ Enable revalidation on focus
+      revalidateOnReconnect: true, // ✅ Enable revalidation on reconnect
+      refreshInterval: 0, // Don't auto-refresh (only manual invalidation)
+      dedupingInterval: 5000, // Reduce deduping to 5 seconds for faster updates
+    }
+  );
+
+  const defaultCurrency = useMemo(() => {
+    const setting = settings?.find(s => s.key === 'default_currency');
+    return setting?.value || 'USD';
+  }, [settings]);
+
+  const supportedCurrencies = useMemo(() => {
+    const setting = settings?.find(s => s.key === 'supported_currencies');
+    return setting?.value || ['USD', 'EUR', 'GBP', 'JPY', 'RWF'];
+  }, [settings]);
+
+  return {
+    defaultCurrency,
+    supportedCurrencies,
+    isLoading,
+    error,
+  };
+}
+
+/**
+ * Hook to get all available currency rates (filtered by system settings)
  */
 export function useCurrencyRates() {
   const { data, error, isLoading, mutate } = useSWR<CurrencyRate[]>(
     '/currency/rates',
     currencyApi.getRates,
     {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 60000, // Cache for 1 minute
+      revalidateOnFocus: true, // ✅ Enable revalidation on focus
+      revalidateOnReconnect: true, // ✅ Enable revalidation on reconnect
+      refreshInterval: 0, // Don't auto-refresh (only manual invalidation)
+      dedupingInterval: 5000, // Reduce deduping to 5 seconds for faster updates
     }
   );
 
+  const { supportedCurrencies, isLoading: settingsLoading } = useCurrencySettings();
+
+  // Filter currencies based on system settings
+  const filteredCurrencies = useMemo(() => {
+    if (!data) return [];
+    return data.filter(currency =>
+      supportedCurrencies.includes(currency.currencyCode)
+    );
+  }, [data, supportedCurrencies]);
+
   return {
-    currencies: data || [],
+    currencies: filteredCurrencies,
+    allCurrencies: data || [],
     error,
-    isLoading,
+    isLoading: isLoading || settingsLoading,
     refresh: mutate,
   };
 }
@@ -48,16 +99,35 @@ export function useCurrencyRates() {
  * Hook to get the currently selected currency
  */
 export function useSelectedCurrency() {
-  const { selectedCurrency, setSelectedCurrency } = useCurrencyStore();
+  const { selectedCurrency, setSelectedCurrency, defaultCurrency, setDefaultCurrency } = useCurrencyStore();
   const { currencies, isLoading } = useCurrencyRates();
+  const { defaultCurrency: settingsDefaultCurrency, isLoading: settingsLoading } = useCurrencySettings();
 
-  const current = currencies.find((c) => c.currencyCode === selectedCurrency) || currencies.find((c) => c.currencyCode === 'USD');
+  // Update default currency from settings
+  useEffect(() => {
+    if (settingsDefaultCurrency && settingsDefaultCurrency !== defaultCurrency) {
+      setDefaultCurrency(settingsDefaultCurrency);
+      // If no currency is selected yet, use the default from settings
+      if (!selectedCurrency) {
+        setSelectedCurrency(settingsDefaultCurrency);
+      }
+    }
+  }, [settingsDefaultCurrency, defaultCurrency, selectedCurrency, setDefaultCurrency, setSelectedCurrency]);
+
+  // Determine the effective selected currency
+  const effectiveCurrency = selectedCurrency || settingsDefaultCurrency || 'USD';
+
+  // Get the currency object
+  const current = currencies.find((c) => c.currencyCode === effectiveCurrency) ||
+                 currencies.find((c) => c.currencyCode === settingsDefaultCurrency) ||
+                 currencies.find((c) => c.currencyCode === 'USD');
 
   return {
     currency: current,
-    selectedCurrency,
+    selectedCurrency: effectiveCurrency,
+    defaultCurrency: settingsDefaultCurrency,
     setSelectedCurrency,
-    isLoading,
+    isLoading: isLoading || settingsLoading,
   };
 }
 
@@ -65,8 +135,8 @@ export function useSelectedCurrency() {
  * Hook to convert prices to the selected currency
  */
 export function useCurrencyConverter() {
-  const { selectedCurrency } = useCurrencyStore();
-  const { currencies } = useCurrencyRates();
+  const { selectedCurrency: effectiveSelectedCurrency } = useSelectedCurrency();
+  const { allCurrencies } = useCurrencyRates();
 
   const convertPrice = useCallback((price: number, fromCurrency: string = 'USD'): number => {
     // Validate input
@@ -74,12 +144,12 @@ export function useCurrencyConverter() {
       return 0;
     }
 
-    if (fromCurrency === selectedCurrency || !currencies.length) {
+    if (fromCurrency === effectiveSelectedCurrency || !allCurrencies.length) {
       return price;
     }
 
-    const fromRate = currencies.find((c) => c.currencyCode === fromCurrency);
-    const toRate = currencies.find((c) => c.currencyCode === selectedCurrency);
+    const fromRate = allCurrencies.find((c) => c.currencyCode === fromCurrency);
+    const toRate = allCurrencies.find((c) => c.currencyCode === effectiveSelectedCurrency);
 
     if (!fromRate || !toRate || !fromRate.rate || !toRate.rate) {
       return price;
@@ -94,35 +164,37 @@ export function useCurrencyConverter() {
     const result = Number(convertedAmount.toFixed(decimalDigits));
 
     return isNaN(result) || !isFinite(result) ? price : result;
-  }, [selectedCurrency, currencies]);
+  }, [effectiveSelectedCurrency, allCurrencies]);
 
   const formatPrice = useCallback((price: number, fromCurrency: string = 'USD'): string => {
     const convertedPrice = convertPrice(price, fromCurrency);
-    const currency = currencies.find((c) => c.currencyCode === selectedCurrency);
+    const currency = allCurrencies.find((c) => c.currencyCode === effectiveSelectedCurrency);
 
     if (!currency) {
-      return `$${price.toFixed(2)}`;
+      // Fallback with thousand separators
+      return `$${formatCurrencyAmount(price, 2)}`;
     }
 
     return currencyApi.formatPrice(convertedPrice, currency);
-  }, [convertPrice, currencies, selectedCurrency]);
+  }, [convertPrice, allCurrencies, effectiveSelectedCurrency]);
 
   const formatPriceWithCode = useCallback((price: number, fromCurrency: string = 'USD'): string => {
     const convertedPrice = convertPrice(price, fromCurrency);
-    const currency = currencies.find((c) => c.currencyCode === selectedCurrency);
+    const currency = allCurrencies.find((c) => c.currencyCode === effectiveSelectedCurrency);
 
     if (!currency) {
-      return `$${price.toFixed(2)} / USD`;
+      // Fallback with thousand separators
+      return `$${formatCurrencyAmount(price, 2)} / USD`;
     }
 
     return currencyApi.formatPriceWithCode(convertedPrice, currency);
-  }, [convertPrice, currencies, selectedCurrency]);
+  }, [convertPrice, allCurrencies, effectiveSelectedCurrency]);
 
   return {
     convertPrice,
     formatPrice,
     formatPriceWithCode,
-    selectedCurrency,
+    selectedCurrency: effectiveSelectedCurrency,
   };
 }
 
@@ -132,7 +204,7 @@ export function useCurrencyConverter() {
 export function useCurrencyAdmin() {
   const { data, error, isLoading, mutate } = useSWR(
     '/currency/admin/all',
-    currencyApi.getRates,
+    currencyAdminApi.getAllCurrencies,
     {
       revalidateOnFocus: true,
       revalidateOnReconnect: true,

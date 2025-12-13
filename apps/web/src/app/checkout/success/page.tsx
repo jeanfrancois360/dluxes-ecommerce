@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import axios from 'axios';
 import Link from 'next/link';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
 interface OrderDetails {
@@ -181,13 +181,13 @@ function SuccessPageContent() {
                   <p className="font-semibold text-black">{item.name}</p>
                   <p className="text-sm text-neutral-600">Quantity: {item.quantity}</p>
                 </div>
-                <p className="font-semibold text-black">\${(item.price * item.quantity).toFixed(2)}</p>
+                <p className="font-semibold text-black">\${formatCurrencyAmount(item.price * item.quantity, 2)}</p>
               </div>
             ))}
           </div>
           <div className="flex justify-between items-center pt-4 border-t-2 border-neutral-200">
             <span className="text-lg font-semibold text-black">Total</span>
-            <span className="text-2xl font-bold text-black">\${order.total.toFixed(2)}</span>
+            <span className="text-2xl font-bold text-black">\${formatCurrencyAmount(order.total, 2)}</span>
           </div>
         </motion.div>
 
@@ -235,7 +235,7 @@ function SuccessPageContent() {
                     </div>
                     <div className="p-3">
                       <h3 className="font-medium text-sm text-black truncate">{product.name}</h3>
-                      <p className="text-gold font-semibold">${Number(product.price).toFixed(2)}</p>
+                      <p className="text-gold font-semibold">${formatCurrencyAmount(Number(product.price), 2)}</p>
                     </div>
                   </motion.div>
                 </Link>

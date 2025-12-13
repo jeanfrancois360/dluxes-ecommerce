@@ -33,7 +33,7 @@ import {
 } from '@luxury/ui';
 import { toast } from 'sonner';
 import { Percent, Users, TrendingUp, Plus, Edit, Trash2 } from 'lucide-react';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface SellerCommissionOverride {
   id: string;
   sellerId: string;
@@ -293,7 +293,7 @@ function CommissionOverridesContent() {
           <CardContent>
             <div className="text-2xl font-bold">
               {overrides.length > 0
-                ? (overrides.reduce((sum, o) => sum + Number(o.commissionRate), 0) / overrides.length).toFixed(2)
+                ? formatNumber(overrides.reduce((sum, o) => sum + Number(o.commissionRate), 0) / overrides.length, 2)
                 : '0'}%
             </div>
             <p className="text-xs text-muted-foreground">Across all sellers</p>
@@ -308,7 +308,7 @@ function CommissionOverridesContent() {
           <CardContent>
             <div className="text-2xl font-bold">
               {overrides.length > 0
-                ? Math.min(...overrides.map(o => Number(o.commissionRate))).toFixed(2)
+                ? formatNumber(Math.min(...overrides.map(o => Number(o.commissionRate))), 2)
                 : '0'}%
             </div>
             <p className="text-xs text-muted-foreground">Best seller rate</p>

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { OrderStatusBadge } from './order-status-badge';
 import type { Order } from '@/lib/api/types';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 interface OrderCardProps {
   order: Order;
@@ -63,7 +64,7 @@ export function OrderCard({ order }: OrderCardProps) {
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-500 mb-1">Total</p>
-            <p className="font-serif text-xl font-bold">${order.total.toFixed(2)}</p>
+            <p className="font-serif text-xl font-bold">${formatCurrencyAmount(order.total, 2)}</p>
           </div>
         </div>
 

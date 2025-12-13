@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
+import { formatCurrencyAmount } from '../lib/utils/number-format';
 
 export interface ProductCardProps {
   id: string;
@@ -324,11 +325,11 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
           ) : (
             <>
               <span className="font-serif text-2xl font-bold text-black">
-                {currencySymbol}{validPrice.toFixed(2)}
+                {currencySymbol}{formatCurrencyAmount(validPrice, 2)}
               </span>
               {validCompareAtPrice && (
                 <span className="text-sm text-neutral-400 line-through font-medium">
-                  {currencySymbol}{validCompareAtPrice.toFixed(2)}
+                  {currencySymbol}{formatCurrencyAmount(validCompareAtPrice, 2)}
                 </span>
               )}
             </>

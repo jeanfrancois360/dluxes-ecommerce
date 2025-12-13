@@ -4,6 +4,7 @@ import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { ProductCard, ProductCardProps } from './product-card';
+import { formatCurrencyAmount } from '../lib/utils/number-format';
 
 export interface ProductGridProps {
   products: ProductCardProps[];
@@ -212,11 +213,11 @@ const ListView: React.FC<{
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4 pt-4 border-t border-neutral-200">
                 <div className="flex flex-col items-start gap-1">
                   <span className="text-2xl font-bold text-black">
-                    {currencySymbol}{(product.price || 0).toFixed(2)}
+                    {currencySymbol}{formatCurrencyAmount(product.price || 0, 2)}
                   </span>
                   {product.compareAtPrice && product.compareAtPrice > (product.price || 0) && (
                     <span className="text-sm text-neutral-400 line-through">
-                      {currencySymbol}{product.compareAtPrice.toFixed(2)}
+                      {currencySymbol}{formatCurrencyAmount(product.compareAtPrice, 2)}
                     </span>
                   )}
                 </div>

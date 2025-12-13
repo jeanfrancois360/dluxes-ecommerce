@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface OrderItem {
   id: string;
   name: string;
@@ -237,8 +237,8 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                       <p className="text-sm text-neutral-500">Quantity: {item.quantity}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-black">${(item.price * item.quantity).toFixed(2)}</p>
-                      <p className="text-sm text-neutral-500">${item.price.toFixed(2)} each</p>
+                      <p className="font-medium text-black">${formatCurrencyAmount(item.price * item.quantity, 2)}</p>
+                      <p className="text-sm text-neutral-500">${formatCurrencyAmount(item.price, 2)} each</p>
                     </div>
                   </div>
                 ))}
@@ -246,19 +246,19 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
               <div className="p-6 border-t border-neutral-200 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-600">Subtotal</span>
-                  <span className="text-black">${order.subtotal.toFixed(2)}</span>
+                  <span className="text-black">${formatCurrencyAmount(order.subtotal, 2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-600">Tax</span>
-                  <span className="text-black">${order.tax.toFixed(2)}</span>
+                  <span className="text-black">${formatCurrencyAmount(order.tax, 2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-600">Shipping</span>
-                  <span className="text-black">${order.shipping.toFixed(2)}</span>
+                  <span className="text-black">${formatCurrencyAmount(order.shipping, 2)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-semibold border-t pt-2">
                   <span>Total</span>
-                  <span>${order.total.toFixed(2)}</span>
+                  <span>${formatCurrencyAmount(order.total, 2)}</span>
                 </div>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AutocompleteResult } from '@/lib/api/search';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 interface SearchAutocompleteItemProps {
   product: AutocompleteResult;
@@ -79,11 +80,11 @@ export function SearchAutocompleteItem({
         <div className="flex-shrink-0 text-right">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-[#CBB57B]">
-              ${(product.price || 0).toFixed(2)}
+              ${formatCurrencyAmount(product.price || 0, 2)}
             </span>
             {product.compareAtPrice && (
               <span className="text-xs text-gray-400 line-through">
-                ${(product.compareAtPrice || 0).toFixed(2)}
+                ${formatCurrencyAmount(product.compareAtPrice || 0, 2)}
               </span>
             )}
           </div>

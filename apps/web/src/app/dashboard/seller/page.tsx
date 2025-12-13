@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api/client';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface DashboardData {
   store: {
     id: string;
@@ -260,7 +260,7 @@ export default function SellerDashboard() {
               <div>
                 <p className="text-sm text-neutral-500 font-medium">Store Rating</p>
                 <p className="text-3xl font-bold text-black mt-2">
-                  {store.rating ? Number(store.rating).toFixed(1) : 'N/A'}
+                  {store.rating ? formatNumber(Number(store.rating), 1) : 'N/A'}
                 </p>
               </div>
               <div className="w-12 h-12 bg-gold/10 rounded-xl flex items-center justify-center">

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import type { WishlistItem } from '@luxury/shared';
 import { formatDistanceToNow } from 'date-fns';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 interface WishlistItemProps {
   item: WishlistItem;
@@ -149,9 +150,9 @@ export function WishlistItemComponent({
 
         {/* Price */}
         <div className="flex items-baseline gap-2 mb-3">
-          <span className="text-xl font-bold text-black">${Number(product.price || 0).toFixed(2)}</span>
+          <span className="text-xl font-bold text-black">${formatCurrencyAmount(Number(product.price || 0), 2)}</span>
           {product.compareAtPrice && (
-            <span className="text-sm text-neutral-400 line-through">${Number(product.compareAtPrice || 0).toFixed(2)}</span>
+            <span className="text-sm text-neutral-400 line-through">${formatCurrencyAmount(Number(product.compareAtPrice || 0), 2)}</span>
           )}
         </div>
 

@@ -159,27 +159,33 @@ export class SettingsController {
     @Body() dto: UpdateSettingDto,
     @Req() req: any
   ) {
-    try {
-      const data = await this.settingsService.updateSetting(
-        key,
-        dto.value,
-        req.user.id,
-        req.user.email,
-        req.ip,
-        req.headers['user-agent'],
-        dto.reason
-      );
-      return {
-        success: true,
-        data,
-        message: 'Setting updated successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'An error occurred',
-      };
+    // Log request details for debugging
+    console.log('Update setting request:', {
+      key,
+      value: dto.value,
+      user: req.user,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    if (!req.user) {
+      throw new Error('User not authenticated');
     }
+
+    const data = await this.settingsService.updateSetting(
+      key,
+      dto.value,
+      req.user.id || 'unknown',
+      req.user.email || 'unknown@test.com',
+      req.ip,
+      req.headers['user-agent'],
+      dto.reason
+    );
+    return {
+      success: true,
+      data,
+      message: 'Setting updated successfully',
+    };
   }
 
   /**

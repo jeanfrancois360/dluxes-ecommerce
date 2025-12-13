@@ -35,7 +35,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { format } from 'date-fns';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 // Stat Card Component
 function StatCard({
   title,
@@ -351,7 +351,7 @@ function DashboardContent() {
                       <div className="text-sm text-gray-500">{order.customer.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">${order.total.toFixed(2)}</div>
+                      <div className="text-sm font-medium text-gray-900">${formatCurrencyAmount(order.total, 2)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <StatusBadge status={order.status} />

@@ -17,7 +17,7 @@ import {
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface DashboardStats {
   totalDeliveries: number;
   completedToday: number;
@@ -142,7 +142,7 @@ export default function DeliveryPartnerDashboard() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.totalEarnings.toFixed(2)}</div>
+              <div className="text-2xl font-bold">${formatCurrencyAmount(stats.totalEarnings, 2)}</div>
               <p className="text-xs text-muted-foreground">Commission earned</p>
             </CardContent>
           </Card>
@@ -164,7 +164,7 @@ export default function DeliveryPartnerDashboard() {
               <Star className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.averageRating.toFixed(1)}</div>
+              <div className="text-2xl font-bold">{formatNumber(stats.averageRating, 1)}</div>
               <p className="text-xs text-muted-foreground">Out of 5.0</p>
             </CardContent>
           </Card>
@@ -267,7 +267,7 @@ export default function DeliveryPartnerDashboard() {
                     </div>
                     <div className="text-right">
                       <div className="font-medium text-green-600">
-                        +${Number(delivery.partnerCommission).toFixed(2)}
+                        +${formatCurrencyAmount(Number(delivery.partnerCommission), 2)}
                       </div>
                       <div className="text-xs text-muted-foreground">Commission</div>
                     </div>

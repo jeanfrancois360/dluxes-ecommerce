@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { commissionSettingsSchema, type CommissionSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 export function CommissionSettingsSection() {
   const { settings, loading, refetch } = useSettings('commission');
   const { updateSetting, updating } = useSettingsUpdate();
@@ -167,7 +167,7 @@ export function CommissionSettingsSection() {
                   const rate = form.watch('global_commission_rate') || 0;
                   const applyToShipping = form.watch('commission_applies_to_shipping');
                   const base = applyToShipping ? 1050 : 1000;
-                  return ((base * rate) / 100).toFixed(2);
+                  return formatCurrencyAmount((base * rate) / 100, 2);
                 })()}
               </p>
               <p className="font-medium text-foreground">
@@ -178,7 +178,7 @@ export function CommissionSettingsSection() {
                   const base = applyToShipping ? 1050 : 1000;
                   const total = 1050;
                   const commission = (base * rate) / 100;
-                  return (total - commission).toFixed(2);
+                  return formatCurrencyAmount(total - commission, 2);
                 })()}
               </p>
             </div>

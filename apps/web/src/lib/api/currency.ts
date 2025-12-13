@@ -1,4 +1,5 @@
 import { api } from './client';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 export interface CurrencyRate {
   id: string;
@@ -54,10 +55,15 @@ export const currencyApi = {
   },
 
   /**
-   * Format price with currency symbol
+   * Format price with currency symbol and thousand separators
+   *
+   * @example
+   * formatPrice(100000.00, { symbol: '$', decimalDigits: 2, position: 'before' })
+   * // Returns: "$100,000.00"
    */
   formatPrice(amount: number, currency: CurrencyRate): string {
-    const formattedAmount = amount.toFixed(currency.decimalDigits);
+    // Use centralized number formatting with thousand separators
+    const formattedAmount = formatCurrencyAmount(amount, currency.decimalDigits);
 
     if (currency.position === 'before') {
       return `${currency.symbol}${formattedAmount}`;

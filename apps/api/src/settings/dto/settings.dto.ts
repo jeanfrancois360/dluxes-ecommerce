@@ -1,4 +1,4 @@
-import { IsString, IsBoolean, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsEnum, IsDefined } from 'class-validator';
 import { SettingValueType } from '@prisma/client';
 
 export class CreateSettingDto {
@@ -37,6 +37,7 @@ export class CreateSettingDto {
 }
 
 export class UpdateSettingDto {
+  @IsDefined()
   value: any;
 
   @IsString()

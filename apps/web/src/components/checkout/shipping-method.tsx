@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@luxury/ui';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 export interface ShippingMethod {
   id: string;
@@ -213,7 +214,7 @@ export function ShippingMethodSelector({
                           selected === method.id ? 'text-gold' : 'text-black'
                         )}
                       >
-                        {method.price === 0 ? 'Free' : `$${method.price.toFixed(2)}`}
+                        {method.price === 0 ? 'Free' : `$${formatCurrencyAmount(method.price, 2)}`}
                       </p>
                     </div>
                   </div>
