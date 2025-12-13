@@ -1,0 +1,344 @@
+'use client';
+
+/**
+ * Variant Form Component
+ *
+ * Form for creating and editing product variants
+ */
+
+import React, { useState } from 'react';
+import { ProductVariant, CreateProductVariantDto, UpdateProductVariantDto } from '@/lib/api/variants';
+import { formatNumber } from '@/lib/utils/number-format';
+
+interface VariantFormProps {
+  variant?: ProductVariant;
+  productPrice?: number;
+  onSubmit: (data: CreateProductVariantDto | UpdateProductVariantDto) => Promise<void>;
+  onCancel: () => void;
+  loading?: boolean;
+}
+
+export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading }: VariantFormProps) {
+  const [formData, setFormData] = useState({
+    name: variant?.name || '',
+    sku: variant?.sku || '',
+    price: variant?.price !== undefined ? variant.price : productPrice,
+    compareAtPrice: variant?.compareAtPrice || undefined,
+    inventory: variant?.inventory || 0,
+    attributes: variant?.options || {},
+    image: variant?.image || '',
+    colorHex: variant?.colorHex || '',
+    colorName: variant?.colorName || '',
+    isAvailable: variant?.isAvailable !== undefined ? variant.isAvailable : true,
+    lowStockThreshold: variant?.lowStockThreshold || 5,
+  });
+
+  const [newAttributeKey, setNewAttributeKey] = useState('');
+  const [newAttributeValue, setNewAttributeValue] = useState('');
+
+  const handleChange = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value });
+  };
+
+  const handleAddAttribute = () => {
+    if (newAttributeKey && newAttributeValue) {
+      handleChange('attributes', {
+        ...formData.attributes,
+        [newAttributeKey]: newAttributeValue,
+      });
+      setNewAttributeKey('');
+      setNewAttributeValue('');
+    }
+  };
+
+  const handleRemoveAttribute = (key: string) => {
+    const newAttributes = { ...formData.attributes };
+    delete newAttributes[key];
+    handleChange('attributes', newAttributes);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation
+    if (!formData.name.trim()) {
+      alert('Please enter a variant name');
+      return;
+    }
+    if (!formData.sku.trim()) {
+      alert('Please enter a SKU');
+      return;
+    }
+    if (Object.keys(formData.attributes).length === 0) {
+      alert('Please add at least one attribute (e.g., size, color)');
+      return;
+    }
+
+    try {
+      await onSubmit({
+        name: formData.name,
+        sku: formData.sku,
+        price: formData.price,
+        compareAtPrice: formData.compareAtPrice,
+        inventory: formData.inventory,
+        attributes: formData.attributes,
+        image: formData.image || undefined,
+        colorHex: formData.colorHex || undefined,
+        colorName: formData.colorName || undefined,
+        isAvailable: formData.isAvailable,
+        lowStockThreshold: formData.lowStockThreshold,
+      });
+    } catch (error) {
+      // Error is handled by parent component
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Basic Info */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Variant Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            required
+            value={formData.name}
+            onChange={(e) => handleChange('name', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+            placeholder="e.g., Medium Black Cotton"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            SKU <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            required
+            value={formData.sku}
+            onChange={(e) => handleChange('sku', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+            placeholder="e.g., TSHIRT-M-BLK"
+          />
+        </div>
+      </div>
+
+      {/* Attributes */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Attributes <span className="text-red-500">*</span>
+        </label>
+        <div className="flex gap-2 mb-2">
+          <input
+            type="text"
+            value={newAttributeKey}
+            onChange={(e) => setNewAttributeKey(e.target.value)}
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+            placeholder="Attribute (e.g., size, color, material)"
+          />
+          <input
+            type="text"
+            value={newAttributeValue}
+            onChange={(e) => setNewAttributeValue(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAttribute())}
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+            placeholder="Value (e.g., M, Black, Cotton)"
+          />
+          <button
+            type="button"
+            onClick={handleAddAttribute}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm"
+          >
+            Add
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(formData.attributes).map(([key, value]) => (
+            <span
+              key={key}
+              className="px-3 py-1 bg-[#CBB57B] text-black rounded-full text-sm flex items-center gap-2"
+            >
+              <strong>{key}:</strong> {value}
+              <button
+                type="button"
+                onClick={() => handleRemoveAttribute(key)}
+                className="hover:text-red-600 font-bold"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Pricing */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Price (USD)
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.price || ''}
+              onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : undefined)}
+              className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+              placeholder={productPrice ? `Inherits ${formatNumber(productPrice)}` : '0.00'}
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            {productPrice ? 'Leave empty to inherit product price' : 'Enter variant price'}
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Compare At Price (USD)
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.compareAtPrice || ''}
+              onChange={(e) =>
+                handleChange('compareAtPrice', e.target.value ? parseFloat(e.target.value) : undefined)
+              }
+              className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+              placeholder="0.00"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Inventory */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Inventory <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            required
+            min="0"
+            value={formData.inventory}
+            onChange={(e) => handleChange('inventory', parseInt(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+            placeholder="0"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Low Stock Threshold
+          </label>
+          <input
+            type="number"
+            min="1"
+            value={formData.lowStockThreshold}
+            onChange={(e) => handleChange('lowStockThreshold', parseInt(e.target.value) || 5)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+            placeholder="5"
+          />
+          <p className="text-xs text-gray-500 mt-1">Alert when stock reaches this level</p>
+        </div>
+      </div>
+
+      {/* Color & Image */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Color Hex Code
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={formData.colorHex}
+              onChange={(e) => handleChange('colorHex', e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+              placeholder="#000000"
+              maxLength={7}
+            />
+            {formData.colorHex && (
+              <div
+                className="w-10 h-10 rounded border-2 border-gray-300"
+                style={{ backgroundColor: formData.colorHex }}
+              />
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Color Name
+          </label>
+          <input
+            type="text"
+            value={formData.colorName}
+            onChange={(e) => handleChange('colorName', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+            placeholder="e.g., Midnight Black"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Image URL
+          </label>
+          <input
+            type="url"
+            value={formData.image}
+            onChange={(e) => handleChange('image', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+            placeholder="https://..."
+          />
+        </div>
+      </div>
+
+      {/* Availability */}
+      <div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={formData.isAvailable}
+            onChange={(e) => handleChange('isAvailable', e.target.checked)}
+            className="w-4 h-4 text-[#CBB57B] border-gray-300 rounded focus:ring-[#CBB57B]"
+          />
+          <span className="text-sm font-medium text-gray-700">
+            Available for purchase
+          </span>
+        </label>
+        <p className="text-xs text-gray-500 mt-1 ml-6">
+          Uncheck to hide this variant from customers without deleting it
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          type="button"
+          onClick={(e) => handleSubmit(e as any)}
+          disabled={loading}
+          className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors disabled:opacity-50 text-sm"
+        >
+          {loading ? 'Saving...' : variant ? 'Update Variant' : 'Create Variant'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={loading}
+          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 text-sm"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}

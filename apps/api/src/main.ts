@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import compression from 'compression';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -55,6 +56,9 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     })
   );
+
+  // Global exception filter for consistent error responses
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   const port = configService.get('PORT') || 3001;
   await app.listen(port);

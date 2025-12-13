@@ -47,6 +47,26 @@ export class SettingsController {
     }
   }
 
+  /**
+   * Get inventory settings (public for frontend use)
+   * @route GET /settings/inventory
+   */
+  @Get('inventory/all')
+  async getInventorySettings() {
+    try {
+      const data = await this.settingsService.getInventorySettings();
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
   // ============================================================================
   // Authenticated Endpoints
   // ============================================================================

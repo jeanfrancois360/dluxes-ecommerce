@@ -6,15 +6,21 @@
  * List all products with search, filter, sort, and bulk actions
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { ModernTable } from '@/components/admin/modern-table';
+import { StockStatusBadge } from '@/components/admin/stock-status-badge';
+import { BulkInventoryModal } from '@/components/admin/bulk-inventory-modal';
 import { useAdminProducts } from '@/hooks/use-admin';
 import { adminProductsApi } from '@/lib/api/admin';
+import { categoriesAPI, Category } from '@/lib/api/categories';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
+import { useInventorySettings } from '@/hooks/use-inventory-settings';
+
 function ProductsContent() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
@@ -24,6 +30,29 @@ function ProductsContent() {
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [showBulkInventoryModal, setShowBulkInventoryModal] = useState(false);
+
+  // Fetch inventory settings from backend
+  const { lowStockThreshold } = useInventorySettings();
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await categoriesAPI.getAll();
+        setCategories(data);
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+        toast({ title: 'Failed to load categories', variant: 'error' });
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const { products, total, pages, loading, refetch } = useAdminProducts({
     page,
@@ -97,7 +126,15 @@ function ProductsContent() {
     // Export to CSV logic
     const csv = [
       ['ID', 'Name', 'SKU', 'Category', 'Price', 'Stock', 'Status'],
-      ...products.map((p) => [p.id, p.name, p.sku, typeof p.category === 'string' ? p.category : (p.category as any)?.name || 'N/A', p.price, p.stock, p.status]),
+      ...products.map((p) => [
+        p.id,
+        p.name,
+        p.sku || p.slug,
+        typeof p.category === 'string' ? p.category : (p.category as any)?.name || 'N/A',
+        p.price,
+        (p as any).inventory ?? p.stock ?? 0,
+        p.status
+      ]),
     ]
       .map((row) => row.join(','))
       .join('\n');
@@ -142,12 +179,18 @@ function ProductsContent() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all font-medium cursor-pointer"
+              disabled={loadingCategories}
+              className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <option value="">All Categories</option>
-              <option value="watches">Watches</option>
-              <option value="jewelry">Jewelry</option>
-              <option value="accessories">Accessories</option>
+              <option value="">
+                {loadingCategories ? 'Loading categories...' : 'All Categories'}
+              </option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                  {cat._count?.products !== undefined ? ` (${cat._count.products})` : ''}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -157,9 +200,9 @@ function ProductsContent() {
               className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all font-medium cursor-pointer"
             >
               <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="draft">Draft</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="DRAFT">Draft</option>
             </select>
           </div>
           <div>
@@ -178,8 +221,8 @@ function ProductsContent() {
               <option value="name-desc">Name (Z-A)</option>
               <option value="price-asc">Price (Low-High)</option>
               <option value="price-desc">Price (High-Low)</option>
-              <option value="stock-asc">Stock (Low-High)</option>
-              <option value="stock-desc">Stock (High-Low)</option>
+              <option value="inventory-asc">Stock (Low-High)</option>
+              <option value="inventory-desc">Stock (High-Low)</option>
             </select>
           </div>
         </div>
@@ -192,16 +235,22 @@ function ProductsContent() {
             <span className="font-semibold text-lg">{selectedIds.length} products selected</span>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => handleBulkStatusUpdate('active')}
+                onClick={() => handleBulkStatusUpdate('ACTIVE')}
                 className="px-4 py-2 bg-white/90 hover:bg-white text-gray-900 rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg"
               >
                 Activate
               </button>
               <button
-                onClick={() => handleBulkStatusUpdate('inactive')}
+                onClick={() => handleBulkStatusUpdate('INACTIVE')}
                 className="px-4 py-2 bg-white/90 hover:bg-white text-gray-900 rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg"
               >
                 Deactivate
+              </button>
+              <button
+                onClick={() => setShowBulkInventoryModal(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg"
+              >
+                Adjust Stock
               </button>
               <button
                 onClick={handleBulkDelete}
@@ -332,16 +381,11 @@ function ProductsContent() {
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-black">${formatCurrencyAmount(Number(product.price), 2)}</td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${product.stock > 10 ? 'bg-green-600 shadow-lg shadow-green-500/50' : product.stock > 0 ? 'bg-yellow-600 shadow-lg shadow-yellow-500/50' : 'bg-red-600 shadow-lg shadow-red-500/50'}`}></div>
-                        <span className={`text-sm font-bold ${product.stock > 10 ? 'text-green-700' : product.stock > 0 ? 'text-yellow-700' : 'text-red-700'}`}>
-                          {product.stock}
-                        </span>
-                      </div>
+                      <StockStatusBadge stock={(product as any).inventory ?? product.stock ?? 0} lowStockThreshold={lowStockThreshold} size="sm" />
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${product.status === 'active' ? 'bg-green-100 text-green-700 border border-green-300' : product.status === 'inactive' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-neutral-100 text-neutral-700 border border-neutral-300'}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${product.status === 'active' ? 'bg-green-600' : product.status === 'inactive' ? 'bg-red-600' : 'bg-neutral-600'}`}></div>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${product.status.toUpperCase() === 'ACTIVE' ? 'bg-green-100 text-green-700 border border-green-300' : product.status.toUpperCase() === 'INACTIVE' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-neutral-100 text-neutral-700 border border-neutral-300'}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${product.status.toUpperCase() === 'ACTIVE' ? 'bg-green-600' : product.status.toUpperCase() === 'INACTIVE' ? 'bg-red-600' : 'bg-neutral-600'}`}></div>
                         {product.status}
                       </span>
                     </td>
@@ -437,6 +481,17 @@ function ProductsContent() {
           Export to CSV
         </button>
       </div>
+
+      {/* Bulk Inventory Modal */}
+      <BulkInventoryModal
+        open={showBulkInventoryModal}
+        onOpenChange={setShowBulkInventoryModal}
+        productIds={selectedIds}
+        onSuccess={() => {
+          refetch();
+          setSelectedIds([]);
+        }}
+      />
     </div>
   );
 }

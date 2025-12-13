@@ -1,8 +1,8 @@
 # Comprehensive Technical Documentation
 # Luxury E-commerce Platform
 
-**Version:** 2.0.0
-**Last Updated:** December 13, 2025 (Currency Integration, Real-Time Updates & Number Formatting)
+**Version:** 2.1.1
+**Last Updated:** December 13, 2025 (Product Management & Filter System Enhancements)
 **Status:** Production-Ready
 
 ---
@@ -20,8 +20,9 @@
 9. [Known Gaps & Limitations](#9-known-gaps--limitations)
 10. [Developer Setup Guide](#10-developer-setup-guide)
 11. [Operational Notes](#11-operational-notes)
-12. [Version 2.0 Changes & Enhancements](#12-version-20-changes--enhancements) **[NEW]**
-13. [Roadmap Snapshot](#13-roadmap-snapshot)
+12. [Version 2.1.1 Changes & Enhancements](#12-version-211-changes--enhancements) **[NEW]**
+13. [Version 2.0 Changes & Enhancements](#13-version-20-changes--enhancements)
+14. [Roadmap Snapshot](#14-roadmap-snapshot)
 
 ---
 
@@ -1469,14 +1470,14 @@ docker-compose logs -f   # View logs
 - Seller ad management
 - Ad approval workflow
 
-✅ **System Configuration** (38 Settings Fully Implemented)
-- Dynamic settings management across 8 categories
+✅ **System Configuration** (45 Settings Fully Implemented)
+- Dynamic settings management across 9 categories
 - Comprehensive settings audit logging with full change history
 - Settings rollback capability with one-click revert
 - Public vs private settings (security-conscious access control)
 - Category-based organization for easy management
 - Validation rules and constraints for data integrity
-- Admin UI with 9 tabbed sections: Overview, General, Payment, Commission, Currency, Delivery, Security, Notifications, SEO
+- Admin UI with 10 tabbed sections: Overview, General, Payment, Commission, Currency, Inventory, Delivery, Security, Notifications, SEO
 
 **Settings Breakdown by Category:**
 
@@ -1543,6 +1544,15 @@ docker-compose logs -f   # View logs
    - `seo_keywords` - Default keywords (comma-separated)
    - `analytics_enabled` - Enable Google Analytics tracking
 
+9. **Inventory Settings (7 settings):** **[NEW v2.0]**
+   - `inventory.low_stock_threshold` - Stock level considered low stock (default: 10)
+   - `inventory.auto_sku_generation` - Auto-generate SKUs for new products
+   - `inventory.sku_prefix` - Prefix for auto-generated SKUs (default: "PROD")
+   - `inventory.enable_stock_notifications` - Send email alerts for low stock
+   - `inventory.notification_recipients` - Email addresses for stock alerts
+   - `inventory.allow_negative_stock` - Allow backorders (negative inventory)
+   - `inventory.transaction_history_page_size` - Pagination size (default: 20)
+
 **Settings Features:**
 - Real-time validation with character counters
 - Live calculation examples (commission, escrow)
@@ -1589,6 +1599,191 @@ docker-compose logs -f   # View logs
 - No impact on calculations (formatting is presentation-only)
 - Performance optimized with no rendering delays
 - Ready for internationalization with locale parameter
+
+✅ **Inventory Management System** (New in v2.0)
+- Complete stock tracking with transaction logging
+- Dynamic inventory configuration through System Settings
+- Multiple transaction types (RESTOCK, SALE, RETURN, ADJUSTMENT, DAMAGE, RESERVED, RELEASED)
+- Full audit trail for all inventory changes
+- Bulk inventory operations for multiple products
+- Stock synchronization from product variants
+- Low stock and out-of-stock alerts
+- Real-time inventory updates
+- Admin UI for inventory management
+
+**Inventory Settings (7 settings):**
+1. **Inventory Management:**
+   - `inventory.low_stock_threshold` - Stock level considered low (default: 10)
+   - `inventory.auto_sku_generation` - Auto-generate SKUs for new products
+   - `inventory.sku_prefix` - Prefix for auto-generated SKUs (default: "PROD")
+   - `inventory.enable_stock_notifications` - Send email alerts for low stock
+   - `inventory.notification_recipients` - Email addresses for stock alerts
+   - `inventory.allow_negative_stock` - Allow backorders (negative inventory)
+   - `inventory.transaction_history_page_size` - Pagination size (default: 20)
+
+**Backend Features:**
+- **Inventory Service** (`apps/api/src/products/inventory.service.ts`)
+  - `adjustProductInventory()` - Adjust stock with transaction logging
+  - `adjustVariantInventory()` - Adjust variant stock independently
+  - `bulkUpdateInventory()` - Update multiple products at once
+  - `syncProductInventoryFromVariants()` - Sync product total from variants
+  - `getLowStockProducts()` - Filter products below threshold
+  - `getOutOfStockProducts()` - Find products with zero inventory
+  - `getInventorySummary()` - Aggregated inventory statistics
+  - `getProductTransactions()` - Paginated transaction history
+
+- **API Endpoints** (`apps/api/src/products/products.controller.ts`)
+  - `PATCH /products/:id/inventory` - Adjust product inventory (Admin only)
+  - `PATCH /products/:productId/variants/:variantId/inventory` - Adjust variant inventory
+  - `GET /products/:id/inventory/transactions` - Get transaction history
+  - `GET /products/inventory/low-stock` - List low stock products
+  - `GET /products/inventory/out-of-stock` - List out of stock products
+  - `GET /products/inventory/summary` - Inventory statistics
+  - `POST /products/inventory/bulk-update` - Bulk inventory adjustments
+  - `POST /products/:id/inventory/sync` - Sync from variants
+
+- **Settings Integration** (`apps/api/src/settings/settings.service.ts`)
+  - `getInventorySettings()` - Get all inventory settings (optimized)
+  - `getLowStockThreshold()` - Get threshold with fallback
+  - `getAutoSkuGeneration()` - Get SKU auto-gen setting
+  - `getSkuPrefix()` - Get SKU prefix
+  - `getStockNotificationsEnabled()` - Get notification setting
+  - `getStockNotificationRecipients()` - Get email list
+  - `getAllowNegativeStock()` - Get backorder policy
+  - `getTransactionHistoryPageSize()` - Get pagination size
+
+**Frontend Features:**
+- **Admin UI Components:**
+  - `InventorySettingsSection` - Complete settings management interface
+    - Stock thresholds configuration
+    - SKU generation settings
+    - Notification policies
+    - Live save with audit logging
+
+  - `InventoryAdjustmentModal` - Quick stock updates
+    - Transaction type selection
+    - Real-time stock preview (current → new)
+    - Validation to prevent negative stock
+    - Support for products and variants
+
+  - `InventoryHistoryModal` - Transaction history viewer
+    - Paginated transaction list
+    - Color-coded transaction types
+    - User attribution and timestamps
+    - Reason and notes display
+
+  - `BulkInventoryModal` - Mass inventory updates
+    - Multi-product selection
+    - Success/failure reporting
+    - Warnings for stock deductions
+
+  - `StockStatusBadge` - Visual stock indicators
+    - Color-coded badges (green/yellow/red)
+    - Configurable threshold
+    - Size variants (sm/md/lg)
+
+  - `StockLevelIndicator` - Progress bar visualization
+    - Dynamic color based on stock level
+    - Percentage calculation
+    - Threshold awareness
+
+- **React Hooks:**
+  - `useInventorySettings()` - Fetch and manage inventory settings
+    - Automatic fallback to constants
+    - Helper getters for common settings
+    - Loading and error states
+
+- **API Methods** (`apps/web/src/lib/api/admin.ts`)
+  - `adjustProductInventory()` - Adjust product stock
+  - `adjustVariantInventory()` - Adjust variant stock
+  - `getInventoryTransactions()` - Get transaction history
+  - `getLowStockProducts()` - Filter low stock
+  - `getOutOfStockProducts()` - Filter out of stock
+  - `getInventorySummary()` - Get statistics
+  - `bulkUpdateInventory()` - Bulk operations
+  - `syncProductInventory()` - Sync from variants
+
+**Configuration:**
+- **Backend Constants** (`apps/api/src/common/constants/inventory.constants.ts`)
+  ```typescript
+  export const INVENTORY_DEFAULTS = {
+    LOW_STOCK_THRESHOLD: 10,
+    TRANSACTION_PAGE_SIZE: 50,
+  } as const;
+
+  export const SKU_CONFIG = {
+    PRODUCT_PREFIX: 'PROD',
+    RANDOM_LENGTH: 6,
+  } as const;
+  ```
+
+- **Frontend Constants** (`apps/web/src/lib/constants/inventory.ts`)
+  ```typescript
+  export const INVENTORY_DEFAULTS = {
+    LOW_STOCK_THRESHOLD: 10,
+    TRANSACTION_HISTORY_PAGE_SIZE: 20,
+    MAX_ITEMS_PER_PAGE: 100,
+  } as const;
+
+  export const TRANSACTION_TYPES = {
+    RESTOCK: { label: 'Restock', description: 'Stock received from suppliers' },
+    SALE: { label: 'Sale', description: 'Product sold to customer' },
+    RETURN: { label: 'Return', description: 'Product returned by customer' },
+    ADJUSTMENT: { label: 'Adjustment', description: 'Manual stock correction' },
+    DAMAGE: { label: 'Damage', description: 'Damaged/defective items' },
+    RESERVED: { label: 'Reserved', description: 'Stock reserved for order' },
+    RELEASED: { label: 'Released', description: 'Reserved stock released' },
+  } as const;
+  ```
+
+**Database Schema:**
+- **InventoryTransaction Model:**
+  - `id` - Unique transaction ID
+  - `productId` - Product reference (optional)
+  - `variantId` - Variant reference (optional)
+  - `type` - Transaction type (enum)
+  - `quantity` - Quantity changed (can be negative)
+  - `previousStock` - Stock before transaction
+  - `newStock` - Stock after transaction
+  - `reason` - Transaction reason
+  - `notes` - Additional notes
+  - `userId` - User who performed transaction
+  - `createdAt` - Transaction timestamp
+
+**Integration Points:**
+- System Settings module for dynamic configuration
+- Product Management for stock adjustments
+- Variant Management for variant-level inventory
+- Audit Logging for change history
+- Email Notifications for low stock alerts (future)
+- Analytics Dashboard for inventory insights
+
+**Settings Priority:**
+1. User-configured settings from database (via System Settings)
+2. Default constants as fallback if settings don't exist or API fails
+3. Component props can still override settings when needed
+
+**Testing:**
+- Comprehensive test suite with 17 automated tests
+- 100% pass rate (all tests passing)
+- Tests cover:
+  - Inventory settings endpoints
+  - Inventory management operations
+  - Product inventory transactions
+  - Bulk inventory operations
+  - Settings update operations
+- Test script: `test-inventory-system.sh`
+- Full test results: `INVENTORY_SYSTEM_TEST_RESULTS.md`
+- Implementation guide: `INVENTORY_SYSTEM_SETTINGS_INTEGRATION.md`
+
+**Benefits:**
+- No hardcoded values - all configurable through settings
+- Centralized configuration - one place to manage all inventory parameters
+- Runtime changes - update settings without redeploying code
+- Audit trail - full history of all configuration and inventory changes
+- Graceful fallback - system works even if settings fail to load
+- Type-safe - TypeScript constants ensure compile-time safety
+- Developer-friendly - easy to add new settings in the future
 
 ✅ **Real-Time Features**
 - WebSocket integration with Socket.IO
@@ -2144,9 +2339,354 @@ pnpm install
 
 ---
 
-## 12. Version 2.0 Changes & Enhancements
+## 12. Version 2.1.1 Changes & Enhancements
 
 ### 12.1 Overview
+
+Version 2.1.1 focuses on critical product management improvements and comprehensive filter system enhancements:
+1. **Product Form Field Persistence** - Fixed SKU and inventory field saving issues
+2. **Advanced Filter System** - All filters (status, category, sort, search) working together seamlessly
+3. **Stock Badge Design** - Improved visual design preventing text cutting
+4. **Field Name Mapping** - Consistent inventory/stock field handling across frontend and backend
+5. **Query Parameter Handling** - Enhanced empty value filtering for cleaner API requests
+
+**Release Date:** December 13, 2025
+**Breaking Changes:** None
+**Migration Required:** No
+
+### 12.2 Product Form Field Persistence Fixes
+
+**Problem Solved:**
+- SKU field was not being saved to database (missing from DTO)
+- Inventory/stock field was not persisting (field name mismatch)
+- Category field was not saving (field name mismatch in transformation layer)
+- Nested form causing React hydration errors
+
+**Root Causes Identified:**
+
+1. **Backend DTO Missing SKU Field**
+   - `CreateProductDto` didn't accept `sku` parameter
+   - Frontend was sending SKU but backend silently ignored it
+
+2. **Field Name Mismatches**
+   - ProductForm sends `inventory` (database field name)
+   - transformProductData expected `stock` (interface field name)
+   - Similar issue with `categoryId` vs `category`
+
+3. **Nested Form Structure**
+   - `VariantForm` had `<form>` element inside `ProductForm`'s `<form>`
+   - Violated HTML spec and caused hydration errors
+
+**Solutions Implemented:**
+
+#### Backend Fix - SKU Field (`apps/api/src/products/dto/create-product.dto.ts`)
+```typescript
+export class CreateProductDto {
+  @IsString()
+  name: string;
+
+  @IsString()
+  slug: string;
+
+  // ✅ ADDED - SKU field support
+  @IsOptional()
+  @IsString()
+  sku?: string;
+
+  @IsString()
+  description: string;
+  // ... rest of fields
+}
+```
+
+#### Frontend Fix - Field Name Mapping (`apps/web/src/lib/api/admin.ts`)
+```typescript
+function transformProductData(data: Partial<AdminProduct>): any {
+  const transformed: any = {
+    name: data.name,
+    slug: data.slug,
+    description: data.description,
+    price: data.price,
+    // ✅ FIXED - Accept both field names
+    inventory: (data as any).inventory ?? data.stock,
+  };
+
+  // ✅ FIXED - SKU field handling
+  if (data.sku !== undefined && data.sku !== null && data.sku !== '') {
+    transformed.sku = data.sku;
+  }
+
+  // ✅ FIXED - Category field handling
+  const categoryValue = (data as any).categoryId ?? data.category;
+  if (categoryValue) {
+    transformed.categoryId = categoryValue;
+  }
+
+  return transformed;
+}
+```
+
+#### Frontend Fix - Nested Form (`apps/web/src/components/admin/variant-form.tsx`)
+```typescript
+// ❌ BEFORE - Nested form
+return (
+  <form onSubmit={handleSubmit} className="space-y-4">
+    {/* ... */}
+    <button type="submit">Create Variant</button>
+  </form>
+);
+
+// ✅ AFTER - Fixed structure
+return (
+  <div className="space-y-4">
+    {/* ... */}
+    <button
+      type="button"
+      onClick={(e) => handleSubmit(e as any)}
+    >
+      Create Variant
+    </button>
+  </div>
+);
+```
+
+### 12.3 Advanced Filter System Enhancements
+
+**Problem Solved:**
+- Status filter not working (always showed only ACTIVE products)
+- Sort by stock not supported (missing from sort field mapping)
+- Empty filter values causing API errors
+- Multiple filters couldn't work together
+
+**Solutions Implemented:**
+
+#### Backend - Status Filter Fix (`apps/api/src/products/products.service.ts`)
+```typescript
+// ❌ BEFORE - Always defaulted to ACTIVE
+async findAll(query: ProductQueryDto) {
+  const {
+    status = ProductStatus.ACTIVE, // ❌ Bad default
+    // ...
+  } = query;
+
+  const where: Prisma.ProductWhereInput = {
+    status, // Always filtered by status
+  };
+}
+
+// ✅ AFTER - Only filter when explicitly provided
+async findAll(query: ProductQueryDto) {
+  const {
+    status, // ✅ No default
+    // ...
+  } = query;
+
+  const where: Prisma.ProductWhereInput = {};
+
+  // ✅ Only add status filter if provided
+  if (status !== undefined && status !== null) {
+    where.status = status;
+  }
+}
+```
+
+#### Backend - Sort Field Mapping Enhancement
+```typescript
+const sortByMapping: Record<string, string> = {
+  relevance: 'viewCount',
+  popularity: 'viewCount',
+  price: 'price',
+  name: 'name',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  rating: 'rating',
+  inventory: 'inventory', // ✅ ADDED
+  stock: 'inventory',     // ✅ ADDED (alias)
+};
+```
+
+#### Frontend - Status Values Fix (`apps/web/src/app/admin/products/page.tsx`)
+```typescript
+// ✅ FIXED - Use uppercase values matching backend enum
+<select value={status} onChange={(e) => setStatus(e.target.value)}>
+  <option value="">All Status</option>
+  <option value="ACTIVE">Active</option>
+  <option value="INACTIVE">Inactive</option>
+  <option value="DRAFT">Draft</option>
+</select>
+```
+
+#### Frontend - Empty Value Handling (`apps/web/src/lib/api/admin.ts`)
+```typescript
+// ❌ BEFORE - Empty strings sent to API
+function buildQueryString(params?: Record<string, any>): string {
+  if (!params) return '';
+  const queryParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      queryParams.append(key, String(value)); // ❌ Sends empty strings
+    }
+  });
+  return queryParams.toString() ? `?${queryParams.toString()}` : '';
+}
+
+// ✅ AFTER - Skip empty strings
+function buildQueryString(params?: Record<string, any>): string {
+  if (!params) return '';
+  const queryParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    // ✅ Skip undefined, null, AND empty strings
+    if (value !== undefined && value !== null && value !== '') {
+      queryParams.append(key, String(value));
+    }
+  });
+  return queryParams.toString() ? `?${queryParams.toString()}` : '';
+}
+```
+
+### 12.4 Stock Badge Design Improvements
+
+**Problem Solved:**
+- Stock count text was being cut off
+- Badge layout inconsistent across different stock values
+- Visual design didn't match modern UI standards
+
+**Solution Implemented** (`apps/web/src/components/admin/stock-status-badge.tsx`):
+
+```typescript
+// ❌ BEFORE - Text could wrap/cut
+return (
+  <div className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5">
+    {showIcon && status.icon}
+    <span>{status.label}</span>
+    <span className="font-semibold">({stock})</span> {/* Could wrap */}
+  </div>
+);
+
+// ✅ AFTER - Improved design
+return (
+  <div className="inline-flex items-center gap-1.5 rounded-lg border font-medium whitespace-nowrap">
+    {showIcon && status.icon}
+    <span className="font-semibold">{status.label}</span>
+    <span className="inline-flex items-center justify-center min-w-[2rem] px-1.5 py-0.5 rounded bg-white/60 text-xs font-bold">
+      {stock} {/* ✅ Distinct mini-badge */}
+    </span>
+  </div>
+);
+```
+
+**Improvements:**
+- Added `whitespace-nowrap` to prevent text wrapping
+- Changed from `rounded-full` to `rounded-lg` for cleaner look
+- Stock count in distinct mini-badge with white background
+- Better spacing and padding for consistency
+
+### 12.5 API Response Mapping
+
+**Problem Solved:**
+- Backend returns `totalPages` but frontend expected `pages`
+- Product list endpoint responses inconsistent
+
+**Solution Implemented** (`apps/web/src/lib/api/admin.ts`):
+```typescript
+async getAll(params?: {...}): Promise<{...}> {
+  const response = await api.get(`/products${buildQueryString(params)}`);
+  const data = response.data || response;
+  // ✅ Map totalPages to pages for consistency
+  return {
+    products: data.products,
+    total: data.total,
+    pages: data.totalPages || data.pages,
+  };
+}
+```
+
+### 12.6 TypeScript Build Fixes
+
+**Problem Solved:**
+- Type error in `settings.service.ts` preventing production builds
+- `JsonArray` type not assignable to `string[]`
+
+**Solution Implemented** (`apps/api/src/settings/settings.service.ts`):
+```typescript
+async getStockNotificationRecipients(): Promise<string[]> {
+  try {
+    const setting = await this.getSetting('inventory.notification_recipients');
+    // ✅ FIXED - Added type assertion
+    return Array.isArray(setting.value)
+      ? setting.value as string[]
+      : ['inventory@luxury.com'];
+  } catch (error) {
+    return ['inventory@luxury.com'];
+  }
+}
+```
+
+### 12.7 Testing & Verification
+
+**Comprehensive Filter Tests:**
+
+```bash
+# Test 1: All Status (no filter)
+curl "http://localhost:4000/api/v1/products?limit=100"
+# Result: 36 total (32 ACTIVE + 4 DRAFT) ✅
+
+# Test 2: Status Filter
+curl "http://localhost:4000/api/v1/products?status=DRAFT&limit=5"
+# Result: 4 DRAFT products ✅
+
+# Test 3: Status + Category
+curl "http://localhost:4000/api/v1/products?status=ACTIVE&category=watches&limit=3"
+# Result: 7 active watches ✅
+
+# Test 4: Status + Sort by Inventory
+curl "http://localhost:4000/api/v1/products?status=ACTIVE&sortBy=inventory&sortOrder=asc&limit=3"
+# Result: Sorted correctly (2, 3, 3) ✅
+
+# Test 5: All Filters Combined
+curl "http://localhost:4000/api/v1/products?search=luxury&category=watches&status=ACTIVE&sortBy=price&sortOrder=desc"
+# Result: 2 products, correctly filtered and sorted ✅
+```
+
+### 12.8 Impact & Benefits
+
+**User Experience:**
+- ✅ Product creation/editing now saves all fields correctly
+- ✅ Filters work individually and in any combination
+- ✅ Stock badges display clearly without visual issues
+- ✅ Admin can filter products by any criteria seamlessly
+
+**Developer Experience:**
+- ✅ Consistent field naming reduces confusion
+- ✅ TypeScript build succeeds without errors
+- ✅ API responses properly mapped to frontend expectations
+- ✅ Query parameter handling more robust
+
+**System Reliability:**
+- ✅ No data loss on product saves
+- ✅ Empty filter values handled gracefully
+- ✅ All 36 products visible by default
+- ✅ Production build stable and deployable
+
+### 12.9 Files Modified
+
+**Backend:**
+1. `apps/api/src/products/dto/create-product.dto.ts` - Added SKU field
+2. `apps/api/src/products/products.service.ts` - Fixed status filter, added inventory sort
+3. `apps/api/src/settings/settings.service.ts` - Fixed TypeScript type error
+
+**Frontend:**
+4. `apps/web/src/lib/api/admin.ts` - Fixed field mapping, empty value handling, response mapping
+5. `apps/web/src/app/admin/products/page.tsx` - Updated status values, sort options, export
+6. `apps/web/src/components/admin/variant-form.tsx` - Removed nested form
+7. `apps/web/src/components/admin/product-form.tsx` - Verified field names (no changes needed)
+8. `apps/web/src/components/admin/stock-status-badge.tsx` - Improved design
+
+---
+
+## 13. Version 2.0 Changes & Enhancements
+
+### 13.1 Overview
 
 Version 2.0 focuses on three major enhancements:
 1. **Currency System Settings Integration** - Seamless integration between Currency Management and System Settings
@@ -2157,7 +2697,7 @@ Version 2.0 focuses on three major enhancements:
 **Breaking Changes:** None
 **Migration Required:** No
 
-### 12.2 Currency System Settings Integration
+### 13.2 Currency System Settings Integration
 
 **Problem Solved:**
 - Currency Management and System Settings were operating independently
@@ -2373,7 +2913,7 @@ export function CurrencySettingsSection() {
 - ✅ Automatic validation (cannot remove default currency)
 - ✅ Clear separation: Admin sees all, users see supported only
 
-### 12.3 Real-Time Settings Updates
+### 13.3 Real-Time Settings Updates
 
 **Problem Solved:**
 - Settings changes required manual page refresh to see updates
@@ -2502,7 +3042,7 @@ Test 3: Multiple Tabs Simultaneously
 - Batched updates: All cache invalidations in single operation
 - Debug logging: Easy troubleshooting with console messages
 
-### 12.4 Professional Number Formatting
+### 13.4 Professional Number Formatting
 
 **Problem Solved:**
 - Large numbers displayed without thousand separators (100000.00)
@@ -2698,7 +3238,7 @@ Shipping:          2,500.00
 - ✅ No performance impact (presentation only)
 - ✅ Maintains calculation accuracy
 
-### 12.5 Bug Fixes in v2.0
+### 13.5 Bug Fixes in v2.0
 
 1. **ProductCard undefined price crash** - Fixed with null-safe formatting
 2. **Settings not persisting** - Fixed transaction and update order
@@ -2709,14 +3249,14 @@ Shipping:          2,500.00
 7. **Default currency validation** - Cannot be removed from supported list
 8. **Topbar not updating** - Fixed with SWR revalidation
 
-### 12.6 Documentation Created
+### 13.6 Documentation Created
 
 1. **CURRENCY_SYSTEM_SETTINGS_INTEGRATION.md** - Currency integration guide
 2. **CURRENCY_ACTIVATION_SYNC.md** - Bi-directional sync documentation
 3. **REALTIME_UPDATES_FIX.md** - Real-time updates implementation
 4. **COMPREHENSIVE_TECHNICAL_DOCUMENTATION.md** - Updated (this file)
 
-### 12.7 Migration Guide (v1.x → v2.0)
+### 13.7 Migration Guide (v1.x → v2.0)
 
 **No migration required!** Version 2.0 is backward compatible.
 
@@ -2733,9 +3273,9 @@ Shipping:          2,500.00
 
 ---
 
-## 13. Roadmap Snapshot
+## 14. Roadmap Snapshot
 
-### 13.1 Immediate Priorities (Next 1-3 Months)
+### 14.1 Immediate Priorities (Next 1-3 Months)
 
 **High Priority:**
 1. **Testing Infrastructure**
@@ -2767,7 +3307,7 @@ Shipping:          2,500.00
    - Add CDN for static assets
    - Frontend bundle optimization
 
-### 13.2 Short-Term Goals (3-6 Months)
+### 14.2 Short-Term Goals (3-6 Months)
 
 **Feature Development:**
 1. **Advanced Search**
@@ -2798,7 +3338,7 @@ Shipping:          2,500.00
    - Cryptocurrency payments
    - Wallet functionality
 
-### 12.3 Medium-Term Goals (6-12 Months)
+### 14.3 Medium-Term Goals (6-12 Months)
 
 **Scalability:**
 1. **Infrastructure**
@@ -2831,7 +3371,7 @@ Shipping:          2,500.00
    - Shipping provider integrations
    - Marketing tool integrations
 
-### 12.4 Long-Term Vision (12+ Months)
+### 14.4 Long-Term Vision (12+ Months)
 
 **Platform Evolution:**
 1. **Global Expansion**
@@ -2858,7 +3398,7 @@ Shipping:          2,500.00
    - Packaging optimization
    - Circular economy features
 
-### 12.5 Technical Roadmap
+### 14.5 Technical Roadmap
 
 **Architecture Evolution:**
 1. **Phase 1:** Optimize current monolith

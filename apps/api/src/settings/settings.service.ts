@@ -462,4 +462,125 @@ export class SettingsService {
       return 2555; // 7 years
     }
   }
+
+  /**
+   * Get low stock threshold
+   */
+  async getLowStockThreshold(): Promise<number> {
+    try {
+      const setting = await this.getSetting('inventory.low_stock_threshold');
+      return Number(setting.value) || 10;
+    } catch (error) {
+      return 10;
+    }
+  }
+
+  /**
+   * Get auto SKU generation setting
+   */
+  async getAutoSkuGeneration(): Promise<boolean> {
+    try {
+      const setting = await this.getSetting('inventory.auto_sku_generation');
+      return Boolean(setting.value);
+    } catch (error) {
+      return true;
+    }
+  }
+
+  /**
+   * Get SKU prefix
+   */
+  async getSkuPrefix(): Promise<string> {
+    try {
+      const setting = await this.getSetting('inventory.sku_prefix');
+      return String(setting.value) || 'PROD';
+    } catch (error) {
+      return 'PROD';
+    }
+  }
+
+  /**
+   * Get stock notifications enabled setting
+   */
+  async getStockNotificationsEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.getSetting('inventory.enable_stock_notifications');
+      return Boolean(setting.value);
+    } catch (error) {
+      return true;
+    }
+  }
+
+  /**
+   * Get stock notification recipients
+   */
+  async getStockNotificationRecipients(): Promise<string[]> {
+    try {
+      const setting = await this.getSetting('inventory.notification_recipients');
+      return Array.isArray(setting.value) ? setting.value as string[] : ['inventory@luxury.com'];
+    } catch (error) {
+      return ['inventory@luxury.com'];
+    }
+  }
+
+  /**
+   * Get allow negative stock setting
+   */
+  async getAllowNegativeStock(): Promise<boolean> {
+    try {
+      const setting = await this.getSetting('inventory.allow_negative_stock');
+      return Boolean(setting.value);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Get transaction history page size
+   */
+  async getTransactionHistoryPageSize(): Promise<number> {
+    try {
+      const setting = await this.getSetting('inventory.transaction_history_page_size');
+      return Number(setting.value) || 20;
+    } catch (error) {
+      return 20;
+    }
+  }
+
+  /**
+   * Get all inventory settings at once (optimized)
+   */
+  async getInventorySettings() {
+    try {
+      const settings = await this.getSettingsByCategory('inventory');
+
+      const settingsMap = settings.reduce((acc, setting) => {
+        acc[setting.key] = setting.value;
+        return acc;
+      }, {} as Record<string, any>);
+
+      return {
+        lowStockThreshold: Number(settingsMap['inventory.low_stock_threshold']) || 10,
+        autoSkuGeneration: Boolean(settingsMap['inventory.auto_sku_generation'] ?? true),
+        skuPrefix: String(settingsMap['inventory.sku_prefix']) || 'PROD',
+        enableStockNotifications: Boolean(settingsMap['inventory.enable_stock_notifications'] ?? true),
+        notificationRecipients: Array.isArray(settingsMap['inventory.notification_recipients'])
+          ? settingsMap['inventory.notification_recipients']
+          : ['inventory@luxury.com'],
+        allowNegativeStock: Boolean(settingsMap['inventory.allow_negative_stock'] ?? false),
+        transactionHistoryPageSize: Number(settingsMap['inventory.transaction_history_page_size']) || 20,
+      };
+    } catch (error) {
+      // Return defaults if settings don't exist
+      return {
+        lowStockThreshold: 10,
+        autoSkuGeneration: true,
+        skuPrefix: 'PROD',
+        enableStockNotifications: true,
+        notificationRecipients: ['inventory@luxury.com'],
+        allowNegativeStock: false,
+        transactionHistoryPageSize: 20,
+      };
+    }
+  }
 }

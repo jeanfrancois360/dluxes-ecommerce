@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxu
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@luxury/ui';
 import { Input } from '@luxury/ui';
 import { Button } from '@luxury/ui';
-import { Settings, DollarSign, Percent, Globe, Truck, Shield, Bell, Search, History, Save, ChevronRight, Sparkles } from 'lucide-react';
+import { Settings, DollarSign, Percent, Globe, Truck, Shield, Bell, Search, History, Save, ChevronRight, Sparkles, Package } from 'lucide-react';
 import { GeneralSettingsSection } from '@/components/settings/general-settings';
 import { PaymentSettingsSection } from '@/components/settings/payment-settings';
 import { CommissionSettingsSection } from '@/components/settings/commission-settings';
@@ -17,6 +17,7 @@ import { DeliverySettingsSection } from '@/components/settings/delivery-settings
 import { SecuritySettingsSection } from '@/components/settings/security-settings';
 import { NotificationSettingsSection } from '@/components/settings/notification-settings';
 import { SeoSettingsSection } from '@/components/settings/seo-settings';
+import { InventorySettingsSection } from '@/components/settings/inventory-settings';
 import { AuditLogViewer } from '@/components/settings/audit-log-viewer';
 import { SettingsValidationAlert } from '@/components/settings/settings-validation-alert';
 import { SettingsOverviewDashboard } from '@/components/settings/settings-overview-dashboard';
@@ -27,6 +28,7 @@ const tabsConfig = [
   { value: 'payment', label: 'Payment', icon: DollarSign, description: 'Payment & escrow configuration' },
   { value: 'commission', label: 'Commission', icon: Percent, description: 'Commission rates & structure' },
   { value: 'currency', label: 'Currency', icon: Globe, description: 'Multi-currency support' },
+  { value: 'inventory', label: 'Inventory', icon: Package, description: 'Stock & inventory management' },
   { value: 'delivery', label: 'Delivery', icon: Truck, description: 'Shipping & delivery options' },
   { value: 'security', label: 'Security', icon: Shield, description: 'Authentication & security' },
   { value: 'notifications', label: 'Notifications', icon: Bell, description: 'Email & SMS notifications' },
@@ -164,6 +166,10 @@ function SettingsPageContent() {
 
             <TabsContent value="currency" className="mt-0">
               <CurrencySettingsSection />
+            </TabsContent>
+
+            <TabsContent value="inventory" className="mt-0">
+              <InventorySettingsSection />
             </TabsContent>
 
             <TabsContent value="delivery" className="mt-0">

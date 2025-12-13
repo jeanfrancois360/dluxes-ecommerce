@@ -208,6 +208,7 @@ model Product {
   storeId          String? // Seller's store (optional for admin-created products)
   name             String
   slug             String        @unique
+  sku              String?       @unique // Product SKU (Stock Keeping Unit)
   description      String        @db.Text
   shortDescription String?
   categoryId       String? // Changed to relation
