@@ -257,12 +257,12 @@ export class UploadService {
           storagePath: `${folder}/${baseFileName}.webp`,
         };
       } catch (error) {
-        this.logger.error(`Supabase upload failed: ${error.message}`);
-        throw new BadRequestException('Failed to upload image');
+        this.logger.error(`Supabase upload failed, falling back to local storage: ${error.message}`);
+        // Fall through to local storage fallback
       }
     }
 
-    // Fall back to basic upload if Supabase not configured
+    // Fall back to basic upload if Supabase not configured or failed
     return this.uploadImage(file, entityType);
   }
 

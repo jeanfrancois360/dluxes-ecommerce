@@ -223,26 +223,32 @@ export function useAdminProduct(id: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
-
-    async function fetchProduct() {
-      try {
-        setLoading(true);
-        const data = await adminProductsApi.getById(id);
-        setProduct(data);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch product');
-      } finally {
-        setLoading(false);
-      }
+  const fetchProduct = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
     }
 
-    fetchProduct();
+    try {
+      setLoading(true);
+      setProduct(null);
+      setError(null);
+      const data = await adminProductsApi.getById(id);
+      setProduct(data);
+    } catch (err: any) {
+      console.error('Error fetching product:', err);
+      setProduct(null);
+      setError(err?.message || err?.data?.message || 'Product not found');
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
-  return { product, loading, error };
+  useEffect(() => {
+    fetchProduct();
+  }, [fetchProduct]);
+
+  return { product, loading, error, refetch: fetchProduct };
 }
 
 // Orders Hooks

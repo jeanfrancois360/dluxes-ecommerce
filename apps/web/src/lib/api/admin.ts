@@ -11,7 +11,8 @@ function buildQueryString(params?: Record<string, any>): string {
   if (!params) return '';
   const queryParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    // Skip undefined, null, and empty strings
+    if (value !== undefined && value !== null && value !== '') {
       queryParams.append(key, String(value));
     }
   });
@@ -219,14 +220,26 @@ function transformProductData(data: Partial<AdminProduct>): any {
     slug: data.slug,
     description: data.description,
     price: data.price,
-    inventory: data.stock ?? 0, // Map 'stock' to 'inventory'
+    // Accept both 'inventory' (from ProductForm) and 'stock' (from AdminProduct interface)
+    inventory: (data as any).inventory ?? data.stock,
   };
+
+  // SKU field - add if provided
+  if (data.sku !== undefined && data.sku !== null && data.sku !== '') {
+    transformed.sku = data.sku;
+  }
 
   // Optional fields
   if (data.compareAtPrice !== undefined) transformed.compareAtPrice = data.compareAtPrice;
-  if (data.category) transformed.categoryId = data.category; // Map 'category' to 'categoryId'
+
+  // Category handling - accept both 'categoryId' (from ProductForm) and 'category' (from AdminProduct interface)
+  const categoryValue = (data as any).categoryId ?? data.category;
+  if (categoryValue) {
+    transformed.categoryId = categoryValue;
+  }
+
+  // Status mapping
   if (data.status) {
-    // Map status values to backend enum
     const statusMap: Record<string, string> = {
       'active': 'ACTIVE',
       'inactive': 'ARCHIVED',
@@ -238,10 +251,57 @@ function transformProductData(data: Partial<AdminProduct>): any {
     };
     transformed.status = statusMap[data.status] || 'DRAFT';
   }
-  if (data.images && data.images.length > 0) transformed.heroImage = data.images[0]; // Use first image as heroImage
 
-  // Remove fields that don't exist in the DTO
-  // Don't send: sku, tags, images (already transformed)
+  // Image handling - support multiple images
+  if (data.images && data.images.length > 0) {
+    transformed.heroImage = data.images[0];
+    // Convert images array to gallery format
+    if (data.images.length > 1) {
+      transformed.gallery = data.images.slice(1).map((url: string) => ({
+        type: 'image',
+        url,
+      }));
+    }
+  }
+
+  // Product type and purchase type
+  if ((data as any).productType) {
+    transformed.productType = (data as any).productType;
+  }
+  if ((data as any).purchaseType) {
+    transformed.purchaseType = (data as any).purchaseType;
+  }
+
+  // Additional optional fields
+  if ((data as any).shortDescription) transformed.shortDescription = (data as any).shortDescription;
+  if ((data as any).featured !== undefined) transformed.featured = (data as any).featured;
+  if ((data as any).weight !== undefined) transformed.weight = (data as any).weight;
+  if ((data as any).isPreOrder !== undefined) transformed.isPreOrder = (data as any).isPreOrder;
+  if ((data as any).contactRequired !== undefined) transformed.contactRequired = (data as any).contactRequired;
+  if ((data as any).displayOrder !== undefined) transformed.displayOrder = (data as any).displayOrder;
+
+  // SEO fields
+  if ((data as any).metaTitle) transformed.metaTitle = (data as any).metaTitle;
+  if ((data as any).metaDescription) transformed.metaDescription = (data as any).metaDescription;
+  if ((data as any).seoKeywords && Array.isArray((data as any).seoKeywords)) {
+    transformed.seoKeywords = (data as any).seoKeywords;
+  }
+
+  // Tags/Badges - convert tags to badges if present
+  if (data.tags && Array.isArray(data.tags)) {
+    transformed.badges = data.tags;
+  }
+
+  // Product attributes
+  if ((data as any).colors && Array.isArray((data as any).colors)) {
+    transformed.colors = (data as any).colors;
+  }
+  if ((data as any).sizes && Array.isArray((data as any).sizes)) {
+    transformed.sizes = (data as any).sizes;
+  }
+  if ((data as any).materials && Array.isArray((data as any).materials)) {
+    transformed.materials = (data as any).materials;
+  }
 
   return transformed;
 }
@@ -257,12 +317,18 @@ export const adminProductsApi = {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   }): Promise<{ products: AdminProduct[]; total: number; pages: number }> {
-    const response = await api.get(`/admin/products${buildQueryString(params)}`);
-    return response;
+    const response = await api.get(`/products${buildQueryString(params)}`);
+    const data = response.data || response;
+    // Map totalPages to pages for consistency
+    return {
+      products: data.products,
+      total: data.total,
+      pages: data.totalPages || data.pages,
+    };
   },
 
   async getById(id: string): Promise<AdminProduct> {
-    const response = await api.get(`/products/${id}`);
+    const response = await api.get(`/products/id/${id}`);
     return response;
   },
 
@@ -288,6 +354,110 @@ export const adminProductsApi = {
 
   async bulkUpdateStatus(ids: string[], status: string): Promise<void> {
     await api.post('/products/bulk-update-status', { ids, status });
+  },
+
+  async addImages(productId: string, images: string[]): Promise<AdminProduct> {
+    const response = await api.post(`/products/${productId}/images`, { images });
+    return response;
+  },
+
+  async removeImage(productId: string, imageId: string): Promise<AdminProduct> {
+    const response = await api.delete(`/products/${productId}/images/${imageId}`);
+    return response;
+  },
+
+  async reorderImages(productId: string, imageOrders: Array<{ id: string; order: number }>): Promise<AdminProduct> {
+    const response = await api.patch(`/products/${productId}/images/reorder`, { imageOrders });
+    return response;
+  },
+
+  // Inventory Management APIs
+  async adjustProductInventory(
+    productId: string,
+    data: {
+      quantity: number;
+      type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'RESTOCK';
+      reason?: string;
+      notes?: string;
+    }
+  ): Promise<AdminProduct> {
+    const response = await api.patch(`/products/${productId}/inventory`, data);
+    return response;
+  },
+
+  async adjustVariantInventory(
+    productId: string,
+    variantId: string,
+    data: {
+      quantity: number;
+      type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'RESTOCK';
+      reason?: string;
+      notes?: string;
+    }
+  ): Promise<any> {
+    const response = await api.patch(`/products/${productId}/variants/${variantId}/inventory`, data);
+    return response;
+  },
+
+  async getInventoryTransactions(
+    productId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<{
+    transactions: Array<{
+      id: string;
+      type: string;
+      quantity: number;
+      previousQuantity: number;
+      newQuantity: number;
+      reason?: string;
+      notes?: string;
+      createdAt: string;
+      user?: { id: string; firstName: string; lastName: string; email: string };
+      variant?: { id: string; name: string; sku: string };
+    }>;
+    total: number;
+  }> {
+    const response = await api.get(`/products/${productId}/inventory/transactions${buildQueryString(params)}`);
+    return response;
+  },
+
+  async getLowStockProducts(threshold?: number): Promise<AdminProduct[]> {
+    const response = await api.get(`/products/inventory/low-stock${buildQueryString({ threshold })}`);
+    return response;
+  },
+
+  async getOutOfStockProducts(): Promise<AdminProduct[]> {
+    const response = await api.get('/products/inventory/out-of-stock');
+    return response;
+  },
+
+  async getInventorySummary(): Promise<{
+    totalProducts: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+    totalInventoryUnits: number;
+    recentTransactions: Array<any>;
+  }> {
+    const response = await api.get('/products/inventory/summary');
+    return response;
+  },
+
+  async bulkUpdateInventory(
+    updates: Array<{
+      productId?: string;
+      variantId?: string;
+      quantity: number;
+      type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'RESTOCK';
+      reason?: string;
+    }>
+  ): Promise<Array<{ success: boolean; productId?: string; variantId?: string; error?: string }>> {
+    const response = await api.post('/products/inventory/bulk-update', { updates });
+    return response;
+  },
+
+  async syncProductInventory(productId: string): Promise<AdminProduct> {
+    const response = await api.post(`/products/${productId}/inventory/sync`);
+    return response;
   },
 };
 

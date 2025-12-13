@@ -51,7 +51,7 @@ export class ProductsService {
       limit,
       sortBy = 'createdAt',
       sortOrder = 'desc',
-      status = ProductStatus.ACTIVE,
+      status,
       featured,
       colors,
       sizes,
@@ -65,9 +65,12 @@ export class ProductsService {
     // Use limit if provided, otherwise fall back to pageSize, with default of 24
     const take = limit || pageSize || 24;
 
-    const where: Prisma.ProductWhereInput = {
-      status,
-    };
+    const where: Prisma.ProductWhereInput = {};
+
+    // Only filter by status if explicitly provided
+    if (status !== undefined && status !== null) {
+      where.status = status;
+    }
 
     // Category filter - lookup by slug
     if (category) {
@@ -168,6 +171,8 @@ export class ProductsService {
       createdAt: 'createdAt',
       updatedAt: 'updatedAt',
       rating: 'rating',
+      inventory: 'inventory',
+      stock: 'inventory', // Alias for inventory
     };
 
     const validSortBy = sortByMapping[sortBy] || 'createdAt';
@@ -568,10 +573,10 @@ export class ProductsService {
         colors: colors || [],
         sizes: sizes || [],
         materials: materials || [],
-        // Connect category using relation if provided
+        // Connect category using relation if provided (by slug)
         ...(categoryId && {
           category: {
-            connect: { id: categoryId },
+            connect: { slug: categoryId },
           },
         }),
       },
@@ -590,7 +595,7 @@ export class ProductsService {
   async update(id: string, updateProductDto: UpdateProductDto) {
     await this.findById(id); // Check if exists
 
-    const { badges, seoKeywords, colors, sizes, materials, ...productData } =
+    const { badges, seoKeywords, colors, sizes, materials, categoryId, ...productData } =
       updateProductDto;
 
     const updateData: any = { ...productData };
@@ -600,6 +605,20 @@ export class ProductsService {
     if (colors !== undefined) updateData.colors = colors;
     if (sizes !== undefined) updateData.sizes = sizes;
     if (materials !== undefined) updateData.materials = materials;
+
+    // Handle category connection by slug
+    if (categoryId !== undefined) {
+      if (categoryId) {
+        updateData.category = {
+          connect: { slug: categoryId },
+        };
+      } else {
+        // Disconnect category if categoryId is null/empty
+        updateData.category = {
+          disconnect: true,
+        };
+      }
+    }
 
     return this.prisma.product.update({
       where: { id },
@@ -611,6 +630,96 @@ export class ProductsService {
         tags: true,
       },
     });
+  }
+
+  /**
+   * Add images to a product
+   */
+  async addProductImages(productId: string, imageUrls: string[]) {
+    await this.findById(productId); // Check if product exists
+
+    // First, delete all existing images for this product (we're replacing them)
+    await this.prisma.productImage.deleteMany({
+      where: { productId },
+    });
+
+    // Create product images - first image is always primary
+    const imageRecords = imageUrls.map((url, index) => ({
+      productId,
+      url,
+      alt: `Product image ${index + 1}`,
+      width: 800, // Default dimensions
+      height: 800,
+      displayOrder: index,
+      isPrimary: index === 0, // First image is always primary
+    }));
+
+    await this.prisma.productImage.createMany({
+      data: imageRecords,
+    });
+
+    // Update product heroImage to be the first image
+    if (imageUrls.length > 0) {
+      await this.prisma.product.update({
+        where: { id: productId },
+        data: { heroImage: imageUrls[0] },
+      });
+    }
+
+    return this.findById(productId);
+  }
+
+  /**
+   * Remove product image
+   */
+  async removeProductImage(productId: string, imageId: string) {
+    const image = await this.prisma.productImage.findFirst({
+      where: { id: imageId, productId },
+    });
+
+    if (!image) {
+      throw new NotFoundException('Image not found');
+    }
+
+    await this.prisma.productImage.delete({
+      where: { id: imageId },
+    });
+
+    // If this was the primary image, make the first remaining image primary
+    if (image.isPrimary) {
+      const firstImage = await this.prisma.productImage.findFirst({
+        where: { productId },
+        orderBy: { displayOrder: 'asc' },
+      });
+
+      if (firstImage) {
+        await this.prisma.productImage.update({
+          where: { id: firstImage.id },
+          data: { isPrimary: true },
+        });
+      }
+    }
+
+    return this.findById(productId);
+  }
+
+  /**
+   * Reorder product images
+   */
+  async reorderProductImages(productId: string, imageOrders: Array<{ id: string; order: number }>) {
+    await this.findById(productId); // Check if product exists
+
+    // Update each image's display order
+    await Promise.all(
+      imageOrders.map((item) =>
+        this.prisma.productImage.update({
+          where: { id: item.id },
+          data: { displayOrder: item.order },
+        }),
+      ),
+    );
+
+    return this.findById(productId);
   }
 
   /**
@@ -704,6 +813,414 @@ export class ProductsService {
       success: true,
       message: 'Your inquiry has been submitted successfully. We will contact you soon.',
       emailSent,
+    };
+  }
+
+  // ==================== PRODUCT VARIANT METHODS ====================
+
+  /**
+   * Transform variant Decimal values to numbers
+   */
+  private transformVariant(variant: any) {
+    return {
+      ...variant,
+      price: Number(variant.price),
+      compareAtPrice: variant.compareAtPrice ? Number(variant.compareAtPrice) : null,
+    };
+  }
+
+  private transformVariants(variants: any[]) {
+    return variants.map(v => this.transformVariant(v));
+  }
+
+  /**
+   * Get all variants for a product
+   */
+  async getProductVariants(productId: string) {
+    const variants = await this.prisma.productVariant.findMany({
+      where: { productId },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    return this.transformVariants(variants);
+  }
+
+  /**
+   * Get next display order for variant
+   */
+  private async getNextVariantDisplayOrder(productId: string): Promise<number> {
+    const lastVariant = await this.prisma.productVariant.findFirst({
+      where: { productId },
+      orderBy: { displayOrder: 'desc' },
+      select: { displayOrder: true },
+    });
+
+    return lastVariant ? lastVariant.displayOrder + 1 : 0;
+  }
+
+  /**
+   * Create a new product variant
+   */
+  async createVariant(productId: string, dto: any) {
+    // Verify product exists
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, price: true, storeId: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    // Check SKU uniqueness
+    const existingSku = await this.prisma.productVariant.findUnique({
+      where: { sku: dto.sku },
+    });
+
+    if (existingSku) {
+      throw new BadRequestException(`SKU '${dto.sku}' already exists`);
+    }
+
+    // Determine display order
+    const displayOrder = dto.displayOrder ?? (await this.getNextVariantDisplayOrder(productId));
+
+    // Create variant
+    const variant = await this.prisma.productVariant.create({
+      data: {
+        productId,
+        name: dto.name,
+        sku: dto.sku,
+        price: dto.price ?? product.price, // Inherit if not set
+        compareAtPrice: dto.compareAtPrice,
+        inventory: dto.inventory,
+        options: dto.attributes,
+        image: dto.image,
+        colorHex: dto.colorHex,
+        colorName: dto.colorName ?? dto.attributes?.color,
+        sizeChart: dto.sizeChart,
+        isAvailable: dto.isAvailable ?? true,
+        lowStockThreshold: dto.lowStockThreshold ?? 5,
+        displayOrder,
+      },
+    });
+
+    // Create inventory transaction
+    if (dto.inventory > 0) {
+      await this.prisma.inventoryTransaction.create({
+        data: {
+          productId,
+          variantId: variant.id,
+          type: 'RESTOCK',
+          quantity: dto.inventory,
+          previousQuantity: 0,
+          newQuantity: dto.inventory,
+          reason: 'Initial stock for variant',
+        },
+      });
+    }
+
+    return this.transformVariant(variant);
+  }
+
+  /**
+   * Create multiple variants in bulk
+   */
+  async bulkCreateVariants(productId: string, dtos: any[]) {
+    // Verify product exists
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, price: true, storeId: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    // Check SKU uniqueness across all DTOs
+    const skus = dtos.map(dto => dto.sku);
+    const duplicateSkus = skus.filter((sku, index) => skus.indexOf(sku) !== index);
+    if (duplicateSkus.length > 0) {
+      throw new BadRequestException(`Duplicate SKUs in request: ${duplicateSkus.join(', ')}`);
+    }
+
+    // Check SKU uniqueness in database
+    const existingSkus = await this.prisma.productVariant.findMany({
+      where: { sku: { in: skus } },
+      select: { sku: true },
+    });
+
+    if (existingSkus.length > 0) {
+      const existing = existingSkus.map(v => v.sku).join(', ');
+      throw new BadRequestException(`SKUs already exist: ${existing}`);
+    }
+
+    // Get starting display order
+    let displayOrder = await this.getNextVariantDisplayOrder(productId);
+
+    // Create all variants in a transaction
+    const variants = await this.prisma.$transaction(async (prisma) => {
+      const created = [];
+
+      for (const dto of dtos) {
+        const variant = await prisma.productVariant.create({
+          data: {
+            productId,
+            name: dto.name,
+            sku: dto.sku,
+            price: dto.price ?? product.price,
+            compareAtPrice: dto.compareAtPrice,
+            inventory: dto.inventory,
+            options: dto.attributes,
+            image: dto.image,
+            colorHex: dto.colorHex,
+            colorName: dto.colorName ?? dto.attributes?.color,
+            sizeChart: dto.sizeChart,
+            isAvailable: dto.isAvailable ?? true,
+            lowStockThreshold: dto.lowStockThreshold ?? 5,
+            displayOrder: dto.displayOrder ?? displayOrder++,
+          },
+        });
+
+        // Create inventory transaction
+        if (dto.inventory > 0) {
+          await prisma.inventoryTransaction.create({
+            data: {
+              productId,
+              variantId: variant.id,
+              type: 'RESTOCK',
+              quantity: dto.inventory,
+              previousQuantity: 0,
+              newQuantity: dto.inventory,
+              reason: 'Bulk variant creation',
+            },
+          });
+        }
+
+        created.push(variant);
+      }
+
+      return created;
+    });
+
+    return this.transformVariants(variants);
+  }
+
+  /**
+   * Update a product variant
+   */
+  async updateVariant(variantId: string, dto: any) {
+    // Get existing variant
+    const existing = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      include: { product: { select: { storeId: true } } },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Variant not found');
+    }
+
+    // Check SKU uniqueness if SKU is being updated
+    if (dto.sku && dto.sku !== existing.sku) {
+      const existingSku = await this.prisma.productVariant.findUnique({
+        where: { sku: dto.sku },
+      });
+
+      if (existingSku) {
+        throw new BadRequestException(`SKU '${dto.sku}' already exists`);
+      }
+    }
+
+    // Track inventory change
+    const inventoryChanged = dto.inventory !== undefined && dto.inventory !== existing.inventory;
+    const previousInventory = existing.inventory;
+    const newInventory = dto.inventory ?? existing.inventory;
+
+    // Update variant
+    const updated = await this.prisma.productVariant.update({
+      where: { id: variantId },
+      data: {
+        name: dto.name,
+        sku: dto.sku,
+        price: dto.price,
+        compareAtPrice: dto.compareAtPrice,
+        inventory: dto.inventory,
+        previousStock: inventoryChanged ? previousInventory : existing.previousStock,
+        options: dto.attributes,
+        image: dto.image,
+        colorHex: dto.colorHex,
+        colorName: dto.colorName ?? dto.attributes?.color,
+        sizeChart: dto.sizeChart,
+        isAvailable: dto.isAvailable,
+        lowStockThreshold: dto.lowStockThreshold,
+        displayOrder: dto.displayOrder,
+      },
+    });
+
+    // Create inventory transaction if inventory changed
+    if (inventoryChanged) {
+      const quantityDiff = newInventory - previousInventory;
+      await this.prisma.inventoryTransaction.create({
+        data: {
+          productId: existing.productId,
+          variantId: variantId,
+          type: quantityDiff > 0 ? 'RESTOCK' : 'ADJUSTMENT',
+          quantity: Math.abs(quantityDiff),
+          previousQuantity: previousInventory,
+          newQuantity: newInventory,
+          reason: 'Variant inventory update',
+        },
+      });
+    }
+
+    return this.transformVariant(updated);
+  }
+
+  /**
+   * Delete a product variant
+   */
+  async deleteVariant(variantId: string) {
+    // Get existing variant
+    const existing = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      select: {
+        id: true,
+        productId: true,
+        _count: {
+          select: {
+            cartItems: true,
+            orderItems: true,
+          }
+        }
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Variant not found');
+    }
+
+    // Check if variant is referenced in orders or carts
+    if (existing._count.orderItems > 0) {
+      throw new BadRequestException(
+        'Cannot delete variant that has been ordered. Consider marking it as unavailable instead.'
+      );
+    }
+
+    if (existing._count.cartItems > 0) {
+      throw new BadRequestException(
+        'Cannot delete variant that is in customer carts. Remove from carts first or mark as unavailable.'
+      );
+    }
+
+    // Delete variant
+    await this.prisma.productVariant.delete({
+      where: { id: variantId },
+    });
+
+    return { success: true, message: 'Variant deleted successfully' };
+  }
+
+  /**
+   * Update variant display order (for drag-and-drop reordering)
+   */
+  async reorderVariants(productId: string, variantOrders: Array<{ id: string; order: number }>) {
+    // Verify product exists
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    // Update all variant orders in a transaction
+    await this.prisma.$transaction(
+      variantOrders.map(({ id, order }) =>
+        this.prisma.productVariant.update({
+          where: { id, productId }, // Ensure variant belongs to this product
+          data: { displayOrder: order },
+        })
+      )
+    );
+
+    return { success: true, message: 'Variants reordered successfully' };
+  }
+
+  /**
+   * Get variant by ID with product details
+   */
+  async getVariantById(variantId: string) {
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            storeId: true,
+          },
+        },
+      },
+    });
+
+    if (!variant) {
+      throw new NotFoundException('Variant not found');
+    }
+
+    return this.transformVariant(variant);
+  }
+
+  // ==================== BULK OPERATIONS ====================
+
+  /**
+   * Bulk delete products (Admin only)
+   * @param ids - Array of product IDs to delete
+   */
+  async bulkDeleteProducts(ids: string[]): Promise<{ success: boolean; deleted: number; failed: string[] }> {
+    const failed: string[] = [];
+    let deleted = 0;
+
+    for (const id of ids) {
+      try {
+        await this.delete(id);
+        deleted++;
+      } catch (error) {
+        console.error(`Failed to delete product ${id}:`, error);
+        failed.push(id);
+      }
+    }
+
+    return {
+      success: failed.length === 0,
+      deleted,
+      failed,
+    };
+  }
+
+  /**
+   * Bulk update product status (Admin only)
+   * @param ids - Array of product IDs to update
+   * @param status - New status to apply
+   */
+  async bulkUpdateStatus(ids: string[], status: ProductStatus): Promise<{ success: boolean; updated: number; failed: string[] }> {
+    const failed: string[] = [];
+    let updated = 0;
+
+    for (const id of ids) {
+      try {
+        await this.update(id, { status });
+        updated++;
+      } catch (error) {
+        console.error(`Failed to update product ${id}:`, error);
+        failed.push(id);
+      }
+    }
+
+    return {
+      success: failed.length === 0,
+      updated,
+      failed,
     };
   }
 }

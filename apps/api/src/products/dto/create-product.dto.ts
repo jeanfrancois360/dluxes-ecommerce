@@ -10,6 +10,10 @@ export class CreateProductDto {
   @IsString()
   slug: string;
 
+  @IsOptional()
+  @IsString()
+  sku?: string;
+
   @IsString()
   description: string;
 
