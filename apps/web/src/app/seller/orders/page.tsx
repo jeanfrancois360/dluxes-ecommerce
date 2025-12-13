@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface Order {
   id: string;
   orderNumber: string;
@@ -181,7 +181,7 @@ export default function SellerOrdersPage() {
           </div>
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <p className="text-sm text-neutral-500 font-medium">Total Revenue</p>
-            <p className="text-3xl font-bold text-gold mt-2">${stats.totalRevenue.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-gold mt-2">${formatCurrencyAmount(stats.totalRevenue, 2)}</p>
           </div>
         </div>
 
@@ -269,7 +269,7 @@ export default function SellerOrdersPage() {
                         <span className="text-neutral-700">{order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-semibold text-black">${order.total.toFixed(2)}</span>
+                        <span className="font-semibold text-black">${formatCurrencyAmount(order.total, 2)}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <StatusBadge status={order.status} />

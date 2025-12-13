@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 export interface CartItem {
   id: string;
@@ -73,10 +74,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
     return {
-      subtotal: parseFloat(subtotal.toFixed(2)),
-      shipping: parseFloat(shipping.toFixed(2)),
-      tax: parseFloat(tax.toFixed(2)),
-      total: parseFloat(total.toFixed(2)),
+      subtotal: parseFloat(formatCurrencyAmount(subtotal, 2)),
+      shipping: parseFloat(formatCurrencyAmount(shipping, 2)),
+      tax: parseFloat(formatCurrencyAmount(tax, 2)),
+      total: parseFloat(formatCurrencyAmount(total, 2)),
       itemCount,
     };
   }, []);

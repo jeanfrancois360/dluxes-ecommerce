@@ -17,6 +17,7 @@ import {  DollarSign, TrendingUp, Package, Calendar as CalendarIcon, Download } 
 import axios from 'axios';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 interface EarningsSummary {
   totalEarnings: number;
@@ -78,7 +79,7 @@ export default function DeliveryPartnerEarningsPage() {
       format(new Date(d.deliveredAt), 'yyyy-MM-dd'),
       d.trackingNumber,
       d.order.orderNumber,
-      `$${Number(d.partnerCommission).toFixed(2)}`,
+      `$${formatCurrencyAmount(Number(d.partnerCommission), 2)}`,
     ]);
 
     const csvContent = [
@@ -86,7 +87,7 @@ export default function DeliveryPartnerEarningsPage() {
       ...rows.map((row) => row.join(',')),
       '',
       `Total Deliveries,${summary.totalDeliveries}`,
-      `Total Earnings,$${summary.totalEarnings.toFixed(2)}`,
+      `Total Earnings,$${formatCurrencyAmount(summary.totalEarnings, 2)}`,
     ].join('\n');
 
     // Download CSV
@@ -123,7 +124,7 @@ export default function DeliveryPartnerEarningsPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">${summary.totalEarnings.toFixed(2)}</div>
+              <div className="text-3xl font-bold">${formatCurrencyAmount(summary.totalEarnings, 2)}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 From {summary.totalDeliveries} deliveries
               </p>
@@ -149,8 +150,8 @@ export default function DeliveryPartnerEarningsPage() {
             <CardContent>
               <div className="text-3xl font-bold">
                 ${summary.totalDeliveries > 0
-                  ? (summary.totalEarnings / summary.totalDeliveries).toFixed(2)
-                  : '0.00'}
+                  ? formatCurrencyAmount(summary.totalEarnings / summary.totalDeliveries, 2)
+                  : formatCurrencyAmount(0, 2)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">Commission per delivery</p>
             </CardContent>
@@ -237,7 +238,7 @@ export default function DeliveryPartnerEarningsPage() {
                         </TableCell>
                         <TableCell>{delivery.order.orderNumber}</TableCell>
                         <TableCell className="text-right font-medium text-green-600">
-                          +${Number(delivery.partnerCommission).toFixed(2)}
+                          +${formatCurrencyAmount(Number(delivery.partnerCommission), 2)}
                         </TableCell>
                       </TableRow>
                     ))}

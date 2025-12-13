@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api/client';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface Product {
   id: string;
   name: string;
@@ -445,11 +445,11 @@ export default function SellerProductsPage() {
                       <td className="px-6 py-4">
                         <div>
                           <p className="font-semibold text-black">
-                            ${Number(product.price).toFixed(2)}
+                            ${formatCurrencyAmount(Number(product.price), 2)}
                           </p>
                           {product.compareAtPrice && (
                             <p className="text-sm text-neutral-500 line-through">
-                              ${Number(product.compareAtPrice).toFixed(2)}
+                              ${formatCurrencyAmount(Number(product.compareAtPrice), 2)}
                             </p>
                           )}
                         </div>

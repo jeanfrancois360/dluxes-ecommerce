@@ -14,7 +14,7 @@ import { useAdminProducts } from '@/hooks/use-admin';
 import { adminProductsApi } from '@/lib/api/admin';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 function ProductsContent() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
@@ -330,7 +330,7 @@ function ProductsContent() {
                         {typeof product.category === 'string' ? product.category : (product.category as any)?.name || 'N/A'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm font-bold text-black">${Number(product.price).toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-black">${formatCurrencyAmount(Number(product.price), 2)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${product.stock > 10 ? 'bg-green-600 shadow-lg shadow-green-500/50' : product.stock > 0 ? 'bg-yellow-600 shadow-lg shadow-yellow-500/50' : 'bg-red-600 shadow-lg shadow-red-500/50'}`}></div>

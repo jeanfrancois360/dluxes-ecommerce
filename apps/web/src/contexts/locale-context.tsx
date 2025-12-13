@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 // Language types
 export type Language = 'en' | 'fr' | 'es';
@@ -86,16 +87,16 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   const formatPrice = (price: number): string => {
     const currencyOption = currencies.find(c => c.code === currency);
-    if (!currencyOption) return `$${price.toFixed(2)}`;
+    if (!currencyOption) return `$${formatCurrencyAmount(price, 2)}`;
 
     const convertedPrice = convertPrice(price);
     const { symbol, code } = currencyOption;
 
     // Format based on currency
     if (code === 'EUR') {
-      return `${convertedPrice.toFixed(2).replace('.', ',')} ${symbol}`;
+      return `${formatCurrencyAmount(convertedPrice, 2).replace('.', ',')} ${symbol}`;
     } else {
-      return `${symbol}${convertedPrice.toFixed(2)}`;
+      return `${symbol}${formatCurrencyAmount(convertedPrice, 2)}`;
     }
   };
 

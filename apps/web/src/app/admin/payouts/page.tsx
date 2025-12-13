@@ -33,7 +33,7 @@ import {
 } from '@luxury/ui';
 import { toast } from 'sonner';
 import { DollarSign, Calendar, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 type PayoutStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 interface Payout {
@@ -393,7 +393,7 @@ function PayoutsContent() {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
-                        ${payout.amount.toFixed(2)} {payout.currency}
+                        ${formatCurrencyAmount(payout.amount, 2)} {payout.currency}
                       </TableCell>
                       <TableCell className="text-sm">
                         {new Date(payout.periodStart).toLocaleDateString()} -{' '}
@@ -471,7 +471,7 @@ function PayoutsContent() {
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Amount:</span>
                   <span className="font-medium">
-                    ${completeDialog.payout.amount.toFixed(2)} {completeDialog.payout.currency}
+                    ${formatCurrencyAmount(completeDialog.payout.amount, 2)} {completeDialog.payout.currency}
                   </span>
                 </div>
               </div>

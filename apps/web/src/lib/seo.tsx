@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 export const siteConfig = {
   name: 'Luxury Marketplace',
@@ -162,7 +163,7 @@ export function generateProductSchema({
       '@type': 'Offer',
       url: `${siteConfig.url}${url}`,
       priceCurrency: currency,
-      price: price.toFixed(2),
+      price: formatCurrencyAmount(price, 2),
       availability: `https://schema.org/${availability}`,
       itemCondition: `https://schema.org/${condition}`,
       priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],

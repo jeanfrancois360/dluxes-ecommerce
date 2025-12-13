@@ -5,7 +5,7 @@ import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { adminAdvertisementsApi, type Advertisement } from '@/lib/api/admin';
 import { toast } from '@/lib/toast';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 function AdvertisementsContent() {
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,7 +155,7 @@ function AdvertisementsContent() {
                   <td className="px-6 py-4 text-sm text-gray-900">{ad.placement}</td>
                   <td className="px-6 py-4">
                     <div className="text-sm">
-                      <div className="font-medium">${Number(ad.price).toFixed(2)}</div>
+                      <div className="font-medium">${formatCurrencyAmount(Number(ad.price), 2)}</div>
                       <div className="text-gray-500">{ad.pricingModel}</div>
                     </div>
                   </td>
@@ -170,7 +170,7 @@ function AdvertisementsContent() {
                       <div>{ad.clicks} clicks</div>
                       {ad.impressions > 0 && (
                         <div className="text-gray-500">
-                          {((ad.clicks / ad.impressions) * 100).toFixed(1)}% CTR
+                          {formatNumber((ad.clicks / ad.impressions) * 100, 1)}% CTR
                         </div>
                       )}
                     </div>
@@ -253,7 +253,7 @@ function AdvertisementsContent() {
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
                   <div className="text-xl font-bold">
                     {selectedAd.impressions > 0
-                      ? ((selectedAd.clicks / selectedAd.impressions) * 100).toFixed(2)
+                      ? formatNumber((selectedAd.clicks / selectedAd.impressions) * 100, 2)
                       : 0}%
                   </div>
                   <div className="text-sm text-gray-500">CTR</div>
@@ -261,7 +261,7 @@ function AdvertisementsContent() {
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
                   <div className="text-xl font-bold">
                     {selectedAd.clicks > 0
-                      ? ((selectedAd.conversions / selectedAd.clicks) * 100).toFixed(2)
+                      ? formatNumber((selectedAd.conversions / selectedAd.clicks) * 100, 2)
                       : 0}%
                   </div>
                   <div className="text-sm text-gray-500">Conversion Rate</div>

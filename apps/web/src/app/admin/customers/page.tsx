@@ -8,7 +8,7 @@ import { adminCustomersApi } from '@/lib/api/admin';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
 import Link from 'next/link';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 function CustomersContent() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
@@ -160,7 +160,7 @@ function CustomersContent() {
                     <td className="px-6 py-4 text-sm text-neutral-700">{customer.email}</td>
                     <td className="px-6 py-4 text-sm text-neutral-800 font-bold">{customer.totalOrders}</td>
                     <td className="px-6 py-4 text-sm font-bold text-black">
-                      ${customer.totalSpent.toFixed(2)}
+                      ${formatCurrencyAmount(customer.totalSpent, 2)}
                     </td>
                     <td className="px-6 py-4">
                       <span

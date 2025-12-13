@@ -10,6 +10,7 @@ import { useCart } from '@/hooks/use-cart';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 export default function WishlistPage() {
   const router = useRouter();
@@ -154,7 +155,7 @@ export default function WishlistPage() {
                   My Wishlist
                 </h1>
                 <p className="text-neutral-600">
-                  {total ?? 0} item{(total ?? 0) !== 1 ? 's' : ''} • Total value: ${Number(totalValue || 0).toFixed(2)}
+                  {total ?? 0} item{(total ?? 0) !== 1 ? 's' : ''} • Total value: ${formatCurrencyAmount(Number(totalValue || 0), 2)}
                 </p>
               </div>
               {((total ?? 0) > 0 || (items || []).length > 0) && (

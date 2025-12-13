@@ -10,7 +10,7 @@ import { OrderProgressTracker } from '@/components/orders/order-progress-tracker
 import { OrderTimeline } from '@/components/orders/order-timeline';
 import { useOrder, useCancelOrder, useDownloadInvoice } from '@/hooks/use-orders';
 import { toast } from '@/lib/toast';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -232,11 +232,11 @@ export default function OrderDetailPage() {
                       )}
                       <div className="flex items-center gap-4 mt-2">
                         <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                        <p className="text-sm font-semibold">${item.price.toFixed(2)}</p>
+                        <p className="text-sm font-semibold">${formatCurrencyAmount(item.price, 2)}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg">${item.total.toFixed(2)}</p>
+                      <p className="font-bold text-lg">${formatCurrencyAmount(item.total, 2)}</p>
                     </div>
                   </motion.div>
                 ))}
@@ -305,21 +305,21 @@ export default function OrderDetailPage() {
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold">${order.subtotal.toFixed(2)}</span>
+                  <span className="font-semibold">${formatCurrencyAmount(order.subtotal, 2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Shipping</span>
-                  <span className="font-semibold">${order.shipping.toFixed(2)}</span>
+                  <span className="font-semibold">${formatCurrencyAmount(order.shipping, 2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Tax</span>
-                  <span className="font-semibold">${order.tax.toFixed(2)}</span>
+                  <span className="font-semibold">${formatCurrencyAmount(order.tax, 2)}</span>
                 </div>
                 {order.discount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Discount</span>
                     <span className="font-semibold text-green-600">
-                      -${order.discount.toFixed(2)}
+                      -${formatCurrencyAmount(order.discount, 2)}
                     </span>
                   </div>
                 )}
@@ -327,7 +327,7 @@ export default function OrderDetailPage() {
                   <div className="flex justify-between">
                     <span className="font-bold text-lg">Total</span>
                     <span className="font-bold text-2xl text-[#CBB57B]">
-                      ${order.total.toFixed(2)}
+                      ${formatCurrencyAmount(order.total, 2)}
                     </span>
                   </div>
                 </div>

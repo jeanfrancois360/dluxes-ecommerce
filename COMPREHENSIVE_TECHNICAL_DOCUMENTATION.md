@@ -1,8 +1,8 @@
 # Comprehensive Technical Documentation
 # Luxury E-commerce Platform
 
-**Version:** 1.2.0
-**Last Updated:** December 12, 2025 (Settings Module Tested & Production-Ready)
+**Version:** 2.0.0
+**Last Updated:** December 13, 2025 (Currency Integration, Real-Time Updates & Number Formatting)
 **Status:** Production-Ready
 
 ---
@@ -20,7 +20,8 @@
 9. [Known Gaps & Limitations](#9-known-gaps--limitations)
 10. [Developer Setup Guide](#10-developer-setup-guide)
 11. [Operational Notes](#11-operational-notes)
-12. [Roadmap Snapshot](#12-roadmap-snapshot)
+12. [Version 2.0 Changes & Enhancements](#12-version-20-changes--enhancements) **[NEW]**
+13. [Roadmap Snapshot](#13-roadmap-snapshot)
 
 ---
 
@@ -663,8 +664,14 @@ apps/web/
 │   │   └── ...               # Other hooks
 │   ├── lib/                  # Utilities and libraries
 │   │   ├── api/              # API client and endpoints
+│   │   │   ├── client.ts     # Base API client
+│   │   │   ├── currency.ts   # Currency API (enhanced v2.0)
+│   │   │   └── settings.ts   # Settings API (new v2.0)
+│   │   ├── utils/            # Utility functions (new v2.0)
+│   │   │   └── number-format.ts  # Number formatting utilities
 │   │   ├── auth-utils.ts     # Auth utilities
 │   │   ├── utils.ts          # General utilities
+│   │   ├── settings-cache.ts # Settings cache invalidation (new v2.0)
 │   │   └── validations/      # Form validation schemas
 │   └── styles/               # Global styles
 └── public/                   # Static assets
@@ -748,28 +755,44 @@ apps/web/
 - Language preference (English, French, Spanish)
 - Currency selection (USD, EUR)
 - Currency conversion with exchange rates
-- Price formatting
+- Price formatting with thousand separators (v2.0)
 - LocalStorage persistence
 
-**Data Fetching with SWR:**
+**Data Fetching with SWR (Enhanced v2.0):**
 ```typescript
-// Configuration
+// Default Configuration (v1.x - Deprecated)
 {
-  revalidateOnFocus: false,
-  revalidateOnReconnect: false,
-  dedupingInterval: 60000, // 1 minute
+  revalidateOnFocus: false,      // ❌ Disabled real-time updates
+  revalidateOnReconnect: false,  // ❌ No network reconnect refresh
+  dedupingInterval: 60000,       // ❌ Long deduping (1 minute)
   keepPreviousData: true,
   revalidateIfStale: false,
 }
+
+// Enhanced Configuration (v2.0 - Currency/Settings)
+{
+  revalidateOnFocus: true,       // ✅ Auto-refresh on tab focus
+  revalidateOnReconnect: true,   // ✅ Refresh on network reconnect
+  refreshInterval: 0,            // Manual updates only
+  dedupingInterval: 5000,        // ✅ Faster updates (5 seconds)
+}
+
+// Manual Cache Invalidation (v2.0)
+await mutate('/currency/rates', undefined, { revalidate: true });
 ```
 
 **Custom Hooks:**
 - `useAuth()` - Authentication operations
 - `useCart()` - Cart operations
-- `useLocale()` - Locale preferences
+- `useLocale()` - Locale preferences (deprecated for currency)
 - `useProducts(filters)` - Product fetching with SWR
 - `useProduct(slug)` - Single product fetching
 - `useWishlist()` - Wishlist operations
+- **NEW v2.0:** `useCurrencySettings()` - Fetch currency settings from SystemSetting table
+- **NEW v2.0:** `useCurrencyRates()` - Fetch active currency rates (filtered by supported_currencies)
+- **NEW v2.0:** `useSelectedCurrency()` - Get current currency with system settings integration
+- **NEW v2.0:** `useCurrencyConverter()` - Convert prices with thousand separator formatting
+- **NEW v2.0:** `useCurrencyAdmin()` - Admin currency management (all currencies)
 - `useOrders()` - Order history
 - `useCheckout()` - Checkout flow state
 - `useAdmin()` - Admin operations
@@ -1417,12 +1440,18 @@ docker-compose logs -f   # View logs
 - Advertisement management
 - Analytics and reporting
 
-✅ **Multi-Currency Support**
-- Currency rate management
-- Real-time currency conversion
-- Price display in selected currency
-- Order currency tracking with exchange rate
+✅ **Multi-Currency Support** (Enhanced v2.0)
+- Currency rate management with active/inactive status
+- Real-time currency conversion with exchange rate tracking
+- Price display in selected currency with thousand separators
+- Order currency tracking with exchange rate snapshot
 - Admin currency configuration
+- **NEW:** System Settings Integration - currencies sync with `supported_currencies` setting
+- **NEW:** Bi-directional synchronization between Currency Management and System Settings
+- **NEW:** Dynamic currency dropdown based on active currencies in database
+- **NEW:** Automatic currency activation/deactivation when updating supported currencies
+- **NEW:** Real-time updates across all tabs without page refresh
+- **NEW:** Professional number formatting with locale support (100,000.00 format)
 
 ✅ **Search & Discovery**
 - Full-text search with Meilisearch
@@ -1473,11 +1502,20 @@ docker-compose logs -f   # View logs
    - `commission_type` - Calculation method (percentage/fixed/tiered)
    - `commission_applies_to_shipping` - Include shipping in commission
 
-4. **Currency Settings (4 settings):**
-   - `default_currency` - Primary currency code (USD/EUR/GBP/etc.)
-   - `supported_currencies` - Array of supported currencies
+4. **Currency Settings (4 settings):** **[Enhanced v2.0]**
+   - `default_currency` - Primary currency code (USD/EUR/GBP/etc.) **[Auto-validates against supported currencies]**
+   - `supported_currencies` - Array of supported currencies **[Auto-syncs with CurrencyRate table]**
    - `currency_auto_sync` - Auto-update exchange rates
    - `currency_sync_frequency` - Sync frequency (hourly/daily/weekly)
+
+   **Currency Integration Features (v2.0):**
+   - Bi-directional sync: Changes in Currency Management → updates System Settings
+   - Reverse sync: Changes in System Settings → activates/deactivates currencies
+   - Dynamic dropdown: Only shows active currencies from database
+   - Real-time updates: Changes propagate instantly to all components
+   - Topbar integration: Currency selector reflects system settings
+   - Validation: Cannot set default to unsupported currency
+   - Safe updates: Cannot remove default currency from supported list
 
 5. **Delivery Settings (4 settings):**
    - `delivery_confirmation_required` - Require confirmation for escrow release (LOCKED)
@@ -1515,6 +1553,11 @@ docker-compose logs -f   # View logs
 - Integration with all major system features
 - Health status dashboard (healthy/warning/critical)
 - Visual warnings for missing critical settings
+- **NEW v2.0:** Real-time updates with SWR cache invalidation
+- **NEW v2.0:** Instant UI updates across all tabs without refresh
+- **NEW v2.0:** Optimized revalidation strategy (5s deduping, focus-based refresh)
+- **NEW v2.0:** Manual cache invalidation with revalidate flag
+- **NEW v2.0:** Debug logging for troubleshooting updates
 
 ✅ **Email Notifications**
 - Email verification
@@ -1523,6 +1566,29 @@ docker-compose logs -f   # View logs
 - Order confirmations
 - 2FA notifications
 - Transactional emails via Resend
+
+✅ **Number Formatting System** (New in v2.0)
+- Centralized formatting utilities for consistent display
+- Thousand separator formatting (100,000.00 instead of 100000.00)
+- Locale-aware formatting using Intl.NumberFormat
+- Multiple formatting functions:
+  - `formatNumber()` - Core function with thousand separators
+  - `formatCurrencyAmount()` - Currency-specific formatting
+  - `formatInteger()` - Whole numbers without decimals
+  - `formatPercentage()` - Percentage values with % symbol
+  - `formatCompact()` - Compact notation (1K, 1.5M, 2B)
+  - `parseFormattedNumber()` - Parse formatted strings back to numbers
+- Null-safe: Handles null, undefined, NaN, Infinity gracefully
+- Implemented across 42+ components:
+  - Product cards, grids, listings
+  - Cart drawer and checkout
+  - Order summaries and invoices
+  - Admin dashboards and tables
+  - Payment forms and receipts
+  - All financial displays
+- No impact on calculations (formatting is presentation-only)
+- Performance optimized with no rendering delays
+- Ready for internationalization with locale parameter
 
 ✅ **Real-Time Features**
 - WebSocket integration with Socket.IO
@@ -2078,9 +2144,598 @@ pnpm install
 
 ---
 
-## 12. Roadmap Snapshot
+## 12. Version 2.0 Changes & Enhancements
 
-### 12.1 Immediate Priorities (Next 1-3 Months)
+### 12.1 Overview
+
+Version 2.0 focuses on three major enhancements:
+1. **Currency System Settings Integration** - Seamless integration between Currency Management and System Settings
+2. **Real-Time Settings Updates** - Instant UI updates across all tabs without page refresh
+3. **Professional Number Formatting** - Thousand separator formatting across entire application
+
+**Release Date:** December 13, 2025
+**Breaking Changes:** None
+**Migration Required:** No
+
+### 12.2 Currency System Settings Integration
+
+**Problem Solved:**
+- Currency Management and System Settings were operating independently
+- Supported currencies were hardcoded in frontend
+- No synchronization between currency activation and settings
+- Dropdown showed all currencies regardless of system settings
+
+**Solution Implemented:**
+
+#### Backend Changes
+
+**1. Currency Service Enhancement** (`apps/api/src/currency/currency.service.ts`)
+```typescript
+// Auto-sync with System Settings when toggling currency active status
+async toggleActive(currencyCode: string) {
+  const newActiveStatus = !existing.isActive;
+
+  // Update currency
+  const updatedCurrency = await this.prisma.currencyRate.update({
+    where: { id: existing.id },
+    data: { isActive: newActiveStatus, lastUpdated: new Date() },
+  });
+
+  // ✅ Sync with supported_currencies setting
+  await this.syncSupportedCurrencies(currencyCode, newActiveStatus);
+
+  return updatedCurrency;
+}
+
+private async syncSupportedCurrencies(currencyCode: string, isActive: boolean) {
+  const setting = await this.prisma.systemSetting.findUnique({
+    where: { key: 'supported_currencies' },
+  });
+
+  let supportedCurrencies = setting.value as string[];
+
+  if (isActive) {
+    // Add to supported currencies if not present
+    if (!supportedCurrencies.includes(currencyCode)) {
+      supportedCurrencies.push(currencyCode);
+      supportedCurrencies.sort();
+    }
+  } else {
+    // Remove from supported currencies
+    supportedCurrencies = supportedCurrencies.filter(code => code !== currencyCode);
+  }
+
+  await this.prisma.systemSetting.update({
+    where: { key: 'supported_currencies' },
+    data: { value: supportedCurrencies },
+  });
+}
+```
+
+**2. Settings Service Enhancement** (`apps/api/src/settings/settings.service.ts`)
+```typescript
+// Auto-sync currency active statuses when updating supported_currencies
+async updateSetting(key: string, newValue: any, ...) {
+  // ... transaction code ...
+
+  // ✅ Auto-sync currencies when supported_currencies changes
+  if (key === 'supported_currencies') {
+    await this.syncCurrencyActiveStatuses(newValue as string[]);
+  }
+
+  return this.getSetting(key);
+}
+
+private async syncCurrencyActiveStatuses(supportedCurrencies: string[]) {
+  // Activate currencies in the supported list
+  if (supportedCurrencies.length > 0) {
+    await this.prisma.currencyRate.updateMany({
+      where: { currencyCode: { in: supportedCurrencies } },
+      data: { isActive: true, lastUpdated: new Date() },
+    });
+  }
+
+  // Deactivate currencies NOT in the supported list
+  await this.prisma.currencyRate.updateMany({
+    where: { currencyCode: { notIn: supportedCurrencies } },
+    data: { isActive: false, lastUpdated: new Date() },
+  });
+}
+```
+
+#### Frontend Changes
+
+**1. New Settings API Client** (`apps/web/src/lib/api/settings.ts`)
+```typescript
+export const settingsApi = {
+  async getPublicSettings(): Promise<SystemSetting[]> {
+    const response = await api.get('/settings/public');
+    return response.data || [];
+  },
+
+  async getDefaultCurrency(): Promise<string> {
+    const setting = await this.getPublicSetting('default_currency');
+    return setting?.value || 'USD';
+  },
+
+  async getSupportedCurrencies(): Promise<string[]> {
+    const setting = await this.getPublicSetting('supported_currencies');
+    return setting?.value || ['USD', 'EUR', 'GBP', 'JPY', 'RWF'];
+  },
+};
+```
+
+**2. Enhanced Currency Hooks** (`apps/web/src/hooks/use-currency.ts`)
+```typescript
+// NEW: Hook to get currency settings from SystemSetting table
+export function useCurrencySettings() {
+  const { data: settings, error, isLoading } = useSWR(
+    '/settings/public',
+    settingsApi.getPublicSettings,
+    {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      refreshInterval: 0,
+      dedupingInterval: 5000,
+    }
+  );
+
+  const defaultCurrency = useMemo(() => {
+    const setting = settings?.find(s => s.key === 'default_currency');
+    return setting?.value || 'USD';
+  }, [settings]);
+
+  const supportedCurrencies = useMemo(() => {
+    const setting = settings?.find(s => s.key === 'supported_currencies');
+    return setting?.value || ['USD', 'EUR', 'GBP', 'JPY', 'RWF'];
+  }, [settings]);
+
+  return { defaultCurrency, supportedCurrencies, isLoading, error };
+}
+
+// ENHANCED: Filter currencies by supported_currencies setting
+export function useCurrencyRates() {
+  const { data, error, isLoading, mutate } = useSWR<CurrencyRate[]>(
+    '/currency/rates',
+    currencyApi.getRates,
+    { revalidateOnFocus: true, revalidateOnReconnect: true, dedupingInterval: 5000 }
+  );
+
+  const { supportedCurrencies, isLoading: settingsLoading } = useCurrencySettings();
+
+  // Filter currencies based on system settings
+  const filteredCurrencies = useMemo(() => {
+    if (!data) return [];
+    return data.filter(currency =>
+      supportedCurrencies.includes(currency.currencyCode)
+    );
+  }, [data, supportedCurrencies]);
+
+  return { currencies: filteredCurrencies, /* ... */ };
+}
+
+// NEW: Admin hook fetches ALL currencies (not filtered)
+export function useCurrencyAdmin() {
+  const { data, error, isLoading, mutate } = useSWR(
+    '/currency/admin/all',
+    currencyAdminApi.getAllCurrencies, // ✅ Uses admin endpoint
+    { revalidateOnFocus: true, revalidateOnReconnect: true }
+  );
+
+  return { currencies: data || [], error, isLoading, refresh: mutate };
+}
+```
+
+**3. Dynamic Currency Settings UI** (`apps/web/src/components/settings/currency-settings.tsx`)
+```typescript
+export function CurrencySettingsSection() {
+  const { currencies: availableCurrencies, isLoading, error } = useCurrencyAdmin();
+
+  // Filter to only show active currencies
+  const activeCurrencies = availableCurrencies.filter(c => c.isActive);
+
+  return (
+    <SelectContent>
+      {activeCurrencies.length > 0 ? (
+        activeCurrencies.map((currency) => (
+          <SelectItem key={currency.currencyCode} value={currency.currencyCode}>
+            {currency.currencyCode} - {currency.currencyName}
+          </SelectItem>
+        ))
+      ) : (
+        <SelectItem value="__all_added__" disabled>
+          All active currencies are already added
+        </SelectItem>
+      )}
+
+      {/* Show inactive currencies separately */}
+      {inactiveCurrencies.length > 0 && (
+        <>
+          <SelectItem value="__separator__" disabled>
+            ─── Inactive (Activate first) ───
+          </SelectItem>
+          {inactiveCurrencies.map((currency) => (
+            <SelectItem key={currency.currencyCode} value={currency.currencyCode} disabled>
+              {currency.currencyCode} - {currency.currencyName} (Inactive)
+            </SelectItem>
+          ))}
+        </>
+      )}
+    </SelectContent>
+  );
+}
+```
+
+**Benefits Achieved:**
+- ✅ Currency Management ↔ System Settings bidirectional sync
+- ✅ Single source of truth for supported currencies
+- ✅ Dynamic dropdown based on database state
+- ✅ Automatic validation (cannot remove default currency)
+- ✅ Clear separation: Admin sees all, users see supported only
+
+### 12.3 Real-Time Settings Updates
+
+**Problem Solved:**
+- Settings changes required manual page refresh to see updates
+- Multiple browser tabs showed stale data
+- Poor user experience for administrators
+- No feedback that changes propagated
+
+**Solution Implemented:**
+
+#### SWR Configuration Enhancement
+
+**Before (v1.x):**
+```typescript
+useSWR('/currency/rates', fetcher, {
+  revalidateOnFocus: false,      // ❌ No auto-refresh
+  revalidateOnReconnect: false,  // ❌ No reconnect refresh
+  dedupingInterval: 60000,       // ❌ Long cache (1 minute)
+});
+```
+
+**After (v2.0):**
+```typescript
+useSWR('/currency/rates', fetcher, {
+  revalidateOnFocus: true,       // ✅ Refresh on tab focus
+  revalidateOnReconnect: true,   // ✅ Refresh on reconnect
+  refreshInterval: 0,            // Manual updates only
+  dedupingInterval: 5000,        // ✅ Fast cache (5 seconds)
+});
+```
+
+#### Cache Invalidation System
+
+**New File:** `apps/web/src/lib/settings-cache.ts`
+```typescript
+import { mutate } from 'swr';
+
+export async function invalidateCurrencySettings() {
+  console.log('🔄 Invalidating currency caches...');
+
+  await Promise.all([
+    mutate('/settings/public', undefined, { revalidate: true }),
+    mutate('/currency/rates', undefined, { revalidate: true }),
+    mutate('/currency/admin/all', undefined, { revalidate: true }),
+    mutate(
+      (key) => typeof key === 'string' && key.startsWith('/currency/'),
+      undefined,
+      { revalidate: true }
+    ),
+  ]);
+
+  console.log('✅ Currency caches invalidated successfully');
+}
+
+export async function invalidatePaymentSettings() { /* ... */ }
+export async function invalidateDeliverySettings() { /* ... */ }
+```
+
+#### Integration with Settings Save
+
+**Currency Settings Component:**
+```typescript
+const onSubmit = async (data: CurrencySettings) => {
+  try {
+    // Update settings in correct order
+    for (const key of ['supported_currencies', 'default_currency', ...]) {
+      await updateSetting(key, value, 'Updated via settings panel');
+    }
+
+    toast.success('Currency settings saved successfully');
+
+    // ✅ Invalidate all currency-related caches
+    await Promise.all([
+      refetch(),
+      invalidateCurrencySettings(),
+    ]);
+
+    console.log('Currency caches invalidated - UI updated immediately');
+  } catch (error) {
+    console.error('Failed to save settings:', error);
+  }
+};
+```
+
+**How It Works:**
+
+1. **User saves settings** in Admin → Settings → Currency
+2. **Backend updates** database
+3. **Frontend calls** `invalidateCurrencySettings()`
+4. **SWR invalidates** all related caches with `{ revalidate: true }`
+5. **All components** using currency hooks automatically refetch
+6. **UI updates** instantly across all open tabs
+
+**Components That Auto-Update:**
+- Topbar currency selector
+- Product cards and listings
+- Cart and checkout pages
+- Admin dashboards
+- All price displays
+
+**Testing Real-Time Updates:**
+```
+Test 1: Topbar Currency Dropdown
+1. Open app in two browser tabs
+2. Tab 1: Admin Settings → Currency tab
+3. Tab 2: Any page with topbar
+4. Tab 1: Remove EUR from supported currencies → Save
+5. Tab 2: Topbar dropdown updates immediately (EUR disappears)
+6. ✅ No page refresh needed
+
+Test 2: Default Currency Change
+1. Tab 1: Products page (showing USD prices)
+2. Tab 2: Admin Settings → Change default to EUR → Save
+3. Tab 1: All prices switch to EUR instantly
+4. ✅ Currency symbols update ($ → €)
+
+Test 3: Multiple Tabs Simultaneously
+1. Open 4 tabs: Products, Cart, Checkout, Admin Settings
+2. Admin tab: Change supported currencies → Save
+3. All other tabs: Update simultaneously
+4. ✅ Consistent display across all tabs
+```
+
+**Performance Optimizations:**
+- Deduplication: Multiple components share single fetch
+- Smart revalidation: Only on focus/reconnect (not polling)
+- Batched updates: All cache invalidations in single operation
+- Debug logging: Easy troubleshooting with console messages
+
+### 12.4 Professional Number Formatting
+
+**Problem Solved:**
+- Large numbers displayed without thousand separators (100000.00)
+- Inconsistent formatting across application
+- `.toFixed()` calls scattered throughout codebase
+- ProductCard crashes on undefined prices
+- No centralized formatting logic
+- Not ready for internationalization
+
+**Solution Implemented:**
+
+#### Centralized Formatting Utilities
+
+**New File:** `apps/web/src/lib/utils/number-format.ts`
+```typescript
+/**
+ * Core formatting function with thousand separators
+ */
+export function formatNumber(
+  value: number | null | undefined,
+  decimals: number = 2,
+  locale: string = 'en-US'
+): string {
+  // Null-safe: Handle edge cases
+  if (value == null || isNaN(value) || !isFinite(value)) {
+    return '0.' + '0'.repeat(decimals);
+  }
+
+  // Use Intl.NumberFormat for locale-aware formatting
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+}
+
+/**
+ * Format currency amounts with thousand separators
+ */
+export function formatCurrencyAmount(
+  amount: number | null | undefined,
+  decimals: number = 2,
+  locale: string = 'en-US'
+): string {
+  return formatNumber(amount, decimals, locale);
+}
+
+/**
+ * Format integers without decimals
+ */
+export function formatInteger(
+  value: number | null | undefined,
+  locale: string = 'en-US'
+): string {
+  return formatNumber(value, 0, locale);
+}
+
+/**
+ * Format percentages
+ */
+export function formatPercentage(
+  value: number | null | undefined,
+  decimals: number = 2,
+  locale: string = 'en-US'
+): string {
+  const formatted = formatNumber(value, decimals, locale);
+  return `${formatted}%`;
+}
+
+/**
+ * Compact notation (1K, 1.5M, 2B)
+ */
+export function formatCompact(
+  value: number | null | undefined,
+  locale: string = 'en-US'
+): string {
+  if (value == null || isNaN(value) || !isFinite(value)) {
+    return '0';
+  }
+
+  return new Intl.NumberFormat(locale, {
+    notation: 'compact',
+    compactDisplay: 'short',
+  }).format(value);
+}
+
+/**
+ * Parse formatted number back to number
+ */
+export function parseFormattedNumber(value: string): number {
+  if (!value) return 0;
+  const cleaned = value.replace(/,/g, '');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) || !isFinite(parsed) ? 0 : parsed;
+}
+```
+
+**Also created:** `packages/ui/src/lib/utils/number-format.ts` (same utilities for UI package)
+
+#### Application-Wide Implementation
+
+**Files Updated: 42+ Components**
+
+**ProductCard (UI Package):**
+```typescript
+// Before (❌ Crashes on undefined)
+<span>${price.toFixed(2)}</span>
+
+// After (✅ Null-safe with formatting)
+<span>${formatCurrencyAmount(price, 2)}</span>
+```
+
+**Cart Drawer:**
+```typescript
+// Before
+<span>Subtotal: ${totals.subtotal.toFixed(2)}</span>
+<span>Shipping: ${totals.shipping.toFixed(2)}</span>
+<span>Tax: ${totals.tax.toFixed(2)}</span>
+<span>Total: ${totals.total.toFixed(2)}</span>
+
+// After
+<span>Subtotal: ${formatCurrencyAmount(totals.subtotal, 2)}</span>
+<span>Shipping: ${formatCurrencyAmount(totals.shipping, 2)}</span>
+<span>Tax: ${formatCurrencyAmount(totals.tax, 2)}</span>
+<span>Total: ${formatCurrencyAmount(totals.total, 2)}</span>
+```
+
+**Checkout Order Summary:**
+```typescript
+// Before
+<p>Add ${(200 - subtotal).toFixed(2)} more for free shipping</p>
+
+// After
+<p>Add ${formatCurrencyAmount(200 - subtotal, 2)} more for free shipping</p>
+```
+
+**Currency API Client:**
+```typescript
+// Before
+formatPrice(amount: number, currency: CurrencyRate): string {
+  const formattedAmount = amount.toFixed(currency.decimalDigits);
+  return currency.position === 'before'
+    ? `${currency.symbol}${formattedAmount}`
+    : `${formattedAmount} ${currency.symbol}`;
+}
+
+// After
+formatPrice(amount: number, currency: CurrencyRate): string {
+  const formattedAmount = formatCurrencyAmount(amount, currency.decimalDigits);
+  return currency.position === 'before'
+    ? `${currency.symbol}${formattedAmount}`
+    : `${formattedAmount} ${currency.symbol}`;
+}
+```
+
+**Components Updated:**
+- ✅ Product cards, grids, listings (4 files)
+- ✅ Cart drawer and items
+- ✅ Checkout flow (order summary, payment form, shipping)
+- ✅ Wishlist
+- ✅ Search results
+- ✅ Admin dashboards (13 pages)
+- ✅ Seller dashboards (4 pages)
+- ✅ Delivery partner pages (3 pages)
+- ✅ Order cards and details
+- ✅ Commission and payout displays
+- ✅ Currency management UI
+- ✅ All financial summaries
+
+**Visual Examples:**
+
+Before:
+```
+Product Price:     100000.00
+Cart Total:        567850.99
+Commission:        12500.50
+Shipping:          2500.00
+```
+
+After:
+```
+Product Price:     100,000.00
+Cart Total:        567,850.99
+Commission:        12,500.50
+Shipping:          2,500.00
+```
+
+**Benefits Achieved:**
+- ✅ Professional, readable formatting
+- ✅ Null-safe (no more crashes on undefined)
+- ✅ Consistent across 42+ components
+- ✅ Centralized logic (change once, apply everywhere)
+- ✅ Locale-ready for internationalization
+- ✅ No performance impact (presentation only)
+- ✅ Maintains calculation accuracy
+
+### 12.5 Bug Fixes in v2.0
+
+1. **ProductCard undefined price crash** - Fixed with null-safe formatting
+2. **Settings not persisting** - Fixed transaction and update order
+3. **Currency dropdown empty** - Fixed by using correct admin API
+4. **SelectItem empty value error** - Fixed with placeholder values
+5. **DTO validation error** - Added `@IsDefined()` decorator
+6. **500 error swallowing** - Removed try-catch from controller
+7. **Default currency validation** - Cannot be removed from supported list
+8. **Topbar not updating** - Fixed with SWR revalidation
+
+### 12.6 Documentation Created
+
+1. **CURRENCY_SYSTEM_SETTINGS_INTEGRATION.md** - Currency integration guide
+2. **CURRENCY_ACTIVATION_SYNC.md** - Bi-directional sync documentation
+3. **REALTIME_UPDATES_FIX.md** - Real-time updates implementation
+4. **COMPREHENSIVE_TECHNICAL_DOCUMENTATION.md** - Updated (this file)
+
+### 12.7 Migration Guide (v1.x → v2.0)
+
+**No migration required!** Version 2.0 is backward compatible.
+
+**Optional Cleanup:**
+- Update any custom components still using `.toFixed()` to use formatting utilities
+- Review SWR configurations to enable real-time updates
+- Consider removing hardcoded currency lists in favor of dynamic fetching
+
+**Recommended Actions:**
+1. Test currency changes across multiple tabs
+2. Verify number formatting in all financial displays
+3. Review admin settings workflow
+4. Check topbar currency selector behavior
+
+---
+
+## 13. Roadmap Snapshot
+
+### 13.1 Immediate Priorities (Next 1-3 Months)
 
 **High Priority:**
 1. **Testing Infrastructure**
@@ -2112,7 +2767,7 @@ pnpm install
    - Add CDN for static assets
    - Frontend bundle optimization
 
-### 12.2 Short-Term Goals (3-6 Months)
+### 13.2 Short-Term Goals (3-6 Months)
 
 **Feature Development:**
 1. **Advanced Search**

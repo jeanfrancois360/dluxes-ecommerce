@@ -6,7 +6,7 @@ import { AdminLayout } from '@/components/admin/admin-layout';
 import { currencyAdminApi, CurrencyRate } from '@/lib/api/currency';
 import useSWR from 'swr';
 import { toast } from '@/lib/toast';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 export default function AdminCurrenciesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCurrency, setEditingCurrency] = useState<CurrencyRate | null>(null);
@@ -211,10 +211,10 @@ export default function AdminCurrenciesPage() {
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span className="font-medium text-gray-900">
-                            {currency.rate.toFixed(6)}
+                            {formatCurrencyAmount(currency.rate, 6)}
                           </span>
                           <span className="text-xs text-gray-500">
-                            1 USD = {currency.rate.toFixed(currency.decimalDigits)} {currency.currencyCode}
+                            1 USD = {formatNumber(currency.rate, currency.decimalDigits)} {currency.currencyCode}
                           </span>
                         </div>
                       </td>

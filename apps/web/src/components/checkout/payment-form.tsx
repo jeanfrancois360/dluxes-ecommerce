@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { cn } from '@luxury/ui';
 import type { StripeCardElementOptions } from '@stripe/stripe-js';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 interface PaymentFormProps {
   amount: number;
@@ -285,7 +286,7 @@ export function PaymentForm({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-neutral-600 mb-1">Total Amount</p>
-            <p className="text-3xl font-serif font-bold text-gold">${amount.toFixed(2)}</p>
+            <p className="text-3xl font-serif font-bold text-gold">${formatCurrencyAmount(amount, 2)}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-neutral-500">You will be charged</p>
@@ -344,7 +345,7 @@ export function PaymentForm({
                   d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                 />
               </svg>
-              Pay ${amount.toFixed(2)}
+              Pay ${formatCurrencyAmount(amount, 2)}
             </>
           )}
         </motion.button>

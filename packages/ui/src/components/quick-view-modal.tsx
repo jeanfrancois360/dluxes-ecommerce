@@ -4,6 +4,7 @@ import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { cn } from '../lib/utils';
+import { formatCurrencyAmount } from '../lib/utils/number-format';
 
 export interface QuickViewProduct {
   id: string;
@@ -270,10 +271,10 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
                     {/* Price */}
                     <div className="flex items-center gap-4 mb-6 pb-6 border-b border-neutral-200">
-                      <span className="font-serif text-4xl font-bold text-black">{currencySymbol}{Number(product.price || 0).toFixed(2)}</span>
+                      <span className="font-serif text-4xl font-bold text-black">{currencySymbol}{formatCurrencyAmount(product.price || 0, 2)}</span>
                       {product.compareAtPrice && (
                         <span className="text-xl text-neutral-400 line-through font-medium">
-                          {currencySymbol}{Number(product.compareAtPrice || 0).toFixed(2)}
+                          {currencySymbol}{formatCurrencyAmount(product.compareAtPrice || 0, 2)}
                         </span>
                       )}
                     </div>

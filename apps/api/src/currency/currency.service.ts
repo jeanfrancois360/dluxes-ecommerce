@@ -107,22 +107,76 @@ export class CurrencyService {
 
   /**
    * Toggle currency active status (Admin only)
+   * Automatically syncs with supported_currencies setting
    */
   async toggleActive(currencyCode: string) {
     const existing = await this.getRateByCode(currencyCode);
+    const newActiveStatus = !existing.isActive;
 
-    return this.prisma.currencyRate.update({
+    // Update currency active status
+    const updatedCurrency = await this.prisma.currencyRate.update({
       where: { id: existing.id },
       data: {
-        isActive: !existing.isActive,
+        isActive: newActiveStatus,
         lastUpdated: new Date(),
       },
     });
+
+    // Sync with supported_currencies setting
+    try {
+      await this.syncSupportedCurrencies(currencyCode, newActiveStatus);
+    } catch (error) {
+      this.logger.warn(`Failed to sync supported_currencies setting: ${error.message}`);
+      // Don't fail the request if settings sync fails
+    }
+
+    return updatedCurrency;
+  }
+
+  /**
+   * Sync currency active status with supported_currencies setting
+   */
+  private async syncSupportedCurrencies(currencyCode: string, isActive: boolean) {
+    try {
+      const setting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'supported_currencies' },
+      });
+
+      if (!setting) {
+        this.logger.warn('supported_currencies setting not found');
+        return;
+      }
+
+      let supportedCurrencies = setting.value as string[];
+
+      if (isActive) {
+        // Add to supported currencies if not already there
+        if (!supportedCurrencies.includes(currencyCode)) {
+          supportedCurrencies.push(currencyCode);
+          supportedCurrencies.sort(); // Keep alphabetically sorted
+        }
+      } else {
+        // Remove from supported currencies
+        supportedCurrencies = supportedCurrencies.filter(code => code !== currencyCode);
+      }
+
+      // Update the setting
+      await this.prisma.systemSetting.update({
+        where: { key: 'supported_currencies' },
+        data: { value: supportedCurrencies },
+      });
+
+      this.logger.log(`Synced supported_currencies: ${supportedCurrencies.join(', ')}`);
+    } catch (error) {
+      this.logger.error(`Error syncing supported_currencies: ${error.message}`);
+      throw error;
+    }
   }
 
   /**
    * Delete a currency rate (Admin only)
    * Note: USD cannot be deleted as it's the base currency
+   * Automatically removes from supported_currencies setting
    */
   async deleteRate(currencyCode: string) {
     if (currencyCode.toUpperCase() === 'USD') {
@@ -131,9 +185,19 @@ export class CurrencyService {
 
     const existing = await this.getRateByCode(currencyCode);
 
-    return this.prisma.currencyRate.delete({
+    // Delete the currency
+    const deleted = await this.prisma.currencyRate.delete({
       where: { id: existing.id },
     });
+
+    // Remove from supported_currencies setting
+    try {
+      await this.syncSupportedCurrencies(currencyCode, false);
+    } catch (error) {
+      this.logger.warn(`Failed to sync supported_currencies after deletion: ${error.message}`);
+    }
+
+    return deleted;
   }
 
   /**

@@ -118,52 +118,120 @@ export class SettingsService {
     userAgent?: string,
     reason?: string
   ) {
+    this.logger.log(`Attempting to update setting: ${key}`);
+    this.logger.log(`New value: ${JSON.stringify(newValue)}`);
+    this.logger.log(`Changed by: ${changedByEmail} (${changedBy})`);
+
     const setting = await this.prisma.systemSetting.findUnique({
       where: { key },
     });
 
     if (!setting) {
+      this.logger.error(`Setting '${key}' not found`);
       throw new NotFoundException(`Setting '${key}' not found`);
     }
 
     if (!setting.isEditable) {
+      this.logger.error(`Setting '${key}' is not editable`);
       throw new BadRequestException('This setting cannot be edited');
     }
 
     const oldValue = setting.value;
+    this.logger.log(`Old value: ${JSON.stringify(oldValue)}`);
 
-    await this.prisma.$transaction(async (prisma) => {
-      // Update setting
-      await prisma.systemSetting.update({
-        where: { key },
-        data: {
-          value: newValue,
-          lastUpdatedBy: changedBy,
-          updatedAt: new Date(),
-        },
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        this.logger.log(`Starting transaction for ${key}`);
+
+        // Update setting
+        await prisma.systemSetting.update({
+          where: { key },
+          data: {
+            value: newValue,
+            lastUpdatedBy: changedBy,
+            updatedAt: new Date(),
+          },
+        });
+        this.logger.log(`Setting ${key} updated in transaction`);
+
+        // Create audit log
+        await prisma.settingsAuditLog.create({
+          data: {
+            settingId: setting.id,
+            settingKey: key,
+            oldValue,
+            newValue,
+            changedBy,
+            changedByEmail,
+            ipAddress,
+            userAgent,
+            action: AuditAction.UPDATE,
+            reason,
+            canRollback: true,
+          },
+        });
+        this.logger.log(`Audit log created for ${key}`);
       });
 
-      // Create audit log
-      await prisma.settingsAuditLog.create({
-        data: {
-          settingId: setting.id,
-          settingKey: key,
-          oldValue,
-          newValue,
-          changedBy,
-          changedByEmail,
-          ipAddress,
-          userAgent,
-          action: AuditAction.UPDATE,
-          reason,
-          canRollback: true,
-        },
-      });
-    });
+      this.logger.log(`Transaction committed successfully for ${key}`);
+    } catch (error) {
+      this.logger.error(`Transaction failed for ${key}: ${error.message}`);
+      this.logger.error(`Error stack: ${error.stack}`);
+      throw error;
+    }
 
     this.logger.log(`Setting updated: ${key} by ${changedByEmail}`);
 
+    // Auto-sync: If supported_currencies is updated, sync currency active statuses
+    if (key === 'supported_currencies') {
+      try {
+        this.logger.log(`Starting currency sync for: ${JSON.stringify(newValue)}`);
+        await this.syncCurrencyActiveStatuses(newValue as string[]);
+        this.logger.log('Currency sync completed successfully');
+      } catch (error) {
+        this.logger.warn(`Failed to sync currency active statuses: ${error.message}`);
+        this.logger.warn(`Sync error stack: ${error.stack}`);
+        // Don't fail the request if sync fails
+      }
+    }
+
     return this.getSetting(key);
+  }
+
+  /**
+   * Sync currency active statuses when supported_currencies setting is updated
+   */
+  private async syncCurrencyActiveStatuses(supportedCurrencies: string[]) {
+    try {
+      // Activate all currencies in the supported list
+      if (supportedCurrencies.length > 0) {
+        await this.prisma.currencyRate.updateMany({
+          where: {
+            currencyCode: { in: supportedCurrencies },
+          },
+          data: {
+            isActive: true,
+            lastUpdated: new Date(),
+          },
+        });
+      }
+
+      // Deactivate all currencies NOT in the supported list
+      await this.prisma.currencyRate.updateMany({
+        where: {
+          currencyCode: { notIn: supportedCurrencies },
+        },
+        data: {
+          isActive: false,
+          lastUpdated: new Date(),
+        },
+      });
+
+      this.logger.log(`Synced currency active statuses for: ${supportedCurrencies.join(', ')}`);
+    } catch (error) {
+      this.logger.error(`Error syncing currency active statuses: ${error.message}`);
+      throw error;
+    }
   }
 
   /**

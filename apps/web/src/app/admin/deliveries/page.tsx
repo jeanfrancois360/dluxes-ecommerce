@@ -35,7 +35,7 @@ import { Search, Package, Truck, MapPin, Clock, CheckCircle, XCircle, Edit } fro
 import axios from 'axios';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface Delivery {
   id: string;
   trackingNumber: string;
@@ -375,7 +375,7 @@ function DeliveriesContent() {
                     <div>
                       <div className="font-medium">{delivery.order.orderNumber}</div>
                       <div className="text-sm text-muted-foreground">
-                        ${delivery.order.total.toFixed(2)}
+                        ${formatCurrencyAmount(delivery.order.total, 2)}
                       </div>
                     </div>
                   </TableCell>
@@ -413,7 +413,7 @@ function DeliveriesContent() {
                     )}
                   </TableCell>
                   <TableCell>{getStatusBadge(delivery.currentStatus)}</TableCell>
-                  <TableCell>${delivery.deliveryFee.toFixed(2)}</TableCell>
+                  <TableCell>${formatCurrencyAmount(delivery.deliveryFee, 2)}</TableCell>
                   <TableCell>
                     {delivery.expectedDeliveryDate
                       ? format(new Date(delivery.expectedDeliveryDate), 'MMM dd, yyyy')

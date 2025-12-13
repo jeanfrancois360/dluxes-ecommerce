@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import type { ReviewSummary } from '@luxury/shared';
+import { formatNumber } from '@/lib/utils/number-format';
 
 interface ReviewSummaryProps {
   summary: ReviewSummary;
@@ -66,7 +67,7 @@ export function ReviewSummaryComponent({ summary, onWriteReview }: ReviewSummary
             className="mb-4"
           >
             <div className="text-6xl font-bold text-black mb-2">
-              {averageRating.toFixed(1)}
+              {formatNumber(averageRating, 1)}
             </div>
             <div className="flex justify-center mb-2">{renderStars(averageRating)}</div>
             <p className="text-neutral-600">

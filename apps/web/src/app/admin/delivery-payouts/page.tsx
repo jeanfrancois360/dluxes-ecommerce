@@ -36,7 +36,7 @@ import { Search, DollarSign, Clock, CheckCircle, XCircle, Calendar } from 'lucid
 import axios from 'axios';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface DeliveryPayout {
   id: string;
   providerId: string;
@@ -231,7 +231,7 @@ function DeliveryPayoutsContent() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalPending}</div>
             <p className="text-xs text-muted-foreground">
-              ${stats.pendingAmount.toFixed(2)} total
+              ${formatCurrencyAmount(stats.pendingAmount, 2)} total
             </p>
           </CardContent>
         </Card>
@@ -259,7 +259,7 @@ function DeliveryPayoutsContent() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.pendingAmount.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${formatCurrencyAmount(stats.pendingAmount, 2)}</div>
           </CardContent>
         </Card>
       </div>
@@ -342,7 +342,7 @@ function DeliveryPayoutsContent() {
                   </TableCell>
                   <TableCell>{payout.deliveryCount}</TableCell>
                   <TableCell className="font-medium">
-                    ${Number(payout.amount).toFixed(2)}
+                    ${formatCurrencyAmount(Number(payout.amount), 2)}
                     <div className="text-xs text-muted-foreground">{payout.currency}</div>
                   </TableCell>
                   <TableCell>{getStatusBadge(payout.status)}</TableCell>
@@ -393,7 +393,7 @@ function DeliveryPayoutsContent() {
           <DialogHeader>
             <DialogTitle>Process Payout</DialogTitle>
             <DialogDescription>
-              Process payout for {selectedPayout?.provider.name} - ${Number(selectedPayout?.amount || 0).toFixed(2)}
+              Process payout for {selectedPayout?.provider.name} - ${formatCurrencyAmount(Number(selectedPayout?.amount || 0), 2)}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

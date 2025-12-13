@@ -72,7 +72,12 @@ export function useSettingsUpdate() {
         return response.data.data;
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to update setting');
+      console.error('Full error object:', err);
+      console.error('Error response:', err.response);
+      console.error('Error response data:', err.response?.data);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to update setting';
+      console.error('Error message:', errorMessage);
+      toast.error(errorMessage);
       throw err;
     } finally {
       setUpdating(false);

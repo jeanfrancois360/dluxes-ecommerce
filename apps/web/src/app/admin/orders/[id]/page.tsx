@@ -14,7 +14,7 @@ import { useAdminOrder } from '@/hooks/use-admin';
 import { adminOrdersApi } from '@/lib/api/admin';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const resolvedParams = use(params);
@@ -122,8 +122,8 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
                     <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-gray-900">${(item.price * item.quantity).toFixed(2)}</p>
-                    <p className="text-sm text-gray-500">${item.price.toFixed(2)} each</p>
+                    <p className="font-medium text-gray-900">${formatCurrencyAmount(item.price * item.quantity, 2)}</p>
+                    <p className="text-sm text-gray-500">${formatCurrencyAmount(item.price, 2)} each</p>
                   </div>
                 </div>
               ))}
@@ -131,19 +131,19 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
             <div className="p-6 border-t border-gray-200 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal</span>
-                <span className="text-gray-900">${order.subtotal.toFixed(2)}</span>
+                <span className="text-gray-900">${formatCurrencyAmount(order.subtotal, 2)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Tax</span>
-                <span className="text-gray-900">${order.tax.toFixed(2)}</span>
+                <span className="text-gray-900">${formatCurrencyAmount(order.tax, 2)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Shipping</span>
-                <span className="text-gray-900">${order.shipping.toFixed(2)}</span>
+                <span className="text-gray-900">${formatCurrencyAmount(order.shipping, 2)}</span>
               </div>
               <div className="flex justify-between text-lg font-semibold border-t pt-2">
                 <span>Total</span>
-                <span>${order.total.toFixed(2)}</span>
+                <span>${formatCurrencyAmount(order.total, 2)}</span>
               </div>
             </div>
           </div>
@@ -201,7 +201,7 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Total</span>
-                <span className="font-medium">${order.total.toFixed(2)}</span>
+                <span className="font-medium">${formatCurrencyAmount(order.total, 2)}</span>
               </div>
             </div>
           </div>

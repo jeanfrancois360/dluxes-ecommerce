@@ -12,7 +12,7 @@ import { AdminLayout } from '@/components/admin/admin-layout';
 import { useAdminOrders } from '@/hooks/use-admin';
 import { format } from 'date-fns';
 import Link from 'next/link';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
@@ -250,7 +250,7 @@ function OrdersContent() {
                       {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-bold text-black">${order.total.toFixed(2)}</div>
+                      <div className="text-sm font-bold text-black">${formatCurrencyAmount(order.total, 2)}</div>
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={order.status} />

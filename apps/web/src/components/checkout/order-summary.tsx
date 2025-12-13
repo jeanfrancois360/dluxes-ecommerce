@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@luxury/ui';
 import type { CartItem } from '@/contexts/cart-context';
+import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 interface OrderSummaryProps {
   items: CartItem[];
@@ -122,7 +123,7 @@ export function OrderSummary({
               <div className="flex items-center justify-between mt-1">
                 <span className="text-xs text-neutral-500">Qty: {item.quantity}</span>
                 <span className="text-sm font-serif font-semibold text-gold">
-                  ${(item.price * item.quantity).toFixed(2)}
+                  ${formatCurrencyAmount(item.price * item.quantity, 2)}
                 </span>
               </div>
             </div>
@@ -228,7 +229,7 @@ export function OrderSummary({
         {/* Subtotal */}
         <div className="flex justify-between text-sm">
           <span className="text-neutral-600">Subtotal</span>
-          <span className="font-medium text-black">${subtotal.toFixed(2)}</span>
+          <span className="font-medium text-black">${formatCurrencyAmount(subtotal, 2)}</span>
         </div>
 
         {/* Shipping */}
@@ -243,7 +244,7 @@ export function OrderSummary({
             {shipping === 0 ? (
               <span className="text-green-600 font-semibold">Free</span>
             ) : (
-              `$${shipping.toFixed(2)}`
+              `$${formatCurrencyAmount(shipping, 2)}`
             )}
           </span>
         </div>
@@ -251,7 +252,7 @@ export function OrderSummary({
         {/* Tax */}
         <div className="flex justify-between text-sm">
           <span className="text-neutral-600">Tax (estimated)</span>
-          <span className="font-medium text-black">${tax.toFixed(2)}</span>
+          <span className="font-medium text-black">${formatCurrencyAmount(tax, 2)}</span>
         </div>
 
         {/* Discount */}
@@ -262,7 +263,7 @@ export function OrderSummary({
             className="flex justify-between text-sm"
           >
             <span className="text-green-600">Discount</span>
-            <span className="font-medium text-green-600">-${discount.toFixed(2)}</span>
+            <span className="font-medium text-green-600">-${formatCurrencyAmount(discount, 2)}</span>
           </motion.div>
         )}
 
@@ -272,9 +273,9 @@ export function OrderSummary({
             <span className="text-lg font-serif font-bold text-black">Total</span>
             <div className="text-right">
               {discount > 0 && (
-                <p className="text-sm text-neutral-500 line-through">${total.toFixed(2)}</p>
+                <p className="text-sm text-neutral-500 line-through">${formatCurrencyAmount(total, 2)}</p>
               )}
-              <p className="text-2xl font-serif font-bold text-gold">${finalTotal.toFixed(2)}</p>
+              <p className="text-2xl font-serif font-bold text-gold">${formatCurrencyAmount(finalTotal, 2)}</p>
             </div>
           </div>
         </div>
@@ -287,7 +288,7 @@ export function OrderSummary({
             className="p-3 bg-blue-50 border border-blue-200 rounded-lg"
           >
             <p className="text-xs text-blue-900">
-              Add <strong className="font-semibold">${(200 - subtotal).toFixed(2)}</strong> more for{' '}
+              Add <strong className="font-semibold">${formatCurrencyAmount(200 - subtotal, 2)}</strong> more for{' '}
               <strong className="font-semibold text-gold">free shipping</strong>
             </p>
           </motion.div>

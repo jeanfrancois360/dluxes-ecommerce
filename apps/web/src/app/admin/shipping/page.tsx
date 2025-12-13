@@ -28,7 +28,7 @@ import {
 } from '@luxury/ui';
 import { toast } from 'sonner';
 import { Truck, MapPin, DollarSign, Plus, Edit, Trash2 } from 'lucide-react';
-
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface ShippingZone {
   id: string;
   name: string;
@@ -254,7 +254,7 @@ function ShippingZonesContent() {
           <CardContent>
             <div className="text-2xl font-bold">
               ${zones.length > 0
-                ? (zones.reduce((sum, z) => sum + Number(z.baseFee), 0) / zones.length).toFixed(2)
+                ? formatCurrencyAmount(zones.reduce((sum, z) => sum + Number(z.baseFee), 0) / zones.length, 2)
                 : '0.00'}
             </div>
             <p className="text-xs text-muted-foreground">Across all zones</p>
@@ -312,11 +312,11 @@ function ShippingZonesContent() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">${zone.baseFee.toFixed(2)}</TableCell>
+                      <TableCell className="font-medium">${formatCurrencyAmount(zone.baseFee, 2)}</TableCell>
                       <TableCell>
                         {zone.freeShippingThreshold ? (
                           <span className="text-sm">
-                            ${zone.freeShippingThreshold.toFixed(2)}+
+                            ${formatCurrencyAmount(zone.freeShippingThreshold, 2)}+
                           </span>
                         ) : (
                           <span className="text-muted-foreground">None</span>
