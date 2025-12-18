@@ -238,7 +238,7 @@ export default function ProductsPage() {
   return (
     <PageLayout>
       {/* Hero Banner */}
-      <section className="relative h-[50vh] min-h-[400px] flex items-center justify-center bg-gradient-to-br from-black via-neutral-900 to-neutral-800 text-white overflow-hidden">
+      <section className="relative h-[50vh] min-h-[400px] flex items-center justify-center bg-black text-white overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -297,34 +297,6 @@ export default function ProductsPage() {
             </motion.div>
           </div>
         </motion.div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#CBB57B08_1px,transparent_1px),linear-gradient(to_bottom,#CBB57B08_1px,transparent_1px)] bg-[size:64px_64px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white" />
-        {/* Animated gradient orbs */}
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="absolute top-10 left-10 w-72 h-72 bg-[#CBB57B]/10 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.2, 0.4, 0.2],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-          className="absolute bottom-10 right-10 w-96 h-96 bg-[#CBB57B]/10 rounded-full blur-3xl"
-        />
       </section>
 
       {/* Breadcrumb */}

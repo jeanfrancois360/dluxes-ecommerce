@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
@@ -19,7 +20,16 @@ export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   /**
-   * Create a payment intent
+   * Get supported payment currencies
+   * GET /payment/currencies
+   */
+  @Get('currencies')
+  async getSupportedCurrencies() {
+    return this.paymentService.getSupportedPaymentCurrencies();
+  }
+
+  /**
+   * Create a payment intent with multi-currency support
    * POST /payment/create-intent
    */
   @Post('create-intent')
@@ -76,5 +86,67 @@ export class PaymentController {
   @UseGuards(JwtAuthGuard)
   async getTransactionHistory(@Param('orderId') orderId: string) {
     return this.paymentService.getTransactionHistory(orderId);
+  }
+
+  /**
+   * Get webhook statistics for monitoring (Admin only)
+   * GET /payment/webhooks/statistics
+   */
+  @Get('webhooks/statistics')
+  @UseGuards(JwtAuthGuard)
+  async getWebhookStatistics(@Query('days') days?: string) {
+    const daysNum = days ? parseInt(days) : 7;
+    return this.paymentService.getWebhookStatistics(daysNum);
+  }
+
+  /**
+   * Get webhook events with pagination (Admin only)
+   * GET /payment/webhooks
+   */
+  @Get('webhooks')
+  @UseGuards(JwtAuthGuard)
+  async getWebhookEvents(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('eventType') eventType?: string,
+  ) {
+    return this.paymentService.getWebhookEvents({
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 20,
+      status: status as any,
+      eventType,
+    });
+  }
+
+  /**
+   * Get webhook event details by ID (Admin only)
+   * GET /payment/webhooks/:id
+   */
+  @Get('webhooks/:id')
+  @UseGuards(JwtAuthGuard)
+  async getWebhookEvent(@Param('id') id: string) {
+    return this.paymentService.getWebhookEvent(id);
+  }
+
+  /**
+   * Retry a failed webhook event (Admin only)
+   * POST /payment/webhooks/:id/retry
+   */
+  @Post('webhooks/:id/retry')
+  @UseGuards(JwtAuthGuard)
+  async retryWebhookEvent(@Param('id') id: string) {
+    return this.paymentService.retryWebhookEvent(id);
+  }
+
+  /**
+   * Get payment health metrics (Admin only)
+   * GET /payment/health
+   */
+  @Get('health')
+  @UseGuards(JwtAuthGuard)
+  async getPaymentHealthMetrics(@Query('days') days?: string) {
+    const daysNum = days ? parseInt(days) : 30;
+    return this.paymentService.getPaymentHealthMetrics(daysNum);
   }
 }

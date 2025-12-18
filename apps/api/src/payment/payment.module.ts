@@ -4,9 +4,10 @@ import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { DatabaseModule } from '../database/database.module';
 import { SettingsModule } from '../settings/settings.module';
+import { CurrencyModule } from '../currency/currency.module';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, SettingsModule],
+  imports: [ConfigModule, DatabaseModule, SettingsModule, CurrencyModule],
   controllers: [PaymentController],
   providers: [PaymentService],
   exports: [PaymentService],

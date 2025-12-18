@@ -14,6 +14,7 @@ import { AddressForm, Address } from '@/components/checkout/address-form';
 import { ShippingMethodSelector } from '@/components/checkout/shipping-method';
 import { PaymentForm } from '@/components/checkout/payment-form';
 import { OrderSummary } from '@/components/checkout/order-summary';
+import { CheckoutSkeleton } from '@/components/loading/skeleton';
 
 const SHIPPING_METHODS = {
   standard: { id: 'standard', name: 'Standard Shipping', price: 10 },
@@ -76,13 +77,9 @@ export default function CheckoutPage() {
     }
   }, [step, clientSecret, items, selectedShippingMethod, totals, shippingAddress, createOrderAndPaymentIntent, goToStep, user]);
 
-  // Show loading while checking auth
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold"></div>
-      </div>
-    );
+  // Show loading skeleton while checking auth or loading checkout
+  if (authLoading || (isLoading && !clientSecret)) {
+    return <CheckoutSkeleton />;
   }
 
   // Don't render checkout if not authenticated

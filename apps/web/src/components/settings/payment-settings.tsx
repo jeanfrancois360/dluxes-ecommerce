@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@luxury/ui';
@@ -9,15 +9,35 @@ import { Input } from '@luxury/ui';
 import { Label } from '@luxury/ui';
 import { Switch } from '@luxury/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@luxury/ui';
-import { AlertCircle, Loader2, Lock } from 'lucide-react';
+import { AlertCircle, Loader2, Lock, CreditCard, CheckCircle, XCircle, RefreshCw, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { paymentSettingsSchema, type PaymentSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
+import { api } from '@/lib/api/client';
+
+// Stripe configuration status interface
+interface StripeStatus {
+  configured: boolean;
+  enabled: boolean;
+  testMode: boolean;
+  hasPublishableKey: boolean;
+  hasSecretKey: boolean;
+  hasWebhookSecret: boolean;
+  currency: string;
+  captureMethod: string;
+}
 
 export function PaymentSettingsSection() {
   const { settings, loading, refetch } = useSettings('payment');
   const { updateSetting, updating } = useSettingsUpdate();
+
+  // Stripe-specific state
+  const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
+  const [loadingStripeStatus, setLoadingStripeStatus] = useState(true);
+  const [reloadingStripe, setReloadingStripe] = useState(false);
+  const [showSecretKey, setShowSecretKey] = useState(false);
+  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
 
   const form = useForm<PaymentSettings>({
     resolver: zodResolver(paymentSettingsSchema),
@@ -37,6 +57,53 @@ export function PaymentSettingsSection() {
       form.reset(formData as PaymentSettings);
     }
   }, [settings, form]);
+
+  // Fetch Stripe status on component mount
+  useEffect(() => {
+    fetchStripeStatus();
+  }, []);
+
+  const fetchStripeStatus = async () => {
+    try {
+      setLoadingStripeStatus(true);
+      const response = await api.get('/settings/stripe/status');
+      if (response.data?.data) {
+        setStripeStatus(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch Stripe status:', error);
+    } finally {
+      setLoadingStripeStatus(false);
+    }
+  };
+
+  const handleReloadStripe = async () => {
+    try {
+      setReloadingStripe(true);
+      const response = await api.post('/settings/stripe/reload');
+      if (response.data?.success) {
+        toast.success('Stripe configuration reloaded successfully');
+        await fetchStripeStatus();
+      }
+    } catch (error: any) {
+      toast.error('Failed to reload Stripe', error.message || 'Please try again');
+    } finally {
+      setReloadingStripe(false);
+    }
+  };
+
+  // Helper function to update Stripe setting and reload config
+  const updateStripeSettingWithReload = async (key: string, value: any, reason: string) => {
+    try {
+      await updateSetting(key, value, reason);
+      // Automatically reload Stripe configuration after updating any Stripe setting
+      await api.post('/settings/stripe/reload');
+      await Promise.all([refetch(), fetchStripeStatus()]);
+    } catch (error: any) {
+      console.error('Failed to update Stripe setting:', error);
+      toast.error('Failed to update setting');
+    }
+  };
 
   const onSubmit = async (data: PaymentSettings) => {
     try {
@@ -63,15 +130,311 @@ export function PaymentSettingsSection() {
 
   const isProduction = process.env.NODE_ENV === 'production';
 
+  // Helper to get Stripe setting value
+  const getStripeSetting = (key: string) => {
+    const setting = settings.find(s => s.key === key);
+    return setting?.value;
+  };
+
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Card>
+    <div className="space-y-6">
+      {/* Stripe Configuration Card */}
+      <Card className="border-[#CBB57B]/20">
         <CardHeader>
-          <CardTitle>Payment & Escrow Settings</CardTitle>
-          <CardDescription>
-            Manage payment processing and escrow configuration
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-[#CBB57B]/10">
+                <CreditCard className="h-5 w-5 text-[#CBB57B]" />
+              </div>
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  Stripe Payment Gateway
+                  {loadingStripeStatus ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : stripeStatus ? (
+                    stripeStatus.configured && stripeStatus.enabled ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <CheckCircle className="h-3 w-3" />
+                        Connected
+                      </span>
+                    ) : !stripeStatus.configured ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <AlertTriangle className="h-3 w-3" />
+                        Not Configured
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <XCircle className="h-3 w-3" />
+                        Disabled
+                      </span>
+                    )
+                  ) : null}
+                  {stripeStatus?.testMode && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                      Test Mode
+                    </span>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  Configure Stripe integration for secure payment processing
+                </CardDescription>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleReloadStripe}
+              disabled={reloadingStripe || loadingStripeStatus}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${reloadingStripe ? 'animate-spin' : ''}`} />
+              Reload Config
+            </Button>
+          </div>
         </CardHeader>
+
+        <CardContent className="space-y-6">
+          {/* Enable Stripe + Test Mode */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="stripe_enabled">Enable Stripe</Label>
+                <p className="text-xs text-muted-foreground">
+                  Activate Stripe payment processing
+                </p>
+              </div>
+              <Switch
+                id="stripe_enabled"
+                checked={getStripeSetting('stripe_enabled') ?? false}
+                onCheckedChange={async (checked) => {
+                  await updateStripeSettingWithReload('stripe_enabled', checked, 'Toggled Stripe enabled status');
+                }}
+                disabled={updating}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="stripe_test_mode">Test Mode</Label>
+                <p className="text-xs text-muted-foreground">
+                  Use test API keys (sandbox)
+                </p>
+              </div>
+              <Switch
+                id="stripe_test_mode"
+                checked={getStripeSetting('stripe_test_mode') ?? true}
+                onCheckedChange={async (checked) => {
+                  await updateStripeSettingWithReload('stripe_test_mode', checked, 'Toggled Stripe test mode');
+                }}
+                disabled={updating}
+              />
+            </div>
+          </div>
+
+          {/* Publishable Key */}
+          <div className="space-y-2">
+            <Label htmlFor="stripe_publishable_key">Publishable Key</Label>
+            <Input
+              id="stripe_publishable_key"
+              type="text"
+              placeholder="pk_test_... or pk_live_..."
+              defaultValue={getStripeSetting('stripe_publishable_key') || ''}
+              onBlur={async (e) => {
+                if (e.target.value !== getStripeSetting('stripe_publishable_key')) {
+                  await updateStripeSettingWithReload('stripe_publishable_key', e.target.value, 'Updated Stripe publishable key');
+                }
+              }}
+              disabled={updating}
+            />
+            <p className="text-xs text-muted-foreground">
+              Safe to expose to frontend (starts with pk_)
+            </p>
+          </div>
+
+          {/* Secret Key */}
+          <div className="space-y-2">
+            <Label htmlFor="stripe_secret_key" className="flex items-center gap-2">
+              Secret Key
+              <Lock className="h-3 w-3 text-muted-foreground" />
+            </Label>
+            <div className="relative">
+              <Input
+                id="stripe_secret_key"
+                type={showSecretKey ? 'text' : 'password'}
+                placeholder="sk_test_... or sk_live_..."
+                defaultValue={getStripeSetting('stripe_secret_key') || ''}
+                onBlur={async (e) => {
+                  if (e.target.value !== getStripeSetting('stripe_secret_key')) {
+                    await updateStripeSettingWithReload('stripe_secret_key', e.target.value, 'Updated Stripe secret key');
+                  }
+                }}
+                disabled={updating}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSecretKey(!showSecretKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Never expose this key to frontend (starts with sk_)
+            </p>
+          </div>
+
+          {/* Webhook Secret */}
+          <div className="space-y-2">
+            <Label htmlFor="stripe_webhook_secret" className="flex items-center gap-2">
+              Webhook Signing Secret
+              <Lock className="h-3 w-3 text-muted-foreground" />
+            </Label>
+            <div className="relative">
+              <Input
+                id="stripe_webhook_secret"
+                type={showWebhookSecret ? 'text' : 'password'}
+                placeholder="whsec_..."
+                defaultValue={getStripeSetting('stripe_webhook_secret') || ''}
+                onBlur={async (e) => {
+                  if (e.target.value !== getStripeSetting('stripe_webhook_secret')) {
+                    await updateStripeSettingWithReload('stripe_webhook_secret', e.target.value, 'Updated Stripe webhook secret');
+                  }
+                }}
+                disabled={updating}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Used for webhook signature verification (starts with whsec_)
+            </p>
+          </div>
+
+          {/* Currency and Capture Method */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="stripe_currency">Default Currency</Label>
+              <Select
+                value={getStripeSetting('stripe_currency') || 'USD'}
+                onValueChange={async (value) => {
+                  await updateStripeSettingWithReload('stripe_currency', value, 'Updated Stripe currency');
+                }}
+                disabled={updating}
+              >
+                <SelectTrigger id="stripe_currency">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD - US Dollar</SelectItem>
+                  <SelectItem value="EUR">EUR - Euro</SelectItem>
+                  <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                  <SelectItem value="RWF">RWF - Rwandan Franc</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="stripe_capture_method">Capture Method</Label>
+              <Select
+                value={getStripeSetting('stripe_capture_method') || 'manual'}
+                onValueChange={async (value) => {
+                  await updateStripeSettingWithReload('stripe_capture_method', value, 'Updated Stripe capture method');
+                }}
+                disabled={updating}
+              >
+                <SelectTrigger id="stripe_capture_method">
+                  <SelectValue placeholder="Select method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual (Escrow Compatible)</SelectItem>
+                  <SelectItem value="automatic">Automatic (Instant Capture)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Statement Descriptor */}
+          <div className="space-y-2">
+            <Label htmlFor="stripe_statement_descriptor">Statement Descriptor</Label>
+            <Input
+              id="stripe_statement_descriptor"
+              type="text"
+              maxLength={22}
+              placeholder="LUXURY ECOM"
+              defaultValue={getStripeSetting('stripe_statement_descriptor') || 'LUXURY ECOM'}
+              onBlur={async (e) => {
+                if (e.target.value !== getStripeSetting('stripe_statement_descriptor')) {
+                  await updateStripeSettingWithReload('stripe_statement_descriptor', e.target.value, 'Updated statement descriptor');
+                }
+              }}
+              disabled={updating}
+            />
+            <p className="text-xs text-muted-foreground">
+              Text shown on customer credit card statements (max 22 characters)
+            </p>
+          </div>
+
+          {/* Connection Status Summary */}
+          {stripeStatus && !loadingStripeStatus && (
+            <div className="rounded-lg border bg-muted/50 p-4">
+              <h4 className="text-sm font-medium mb-3">Configuration Status</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2">
+                  {stripeStatus.hasPublishableKey ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-600" />
+                  )}
+                  <span>Publishable Key</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {stripeStatus.hasSecretKey ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-600" />
+                  )}
+                  <span>Secret Key</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {stripeStatus.hasWebhookSecret ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  )}
+                  <span>Webhook Secret</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {stripeStatus.enabled ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-600" />
+                  )}
+                  <span>Integration {stripeStatus.enabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Existing Payment & Escrow Settings Card */}
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Payment & Escrow Settings</CardTitle>
+            <CardDescription>
+              Manage payment processing and escrow configuration
+            </CardDescription>
+          </CardHeader>
 
         <CardContent className="space-y-6">
           {/* Escrow Enabled */}
@@ -233,7 +596,8 @@ export function PaymentSettingsSection() {
             Save Changes
           </Button>
         </CardFooter>
-      </Card>
-    </form>
+        </Card>
+      </form>
+    </div>
   );
 }

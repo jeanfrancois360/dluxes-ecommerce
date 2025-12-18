@@ -583,4 +583,118 @@ export class SettingsService {
       };
     }
   }
+
+  /**
+   * Get Stripe configuration (for dynamic Stripe client initialization)
+   */
+  async getStripeConfig() {
+    try {
+      const [
+        enabled,
+        testMode,
+        publishableKey,
+        secretKey,
+        webhookSecret,
+        currency,
+        captureMethod,
+        statementDescriptor,
+        autoPayoutEnabled,
+      ] = await Promise.all([
+        this.getSetting('stripe_enabled').catch(() => ({ value: false })),
+        this.getSetting('stripe_test_mode').catch(() => ({ value: true })),
+        this.getSetting('stripe_publishable_key').catch(() => ({ value: '' })),
+        this.getSetting('stripe_secret_key').catch(() => ({ value: '' })),
+        this.getSetting('stripe_webhook_secret').catch(() => ({ value: '' })),
+        this.getSetting('stripe_currency').catch(() => ({ value: 'USD' })),
+        this.getSetting('stripe_capture_method').catch(() => ({ value: 'manual' })),
+        this.getSetting('stripe_statement_descriptor').catch(() => ({ value: 'LUXURY ECOM' })),
+        this.getSetting('stripe_auto_payout_enabled').catch(() => ({ value: false })),
+      ]);
+
+      return {
+        enabled: Boolean(enabled.value),
+        testMode: Boolean(testMode.value),
+        publishableKey: String(publishableKey.value || ''),
+        secretKey: String(secretKey.value || ''),
+        webhookSecret: String(webhookSecret.value || ''),
+        currency: String(currency.value || 'USD'),
+        captureMethod: String(captureMethod.value || 'manual') as 'automatic' | 'manual',
+        statementDescriptor: String(statementDescriptor.value || 'LUXURY ECOM'),
+        autoPayoutEnabled: Boolean(autoPayoutEnabled.value),
+      };
+    } catch (error) {
+      this.logger.error('Failed to get Stripe config:', error);
+      return {
+        enabled: false,
+        testMode: true,
+        publishableKey: '',
+        secretKey: '',
+        webhookSecret: '',
+        currency: 'USD',
+        captureMethod: 'manual' as 'automatic' | 'manual',
+        statementDescriptor: 'LUXURY ECOM',
+        autoPayoutEnabled: false,
+      };
+    }
+  }
+
+  /**
+   * Check if Stripe is properly configured and enabled
+   */
+  async isStripeConfigured(): Promise<boolean> {
+    try {
+      const config = await this.getStripeConfig();
+      return config.enabled && !!config.secretKey && !!config.publishableKey;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Get Stripe publishable key (safe for frontend)
+   */
+  async getStripePublishableKey(): Promise<string> {
+    try {
+      const setting = await this.getSetting('stripe_publishable_key');
+      return String(setting.value || '');
+    } catch (error) {
+      return '';
+    }
+  }
+
+  /**
+   * Get Stripe secret key (backend only)
+   */
+  async getStripeSecretKey(): Promise<string> {
+    try {
+      const setting = await this.getSetting('stripe_secret_key');
+      return String(setting.value || '');
+    } catch (error) {
+      return '';
+    }
+  }
+
+  /**
+   * Get Stripe webhook secret (backend only)
+   */
+  async getStripeWebhookSecret(): Promise<string> {
+    try {
+      const setting = await this.getSetting('stripe_webhook_secret');
+      return String(setting.value || '');
+    } catch (error) {
+      return '';
+    }
+  }
+
+  /**
+   * Check if Stripe is in test mode
+   */
+  async isStripeTestMode(): Promise<boolean> {
+    try {
+      const setting = await this.getSetting('stripe_test_mode');
+      return Boolean(setting.value ?? true);
+    } catch (error) {
+      return true; // Default to test mode for safety
+    }
+  }
 }

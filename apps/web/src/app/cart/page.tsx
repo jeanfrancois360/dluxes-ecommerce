@@ -7,10 +7,20 @@ import { useCart } from '@/hooks/use-cart';
 import { toast } from '@/lib/toast';
 import { useRouter } from 'next/navigation';
 import { Price } from '@/components/price';
+import { CartPageSkeleton } from '@/components/loading/skeleton';
+import { useEffect, useState } from 'react';
 
 export default function CartPage() {
   const router = useRouter();
   const { items = [], totals, updateQuantity, removeItem, isLoading } = useCart() || {};
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  useEffect(() => {
+    // Only show skeleton on initial load
+    if (!isLoading) {
+      setInitialLoading(false);
+    }
+  }, [isLoading]);
 
   const handleUpdateQuantity = async (id: string, newQuantity: number) => {
     if (newQuantity < 1) return;
@@ -33,6 +43,15 @@ export default function CartPage() {
   const handleCheckout = () => {
     router.push('/checkout');
   };
+
+  // Show skeleton on initial load
+  if (initialLoading && isLoading) {
+    return (
+      <PageLayout>
+        <CartPageSkeleton />
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout>

@@ -190,13 +190,22 @@ export function useCheckout() {
           }
         );
 
-        const order = orderResponse.data;
+        const order = orderResponse.data.data || orderResponse.data;
 
         // Step 3: Create payment intent with orderId
+        // Convert Decimal to number and ensure it's valid
+        const orderTotal = typeof order.total === 'object' && order.total !== null
+          ? parseFloat(order.total.toString())
+          : parseFloat(order.total);
+
+        if (isNaN(orderTotal) || orderTotal < 0.5) {
+          throw new Error(`Invalid order total: ${orderTotal}. Must be at least $0.50`);
+        }
+
         const paymentResponse = await axios.post(
           `${API_URL}/payment/create-intent`,
           {
-            amount: Number(order.total),
+            amount: orderTotal,
             currency: 'usd',
             orderId: order.id,
           },
