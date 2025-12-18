@@ -824,6 +824,8 @@ enum PaymentStatus {
   PARTIALLY_REFUNDED
   REFUNDED
   FAILED
+  CANCELLED  // Payment was canceled before completion
+  DISPUTED   // Payment is under dispute/chargeback
 }
 
 enum PaymentMethod {
@@ -1230,11 +1232,15 @@ model PaymentTransaction {
 enum PaymentTransactionStatus {
   PENDING
   PROCESSING
+  REQUIRES_ACTION  // 3D Secure or additional authentication required
   SUCCEEDED
   FAILED
   CANCELLED
+  CAPTURED         // Manual capture completed (for escrow)
   REFUNDED
   PARTIALLY_REFUNDED
+  DISPUTED         // Chargeback/dispute initiated
+  LOST_DISPUTE     // Dispute was lost
 }
 
 // Webhook Events for reliability and debugging

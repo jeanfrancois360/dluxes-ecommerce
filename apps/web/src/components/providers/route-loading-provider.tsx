@@ -1,100 +1,142 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import NProgress from 'nprogress';
-import { motion, AnimatePresence } from 'framer-motion';
-import 'nprogress/nprogress.css';
+import { motion } from 'framer-motion';
 
-// Configure NProgress for smooth, visible progress
+// Configure NProgress for instant, smooth feedback
 NProgress.configure({
-  showSpinner: true,
-  trickleSpeed: 100,
-  minimum: 0.1,
-  easing: 'ease-out',
-  speed: 400,
+  showSpinner: false, // Disabled to prevent overlapping with other components
+  trickleSpeed: 80,
+  minimum: 0.08,
+  easing: 'ease',
+  speed: 200,
 });
 
 export function RouteLoadingProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isLoading, setIsLoading] = useState(false);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const completionTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const isNavigatingRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const currentUrlRef = useRef('');
 
+  // Intercept all clicks on links for instant feedback
   useEffect(() => {
-    // Clear any existing timeouts
-    if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
-    if (completionTimeoutRef.current) clearTimeout(completionTimeoutRef.current);
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest('a');
 
-    // Show loading state immediately
-    setIsLoading(true);
-    NProgress.start();
+      if (!anchor) return;
 
-    // Ensure minimum loading time for visual feedback (300ms)
-    loadingTimeoutRef.current = setTimeout(() => {
-      // Complete the loading animation
-      NProgress.done();
+      const href = anchor.getAttribute('href');
+      const isExternal = anchor.getAttribute('target') === '_blank' ||
+                        anchor.hasAttribute('download') ||
+                        anchor.getAttribute('rel')?.includes('external');
 
-      // Keep loading overlay for smooth transition
-      completionTimeoutRef.current = setTimeout(() => {
-        setIsLoading(false);
-      }, 200);
-    }, 300);
+      // Only trigger for internal navigation
+      if (href && href.startsWith('/') && !isExternal) {
+        // Check if we're navigating to the same page
+        const currentUrl = `${pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+        const targetUrl = href;
+
+        // Don't show loader for same-page navigation
+        if (currentUrl === targetUrl) {
+          return;
+        }
+
+        // Clear any existing timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+
+        isNavigatingRef.current = true;
+        NProgress.start();
+
+        // Safety timeout: force complete after 10 seconds
+        timeoutRef.current = setTimeout(() => {
+          if (isNavigatingRef.current) {
+            NProgress.done();
+            isNavigatingRef.current = false;
+          }
+        }, 10000);
+      }
+    };
+
+    // Handle browser back/forward buttons
+    const handlePopState = () => {
+      if (!isNavigatingRef.current) {
+        // Clear any existing timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+
+        isNavigatingRef.current = true;
+        NProgress.start();
+
+        // Safety timeout
+        timeoutRef.current = setTimeout(() => {
+          if (isNavigatingRef.current) {
+            NProgress.done();
+            isNavigatingRef.current = false;
+          }
+        }, 10000);
+      }
+    };
+
+    // Capture phase for earliest possible interception
+    document.addEventListener('click', handleClick, true);
+    window.addEventListener('popstate', handlePopState);
 
     return () => {
-      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
-      if (completionTimeoutRef.current) clearTimeout(completionTimeoutRef.current);
-      NProgress.done();
-      setIsLoading(false);
+      document.removeEventListener('click', handleClick, true);
+      window.removeEventListener('popstate', handlePopState);
     };
   }, [pathname, searchParams]);
 
+  // Complete loading when route changes
+  useEffect(() => {
+    // Clear timeout when route changes
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    // Update current URL
+    const newUrl = `${pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+
+    // Only complete if we were actually navigating
+    if (isNavigatingRef.current) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          NProgress.done();
+          isNavigatingRef.current = false;
+        });
+      });
+    }
+
+    currentUrlRef.current = newUrl;
+  }, [pathname, searchParams]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      NProgress.done();
+      isNavigatingRef.current = false;
+    };
+  }, []);
+
   return (
-    <>
-      {/* Page Transition Overlay */}
-      <AnimatePresence mode="wait">
-        {isLoading && (
-          <motion.div
-            key="loading-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[9998] pointer-events-none"
-          >
-            {/* Subtle overlay to indicate loading */}
-            <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]" />
-
-            {/* Loading indicator in center */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                className="flex items-center gap-3 px-6 py-4 bg-white rounded-2xl shadow-2xl border border-neutral-200"
-              >
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full"
-                />
-                <span className="text-sm font-medium text-neutral-700">Loading...</span>
-              </motion.div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Page Content with transition */}
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0.95, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      >
-        {children}
-      </motion.div>
-    </>
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0.97 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+    >
+      {children}
+    </motion.div>
   );
 }

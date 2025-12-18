@@ -3,32 +3,198 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { CurrencyService } from '../currency/currency.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { PaymentStatus, PaymentTransactionStatus, PaymentMethod, WebhookStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class PaymentService {
-  private stripe: Stripe;
+  private stripe: Stripe | null = null;
+  private stripeConfig: any = null;
   private readonly logger = new Logger(PaymentService.name);
   private readonly MAX_WEBHOOK_RETRIES = 5;
   private readonly RETRY_DELAYS = [60, 300, 900, 3600, 7200]; // seconds: 1min, 5min, 15min, 1hr, 2hr
+
+  // Stripe-supported currencies (most common ones)
+  private readonly STRIPE_SUPPORTED_CURRENCIES = [
+    'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CNY', 'INR', 'BRL', 'MXN',
+    'RWF', 'KES', 'UGX', 'TZS', 'NGN', 'GHS', 'ZAR', 'CHF', 'SEK', 'NOK',
+    'DKK', 'PLN', 'CZK', 'HUF', 'RON', 'BGN', 'HRK', 'RUB', 'TRY', 'ILS',
+    'AED', 'SAR', 'QAR', 'KWD', 'BHD', 'OMR', 'JOD', 'SGD', 'HKD', 'NZD',
+    'THB', 'PHP', 'MYR', 'IDR', 'VND', 'KRW',
+  ];
 
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
+    private readonly currencyService: CurrencyService,
   ) {
-    const stripeSecretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    // Initialize Stripe on first use (lazy loading)
+    this.logger.log('PaymentService initialized - Stripe will be configured on first use');
+  }
 
-    if (!stripeSecretKey || stripeSecretKey === 'your-stripe-key') {
-      this.logger.warn('STRIPE_SECRET_KEY not configured. Payment functionality will be disabled.');
-      return;
+  /**
+   * Initialize or reload Stripe client with latest configuration
+   * Non-breaking: Falls back to environment variables if settings not configured
+   */
+  async initializeStripe(): Promise<void> {
+    try {
+      // Try to get Stripe config from database settings first
+      const config = await this.settingsService.getStripeConfig();
+
+      let secretKey = config.secretKey;
+      let enabled = config.enabled;
+
+      // Fallback to environment variables if settings not configured
+      if (!secretKey) {
+        secretKey = this.configService.get<string>('STRIPE_SECRET_KEY') || '';
+        this.logger.log('Using Stripe secret key from environment variables');
+      } else {
+        this.logger.log('Using Stripe secret key from database settings');
+      }
+
+      if (!secretKey || secretKey === 'your-stripe-key') {
+        this.logger.warn('Stripe not configured. Payment functionality will be disabled.');
+        this.stripe = null;
+        this.stripeConfig = null;
+        return;
+      }
+
+      // Initialize Stripe client
+      this.stripe = new Stripe(secretKey, {
+        apiVersion: '2025-10-29.clover',
+      });
+
+      this.stripeConfig = config;
+
+      this.logger.log(`Stripe initialized successfully [Test Mode: ${config.testMode}, Enabled: ${enabled}]`);
+    } catch (error) {
+      this.logger.error('Failed to initialize Stripe:', error);
+      // Try fallback to env vars
+      const envKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+      if (envKey && envKey !== 'your-stripe-key') {
+        this.stripe = new Stripe(envKey, {
+          apiVersion: '2025-10-29.clover',
+        });
+        this.stripeConfig = { testMode: true, enabled: true };
+        this.logger.log('Stripe initialized from environment variables (fallback)');
+      } else {
+        this.stripe = null;
+        this.stripeConfig = null;
+      }
+    }
+  }
+
+  /**
+   * Get Stripe client instance (initializes if needed)
+   */
+  private async getStripeClient(): Promise<Stripe> {
+    if (!this.stripe) {
+      await this.initializeStripe();
     }
 
-    this.stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2025-10-29.clover',
-    });
+    if (!this.stripe) {
+      throw new BadRequestException('Payment service not configured. Please configure Stripe in Admin Settings.');
+    }
+
+    return this.stripe;
+  }
+
+  /**
+   * Reload Stripe configuration without restarting the application
+   * Useful when settings are updated via admin panel
+   */
+  async reloadStripeConfig(): Promise<void> {
+    this.logger.log('Reloading Stripe configuration...');
+    await this.initializeStripe();
+  }
+
+  /**
+   * Get current Stripe configuration status
+   */
+  async getStripeStatus() {
+    try {
+      const config = await this.settingsService.getStripeConfig();
+      const isConfigured = await this.settingsService.isStripeConfigured();
+
+      return {
+        configured: isConfigured,
+        enabled: config.enabled,
+        testMode: config.testMode,
+        hasPublishableKey: !!config.publishableKey,
+        hasSecretKey: !!config.secretKey,
+        hasWebhookSecret: !!config.webhookSecret,
+        currency: config.currency,
+        captureMethod: config.captureMethod,
+      };
+    } catch (error) {
+      this.logger.error('Failed to get Stripe status:', error);
+      return {
+        configured: false,
+        enabled: false,
+        testMode: true,
+        hasPublishableKey: false,
+        hasSecretKey: false,
+        hasWebhookSecret: false,
+        currency: 'USD',
+        captureMethod: 'manual',
+      };
+    }
+  }
+
+  /**
+   * Validate if currency is supported by both the system and Stripe
+   */
+  private async validateCurrency(currencyCode: string): Promise<void> {
+    const upperCurrency = currencyCode.toUpperCase();
+
+    // Check if currency is supported by our system
+    const isSystemSupported = await this.currencyService.validateCurrency(upperCurrency);
+    if (!isSystemSupported) {
+      throw new BadRequestException(
+        `Currency ${upperCurrency} is not supported. Please use one of the supported currencies.`
+      );
+    }
+
+    // Check if currency is supported by Stripe
+    if (!this.STRIPE_SUPPORTED_CURRENCIES.includes(upperCurrency)) {
+      throw new BadRequestException(
+        `Currency ${upperCurrency} is not supported by Stripe payment processor.`
+      );
+    }
+  }
+
+  /**
+   * Get default currency for payment
+   * TODO: Add user preferred currency to User model in future
+   */
+  private async getDefaultPaymentCurrency(): Promise<string> {
+    // Get system default currency
+    return await this.currencyService.getDefaultCurrency();
+  }
+
+  /**
+   * Convert amount to smallest currency unit (cents) for Stripe
+   * Handles zero-decimal currencies (JPY, KRW, etc.) correctly
+   */
+  private convertToSmallestUnit(amount: number, currency: string): number {
+    const upperCurrency = currency.toUpperCase();
+
+    // Zero-decimal currencies (no cents)
+    const zeroDecimalCurrencies = [
+      'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW',
+      'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+    ];
+
+    if (zeroDecimalCurrencies.includes(upperCurrency)) {
+      // For zero-decimal currencies, amount is already in smallest unit
+      return Math.round(amount);
+    }
+
+    // For standard currencies, multiply by 100 to get cents
+    return Math.round(amount * 100);
   }
 
   /**
@@ -77,18 +243,17 @@ export class PaymentService {
   }
 
   /**
-   * Create a Stripe Payment Intent with transaction logging
+   * Create a Stripe Payment Intent with multi-currency support
    */
   async createPaymentIntent(dto: CreatePaymentIntentDto, userId: string) {
-    if (!this.stripe) {
-      throw new BadRequestException('Payment service not configured. Please set STRIPE_SECRET_KEY.');
-    }
-
     if (!dto.orderId) {
       throw new BadRequestException('Order ID is required');
     }
 
     try {
+      // Get Stripe client (initializes if needed)
+      const stripe = await this.getStripeClient();
+
       // Verify order exists
       const order = await this.prisma.order.findUnique({
         where: { id: dto.orderId },
@@ -98,12 +263,35 @@ export class PaymentService {
         throw new BadRequestException('Order not found');
       }
 
-      // Convert amount to cents (Stripe expects amounts in smallest currency unit)
-      const amountInCents = Math.round(dto.amount * 100);
+      // Get Stripe config for capture method and default currency
+      const config = this.stripeConfig || await this.settingsService.getStripeConfig();
 
-      const paymentIntent = await this.stripe.paymentIntents.create({
-        amount: amountInCents,
-        currency: dto.currency,
+      // Determine currency to use (priority: dto currency > default currency)
+      let paymentCurrency: string;
+      if (dto.currency) {
+        paymentCurrency = dto.currency.toUpperCase();
+      } else {
+        paymentCurrency = await this.getDefaultPaymentCurrency();
+      }
+
+      // Validate currency is supported
+      await this.validateCurrency(paymentCurrency);
+
+      // Get currency details for formatting
+      const currencyDetails = await this.currencyService.getRateByCode(paymentCurrency);
+
+      // Convert amount to smallest currency unit (handles zero-decimal currencies)
+      const amountInSmallestUnit = this.convertToSmallestUnit(dto.amount, paymentCurrency);
+
+      this.logger.log(
+        `Creating payment intent: ${dto.amount} ${paymentCurrency} (${amountInSmallestUnit} smallest unit) for order ${dto.orderId}`
+      );
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountInSmallestUnit,
+        currency: paymentCurrency.toLowerCase(), // Stripe requires lowercase currency codes
+        capture_method: config.captureMethod,
+        statement_descriptor_suffix: config.statementDescriptor?.substring(0, 22), // Max 22 chars for suffix
         automatic_payment_methods: {
           enabled: true,
         },
@@ -111,6 +299,8 @@ export class PaymentService {
           orderId: dto.orderId,
           userId,
           customerEmail: dto.customerEmail || '',
+          testMode: config.testMode.toString(),
+          originalCurrency: paymentCurrency,
         },
       });
 
@@ -121,40 +311,70 @@ export class PaymentService {
           userId,
           stripePaymentIntentId: paymentIntent.id,
           amount: new Decimal(dto.amount),
-          currency: dto.currency,
+          currency: paymentCurrency,
           status: PaymentTransactionStatus.PENDING,
           paymentMethod: PaymentMethod.STRIPE,
           receiptEmail: dto.customerEmail,
+          metadata: {
+            currencySymbol: currencyDetails.symbol,
+            currencyName: currencyDetails.currencyName,
+            exchangeRate: currencyDetails.rate.toString(),
+          } as any,
         },
       });
 
-      this.logger.log(`Payment intent created: ${paymentIntent.id} for order ${dto.orderId}`);
+      this.logger.log(
+        `Payment intent created: ${paymentIntent.id} for order ${dto.orderId} in ${paymentCurrency}`
+      );
 
       return {
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
         transactionId: transaction.id,
+        currency: paymentCurrency,
+        amount: dto.amount,
+        currencyDetails: {
+          code: paymentCurrency,
+          symbol: currencyDetails.symbol,
+          name: currencyDetails.currencyName,
+        },
       };
     } catch (error) {
       this.logger.error('Error creating payment intent:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       throw new BadRequestException('Failed to create payment intent');
     }
   }
 
   /**
-   * Handle Stripe webhook events with retry logic
+   * Handle Stripe webhook events with retry logic and signature verification
    */
   async handleWebhook(signature: string, rawBody: Buffer) {
-    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+    // Get Stripe client (initializes if needed)
+    const stripe = await this.getStripeClient();
+
+    // Get webhook secret from settings (with fallback to env var)
+    let webhookSecret = await this.settingsService.getStripeWebhookSecret();
 
     if (!webhookSecret) {
-      throw new BadRequestException('Webhook secret not configured');
+      webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET') || '';
+      if (webhookSecret) {
+        this.logger.log('Using webhook secret from environment variables');
+      }
+    } else {
+      this.logger.log('Using webhook secret from database settings');
+    }
+
+    if (!webhookSecret) {
+      throw new BadRequestException('Webhook secret not configured. Please configure in Admin Settings.');
     }
 
     let event: Stripe.Event;
 
     try {
-      event = this.stripe.webhooks.constructEvent(
+      event = stripe.webhooks.constructEvent(
         rawBody,
         signature,
         webhookSecret,
@@ -197,6 +417,7 @@ export class PaymentService {
     try {
       // Handle the event
       switch (event.type) {
+        // Payment Intent Events
         case 'payment_intent.succeeded':
           await this.handlePaymentSuccess(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
           break;
@@ -209,8 +430,59 @@ export class PaymentService {
           await this.handlePaymentProcessing(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
           break;
 
+        case 'payment_intent.canceled':
+          await this.handlePaymentCanceled(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
+          break;
+
+        case 'payment_intent.requires_action':
+          await this.handlePaymentRequiresAction(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
+          break;
+
+        case 'payment_intent.amount_capturable_updated':
+          await this.handleAmountCapturableUpdated(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
+          break;
+
+        // Charge Events
+        case 'charge.succeeded':
+          await this.handleChargeSucceeded(event.data.object as Stripe.Charge, webhookEvent.id);
+          break;
+
+        case 'charge.failed':
+          await this.handleChargeFailed(event.data.object as Stripe.Charge, webhookEvent.id);
+          break;
+
+        case 'charge.captured':
+          await this.handleChargeCaptured(event.data.object as Stripe.Charge, webhookEvent.id);
+          break;
+
         case 'charge.refunded':
           await this.handleRefund(event.data.object as Stripe.Charge, webhookEvent.id);
+          break;
+
+        // Refund Events
+        case 'refund.created':
+          await this.handleRefundCreated(event.data.object as Stripe.Refund, webhookEvent.id);
+          break;
+
+        case 'refund.updated':
+          await this.handleRefundUpdated(event.data.object as Stripe.Refund, webhookEvent.id);
+          break;
+
+        case 'refund.failed':
+          await this.handleRefundFailed(event.data.object as Stripe.Refund, webhookEvent.id);
+          break;
+
+        // Dispute Events
+        case 'charge.dispute.created':
+          await this.handleDisputeCreated(event.data.object as Stripe.Dispute, webhookEvent.id);
+          break;
+
+        case 'charge.dispute.updated':
+          await this.handleDisputeUpdated(event.data.object as Stripe.Dispute, webhookEvent.id);
+          break;
+
+        case 'charge.dispute.closed':
+          await this.handleDisputeClosed(event.data.object as Stripe.Dispute, webhookEvent.id);
           break;
 
         default:
@@ -602,6 +874,539 @@ export class PaymentService {
   }
 
   /**
+   * Handle payment intent canceled
+   */
+  private async handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent, webhookEventId?: string) {
+    const orderId = paymentIntent.metadata.orderId;
+
+    if (!orderId) {
+      this.logger.warn('Payment canceled but no order ID in metadata');
+      return;
+    }
+
+    try {
+      // Update transaction status
+      await this.prisma.paymentTransaction.updateMany({
+        where: { stripePaymentIntentId: paymentIntent.id },
+        data: {
+          status: PaymentTransactionStatus.CANCELLED,
+        },
+      });
+
+      // Update order payment status
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: PaymentStatus.CANCELLED,
+        },
+      });
+
+      // Create timeline entry
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId,
+          status: 'CANCELLED' as any,
+          title: 'Payment Canceled',
+          description: 'Payment was canceled before completion.',
+          icon: 'x-circle',
+        },
+      });
+
+      this.logger.log(`Order ${orderId} payment canceled`);
+
+      // TODO: Send payment canceled notification email
+    } catch (error) {
+      this.logger.error(`Error handling payment cancellation for order ${orderId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle payment requires action (e.g., 3D Secure authentication)
+   */
+  private async handlePaymentRequiresAction(paymentIntent: Stripe.PaymentIntent, webhookEventId?: string) {
+    const orderId = paymentIntent.metadata.orderId;
+
+    if (!orderId) {
+      return;
+    }
+
+    try {
+      // Update transaction status
+      await this.prisma.paymentTransaction.updateMany({
+        where: { stripePaymentIntentId: paymentIntent.id },
+        data: {
+          status: PaymentTransactionStatus.REQUIRES_ACTION,
+        },
+      });
+
+      this.logger.log(`Order ${orderId} payment requires action (e.g., 3D Secure)`);
+
+      // TODO: Send customer action required email with payment link
+    } catch (error) {
+      this.logger.error(`Error handling payment requires action for order ${orderId}:`, error);
+    }
+  }
+
+  /**
+   * Handle amount capturable updated
+   * Important for manual capture (escrow) scenarios
+   */
+  private async handleAmountCapturableUpdated(paymentIntent: Stripe.PaymentIntent, webhookEventId?: string) {
+    const orderId = paymentIntent.metadata.orderId;
+
+    if (!orderId) {
+      return;
+    }
+
+    try {
+      const amountCapturable = new Decimal(paymentIntent.amount_capturable / 100);
+
+      this.logger.log(
+        `Order ${orderId} amount capturable updated: ${amountCapturable} ${paymentIntent.currency.toUpperCase()}`
+      );
+
+      // Update transaction metadata if needed
+      await this.prisma.paymentTransaction.updateMany({
+        where: { stripePaymentIntentId: paymentIntent.id },
+        data: {
+          metadata: {
+            amountCapturable: amountCapturable.toString(),
+            captureMethod: paymentIntent.capture_method,
+          } as any,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Error handling amount capturable update for order ${orderId}:`, error);
+    }
+  }
+
+  /**
+   * Handle charge succeeded
+   * Backup handler for direct charge events (usually payment_intent.succeeded is used)
+   */
+  private async handleChargeSucceeded(charge: Stripe.Charge, webhookEventId?: string) {
+    try {
+      // Check if we already handled this via payment_intent.succeeded
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: { stripeChargeId: charge.id },
+      });
+
+      if (transaction && transaction.status === PaymentTransactionStatus.SUCCEEDED) {
+        this.logger.log(`Charge ${charge.id} already processed via payment_intent.succeeded`);
+        return;
+      }
+
+      // If payment intent exists in metadata, let payment_intent.succeeded handle it
+      if (charge.payment_intent) {
+        this.logger.log(`Charge ${charge.id} has payment intent, skipping (will be handled by payment_intent event)`);
+        return;
+      }
+
+      this.logger.log(`Direct charge succeeded: ${charge.id}`);
+
+      // Handle direct charges without payment intents (rare in current implementation)
+      // This is a safety net for older payment flows
+    } catch (error) {
+      this.logger.error(`Error handling charge succeeded ${charge.id}:`, error);
+    }
+  }
+
+  /**
+   * Handle charge failed
+   */
+  private async handleChargeFailed(charge: Stripe.Charge, webhookEventId?: string) {
+    try {
+      // Find transaction by charge ID
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: { stripeChargeId: charge.id },
+      });
+
+      if (transaction) {
+        await this.prisma.paymentTransaction.update({
+          where: { id: transaction.id },
+          data: {
+            status: PaymentTransactionStatus.FAILED,
+            failureCode: charge.failure_code,
+            failureReason: charge.failure_message,
+          },
+        });
+
+        this.logger.log(`Charge ${charge.id} failed: ${charge.failure_message}`);
+      }
+    } catch (error) {
+      this.logger.error(`Error handling charge failed ${charge.id}:`, error);
+    }
+  }
+
+  /**
+   * Handle charge captured
+   * Critical for escrow system with manual capture
+   */
+  private async handleChargeCaptured(charge: Stripe.Charge, webhookEventId?: string) {
+    try {
+      // Find transaction by charge ID or payment intent
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: {
+          OR: [
+            { stripeChargeId: charge.id },
+            { stripePaymentIntentId: charge.payment_intent as string },
+          ],
+        },
+      });
+
+      if (!transaction) {
+        this.logger.warn(`No transaction found for captured charge ${charge.id}`);
+        return;
+      }
+
+      // Update transaction to captured status
+      await this.prisma.paymentTransaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: PaymentTransactionStatus.CAPTURED,
+          stripeChargeId: charge.id,
+          metadata: {
+            ...(transaction.metadata as any),
+            capturedAt: new Date().toISOString(),
+            amountCaptured: (charge.amount_captured / 100).toString(),
+          } as any,
+        },
+      });
+
+      this.logger.log(
+        `Charge ${charge.id} captured for order ${transaction.orderId}: ${charge.amount_captured / 100} ${charge.currency.toUpperCase()}`
+      );
+
+      // Create timeline entry
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId: transaction.orderId,
+          status: 'CONFIRMED' as any,
+          title: 'Payment Captured',
+          description: 'Funds have been captured and will be transferred to seller after delivery.',
+          icon: 'dollar-sign',
+        },
+      });
+
+      // If escrow exists, update escrow status
+      const escrowTransaction = await this.prisma.escrowTransaction.findFirst({
+        where: { paymentTransactionId: transaction.id },
+      });
+
+      if (escrowTransaction) {
+        await this.prisma.escrowTransaction.update({
+          where: { id: escrowTransaction.id },
+          data: {
+            metadata: {
+              ...(escrowTransaction.metadata as any),
+              chargeCaptured: true,
+              capturedAt: new Date().toISOString(),
+            } as any,
+          },
+        });
+
+        this.logger.log(`Escrow transaction ${escrowTransaction.id} updated with capture info`);
+      }
+
+      // TODO: Notify seller that payment has been captured
+    } catch (error) {
+      this.logger.error(`Error handling charge captured ${charge.id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle refund created
+   */
+  private async handleRefundCreated(refund: Stripe.Refund, webhookEventId?: string) {
+    try {
+      this.logger.log(
+        `Refund created: ${refund.id} for charge ${refund.charge} - Amount: ${refund.amount / 100} ${refund.currency.toUpperCase()}`
+      );
+
+      // Find transaction by charge ID
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: { stripeChargeId: refund.charge as string },
+      });
+
+      if (transaction) {
+        // Update transaction metadata with refund info
+        await this.prisma.paymentTransaction.update({
+          where: { id: transaction.id },
+          data: {
+            metadata: {
+              ...(transaction.metadata as any),
+              refunds: [
+                ...((transaction.metadata as any)?.refunds || []),
+                {
+                  id: refund.id,
+                  amount: refund.amount / 100,
+                  status: refund.status,
+                  reason: refund.reason,
+                  createdAt: new Date(refund.created * 1000).toISOString(),
+                },
+              ],
+            } as any,
+          },
+        });
+
+        this.logger.log(`Transaction ${transaction.id} updated with refund ${refund.id} info`);
+      }
+    } catch (error) {
+      this.logger.error(`Error handling refund created ${refund.id}:`, error);
+    }
+  }
+
+  /**
+   * Handle refund updated
+   */
+  private async handleRefundUpdated(refund: Stripe.Refund, webhookEventId?: string) {
+    try {
+      this.logger.log(`Refund updated: ${refund.id} - Status: ${refund.status}`);
+
+      // Find transaction and update refund status in metadata
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: { stripeChargeId: refund.charge as string },
+      });
+
+      if (transaction && transaction.metadata) {
+        const metadata = transaction.metadata as any;
+        const refunds = metadata.refunds || [];
+        const refundIndex = refunds.findIndex((r: any) => r.id === refund.id);
+
+        if (refundIndex !== -1) {
+          refunds[refundIndex].status = refund.status;
+          refunds[refundIndex].updatedAt = new Date().toISOString();
+
+          await this.prisma.paymentTransaction.update({
+            where: { id: transaction.id },
+            data: {
+              metadata: {
+                ...metadata,
+                refunds,
+              } as any,
+            },
+          });
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error handling refund updated ${refund.id}:`, error);
+    }
+  }
+
+  /**
+   * Handle refund failed
+   */
+  private async handleRefundFailed(refund: Stripe.Refund, webhookEventId?: string) {
+    try {
+      this.logger.error(
+        `Refund failed: ${refund.id} for charge ${refund.charge} - Reason: ${refund.failure_reason}`
+      );
+
+      // Find transaction
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: { stripeChargeId: refund.charge as string },
+      });
+
+      if (transaction) {
+        // Update transaction metadata with refund failure
+        await this.prisma.paymentTransaction.update({
+          where: { id: transaction.id },
+          data: {
+            metadata: {
+              ...(transaction.metadata as any),
+              failedRefunds: [
+                ...((transaction.metadata as any)?.failedRefunds || []),
+                {
+                  id: refund.id,
+                  amount: refund.amount / 100,
+                  failureReason: refund.failure_reason,
+                  failedAt: new Date().toISOString(),
+                },
+              ],
+            } as any,
+          },
+        });
+
+        this.logger.log(`Transaction ${transaction.id} updated with refund failure info`);
+
+        // TODO: Alert admin about failed refund
+        // TODO: Send notification to customer service
+      }
+    } catch (error) {
+      this.logger.error(`Error handling refund failed ${refund.id}:`, error);
+    }
+  }
+
+  /**
+   * Handle dispute created (chargeback)
+   */
+  private async handleDisputeCreated(dispute: Stripe.Dispute, webhookEventId?: string) {
+    try {
+      this.logger.warn(
+        `Dispute created: ${dispute.id} for charge ${dispute.charge} - Amount: ${dispute.amount / 100} ${dispute.currency.toUpperCase()} - Reason: ${dispute.reason}`
+      );
+
+      // Find transaction by charge ID
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: { stripeChargeId: dispute.charge as string },
+        include: { order: true },
+      });
+
+      if (!transaction) {
+        this.logger.warn(`No transaction found for dispute ${dispute.id}`);
+        return;
+      }
+
+      // Update transaction status
+      await this.prisma.paymentTransaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: PaymentTransactionStatus.DISPUTED,
+          metadata: {
+            ...(transaction.metadata as any),
+            dispute: {
+              id: dispute.id,
+              amount: dispute.amount / 100,
+              reason: dispute.reason,
+              status: dispute.status,
+              evidenceDueBy: dispute.evidence_details?.due_by
+                ? new Date(dispute.evidence_details.due_by * 1000).toISOString()
+                : null,
+              createdAt: new Date(dispute.created * 1000).toISOString(),
+            },
+          } as any,
+        },
+      });
+
+      // Update order status
+      await this.prisma.order.update({
+        where: { id: transaction.orderId },
+        data: {
+          paymentStatus: PaymentStatus.DISPUTED,
+        },
+      });
+
+      // Create timeline entry
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId: transaction.orderId,
+          status: transaction.order.status,
+          title: 'Payment Disputed',
+          description: `Customer has disputed this payment. Reason: ${dispute.reason}`,
+          icon: 'alert-triangle',
+        },
+      });
+
+      this.logger.log(`Order ${transaction.orderId} marked as disputed`);
+
+      // TODO: Alert admin immediately about dispute
+      // TODO: Gather evidence for dispute response
+      // TODO: Notify seller about dispute
+    } catch (error) {
+      this.logger.error(`Error handling dispute created ${dispute.id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle dispute updated
+   */
+  private async handleDisputeUpdated(dispute: Stripe.Dispute, webhookEventId?: string) {
+    try {
+      this.logger.log(`Dispute updated: ${dispute.id} - Status: ${dispute.status}`);
+
+      // Find transaction and update dispute info
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: { stripeChargeId: dispute.charge as string },
+      });
+
+      if (transaction && transaction.metadata) {
+        await this.prisma.paymentTransaction.update({
+          where: { id: transaction.id },
+          data: {
+            metadata: {
+              ...(transaction.metadata as any),
+              dispute: {
+                ...((transaction.metadata as any).dispute || {}),
+                status: dispute.status,
+                updatedAt: new Date().toISOString(),
+              },
+            } as any,
+          },
+        });
+      }
+    } catch (error) {
+      this.logger.error(`Error handling dispute updated ${dispute.id}:`, error);
+    }
+  }
+
+  /**
+   * Handle dispute closed
+   */
+  private async handleDisputeClosed(dispute: Stripe.Dispute, webhookEventId?: string) {
+    try {
+      this.logger.log(`Dispute closed: ${dispute.id} - Status: ${dispute.status}`);
+
+      // Find transaction
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: { stripeChargeId: dispute.charge as string },
+      });
+
+      if (!transaction) {
+        return;
+      }
+
+      const isWon = dispute.status === 'won';
+
+      // Update transaction status
+      await this.prisma.paymentTransaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: isWon ? PaymentTransactionStatus.SUCCEEDED : PaymentTransactionStatus.LOST_DISPUTE,
+          metadata: {
+            ...(transaction.metadata as any),
+            dispute: {
+              ...((transaction.metadata as any).dispute || {}),
+              status: dispute.status,
+              closedAt: new Date().toISOString(),
+            },
+          } as any,
+        },
+      });
+
+      // Update order status
+      await this.prisma.order.update({
+        where: { id: transaction.orderId },
+        data: {
+          paymentStatus: isWon ? PaymentStatus.PAID : PaymentStatus.REFUNDED,
+        },
+      });
+
+      // Create timeline entry
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId: transaction.orderId,
+          status: isWon ? 'CONFIRMED' : 'REFUNDED',
+          title: isWon ? 'Dispute Won' : 'Dispute Lost',
+          description: isWon
+            ? 'Payment dispute resolved in your favor.'
+            : 'Payment dispute was lost. Funds have been returned to customer.',
+          icon: isWon ? 'check-circle' : 'x-circle',
+        },
+      });
+
+      this.logger.log(`Order ${transaction.orderId} dispute closed: ${isWon ? 'WON' : 'LOST'}`);
+
+      // TODO: Send dispute resolution notification
+    } catch (error) {
+      this.logger.error(`Error handling dispute closed ${dispute.id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Get payment status
    */
   async getPaymentStatus(orderId: string) {
@@ -780,5 +1585,320 @@ export class PaymentService {
       where: { orderId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /**
+   * Get webhook event statistics for monitoring
+   */
+  async getWebhookStatistics(days: number = 7) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const [totalEvents, statusCounts, eventTypeCounts, recentFailures, pendingRetries] = await Promise.all([
+      // Total webhook events
+      this.prisma.webhookEvent.count({
+        where: { createdAt: { gte: since } },
+      }),
+
+      // Count by status
+      this.prisma.webhookEvent.groupBy({
+        by: ['status'],
+        where: { createdAt: { gte: since } },
+        _count: true,
+      }),
+
+      // Count by event type (top 10)
+      this.prisma.webhookEvent.groupBy({
+        by: ['eventType'],
+        where: { createdAt: { gte: since } },
+        _count: true,
+        orderBy: { _count: { eventType: 'desc' } },
+        take: 10,
+      }),
+
+      // Recent failures
+      this.prisma.webhookEvent.findMany({
+        where: {
+          status: WebhookStatus.FAILED,
+          createdAt: { gte: since },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          eventId: true,
+          eventType: true,
+          errorMessage: true,
+          processingAttempts: true,
+          createdAt: true,
+        },
+      }),
+
+      // Pending retries
+      this.prisma.webhookEvent.count({
+        where: {
+          status: WebhookStatus.PENDING,
+          nextRetryAt: { lte: new Date() },
+        },
+      }),
+    ]);
+
+    return {
+      period: { days, since },
+      totalEvents,
+      statusBreakdown: statusCounts.reduce((acc, item) => {
+        acc[item.status] = item._count;
+        return acc;
+      }, {} as Record<string, number>),
+      topEventTypes: eventTypeCounts.map(item => ({
+        eventType: item.eventType,
+        count: item._count,
+      })),
+      recentFailures,
+      pendingRetries,
+      successRate: totalEvents > 0
+        ? ((statusCounts.find(s => s.status === WebhookStatus.PROCESSED)?._count || 0) / totalEvents * 100).toFixed(2)
+        : '0.00',
+    };
+  }
+
+  /**
+   * Get webhook event details by ID (Admin)
+   */
+  async getWebhookEvent(id: string) {
+    return this.prisma.webhookEvent.findUnique({
+      where: { id },
+      include: {
+        transaction: {
+          include: {
+            order: {
+              select: {
+                id: true,
+                orderNumber: true,
+                status: true,
+                paymentStatus: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Get recent webhook events with pagination (Admin)
+   */
+  async getWebhookEvents(options: {
+    page?: number;
+    limit?: number;
+    status?: WebhookStatus;
+    eventType?: string;
+  } = {}) {
+    const page = options.page || 1;
+    const limit = options.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (options.status) where.status = options.status;
+    if (options.eventType) where.eventType = options.eventType;
+
+    const [events, total] = await Promise.all([
+      this.prisma.webhookEvent.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          eventId: true,
+          provider: true,
+          eventType: true,
+          status: true,
+          processingAttempts: true,
+          errorMessage: true,
+          nextRetryAt: true,
+          createdAt: true,
+          lastProcessedAt: true,
+        },
+      }),
+      this.prisma.webhookEvent.count({ where }),
+    ]);
+
+    return {
+      events,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+    };
+  }
+
+  /**
+   * Manually retry a failed webhook event (Admin)
+   */
+  async retryWebhookEvent(eventId: string) {
+    const webhook = await this.prisma.webhookEvent.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!webhook) {
+      throw new BadRequestException('Webhook event not found');
+    }
+
+    if (webhook.status === WebhookStatus.PROCESSED) {
+      throw new BadRequestException('Webhook event already processed successfully');
+    }
+
+    // Update status to pending and clear next retry time
+    await this.prisma.webhookEvent.update({
+      where: { id: eventId },
+      data: {
+        status: WebhookStatus.PENDING,
+        nextRetryAt: new Date(),
+        errorMessage: null,
+      },
+    });
+
+    // Trigger retry
+    await this.retryFailedWebhooks();
+
+    return { success: true, message: 'Webhook event queued for retry' };
+  }
+
+  /**
+   * Get supported payment currencies with details
+   */
+  async getSupportedPaymentCurrencies() {
+    // Get system supported currencies
+    const systemCurrencies = await this.currencyService.getSupportedCurrencies();
+
+    // Filter to only include Stripe-supported currencies
+    const supportedCurrencies = systemCurrencies.filter(code =>
+      this.STRIPE_SUPPORTED_CURRENCIES.includes(code.toUpperCase())
+    );
+
+    // Get full details for each currency
+    const currencyDetails = await Promise.all(
+      supportedCurrencies.map(async (code) => {
+        try {
+          const details = await this.currencyService.getRateByCode(code);
+          return {
+            code: details.currencyCode,
+            name: details.currencyName,
+            symbol: details.symbol,
+            rate: Number(details.rate),
+            decimalDigits: details.decimalDigits,
+            position: details.position,
+            isActive: details.isActive,
+          };
+        } catch (error) {
+          this.logger.warn(`Failed to get details for currency ${code}: ${error.message}`);
+          return null;
+        }
+      })
+    );
+
+    // Filter out nulls and return
+    return currencyDetails.filter((c): c is NonNullable<typeof c> => c !== null);
+  }
+
+  /**
+   * Get payment health metrics (Admin dashboard)
+   */
+  async getPaymentHealthMetrics(days: number = 30) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const [
+      totalTransactions,
+      successfulTransactions,
+      failedTransactions,
+      totalRevenue,
+      averageTransactionValue,
+      recentTransactions,
+    ] = await Promise.all([
+      // Total transactions
+      this.prisma.paymentTransaction.count({
+        where: { createdAt: { gte: since } },
+      }),
+
+      // Successful transactions
+      this.prisma.paymentTransaction.count({
+        where: {
+          createdAt: { gte: since },
+          status: PaymentTransactionStatus.SUCCEEDED,
+        },
+      }),
+
+      // Failed transactions
+      this.prisma.paymentTransaction.count({
+        where: {
+          createdAt: { gte: since },
+          status: PaymentTransactionStatus.FAILED,
+        },
+      }),
+
+      // Total revenue (successful transactions)
+      this.prisma.paymentTransaction.aggregate({
+        where: {
+          createdAt: { gte: since },
+          status: PaymentTransactionStatus.SUCCEEDED,
+        },
+        _sum: { amount: true },
+      }),
+
+      // Average transaction value
+      this.prisma.paymentTransaction.aggregate({
+        where: {
+          createdAt: { gte: since },
+          status: PaymentTransactionStatus.SUCCEEDED,
+        },
+        _avg: { amount: true },
+      }),
+
+      // Recent transactions
+      this.prisma.paymentTransaction.findMany({
+        where: { createdAt: { gte: since } },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: {
+          id: true,
+          orderId: true,
+          amount: true,
+          currency: true,
+          status: true,
+          createdAt: true,
+          order: {
+            select: {
+              orderNumber: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const successRate = totalTransactions > 0
+      ? ((successfulTransactions / totalTransactions) * 100).toFixed(2)
+      : '0.00';
+
+    return {
+      period: { days, since },
+      transactions: {
+        total: totalTransactions,
+        successful: successfulTransactions,
+        failed: failedTransactions,
+        disputed: 0, // TODO: Add DISPUTED status to database enum
+        successRate: `${successRate}%`,
+      },
+      revenue: {
+        total: Number(totalRevenue._sum.amount || 0),
+        average: Number(averageTransactionValue._avg.amount || 0),
+      },
+      recentTransactions,
+    };
   }
 }

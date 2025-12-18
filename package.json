@@ -16,8 +16,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "type-check": "turbo run type-check",
     "clean": "turbo run clean && rm -rf node_modules",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
     "storybook": "pnpm --filter @luxury/ui storybook",
     "prisma:generate": "pnpm --filter @luxury/database prisma:generate",
     "prisma:migrate": "pnpm --filter @luxury/database prisma:migrate"

@@ -11,8 +11,11 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { SettingsService } from './settings.service';
+import { PaymentService } from '../payment/payment.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -21,7 +24,11 @@ import { CreateSettingDto, UpdateSettingDto, RollbackSettingDto } from './dto/se
 
 @Controller('settings')
 export class SettingsController {
-  constructor(private readonly settingsService: SettingsService) {}
+  constructor(
+    private readonly settingsService: SettingsService,
+    @Inject(forwardRef(() => PaymentService))
+    private readonly paymentService: PaymentService,
+  ) {}
 
   // ============================================================================
   // Public Endpoints
@@ -58,6 +65,50 @@ export class SettingsController {
       return {
         success: true,
         data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Get Stripe publishable key (public for frontend Stripe initialization)
+   * @route GET /settings/stripe/publishable-key
+   */
+  @Get('stripe/publishable-key')
+  async getStripePublishableKey() {
+    try {
+      const data = await this.settingsService.getStripePublishableKey();
+      return {
+        success: true,
+        data: {
+          publishableKey: data,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Check if Stripe is configured (public for frontend checks)
+   * @route GET /settings/stripe/configured
+   */
+  @Get('stripe/configured')
+  async isStripeConfigured() {
+    try {
+      const data = await this.settingsService.isStripeConfigured();
+      return {
+        success: true,
+        data: {
+          configured: data,
+        },
       };
     } catch (error) {
       return {
@@ -275,6 +326,53 @@ export class SettingsController {
       return {
         success: true,
         data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Get Stripe configuration status (Admin only - includes sensitive info status)
+   * @route GET /settings/stripe/status
+   */
+  @Get('stripe/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async getStripeStatus() {
+    try {
+      const data = await this.paymentService.getStripeStatus();
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Reload Stripe configuration without restarting the application
+   * @route POST /settings/stripe/reload
+   */
+  @Post('stripe/reload')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async reloadStripeConfig() {
+    try {
+      await this.paymentService.reloadStripeConfig();
+      const status = await this.paymentService.getStripeStatus();
+      return {
+        success: true,
+        message: 'Stripe configuration reloaded successfully',
+        data: status,
       };
     } catch (error) {
       return {

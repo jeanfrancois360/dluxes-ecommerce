@@ -9,6 +9,7 @@
 import React from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
+import { PaymentDashboard } from '@/components/admin/payment-dashboard';
 import {
   useDashboardStats,
   useRevenueData,
@@ -195,6 +196,9 @@ function DashboardContent() {
           </>
         )}
       </div>
+
+      {/* Payment System Health */}
+      <PaymentDashboard />
 
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
