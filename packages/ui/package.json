@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.tsx",
     "./components/*": "./src/components/*.tsx",
-    "./lib/*": "./src/lib/*.ts"
+    "./lib/*": "./src/lib/*.ts",
+    "./lib/utils/*": "./src/lib/utils/*.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit",

@@ -55,21 +55,54 @@ export default function CartPage() {
 
   return (
     <PageLayout>
+      {/* Hero Section */}
+      <div className="relative bg-gradient-to-br from-black via-neutral-900 to-black text-white overflow-hidden">
+        {/* Decorative Elements */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-gold/5 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gold/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative max-w-[1400px] mx-auto px-4 lg:px-8 py-12">
+          {/* Breadcrumbs */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 text-sm text-white/60 mb-6"
+          >
+            <Link href="/" className="hover:text-gold transition-colors">Home</Link>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="text-white font-medium">Cart</span>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex items-center gap-4"
+          >
+            <div className="w-14 h-14 bg-gradient-to-br from-gold to-gold/80 rounded-2xl flex items-center justify-center shadow-lg shadow-gold/20">
+              <svg className="w-7 h-7 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">
+                Shopping Cart
+              </h1>
+              <p className="text-lg text-white/80 flex items-center gap-2">
+                <span className="font-semibold text-gold">{items.length}</span>
+                <span>item{items.length !== 1 ? 's' : ''} in your cart</span>
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Main Content */}
       <div className="bg-gradient-to-b from-neutral-50 to-white min-h-screen py-12">
         <div className="max-w-[1400px] mx-auto px-4 lg:px-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl md:text-5xl font-serif font-bold text-black mb-2">
-              Shopping Cart
-            </h1>
-            <div className="flex items-center gap-2 text-sm text-neutral-600">
-              <Link href="/" className="hover:text-gold transition-colors">Home</Link>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-              <span className="text-black font-medium">Cart</span>
-            </div>
-          </div>
 
           {items.length === 0 ? (
             /* Empty Cart */

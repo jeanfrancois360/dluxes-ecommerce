@@ -89,8 +89,8 @@ export function Navbar({ className }: NavbarProps) {
 
                   {/* Brand Text */}
                   <div className="relative">
-                    <span className="text-2xl font-serif font-bold text-black group-hover:text-[#CBB57B] transition-colors duration-500 tracking-[0.2em]">
-                      DLUXES
+                    <span className="text-2xl font-semibold text-black group-hover:text-[#CBB57B] transition-colors duration-500 tracking-wide">
+                      NEXTPIK
                     </span>
                     {/* Animated underline */}
                     <motion.div
@@ -184,15 +184,20 @@ export function Navbar({ className }: NavbarProps) {
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
-                    {wishlistCount > 0 && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-[#CBB57B] text-black text-xs font-bold rounded-full flex items-center justify-center"
-                      >
-                        {wishlistCount > 9 ? '9+' : wishlistCount}
-                      </motion.span>
-                    )}
+                    <AnimatePresence mode="wait">
+                      {wishlistCount > 0 && (
+                        <motion.span
+                          key={wishlistCount}
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-[#CBB57B] text-black text-xs font-bold rounded-full flex items-center justify-center shadow-md"
+                        >
+                          {wishlistCount > 9 ? '9+' : wishlistCount}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </motion.button>
                 </Link>
 
@@ -207,15 +212,20 @@ export function Navbar({ className }: NavbarProps) {
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                     </svg>
-                    {cartCount > 0 && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-[#CBB57B] text-black text-xs font-bold rounded-full flex items-center justify-center"
-                      >
-                        {cartCount > 9 ? '9+' : cartCount}
-                      </motion.span>
-                    )}
+                    <AnimatePresence mode="wait">
+                      {cartCount > 0 && (
+                        <motion.span
+                          key={cartCount}
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-[#CBB57B] text-black text-xs font-bold rounded-full flex items-center justify-center shadow-md"
+                        >
+                          {cartCount > 9 ? '9+' : cartCount}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </motion.button>
                 </Link>
               </motion.div>

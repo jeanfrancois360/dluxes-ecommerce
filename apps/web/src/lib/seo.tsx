@@ -2,19 +2,19 @@ import { Metadata } from 'next';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 export const siteConfig = {
-  name: 'Luxury Marketplace',
-  description: 'Discover extraordinary lifestyle products curated for distinguished living. Premium fashion, home decor, electronics, and more from the world\'s finest brands.',
-  url: process.env.NEXT_PUBLIC_APP_URL || 'https://luxury-marketplace.com',
+  name: 'NextPik',
+  description: 'A robust and scalable e-commerce platform built for performance, clarity, and usability. Shop quality products with confidence.',
+  url: process.env.NEXT_PUBLIC_APP_URL || 'https://nextpik.com',
   ogImage: '/og-image.jpg',
   keywords: [
-    'luxury marketplace',
-    'premium products',
-    'designer fashion',
-    'luxury home decor',
-    'high-end electronics',
-    'exclusive brands',
-    'curated lifestyle',
-    'luxury shopping',
+    'nextpik',
+    'e-commerce platform',
+    'online shopping',
+    'marketplace',
+    'quality products',
+    'scalable platform',
+    'modern shopping',
+    'reliable commerce',
   ],
 };
 
@@ -86,8 +86,8 @@ export function generateSeoMetadata({
       title: metaTitle,
       description: metaDescription,
       images: [metaImage.startsWith('http') ? metaImage : `${siteConfig.url}${metaImage}`],
-      creator: '@luxurymarketplace',
-      site: '@luxurymarketplace',
+      creator: '@nextpik',
+      site: '@nextpik',
     },
     alternates: {
       canonical: metaUrl,
@@ -111,12 +111,12 @@ export function generateOrganizationSchema() {
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'Customer Service',
-      email: 'support@luxury-marketplace.com',
+      email: 'support@nextpik.com',
     },
     sameAs: [
-      'https://facebook.com/luxurymarketplace',
-      'https://twitter.com/luxurymarketplace',
-      'https://instagram.com/luxurymarketplace',
+      'https://facebook.com/nextpik',
+      'https://twitter.com/nextpik',
+      'https://instagram.com/nextpik',
     ],
   };
 }

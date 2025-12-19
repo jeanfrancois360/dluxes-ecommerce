@@ -97,6 +97,9 @@ export function SearchBar({
   };
 
   const handleProductSelect = (slug: string) => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('navigation:start'));
+    }
     router.push(`/products/${slug}`);
     setIsFocused(false);
     setSearchQuery('');
@@ -105,6 +108,9 @@ export function SearchBar({
 
   const handleSuggestionSelect = (query: string) => {
     setSearchQuery(query);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('navigation:start'));
+    }
     router.push(`/search?q=${encodeURIComponent(query)}`);
     setIsFocused(false);
   };

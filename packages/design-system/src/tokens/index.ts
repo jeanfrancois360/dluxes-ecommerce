@@ -12,5 +12,5 @@ export * from './shadows';
 export { colors, cssVariables } from './colors';
 export { fontFamily, fontSize, fontWeight, typography } from './typography';
 export { spacing, containerMaxWidth, sectionSpacing, componentSpacing } from './spacing';
-export { duration, easing, animations, transitions, springs, gsapEasing } from './animations';
+export { duration, easing, animations, transitions, springs, gsapEasing, framerMotion } from './animations';
 export { shadows, glass } from './shadows';

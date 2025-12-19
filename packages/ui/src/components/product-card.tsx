@@ -26,6 +26,9 @@ export interface ProductCardProps {
   className?: string;
   priority?: boolean;
   currencySymbol?: string;
+  inStock?: boolean;
+  stockQuantity?: number;
+  lowStockThreshold?: number;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = React.memo(({
@@ -49,6 +52,9 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
   className,
   priority = false,
   currencySymbol = '$',
+  inStock = true,
+  stockQuantity,
+  lowStockThreshold = 10,
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const [isWishlisted, setIsWishlisted] = React.useState(inWishlist);
@@ -56,6 +62,9 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
   // Check if this is an inquiry product or has no price
   const isInquiryProduct = purchaseType === 'INQUIRY' || price === null || price === undefined;
+
+  // Calculate stock status
+  const isLowStock = stockQuantity !== undefined && stockQuantity > 0 && stockQuantity <= lowStockThreshold;
 
   // Ensure price is always a valid number for INSTANT products with multiple safeguards
   const validPrice = typeof price === 'number' && !isNaN(price) && isFinite(price) ? price : 0;
@@ -270,6 +279,34 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
             </motion.div>
           </div>
         )}
+
+        {/* Stock Status Badge */}
+        {!inStock && (
+          <div className="absolute bottom-4 left-4 z-10">
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="px-4 py-2 bg-neutral-900/95 backdrop-blur-md rounded-full shadow-xl"
+            >
+              <span className="text-white font-bold text-xs uppercase tracking-wider">
+                Out of Stock
+              </span>
+            </motion.div>
+          </div>
+        )}
+        {inStock && isLowStock && (
+          <div className="absolute bottom-4 left-4 z-10">
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="px-4 py-2 bg-orange-500/95 backdrop-blur-md rounded-full shadow-xl"
+            >
+              <span className="text-white font-bold text-xs uppercase tracking-wider">
+                Only {stockQuantity} Left
+              </span>
+            </motion.div>
+          </div>
+        )}
       </div>
 
       {/* Product Info */}
@@ -368,13 +405,15 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
         ) : (
           <button
             onClick={handleQuickAdd}
+            disabled={!inStock}
             className={cn(
-              'w-full py-4 bg-gradient-to-r from-black to-neutral-800',
-              'text-white font-bold text-sm',
+              'w-full py-4 font-bold text-sm',
               'flex items-center justify-center gap-2.5',
-              'hover:from-gold hover:to-accent-700 hover:text-black',
               'transition-all duration-300',
-              'shadow-2xl'
+              'shadow-2xl',
+              inStock
+                ? 'bg-gradient-to-r from-black to-neutral-800 text-white hover:from-gold hover:to-accent-700 hover:text-black'
+                : 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
             )}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
@@ -384,7 +423,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
                 d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
               />
             </svg>
-            Add to Bag
+            {inStock ? 'Add to Bag' : 'Out of Stock'}
           </button>
         )}
       </motion.div>

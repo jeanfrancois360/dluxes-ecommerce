@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { cn } from '../lib/utils';
 import { formatCurrencyAmount } from '../lib/utils/number-format';
+import { isLightColor, calculateDiscountPercentage } from '../lib/utils/color-utils';
+import { framerMotion } from '@luxury/design-system/animations';
 
 export interface QuickViewProduct {
   id: string;
@@ -25,6 +27,8 @@ export interface QuickViewProduct {
   };
   inStock?: boolean;
   badges?: string[];
+  stockQuantity?: number;
+  lowStockThreshold?: number;
 }
 
 export interface QuickViewModalProps {
@@ -65,6 +69,11 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
     }
   }, [product]);
 
+  // Auto-switch to first image when variant changes (shows variant-specific image)
+  React.useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [selectedColor, selectedSize]);
+
   // Handle escape key
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -82,12 +91,16 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
   if (!product || !mounted) return null;
 
+  // Note: Since this is in the UI package, we can't use product.variants with backend variant structure
+  // The product already has transformed variants in the QuickViewProduct format
+  // So we calculate based on the selected color/size but don't have access to variant-specific prices/images
+  // For now, we'll use the base product price and images
+  // TODO: If variant-specific prices are needed, pass them through the QuickViewProduct interface
+
   const allImages = [product.image, ...(product.images || [])].filter(Boolean);
   const validPrice = typeof product.price === 'number' && !isNaN(product.price) ? product.price : 0;
   const validCompareAtPrice = typeof product.compareAtPrice === 'number' && !isNaN(product.compareAtPrice) ? product.compareAtPrice : undefined;
-  const discount = validCompareAtPrice && validPrice > 0 && validCompareAtPrice > validPrice
-    ? Math.round(((validCompareAtPrice - validPrice) / validCompareAtPrice) * 100)
-    : 0;
+  const discount = validCompareAtPrice ? calculateDiscountPercentage(validCompareAtPrice, validPrice) : 0;
 
   const handleAddToCart = () => {
     if (onAddToCart) {
@@ -113,10 +126,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
         <>
           {/* Backdrop */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            {...framerMotion.modal.backdrop}
             onClick={onClose}
             className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100]"
             aria-hidden="true"
@@ -126,10 +136,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
           <div className="fixed inset-0 z-[101] overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4 sm:p-6 lg:p-8">
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                {...framerMotion.modal.content}
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden"
                 role="dialog"
@@ -270,13 +277,28 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     )}
 
                     {/* Price */}
-                    <div className="flex items-center gap-4 mb-6 pb-6 border-b border-neutral-200">
-                      <span className="font-serif text-4xl font-bold text-black">{currencySymbol}{formatCurrencyAmount(product.price || 0, 2)}</span>
-                      {product.compareAtPrice && (
-                        <span className="text-xl text-neutral-400 line-through font-medium">
-                          {currencySymbol}{formatCurrencyAmount(product.compareAtPrice || 0, 2)}
-                        </span>
-                      )}
+                    <div className="flex items-baseline gap-3 mb-6 pb-6 border-b border-neutral-200">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={`${validPrice}-${validCompareAtPrice}`}
+                          {...framerMotion.priceChange}
+                          className="flex items-center gap-4"
+                        >
+                          <span className="font-serif text-4xl font-bold text-black">{currencySymbol}{formatCurrencyAmount(validPrice, 2)}</span>
+                          {validCompareAtPrice && (
+                            <>
+                              <span className="text-2xl text-neutral-400 line-through font-medium">
+                                {currencySymbol}{formatCurrencyAmount(validCompareAtPrice, 2)}
+                              </span>
+                              {discount > 0 && (
+                                <span className="px-3 py-1 bg-red-100 text-red-600 text-sm font-semibold rounded-full">
+                                  Save {discount}%
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </motion.div>
+                      </AnimatePresence>
                     </div>
 
                     {/* Description */}
@@ -288,24 +310,37 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     {product.variants?.colors && product.variants.colors.length > 0 && (
                       <div className="mb-6">
                         <label className="block text-sm font-semibold text-black mb-3">
-                          Color: {product.variants.colors.find((c) => c.value === selectedColor)?.name || 'Select'}
+                          Color
+                          {selectedColor && (
+                            <span className="text-neutral-600 font-normal ml-2 capitalize">
+                              ({product.variants.colors.find((c) => c.value === selectedColor)?.name})
+                            </span>
+                          )}
                         </label>
                         <div className="flex flex-wrap gap-3">
-                          {product.variants.colors.map((color) => (
-                            <button
-                              key={color.value}
-                              onClick={() => setSelectedColor(color.value)}
-                              className={cn(
-                                'w-12 h-12 rounded-full border-2 transition-all duration-200',
-                                selectedColor === color.value
-                                  ? 'border-gold ring-4 ring-gold/20 scale-110'
-                                  : 'border-neutral-300 hover:border-neutral-400'
-                              )}
-                              style={{ backgroundColor: color.hex }}
-                              aria-label={`Select color ${color.name}`}
-                              title={color.name}
-                            />
-                          ))}
+                          {product.variants.colors.map((color) => {
+                            const isLight = isLightColor(color.hex);
+
+                            return (
+                              <motion.button
+                                key={color.value}
+                                onClick={() => setSelectedColor(color.value)}
+                                whileHover={framerMotion.interactions.swatchHover}
+                                whileTap={framerMotion.interactions.swatchTap}
+                                className={cn(
+                                  'w-10 h-10 rounded-full border-2 transition-all duration-200 relative',
+                                  selectedColor === color.value
+                                    ? 'border-gold ring-2 ring-gold/20 scale-110'
+                                    : isLight
+                                    ? 'border-neutral-400 hover:border-neutral-500'
+                                    : 'border-neutral-300 hover:border-gold/50'
+                                )}
+                                style={{ backgroundColor: color.hex }}
+                                aria-label={`Select color ${color.name}`}
+                                title={color.name}
+                              />
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -314,25 +349,32 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     {product.variants?.sizes && product.variants.sizes.length > 0 && (
                       <div className="mb-8">
                         <label className="block text-sm font-semibold text-black mb-3">
-                          Size: {product.variants.sizes.find((s) => s.value === selectedSize)?.name || 'Select'}
+                          Size
+                          {selectedSize && (
+                            <span className="text-neutral-600 font-normal ml-2 uppercase">
+                              ({product.variants.sizes.find((s) => s.value === selectedSize)?.name})
+                            </span>
+                          )}
                         </label>
                         <div className="flex flex-wrap gap-3">
                           {product.variants.sizes.map((size) => (
-                            <button
+                            <motion.button
                               key={size.value}
                               onClick={() => size.inStock && setSelectedSize(size.value)}
                               disabled={!size.inStock}
+                              whileHover={size.inStock ? framerMotion.interactions.sizeHover : {}}
+                              whileTap={size.inStock ? framerMotion.interactions.sizeTap : {}}
                               className={cn(
-                                'px-6 py-3 rounded-lg border-2 font-medium transition-all duration-200',
+                                'px-6 py-3 rounded-lg border-2 font-medium text-sm transition-all duration-200',
                                 selectedSize === size.value
-                                  ? 'border-gold bg-gold/10 text-black'
+                                  ? 'border-gold bg-gold text-black'
                                   : size.inStock
-                                  ? 'border-neutral-300 hover:border-neutral-400 text-neutral-700'
-                                  : 'border-neutral-200 text-neutral-300 cursor-not-allowed line-through'
+                                  ? 'border-neutral-300 hover:border-gold'
+                                  : 'border-neutral-200 text-neutral-400 cursor-not-allowed line-through'
                               )}
                             >
                               {size.name}
-                            </button>
+                            </motion.button>
                           ))}
                         </div>
                       </div>
@@ -366,8 +408,8 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     <div className="flex flex-col sm:flex-row gap-4 mt-auto">
                       <motion.button
                         onClick={handleAddToCart}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={framerMotion.interactions.buttonHover}
+                        whileTap={framerMotion.interactions.buttonTap}
                         disabled={!product.inStock}
                         className={cn(
                           'flex-1 py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all duration-200',
@@ -389,8 +431,8 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
                       <motion.button
                         onClick={handleViewDetails}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={framerMotion.interactions.buttonHover}
+                        whileTap={framerMotion.interactions.buttonTap}
                         className="flex-1 py-4 bg-white border-2 border-neutral-300 text-black rounded-xl font-bold text-base hover:border-gold hover:bg-gold/5 transition-all duration-200"
                       >
                         View Full Details
