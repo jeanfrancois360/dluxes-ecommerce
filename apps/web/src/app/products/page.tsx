@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useProducts } from '@/hooks/use-products';
 import { useSidebarCategories } from '@/hooks/use-categories';
 import { useCart } from '@/hooks/use-cart';
-import { useAddToWishlist } from '@/hooks/use-wishlist';
+import { useWishlist } from '@/hooks/use-wishlist';
 import { useCurrencyProducts } from '@/hooks/use-currency-products';
 import { useSelectedCurrency } from '@/hooks/use-currency';
 import { toast } from '@/lib/toast';
@@ -18,6 +18,7 @@ import { SearchFilters } from '@/lib/api/types';
 import { SidebarAd, CategoryBannerAd } from '@/components/ads';
 import { ProductGridSkeleton } from '@/components/loading/skeleton';
 import { ScrollToTop } from '@/components/scroll-to-top';
+import { navigateWithLoading } from '@/lib/navigation';
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function ProductsPage() {
 
   // Cart and Wishlist hooks
   const { addItem: addToCartApi } = useCart();
-  const { addToWishlist: addToWishlistApi } = useAddToWishlist();
+  const { addToWishlist: addToWishlistApi } = useWishlist();
 
   // Get currency symbol
   const { currency } = useSelectedCurrency();
@@ -151,7 +152,7 @@ export default function ProductsPage() {
   }, [products]);
 
   const handleNavigate = useCallback((slug: string) => {
-    router.push(`/products/${slug}`);
+    navigateWithLoading(router, `/products/${slug}`);
   }, [router]);
 
   const handleAddToCart = useCallback(async (productId: string, variant?: { color?: string; size?: string }) => {
@@ -252,14 +253,14 @@ export default function ProductsPage() {
             className="inline-block mb-4"
           >
             <span className="px-4 py-2 bg-[#CBB57B]/20 border border-[#CBB57B]/30 rounded-full text-[#CBB57B] text-sm font-semibold backdrop-blur-sm">
-              Premium Collection 2025
+              Featured Collection
             </span>
           </motion.div>
-          <h1 className="text-5xl md:text-6xl lg:text-8xl font-serif font-bold mb-6 bg-gradient-to-r from-white via-white to-[#CBB57B] bg-clip-text text-transparent leading-tight">
-            Luxury Collection
+          <h1 className="text-5xl md:text-6xl lg:text-8xl font-bold mb-6 bg-gradient-to-r from-white via-white to-[#CBB57B] bg-clip-text text-transparent leading-tight">
+            Product Catalog
           </h1>
           <p className="text-base md:text-xl text-white/80 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Discover our exquisite selection of premium watches, jewelry, accessories, and fashion pieces crafted for the discerning individual
+            Browse our extensive collection of quality products from trusted sellers
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 text-sm md:text-base">
             <motion.div
@@ -622,12 +623,12 @@ export default function ProductsPage() {
                     onChange={(e) => handleSortChange(e.target.value)}
                     className="flex-1 sm:flex-initial px-4 py-3 border-2 border-neutral-200 rounded-xl text-sm font-semibold text-black focus:outline-none focus:border-[#CBB57B] focus:ring-2 focus:ring-[#CBB57B]/20 bg-white shadow-sm hover:border-neutral-300 transition-all cursor-pointer"
                   >
-                    <option value="relevance">🎯 Relevance</option>
-                    <option value="popular">⭐ Best Selling</option>
-                    <option value="rating">💎 Highest Rated</option>
-                    <option value="newest">✨ Newest First</option>
-                    <option value="price-asc">💰 Price: Low to High</option>
-                    <option value="price-desc">💸 Price: High to Low</option>
+                    <option value="relevance">Relevance</option>
+                    <option value="popular">Best Selling</option>
+                    <option value="rating">Highest Rated</option>
+                    <option value="newest">Newest First</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
                   </select>
                 </div>
               </div>
@@ -848,9 +849,9 @@ export default function ProductsPage() {
                       currencySymbol={currencySymbol}
                     />
                   </div>
-                  <div className="hidden xl:block w-64 flex-shrink-0">
+                  {/* <div className="hidden xl:block w-64 flex-shrink-0">
                     <SidebarAd className="sticky top-40" />
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Pagination */}

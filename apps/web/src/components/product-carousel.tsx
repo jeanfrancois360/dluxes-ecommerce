@@ -168,6 +168,9 @@ export const ProductCarousel = memo(function ProductCarousel({
                 reviewCount={product.reviewCount}
                 slug={product.slug}
                 purchaseType={product.purchaseType}
+                inStock={product.inStock}
+                stockQuantity={product.stockQuantity}
+                lowStockThreshold={product.lowStockThreshold}
                 priority={index < 4}
                 currencySymbol={currencySymbol}
                 onQuickView={onQuickView ? () => onQuickView(product.id) : undefined}

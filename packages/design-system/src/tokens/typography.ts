@@ -1,11 +1,11 @@
 /**
- * Luxury E-commerce Design System - Typography Tokens
- * Inter (body) + Playfair Display (headers)
+ * NextPik Design System - Typography Tokens
+ * Poppins (universal modern font)
  */
 
 export const fontFamily = {
-  sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-  serif: ['Playfair Display', 'Georgia', 'serif'],
+  sans: ['Poppins', 'system-ui', '-apple-system', 'sans-serif'],
+  serif: ['Poppins', 'system-ui', '-apple-system', 'sans-serif'],
   mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],
 } as const;
 
@@ -59,7 +59,7 @@ export const lineHeight = {
  * Typography Presets for common use cases
  */
 export const typography = {
-  // Display Headings (Playfair Display)
+  // Display Headings (Poppins)
   display: {
     large: {
       fontFamily: fontFamily.serif.join(', '),
@@ -84,7 +84,7 @@ export const typography = {
     },
   },
 
-  // Headings (Playfair Display)
+  // Headings (Poppins)
   heading: {
     h1: {
       fontFamily: fontFamily.serif.join(', '),
@@ -130,7 +130,7 @@ export const typography = {
     },
   },
 
-  // Body Text (Inter)
+  // Body Text (Poppins)
   body: {
     large: {
       fontFamily: fontFamily.sans.join(', '),
@@ -158,7 +158,7 @@ export const typography = {
     },
   },
 
-  // Labels & UI Text (Inter)
+  // Labels & UI Text (Poppins)
   label: {
     large: {
       fontFamily: fontFamily.sans.join(', '),
@@ -186,7 +186,7 @@ export const typography = {
     },
   },
 
-  // Button Text (Inter)
+  // Button Text (Poppins)
   button: {
     large: {
       fontFamily: fontFamily.sans.join(', '),

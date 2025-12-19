@@ -63,38 +63,76 @@ export default function AddressesPage() {
 
   return (
     <PageLayout>
-      <div className="bg-gradient-to-b from-neutral-50 to-white min-h-screen py-12">
-        <div className="max-w-[1200px] mx-auto px-4 lg:px-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 text-sm text-neutral-600 mb-4">
-              <Link href="/account" className="hover:text-gold transition-colors">Account</Link>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-              <span className="text-black font-medium">Addresses</span>
-            </div>
-            <div className="flex items-center justify-between">
+      {/* Hero Section */}
+      <div className="relative bg-gradient-to-br from-black via-neutral-900 to-black text-white overflow-hidden">
+        {/* Decorative Elements */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-gold/5 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gold/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative max-w-[1200px] mx-auto px-4 lg:px-8 py-12">
+          {/* Breadcrumbs */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 text-sm text-white/60 mb-6"
+          >
+            <Link href="/" className="hover:text-gold transition-colors">Home</Link>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <Link href="/account" className="hover:text-gold transition-colors">Account</Link>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="text-white font-medium">Addresses</span>
+          </motion.div>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="flex items-center gap-4"
+            >
+              <div className="w-14 h-14 bg-gradient-to-br from-gold to-gold/80 rounded-2xl flex items-center justify-center shadow-lg shadow-gold/20">
+                <svg className="w-7 h-7 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
               <div>
-                <h1 className="text-4xl md:text-5xl font-serif font-bold text-black mb-2">
+                <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">
                   Saved Addresses
                 </h1>
-                <p className="text-neutral-600">Manage your shipping addresses</p>
+                <p className="text-lg text-white/80">Manage your shipping addresses</p>
               </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
               <motion.button
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowAddModal(true)}
-                className="px-6 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all flex items-center gap-2"
+                className="px-6 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all flex items-center gap-2 shadow-lg shadow-gold/20"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Add Address
               </motion.button>
-            </div>
+            </motion.div>
           </div>
+        </div>
+      </div>
 
+      {/* Main Content */}
+      <div className="bg-gradient-to-b from-neutral-50 to-white min-h-screen py-12">
+        <div className="max-w-[1200px] mx-auto px-4 lg:px-8">
           {/* Addresses Grid */}
           <div className="grid md:grid-cols-2 gap-6">
             <AnimatePresence>

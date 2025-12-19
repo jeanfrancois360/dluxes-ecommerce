@@ -60,6 +60,9 @@ export function CategoryNav() {
     } else {
       params.delete('category');
     }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('navigation:start'));
+    }
     router.push(`/products${params.toString() ? `?${params.toString()}` : ''}`);
   };
 

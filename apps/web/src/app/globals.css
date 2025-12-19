@@ -38,8 +38,8 @@
     --color-info: #3b82f6;
 
     /* Font families */
-    --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
-    --font-serif: var(--font-playfair), Georgia, serif;
+    --font-sans: var(--font-poppins), system-ui, -apple-system, sans-serif;
+    --font-serif: var(--font-poppins), system-ui, -apple-system, sans-serif;
   }
 
   * {
@@ -51,18 +51,25 @@
   }
 
   body {
-    @apply bg-background-primary text-text-primary;
+    @apply bg-background-primary text-text-primary font-sans;
+    font-family: var(--font-poppins), system-ui, -apple-system, sans-serif;
     font-feature-settings: 'rlig' 1, 'calt' 1;
   }
 
-  /* Remove default margins for headings */
+  /* Set headings to use Poppins */
   h1,
   h2,
   h3,
   h4,
   h5,
   h6 {
-    @apply font-serif;
+    @apply font-sans;
+    font-family: var(--font-poppins), system-ui, -apple-system, sans-serif;
+  }
+
+  /* Override font-serif to use Poppins everywhere */
+  .font-serif {
+    font-family: var(--font-poppins), system-ui, -apple-system, sans-serif !important;
   }
 }
 

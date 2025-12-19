@@ -303,13 +303,13 @@ export function Footer() {
                   strokeWidth="2"
                 />
               </svg>
-              <span className="text-2xl font-serif font-bold">DLUXES</span>
+              <span className="text-2xl font-semibold">NEXTPIK</span>
             </Link>
             <p className="text-neutral-400 text-sm text-center md:text-left max-w-md">
-              Curating exceptional furniture and decor for distinguished living spaces since 2024.
+              A robust and scalable e-commerce platform built for performance, clarity, and usability.
             </p>
             <p className="text-neutral-500 text-sm">
-              © {new Date().getFullYear()} Luxury E-commerce. All rights reserved.
+              © {new Date().getFullYear()} NextPik. All rights reserved.
             </p>
           </div>
 

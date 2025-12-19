@@ -31,3 +31,5 @@ export * from './components/quick-view-modal';
 
 // Utilities
 export * from './lib/utils';
+export * from './lib/utils/color-utils';
+export * from './lib/utils/number-format';

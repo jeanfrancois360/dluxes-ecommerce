@@ -1,5 +1,6 @@
 import { Product } from '@/lib/api/types';
 import { QuickViewProduct } from '@luxury/ui';
+import { getColorHex } from './color-mapping';
 
 /**
  * Transform API Product to QuickViewProduct format for UI components
@@ -17,6 +18,7 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
   const isFeatured = product.isFeatured ?? product.featured ?? false;
   const stock = product.stock ?? product.inventory ?? 0;
   const trackInventory = product.trackInventory ?? true;
+  const lowStockThreshold = product.lowStockThreshold ?? 10;
 
   // Calculate badges - use Set to avoid duplicates
   const badgeSet = new Set<string>();
@@ -53,7 +55,7 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
         .map((v: any) => ({
           name: v.attributes.color,
           value: v.attributes.color.toLowerCase(),
-          hex: v.attributes.colorHex || '#000000',
+          hex: v.attributes.colorHex || getColorHex(v.attributes.color),
         })),
     };
   } else if (product.colors || product.sizes) {
@@ -70,7 +72,7 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
       variants.colors = product.colors.map((color: string) => ({
         name: color,
         value: color.toLowerCase(),
-        hex: '#000000',
+        hex: getColorHex(color),
       }));
     }
   }
@@ -125,6 +127,8 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
     purchaseType,
     description: product.description ?? product.shortDescription,
     inStock: trackInventory ? stock > 0 : true,
+    stockQuantity: trackInventory ? stock : undefined,
+    lowStockThreshold,
     variants: Object.keys(variants || {}).length > 0 ? variants : undefined,
   };
 }

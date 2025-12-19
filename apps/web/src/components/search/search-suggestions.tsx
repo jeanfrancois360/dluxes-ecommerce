@@ -21,6 +21,9 @@ export function SearchSuggestions({ onSelectSearch }: SearchSuggestionsProps) {
   const { trending } = useTrendingSearches();
 
   const handleCategoryClick = (slug: string) => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('navigation:start'));
+    }
     router.push(`/products?category=${slug}`);
   };
 

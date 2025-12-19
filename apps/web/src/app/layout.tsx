@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Playfair_Display } from 'next/font/google';
+import { Poppins } from 'next/font/google';
 import { AuthProvider } from '@/contexts/auth-context';
 import { CartProvider } from '@/contexts/cart-context';
+import { WishlistProvider } from '@/contexts/wishlist-context';
 import { LocaleProvider } from '@/contexts/locale-context';
 import { ToastListener } from '@/components/toast-listener';
 import { RouteLoadingProvider } from '@/components/providers/route-loading-provider';
@@ -13,16 +14,11 @@ import './globals.css';
 // Force dynamic rendering to avoid static generation issues with client contexts
 export const dynamic = 'force-dynamic';
 
-const inter = Inter({
+const poppins = Poppins({
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
-  variable: '--font-inter',
-});
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-playfair',
+  variable: '--font-poppins',
 });
 
 export const metadata: Metadata = {
@@ -110,7 +106,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${playfair.variable} overflow-x-hidden`}>
+    <html lang="en" suppressHydrationWarning className={`${poppins.variable} overflow-x-hidden`}>
       <head>
         {/* Preconnect to critical origins */}
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'} />
@@ -128,16 +124,18 @@ export default function RootLayout({
           <LocaleProvider>
             <AuthProvider>
               <CartProvider>
-                {children}
-                <ToastListener />
-                <Toaster position="top-right" richColors />
-                <WhatsAppChat
-                  phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890'}
-                  businessName={process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'Luxury Marketplace'}
-                  defaultMessage={process.env.NEXT_PUBLIC_WHATSAPP_DEFAULT_MESSAGE || "Hello! I'm interested in your luxury products."}
-                  position="bottom-right"
-                  showOnMobile={true}
-                />
+                <WishlistProvider>
+                  {children}
+                  <ToastListener />
+                  <Toaster position="top-right" richColors />
+                  <WhatsAppChat
+                    phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890'}
+                    businessName={process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'Luxury Marketplace'}
+                    defaultMessage={process.env.NEXT_PUBLIC_WHATSAPP_DEFAULT_MESSAGE || "Hello! I'm interested in your luxury products."}
+                    position="bottom-right"
+                    showOnMobile={true}
+                  />
+                </WishlistProvider>
               </CartProvider>
             </AuthProvider>
           </LocaleProvider>

@@ -11,10 +11,11 @@ import { motion } from 'framer-motion';
 import { useFeaturedProducts, useNewArrivals, useTrendingProducts, useOnSaleProducts } from '@/hooks/use-products';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 import { useCart } from '@/hooks/use-cart';
-import { useAddToWishlist } from '@/hooks/use-wishlist';
+import { useWishlist } from '@/hooks/use-wishlist';
 import { useCurrencyProducts } from '@/hooks/use-currency-products';
 import { useSelectedCurrency } from '@/hooks/use-currency';
 import { toast } from '@/lib/toast';
+import { navigateWithLoading } from '@/lib/navigation';
 
 // Lazy load heavy components
 const QuickViewModal = lazy(() => import('@luxury/ui').then(m => ({ default: m.QuickViewModal })));
@@ -28,7 +29,7 @@ export default function Home() {
 
   // Cart and Wishlist hooks
   const { addItem: addToCartApi } = useCart();
-  const { addToWishlist: addToWishlistApi } = useAddToWishlist();
+  const { addToWishlist: addToWishlistApi } = useWishlist();
 
   // Get currency symbol
   const { currency } = useSelectedCurrency();
@@ -59,7 +60,7 @@ export default function Home() {
   }, [featuredProducts, newArrivals, trendingProducts, onSaleProducts]);
 
   const handleNavigate = useCallback((slug: string) => {
-    router.push(`/products/${slug}`);
+    navigateWithLoading(router, `/products/${slug}`);
   }, [router]);
 
   const handleAddToCart = useCallback(async (productId: string) => {
@@ -104,7 +105,7 @@ export default function Home() {
         <div className="absolute inset-0 z-0">
           <Image
             src="/images/default-hero-bg.jpg"
-            alt="Luxury Hero Background"
+            alt="Hero Background"
             fill
             className="object-cover"
             priority
@@ -124,17 +125,17 @@ export default function Home() {
             transition={{ duration: 0.7 }}
           >
             <span className="inline-block px-6 py-2 bg-[#CBB57B]/20 border border-[#CBB57B] text-[#CBB57B] text-sm font-semibold uppercase tracking-wider rounded-full mb-8">
-              Luxury Marketplace
+              Welcome to NextPik
             </span>
-            <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6 leading-tight">
-              Discover Extraordinary
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+              Your Modern
               <br />
               <span className="bg-gradient-to-r from-[#CBB57B] to-white bg-clip-text text-transparent">
-                Lifestyle Products
+                Shopping Platform
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
-              Curated collections of premium fashion, home décor, electronics, and more
+              Browse quality products from trusted sellers across multiple categories
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link href="/products">
@@ -254,11 +255,11 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6">
-                Join Our Luxury Community
+              <h2 className="text-4xl md:text-5xl font-bold mb-6">
+                Stay Updated
               </h2>
               <p className="text-xl mb-8 max-w-2xl mx-auto">
-                Subscribe for exclusive offers, early access to new collections, and personalized recommendations
+                Subscribe for special offers, new arrivals, and personalized recommendations
               </p>
               <div className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto">
                 <input

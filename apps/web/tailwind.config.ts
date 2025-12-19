@@ -26,8 +26,8 @@ const config: Config = {
         text: colors.text,
       },
       fontFamily: {
-        sans: [...fontFamily.sans],
-        serif: [...fontFamily.serif],
+        sans: ['var(--font-poppins)', ...fontFamily.sans],
+        serif: ['var(--font-poppins)', ...fontFamily.serif],
         mono: [...fontFamily.mono],
       },
       fontSize: fontSize as any,
