@@ -3,6 +3,7 @@
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { PageLayout } from '@/components/layout/page-layout';
 import ProductForm from '@/components/seller/ProductForm';
 import { api } from '@/lib/api/client';
 
@@ -67,19 +68,22 @@ export default function EditProductPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <PageLayout showCategoryNav={false}>
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-black mb-4"></div>
           <p className="text-neutral-600">Loading product...</p>
         </div>
-      </div>
+        </div>
+      </PageLayout>
     );
   }
 
   // Error state
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <PageLayout showCategoryNav={false}>
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-lg shadow-sm border border-neutral-200 p-8 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,14 +101,16 @@ export default function EditProductPage() {
             Back to Products
           </button>
         </div>
-      </div>
+        </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
-      <div className="bg-white border-b border-neutral-200">
+    <PageLayout showCategoryNav={false}>
+      <div className="min-h-screen bg-neutral-50">
+        {/* Header */}
+        <div className="bg-white border-b border-neutral-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -141,6 +147,7 @@ export default function EditProductPage() {
           />
         </motion.div>
       </div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }

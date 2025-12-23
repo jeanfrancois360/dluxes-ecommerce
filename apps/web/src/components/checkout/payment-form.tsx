@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { cn } from '@luxury/ui';
 import type { StripeCardElementOptions } from '@stripe/stripe-js';
@@ -23,10 +23,15 @@ const CARD_ELEMENT_OPTIONS: StripeCardElementOptions = {
       fontSize: '16px',
       color: '#000000',
       fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
+      backgroundColor: '#ffffff',
       '::placeholder': {
         color: '#737373',
       },
       iconColor: '#CBB57B',
+      ':-webkit-autofill': {
+        color: '#000000',
+        backgroundColor: '#ffffff',
+      },
     },
     invalid: {
       color: '#EF4444',
@@ -53,10 +58,14 @@ export function PaymentForm({
   const [cardError, setCardError] = useState<string | null>(null);
   const [saveCard, setSaveCard] = useState(false);
   const [billingIsSame, setBillingIsSame] = useState(billingAddressSameAsShipping);
+  const [cardBrand, setCardBrand] = useState<string>('unknown');
 
   const handleCardChange = (event: any) => {
     setCardComplete(event.complete);
     setCardError(event.error ? event.error.message : null);
+    if (event.brand) {
+      setCardBrand(event.brand);
+    }
   };
 
   const handleBillingChange = (same: boolean) => {
@@ -87,6 +96,24 @@ export function PaymentForm({
     setCardError(null);
 
     try {
+      // First, check if the payment intent is already in a successful state
+      const { paymentIntent: existingIntent } = await stripe.retrievePaymentIntent(clientSecret);
+
+      if (existingIntent) {
+        // If already succeeded or requires capture, don't try to confirm again
+        if (existingIntent.status === 'succeeded' || existingIntent.status === 'requires_capture') {
+          console.log('Payment already authorized with status:', existingIntent.status);
+          onSuccess(existingIntent.id);
+          return;
+        }
+
+        // If already processing, inform user
+        if (existingIntent.status === 'processing') {
+          throw new Error('Payment is already being processed. Please wait a moment.');
+        }
+      }
+
+      // Proceed with payment confirmation
       const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: cardElement,
@@ -97,7 +124,9 @@ export function PaymentForm({
         throw new Error(error.message || 'Payment failed');
       }
 
-      if (paymentIntent && paymentIntent.status === 'succeeded') {
+      if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'requires_capture')) {
+        // Both 'succeeded' and 'requires_capture' mean payment was authorized successfully
+        // 'requires_capture' is used for manual capture (escrow system)
         onSuccess(paymentIntent.id);
       } else {
         throw new Error('Payment was not successful');
@@ -114,6 +143,9 @@ export function PaymentForm({
 
   const getErrorMessage = (error: string): string => {
     // Map common Stripe errors to user-friendly messages
+    if (error.includes('payment_intent_unexpected_state')) {
+      return 'This payment is being processed. Please wait a moment and refresh the page.';
+    }
     if (error.includes('card_declined')) return 'Your card was declined. Please try another card.';
     if (error.includes('insufficient_funds'))
       return 'Your card has insufficient funds. Please try another card.';
@@ -143,33 +175,85 @@ export function PaymentForm({
 
       {/* Card Element */}
       <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">Card Information</label>
+        <label className="block text-sm font-medium text-neutral-700 mb-3">Card Information</label>
+
+        {/* Accepted Cards Banner */}
+        <div className="mb-3 flex items-center gap-2 text-xs text-neutral-500">
+          <span>We accept:</span>
+          <div className="flex items-center gap-1.5">
+            <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
+              <span className="font-semibold text-neutral-700">VISA</span>
+            </div>
+            <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
+              <span className="font-semibold text-neutral-700">MC</span>
+            </div>
+            <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
+              <span className="font-semibold text-neutral-700">AMEX</span>
+            </div>
+            <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
+              <span className="font-semibold text-neutral-700">DISC</span>
+            </div>
+          </div>
+        </div>
+
         <div
           className={cn(
-            'p-4 bg-white border-2 rounded-lg transition-all duration-300',
-            cardError ? 'border-red-500' : 'border-neutral-200 hover:border-neutral-300',
-            'focus-within:border-gold focus-within:ring-4 focus-within:ring-gold/10'
+            'relative p-4 bg-white border-2 rounded-lg transition-all duration-300',
+            cardError ? 'border-red-500 shake' : 'border-neutral-200 hover:border-neutral-300',
+            'focus-within:border-gold focus-within:ring-4 focus-within:ring-gold/10',
+            cardComplete && !cardError && 'border-green-500 bg-green-50/20'
           )}
         >
           <CardElement options={CARD_ELEMENT_OPTIONS} onChange={handleCardChange} />
+
+          {/* Success Checkmark - Only show when card is complete */}
+          <AnimatePresence>
+            {cardComplete && !cardError && (
+              <motion.div
+                key="checkmark"
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0, rotate: -180 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                className="absolute -right-2 -top-2 z-10 pointer-events-none"
+              >
+                <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
+
         {cardError && (
-          <motion.p
+          <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-2 text-sm text-red-500 flex items-center gap-1"
+            className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            {cardError}
-          </motion.p>
+            <p className="text-sm text-red-700 flex items-center gap-2">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span>{cardError}</span>
+            </p>
+          </motion.div>
         )}
+
+        {/* Card Tips */}
+        <div className="mt-2 text-xs text-neutral-500 flex items-start gap-1.5">
+          <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Your payment info is encrypted end-to-end. We never see or store your full card details.</span>
+        </div>
       </div>
 
       {/* Save Card Checkbox */}
@@ -314,41 +398,72 @@ export function PaymentForm({
           disabled={isProcessing || !stripe || !cardComplete}
           whileHover={{ scale: isProcessing ? 1 : 1.02 }}
           whileTap={{ scale: isProcessing ? 1 : 0.98 }}
-          className="flex-1 bg-gradient-to-r from-gold to-amber-600 text-white px-6 py-4 rounded-lg font-semibold hover:from-gold/90 hover:to-amber-600/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-gold/20"
-        >
-          {isProcessing ? (
-            <>
-              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              Processing Payment...
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
-              Pay ${formatCurrencyAmount(amount, 2)}
-            </>
+          className={cn(
+            "flex-1 px-6 py-5 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 relative overflow-hidden",
+            isProcessing || !stripe || !cardComplete
+              ? "bg-neutral-300 text-neutral-500 cursor-not-allowed"
+              : "bg-gradient-to-r from-gold via-amber-500 to-gold bg-size-200 animate-gradient text-white shadow-lg shadow-gold/30 hover:shadow-xl hover:shadow-gold/40"
           )}
+        >
+          {/* Shimmer Effect */}
+          {!isProcessing && stripe && cardComplete && (
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+              animate={{
+                x: ['-100%', '100%'],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatDelay: 1,
+              }}
+            />
+          )}
+
+          <div className="relative z-10 flex items-center gap-2">
+            {isProcessing ? (
+              <>
+                <div className="relative">
+                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                </div>
+                <span className="font-semibold">Processing Payment...</span>
+                <motion.span
+                  animate={{ opacity: [0, 1, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  ●●●
+                </motion.span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+                <span className="text-lg">Pay ${formatCurrencyAmount(amount, 2)}</span>
+              </>
+            )}
+          </div>
         </motion.button>
+
       </div>
 
       {/* Privacy Notice */}
@@ -360,6 +475,45 @@ export function PaymentForm({
       >
         Your payment information is encrypted and secure. We never store your full card details.
       </motion.p>
+
+      {/* Animations */}
+      <style jsx global>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+          20%, 40%, 60%, 80% { transform: translateX(2px); }
+        }
+        @keyframes gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .shake {
+          animation: shake 0.5s ease-in-out;
+        }
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 3s ease infinite;
+        }
+        .bg-size-200 {
+          background-size: 200% 200%;
+        }
+
+        /* Prevent browser autocomplete yellow background */
+        .StripeElement input:-webkit-autofill,
+        .StripeElement input:-webkit-autofill:hover,
+        .StripeElement input:-webkit-autofill:focus,
+        .StripeElement input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 30px white inset !important;
+          -webkit-text-fill-color: #000000 !important;
+          background-color: white !important;
+          transition: background-color 5000s ease-in-out 0s;
+        }
+
+        /* Ensure Stripe iframe has proper background */
+        .StripeElement iframe {
+          background-color: transparent !important;
+        }
+      `}</style>
     </motion.form>
   );
 }

@@ -142,8 +142,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Try to refresh token
           try {
             await authApi.refreshToken();
-          } catch (error) {
+          } catch (error: any) {
             // Refresh failed, clear auth data
+            // Don't log 401 errors - they're expected for expired refresh tokens
+            const is401 = error?.status === 401 || error?.response?.status === 401;
+            if (!is401) {
+              console.error('Error refreshing token:', error);
+            }
             clearAllAuthData();
             setUser(null);
             setIsInitialized(true);
@@ -166,15 +171,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           // Start session timer
           startSessionTimer(handleSessionTimeout);
-        } catch (error) {
+        } catch (error: any) {
           // Failed to fetch user, use stored user or clear auth
+          // Don't log 401 errors - they're expected for expired tokens
+          const is401 = error?.status === 401 || error?.response?.status === 401;
+
           if (!storedUser) {
             clearAllAuthData();
             setUser(null);
           }
+
+          // Only log unexpected errors (not authentication failures)
+          if (!is401) {
+            console.error('Error validating user session:', error);
+          }
         }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
+      } catch (error: any) {
+        // Don't log 401 errors - they're expected for expired tokens
+        const is401 = error?.status === 401 || error?.response?.status === 401;
+        if (!is401) {
+          console.error('Error initializing auth:', error);
+        }
         clearAllAuthData();
         setUser(null);
       } finally {

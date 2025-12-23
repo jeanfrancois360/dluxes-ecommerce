@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Elements } from '@stripe/react-stripe-js';
+import { Stripe } from '@stripe/stripe-js';
 import { getStripe } from '@/lib/stripe';
 import { useCart } from '@/hooks/use-cart';
 import { useCheckout } from '@/hooks/use-checkout';
@@ -14,17 +15,83 @@ import { AddressForm, Address } from '@/components/checkout/address-form';
 import { ShippingMethodSelector } from '@/components/checkout/shipping-method';
 import { PaymentForm } from '@/components/checkout/payment-form';
 import { OrderSummary } from '@/components/checkout/order-summary';
+import { ShippingSummaryCard } from '@/components/checkout/shipping-summary-card';
 import { CheckoutSkeleton } from '@/components/loading/skeleton';
+import { calculateShippingCost, getShippingMethodById } from '@/lib/shipping-config';
 
-const SHIPPING_METHODS = {
-  standard: { id: 'standard', name: 'Standard Shipping', price: 10 },
-  express: { id: 'express', name: 'Express Shipping', price: 25 },
-  nextday: { id: 'nextday', name: 'Next Day Delivery', price: 50 },
-};
+// Wrapper component to handle async Stripe loading
+function StripeElementsWrapper({
+  clientSecret,
+  amount,
+  onSuccess,
+  onError,
+  onBack,
+}: {
+  clientSecret: string;
+  amount: number;
+  onSuccess: (paymentIntentId: string) => Promise<void>;
+  onError: (error: string) => void;
+  onBack: () => void;
+}) {
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+
+  useEffect(() => {
+    // Load Stripe instance
+    getStripe().then((stripe) => {
+      setStripePromise(Promise.resolve(stripe));
+    }).catch((error) => {
+      console.error('Failed to load Stripe:', error);
+      toast.error('Payment Error', 'Failed to initialize payment system. Please check your settings.');
+    });
+  }, []);
+
+  if (!stripePromise) {
+    return (
+      <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
+        <div className="flex flex-col items-center justify-center py-12">
+          <svg
+            className="animate-spin h-12 w-12 text-gold mb-4"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          <p className="text-neutral-600">Loading payment system...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
+      <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <PaymentForm
+          amount={amount}
+          clientSecret={clientSecret}
+          onSuccess={onSuccess}
+          onError={onError}
+          onBack={onBack}
+        />
+      </Elements>
+    </div>
+  );
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isInitialized } = useAuth();
   const { items, totals, clearCart } = useCart();
   const {
     step,
@@ -45,44 +112,58 @@ export default function CheckoutPage() {
 
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>('standard');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [shippingMethodConfirmed, setShippingMethodConfirmed] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!authLoading && !user) {
+    // Wait for auth to initialize before making redirect decision
+    if (isInitialized && !user) {
       toast.error('Login Required', 'Please login to continue checkout');
       router.push('/auth/login?redirect=/checkout');
     }
-  }, [user, authLoading, router]);
+  }, [user, isInitialized, router]);
 
   // Redirect if cart is empty
   useEffect(() => {
-    if (items.length === 0 && !authLoading && user) {
+    // Only check after auth is initialized and user is confirmed
+    if (isInitialized && user && items.length === 0) {
       toast.error('Empty Cart', 'Your cart is empty. Please add items before checkout.');
       router.push('/cart');
     }
-  }, [items, router, authLoading, user]);
+  }, [items, router, isInitialized, user]);
 
-  // Create order and payment intent when moving to payment step
+  // Create order and payment intent when shipping method is confirmed
   useEffect(() => {
-    if (step === 'payment' && !clientSecret && items.length > 0 && shippingAddress && user) {
-      const method = SHIPPING_METHODS[selectedShippingMethod as keyof typeof SHIPPING_METHODS];
+    if (step === 'payment' && shippingMethodConfirmed && !clientSecret && items.length > 0 && shippingAddress && user) {
+      // Calculate dynamic shipping cost based on subtotal
+      const shippingCalculation = calculateShippingCost(selectedShippingMethod, totals.subtotal);
 
       createOrderAndPaymentIntent(items, {
         ...totals,
-        shipping: method.price,
+        shipping: shippingCalculation.finalPrice,
       }).catch((err) => {
-        toast.error('Checkout Error', err.message || 'Failed to initialize checkout. Please try again.');
+        // Use longer duration for stock errors (they may contain multiple items)
+        const duration = err.message?.includes('Insufficient stock') ? 8000 : 5000;
+        toast.error('Checkout Error', err.message || 'Failed to initialize checkout. Please try again.', duration);
+        setShippingMethodConfirmed(false);
         goToStep('shipping');
       });
     }
-  }, [step, clientSecret, items, selectedShippingMethod, totals, shippingAddress, createOrderAndPaymentIntent, goToStep, user]);
+  }, [step, shippingMethodConfirmed, clientSecret, items, selectedShippingMethod, totals, shippingAddress, createOrderAndPaymentIntent, goToStep, user]);
 
-  // Show loading skeleton while checking auth or loading checkout
-  if (authLoading || (isLoading && !clientSecret)) {
+  // Reset shipping method confirmation when leaving payment step
+  useEffect(() => {
+    if (step !== 'payment') {
+      setShippingMethodConfirmed(false);
+    }
+  }, [step]);
+
+  // Show loading skeleton while auth is initializing or checkout is loading
+  if (!isInitialized || authLoading || (isLoading && !clientSecret)) {
     return <CheckoutSkeleton />;
   }
 
-  // Don't render checkout if not authenticated
+  // Don't render checkout if not authenticated (after initialization)
   if (!user) {
     return null;
   }
@@ -97,9 +178,18 @@ export default function CheckoutPage() {
   };
 
   const handleShippingMethodContinue = () => {
-    const method = SHIPPING_METHODS[selectedShippingMethod as keyof typeof SHIPPING_METHODS];
-    saveShippingMethod(method);
-    goToStep('payment');
+    const methodConfig = getShippingMethodById(selectedShippingMethod);
+    const shippingCalculation = calculateShippingCost(selectedShippingMethod, totals.subtotal);
+
+    if (methodConfig) {
+      saveShippingMethod({
+        id: methodConfig.id,
+        name: methodConfig.name,
+        price: shippingCalculation.finalPrice,
+      });
+      // Confirm shipping method to trigger payment intent creation
+      setShippingMethodConfirmed(true);
+    }
   };
 
   const onPaymentSuccess = async (paymentIntentId: string) => {
@@ -134,9 +224,9 @@ export default function CheckoutPage() {
     }
   };
 
-  // Calculate totals with selected shipping method
-  const method = SHIPPING_METHODS[selectedShippingMethod as keyof typeof SHIPPING_METHODS];
-  const totalWithShipping = totals.total - totals.shipping + method.price;
+  // Calculate totals with selected shipping method (dynamic pricing)
+  const shippingCalculation = calculateShippingCost(selectedShippingMethod, totals.subtotal);
+  const totalWithShipping = totals.total - totals.shipping + shippingCalculation.finalPrice;
 
   if (items.length === 0) {
     return null; // Will redirect
@@ -203,59 +293,101 @@ export default function CheckoutPage() {
                     transition={{ duration: 0.3 }}
                     className="space-y-6"
                   >
-                    {/* Shipping Method */}
-                    <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
-                      <ShippingMethodSelector
-                        selectedMethod={selectedShippingMethod}
-                        onSelect={setSelectedShippingMethod}
-                        onContinue={handleShippingMethodContinue}
-                        onBack={() => goToStep('shipping')}
-                        isLoading={isLoading}
-                      />
-                    </div>
+                    <AnimatePresence mode="wait">
+                      {/* Shipping Method - Only show if not confirmed */}
+                      {!shippingMethodConfirmed && (
+                        <motion.div
+                          key="shipping-method"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.3 }}
+                          className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm"
+                        >
+                          <ShippingMethodSelector
+                            selectedMethod={selectedShippingMethod}
+                            onSelect={setSelectedShippingMethod}
+                            onContinue={handleShippingMethodContinue}
+                            onBack={() => goToStep('shipping')}
+                            isLoading={isLoading}
+                            subtotal={totals.subtotal}
+                          />
+                        </motion.div>
+                      )}
 
-                    {/* Payment Form - Only show if we have client secret */}
-                    {clientSecret && (
-                      <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
-                        <Elements stripe={getStripe()} options={{ clientSecret }}>
-                          <PaymentForm
-                            amount={totalWithShipping}
+                      {/* Loading Payment Intent - Show when confirmed but no clientSecret yet */}
+                      {shippingMethodConfirmed && !clientSecret && (
+                        <motion.div
+                          key="loading-payment"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.3 }}
+                          className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm"
+                        >
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <svg
+                              className="animate-spin h-12 w-12 text-gold mb-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                            <p className="text-neutral-600 mb-2">Initializing secure payment...</p>
+                            <p className="text-sm text-neutral-500">Preparing your order and payment details</p>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Payment Form - Only show if we have client secret */}
+                      {shippingMethodConfirmed && clientSecret && (
+                        <motion.div
+                          key="payment-form"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.3 }}
+                          className="space-y-6"
+                        >
+                          {/* Show selected shipping method summary */}
+                          <ShippingSummaryCard
+                            shippingMethod={{
+                              name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
+                              price: shippingCalculation.finalPrice,
+                              estimatedDays: getShippingMethodById(selectedShippingMethod)?.estimatedDays || '5-7 business days',
+                            }}
+                            shippingAddress={shippingAddress ? {
+                              firstName: shippingAddress.firstName,
+                              lastName: shippingAddress.lastName,
+                              addressLine1: shippingAddress.addressLine1,
+                              city: shippingAddress.city,
+                              state: shippingAddress.state,
+                              postalCode: shippingAddress.postalCode,
+                            } : undefined}
+                          />
+
+                          <StripeElementsWrapper
                             clientSecret={clientSecret}
+                            amount={totalWithShipping}
                             onSuccess={onPaymentSuccess}
                             onError={handlePaymentError}
-                            onBack={() => goToStep('shipping')}
+                            onBack={() => setShippingMethodConfirmed(false)}
                           />
-                        </Elements>
-                      </div>
-                    )}
-
-                    {/* Loading Payment Intent */}
-                    {!clientSecret && (
-                      <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
-                        <div className="flex flex-col items-center justify-center py-12">
-                          <svg
-                            className="animate-spin h-12 w-12 text-gold mb-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            />
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            />
-                          </svg>
-                          <p className="text-neutral-600">Initializing secure payment...</p>
-                        </div>
-                      </div>
-                    )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )}
 
@@ -283,10 +415,14 @@ export default function CheckoutPage() {
               <OrderSummary
                 items={items}
                 subtotal={totals.subtotal}
-                shipping={method.price}
+                shipping={shippingCalculation.finalPrice}
                 tax={totals.tax}
                 total={totalWithShipping}
-                shippingMethod={method}
+                shippingMethod={{
+                  id: selectedShippingMethod,
+                  name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
+                  price: shippingCalculation.finalPrice,
+                }}
               />
             </div>
           </div>

@@ -1,49 +1,36 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { toast } from 'sonner';
-
-interface Setting {
-  key: string;
-  value: any;
-  label: string;
-  description?: string;
-  valueType: string;
-  isPublic: boolean;
-  isEditable: boolean;
-  requiresRestart: boolean;
-}
+import * as settingsApi from '@/lib/api/settings';
+import type { Setting, SettingAuditLog } from '@/lib/api/settings';
 
 export function useSettings(category?: string) {
   const [settings, setSettings] = useState<Setting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
-      const url = category 
-        ? `${API_URL}/settings/category/${category}`
-        : `${API_URL}/settings`;
-      
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const data = category
+        ? await settingsApi.getSettingsByCategory(category)
+        : await settingsApi.getAllSettings();
 
-      if (response.data.success) {
-        setSettings(response.data.data);
-      }
+      setSettings(data);
+      setError(null);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch settings');
-      toast.error('Failed to load settings');
+      const errorMessage = err.message || 'Failed to fetch settings';
+      setError(errorMessage);
+
+      // Only show toast for non-404 errors
+      if (err.status !== 404) {
+        toast.error('Failed to load settings');
+      }
     } finally {
       setLoading(false);
     }
-  }, [API_URL, category]);
+  }, [category]);
 
   useEffect(() => {
     fetchSettings();
@@ -54,29 +41,15 @@ export function useSettings(category?: string) {
 
 export function useSettingsUpdate() {
   const [updating, setUpdating] = useState(false);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
   const updateSetting = async (key: string, value: any, reason?: string) => {
     try {
       setUpdating(true);
-      const token = localStorage.getItem('auth_token');
-      
-      const response = await axios.patch(
-        `${API_URL}/settings/${key}`,
-        { value, reason },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data.success) {
-        toast.success('Setting updated successfully');
-        return response.data.data;
-      }
+      const data = await settingsApi.updateSetting(key, value, reason);
+      toast.success('Setting updated successfully');
+      return data;
     } catch (err: any) {
-      console.error('Full error object:', err);
-      console.error('Error response:', err.response);
-      console.error('Error response data:', err.response?.data);
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to update setting';
-      console.error('Error message:', errorMessage);
+      const errorMessage = err.message || 'Failed to update setting';
       toast.error(errorMessage);
       throw err;
     } finally {
@@ -88,31 +61,23 @@ export function useSettingsUpdate() {
 }
 
 export function useSettingsAudit(settingKey?: string) {
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<SettingAuditLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
   const fetchAuditLogs = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
-      const url = settingKey
-        ? `${API_URL}/settings/${settingKey}/audit`
-        : `${API_URL}/settings/admin/audit-logs`;
+      const data = settingKey
+        ? await settingsApi.getSettingAuditLog(settingKey)
+        : await settingsApi.getAllAuditLogs();
 
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.data.success) {
-        setAuditLogs(response.data.data);
-      }
+      setAuditLogs(data);
     } catch (err) {
       console.error('Failed to fetch audit logs:', err);
     } finally {
       setLoading(false);
     }
-  }, [API_URL, settingKey]);
+  }, [settingKey]);
 
   useEffect(() => {
     fetchAuditLogs();

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
 
 interface OrderStatusBadgeProps {
-  status: OrderStatus;
+  status: string; // Accept any string and normalize it
   className?: string;
   size?: 'sm' | 'md' | 'lg';
 }
@@ -84,7 +84,27 @@ const SIZE_CLASSES = {
 };
 
 export function OrderStatusBadge({ status, className, size = 'md' }: OrderStatusBadgeProps) {
-  const config = STATUS_CONFIG[status];
+  // Normalize status to lowercase to handle both uppercase and lowercase values
+  const normalizedStatus = status.toLowerCase() as OrderStatus;
+  const config = STATUS_CONFIG[normalizedStatus];
+
+  // Fallback for unknown status
+  if (!config) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className={cn(
+          'inline-flex items-center rounded-full font-semibold border',
+          'bg-gray-100 text-gray-700 border-gray-200',
+          SIZE_CLASSES[size],
+          className
+        )}
+      >
+        <span>{status}</span>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

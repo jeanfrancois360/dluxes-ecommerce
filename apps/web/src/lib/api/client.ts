@@ -123,9 +123,30 @@ async function handleResponse(response: Response) {
   const isJson = contentType?.includes('application/json');
   const data = isJson ? await response.json() : await response.text();
 
+  // Debug logging
+  if (!response.ok || (typeof window !== 'undefined' && window.location.pathname.includes('seller'))) {
+    console.log('[API Debug] Response:', {
+      url: response.url,
+      status: response.status,
+      statusText: response.statusText,
+      contentType,
+      data,
+    });
+  }
+
   if (!response.ok) {
+    const errorMessage = data?.message || data?.error || 'An error occurred';
+    const errorDetails = {
+      url: response.url,
+      status: response.status,
+      statusText: response.statusText,
+      message: errorMessage,
+      fullData: data,
+    };
+    console.error('[API Error]', errorDetails);
+    console.error('[API Error Details]', JSON.stringify(errorDetails, null, 2));
     throw new APIError(
-      data?.message || 'An error occurred',
+      errorMessage,
       response.status,
       data
     );
@@ -137,8 +158,14 @@ async function handleResponse(response: Response) {
       return data.data;
     } else {
       // Handle error response from backend
+      const errorMessage = data.message || 'An error occurred';
+      console.error('[API Error] Failed response:', {
+        url: response.url,
+        message: errorMessage,
+        fullData: data,
+      });
       throw new APIError(
-        data.message || 'An error occurred',
+        errorMessage,
         response.status,
         data
       );

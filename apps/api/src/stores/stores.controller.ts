@@ -11,7 +11,10 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { StoresService } from './stores.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -96,6 +99,30 @@ export class StoresController {
   @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   delete(@Req() req: any) {
     return this.storesService.delete(req.user.id);
+  }
+
+  /**
+   * Upload store logo
+   */
+  @Post('me/store/logo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseInterceptors(FileInterceptor('logo'))
+  @HttpCode(HttpStatus.OK)
+  uploadLogo(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    return this.storesService.uploadLogo(req.user.id, file);
+  }
+
+  /**
+   * Upload store banner
+   */
+  @Post('me/store/banner')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseInterceptors(FileInterceptor('banner'))
+  @HttpCode(HttpStatus.OK)
+  uploadBanner(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    return this.storesService.uploadBanner(req.user.id, file);
   }
 
   // ============================================================================

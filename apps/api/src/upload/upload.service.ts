@@ -46,26 +46,39 @@ export class UploadService {
   }
 
   /**
-   * Upload single image
+   * Upload file (image or PDF)
    * Uses Supabase if configured, falls back to local storage
    */
-  async uploadImage(file: Express.Multer.File, folder: string = 'images') {
+  async uploadFile(
+    file: Express.Multer.File,
+    folder: string = 'images',
+    options?: { allowPdf?: boolean }
+  ) {
     if (!file) {
       throw new BadRequestException('No file provided');
     }
 
     // Validate file type
     const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (options?.allowPdf) {
+      allowedMimeTypes.push('application/pdf');
+    }
+
     if (!allowedMimeTypes.includes(file.mimetype)) {
+      const allowedTypes = options?.allowPdf
+        ? 'JPEG, PNG, WebP, GIF, and PDF'
+        : 'JPEG, PNG, WebP, and GIF';
       throw new BadRequestException(
-        'Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.'
+        `Invalid file type. Only ${allowedTypes} are allowed.`
       );
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Validate file size (max 10MB for PDFs, 5MB for images)
+    const maxSize = options?.allowPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
     if (file.size > maxSize) {
-      throw new BadRequestException('File size exceeds 5MB limit');
+      throw new BadRequestException(
+        `File size exceeds ${options?.allowPdf ? '10MB' : '5MB'} limit`
+      );
     }
 
     const fileExtension = path.extname(file.originalname);
@@ -113,6 +126,13 @@ export class UploadService {
       size: file.size,
       mimeType: file.mimetype,
     };
+  }
+
+  /**
+   * Upload single image (backwards compatibility wrapper)
+   */
+  async uploadImage(file: Express.Multer.File, folder: string = 'images') {
+    return this.uploadFile(file, folder, { allowPdf: false });
   }
 
   /**

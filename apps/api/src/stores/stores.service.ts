@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { UploadService } from '../upload/upload.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 
 @Injectable()
 export class StoresService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private uploadService: UploadService,
+  ) {}
 
   /**
    * Create a new store for a seller
@@ -434,6 +438,74 @@ export class StoresService {
         limit: Number(limit),
         totalPages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  /**
+   * Upload store logo
+   */
+  async uploadLogo(userId: string, file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Upload file to storage
+    const uploadResult = await this.uploadService.uploadFile(file, 'stores/logos');
+
+    // Update store logo URL
+    const updatedStore = await this.prisma.store.update({
+      where: { id: store.id },
+      data: {
+        logo: uploadResult.url,
+      },
+    });
+
+    return {
+      message: 'Store logo uploaded successfully',
+      url: uploadResult.url,
+      store: updatedStore,
+    };
+  }
+
+  /**
+   * Upload store banner
+   */
+  async uploadBanner(userId: string, file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Upload file to storage
+    const uploadResult = await this.uploadService.uploadFile(file, 'stores/banners');
+
+    // Update store banner URL
+    const updatedStore = await this.prisma.store.update({
+      where: { id: store.id },
+      data: {
+        banner: uploadResult.url,
+      },
+    });
+
+    return {
+      message: 'Store banner uploaded successfully',
+      url: uploadResult.url,
+      store: updatedStore,
     };
   }
 }

@@ -107,6 +107,73 @@ export class OrdersService {
   }
 
   /**
+   * Get paginated orders for a user
+   */
+  async findAllPaginated(
+    userId: string,
+    options: {
+      page: number;
+      limit: number;
+      status?: string;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+    },
+  ) {
+    const { page, limit, status, sortBy = 'createdAt', sortOrder = 'desc' } = options;
+
+    // Build where clause
+    const where: any = { userId };
+    if (status) {
+      where.status = status.toUpperCase();
+    }
+
+    // Get total count
+    const total = await this.prisma.order.count({ where });
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+    const totalPages = Math.ceil(total / limit);
+
+    // Get orders with pagination
+    const orders = await this.prisma.order.findMany({
+      where,
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                heroImage: true,
+              },
+            },
+            variant: true,
+          },
+        },
+        shippingAddress: true,
+        billingAddress: true,
+        timeline: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { [sortBy]: sortOrder },
+      skip,
+      take: limit,
+    });
+
+    return {
+      data: orders,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+      },
+    };
+  }
+
+  /**
    * Get single order by ID
    */
   async findOne(id: string, userId: string) {
@@ -133,6 +200,19 @@ export class OrdersService {
         billingAddress: true,
         timeline: {
           orderBy: { createdAt: 'asc' },
+        },
+        delivery: {
+          include: {
+            provider: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                type: true,
+                website: true,
+              },
+            },
+          },
         },
       },
     });

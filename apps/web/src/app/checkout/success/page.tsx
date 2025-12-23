@@ -105,7 +105,9 @@ function SuccessPageContent() {
           } : undefined,
         });
 
-        setOrder(response.data);
+        // Backend returns { success: true, data: order }
+        const orderData = response.data.data || response.data;
+        setOrder(orderData);
 
         // Fetch related products
         try {
@@ -181,13 +183,13 @@ function SuccessPageContent() {
                   <p className="font-semibold text-black">{item.name}</p>
                   <p className="text-sm text-neutral-600">Quantity: {item.quantity}</p>
                 </div>
-                <p className="font-semibold text-black">\${formatCurrencyAmount(item.price * item.quantity, 2)}</p>
+                <p className="font-semibold text-black">\${formatCurrencyAmount(Number(item.price) * item.quantity, 2)}</p>
               </div>
             ))}
           </div>
           <div className="flex justify-between items-center pt-4 border-t-2 border-neutral-200">
             <span className="text-lg font-semibold text-black">Total</span>
-            <span className="text-2xl font-bold text-black">\${formatCurrencyAmount(order.total, 2)}</span>
+            <span className="text-2xl font-bold text-black">\${formatCurrencyAmount(Number(order.total), 2)}</span>
           </div>
         </motion.div>
 

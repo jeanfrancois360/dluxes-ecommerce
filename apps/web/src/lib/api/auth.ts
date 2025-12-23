@@ -16,10 +16,10 @@ export const authAPI = {
   },
 
   getProfile: () =>
-    api.get('/auth/profile'),
+    api.get('/auth/me'),
 
   updateProfile: (data: Partial<RegisterData>) =>
-    api.patch('/auth/profile', data),
+    api.patch('/users/me', data),
 
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.post('/auth/change-password', data),

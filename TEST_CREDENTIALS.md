@@ -49,19 +49,46 @@ Role:      SUPER_ADMIN
 Dashboard: http://localhost:3000/admin/dashboard
 ```
 
+### 6. DELIVERY_PARTNER Role
+```
+Email:     delivery-partner@test.com
+Password:  DeliveryTest@123
+Role:      DELIVERY_PARTNER
+Provider:  NextPik Express
+Dashboard: http://localhost:3000/delivery-partner/dashboard
+Deliveries: http://localhost:3000/delivery-partner/deliveries
+Earnings:  http://localhost:3000/delivery-partner/earnings
+```
+
+---
+
+## 🚚 Delivery System Test Data
+
+### Delivery Providers
+1. **FedEx International** - API integrated, worldwide shipping
+2. **DHL Express** - API integrated, worldwide shipping
+3. **UPS Worldwide** - API integrated, worldwide shipping
+4. **NextPik Express** - Local partner, East Africa region
+
+### Test Order with Delivery Tracking
+After seeding, you'll have test orders with delivery tracking.
+- View tracking: http://localhost:3000/track/{trackingNumber}
+- View order details: http://localhost:3000/account/orders/{orderId}
+
 ---
 
 ## 🚀 Quick Reference
 
 **Login URL:** http://localhost:3000/auth/login
 
-**All Passwords:** Test@123
+**Standard Password:** Test@123
+**Delivery Partner Password:** DeliveryTest@123
 
 **Role Hierarchy:**
 ```
-SUPER_ADMIN → ADMIN → SELLER → BUYER/CUSTOMER
+SUPER_ADMIN → ADMIN → SELLER → DELIVERY_PARTNER → BUYER/CUSTOMER
 ```
 
 ---
 
-**Last Updated:** 2024-11-16
+**Last Updated:** 2025-12-20

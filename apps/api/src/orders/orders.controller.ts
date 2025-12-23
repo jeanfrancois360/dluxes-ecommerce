@@ -9,6 +9,7 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -28,16 +29,33 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   /**
-   * Get user's orders
+   * Get user's orders with pagination
    * @route GET /orders
    */
   @Get()
-  async findAll(@Request() req) {
+  async findAll(
+    @Request() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+  ) {
     try {
-      const data = await this.ordersService.findAll(req.user.userId);
+      const pageNum = page ? parseInt(page, 10) : 1;
+      const limitNum = limit ? parseInt(limit, 10) : 10;
+
+      const result = await this.ordersService.findAllPaginated(req.user.userId, {
+        page: pageNum,
+        limit: limitNum,
+        status,
+        sortBy: sortBy || 'createdAt',
+        sortOrder: sortOrder || 'desc',
+      });
+
       return {
         success: true,
-        data,
+        data: result,
       };
     } catch (error) {
       return {

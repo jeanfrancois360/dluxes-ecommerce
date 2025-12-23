@@ -578,16 +578,22 @@ export class PaymentService {
 
       if (!transaction) {
         // Create transaction if it doesn't exist (fallback)
+        // Both 'succeeded' and 'requires_capture' mean payment was authorized successfully
+        // For manual capture (escrow), status moves to CAPTURED later when funds are captured
         transaction = await this.prisma.paymentTransaction.create({
           data: {
             orderId,
             userId: paymentIntent.metadata.userId || '',
             stripePaymentIntentId: paymentIntent.id,
-            stripeChargeId: paymentIntent.latest_charge as string,
+            stripeChargeId: paymentIntent.latest_charge ? (paymentIntent.latest_charge as string) : null,
             amount: new Decimal(paymentIntent.amount / 100),
             currency: paymentIntent.currency.toUpperCase(),
             status: PaymentTransactionStatus.SUCCEEDED,
             paymentMethod: PaymentMethod.STRIPE,
+            metadata: {
+              captureMethod: paymentIntent.capture_method,
+              paymentIntentStatus: paymentIntent.status,
+            } as any,
           },
         });
       } else {
@@ -596,7 +602,12 @@ export class PaymentService {
           where: { id: transaction.id },
           data: {
             status: PaymentTransactionStatus.SUCCEEDED,
-            stripeChargeId: paymentIntent.latest_charge as string,
+            stripeChargeId: paymentIntent.latest_charge ? (paymentIntent.latest_charge as string) : null,
+            metadata: {
+              ...(transaction.metadata as any),
+              captureMethod: paymentIntent.capture_method,
+              paymentIntentStatus: paymentIntent.status,
+            } as any,
           },
         });
       }
@@ -951,6 +962,7 @@ export class PaymentService {
   /**
    * Handle amount capturable updated
    * Important for manual capture (escrow) scenarios
+   * This event fires when payment is authorized but not yet captured
    */
   private async handleAmountCapturableUpdated(paymentIntent: Stripe.PaymentIntent, webhookEventId?: string) {
     const orderId = paymentIntent.metadata.orderId;
@@ -965,6 +977,18 @@ export class PaymentService {
       this.logger.log(
         `Order ${orderId} amount capturable updated: ${amountCapturable} ${paymentIntent.currency.toUpperCase()}`
       );
+
+      // For manual capture, this means payment was authorized successfully
+      // Treat it the same as payment success for order confirmation
+      if (paymentIntent.status === 'requires_capture' && amountCapturable.toNumber() > 0) {
+        this.logger.log(
+          `Payment authorized (requires_capture) for order ${orderId}. Processing as successful authorization.`
+        );
+
+        // Call the payment success handler to update order and create escrow
+        await this.handlePaymentSuccess(paymentIntent, webhookEventId);
+        return;
+      }
 
       // Update transaction metadata if needed
       await this.prisma.paymentTransaction.updateMany({

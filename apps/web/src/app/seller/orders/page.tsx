@@ -11,7 +11,11 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
+import { PageLayout } from '@/components/layout/page-layout';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+import { sellerAPI } from '@/lib/api/seller';
+import useSWR from 'swr';
+
 interface Order {
   id: string;
   orderNumber: string;
@@ -58,61 +62,58 @@ function PaymentBadge({ status }: { status: string }) {
 export default function SellerOrdersPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
+  // Fetch orders from API
+  const { data: ordersResponse, error, mutate } = useSWR(
+    user && user.role === 'SELLER' ? ['seller-orders', statusFilter, page] : null,
+    () => sellerAPI.getOrders({
+      page,
+      limit: 50,
+      status: statusFilter || undefined,
+    }),
+    {
+      refreshInterval: 30000, // Refresh every 30 seconds
+      revalidateOnFocus: true,
+    }
+  );
+
+  // Check if user is seller
   useEffect(() => {
-    if (!authLoading && user) {
-      // Check if user is seller
-      if (user.role !== 'SELLER') {
-        router.push('/dashboard/buyer');
-        return;
-      }
-      fetchOrders();
+    if (!authLoading && user && user.role !== 'SELLER') {
+      router.push('/dashboard/buyer');
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, router]);
 
-  const fetchOrders = async () => {
-    try {
-      setIsLoading(true);
-      // TODO: Implement API call to fetch seller's orders
-      // const response = await api.get('/seller/orders');
-      // setOrders(response.data);
+  // Transform API data to match UI interface
+  const orders: Order[] = React.useMemo(() => {
+    if (!ordersResponse?.data) return [];
 
-      // Mock data for now
-      setOrders([
-        {
-          id: '1',
-          orderNumber: 'ORD-001',
-          customerName: 'John Doe',
-          customerEmail: 'john@example.com',
-          total: 299.99,
-          status: 'PROCESSING',
-          paymentStatus: 'PAID',
-          createdAt: new Date().toISOString(),
-          itemCount: 2,
-        },
-        {
-          id: '2',
-          orderNumber: 'ORD-002',
-          customerName: 'Jane Smith',
-          customerEmail: 'jane@example.com',
-          total: 499.99,
-          status: 'SHIPPED',
-          paymentStatus: 'PAID',
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          itemCount: 1,
-        },
-      ]);
-    } catch (error) {
-      console.error('Failed to fetch orders:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    return ordersResponse.data.map((order: any) => {
+      // Calculate total from seller's items only
+      const sellerTotal = order.items.reduce((sum: number, item: any) => {
+        return sum + Number(item.total || 0);
+      }, 0);
+
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        customerName: `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Unknown',
+        customerEmail: order.user.email,
+        total: sellerTotal,
+        status: order.status,
+        paymentStatus: order.paymentStatus || 'PENDING',
+        createdAt: order.createdAt,
+        itemCount: order.items.length,
+      };
+    });
+  }, [ordersResponse]);
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -132,20 +133,60 @@ export default function SellerOrdersPage() {
     totalRevenue: orders.reduce((sum, o) => sum + o.total, 0),
   };
 
-  if (authLoading || isLoading) {
+  const handleUpdateStatus = async (newStatus: string) => {
+    if (!selectedOrder) return;
+
+    try {
+      setUpdatingStatus(true);
+      await sellerAPI.updateOrderStatus(selectedOrder.id, {
+        status: newStatus,
+      });
+
+      // Refresh orders
+      await mutate();
+
+      setShowStatusModal(false);
+      setSelectedOrder(null);
+
+      // Show success toast (assuming toast is set up)
+      alert('Order status updated successfully!');
+    } catch (error: any) {
+      console.error('Failed to update order status:', error);
+      alert(error?.response?.data?.message || 'Failed to update order status');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const getNextStatus = (currentStatus: string): string | null => {
+    const statusFlow = {
+      PENDING: 'PROCESSING',
+      CONFIRMED: 'PROCESSING',
+      PROCESSING: 'SHIPPED',
+      SHIPPED: 'DELIVERED',
+    };
+    return statusFlow[currentStatus as keyof typeof statusFlow] || null;
+  };
+
+  const isLoading = !ordersResponse && !error;
+
+  if (authLoading || (isLoading && !user)) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
-        />
-      </div>
+      <PageLayout showCategoryNav={false}>
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
+          />
+        </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <PageLayout showCategoryNav={false}>
+      <div className="min-h-screen bg-neutral-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -167,41 +208,60 @@ export default function SellerOrdersPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <p className="text-sm text-neutral-500 font-medium">Total Orders</p>
-            <p className="text-3xl font-bold text-black mt-2">{stats.totalOrders}</p>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <p className="text-sm text-neutral-500 font-medium">Processing</p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-br from-neutral-50 via-neutral-50/50 to-white border border-neutral-100 rounded-xl p-6 shadow-sm"
+          >
+            <p className="text-sm text-neutral-600 font-medium">Total Orders</p>
+            <p className="text-3xl font-bold text-neutral-900 mt-2">{stats.totalOrders}</p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-br from-blue-50 via-blue-50/50 to-white border border-blue-100 rounded-xl p-6 shadow-sm"
+          >
+            <p className="text-sm text-neutral-600 font-medium">Processing</p>
             <p className="text-3xl font-bold text-blue-600 mt-2">{stats.processing}</p>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <p className="text-sm text-neutral-500 font-medium">Shipped</p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gradient-to-br from-purple-50 via-purple-50/50 to-white border border-purple-100 rounded-xl p-6 shadow-sm"
+          >
+            <p className="text-sm text-neutral-600 font-medium">Shipped</p>
             <p className="text-3xl font-bold text-purple-600 mt-2">{stats.shipped}</p>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <p className="text-sm text-neutral-500 font-medium">Total Revenue</p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-gradient-to-br from-amber-50 via-yellow-50/50 to-white border border-amber-100 rounded-xl p-6 shadow-sm"
+          >
+            <p className="text-sm text-neutral-600 font-medium">Total Revenue</p>
             <p className="text-3xl font-bold text-gold mt-2">${formatCurrencyAmount(stats.totalRevenue, 2)}</p>
-          </div>
+          </motion.div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <input
                 type="text"
-                placeholder="Search orders..."
+                placeholder="Search by order number or customer..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all font-medium"
               />
             </div>
             <div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all font-medium cursor-pointer"
               >
                 <option value="">All Status</option>
                 <option value="PENDING">Pending</option>
@@ -215,7 +275,7 @@ export default function SellerOrdersPage() {
               <select
                 value={paymentFilter}
                 onChange={(e) => setPaymentFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all font-medium cursor-pointer"
               >
                 <option value="">All Payments</option>
                 <option value="PAID">Paid</option>
@@ -228,7 +288,9 @@ export default function SellerOrdersPage() {
         </div>
 
         {/* Orders Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="relative bg-white rounded-2xl shadow-lg border border-neutral-200 overflow-hidden">
+          {/* Top accent */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"></div>
           {filteredOrders.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-neutral-100 rounded-full mx-auto mb-4 flex items-center justify-center">
@@ -241,21 +303,21 @@ export default function SellerOrdersPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
+                <thead className="bg-gradient-to-r from-neutral-50 to-neutral-100/50 border-b-2 border-neutral-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Order</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Items</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Payment</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Order</th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Items</th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Total</th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Payment</th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
                   {filteredOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-neutral-50 transition-colors">
+                    <tr key={order.id} className="hover:bg-gradient-to-r hover:from-neutral-50/50 hover:to-transparent transition-all duration-200">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-medium text-black">{order.orderNumber}</span>
                       </td>
@@ -287,12 +349,28 @@ export default function SellerOrdersPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/seller/orders/${order.id}`}
-                          className="text-gold hover:text-gold/80 font-medium"
-                        >
-                          View Details
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/seller/orders/${order.id}`}
+                            className="text-gold hover:text-gold/80 font-medium text-sm"
+                          >
+                            View
+                          </Link>
+                          {getNextStatus(order.status) && (
+                            <>
+                              <span className="text-neutral-300">|</span>
+                              <button
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setShowStatusModal(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+                              >
+                                Update Status
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -300,8 +378,66 @@ export default function SellerOrdersPage() {
               </table>
             </div>
           )}
+
+          {/* Bottom accent border */}
+          <div className="h-1 bg-gradient-to-r from-transparent via-gold/50 to-transparent"></div>
         </div>
+
+        {/* Update Status Modal */}
+        {showStatusModal && selectedOrder && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-xl shadow-xl max-w-md w-full p-6"
+            >
+              <h3 className="text-xl font-bold text-black mb-4">Update Order Status</h3>
+              <div className="mb-6">
+                <p className="text-sm text-neutral-600 mb-2">
+                  Order: <span className="font-semibold text-black">{selectedOrder.orderNumber}</span>
+                </p>
+                <p className="text-sm text-neutral-600 mb-4">
+                  Current Status: <StatusBadge status={selectedOrder.status} />
+                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Next Status:</strong>{' '}
+                    <span className="uppercase font-semibold">{getNextStatus(selectedOrder.status)}</span>
+                  </p>
+                  <p className="text-xs text-blue-600 mt-2">
+                    {getNextStatus(selectedOrder.status) === 'PROCESSING' &&
+                      'Mark order as being processed'}
+                    {getNextStatus(selectedOrder.status) === 'SHIPPED' &&
+                      'Mark order as shipped (delivery partner will be notified)'}
+                    {getNextStatus(selectedOrder.status) === 'DELIVERED' &&
+                      'Mark order as delivered (payment will be released from escrow)'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowStatusModal(false);
+                    setSelectedOrder(null);
+                  }}
+                  disabled={updatingStatus}
+                  className="flex-1 px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleUpdateStatus(getNextStatus(selectedOrder.status)!)}
+                  disabled={updatingStatus}
+                  className="flex-1 px-4 py-2 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {updatingStatus ? 'Updating...' : 'Confirm Update'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }

@@ -106,18 +106,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${poppins.variable} overflow-x-hidden`}>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth" className={`${poppins.variable} overflow-x-hidden`}>
       <head>
         {/* Preconnect to critical origins */}
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'} />
         <link rel="preconnect" href="https://images.unsplash.com" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://js.stripe.com" />
+        <link rel="preconnect" href="https://m.stripe.com" />
+        <link rel="preconnect" href="https://m.stripe.network" />
 
         {/* DNS prefetch for external domains */}
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+        <link rel="dns-prefetch" href="https://js.stripe.com" />
+        <link rel="dns-prefetch" href="https://m.stripe.com" />
       </head>
       <body className="font-sans antialiased bg-white text-black overflow-x-hidden">
         <RouteLoadingProvider>

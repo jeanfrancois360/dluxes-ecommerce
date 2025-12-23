@@ -157,7 +157,7 @@ function Toast({
       <div className={`${iconColor} flex-shrink-0 mt-0.5`}>{icon}</div>
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
-        <p className="text-gray-700 text-sm mt-0.5">{message}</p>
+        <p className="text-gray-700 text-sm mt-0.5 whitespace-pre-line">{message}</p>
       </div>
       <button
         onClick={onClose}

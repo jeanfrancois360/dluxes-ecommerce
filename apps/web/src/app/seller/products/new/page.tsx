@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { PageLayout } from '@/components/layout/page-layout';
 import ProductForm from '@/components/seller/ProductForm';
 import { api } from '@/lib/api/client';
 
@@ -30,9 +31,10 @@ export default function NewProductPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
-      <div className="bg-white border-b border-neutral-200">
+    <PageLayout showCategoryNav={false}>
+      <div className="min-h-screen bg-neutral-50">
+        {/* Header */}
+        <div className="bg-white border-b border-neutral-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -67,6 +69,7 @@ export default function NewProductPage() {
           />
         </motion.div>
       </div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }

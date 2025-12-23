@@ -76,6 +76,7 @@ export interface Product {
   barcode?: string;
   trackInventory: boolean;
   stock: number;
+  inventory: number; // Alias for stock
   lowStockThreshold: number;
   heroImage: string;
   images: ProductImage[];
@@ -107,7 +108,11 @@ export interface ProductVariant {
   name: string;
   sku: string;
   price?: number;
+  compareAtPrice?: number;
   stock: number;
+  size?: string;
+  color?: string;
+  image?: string;
   attributes: Record<string, string>; // e.g., { size: 'M', color: 'Blue' }
   isAvailable: boolean;
 }
@@ -179,6 +184,26 @@ export interface UpdateCartItemData {
   quantity: number;
 }
 
+// Delivery Types
+export interface DeliveryProvider {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  website?: string;
+}
+
+export interface Delivery {
+  id: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  currentStatus: string;
+  expectedDeliveryDate?: string;
+  deliveredAt?: string;
+  provider?: DeliveryProvider;
+  deliveryFee: number;
+}
+
 // Order Types
 export interface Order {
   id: string;
@@ -187,6 +212,7 @@ export interface Order {
   user?: User;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  paymentMethod?: string;
   items: OrderItem[];
   shippingAddress: Address;
   billingAddress?: Address;
@@ -197,6 +223,7 @@ export interface Order {
   total: number;
   notes?: string;
   timeline: OrderTimeline[];
+  delivery?: Delivery;
   trackingNumber?: string;
   paymentIntentId?: string;
   createdAt: string;
@@ -225,6 +252,8 @@ export interface OrderItem {
   product: Product;
   variantId?: string;
   variant?: ProductVariant;
+  name: string;
+  image?: string;
   quantity: number;
   price: number;
   total: number;
@@ -233,7 +262,9 @@ export interface OrderItem {
 export interface OrderTimeline {
   id: string;
   status: OrderStatus;
+  title: string;
   description: string;
+  icon?: string;
   createdAt: string;
 }
 
@@ -260,6 +291,7 @@ export interface Address {
   addressLine2?: string;
   city: string;
   state: string;
+  province: string; // Alias for state (some regions use province)
   postalCode: string;
   country: string;
   phone: string;
