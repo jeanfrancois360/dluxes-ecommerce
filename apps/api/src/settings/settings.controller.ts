@@ -119,18 +119,19 @@ export class SettingsController {
   }
 
   // ============================================================================
-  // Authenticated Endpoints
+  // Admin Endpoints
   // ============================================================================
 
   /**
-   * Get setting by key
-   * @route GET /settings/:key
+   * Get all settings
+   * @route GET /settings
    */
-  @Get(':key')
-  @UseGuards(JwtAuthGuard)
-  async getSetting(@Param('key') key: string) {
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async getAllSettings() {
     try {
-      const data = await this.settingsService.getSetting(key);
+      const data = await this.settingsService.getAllSettings();
       return {
         success: true,
         data,
@@ -165,20 +166,97 @@ export class SettingsController {
     }
   }
 
+  /**
+   * Get all audit logs
+   * @route GET /settings/admin/audit-logs
+   * IMPORTANT: Must come BEFORE :key route
+   */
+  @Get('admin/audit-logs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async getAllAuditLogs(@Query('limit') limit?: string) {
+    try {
+      const data = await this.settingsService.getAllAuditLogs(
+        limit ? parseInt(limit) : undefined
+      );
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Get Stripe configuration status (Admin only - includes sensitive info status)
+   * @route GET /settings/stripe/status
+   * IMPORTANT: Must come BEFORE :key route
+   */
+  @Get('stripe/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async getStripeStatus() {
+    try {
+      const data = await this.paymentService.getStripeStatus();
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Get audit log for a setting
+   * @route GET /settings/:key/audit
+   * IMPORTANT: Must come BEFORE generic :key route
+   */
+  @Get(':key/audit')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async getSettingAuditLog(
+    @Param('key') key: string,
+    @Query('limit') limit?: string
+  ) {
+    try {
+      const data = await this.settingsService.getSettingAuditLog(
+        key,
+        limit ? parseInt(limit) : undefined
+      );
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
   // ============================================================================
-  // Admin Endpoints
+  // Authenticated Endpoints
   // ============================================================================
 
   /**
-   * Get all settings
-   * @route GET /settings
+   * Get setting by key
+   * @route GET /settings/:key
+   * IMPORTANT: This MUST come AFTER all specific routes to avoid catching them
    */
-  @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  async getAllSettings() {
+  @Get(':key')
+  @UseGuards(JwtAuthGuard)
+  async getSetting(@Param('key') key: string) {
     try {
-      const data = await this.settingsService.getAllSettings();
+      const data = await this.settingsService.getSetting(key);
       return {
         success: true,
         data,
@@ -275,80 +353,6 @@ export class SettingsController {
         req.user.email
       );
       return data;
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'An error occurred',
-      };
-    }
-  }
-
-  /**
-   * Get audit log for a setting
-   * @route GET /settings/:key/audit
-   */
-  @Get(':key/audit')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  async getSettingAuditLog(
-    @Param('key') key: string,
-    @Query('limit') limit?: string
-  ) {
-    try {
-      const data = await this.settingsService.getSettingAuditLog(
-        key,
-        limit ? parseInt(limit) : undefined
-      );
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'An error occurred',
-      };
-    }
-  }
-
-  /**
-   * Get all audit logs
-   * @route GET /settings/admin/audit-logs
-   */
-  @Get('admin/audit-logs')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  async getAllAuditLogs(@Query('limit') limit?: string) {
-    try {
-      const data = await this.settingsService.getAllAuditLogs(
-        limit ? parseInt(limit) : undefined
-      );
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'An error occurred',
-      };
-    }
-  }
-
-  /**
-   * Get Stripe configuration status (Admin only - includes sensitive info status)
-   * @route GET /settings/stripe/status
-   */
-  @Get('stripe/status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  async getStripeStatus() {
-    try {
-      const data = await this.paymentService.getStripeStatus();
-      return {
-        success: true,
-        data,
-      };
     } catch (error) {
       return {
         success: false,

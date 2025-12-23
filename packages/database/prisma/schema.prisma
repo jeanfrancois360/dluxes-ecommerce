@@ -74,7 +74,8 @@ enum UserRole {
   BUYER // Can purchase products
   SELLER // Can sell products AND purchase (has all buyer capabilities)
   CUSTOMER // Legacy - equivalent to BUYER
-  DELIVERY_PARTNER // Delivery service provider
+  DELIVERY_PARTNER // Individual delivery driver
+  DELIVERY_PROVIDER_ADMIN // Delivery company manager/admin
   ADMIN
   SUPER_ADMIN
 }
@@ -2043,6 +2044,7 @@ model DeliveryProvider {
   name        String // "FedEx", "UPS", "DHL", "Local Courier"
   slug        String               @unique
   type        DeliveryProviderType @default(PARTNER)
+  serviceType DeliveryServiceType  @default(LOCAL) // Service category
   description String?              @db.Text
 
   // Contact Information
@@ -2093,6 +2095,13 @@ enum DeliveryProviderType {
   PARTNER // Platform delivery partners
 }
 
+enum DeliveryServiceType {
+  LOCAL // Local/domestic delivery
+  INTERNATIONAL // Cross-border delivery
+  EXPRESS // Express/overnight delivery
+  STANDARD // Standard delivery
+}
+
 enum ProviderVerificationStatus {
   PENDING
   VERIFIED
@@ -2136,6 +2145,14 @@ model Delivery {
   confirmedBy      String? // User ID who confirmed
   confirmationType DeliveryConfirmationType?
   proofOfDelivery  Json? // { signature, photos, notes, gps }
+  proofOfDeliveryUrl String? // URL to uploaded proof file (photo/PDF)
+
+  // Buyer Confirmation & Payout
+  buyerConfirmed     Boolean   @default(false)
+  buyerConfirmedAt   DateTime?
+  payoutReleased     Boolean   @default(false)
+  payoutReleasedAt   DateTime?
+  payoutReleasedBy   String? // Admin user ID who released payout
 
   // Issues & Disputes
   hasIssue         Boolean   @default(false)
@@ -2163,6 +2180,9 @@ model Delivery {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  auditLogs DeliveryAuditLog[]
+
   @@index([orderId])
   @@index([providerId])
   @@index([deliveryPartnerId])
@@ -2182,6 +2202,47 @@ enum DeliveryStatus {
   FAILED_DELIVERY
   RETURNED
   CANCELLED
+}
+
+// Audit Log for all delivery actions
+model DeliveryAuditLog {
+  id         String   @id @default(cuid())
+  deliveryId String
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  action      DeliveryAuditAction // Type of action
+  performedBy String // User ID who performed the action
+  userRole    UserRole // Role of the user
+
+  // Action details
+  oldValue String? @db.Text // JSON string of old state
+  newValue String? @db.Text // JSON string of new state
+  notes    String? @db.Text // Additional notes
+  metadata Json? // Extra data
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([deliveryId])
+  @@index([performedBy])
+  @@index([action])
+  @@index([createdAt])
+  @@map("delivery_audit_logs")
+}
+
+enum DeliveryAuditAction {
+  CREATED // Delivery record created
+  ASSIGNED_PROVIDER // Provider assigned
+  ASSIGNED_DRIVER // Driver assigned
+  STATUS_UPDATED // Status changed
+  PROOF_UPLOADED // Proof of delivery uploaded
+  BUYER_CONFIRMED // Buyer confirmed receipt
+  PAYOUT_RELEASED // Admin released payout
+  CANCELLED // Delivery cancelled
+  ISSUE_REPORTED // Issue reported
+  ISSUE_RESOLVED // Issue resolved
 }
 
 model DeliveryProviderPayout {

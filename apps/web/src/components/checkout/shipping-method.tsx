@@ -1,9 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@luxury/ui';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import {
+  calculateShippingCost,
+  getEstimatedDeliveryDate,
+  FREE_SHIPPING_THRESHOLD,
+  getAmountNeededForFreeShipping,
+  SHIPPING_METHODS as SHIPPING_CONFIG,
+} from '@/lib/shipping-config';
 
 export interface ShippingMethod {
   id: string;
@@ -20,6 +27,7 @@ interface ShippingMethodProps {
   onContinue: () => void;
   onBack?: () => void;
   isLoading?: boolean;
+  subtotal: number; // Add subtotal for free shipping calculation
 }
 
 const SHIPPING_METHODS: ShippingMethod[] = [
@@ -82,8 +90,22 @@ export function ShippingMethodSelector({
   onContinue,
   onBack,
   isLoading,
+  subtotal,
 }: ShippingMethodProps) {
   const [selected, setSelected] = useState(selectedMethod);
+
+  // Calculate shipping costs dynamically based on subtotal
+  const shippingCalculations = useMemo(() => {
+    return SHIPPING_METHODS.reduce((acc, method) => {
+      acc[method.id] = calculateShippingCost(method.id, subtotal);
+      return acc;
+    }, {} as Record<string, ReturnType<typeof calculateShippingCost>>);
+  }, [subtotal]);
+
+  // Check if qualifies for free shipping
+  const amountNeededForFreeShipping = useMemo(() => {
+    return getAmountNeededForFreeShipping(subtotal);
+  }, [subtotal]);
 
   const handleSelect = (methodId: string) => {
     setSelected(methodId);
@@ -94,35 +116,6 @@ export function ShippingMethodSelector({
     if (selected) {
       onContinue();
     }
-  };
-
-  const getEstimatedDeliveryDate = (days: string) => {
-    const daysMatch = days.match(/(\d+)(?:-(\d+))?/);
-    if (!daysMatch) return '';
-
-    const minDays = parseInt(daysMatch[1]);
-    const maxDays = daysMatch[2] ? parseInt(daysMatch[2]) : minDays;
-
-    const today = new Date();
-    const minDate = new Date(today);
-    minDate.setDate(today.getDate() + minDays);
-
-    const maxDate = new Date(today);
-    maxDate.setDate(today.getDate() + maxDays);
-
-    const formatDate = (date: Date) => {
-      return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-      });
-    };
-
-    if (minDays === maxDays) {
-      return `Est. delivery: ${formatDate(minDate)}`;
-    }
-
-    return `Est. delivery: ${formatDate(minDate)} - ${formatDate(maxDate)}`;
   };
 
   return (
@@ -208,14 +201,23 @@ export function ShippingMethodSelector({
                   <div className="flex items-start justify-between gap-4 mb-1">
                     <h4 className="font-semibold text-black">{method.name}</h4>
                     <div className="text-right flex-shrink-0">
-                      <p
-                        className={cn(
-                          'text-lg font-serif font-bold',
-                          selected === method.id ? 'text-gold' : 'text-black'
-                        )}
-                      >
-                        {method.price === 0 ? 'Free' : `$${formatCurrencyAmount(method.price, 2)}`}
-                      </p>
+                      {shippingCalculations[method.id]?.isFree ? (
+                        <div className="flex flex-col items-end">
+                          <p className="text-lg font-serif font-bold text-green-600">Free</p>
+                          <p className="text-xs text-neutral-400 line-through">
+                            ${formatCurrencyAmount(shippingCalculations[method.id].originalPrice, 2)}
+                          </p>
+                        </div>
+                      ) : (
+                        <p
+                          className={cn(
+                            'text-lg font-serif font-bold',
+                            selected === method.id ? 'text-gold' : 'text-black'
+                          )}
+                        >
+                          ${formatCurrencyAmount(shippingCalculations[method.id]?.finalPrice || method.price, 2)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <p className="text-sm text-neutral-600 mb-2">{method.description}</p>
@@ -233,10 +235,10 @@ export function ShippingMethodSelector({
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    <span className="text-neutral-600">{method.estimatedDays}</span>
+                    <span className="text-neutral-600">{method.estimatedDays} business days</span>
                     <span className="text-neutral-400">•</span>
                     <span className="text-neutral-500">
-                      {getEstimatedDeliveryDate(method.estimatedDays)}
+                      Est. delivery: {getEstimatedDeliveryDate(method.estimatedDays)}
                     </span>
                   </div>
                 </div>
@@ -247,9 +249,9 @@ export function ShippingMethodSelector({
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                    className="absolute top-4 right-4"
+                    className="absolute bottom-4 right-4"
                   >
-                    <div className="w-8 h-8 bg-gold rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gold rounded-full flex items-center justify-center shadow-lg">
                       <svg
                         className="w-5 h-5 text-white"
                         fill="none"
@@ -272,15 +274,23 @@ export function ShippingMethodSelector({
         ))}
       </div>
 
-      {/* Info Banner */}
+      {/* Info Banner - Dynamic based on subtotal */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex gap-3"
+        className={cn(
+          'p-4 border rounded-lg flex gap-3',
+          amountNeededForFreeShipping > 0
+            ? 'bg-amber-50 border-amber-200'
+            : 'bg-green-50 border-green-200'
+        )}
       >
         <svg
-          className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+          className={cn(
+            'w-5 h-5 flex-shrink-0 mt-0.5',
+            amountNeededForFreeShipping > 0 ? 'text-amber-600' : 'text-green-600'
+          )}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -289,12 +299,34 @@ export function ShippingMethodSelector({
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            d={
+              amountNeededForFreeShipping > 0
+                ? 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                : 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+            }
           />
         </svg>
         <div className="text-sm">
-          <p className="text-blue-900 font-medium">Free shipping on orders over $200</p>
-          <p className="text-blue-700 mt-1">
+          {amountNeededForFreeShipping > 0 ? (
+            <>
+              <p className="text-amber-900 font-medium">
+                Add ${formatCurrencyAmount(amountNeededForFreeShipping, 2)} more to qualify for free
+                shipping!
+              </p>
+              <p className="text-amber-700 mt-1">
+                Free shipping available on orders over ${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-green-900 font-medium">You qualify for free shipping!</p>
+              <p className="text-green-700 mt-1">
+                Your order meets the ${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)} minimum for
+                complimentary delivery
+              </p>
+            </>
+          )}
+          <p className={cn('mt-1', amountNeededForFreeShipping > 0 ? 'text-amber-600' : 'text-green-600')}>
             All orders are insured and require signature upon delivery
           </p>
         </div>

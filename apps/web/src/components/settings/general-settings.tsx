@@ -61,6 +61,28 @@ export function GeneralSettingsSection() {
     );
   }
 
+  // Show helpful message if no settings exist
+  if (!loading && settings.length === 0) {
+    return (
+      <Card className="border-yellow-200 bg-yellow-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-yellow-800">
+            <AlertCircle className="h-5 w-5" />
+            Settings Not Initialized
+          </CardTitle>
+          <CardDescription className="text-yellow-700">
+            General settings have not been created yet. Please run the settings seed script.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="bg-yellow-100 p-4 rounded text-sm overflow-x-auto">
+            npx tsx packages/database/prisma/seed-settings.ts
+          </pre>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const isDirty = form.formState.isDirty;
 
   return (

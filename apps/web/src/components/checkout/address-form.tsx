@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FloatingInput } from '@luxury/ui';
 import { FloatingSelect } from '@luxury/ui';
+import { CountrySelector } from '@/components/forms/country-selector';
+import { SavedAddressSelector } from './saved-address-selector';
+import { useAuth } from '@/hooks/use-auth';
 
 export interface Address {
+  id?: string; // Optional - present when using saved address
   firstName: string;
   lastName: string;
   company?: string;
@@ -25,18 +29,6 @@ interface AddressFormProps {
   onBack?: () => void;
   isLoading?: boolean;
 }
-
-const COUNTRIES = [
-  { value: 'US', label: 'United States' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'FR', label: 'France' },
-  { value: 'DE', label: 'Germany' },
-  { value: 'IT', label: 'Italy' },
-  { value: 'ES', label: 'Spain' },
-  { value: 'AU', label: 'Australia' },
-  { value: 'JP', label: 'Japan' },
-];
 
 const US_STATES = [
   { value: 'AL', label: 'Alabama' },
@@ -92,6 +84,9 @@ const US_STATES = [
 ];
 
 export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: AddressFormProps) {
+  const { user } = useAuth();
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
+  const [isUsingNewAddress, setIsUsingNewAddress] = useState<boolean>(true);
   const [formData, setFormData] = useState<Address>({
     firstName: initialAddress?.firstName || '',
     lastName: initialAddress?.lastName || '',
@@ -101,12 +96,40 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
     city: initialAddress?.city || '',
     state: initialAddress?.state || '',
     postalCode: initialAddress?.postalCode || '',
-    country: initialAddress?.country || 'US',
+    country: initialAddress?.country || 'United States',
     phone: initialAddress?.phone || '',
     saveAsDefault: initialAddress?.saveAsDefault || false,
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof Address, string>>>({});
+
+  // Handle saved address selection
+  const handleSavedAddressSelect = (address: Address | null, addressId?: string) => {
+    if (address && addressId) {
+      // User selected a saved address
+      setFormData(address);
+      setSelectedSavedAddressId(addressId);
+      setIsUsingNewAddress(false);
+      setErrors({}); // Clear any existing errors
+    } else {
+      // User wants to enter a new address
+      setFormData({
+        firstName: '',
+        lastName: '',
+        company: '',
+        addressLine1: '',
+        addressLine2: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'United States',
+        phone: '',
+        saveAsDefault: false,
+      });
+      setSelectedSavedAddressId(null);
+      setIsUsingNewAddress(true);
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof Address, string>> = {};
@@ -133,7 +156,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
 
     if (!formData.postalCode.trim()) {
       newErrors.postalCode = 'Postal code is required';
-    } else if (formData.country === 'US' && !/^\d{5}(-\d{4})?$/.test(formData.postalCode)) {
+    } else if (formData.country === 'United States' && !/^\d{5}(-\d{4})?$/.test(formData.postalCode)) {
       newErrors.postalCode = 'Invalid US postal code (e.g., 12345 or 12345-6789)';
     }
 
@@ -153,6 +176,14 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // If using saved address, skip validation and just submit
+    if (!isUsingNewAddress && selectedSavedAddressId) {
+      onSubmit({ ...formData, id: selectedSavedAddressId } as any);
+      return;
+    }
+
+    // Otherwise validate and submit new address
     if (validateForm()) {
       onSubmit(formData);
     }
@@ -174,9 +205,37 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
       onSubmit={handleSubmit}
       className="space-y-6"
     >
+      {/* Saved Address Selector - Only show for logged-in users */}
+      {user && (
+        <SavedAddressSelector
+          onSelect={handleSavedAddressSelect}
+          selectedAddressId={selectedSavedAddressId}
+        />
+      )}
+
+      {/* Using Saved Address Indicator */}
+      {!isUsingNewAddress && selectedSavedAddressId && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-start gap-3"
+        >
+          <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-green-900">Using saved address</p>
+            <p className="text-xs text-green-700 mt-1">This address is already saved. Click "Continue to Shipping" to proceed.</p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Contact Information */}
-      <div>
-        <h3 className="text-lg font-serif font-semibold mb-4">Contact Information</h3>
+      <div className={!isUsingNewAddress ? 'opacity-60 pointer-events-none' : ''}>
+        <h3 className="text-lg font-serif font-semibold mb-4">
+          Contact Information
+          {!isUsingNewAddress && <span className="ml-2 text-sm font-normal text-neutral-500">(Read-only)</span>}
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FloatingInput
             label="First Name"
@@ -206,8 +265,11 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
       </div>
 
       {/* Shipping Address */}
-      <div>
-        <h3 className="text-lg font-serif font-semibold mb-4">Shipping Address</h3>
+      <div className={!isUsingNewAddress ? 'opacity-60 pointer-events-none' : ''}>
+        <h3 className="text-lg font-serif font-semibold mb-4">
+          Shipping Address
+          {!isUsingNewAddress && <span className="ml-2 text-sm font-normal text-neutral-500">(Read-only)</span>}
+        </h3>
         <div className="space-y-4">
           <FloatingInput
             label="Address Line 1"
@@ -269,20 +331,13 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
               required
             />
             <div>
-              <select
+              <CountrySelector
                 value={formData.country}
-                onChange={(e) => handleChange('country', e.target.value)}
-                disabled={isLoading}
-                className={`w-full px-4 py-4 bg-white border-2 ${
-                  errors.country ? 'border-red-500' : 'border-neutral-200'
-                } rounded-lg text-base text-black transition-all duration-300 focus:outline-none focus:border-gold hover:border-neutral-300`}
-              >
-                {COUNTRIES.map((country) => (
-                  <option key={country.value} value={country.value}>
-                    {country.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(countryName) => handleChange('country', countryName)}
+                error={errors.country}
+                placeholder="Select your country"
+                className={isLoading ? 'opacity-50 pointer-events-none' : ''}
+              />
               {errors.country && (
                 <motion.p
                   initial={{ opacity: 0, y: -10 }}
@@ -298,7 +353,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
       </div>
 
       {/* Phone Number */}
-      <div>
+      <div className={!isUsingNewAddress ? 'opacity-60 pointer-events-none' : ''}>
         <FloatingInput
           label="Phone Number"
           type="tel"
@@ -320,25 +375,27 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
         />
       </div>
 
-      {/* Save as Default */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="flex items-center gap-3"
-      >
-        <input
-          type="checkbox"
-          id="saveAsDefault"
-          checked={formData.saveAsDefault}
-          onChange={(e) => handleChange('saveAsDefault', e.target.checked)}
-          disabled={isLoading}
-          className="w-5 h-5 rounded border-neutral-300 text-gold focus:ring-gold focus:ring-offset-0"
-        />
-        <label htmlFor="saveAsDefault" className="text-sm text-neutral-700 cursor-pointer">
-          Save this address as my default shipping address
-        </label>
-      </motion.div>
+      {/* Save as Default - Only show when creating new address */}
+      {isUsingNewAddress && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="flex items-center gap-3"
+        >
+          <input
+            type="checkbox"
+            id="saveAsDefault"
+            checked={formData.saveAsDefault}
+            onChange={(e) => handleChange('saveAsDefault', e.target.checked)}
+            disabled={isLoading}
+            className="w-5 h-5 rounded border-neutral-300 text-gold focus:ring-gold focus:ring-offset-0"
+          />
+          <label htmlFor="saveAsDefault" className="text-sm text-neutral-700 cursor-pointer">
+            Save this address as my default shipping address
+          </label>
+        </motion.div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-4 pt-4">
@@ -382,7 +439,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
             </>
           ) : (
             <>
-              Continue to Shipping
+              {isUsingNewAddress ? 'Save & Continue to Shipping' : 'Continue to Shipping'}
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>

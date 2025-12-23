@@ -1,12 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { api } from '@/lib/api/client';
-import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+import { useCompleteDashboard } from '@/hooks/use-seller-dashboard';
+import { StatsCard } from '@/components/seller/analytics/stats-card';
+import { RevenueChart } from '@/components/seller/analytics/revenue-chart';
+import { ActivityFeed } from '@/components/seller/analytics/activity-feed';
+import { OrderStatusDonut } from '@/components/seller/analytics/order-status-donut';
+import { PageLayout } from '@/components/layout/page-layout';
+import { DollarSign, ShoppingCart, Package, Wallet } from 'lucide-react';
+import { formatNumber } from '@/lib/utils/number-format';
 interface DashboardData {
   store: {
     id: string;
@@ -44,31 +50,49 @@ interface DashboardData {
 export default function SellerDashboard() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const [revenuePeriod, setRevenuePeriod] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
 
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  // Use the new dashboard hooks
+  const {
+    dashboard: dashboardData,
+    revenue,
+    orderBreakdown,
+    topProducts,
+    recentActivity,
+    isLoading,
+    hasError,
+    refetch,
+  } = useCompleteDashboard();
 
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchDashboardData();
-    }
-  }, [authLoading, user]);
+  // Get the actual error message
+  const getErrorMessage = () => {
+    if (!hasError) return '';
 
-  const fetchDashboardData = async () => {
-    try {
-      setIsLoading(true);
-      setError('');
+    // Check each endpoint for errors
+    const errors: string[] = [];
+    if (dashboardData === undefined && hasError) errors.push('Dashboard summary');
+    if (revenue === undefined && hasError) errors.push('Revenue analytics');
+    if (orderBreakdown === undefined && hasError) errors.push('Order breakdown');
+    if (topProducts.length === 0 && hasError) errors.push('Top products');
+    if (recentActivity.length === 0 && hasError) errors.push('Recent activity');
 
-      const response = await api.get('/seller/dashboard');
-      setDashboardData(response);
-    } catch (err: any) {
-      console.error('Failed to fetch dashboard data:', err);
-      setError(err?.data?.message || 'Failed to load dashboard data');
-    } finally {
-      setIsLoading(false);
-    }
+    return errors.length > 0
+      ? `Failed to load: ${errors.join(', ')}`
+      : 'Failed to load dashboard data';
   };
+
+  const error = getErrorMessage();
+
+  // Log errors for debugging
+  if (hasError) {
+    console.error('Dashboard errors:', {
+      dashboard: dashboardData,
+      revenue,
+      orderBreakdown,
+      topProducts,
+      recentActivity,
+    });
+  }
 
   const getStoreStatusColor = (status: string): string => {
     switch (status) {
@@ -86,20 +110,23 @@ export default function SellerDashboard() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
-        />
-      </div>
+      <PageLayout showCategoryNav={false}>
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
+          />
+        </div>
+      </PageLayout>
     );
   }
 
   if (error && error.includes('Store not found')) {
     return (
-      <div className="min-h-screen bg-neutral-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <PageLayout showCategoryNav={false}>
+        <div className="min-h-screen bg-neutral-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -121,33 +148,69 @@ export default function SellerDashboard() {
               Create Your Store
             </Link>
           </motion.div>
+          </div>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   if (!dashboardData) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-neutral-600">Failed to load dashboard</p>
-          <button
-            onClick={fetchDashboardData}
-            className="mt-4 px-6 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors"
-          >
-            Retry
-          </button>
+      <PageLayout showCategoryNav={false}>
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="mb-6">
+            <div className="w-16 h-16 bg-red-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-black mb-2">Failed to Load Dashboard</h2>
+          <p className="text-neutral-600 mb-2">{error || 'Unable to fetch dashboard data'}</p>
+          <p className="text-sm text-neutral-500 mb-6">
+            {user?.role !== 'SELLER'
+              ? 'You may need to create a seller store first.'
+              : 'Please check the browser console for more details.'}
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={refetch}
+              className="w-full px-6 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors"
+            >
+              Retry
+            </button>
+            {user?.role !== 'SELLER' && (
+              <Link
+                href="/become-seller"
+                className="block w-full px-6 py-2 border-2 border-gold text-gold rounded-lg hover:bg-gold hover:text-black transition-colors"
+              >
+                Become a Seller
+              </Link>
+            )}
+          </div>
         </div>
-      </div>
+        </div>
+      </PageLayout>
     );
   }
 
-  const { store, products, orders } = dashboardData;
+  const { store, products, orders, payouts } = dashboardData;
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
+    <PageLayout showCategoryNav={false}>
+      <div className="min-h-screen bg-neutral-50">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -187,180 +250,83 @@ export default function SellerDashboard() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Store Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-        >
-          {/* Total Revenue */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-500 font-medium">Total Revenue</p>
-                <p className="text-3xl font-bold text-black mt-2">
-                  ${Number(orders.totalRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm">
-              <span className="text-neutral-500">
-                Avg: ${Number(orders.averageOrderValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {/* Store Stats - Using New StatsCard Component */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <StatsCard
+            title="Total Revenue"
+            value={formatCurrency(orders.totalRevenue)}
+            icon={DollarSign}
+            subtitle={`Avg: ${formatCurrency(orders.averageOrderValue)}`}
+            color="gold"
+            isLoading={isLoading}
+          />
+          <StatsCard
+            title="Pending Orders"
+            value={orders.pending}
+            icon={ShoppingCart}
+            subtitle={`${orders.total} total orders`}
+            color="blue"
+            isLoading={isLoading}
+          />
+          <StatsCard
+            title="Active Products"
+            value={products.active}
+            icon={Package}
+            subtitle={`${products.total} total products`}
+            color="green"
+            isLoading={isLoading}
+          />
+          <StatsCard
+            title="Payout Balance"
+            value={formatCurrency(payouts?.availableBalance || 0)}
+            icon={Wallet}
+            subtitle={`Pending: ${formatCurrency(payouts?.pendingBalance || 0)}`}
+            color="purple"
+            isLoading={isLoading}
+          />
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+          {/* Revenue Chart - 2 columns */}
+          <div className="lg:col-span-2">
+            <RevenueChart
+              data={revenue?.data || []}
+              period={revenuePeriod}
+              total={revenue?.total || 0}
+              trend={revenue?.trend || { value: 0, isPositive: true }}
+              isLoading={isLoading}
+              onPeriodChange={setRevenuePeriod}
+            />
           </div>
 
-          {/* Total Orders */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-500 font-medium">Total Orders</p>
-                <p className="text-3xl font-bold text-black mt-2">{orders.total}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-4 flex items-center gap-4 text-sm">
-              <span className="text-warning-DEFAULT font-medium">{orders.pending} Pending</span>
-              <span className="text-success-DEFAULT font-medium">{orders.delivered} Delivered</span>
-            </div>
+          {/* Order Status Donut - 1 column */}
+          <div>
+            <OrderStatusDonut
+              data={orderBreakdown || {
+                pending: 0,
+                processing: 0,
+                shipped: 0,
+                delivered: 0,
+                cancelled: 0,
+                total: 0,
+              }}
+              isLoading={isLoading}
+            />
           </div>
+        </div>
 
-          {/* Active Products */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-500 font-medium">Active Products</p>
-                <p className="text-3xl font-bold text-black mt-2">{products.active}</p>
-              </div>
-              <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm">
-              <span className="text-neutral-500">{products.total} Total Products</span>
-            </div>
+        {/* Activity Feed & Quick Actions Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Activity Feed - 2 columns */}
+          <div className="lg:col-span-2">
+            <ActivityFeed
+              activities={recentActivity || []}
+              isLoading={isLoading}
+              limit={10}
+            />
           </div>
-
-          {/* Store Rating */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-500 font-medium">Store Rating</p>
-                <p className="text-3xl font-bold text-black mt-2">
-                  {store.rating ? formatNumber(Number(store.rating), 1) : 'N/A'}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-gold/10 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-gold" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm">
-              <span className="text-neutral-500">{store.verified ? '✓ Verified Store' : 'Not Verified'}</span>
-            </div>
-          </div>
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Product Overview */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="lg:col-span-2"
-          >
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-black">Products Overview</h2>
-                <Link
-                  href="/seller/products"
-                  className="text-sm text-gold hover:text-gold/80 font-medium inline-flex items-center gap-2"
-                >
-                  Manage Products
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-blue-50 rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <span className="text-sm font-medium text-neutral-700">Active</span>
-                  </div>
-                  <p className="text-2xl font-bold text-black">{products.active}</p>
-                </div>
-
-                <div className="p-4 bg-neutral-50 rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <span className="text-sm font-medium text-neutral-700">Draft</span>
-                  </div>
-                  <p className="text-2xl font-bold text-black">{products.draft}</p>
-                </div>
-
-                <div className="p-4 bg-error-light rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-error-DEFAULT/20 rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-error-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                    <span className="text-sm font-medium text-neutral-700">Out of Stock</span>
-                  </div>
-                  <p className="text-2xl font-bold text-black">{products.outOfStock}</p>
-                </div>
-
-                <div className="p-4 bg-warning-light rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-warning-DEFAULT/20 rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-warning-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                    </div>
-                    <span className="text-sm font-medium text-neutral-700">Low Stock</span>
-                  </div>
-                  <p className="text-2xl font-bold text-black">{products.lowStock}</p>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-6 border-t border-neutral-200">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-neutral-500 mb-1">Total Views</p>
-                    <p className="text-xl font-bold text-black">{products.totalViews.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-neutral-500 mb-1">Total Likes</p>
-                    <p className="text-xl font-bold text-black">{products.totalLikes.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
 
           {/* Quick Actions */}
           <motion.div
@@ -468,6 +434,7 @@ export default function SellerDashboard() {
           </motion.div>
         </div>
       </div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }

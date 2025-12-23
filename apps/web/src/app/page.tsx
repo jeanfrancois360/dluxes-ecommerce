@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { PageLayout } from '@/components/layout/page-layout';
 import { ProductCarousel } from '@/components/product-carousel';
-import { type QuickViewProduct } from '@luxury/ui';
+import { type QuickViewProduct, QuickViewModal } from '@luxury/ui';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useFeaturedProducts, useNewArrivals, useTrendingProducts, useOnSaleProducts } from '@/hooks/use-products';
@@ -18,7 +18,6 @@ import { toast } from '@/lib/toast';
 import { navigateWithLoading } from '@/lib/navigation';
 
 // Lazy load heavy components
-const QuickViewModal = lazy(() => import('@luxury/ui').then(m => ({ default: m.QuickViewModal })));
 const InlineAd = lazy(() => import('@/components/ads').then(m => ({ default: m.InlineAd })));
 
 export default function Home() {

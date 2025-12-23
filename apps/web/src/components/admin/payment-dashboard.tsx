@@ -244,7 +244,7 @@ export function PaymentDashboard() {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-1">
-            ${paymentHealth?.revenue.average.toFixed(2) || 0}
+            ${Number(paymentHealth?.revenue.average || 0).toFixed(2)}
           </h3>
           <p className="text-sm text-gray-600">Average Transaction</p>
         </div>
@@ -290,7 +290,7 @@ export function PaymentDashboard() {
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <div className="font-medium text-gray-900">
-                        ${txn.amount.toFixed(2)} {txn.currency}
+                        ${Number(txn.amount).toFixed(2)} {txn.currency}
                       </div>
                       <div
                         className={`text-xs font-medium ${

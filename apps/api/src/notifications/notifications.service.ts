@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
+import { EmailService } from '../email/email.service';
 
 export interface EmailTemplate {
   to: string;
@@ -41,6 +42,7 @@ export class NotificationsService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
   ) {
     this.fromEmail = this.configService.get('EMAIL_FROM', 'noreply@luxuryecommerce.com');
     this.siteName = this.configService.get('SITE_NAME', 'Luxury E-commerce');
@@ -244,6 +246,348 @@ export class NotificationsService {
               <p class="stock-count">${data.currentStock} items remaining</p>
               <p>This product is below your threshold of ${data.threshold} items.</p>
               <p><a href="${this.configService.get('APP_URL', 'http://localhost:3000')}/admin/inventory/${data.productId}">View in Dashboard</a></p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    return this.sendEmail(email);
+  }
+
+  /**
+   * Send delivery assigned notification to buyer
+   */
+  async sendDeliveryAssigned(data: {
+    customerEmail: string;
+    customerName: string;
+    orderNumber: string;
+    trackingNumber: string;
+    providerName: string;
+    expectedDeliveryDate?: string;
+  }) {
+    const email: EmailTemplate = {
+      to: data.customerEmail,
+      subject: `Delivery Assigned - Order ${data.orderNumber}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { text-align: center; padding: 20px 0; border-bottom: 2px solid #000; }
+            .content { padding: 30px 0; }
+            .tracking-box { background: linear-gradient(135deg, #CBB57B 0%, #D4AF37 100%); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center; }
+            .tracking-number { font-size: 24px; font-weight: bold; color: #000; font-family: 'Courier New', monospace; letter-spacing: 2px; }
+            .info-box { background: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 5px; }
+            .footer { text-align: center; padding: 20px 0; font-size: 12px; color: #666; }
+            .button { display: inline-block; background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${this.siteName}</h1>
+            </div>
+            <div class="content">
+              <h2>📦 Your Delivery is on the Way!</h2>
+              <p>Dear ${data.customerName},</p>
+              <p>Great news! Your order <strong>${data.orderNumber}</strong> has been assigned to a delivery partner.</p>
+
+              <div class="tracking-box">
+                <p style="color: #000; margin: 0; font-size: 14px; font-weight: 600;">Tracking Number</p>
+                <p class="tracking-number">${data.trackingNumber}</p>
+              </div>
+
+              <div class="info-box">
+                <p style="margin: 8px 0;"><strong>Delivery Provider:</strong> ${data.providerName}</p>
+                ${data.expectedDeliveryDate ? `<p style="margin: 8px 0;"><strong>Expected Delivery:</strong> ${data.expectedDeliveryDate}</p>` : ''}
+              </div>
+
+              <p>You can track your delivery using the tracking number above. We'll keep you updated on the delivery progress.</p>
+
+              <div style="text-align: center;">
+                <a href="${this.configService.get('APP_URL', 'http://localhost:3000')}/account/orders" class="button">
+                  View Order
+                </a>
+              </div>
+            </div>
+            <div class="footer">
+              <p>Thank you for shopping with ${this.siteName}</p>
+              <p>&copy; ${new Date().getFullYear()} ${this.siteName}. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    return this.sendEmail(email);
+  }
+
+  /**
+   * Send delivery status update notification
+   */
+  async sendDeliveryStatusUpdate(data: {
+    customerEmail: string;
+    customerName: string;
+    orderNumber: string;
+    trackingNumber: string;
+    newStatus: string;
+    statusMessage: string;
+  }) {
+    const email: EmailTemplate = {
+      to: data.customerEmail,
+      subject: `Delivery Update - ${data.statusMessage}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { text-align: center; padding: 20px 0; border-bottom: 2px solid #000; }
+            .content { padding: 30px 0; }
+            .status-box { background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 25px; border-radius: 12px; margin: 20px 0; text-align: center; color: white; }
+            .footer { text-align: center; padding: 20px 0; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${this.siteName}</h1>
+            </div>
+            <div class="content">
+              <h2>Delivery Status Update</h2>
+              <p>Dear ${data.customerName},</p>
+
+              <div class="status-box">
+                <p style="margin: 0; font-size: 18px; font-weight: bold;">${data.statusMessage}</p>
+                <p style="margin: 10px 0 0; opacity: 0.9;">Tracking: ${data.trackingNumber}</p>
+              </div>
+
+              <p>Order Number: <strong>${data.orderNumber}</strong></p>
+            </div>
+            <div class="footer">
+              <p>&copy; ${new Date().getFullYear()} ${this.siteName}. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    return this.sendEmail(email);
+  }
+
+  /**
+   * Send delivery delivered notification (reminder to confirm)
+   */
+  async sendDeliveryDelivered(data: {
+    customerEmail: string;
+    customerName: string;
+    orderNumber: string;
+    trackingNumber: string;
+  }) {
+    const email: EmailTemplate = {
+      to: data.customerEmail,
+      subject: `✅ Delivered - Please Confirm Receipt`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { text-align: center; padding: 20px 0; border-bottom: 2px solid #000; }
+            .content { padding: 30px 0; }
+            .delivered-box { background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center; color: white; }
+            .confirm-box { background: #FEF3C7; border: 2px solid #F59E0B; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .button { display: inline-block; background: #000; color: #fff; padding: 14px 40px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }
+            .footer { text-align: center; padding: 20px 0; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${this.siteName}</h1>
+            </div>
+            <div class="content">
+              <div class="delivered-box">
+                <h2 style="margin: 0; color: white; font-size: 28px;">🎉 Delivered!</h2>
+                <p style="margin: 10px 0 0; opacity: 0.9; font-size: 16px;">Your order has been delivered</p>
+              </div>
+
+              <p>Dear ${data.customerName},</p>
+              <p>Your order <strong>${data.orderNumber}</strong> has been successfully delivered.</p>
+
+              <div class="confirm-box">
+                <p style="margin: 0 0 10px 0; color: #92400E; font-weight: bold;">⏰ Action Required</p>
+                <p style="margin: 0; color: #78350F;">
+                  Please confirm receipt of your order to release payment to the seller.
+                  This helps us ensure you received your order in good condition.
+                </p>
+              </div>
+
+              <div style="text-align: center;">
+                <a href="${this.configService.get('APP_URL', 'http://localhost:3000')}/account/orders" class="button">
+                  Confirm Receipt
+                </a>
+              </div>
+
+              <p style="color: #666; font-size: 14px;">Tracking Number: ${data.trackingNumber}</p>
+            </div>
+            <div class="footer">
+              <p>Thank you for shopping with ${this.siteName}</p>
+              <p>&copy; ${new Date().getFullYear()} ${this.siteName}. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    return this.sendEmail(email);
+  }
+
+  /**
+   * Send buyer confirmation notification to admin/seller
+   */
+  async sendBuyerConfirmedNotification(data: {
+    adminEmail: string;
+    sellerEmail?: string;
+    orderNumber: string;
+    trackingNumber: string;
+    customerName: string;
+    sellerName?: string;
+  }) {
+    const recipients = [data.adminEmail];
+    if (data.sellerEmail) {
+      recipients.push(data.sellerEmail);
+    }
+
+    const emailPromises = recipients.map((email) => {
+      const isSeller = email === data.sellerEmail;
+      const emailTemplate: EmailTemplate = {
+        to: email,
+        subject: `✅ Delivery Confirmed - Order ${data.orderNumber}`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { text-align: center; padding: 20px 0; border-bottom: 2px solid #000; }
+              .content { padding: 30px 0; }
+              .success-box { background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 25px; border-radius: 12px; margin: 20px 0; text-align: center; color: white; }
+              .info-box { background: #EFF6FF; border: 2px solid #3B82F6; padding: 20px; border-radius: 8px; margin: 20px 0; }
+              .footer { text-align: center; padding: 20px 0; font-size: 12px; color: #666; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>${this.siteName}</h1>
+              </div>
+              <div class="content">
+                <div class="success-box">
+                  <h2 style="margin: 0; color: white;">✅ Delivery Confirmed</h2>
+                  <p style="margin: 10px 0 0; opacity: 0.9;">Customer has confirmed receipt</p>
+                </div>
+
+                <p>Dear ${isSeller ? data.sellerName || 'Seller' : 'Admin'},</p>
+                <p>Great news! ${data.customerName} has confirmed receipt of their order.</p>
+
+                <div class="info-box">
+                  <p style="margin: 8px 0;"><strong>Order Number:</strong> ${data.orderNumber}</p>
+                  <p style="margin: 8px 0;"><strong>Tracking Number:</strong> ${data.trackingNumber}</p>
+                  <p style="margin: 8px 0;"><strong>Confirmed by:</strong> ${data.customerName}</p>
+                  <p style="margin: 8px 0;"><strong>Status:</strong> <span style="color: #10B981; font-weight: bold;">Ready for Payout</span></p>
+                </div>
+
+                ${isSeller
+                  ? '<p>Your payout will be processed once the admin releases it. You will receive a notification when the payout is released.</p>'
+                  : '<p>This delivery is now ready for payout release. Please review and release the payout from the admin panel.</p>'
+                }
+              </div>
+              <div class="footer">
+                <p>&copy; ${new Date().getFullYear()} ${this.siteName}. All rights reserved.</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `,
+      };
+
+      return this.sendEmail(emailTemplate);
+    });
+
+    return Promise.all(emailPromises);
+  }
+
+  /**
+   * Send payout released notification to seller
+   */
+  async sendPayoutReleasedNotification(data: {
+    sellerEmail: string;
+    sellerName: string;
+    orderNumber: string;
+    trackingNumber: string;
+    payoutAmount: number;
+    currency: string;
+  }) {
+    const email: EmailTemplate = {
+      to: data.sellerEmail,
+      subject: `💰 Payout Released - Order ${data.orderNumber}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { text-align: center; padding: 20px 0; border-bottom: 2px solid #000; }
+            .content { padding: 30px 0; }
+            .payout-box { background: linear-gradient(135deg, #D4AF37 0%, #CBB57B 100%); padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center; }
+            .amount { font-size: 36px; font-weight: bold; color: #000; margin: 10px 0; }
+            .info-box { background: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 5px; }
+            .footer { text-align: center; padding: 20px 0; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${this.siteName}</h1>
+            </div>
+            <div class="content">
+              <div class="payout-box">
+                <h2 style="margin: 0; color: #000;">💰 Payout Released!</h2>
+                <p class="amount">${data.currency.toUpperCase()} ${data.payoutAmount.toFixed(2)}</p>
+                <p style="margin: 0; color: #000; opacity: 0.8;">Your earnings have been released</p>
+              </div>
+
+              <p>Dear ${data.sellerName},</p>
+              <p>Congratulations! Your payout for order <strong>${data.orderNumber}</strong> has been released.</p>
+
+              <div class="info-box">
+                <p style="margin: 8px 0;"><strong>Order Number:</strong> ${data.orderNumber}</p>
+                <p style="margin: 8px 0;"><strong>Tracking Number:</strong> ${data.trackingNumber}</p>
+                <p style="margin: 8px 0;"><strong>Payout Amount:</strong> ${data.currency.toUpperCase()} ${data.payoutAmount.toFixed(2)}</p>
+                <p style="margin: 8px 0;"><strong>Status:</strong> <span style="color: #10B981; font-weight: bold;">Released</span></p>
+              </div>
+
+              <p>The funds should appear in your account within 5-7 business days.</p>
+
+              <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                If you have any questions about this payout, please contact our support team.
+              </p>
+            </div>
+            <div class="footer">
+              <p>Thank you for being a valued seller</p>
+              <p>&copy; ${new Date().getFullYear()} ${this.siteName}. All rights reserved.</p>
             </div>
           </div>
         </body>

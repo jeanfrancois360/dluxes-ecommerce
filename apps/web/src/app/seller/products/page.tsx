@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api/client';
+import { PageLayout } from '@/components/layout/page-layout';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface Product {
   id: string;
   name: string;
   slug: string;
+  sku?: string;
   status: string;
   price: number;
   compareAtPrice: number | null;
@@ -47,8 +49,12 @@ export default function SellerProductsPage() {
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   useEffect(() => {
-    fetchProducts();
-  }, [page, statusFilter, sortBy, sortOrder]);
+    const timer = setTimeout(() => {
+      fetchProducts();
+    }, 300); // Debounce search
+
+    return () => clearTimeout(timer);
+  }, [page, statusFilter, sortBy, sortOrder, searchQuery]);
 
   const fetchProducts = async () => {
     try {
@@ -73,12 +79,6 @@ export default function SellerProductsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    fetchProducts();
   };
 
   const handleSelectAll = () => {
@@ -161,6 +161,35 @@ export default function SellerProductsPage() {
     }
   };
 
+  const handleExport = () => {
+    if (products.length === 0) return;
+
+    // Export to CSV logic
+    const csv = [
+      ['ID', 'Name', 'SKU', 'Category', 'Price', 'Stock', 'Status', 'Views'],
+      ...products.map((p) => [
+        p.id,
+        p.name,
+        p.sku || p.slug,
+        p.category?.name || 'N/A',
+        p.price,
+        p.inventory,
+        p.status,
+        p.viewCount,
+      ]),
+    ]
+      .map((row) => row.join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `products-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'ACTIVE':
@@ -184,25 +213,28 @@ export default function SellerProductsPage() {
 
   if (isLoading && products.length === 0) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
-        />
-      </div>
+      <PageLayout showCategoryNav={false}>
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
+          />
+        </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <PageLayout showCategoryNav={false}>
+      <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="bg-gradient-to-r from-white to-neutral-50 border-b border-neutral-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-black">Products</h1>
-              <p className="text-neutral-600 mt-1">Manage your product inventory</p>
+              <p className="text-neutral-600 mt-2">Manage your product inventory</p>
             </div>
             <Link
               href="/seller/products/new"
@@ -219,144 +251,104 @@ export default function SellerProductsPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters and Search */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Search */}
-              <div className="md:col-span-2">
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
-                />
-              </div>
-
-              {/* Status Filter */}
-              <select
-                value={statusFilter}
+        <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Search */}
+            <div className="md:col-span-2">
+              <input
+                type="text"
+                placeholder="Search by name or SKU..."
+                value={searchQuery}
                 onChange={(e) => {
-                  setStatusFilter(e.target.value);
+                  setSearchQuery(e.target.value);
                   setPage(1);
                 }}
-                className="px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
-              >
-                <option value="">All Status</option>
-                <option value="ACTIVE">Active</option>
-                <option value="DRAFT">Draft</option>
-                <option value="OUT_OF_STOCK">Out of Stock</option>
-                <option value="ARCHIVED">Archived</option>
-              </select>
-
-              {/* Sort */}
-              <select
-                value={`${sortBy}-${sortOrder}`}
-                onChange={(e) => {
-                  const [newSortBy, newSortOrder] = e.target.value.split('-');
-                  setSortBy(newSortBy);
-                  setSortOrder(newSortOrder);
-                  setPage(1);
-                }}
-                className="px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
-              >
-                <option value="createdAt-desc">Newest First</option>
-                <option value="createdAt-asc">Oldest First</option>
-                <option value="name-asc">Name (A-Z)</option>
-                <option value="name-desc">Name (Z-A)</option>
-                <option value="price-asc">Price (Low to High)</option>
-                <option value="price-desc">Price (High to Low)</option>
-                <option value="inventory-asc">Stock (Low to High)</option>
-                <option value="inventory-desc">Stock (High to Low)</option>
-              </select>
+                className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all font-medium"
+              />
             </div>
 
-            <button
-              type="submit"
-              className="px-6 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors"
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all font-medium cursor-pointer"
             >
-              Search
-            </button>
-          </form>
+              <option value="">All Status</option>
+              <option value="ACTIVE">Active</option>
+              <option value="DRAFT">Draft</option>
+              <option value="OUT_OF_STOCK">Out of Stock</option>
+              <option value="ARCHIVED">Archived</option>
+            </select>
+
+            {/* Sort */}
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [newSortBy, newSortOrder] = e.target.value.split('-');
+                setSortBy(newSortBy);
+                setSortOrder(newSortOrder);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all font-medium cursor-pointer"
+            >
+              <option value="createdAt-desc">Newest First</option>
+              <option value="createdAt-asc">Oldest First</option>
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="price-asc">Price (Low-High)</option>
+              <option value="price-desc">Price (High-Low)</option>
+              <option value="inventory-asc">Stock (Low-High)</option>
+              <option value="inventory-desc">Stock (High-Low)</option>
+            </select>
+          </div>
         </div>
 
         {/* Bulk Actions */}
         {selectedProducts.size > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gold/10 border border-gold rounded-xl p-4 mb-6"
-          >
+          <div className="bg-gradient-to-r from-gold to-[#a89158] text-black rounded-2xl shadow-2xl p-4 border border-gold/50">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="font-semibold text-black">
-                  {selectedProducts.size} product{selectedProducts.size > 1 ? 's' : ''} selected
-                </span>
+              <span className="font-semibold text-lg">{selectedProducts.size} products selected</span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleBulkStatusUpdate('ACTIVE')}
+                  disabled={bulkActionLoading}
+                  className="px-4 py-2 bg-white/90 hover:bg-white text-gray-900 rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg disabled:opacity-50"
+                >
+                  Activate
+                </button>
+                <button
+                  onClick={() => handleBulkStatusUpdate('DRAFT')}
+                  disabled={bulkActionLoading}
+                  className="px-4 py-2 bg-white/90 hover:bg-white text-gray-900 rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg disabled:opacity-50"
+                >
+                  Draft
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={bulkActionLoading}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg disabled:opacity-50"
+                >
+                  Delete
+                </button>
                 <button
                   onClick={() => setSelectedProducts(new Set())}
-                  className="text-sm text-neutral-600 hover:text-black transition-colors"
+                  disabled={bulkActionLoading}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg disabled:opacity-50"
                 >
-                  Clear selection
+                  Cancel
                 </button>
               </div>
-
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <button
-                    onClick={() => setShowBulkActions(!showBulkActions)}
-                    className="px-4 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors inline-flex items-center gap-2"
-                    disabled={bulkActionLoading}
-                  >
-                    {bulkActionLoading ? 'Processing...' : 'Bulk Actions'}
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  <AnimatePresence>
-                    {showBulkActions && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-10"
-                      >
-                        <button
-                          onClick={() => handleBulkStatusUpdate('ACTIVE')}
-                          className="w-full px-4 py-2 text-left hover:bg-neutral-50 transition-colors"
-                        >
-                          Set as Active
-                        </button>
-                        <button
-                          onClick={() => handleBulkStatusUpdate('DRAFT')}
-                          className="w-full px-4 py-2 text-left hover:bg-neutral-50 transition-colors"
-                        >
-                          Set as Draft
-                        </button>
-                        <button
-                          onClick={() => handleBulkStatusUpdate('ARCHIVED')}
-                          className="w-full px-4 py-2 text-left hover:bg-neutral-50 transition-colors"
-                        >
-                          Archive
-                        </button>
-                        <div className="border-t border-neutral-200 my-2" />
-                        <button
-                          onClick={handleBulkDelete}
-                          className="w-full px-4 py-2 text-left hover:bg-error-light text-error-dark transition-colors"
-                        >
-                          Delete Selected
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Products Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="relative bg-white rounded-2xl shadow-lg border border-neutral-200 overflow-hidden">
+          {/* Top accent */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"></div>
           {products.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-20 h-20 bg-neutral-100 rounded-full mx-auto mb-4 flex items-center justify-center">
@@ -378,113 +370,128 @@ export default function SellerProductsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    <th className="px-6 py-4 text-left">
+                <thead>
+                  <tr className="border-b-2 border-neutral-200 bg-neutral-50">
+                    <th className="px-6 py-4 text-left w-12">
                       <input
                         type="checkbox"
                         checked={selectedProducts.size === products.length && products.length > 0}
                         onChange={handleSelectAll}
-                        className="w-4 h-4 rounded border-neutral-300 text-gold focus:ring-gold"
+                        className="w-4 h-4 rounded border-neutral-300 bg-white text-gold focus:ring-2 focus:ring-gold/20 focus:ring-offset-0 transition-all cursor-pointer"
                       />
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-neutral-700">Product</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-neutral-700">Status</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-neutral-700">Price</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-neutral-700">Inventory</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-neutral-700">Views</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-neutral-700">Actions</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-2 text-black">Image <div className="w-1.5 h-1.5 rounded-full bg-gold"></div></div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-2 text-black">Product <div className="w-1.5 h-1.5 rounded-full bg-gold"></div></div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-2 text-black">SKU <div className="w-1.5 h-1.5 rounded-full bg-gold"></div></div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-2 text-black">Category <div className="w-1.5 h-1.5 rounded-full bg-gold"></div></div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-2 text-black">Price <div className="w-1.5 h-1.5 rounded-full bg-gold"></div></div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-2 text-black">Stock <div className="w-1.5 h-1.5 rounded-full bg-gold"></div></div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-2 text-black">Status <div className="w-1.5 h-1.5 rounded-full bg-gold"></div></div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-2 text-black">Actions <div className="w-1.5 h-1.5 rounded-full bg-gold"></div></div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
                   {products.map((product) => (
-                    <motion.tr
-                      key={product.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="hover:bg-neutral-50 transition-colors"
-                    >
+                    <tr key={product.id} className="group transition-all duration-200 hover:bg-neutral-50">
                       <td className="px-6 py-4">
                         <input
                           type="checkbox"
                           checked={selectedProducts.has(product.id)}
                           onChange={() => handleSelectProduct(product.id)}
-                          className="w-4 h-4 rounded border-neutral-300 text-gold focus:ring-gold"
+                          className="w-4 h-4 rounded border-neutral-300 bg-white text-gold focus:ring-2 focus:ring-gold/20 focus:ring-offset-0 transition-all cursor-pointer"
                         />
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-16 h-16 bg-neutral-100 rounded-lg overflow-hidden flex-shrink-0">
-                            {product.heroImage ? (
-                              <img
-                                src={product.heroImage}
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <svg className="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                              </div>
-                            )}
+                        {product.heroImage ? (
+                          <div className="relative w-14 h-14 rounded-lg overflow-hidden ring-2 ring-neutral-300 hover:ring-gold transition-all group">
+                            <img
+                              src={product.heroImage}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            />
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-black truncate">{product.name}</p>
-                            {product.category && (
-                              <p className="text-sm text-neutral-500">{product.category.name}</p>
-                            )}
+                        ) : (
+                          <div className="w-14 h-14 bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-lg flex items-center justify-center ring-2 ring-neutral-300">
+                            <svg className="w-7 h-7 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
                           </div>
-                        </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(product.status)}`}>
-                          {product.status}
+                        <div className="font-bold text-black group-hover:text-gold/80 transition-colors">{product.name}</div>
+                        <div className="text-xs text-neutral-600 mt-0.5 font-medium">{product.slug}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-mono text-xs bg-neutral-100 px-2 py-1 rounded text-neutral-800 font-semibold">
+                          {product.sku || product.slug}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div>
-                          <p className="font-semibold text-black">
-                            ${formatCurrencyAmount(Number(product.price), 2)}
-                          </p>
-                          {product.compareAtPrice && (
-                            <p className="text-sm text-neutral-500 line-through">
-                              ${formatCurrencyAmount(Number(product.compareAtPrice), 2)}
-                            </p>
-                          )}
-                        </div>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gold/10 border border-gold rounded-lg text-xs font-semibold text-gold">
+                          <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
+                          {product.category?.name || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-bold text-black">
+                        ${formatCurrencyAmount(Number(product.price), 2)}
+                        {product.compareAtPrice && (
+                          <div className="text-xs text-neutral-500 line-through font-normal">
+                            ${formatCurrencyAmount(Number(product.compareAtPrice), 2)}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`font-semibold ${getInventoryColor(product.inventory)}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${getInventoryColor(product.inventory) === 'text-error-DEFAULT' ? 'bg-red-100 text-red-700 border border-red-300' : getInventoryColor(product.inventory) === 'text-warning-DEFAULT' ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : 'bg-green-100 text-green-700 border border-green-300'}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${getInventoryColor(product.inventory) === 'text-error-DEFAULT' ? 'bg-red-600' : getInventoryColor(product.inventory) === 'text-warning-DEFAULT' ? 'bg-yellow-600' : 'bg-green-600'}`}></div>
                           {product.inventory}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-neutral-600">{product.viewCount}</span>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${product.status.toUpperCase() === 'ACTIVE' ? 'bg-green-100 text-green-700 border border-green-300' : product.status.toUpperCase() === 'OUT_OF_STOCK' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-neutral-100 text-neutral-700 border border-neutral-300'}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${product.status.toUpperCase() === 'ACTIVE' ? 'bg-green-600' : product.status.toUpperCase() === 'OUT_OF_STOCK' ? 'bg-red-600' : 'bg-neutral-600'}`}></div>
+                          {product.status}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => router.push(`/seller/products/${product.id}/edit`)}
-                            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-                            title="Edit"
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/seller/products/${product.id}/edit`}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gold/20 hover:bg-gold/30 border border-gold/30 text-gold rounded-lg text-xs font-semibold transition-all hover:scale-105"
                           >
-                            <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                          </button>
+                            Edit
+                          </Link>
                           <button
                             onClick={() => handleDeleteProduct(product.id, product.name)}
-                            className="p-2 hover:bg-error-light rounded-lg transition-colors"
-                            title="Delete"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-lg text-xs font-semibold transition-all hover:scale-105"
                           >
-                            <svg className="w-5 h-5 text-error-DEFAULT" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
+                            Delete
                           </button>
                         </div>
                       </td>
-                    </motion.tr>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -493,26 +500,28 @@ export default function SellerProductsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="border-t border-neutral-200 px-6 py-4">
+            <div className="px-6 py-4 border-t-2 border-neutral-200 bg-neutral-50">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-neutral-600">
-                  Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, total)} of {total} products
-                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-neutral-700 font-medium">
+                    Showing <span className="font-bold text-black">{((page - 1) * 20) + 1}</span> to <span className="font-bold text-black">{Math.min(page * 20, total)}</span> of <span className="font-bold text-black">{total}</span> products
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 border-2 border-neutral-300 bg-white text-black rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-gold transition-all"
                   >
                     Previous
                   </button>
-                  <span className="px-4 py-2 text-sm text-neutral-600">
+                  <span className="text-sm text-black font-bold px-3">
                     Page {page} of {totalPages}
                   </span>
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 border-2 border-neutral-300 bg-white text-black rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-gold transition-all"
                   >
                     Next
                   </button>
@@ -520,8 +529,27 @@ export default function SellerProductsPage() {
               </div>
             </div>
           )}
+
+          {/* Bottom accent border */}
+          <div className="h-1 bg-gradient-to-r from-transparent via-gold/50 to-transparent"></div>
         </div>
+
+        {/* Export Button */}
+        {products.length > 0 && (
+          <div className="flex justify-end">
+            <button
+              onClick={handleExport}
+              className="px-4 py-2.5 bg-gradient-to-r from-gray-900 to-gray-800 border border-gray-700 text-gray-300 rounded-lg hover:border-gold/50 hover:text-gold transition-all flex items-center gap-2 shadow-lg font-medium"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Export to CSV
+            </button>
+          </div>
+        )}
       </div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }

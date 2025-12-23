@@ -133,8 +133,7 @@ export default function ProductDetailPage() {
 
   // Calculate stock status
   const stockStatus = useMemo(() => {
-    if (!product) return { inStock: false, quantity: 0 };
-    if (!product.trackInventory) return { inStock: true, quantity: 999 };
+    if (!product) return { inStock: false, quantity: 0, showQuantity: false };
 
     // If variants exist and one is selected, check variant stock
     const selectedVar = product.variants?.find(
@@ -144,10 +143,20 @@ export default function ProductDetailPage() {
     );
 
     if (selectedVar) {
-      return { inStock: selectedVar.isAvailable && selectedVar.stock > 0, quantity: selectedVar.stock };
+      return {
+        inStock: selectedVar.isAvailable && selectedVar.stock > 0,
+        quantity: selectedVar.stock,
+        showQuantity: true
+      };
     }
 
-    return { inStock: product.stock > 0, quantity: product.stock };
+    // Use inventory field from database
+    const inventoryCount = product.inventory ?? 0;
+    return {
+      inStock: inventoryCount > 0,
+      quantity: inventoryCount,
+      showQuantity: inventoryCount > 0
+    };
   }, [product, selectedVariant]);
 
   // Get product images - use variant-specific image if available
@@ -590,7 +599,9 @@ export default function ProductDetailPage() {
                       <>
                         <div className="w-2 h-2 bg-green-500 rounded-full" />
                         <span className="text-sm text-green-600 font-medium">
-                          In Stock ({stockStatus.quantity} available)
+                          {stockStatus.showQuantity
+                            ? `In Stock (${stockStatus.quantity} available)`
+                            : 'In Stock'}
                         </span>
                       </>
                     ) : (
@@ -736,7 +747,11 @@ export default function ProductDetailPage() {
                         <div className="flex justify-between py-2 border-b border-neutral-200">
                           <dt className="text-neutral-600">Availability</dt>
                           <dd className="font-medium">
-                            {stockStatus.inStock ? `In Stock (${stockStatus.quantity})` : 'Out of Stock'}
+                            {stockStatus.inStock
+                              ? stockStatus.showQuantity
+                                ? `In Stock (${stockStatus.quantity})`
+                                : 'In Stock'
+                              : 'Out of Stock'}
                           </dd>
                         </div>
                       </dl>

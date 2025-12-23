@@ -2,12 +2,20 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../database/prisma.service';
 import { DeliveryStatus, DeliveryConfirmationType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { DeliveryAssignmentService } from './delivery-assignment.service';
+import { DeliveryAuditService } from './delivery-audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class DeliveryService {
   private readonly logger = new Logger(DeliveryService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly assignmentService: DeliveryAssignmentService,
+    private readonly auditService: DeliveryAuditService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /**
    * Create delivery record for an order
@@ -54,6 +62,131 @@ export class DeliveryService {
     });
 
     this.logger.log(`Created delivery for order ${order.orderNumber}: ${delivery.trackingNumber}`);
+
+    return delivery;
+  }
+
+  /**
+   * Auto-create delivery for order with intelligent provider selection
+   */
+  async autoCreateDeliveryForOrder(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        shippingAddress: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Check if delivery already exists
+    const existingDelivery = await this.prisma.delivery.findUnique({
+      where: { orderId },
+    });
+
+    if (existingDelivery) {
+      this.logger.warn(`Delivery already exists for order ${order.orderNumber}`);
+      return existingDelivery;
+    }
+
+    // Use auto-assignment to select best provider
+    const selectedProvider = await this.assignmentService.autoAssignProvider({
+      destinationCountry: order.shippingAddress.country,
+      orderValue: Number(order.total),
+      urgency: 'standard',
+    });
+
+    if (!selectedProvider) {
+      this.logger.error(`No suitable provider found for order ${order.orderNumber}`);
+      throw new BadRequestException('No delivery provider available for this destination');
+    }
+
+    // Calculate expected delivery date
+    const expectedDeliveryDate = this.assignmentService.calculateExpectedDelivery(
+      selectedProvider,
+      order.shippingAddress.country
+    );
+
+    // Calculate commission
+    const deliveryFee = Number(order.shipping);
+    const commissionRate = Number(selectedProvider.commissionRate);
+    const partnerCommission =
+      selectedProvider.commissionType === 'PERCENTAGE'
+        ? (deliveryFee * commissionRate) / 100
+        : commissionRate;
+    const platformFee = 2.5; // Fixed platform fee
+
+    // Prepare addresses
+    const pickupAddress = {
+      name: 'NextPik Warehouse', // TODO: Get from seller/store
+      address1: 'KG 123 St',
+      city: 'Kigali',
+      country: 'Rwanda',
+      postalCode: '00000',
+    };
+
+    const deliveryAddress = {
+      name: `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`,
+      address1: order.shippingAddress.address1,
+      address2: order.shippingAddress.address2,
+      city: order.shippingAddress.city,
+      province: order.shippingAddress.province,
+      country: order.shippingAddress.country,
+      postalCode: order.shippingAddress.postalCode,
+    };
+
+    // Create delivery with selected provider
+    const delivery = await this.createDelivery({
+      orderId,
+      providerId: selectedProvider.id,
+      pickupAddress,
+      deliveryAddress,
+      expectedDeliveryDate,
+      deliveryFee,
+      partnerCommission,
+      platformFee,
+    });
+
+    this.logger.log(
+      `Auto-created delivery for order ${order.orderNumber} with provider ${selectedProvider.name}`
+    );
+
+    // Send delivery assigned notification to buyer
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: order.userId },
+        select: { email: true, firstName: true, lastName: true },
+      });
+
+      if (user?.email) {
+        await this.notificationsService.sendDeliveryAssigned({
+          customerEmail: user.email,
+          customerName: `${user.firstName} ${user.lastName}`.trim() || 'Customer',
+          orderNumber: order.orderNumber,
+          trackingNumber: delivery.trackingNumber,
+          providerName: selectedProvider.name,
+          expectedDeliveryDate: expectedDeliveryDate
+            ? new Date(expectedDeliveryDate).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })
+            : undefined,
+        });
+        this.logger.log(`Sent delivery assigned notification to ${user.email}`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to send delivery assigned notification:', error);
+      // Don't throw - notification failure shouldn't block delivery creation
+    }
 
     return delivery;
   }
@@ -159,6 +292,29 @@ export class DeliveryService {
     });
 
     this.logger.log(`Updated delivery ${delivery.trackingNumber} status to ${status}`);
+
+    // Send notification when delivery status changes to DELIVERED
+    if (status === 'DELIVERED') {
+      try {
+        const user = await this.prisma.user.findUnique({
+          where: { id: delivery.order.userId },
+          select: { email: true, firstName: true, lastName: true },
+        });
+
+        if (user?.email) {
+          await this.notificationsService.sendDeliveryDelivered({
+            customerEmail: user.email,
+            customerName: `${user.firstName} ${user.lastName}`.trim() || 'Customer',
+            orderNumber: delivery.order.orderNumber,
+            trackingNumber: delivery.trackingNumber,
+          });
+          this.logger.log(`Sent delivery delivered notification to ${user.email}`);
+        }
+      } catch (error) {
+        this.logger.error('Failed to send delivery delivered notification:', error);
+        // Don't throw - notification failure shouldn't block status update
+      }
+    }
 
     return updated;
   }
@@ -432,5 +588,215 @@ export class DeliveryService {
     };
 
     return icons[status] || 'circle';
+  }
+
+  /**
+   * Buyer confirms receipt of delivery
+   * This marks the delivery as confirmed and makes it eligible for payout
+   */
+  async buyerConfirmDelivery(deliveryId: string, buyerId: string) {
+    const delivery = await this.prisma.delivery.findUnique({
+      where: { id: deliveryId },
+      include: {
+        order: true,
+      },
+    });
+
+    if (!delivery) {
+      throw new NotFoundException('Delivery not found');
+    }
+
+    // Verify buyer owns this order
+    if (delivery.order.userId !== buyerId) {
+      throw new BadRequestException('You can only confirm your own deliveries');
+    }
+
+    // Check delivery status
+    if (delivery.currentStatus !== 'DELIVERED') {
+      throw new BadRequestException('Delivery must be marked as delivered before confirmation');
+    }
+
+    if (delivery.buyerConfirmed) {
+      throw new BadRequestException('Delivery has already been confirmed');
+    }
+
+    // Update delivery
+    const updated = await this.prisma.delivery.update({
+      where: { id: deliveryId },
+      data: {
+        buyerConfirmed: true,
+        buyerConfirmedAt: new Date(),
+      },
+    });
+
+    // Create audit log
+    await this.auditService.log({
+      deliveryId,
+      action: 'BUYER_CONFIRMED',
+      performedBy: buyerId,
+      userRole: 'BUYER',
+      notes: 'Buyer confirmed receipt of delivery',
+    });
+
+    // Create order timeline entry
+    await this.prisma.orderTimeline.create({
+      data: {
+        orderId: delivery.orderId,
+        status: 'DELIVERED',
+        title: 'Receipt Confirmed',
+        description: 'You have confirmed receipt of your order',
+        icon: 'check-circle',
+      },
+    });
+
+    this.logger.log(
+      `Buyer ${buyerId} confirmed delivery ${delivery.trackingNumber}`
+    );
+
+    // Send notification to admin and seller about confirmed delivery
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: buyerId },
+        select: { email: true, firstName: true, lastName: true },
+      });
+
+      // Get admin email from settings or env
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@luxuryecommerce.com';
+
+      // Get seller information from order
+      const orderWithSeller = await this.prisma.order.findUnique({
+        where: { id: delivery.orderId },
+        include: {
+          items: {
+            include: {
+              product: {
+                include: {
+                  store: {
+                    include: {
+                      user: {
+                        select: {
+                          email: true,
+                          firstName: true,
+                          lastName: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Get seller email (from first item's product store)
+      const sellerEmail = orderWithSeller?.items[0]?.product?.store?.user?.email;
+      const sellerName = orderWithSeller?.items[0]?.product?.store?.user
+        ? `${orderWithSeller.items[0].product.store.user.firstName} ${orderWithSeller.items[0].product.store.user.lastName}`.trim()
+        : undefined;
+
+      await this.notificationsService.sendBuyerConfirmedNotification({
+        adminEmail,
+        sellerEmail: sellerEmail || undefined,
+        orderNumber: delivery.order.orderNumber,
+        trackingNumber: delivery.trackingNumber,
+        customerName: user ? `${user.firstName} ${user.lastName}`.trim() || 'Customer' : 'Customer',
+        sellerName,
+      });
+
+      this.logger.log(`Sent buyer confirmed notifications to admin${sellerEmail ? ' and seller' : ''}`);
+    } catch (error) {
+      this.logger.error('Failed to send buyer confirmed notification:', error);
+      // Don't throw - notification failure shouldn't block confirmation
+    }
+
+    return updated;
+  }
+
+  /**
+   * Upload proof of delivery
+   * Called by delivery partner or admin after delivery is completed
+   */
+  async uploadProofOfDelivery(deliveryId: string, proofUrl: string, uploadedBy: string) {
+    const delivery = await this.prisma.delivery.findUnique({
+      where: { id: deliveryId },
+      include: { order: true },
+    });
+
+    if (!delivery) {
+      throw new NotFoundException('Delivery not found');
+    }
+
+    // Only allow upload if delivery is OUT_FOR_DELIVERY or DELIVERED
+    if (delivery.currentStatus !== 'OUT_FOR_DELIVERY' && delivery.currentStatus !== 'DELIVERED') {
+      throw new BadRequestException(
+        'Proof of delivery can only be uploaded when delivery is out for delivery or delivered'
+      );
+    }
+
+    // Update delivery with proof URL
+    const updated = await this.prisma.delivery.update({
+      where: { id: deliveryId },
+      data: {
+        proofOfDeliveryUrl: proofUrl,
+      },
+    });
+
+    // Create audit log
+    await this.auditService.log({
+      deliveryId,
+      action: 'PROOF_UPLOADED',
+      performedBy: uploadedBy,
+      userRole: 'DELIVERY_PARTNER',
+      notes: 'Proof of delivery uploaded',
+      metadata: {
+        proofUrl,
+      },
+    });
+
+    // Create order timeline entry
+    await this.prisma.orderTimeline.create({
+      data: {
+        orderId: delivery.orderId,
+        status: 'DELIVERED',
+        title: 'Proof of Delivery Uploaded',
+        description: 'Delivery partner uploaded proof of delivery',
+        icon: 'file-text',
+      },
+    });
+
+    this.logger.log(`Proof of delivery uploaded for ${delivery.trackingNumber}`);
+
+    return updated;
+  }
+
+  /**
+   * Get delivery by order ID (for buyer to confirm)
+   */
+  async getDeliveryByOrder(orderId: string, userId: string) {
+    const delivery = await this.prisma.delivery.findUnique({
+      where: { orderId },
+      include: {
+        order: true,
+        provider: {
+          select: {
+            name: true,
+            contactEmail: true,
+            contactPhone: true,
+          },
+        },
+      },
+    });
+
+    if (!delivery) {
+      throw new NotFoundException('Delivery not found for this order');
+    }
+
+    // Verify user owns this order
+    if (delivery.order.userId !== userId) {
+      throw new BadRequestException('Unauthorized');
+    }
+
+    return delivery;
   }
 }

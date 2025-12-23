@@ -262,13 +262,243 @@ export class SellerService {
   }
 
   /**
+   * Get single order details for seller
+   */
+  async getOrder(userId: string, orderId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        items: {
+          some: {
+            product: {
+              storeId: store.id,
+            },
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        items: {
+          where: {
+            product: {
+              storeId: store.id,
+            },
+          },
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                heroImage: true,
+              },
+            },
+          },
+        },
+        shippingAddress: true,
+        delivery: {
+          include: {
+            deliveryPartner: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+              },
+            },
+            provider: {
+              select: {
+                id: true,
+                name: true,
+                contactPhone: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found or does not belong to your store');
+    }
+
+    return order;
+  }
+
+  /**
+   * Update order status
+   * Sellers can only update to: PROCESSING, SHIPPED, DELIVERED
+   */
+  async updateOrderStatus(userId: string, orderId: string, status: string, notes?: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Verify order belongs to seller's store
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        items: {
+          some: {
+            product: {
+              storeId: store.id,
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found or does not belong to your store');
+    }
+
+    // Validate allowed status transitions
+    const allowedStatuses = ['PROCESSING', 'SHIPPED', 'DELIVERED'];
+    if (!allowedStatuses.includes(status)) {
+      throw new ForbiddenException(`Sellers can only update order status to: ${allowedStatuses.join(', ')}`);
+    }
+
+    // Validate status transition logic
+    if (status === 'SHIPPED' && !['PROCESSING', 'CONFIRMED'].includes(order.status)) {
+      throw new ForbiddenException('Order must be in PROCESSING or CONFIRMED status to mark as SHIPPED');
+    }
+
+    if (status === 'DELIVERED' && order.status !== 'SHIPPED') {
+      throw new ForbiddenException('Order must be SHIPPED before marking as DELIVERED');
+    }
+
+    // Update order status
+    const updatedOrder = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: status as any, // Cast to satisfy Prisma type
+        notes: notes ? `${order.notes || ''}\n[${new Date().toISOString()}] ${notes}` : order.notes,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        items: {
+          where: {
+            product: {
+              storeId: store.id,
+            },
+          },
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    return {
+      message: `Order status updated to ${status}`,
+      order: updatedOrder,
+    };
+  }
+
+  /**
+   * Update shipping information
+   */
+  async updateShippingInfo(userId: string, orderId: string, data: { trackingNumber?: string; carrier?: string; notes?: string }) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Verify order belongs to seller's store
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        items: {
+          some: {
+            product: {
+              storeId: store.id,
+            },
+          },
+        },
+      },
+      include: {
+        delivery: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found or does not belong to your store');
+    }
+
+    // Update delivery tracking information if delivery exists
+    if (order.delivery && data.trackingNumber) {
+      await this.prisma.delivery.update({
+        where: { id: order.delivery.id },
+        data: {
+          trackingNumber: data.trackingNumber,
+          trackingUrl: data.carrier ? `https://${data.carrier}.com/track/${data.trackingNumber}` : undefined,
+        },
+      });
+    }
+
+    // Update order notes if provided
+    if (data.notes) {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          notes: `${order.notes || ''}\n[${new Date().toISOString()}] ${data.notes}`,
+        },
+      });
+    }
+
+    // Fetch updated order with delivery
+    const updatedOrder = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        delivery: true,
+      },
+    });
+
+    return {
+      message: 'Shipping information updated successfully',
+      order: updatedOrder,
+    };
+  }
+
+  /**
    * Get seller's dashboard summary
    */
   async getDashboardSummary(userId: string) {
-    const [productStats, orderStats, store] = await Promise.all([
-      this.getProductStats(userId),
-      this.getOrderStats(userId),
-      this.prisma.store.findUnique({
+    console.log('[DASHBOARD] Starting getDashboardSummary for userId:', userId);
+
+    try {
+      // First check if store exists
+      console.log('[DASHBOARD] Step 1: Fetching store...');
+      const store = await this.prisma.store.findUnique({
         where: { userId },
         select: {
           id: true,
@@ -282,18 +512,75 @@ export class SellerService {
           totalProducts: true,
           createdAt: true,
         },
-      }),
-    ]);
+      });
+      console.log('[DASHBOARD] Store fetched:', store ? 'Found' : 'Not found');
 
-    if (!store) {
-      throw new NotFoundException('Store not found. Please create a store first.');
+      if (!store) {
+        throw new NotFoundException('Store not found. Please create a store first.');
+      }
+
+      // Now get all stats in parallel (store exists, safe to proceed)
+      console.log('[DASHBOARD] Step 2: Fetching product and order stats...');
+      let productStats, orderStats;
+      try {
+        productStats = await this.getProductStats(userId);
+        console.log('[DASHBOARD] Product stats fetched successfully');
+      } catch (error) {
+        console.error('[DASHBOARD] ERROR in getProductStats:', error.message);
+        throw error;
+      }
+
+      try {
+        orderStats = await this.getOrderStats(userId);
+        console.log('[DASHBOARD] Order stats fetched successfully');
+      } catch (error) {
+        console.error('[DASHBOARD] ERROR in getOrderStats:', error.message);
+        throw error;
+      }
+      console.log('[DASHBOARD] Stats fetched successfully');
+
+      // Get recent activity (might be empty for new stores)
+      console.log('[DASHBOARD] Step 3: Fetching recent activity...');
+      let recentActivity = [];
+      try {
+        recentActivity = await this.getRecentActivity(userId, 5);
+        console.log('[DASHBOARD] Activity fetched:', recentActivity.length, 'items');
+      } catch (activityError) {
+        console.warn('[DASHBOARD] Failed to fetch recent activity:', activityError);
+        recentActivity = [];
+      }
+
+      // Calculate payouts data
+      console.log('[DASHBOARD] Step 4: Calculating payouts...');
+      const payouts = {
+        totalEarnings: Number(orderStats.totalRevenue) || 0,
+        pendingBalance: Number(orderStats.totalRevenue) * 0.3 || 0,
+        availableBalance: Number(orderStats.totalRevenue) * 0.7 || 0,
+        nextPayoutDate: null,
+      };
+
+      // Convert Decimal fields to numbers for JSON serialization
+      console.log('[DASHBOARD] Step 5: Preparing response...');
+      const response = {
+        store: {
+          ...store,
+          rating: store.rating ? Number(store.rating) : null,
+          totalSales: store.totalSales ? Number(store.totalSales) : 0,
+        },
+        products: productStats,
+        orders: orderStats,
+        payouts,
+        recentActivity,
+      };
+
+      console.log('[DASHBOARD] Response prepared successfully');
+      console.log('[DASHBOARD] Full response:', JSON.stringify(response, null, 2));
+      return response;
+    } catch (error) {
+      console.error('[DASHBOARD] ERROR in getDashboardSummary:', error.message);
+      console.error('[DASHBOARD] Error stack:', error.stack);
+      throw error;
     }
-
-    return {
-      store,
-      products: productStats,
-      orders: orderStats,
-    };
   }
 
   /**
@@ -515,6 +802,405 @@ export class SellerService {
     return {
       message: `${result.count} products deleted successfully`,
       count: result.count,
+    };
+  }
+
+  // ============================================================================
+  // Analytics
+  // ============================================================================
+
+  /**
+   * Get revenue analytics with trend data
+   */
+  async getRevenueAnalytics(userId: string, period: 'daily' | 'weekly' | 'monthly' = 'monthly') {
+    try {
+      const store = await this.prisma.store.findUnique({
+        where: { userId },
+      });
+
+      if (!store) {
+        throw new NotFoundException('Store not found');
+      }
+
+    // Calculate date range based on period
+    const now = new Date();
+    let startDate: Date;
+    let groupByFormat: string;
+
+    switch (period) {
+      case 'daily':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
+        groupByFormat = 'day';
+        break;
+      case 'weekly':
+        startDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000); // Last 12 weeks
+        groupByFormat = 'week';
+        break;
+      case 'monthly':
+      default:
+        startDate = new Date(now.getTime() - 12 * 30 * 24 * 60 * 60 * 1000); // Last 12 months
+        groupByFormat = 'month';
+        break;
+    }
+
+    // Get orders within date range
+    const orders = await this.prisma.order.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+        },
+        items: {
+          some: {
+            product: {
+              storeId: store.id,
+            },
+          },
+        },
+        status: {
+          notIn: ['CANCELLED'],
+        },
+      },
+      include: {
+        items: {
+          where: {
+            product: {
+              storeId: store.id,
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    // Group orders by period and calculate revenue
+    const revenueMap = new Map<string, { amount: number; orders: number }>();
+
+    orders.forEach((order) => {
+      const orderRevenue = order.items.reduce((sum, item) => sum + Number(item.total), 0);
+      const dateKey = this.formatDateForPeriod(order.createdAt, groupByFormat);
+
+      const existing = revenueMap.get(dateKey) || { amount: 0, orders: 0 };
+      revenueMap.set(dateKey, {
+        amount: existing.amount + orderRevenue,
+        orders: existing.orders + 1,
+      });
+    });
+
+    // Convert to array and fill gaps
+    const data = this.fillRevenueDateGaps(revenueMap, startDate, now, period);
+
+      // Calculate total and trend
+      const total = data.reduce((sum, item) => sum + item.amount, 0);
+      const trend = this.calculateRevenueTrend(data, period);
+
+      return {
+        period,
+        data,
+        total,
+        trend,
+      };
+    } catch (error) {
+      console.error('Error in getRevenueAnalytics:', error);
+      // Return empty data instead of throwing
+      return {
+        period,
+        data: [],
+        total: 0,
+        trend: { value: 0, isPositive: true },
+      };
+    }
+  }
+
+  /**
+   * Get top performing products
+   */
+  async getTopProducts(userId: string, limit: number = 5) {
+    try {
+      const store = await this.prisma.store.findUnique({
+        where: { userId },
+      });
+
+      if (!store) {
+        throw new NotFoundException('Store not found');
+      }
+
+      // Get all order items for this store's products
+      const orderItems = await this.prisma.orderItem.findMany({
+        where: {
+          product: {
+            storeId: store.id,
+          },
+          order: {
+            status: {
+              notIn: ['CANCELLED'],
+            },
+          },
+        },
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              heroImage: true,
+              viewCount: true,
+            },
+          },
+        },
+      });
+
+      // Group by product and calculate metrics
+      const productMetrics = new Map<string, any>();
+
+      orderItems.forEach((item) => {
+        const productId = item.product.id;
+        const existing = productMetrics.get(productId);
+
+        if (existing) {
+          existing.sales += item.quantity;
+          existing.revenue += Number(item.total);
+        } else {
+          productMetrics.set(productId, {
+            id: item.product.id,
+            name: item.product.name,
+            slug: item.product.slug,
+            image: item.product.heroImage,
+            sales: item.quantity,
+            revenue: Number(item.total),
+            views: item.product.viewCount,
+          });
+        }
+      });
+
+      // Convert to array, sort by revenue, and return top N
+      const topProducts = Array.from(productMetrics.values())
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, limit);
+
+      return topProducts;
+    } catch (error) {
+      console.error('Error in getTopProducts:', error);
+      return []; // Return empty array on error
+    }
+  }
+
+  /**
+   * Get recent activity feed
+   */
+  async getRecentActivity(userId: string, limit: number = 10) {
+    try {
+      const store = await this.prisma.store.findUnique({
+        where: { userId },
+      });
+
+      if (!store) {
+        throw new NotFoundException('Store not found');
+      }
+
+      const activities: any[] = [];
+
+      // Get recent orders
+      const recentOrders = await this.prisma.order.findMany({
+        where: {
+          items: {
+            some: {
+              product: {
+                storeId: store.id,
+              },
+            },
+          },
+        },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 5,
+      });
+
+      recentOrders.forEach((order) => {
+        activities.push({
+          id: `order-${order.id}`,
+          type: 'order',
+          title: 'New Order',
+          description: `Order #${order.orderNumber} from ${order.user.firstName} ${order.user.lastName}`,
+          timestamp: order.createdAt.toISOString(),
+          metadata: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            status: order.status,
+          },
+        });
+      });
+
+      // Get recent products
+      const recentProducts = await this.prisma.product.findMany({
+        where: {
+          storeId: store.id,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 3,
+      });
+
+      recentProducts.forEach((product) => {
+        activities.push({
+          id: `product-${product.id}`,
+          type: 'product',
+          title: 'Product Created',
+          description: `${product.name} was added to your store`,
+          timestamp: product.createdAt.toISOString(),
+          metadata: {
+            productId: product.id,
+            productName: product.name,
+            status: product.status,
+          },
+        });
+      });
+
+      // Sort by timestamp and limit
+      return activities
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, limit);
+    } catch (error) {
+      console.error('Error in getRecentActivity:', error);
+      return []; // Return empty array on error
+    }
+  }
+
+  /**
+   * Get order status breakdown for analytics
+   */
+  async getOrderStatusBreakdown(userId: string) {
+    try {
+      const orderStats = await this.getOrderStats(userId);
+
+      return {
+        pending: orderStats.pending,
+        processing: orderStats.processing,
+        shipped: orderStats.shipped,
+        delivered: orderStats.delivered,
+        cancelled: orderStats.cancelled,
+        total: orderStats.total,
+      };
+    } catch (error) {
+      console.error('Error in getOrderStatusBreakdown:', error);
+      // Return empty breakdown on error
+      return {
+        pending: 0,
+        processing: 0,
+        shipped: 0,
+        delivered: 0,
+        cancelled: 0,
+        total: 0,
+      };
+    }
+  }
+
+  // ============================================================================
+  // Helper Methods
+  // ============================================================================
+
+  /**
+   * Format date based on period
+   */
+  private formatDateForPeriod(date: Date, format: string): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    switch (format) {
+      case 'day':
+        return `${year}-${month}-${day}`;
+      case 'week':
+        const weekNumber = this.getWeekNumber(date);
+        return `${year}-W${String(weekNumber).padStart(2, '0')}`;
+      case 'month':
+        return `${year}-${month}`;
+      default:
+        return `${year}-${month}-${day}`;
+    }
+  }
+
+  /**
+   * Get ISO week number
+   */
+  private getWeekNumber(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
+
+  /**
+   * Fill gaps in revenue data
+   */
+  private fillRevenueDateGaps(
+    revenueMap: Map<string, { amount: number; orders: number }>,
+    startDate: Date,
+    endDate: Date,
+    period: string,
+  ) {
+    const data: Array<{ date: string; amount: number; orders: number }> = [];
+    const current = new Date(startDate);
+
+    while (current <= endDate) {
+      const dateKey = this.formatDateForPeriod(current, period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month');
+      const revenueData = revenueMap.get(dateKey) || { amount: 0, orders: 0 };
+
+      data.push({
+        date: dateKey,
+        amount: revenueData.amount,
+        orders: revenueData.orders,
+      });
+
+      // Increment date based on period
+      if (period === 'daily') {
+        current.setDate(current.getDate() + 1);
+      } else if (period === 'weekly') {
+        current.setDate(current.getDate() + 7);
+      } else {
+        current.setMonth(current.getMonth() + 1);
+      }
+    }
+
+    return data;
+  }
+
+  /**
+   * Calculate revenue trend
+   */
+  private calculateRevenueTrend(data: Array<{ amount: number }>, period: string) {
+    if (data.length < 2) {
+      return { value: 0, isPositive: true };
+    }
+
+    const halfPoint = Math.floor(data.length / 2);
+    const firstHalf = data.slice(0, halfPoint);
+    const secondHalf = data.slice(halfPoint);
+
+    const firstHalfTotal = firstHalf.reduce((sum, item) => sum + item.amount, 0);
+    const secondHalfTotal = secondHalf.reduce((sum, item) => sum + item.amount, 0);
+
+    if (firstHalfTotal === 0) {
+      return { value: 0, isPositive: true };
+    }
+
+    const percentChange = ((secondHalfTotal - firstHalfTotal) / firstHalfTotal) * 100;
+
+    return {
+      value: Math.abs(Math.round(percentChange * 10) / 10),
+      isPositive: percentChange >= 0,
     };
   }
 }

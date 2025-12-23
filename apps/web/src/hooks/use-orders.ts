@@ -42,10 +42,12 @@ export function useOrders(options: UseOrdersOptions = {}): UseOrdersReturn {
         sortOrder: sortBy === 'recent' ? 'desc' : 'asc',
       });
 
-      if (response.success) {
-        setOrders(response.data.data);
-        setTotal(response.data.meta.total);
-        setTotalPages(response.data.meta.totalPages);
+      // apiClient already unwraps { success, data } response
+      // so response = { data: [...orders], meta: {...} }
+      if (response && response.data) {
+        setOrders(response.data);
+        setTotal(response.meta.total);
+        setTotalPages(response.meta.totalPages);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch orders');
@@ -84,8 +86,9 @@ export function useOrder(id: string) {
     try {
       const response = await api.orders.getOrder(id);
 
-      if (response.success) {
-        setOrder(response.data);
+      // apiClient already unwraps { success, data } response
+      if (response) {
+        setOrder(response);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch order');
@@ -118,7 +121,8 @@ export function useCancelOrder() {
     try {
       const response = await api.orders.cancelOrder(orderId);
 
-      if (response.success) {
+      // apiClient already unwraps { success, data } response
+      if (response) {
         return true;
       }
       return false;
@@ -149,9 +153,10 @@ export function useTrackOrder() {
     try {
       const response = await api.orders.trackOrder(orderNumber, email);
 
-      if (response.success) {
-        setTrackingData(response.data);
-        return response.data;
+      // apiClient already unwraps { success, data } response
+      if (response) {
+        setTrackingData(response);
+        return response;
       }
     } catch (err: any) {
       setError(err.message || 'Failed to track order');

@@ -33,7 +33,7 @@ export class SellerController {
    */
   @Get('dashboard')
   getDashboardSummary(@Req() req: any) {
-    return this.sellerService.getDashboardSummary(req.user.id);
+    return this.sellerService.getDashboardSummary(req.user.userId);
   }
 
   // ============================================================================
@@ -45,7 +45,7 @@ export class SellerController {
    */
   @Get('products')
   getMyProducts(@Req() req: any, @Query() query: any) {
-    return this.sellerService.getMyProducts(req.user.id, query);
+    return this.sellerService.getMyProducts(req.user.userId, query);
   }
 
   /**
@@ -53,7 +53,7 @@ export class SellerController {
    */
   @Get('products/stats')
   getProductStats(@Req() req: any) {
-    return this.sellerService.getProductStats(req.user.id);
+    return this.sellerService.getProductStats(req.user.userId);
   }
 
   /**
@@ -61,7 +61,7 @@ export class SellerController {
    */
   @Get('products/:id')
   getProduct(@Req() req: any, @Param('id') id: string) {
-    return this.sellerService.getProduct(req.user.id, id);
+    return this.sellerService.getProduct(req.user.userId, id);
   }
 
   /**
@@ -70,7 +70,7 @@ export class SellerController {
   @Post('products')
   @HttpCode(HttpStatus.CREATED)
   createProduct(@Req() req: any, @Body() data: any) {
-    return this.sellerService.createProduct(req.user.id, data);
+    return this.sellerService.createProduct(req.user.userId, data);
   }
 
   /**
@@ -78,7 +78,7 @@ export class SellerController {
    */
   @Patch('products/:id')
   updateProduct(@Req() req: any, @Param('id') id: string, @Body() data: any) {
-    return this.sellerService.updateProduct(req.user.id, id, data);
+    return this.sellerService.updateProduct(req.user.userId, id, data);
   }
 
   /**
@@ -86,7 +86,7 @@ export class SellerController {
    */
   @Delete('products/:id')
   deleteProduct(@Req() req: any, @Param('id') id: string) {
-    return this.sellerService.deleteProduct(req.user.id, id);
+    return this.sellerService.deleteProduct(req.user.userId, id);
   }
 
   /**
@@ -97,7 +97,7 @@ export class SellerController {
     @Req() req: any,
     @Body() data: { productIds: string[]; status: string },
   ) {
-    return this.sellerService.bulkUpdateStatus(req.user.id, data.productIds, data.status);
+    return this.sellerService.bulkUpdateStatus(req.user.userId, data.productIds, data.status);
   }
 
   /**
@@ -105,7 +105,7 @@ export class SellerController {
    */
   @Delete('products/bulk/delete')
   bulkDelete(@Req() req: any, @Body() data: { productIds: string[] }) {
-    return this.sellerService.bulkDelete(req.user.id, data.productIds);
+    return this.sellerService.bulkDelete(req.user.userId, data.productIds);
   }
 
   // ============================================================================
@@ -117,7 +117,7 @@ export class SellerController {
    */
   @Get('orders')
   getMyOrders(@Req() req: any, @Query() query: any) {
-    return this.sellerService.getMyOrders(req.user.id, query);
+    return this.sellerService.getMyOrders(req.user.userId, query);
   }
 
   /**
@@ -125,6 +125,74 @@ export class SellerController {
    */
   @Get('orders/stats')
   getOrderStats(@Req() req: any) {
-    return this.sellerService.getOrderStats(req.user.id);
+    return this.sellerService.getOrderStats(req.user.userId);
+  }
+
+  /**
+   * Get single order details
+   */
+  @Get('orders/:id')
+  getOrder(@Req() req: any, @Param('id') id: string) {
+    return this.sellerService.getOrder(req.user.userId, id);
+  }
+
+  /**
+   * Update order status (seller can only update to specific statuses)
+   */
+  @Patch('orders/:id/status')
+  updateOrderStatus(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() data: { status: string; notes?: string },
+  ) {
+    return this.sellerService.updateOrderStatus(req.user.userId, id, data.status, data.notes);
+  }
+
+  /**
+   * Update shipping information
+   */
+  @Patch('orders/:id/shipping')
+  updateShippingInfo(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() data: { trackingNumber?: string; carrier?: string; notes?: string },
+  ) {
+    return this.sellerService.updateShippingInfo(req.user.userId, id, data);
+  }
+
+  // ============================================================================
+  // Analytics
+  // ============================================================================
+
+  /**
+   * Get revenue analytics with trend data
+   */
+  @Get('analytics/revenue')
+  getRevenueAnalytics(@Req() req: any, @Query('period') period?: 'daily' | 'weekly' | 'monthly') {
+    return this.sellerService.getRevenueAnalytics(req.user.userId, period || 'monthly');
+  }
+
+  /**
+   * Get order status breakdown
+   */
+  @Get('analytics/orders')
+  getOrderStatusBreakdown(@Req() req: any) {
+    return this.sellerService.getOrderStatusBreakdown(req.user.userId);
+  }
+
+  /**
+   * Get top performing products
+   */
+  @Get('analytics/top-products')
+  getTopProducts(@Req() req: any, @Query('limit') limit?: string) {
+    return this.sellerService.getTopProducts(req.user.userId, limit ? parseInt(limit) : 5);
+  }
+
+  /**
+   * Get recent activity feed
+   */
+  @Get('analytics/recent-activity')
+  getRecentActivity(@Req() req: any, @Query('limit') limit?: string) {
+    return this.sellerService.getRecentActivity(req.user.userId, limit ? parseInt(limit) : 10);
   }
 }

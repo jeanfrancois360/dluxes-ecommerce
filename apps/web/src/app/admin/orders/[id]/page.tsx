@@ -6,7 +6,7 @@
  * View and manage individual order
  */
 
-import React, { use, useState } from 'react';
+import React, { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
@@ -15,11 +15,42 @@ import { adminOrdersApi } from '@/lib/api/admin';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+import axios from 'axios';
+
+interface DeliveryProvider {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface Delivery {
+  id: string;
+  trackingNumber: string;
+  currentStatus: string;
+  provider: {
+    name: string;
+  };
+}
+
 function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const resolvedParams = use(params);
   const { order, loading } = useAdminOrder(resolvedParams.id);
   const [updating, setUpdating] = useState(false);
+  const [providers, setProviders] = useState<DeliveryProvider[]>([]);
+  const [delivery, setDelivery] = useState<Delivery | null>(null);
+  const [loadingProviders, setLoadingProviders] = useState(false);
+  const [assigningDelivery, setAssigningDelivery] = useState(false);
+  const [selectedProviderId, setSelectedProviderId] = useState('');
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
+  useEffect(() => {
+    if (order) {
+      fetchDelivery();
+      fetchProviders();
+    }
+  }, [order]);
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!order) return;
@@ -49,6 +80,61 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
       toast.error('Failed to refund order');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const fetchDelivery = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/deliveries/order/${order.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.success && response.data.data) {
+        setDelivery(response.data.data);
+      }
+    } catch (error: any) {
+      // Order might not have delivery yet
+      setDelivery(null);
+    }
+  };
+
+  const fetchProviders = async () => {
+    try {
+      setLoadingProviders(true);
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API_URL}/delivery-providers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setProviders(response.data.data || response.data || []);
+    } catch (error: any) {
+      console.error('Failed to fetch providers:', error);
+    } finally {
+      setLoadingProviders(false);
+    }
+  };
+
+  const handleAssignDelivery = async () => {
+    if (!order || !selectedProviderId) return;
+
+    try {
+      setAssigningDelivery(true);
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.post(
+        `${API_URL}/admin/deliveries/assign`,
+        { orderId: order.id, providerId: selectedProviderId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        toast.success('Delivery assigned successfully');
+        fetchDelivery();
+        setSelectedProviderId('');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to assign delivery');
+    } finally {
+      setAssigningDelivery(false);
     }
   };
 
@@ -227,6 +313,70 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
                 <span className="text-sm">Delivered</span>
               </div>
             </div>
+          </div>
+
+          {/* Delivery Assignment */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Delivery</h2>
+            {delivery ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Provider</span>
+                  <span className="font-medium">{delivery.provider.name}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Tracking #</span>
+                  <span className="font-mono text-sm font-medium">{delivery.trackingNumber}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Status</span>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    delivery.currentStatus === 'DELIVERED'
+                      ? 'bg-green-100 text-green-800'
+                      : delivery.currentStatus.includes('TRANSIT')
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {delivery.currentStatus.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <a
+                  href={`/admin/deliveries`}
+                  className="text-sm text-[#CBB57B] hover:text-[#a89158] font-medium inline-block mt-2"
+                >
+                  View Delivery Details →
+                </a>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">No delivery assigned yet</p>
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Select Delivery Provider
+                  </label>
+                  <select
+                    value={selectedProviderId}
+                    onChange={(e) => setSelectedProviderId(e.target.value)}
+                    disabled={loadingProviders || assigningDelivery}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+                  >
+                    <option value="">Select provider...</option>
+                    {providers.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.name} ({provider.type})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleAssignDelivery}
+                    disabled={!selectedProviderId || assigningDelivery}
+                    className="w-full px-4 py-2 bg-[#CBB57B] text-white rounded-lg hover:bg-[#a89158] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                  >
+                    {assigningDelivery ? 'Assigning...' : 'Assign Delivery'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

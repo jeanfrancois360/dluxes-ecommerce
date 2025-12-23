@@ -71,7 +71,7 @@ export function useCheckout() {
 
   // Save shipping address to backend
   const saveShippingAddress = useCallback(
-    async (address: Address) => {
+    async (address: Address & { id?: string }) => {
       setIsLoading(true);
       setError(null);
 
@@ -81,34 +81,50 @@ export function useCheckout() {
           throw new Error('Please login to continue checkout');
         }
 
-        // Save address to backend
-        const response = await axios.post(
-          `${API_URL}/addresses`,
-          {
-            firstName: address.firstName,
-            lastName: address.lastName,
-            address1: address.addressLine1,
-            address2: address.addressLine2 || '',
-            city: address.city,
-            province: address.state,
-            postalCode: address.postalCode,
-            country: address.country,
-            phone: address.phone || '',
-            isDefault: false,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        let addressId: string;
+        let savedAddress: any;
 
-        const savedAddress = response.data;
+        // If address has an ID, it's an existing saved address - use it directly
+        if (address.id) {
+          addressId = address.id;
+          savedAddress = { id: addressId, ...address };
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✓ Using existing address:', addressId);
+          }
+        } else {
+          // Otherwise, create a new address
+          const response = await axios.post(
+            `${API_URL}/addresses`,
+            {
+              firstName: address.firstName,
+              lastName: address.lastName,
+              address1: address.addressLine1,
+              address2: address.addressLine2 || '',
+              city: address.city,
+              province: address.state,
+              postalCode: address.postalCode,
+              country: address.country,
+              phone: address.phone || '',
+              isDefault: address.saveAsDefault || false,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          savedAddress = response.data;
+          addressId = savedAddress.id;
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✓ Created new address:', addressId);
+          }
+        }
 
         setState((prev) => ({
           ...prev,
-          shippingAddress: { ...address, id: savedAddress.id },
-          shippingAddressId: savedAddress.id,
+          shippingAddress: { ...address, id: addressId },
+          shippingAddressId: addressId,
         }));
 
         completeStep('shipping');
@@ -150,21 +166,38 @@ export function useCheckout() {
         }
 
         // Step 1: Validate stock for all items
+        const stockErrors: string[] = [];
         for (const item of cartItems) {
-          const stockResponse = await axios.get(
-            `${API_URL}/inventory/status/${item.productId}`,
-            {
-              params: item.variantId ? { variantId: item.variantId } : undefined,
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
+          try {
+            const stockResponse = await axios.get(
+              `${API_URL}/inventory/status/${item.productId}`,
+              {
+                params: item.variantId ? { variantId: item.variantId } : undefined,
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
 
-          const stockData = stockResponse.data;
-          if (stockData.quantity < item.quantity) {
-            throw new Error(`Insufficient stock for ${item.name}. Only ${stockData.quantity} available.`);
+            const stockData = stockResponse.data;
+            if (stockData.quantity < item.quantity) {
+              const available = stockData.quantity > 0
+                ? `Only ${stockData.quantity} ${stockData.quantity === 1 ? 'item' : 'items'} available`
+                : 'Out of stock';
+              stockErrors.push(`${item.name}: ${available}`);
+            }
+          } catch (err: any) {
+            console.error(`Error checking stock for ${item.name}:`, err);
+            stockErrors.push(`${item.name}: Unable to verify stock availability`);
           }
+        }
+
+        // If there are stock errors, throw a detailed error
+        if (stockErrors.length > 0) {
+          const errorMessage = stockErrors.length === 1
+            ? `Insufficient stock: ${stockErrors[0]}`
+            : `Insufficient stock for ${stockErrors.length} item(s):\n${stockErrors.map(e => `• ${e}`).join('\n')}`;
+          throw new Error(errorMessage);
         }
 
         // Step 2: Create order from cart items
