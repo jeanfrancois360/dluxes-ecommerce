@@ -1,5 +1,5 @@
 import { Product } from '@/lib/api/types';
-import { QuickViewProduct } from '@luxury/ui';
+import { QuickViewProduct } from '@nextpik/ui';
 import { getColorHex } from './color-mapping';
 
 /**

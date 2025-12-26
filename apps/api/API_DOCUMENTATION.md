@@ -345,7 +345,7 @@ The API is rate-limited to 100 requests per 60 seconds per IP address.
 Required environment variables for the API:
 
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/luxury_ecommerce
+DATABASE_URL=postgresql://user:password@localhost:5432/nextpik_ecommerce
 JWT_SECRET=your-secret-key
 JWT_EXPIRES_IN=7d
 MEILISEARCH_HOST=http://localhost:7700

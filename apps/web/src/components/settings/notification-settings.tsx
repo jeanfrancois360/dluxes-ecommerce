@@ -3,10 +3,10 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Switch } from '@nextpik/ui';
 import { AlertCircle, Loader2, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
@@ -40,9 +40,10 @@ export function NotificationSettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as NotificationSettings);
+      form.reset(formData as NotificationSettings, { keepDirtyValues: false });
     }
-  }, [settings, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]); // form is stable, don't include it
 
   const onSubmit = async (data: NotificationSettings) => {
     try {
@@ -60,9 +61,9 @@ export function NotificationSettingsSection() {
   const toggleEvent = (eventValue: string) => {
     const current = form.watch('notification_events') || [];
     if (current.includes(eventValue)) {
-      form.setValue('notification_events', current.filter(e => e !== eventValue));
+      form.setValue('notification_events', current.filter(e => e !== eventValue), { shouldDirty: true });
     } else {
-      form.setValue('notification_events', [...current, eventValue]);
+      form.setValue('notification_events', [...current, eventValue], { shouldDirty: true });
     }
   };
 
@@ -76,20 +77,27 @@ export function NotificationSettingsSection() {
     );
   }
 
+  const isDirty = form.formState.isDirty;
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Card>
-        <CardHeader>
+      <Card className="border-muted shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="border-b bg-muted/30">
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
             Notification Settings
+            {isDirty && (
+              <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                Unsaved changes
+              </span>
+            )}
           </CardTitle>
           <CardDescription>
             Configure how and when to send notifications to users
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pb-12">
           {/* Email Notifications */}
           <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
             <div className="space-y-0.5">
@@ -101,7 +109,7 @@ export function NotificationSettingsSection() {
             <Switch
               id="email_notifications_enabled"
               checked={form.watch('email_notifications_enabled')}
-              onCheckedChange={(checked) => form.setValue('email_notifications_enabled', checked)}
+              onCheckedChange={(checked) => form.setValue('email_notifications_enabled', checked, { shouldDirty: true })}
             />
           </div>
 
@@ -116,7 +124,7 @@ export function NotificationSettingsSection() {
             <Switch
               id="sms_notifications_enabled"
               checked={form.watch('sms_notifications_enabled')}
-              onCheckedChange={(checked) => form.setValue('sms_notifications_enabled', checked)}
+              onCheckedChange={(checked) => form.setValue('sms_notifications_enabled', checked, { shouldDirty: true })}
             />
           </div>
 
@@ -135,9 +143,8 @@ export function NotificationSettingsSection() {
                 return (
                   <div
                     key={event.value}
-                    className={`flex items-start justify-between rounded-lg border p-4 transition-colors ${
-                      isChecked ? 'border-primary bg-primary/5' : ''
-                    }`}
+                    className={`flex items-start justify-between rounded-lg border p-4 transition-colors ${isChecked ? 'border-primary bg-primary/5' : ''
+                      }`}
                   >
                     <div className="space-y-0.5 flex-1">
                       <Label
@@ -185,18 +192,31 @@ export function NotificationSettingsSection() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between border-t bg-muted/30 pt-6">
           <Button
             type="button"
             variant="outline"
             onClick={() => form.reset()}
-            disabled={updating}
+            disabled={updating || !isDirty}
+            className="gap-2"
           >
             Reset
           </Button>
-          <Button type="submit" disabled={updating}>
-            {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
+          <Button
+            type="submit"
+            disabled={updating || !isDirty}
+            className="gap-2 min-w-[140px]"
+          >
+            {updating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                Save Changes
+              </>
+            )}
           </Button>
         </CardFooter>
       </Card>

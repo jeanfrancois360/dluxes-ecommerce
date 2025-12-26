@@ -11,6 +11,7 @@ import { transformSettingsToForm } from '@/lib/settings-utils';
 export function useSettingsValidation() {
   const { settings: generalSettings } = useSettings('general');
   const { settings: paymentSettings } = useSettings('payment');
+  const { settings: paymentSettingsUpper } = useSettings('PAYMENT'); // Uppercase for escrow settings
   const { settings: commissionSettings } = useSettings('commission');
   const { settings: currencySettings } = useSettings('currency');
   const { settings: deliverySettings } = useSettings('delivery');
@@ -20,6 +21,7 @@ export function useSettingsValidation() {
     return {
       ...transformSettingsToForm(generalSettings),
       ...transformSettingsToForm(paymentSettings),
+      ...transformSettingsToForm(paymentSettingsUpper), // Include uppercase PAYMENT settings
       ...transformSettingsToForm(commissionSettings),
       ...transformSettingsToForm(currencySettings),
       ...transformSettingsToForm(deliverySettings),
@@ -28,6 +30,7 @@ export function useSettingsValidation() {
   }, [
     generalSettings,
     paymentSettings,
+    paymentSettingsUpper,
     commissionSettings,
     currencySettings,
     deliverySettings,

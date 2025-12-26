@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReviewCard } from './review-card';
-import type { Review, ReviewFilters } from '@luxury/shared';
+import type { Review, ReviewFilters } from '@nextpik/shared';
 
 interface ReviewsListProps {
   reviews: Review[];

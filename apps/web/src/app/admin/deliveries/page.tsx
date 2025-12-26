@@ -9,9 +9,9 @@
 import { useState, useEffect } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Badge } from '@luxury/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Badge } from '@nextpik/ui';
 import {
   Table,
   TableBody,
@@ -19,7 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {
   Dialog,
   DialogContent,
@@ -27,15 +27,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@luxury/ui';
-import { Card, CardContent, CardHeader, CardTitle } from '@luxury/ui';
+} from '@nextpik/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@nextpik/ui';
 import {
   Search,
   DollarSign,

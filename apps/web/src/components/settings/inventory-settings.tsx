@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Switch } from '@nextpik/ui';
 import { api } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { Loader2, Package, AlertCircle, Save, CheckCircle2 } from 'lucide-react';

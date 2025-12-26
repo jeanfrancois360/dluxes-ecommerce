@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { cn } from '@luxury/ui';
+import { cn } from '@nextpik/ui';
 import type { StripeCardElementOptions } from '@stripe/stripe-js';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 

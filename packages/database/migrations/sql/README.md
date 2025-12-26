@@ -1,4 +1,4 @@
-# SQL Migrations - Luxury E-commerce Platform
+# SQL Migrations - NextPik E-commerce Platform
 
 This directory contains SQL scripts to enhance your PostgreSQL database with luxury e-commerce features.
 

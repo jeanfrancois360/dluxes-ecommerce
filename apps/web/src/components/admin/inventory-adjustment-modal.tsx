@@ -17,7 +17,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import { adminProductsApi } from '@/lib/api/admin';
 import { toast } from 'sonner';
 import { Loader2, Package, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';

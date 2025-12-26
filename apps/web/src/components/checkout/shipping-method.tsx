@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { cn } from '@luxury/ui';
+import { cn } from '@nextpik/ui';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import {
   calculateShippingCost,

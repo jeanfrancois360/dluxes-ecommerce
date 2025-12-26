@@ -11,7 +11,7 @@ import type { NextRequest } from 'next/server';
 // Configuration
 // ============================================================================
 
-const TOKEN_KEY = 'luxury_ecommerce_access_token';
+const TOKEN_KEY = 'nextpik_ecommerce_access_token';
 
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [

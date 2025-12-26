@@ -272,7 +272,7 @@ All dependencies are already installed:
 - `canvas-confetti` - Confetti animation
 - `framer-motion` - Animations
 - `axios` - HTTP client
-- `@luxury/ui` - Custom UI components
+- `@nextpik/ui` - Custom UI components
 
 ## Notes
 

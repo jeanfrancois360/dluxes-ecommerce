@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
-import { FloatingInput, Button } from '@luxury/ui';
+import { FloatingInput, Button } from '@nextpik/ui';
 
 export default function ForgotPasswordPage() {
   const { requestPasswordReset, isLoading: authLoading, error: authError, clearError } = useAuth();

@@ -1,7 +1,7 @@
 # Frontend Enhancement Summary
 
 ## Overview
-Complete UI/UX enhancement of the Luxury E-commerce platform with global navigation, mega footer, and premium page designs inspired by Amazon, Leboncoin, and modern luxury e-commerce sites.
+Complete UI/UX enhancement of the NextPik E-commerce platform with global navigation, mega footer, and premium page designs inspired by Amazon, Leboncoin, and modern luxury e-commerce sites.
 
 ## Design System Applied
 - **Primary Colors**: Black (#000000), Gold (#CBB57B), Gray (#C3C9C0), White (#FFFFFF)
@@ -240,7 +240,7 @@ variants={containerVariants}
 
 ## Integration with Existing System
 
-### Using @luxury/ui Components
+### Using @nextpik/ui Components
 - **ProductGrid**: Used for featured products
 - **ProductCard**: Displayed in grid with hover effects
 - **FloatingInput**: Can be used in forms (already used in auth pages)

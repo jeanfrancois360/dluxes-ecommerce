@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
-import { FloatingInput, OTPInput, Button } from '@luxury/ui';
+import { FloatingInput, OTPInput, Button } from '@nextpik/ui';
 
 export default function LoginPage() {
   const { login, isLoading: authLoading, error: authError, clearError } = useAuth();

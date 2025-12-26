@@ -4,12 +4,12 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: luxury-postgres
+    container_name: nextpik-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: User@123!
-      POSTGRES_DB: luxury_ecommerce
+      POSTGRES_DB: nextpik_ecommerce
     ports:
       - '5433:5432'
     volumes:
@@ -23,13 +23,13 @@ services:
   # PostgreSQL Read Replica (for scaling reads)
   postgres-replica:
     image: postgres:16-alpine
-    container_name: luxury-postgres-replica
+    container_name: nextpik-postgres-replica
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: User@123!
-      POSTGRES_DB: luxury_ecommerce
-      PGUSER: luxury
+      POSTGRES_DB: nextpik_ecommerce
+      PGUSER: nextpik
     ports:
       - '5434:5432'
     depends_on:
@@ -40,7 +40,7 @@ services:
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: luxury-redis
+    container_name: nextpik-redis
     restart: unless-stopped
     ports:
       - '6379:6379'
@@ -55,7 +55,7 @@ services:
   # Meilisearch
   meilisearch:
     image: getmeili/meilisearch:v1.11
-    container_name: luxury-meilisearch
+    container_name: nextpik-meilisearch
     restart: unless-stopped
     ports:
       - '7700:7700'
@@ -73,7 +73,7 @@ services:
   # Adminer (Database GUI)
   adminer:
     image: adminer:latest
-    container_name: luxury-adminer
+    container_name: nextpik-adminer
     restart: unless-stopped
     ports:
       - '8080:8080'
@@ -89,4 +89,4 @@ volumes:
 
 networks:
   default:
-    name: luxury-network
+    name: nextpik-network

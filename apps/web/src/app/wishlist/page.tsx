@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import { WishlistItemComponent } from '@/components/wishlist/wishlist-item';
-import { QuickViewModal, type QuickViewProduct } from '@luxury/ui';
+import { QuickViewModal, type QuickViewProduct } from '@nextpik/ui';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCart } from '@/hooks/use-cart';
 import { toast } from '@/lib/toast';

@@ -3,12 +3,12 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
-import { Textarea } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Switch } from '@nextpik/ui';
+import { Textarea } from '@nextpik/ui';
 import { AlertCircle, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
@@ -32,9 +32,10 @@ export function SeoSettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as SeoSettings);
+      form.reset(formData as SeoSettings, { keepDirtyValues: false });
     }
-  }, [settings, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]); // form is stable, don't include it
 
   const onSubmit = async (data: SeoSettings) => {
     try {
@@ -61,21 +62,27 @@ export function SeoSettingsSection() {
 
   const titleLength = form.watch('seo_meta_title')?.length || 0;
   const descriptionLength = form.watch('seo_meta_description')?.length || 0;
+  const isDirty = form.formState.isDirty;
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Card>
-        <CardHeader>
+      <Card className="border-muted shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="border-b bg-muted/30">
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
             SEO Settings
+            {isDirty && (
+              <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                Unsaved changes
+              </span>
+            )}
           </CardTitle>
           <CardDescription>
             Configure search engine optimization and analytics
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pb-12">
           {/* Meta Title */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -87,7 +94,7 @@ export function SeoSettingsSection() {
             <Input
               id="seo_meta_title"
               {...form.register('seo_meta_title')}
-              placeholder="Luxury E-commerce - Premium Products & Exclusive Deals"
+              placeholder="NextPik E-commerce - Premium Products & Exclusive Deals"
               maxLength={60}
             />
             {form.formState.errors.seo_meta_title && (
@@ -158,7 +165,7 @@ export function SeoSettingsSection() {
             <Switch
               id="analytics_enabled"
               checked={form.watch('analytics_enabled')}
-              onCheckedChange={(checked) => form.setValue('analytics_enabled', checked)}
+              onCheckedChange={(checked) => form.setValue('analytics_enabled', checked, { shouldDirty: true })}
             />
           </div>
 
@@ -195,18 +202,31 @@ export function SeoSettingsSection() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between border-t bg-muted/30 pt-6">
           <Button
             type="button"
             variant="outline"
             onClick={() => form.reset()}
-            disabled={updating}
+            disabled={updating || !isDirty}
+            className="gap-2"
           >
             Reset
           </Button>
-          <Button type="submit" disabled={updating}>
-            {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
+          <Button
+            type="submit"
+            disabled={updating || !isDirty}
+            className="gap-2 min-w-[140px]"
+          >
+            {updating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                Save Changes
+              </>
+            )}
           </Button>
         </CardFooter>
       </Card>

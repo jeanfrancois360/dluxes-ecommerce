@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import type { ReviewSummary } from '@luxury/shared';
+import type { ReviewSummary } from '@nextpik/shared';
 import { formatNumber } from '@/lib/utils/number-format';
 
 interface ReviewSummaryProps {

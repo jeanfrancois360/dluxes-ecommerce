@@ -17,8 +17,8 @@ export class APIError extends Error {
 
 const ACCESS_TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
-const COOKIE_ACCESS_TOKEN_KEY = 'luxury_ecommerce_access_token';
-const COOKIE_REFRESH_TOKEN_KEY = 'luxury_ecommerce_refresh_token';
+const COOKIE_ACCESS_TOKEN_KEY = 'nextpik_ecommerce_access_token';
+const COOKIE_REFRESH_TOKEN_KEY = 'nextpik_ecommerce_refresh_token';
 
 // Cookie utility functions
 function setCookie(name: string, value: string, days: number = 7): void {

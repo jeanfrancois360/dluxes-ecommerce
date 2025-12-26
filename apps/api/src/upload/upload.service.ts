@@ -84,15 +84,27 @@ export class UploadService {
     const fileExtension = path.extname(file.originalname);
     const fileName = `${uuidv4()}${fileExtension}`;
 
+    // DEBUG: Log file details
+    this.logger.log('=== FILE UPLOAD DEBUG ===');
+    this.logger.log(`Original filename: ${file.originalname}`);
+    this.logger.log(`Generated filename: ${fileName}`);
+    this.logger.log(`File mimetype: ${file.mimetype}`);
+    this.logger.log(`File size: ${file.size} bytes`);
+    this.logger.log(`Buffer exists: ${!!file.buffer}`);
+    this.logger.log(`Buffer length: ${file.buffer ? file.buffer.length : 'N/A'} bytes`);
+    this.logger.log(`Folder: ${folder}`);
+
     // Use Supabase if configured
     if (this.supabaseService.isConfigured()) {
       try {
+        this.logger.log('Attempting Supabase upload...');
         const publicUrl = await this.supabaseService.uploadFile(
           file.buffer,
           fileName,
           folder,
           file.mimetype,
         );
+        this.logger.log(`Supabase upload SUCCESS: ${publicUrl}`);
 
         return {
           url: publicUrl,
@@ -102,6 +114,7 @@ export class UploadService {
         };
       } catch (error) {
         this.logger.error(`Supabase upload failed, falling back to local storage: ${error.message}`);
+        this.logger.error(`Error stack: ${error.stack}`);
         // Fall through to local storage
       }
     }

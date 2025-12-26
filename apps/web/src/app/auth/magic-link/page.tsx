@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
-import { FloatingInput, Button } from '@luxury/ui';
+import { FloatingInput, Button } from '@nextpik/ui';
 
 export default function MagicLinkPage() {
   const searchParams = useSearchParams();

@@ -2,8 +2,8 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, AlertCircle, CheckCircle, ChevronDown, ChevronUp, ExternalLink, Eye } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
 import { useState } from 'react';
 import { useSettingsValidation } from '@/hooks/use-settings-validation';
 
@@ -136,13 +136,16 @@ export function SettingsValidationAlert({ onNavigateToOverview }: SettingsValida
                               variant="outline"
                               className="gap-1 flex-shrink-0"
                               onClick={() => {
-                                // Scroll to the relevant tab
-                                const tabTrigger = document.querySelector(`[value="${setting.category}"]`) as HTMLElement;
+                                // Convert category to lowercase to match tab values
+                                const categoryLower = setting.category.toLowerCase();
+                                const tabTrigger = document.querySelector(`[value="${categoryLower}"]`) as HTMLElement;
                                 if (tabTrigger) {
                                   tabTrigger.click();
                                   setTimeout(() => {
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                   }, 100);
+                                } else {
+                                  console.warn(`Tab not found for category: ${setting.category} (${categoryLower})`);
                                 }
                               }}
                             >
@@ -186,12 +189,16 @@ export function SettingsValidationAlert({ onNavigateToOverview }: SettingsValida
                               variant="outline"
                               className="gap-1 flex-shrink-0"
                               onClick={() => {
-                                const tabTrigger = document.querySelector(`[value="${setting.category}"]`) as HTMLElement;
+                                // Convert category to lowercase to match tab values
+                                const categoryLower = setting.category.toLowerCase();
+                                const tabTrigger = document.querySelector(`[value="${categoryLower}"]`) as HTMLElement;
                                 if (tabTrigger) {
                                   tabTrigger.click();
                                   setTimeout(() => {
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                   }, 100);
+                                } else {
+                                  console.warn(`Tab not found for category: ${setting.category} (${categoryLower})`);
                                 }
                               }}
                             >

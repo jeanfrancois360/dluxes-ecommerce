@@ -24,7 +24,7 @@ export default function TermsPage() {
             <section className="mb-12">
               <h2 className="text-3xl font-serif font-bold text-black mb-4">1. Acceptance of Terms</h2>
               <p className="text-neutral-700 leading-relaxed mb-4">
-                By accessing and using Luxury E-commerce ("we," "our," or "us"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+                By accessing and using NextPik E-commerce ("we," "our," or "us"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
               </p>
               <p className="text-neutral-700 leading-relaxed">
                 We reserve the right to update, change or replace any part of these Terms of Service by posting updates and/or changes to our website. It is your responsibility to check this page periodically for changes.
@@ -34,7 +34,7 @@ export default function TermsPage() {
             <section className="mb-12">
               <h2 className="text-3xl font-serif font-bold text-black mb-4">2. Use License</h2>
               <p className="text-neutral-700 leading-relaxed mb-4">
-                Permission is granted to temporarily download one copy of the materials (information or software) on Luxury E-commerce's website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
+                Permission is granted to temporarily download one copy of the materials (information or software) on NextPik E-commerce's website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
               </p>
               <ul className="list-disc pl-6 text-neutral-700 space-y-2 mb-4">
                 <li>Modify or copy the materials</li>
@@ -44,7 +44,7 @@ export default function TermsPage() {
                 <li>Transfer the materials to another person or "mirror" the materials on any other server</li>
               </ul>
               <p className="text-neutral-700 leading-relaxed">
-                This license shall automatically terminate if you violate any of these restrictions and may be terminated by Luxury E-commerce at any time.
+                This license shall automatically terminate if you violate any of these restrictions and may be terminated by NextPik E-commerce at any time.
               </p>
             </section>
 
@@ -116,7 +116,7 @@ export default function TermsPage() {
             <section className="mb-12">
               <h2 className="text-3xl font-serif font-bold text-black mb-4">9. Limitation of Liability</h2>
               <p className="text-neutral-700 leading-relaxed">
-                In no event shall Luxury E-commerce or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on the website, even if we or our authorized representative has been notified orally or in writing of the possibility of such damage.
+                In no event shall NextPik E-commerce or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on the website, even if we or our authorized representative has been notified orally or in writing of the possibility of such damage.
               </p>
             </section>
 
@@ -127,7 +127,7 @@ export default function TermsPage() {
               </p>
               <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200">
                 <p className="text-neutral-700">
-                  <strong>Luxury E-commerce</strong><br />
+                  <strong>NextPik E-commerce</strong><br />
                   123 Design Avenue<br />
                   New York, NY 10001<br />
                   Email: legal@luxury.com<br />

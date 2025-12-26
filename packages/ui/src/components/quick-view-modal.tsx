@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { cn } from '../lib/utils';
 import { formatCurrencyAmount } from '../lib/utils/number-format';
 import { isLightColor, calculateDiscountPercentage } from '../lib/utils/color-utils';
-import { framerMotion } from '@luxury/design-system/animations';
+import { framerMotion } from '@nextpik/design-system/animations';
 
 export interface QuickViewProduct {
   id: string;

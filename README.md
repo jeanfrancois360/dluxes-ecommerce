@@ -1,4 +1,4 @@
-# Luxury E-commerce Platform
+# NextPik E-commerce Platform
 
 A modern, elegant enterprise e-commerce platform built with cutting-edge technologies.
 
@@ -39,7 +39,7 @@ Modern minimalist luxury aesthetic combining the sophistication of Apple with th
 ## Project Structure
 
 ```
-luxury-ecommerce/
+nextpik/
 ├── apps/
 │   ├── web/              # Next.js frontend
 │   └── api/              # NestJS backend
@@ -64,7 +64,7 @@ luxury-ecommerce/
 
 1. **Clone the repository**
    ```bash
-   cd luxury-ecommerce
+   cd nextpik
    ```
 
 2. **Install dependencies**
@@ -91,7 +91,7 @@ luxury-ecommerce/
 
 6. **Seed the database (optional)**
    ```bash
-   pnpm --filter @luxury-ecommerce/database prisma:seed
+   pnpm --filter @nextpik/database prisma:seed
    ```
 
 7. **Start development servers**
@@ -118,7 +118,7 @@ luxury-ecommerce/
 ### Database
 - `pnpm prisma:generate` - Generate Prisma client
 - `pnpm prisma:migrate` - Run database migrations
-- `pnpm --filter @luxury-ecommerce/database prisma:studio` - Open Prisma Studio
+- `pnpm --filter @nextpik/database prisma:studio` - Open Prisma Studio
 
 ### Storybook
 - `pnpm storybook` - Start Storybook development server
@@ -128,7 +128,7 @@ luxury-ecommerce/
 ### PostgreSQL
 - **Host**: localhost
 - **Port**: 5433
-- **Database**: luxury_ecommerce
+- **Database**: nextpik_ecommerce
 - **User**: postgres
 - **Password**: User@123!
 

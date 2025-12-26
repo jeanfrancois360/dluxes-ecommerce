@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import { ProductCarousel } from '@/components/product-carousel';
-import { QuickViewModal, type QuickViewProduct } from '@luxury/ui';
+import { QuickViewModal, type QuickViewProduct } from '@nextpik/ui';
 import { ReviewSummaryComponent } from '@/components/reviews/review-summary';
 import { ReviewsList } from '@/components/reviews/reviews-list';
 import { ReviewForm } from '@/components/reviews/review-form';
@@ -20,8 +20,8 @@ import { useProduct, useRelatedProducts } from '@/hooks/use-product';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 import { getColorHex } from '@/lib/utils/color-mapping';
 import { Price } from '@/components/price';
-import { isLightColor, calculateDiscountPercentage } from '@luxury/ui/lib/utils/color-utils';
-import { framerMotion } from '@luxury/design-system/animations';
+import { isLightColor, calculateDiscountPercentage } from '@nextpik/ui/lib/utils/color-utils';
+import { framerMotion } from '@nextpik/design-system/animations';
 
 // Reviews Section Component
 function ReviewsSection({ productId }: { productId: string }) {

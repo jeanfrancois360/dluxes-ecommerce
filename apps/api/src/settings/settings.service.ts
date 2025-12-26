@@ -380,7 +380,7 @@ export class SettingsService {
   async getSiteInfo() {
     try {
       const [siteName, siteTagline, contactEmail, timezone] = await Promise.all([
-        this.getSetting('site_name').catch(() => ({ key: 'site_name', value: 'Luxury E-commerce' })),
+        this.getSetting('site_name').catch(() => ({ key: 'site_name', value: 'NextPik E-commerce' })),
         this.getSetting('site_tagline').catch(() => ({ key: 'site_tagline', value: 'Where Elegance Meets Excellence' })),
         this.getSetting('contact_email').catch(() => ({ key: 'contact_email', value: 'support@luxury.com' })),
         this.getSetting('timezone').catch(() => ({ key: 'timezone', value: 'UTC' })),
@@ -395,7 +395,7 @@ export class SettingsService {
     } catch (error) {
       this.logger.error('Failed to get site info:', error);
       return {
-        siteName: 'Luxury E-commerce',
+        siteName: 'NextPik E-commerce',
         siteTagline: 'Where Elegance Meets Excellence',
         contactEmail: 'support@luxury.com',
         timezone: 'UTC',
@@ -409,9 +409,9 @@ export class SettingsService {
   async getSiteName(): Promise<string> {
     try {
       const setting = await this.getSetting('site_name');
-      return String(setting.value) || 'Luxury E-commerce';
+      return String(setting.value) || 'NextPik E-commerce';
     } catch (error) {
-      return 'Luxury E-commerce';
+      return 'NextPik E-commerce';
     }
   }
 

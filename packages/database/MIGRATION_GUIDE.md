@@ -1,4 +1,4 @@
-# Database Migration Guide - Luxury E-commerce Platform
+# Database Migration Guide - NextPik E-commerce Platform
 
 ## Overview
 This guide provides a zero-downtime migration strategy for deploying the enhanced luxury e-commerce schema.
@@ -321,10 +321,10 @@ CREATE TRIGGER product_like_update
 
 ```sql
 -- For better full-text search performance
-ALTER DATABASE luxury_ecommerce SET default_text_search_config = 'pg_catalog.english';
+ALTER DATABASE nextpik_ecommerce SET default_text_search_config = 'pg_catalog.english';
 
 -- Increase work_mem for complex queries
-ALTER DATABASE luxury_ecommerce SET work_mem = '256MB';
+ALTER DATABASE nextpik_ecommerce SET work_mem = '256MB';
 
 -- Better statistics for query planner
 ALTER TABLE products ALTER COLUMN "searchVector" SET STATISTICS 1000;

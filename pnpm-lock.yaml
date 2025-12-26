@@ -42,12 +42,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@luxury/database':
-        specifier: workspace:*
-        version: link:../../packages/database
-      '@luxury/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@nestjs/common':
         specifier: ^10.4.15
         version: 10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -81,6 +75,12 @@ importers:
       '@nestjs/websockets':
         specifier: ^10.4.15
         version: 10.4.20(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(@nestjs/platform-socket.io@10.4.20)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nextpik/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@nextpik/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@prisma/client':
         specifier: ^6.1.0
         version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
@@ -208,13 +208,13 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.67.0(react@19.2.0))
-      '@luxury/design-system':
+      '@nextpik/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
-      '@luxury/shared':
+      '@nextpik/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@luxury/ui':
+      '@nextpik/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@radix-ui/react-accordion':
@@ -385,7 +385,7 @@ importers:
 
   packages/ui:
     dependencies:
-      '@luxury/design-system':
+      '@nextpik/design-system':
         specifier: workspace:*
         version: link:../design-system
       '@radix-ui/react-accordion':

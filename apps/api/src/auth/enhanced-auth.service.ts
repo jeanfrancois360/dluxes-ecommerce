@@ -498,8 +498,8 @@ export class EnhancedAuthService {
 
     // Generate secret
     const secret = speakeasy.generateSecret({
-      name: `Luxury E-commerce (${user.email})`,
-      issuer: 'Luxury E-commerce',
+      name: `NextPik E-commerce (${user.email})`,
+      issuer: 'NextPik E-commerce',
       length: 32,
     });
 

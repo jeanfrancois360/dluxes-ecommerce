@@ -1,5 +1,5 @@
 /**
- * Base Email Template - Luxury E-commerce Design
+ * Base Email Template - NextPik E-commerce Design
  * Black, Gold, Gray, White aesthetic
  */
 
@@ -9,7 +9,7 @@ export const baseEmailTemplate = (content: string) => `
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Luxury E-commerce</title>
+  <title>NextPik E-commerce</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -151,7 +151,7 @@ export const baseEmailTemplate = (content: string) => `
 
     <div class="footer">
       <p class="footer-text">
-        &copy; ${new Date().getFullYear()} Luxury E-commerce. All rights reserved.
+        &copy; ${new Date().getFullYear()} NextPik E-commerce. All rights reserved.
       </p>
       <p class="footer-text">
         Premium quality, delivered with elegance

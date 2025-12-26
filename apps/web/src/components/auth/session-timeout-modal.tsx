@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@luxury/ui';
+import { Button } from '@nextpik/ui';
 
 interface SessionTimeoutModalProps {
   /**

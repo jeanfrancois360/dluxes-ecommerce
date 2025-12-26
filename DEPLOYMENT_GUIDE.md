@@ -81,7 +81,7 @@ SUPPORT_EMAIL=support@yourdomain.com
 # Supabase Storage
 SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_BUCKET_NAME=luxury-ecommerce
+SUPABASE_BUCKET_NAME=nextpik
 
 # CORS
 FRONTEND_URL=https://yourdomain.com
@@ -131,16 +131,16 @@ NEXT_PUBLIC_SITE_DESCRIPTION=Discover extraordinary lifestyle products
 **Using Neon:**
 ```bash
 # Create database
-neon databases create luxury-ecommerce --region us-east-1
+neon databases create nextpik --region us-east-1
 
 # Get connection string
-neon connection-string luxury-ecommerce
+neon connection-string nextpik
 ```
 
 **Using Supabase:**
 ```bash
 # Create project
-supabase projects create luxury-ecommerce
+supabase projects create nextpik
 
 # Get connection string from dashboard
 ```
@@ -375,7 +375,7 @@ docker run -d -p 7700:7700 \
 ### 3. Supabase Storage Setup
 
 1. Create Supabase project at supabase.com
-2. Create storage bucket: `luxury-ecommerce`
+2. Create storage bucket: `nextpik`
 3. Set bucket to public
 4. Configure CORS in Supabase dashboard:
 ```json

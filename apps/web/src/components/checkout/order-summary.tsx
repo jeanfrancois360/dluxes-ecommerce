@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@luxury/ui';
+import { cn } from '@nextpik/ui';
 import type { CartItem } from '@/contexts/cart-context';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 

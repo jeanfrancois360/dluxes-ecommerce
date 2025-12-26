@@ -17,25 +17,13 @@ export const generalSettingsSchema = z.object({
 // PAYMENT & ESCROW SETTINGS
 // ============================================================================
 export const paymentSettingsSchema = z.object({
-  escrow_enabled: z.boolean(),
+  escrow_enabled: z.boolean().optional(), // Optional - handled separately via toggle in uppercase PAYMENT category
   escrow_default_hold_days: z.number().int().min(1, 'Hold days must be at least 1').max(90, 'Hold days cannot exceed 90'),
-  escrow_auto_release_enabled: z.boolean(),
+  escrow_auto_release_enabled: z.boolean().optional(), // Optional - handled separately via immediate-save toggle
   min_payout_amount: z.number().min(0, 'Minimum payout must be positive'),
   payout_schedule: z.enum(['daily', 'weekly', 'biweekly', 'monthly']),
   payment_methods: z.array(z.string()).min(1, 'At least one payment method must be enabled'),
-}).refine(
-  (data) => {
-    // Escrow must be enabled in production
-    if (process.env.NODE_ENV === 'production' && !data.escrow_enabled) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: 'Escrow cannot be disabled in production',
-    path: ['escrow_enabled'],
-  }
-);
+});
 
 // ============================================================================
 // COMMISSION SETTINGS

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { cn } from '@luxury/ui';
+import { cn } from '@nextpik/ui';
 
 export type CheckoutStep = 'shipping' | 'payment' | 'review';
 

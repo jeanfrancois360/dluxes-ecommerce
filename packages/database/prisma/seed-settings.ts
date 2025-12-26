@@ -3,7 +3,7 @@ import { PrismaClient, SettingValueType } from '@prisma/client';
 const prisma = new PrismaClient();
 
 /**
- * Seed default system settings for Luxury E-commerce Platform
+ * Seed default system settings for NextPik E-commerce Platform
  */
 
 const defaultSettings = [
@@ -11,14 +11,14 @@ const defaultSettings = [
   {
     key: 'site_name',
     category: 'general',
-    value: 'Luxury E-commerce',
+    value: 'NextPik E-commerce',
     valueType: SettingValueType.STRING,
     label: 'Site Name',
     description: 'The name of your e-commerce platform',
     isPublic: true,
     isEditable: true,
     requiresRestart: false,
-    defaultValue: 'Luxury E-commerce',
+    defaultValue: 'NextPik E-commerce',
   },
   {
     key: 'site_tagline',
@@ -573,14 +573,14 @@ const defaultSettings = [
   {
     key: 'seo_meta_title',
     category: 'seo',
-    value: 'Luxury E-commerce - Premium Products Online',
+    value: 'NextPik E-commerce - Premium Products Online',
     valueType: SettingValueType.STRING,
     label: 'SEO Meta Title',
     description: 'Default meta title for pages',
     isPublic: true,
     isEditable: true,
     requiresRestart: false,
-    defaultValue: 'Luxury E-commerce - Premium Products Online',
+    defaultValue: 'NextPik E-commerce - Premium Products Online',
   },
   {
     key: 'seo_meta_description',

@@ -3,11 +3,11 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Switch } from '@nextpik/ui';
 import { AlertCircle, Loader2, Lock, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
@@ -31,9 +31,10 @@ export function DeliverySettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as DeliverySettings);
+      form.reset(formData as DeliverySettings, { keepDirtyValues: false });
     }
-  }, [settings, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]); // form is stable, don't include it
 
   const onSubmit = async (data: DeliverySettings) => {
     try {
@@ -59,18 +60,26 @@ export function DeliverySettingsSection() {
   }
 
   const isProduction = process.env.NODE_ENV === 'production';
+  const isDirty = form.formState.isDirty;
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Card>
-        <CardHeader>
-          <CardTitle>Delivery Settings</CardTitle>
+      <Card className="border-muted shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="border-b bg-muted/30">
+          <CardTitle className="flex items-center gap-2">
+            Delivery Settings
+            {isDirty && (
+              <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                Unsaved changes
+              </span>
+            )}
+          </CardTitle>
           <CardDescription>
             Configure delivery and shipping options
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pb-12">
           {/* Delivery Confirmation Required */}
           <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
             <div className="space-y-0.5 flex-1">
@@ -85,7 +94,7 @@ export function DeliverySettingsSection() {
             <Switch
               id="delivery_confirmation_required"
               checked={form.watch('delivery_confirmation_required')}
-              onCheckedChange={(checked) => form.setValue('delivery_confirmation_required', checked)}
+              onCheckedChange={(checked) => form.setValue('delivery_confirmation_required', checked, { shouldDirty: true })}
               disabled={true}
             />
           </div>
@@ -116,7 +125,7 @@ export function DeliverySettingsSection() {
             <Switch
               id="delivery_auto_assign"
               checked={form.watch('delivery_auto_assign')}
-              onCheckedChange={(checked) => form.setValue('delivery_auto_assign', checked)}
+              onCheckedChange={(checked) => form.setValue('delivery_auto_assign', checked, { shouldDirty: true })}
             />
           </div>
 
@@ -185,18 +194,31 @@ export function DeliverySettingsSection() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between border-t bg-muted/30 pt-6">
           <Button
             type="button"
             variant="outline"
             onClick={() => form.reset()}
-            disabled={updating}
+            disabled={updating || !isDirty}
+            className="gap-2"
           >
             Reset
           </Button>
-          <Button type="submit" disabled={updating}>
-            {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
+          <Button
+            type="submit"
+            disabled={updating || !isDirty}
+            className="gap-2 min-w-[140px]"
+          >
+            {updating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                Save Changes
+              </>
+            )}
           </Button>
         </CardFooter>
       </Card>

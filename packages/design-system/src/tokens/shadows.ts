@@ -1,5 +1,5 @@
 /**
- * Luxury E-commerce Design System - Shadow Tokens
+ * NextPik E-commerce Design System - Shadow Tokens
  * Smooth, elegant shadows for depth and elevation
  */
 

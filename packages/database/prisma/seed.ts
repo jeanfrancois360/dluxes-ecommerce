@@ -8,18 +8,17 @@ async function main() {
   console.log('');
 
   // Hash passwords for test accounts
-  const testPassword = await bcrypt.hash('Test@123', 10); // Standard test password
-  const defaultPassword = await bcrypt.hash('Password123!', 10); // Legacy password
+  const testPassword = await bcrypt.hash('Password123!', 10); // Standard test password for all users
 
-  // Create Super Admin user
+  // Create Root Super Admin user (legacy)
   const superAdmin = await prisma.user.upsert({
-    where: { email: 'admin@luxury.com' },
+    where: { email: 'admin@nextpik.com' },
     update: {},
     create: {
-      email: 'admin@luxury.com',
-      firstName: 'Super',
+      email: 'admin@nextpik.com',
+      firstName: 'Root',
       lastName: 'Admin',
-      password: defaultPassword,
+      password: testPassword,
       role: 'SUPER_ADMIN',
       emailVerified: true,
       preferences: {
@@ -35,25 +34,113 @@ async function main() {
     },
   });
 
-  console.log('✅ Created super admin user:', superAdmin.email);
+  console.log('✅ Created root super admin user:', superAdmin.email);
 
   // ========================================
-  // CREATE TEST ACCOUNTS (Test@123)
+  // CREATE COMPREHENSIVE TEST ACCOUNTS
   // ========================================
   console.log('');
-  console.log('📝 Creating test accounts...');
+  console.log('👥 Creating comprehensive test users...');
 
-  // 1. BUYER Test Account
-  const testBuyer = await prisma.user.upsert({
-    where: { email: 'buyer@test.com' },
+  // ========================================
+  // SUPER_ADMIN (1 user)
+  // ========================================
+  const superadmin1 = await prisma.user.upsert({
+    where: { email: 'superadmin@nextpik.com' },
     update: {},
     create: {
-      email: 'buyer@test.com',
-      firstName: 'Test',
-      lastName: 'Buyer',
+      email: 'superadmin@nextpik.com',
+      firstName: 'Super',
+      lastName: 'Admin',
+      password: testPassword,
+      role: 'SUPER_ADMIN',
+      emailVerified: true,
+      isActive: true,
+      phone: '+250788000001',
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'dark',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+  console.log('✅ Created SUPER_ADMIN:', superadmin1.email);
+
+  // ========================================
+  // ADMIN (2 users)
+  // ========================================
+  const admin1 = await prisma.user.upsert({
+    where: { email: 'admin1@nextpik.com' },
+    update: {},
+    create: {
+      email: 'admin1@nextpik.com',
+      firstName: 'Admin',
+      lastName: 'One',
+      password: testPassword,
+      role: 'ADMIN',
+      emailVerified: true,
+      isActive: true,
+      phone: '+250788000002',
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'dark',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+  console.log('✅ Created ADMIN:', admin1.email);
+
+  const admin2 = await prisma.user.upsert({
+    where: { email: 'admin2@nextpik.com' },
+    update: {},
+    create: {
+      email: 'admin2@nextpik.com',
+      firstName: 'Admin',
+      lastName: 'Two',
+      password: testPassword,
+      role: 'ADMIN',
+      emailVerified: true,
+      isActive: true,
+      phone: '+250788000003',
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'light',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+  console.log('✅ Created ADMIN:', admin2.email);
+
+  // ========================================
+  // BUYER (3 users)
+  // ========================================
+  const buyer1 = await prisma.user.upsert({
+    where: { email: 'buyer1@nextpik.com' },
+    update: {},
+    create: {
+      email: 'buyer1@nextpik.com',
+      firstName: 'Buyer',
+      lastName: 'One',
       password: testPassword,
       role: 'BUYER',
       emailVerified: true,
+      isActive: true,
+      phone: '+250788000010',
       preferences: {
         create: {
           newsletter: true,
@@ -66,90 +153,25 @@ async function main() {
       },
     },
   });
-  console.log('✅ Created BUYER test account:', testBuyer.email);
+  console.log('✅ Created BUYER:', buyer1.email);
 
-  // 2. CUSTOMER Test Account (Legacy)
-  const testCustomer = await prisma.user.upsert({
-    where: { email: 'customer@test.com' },
+  const buyer2 = await prisma.user.upsert({
+    where: { email: 'buyer2@nextpik.com' },
     update: {},
     create: {
-      email: 'customer@test.com',
-      firstName: 'Test',
-      lastName: 'Customer',
+      email: 'buyer2@nextpik.com',
+      firstName: 'Buyer',
+      lastName: 'Two',
       password: testPassword,
-      role: 'CUSTOMER',
+      role: 'BUYER',
       emailVerified: true,
+      isActive: true,
+      phone: '+250788000011',
       preferences: {
         create: {
           newsletter: true,
           notifications: true,
-          currency: 'USD',
-          language: 'en',
-          theme: 'light',
-          layoutMode: 'elegant',
-        },
-      },
-    },
-  });
-  console.log('✅ Created CUSTOMER test account:', testCustomer.email);
-
-  // 3. SELLER Test Account with Store
-  const testSeller = await prisma.user.upsert({
-    where: { email: 'seller@test.com' },
-    update: {},
-    create: {
-      email: 'seller@test.com',
-      firstName: 'Test',
-      lastName: 'Seller',
-      password: testPassword,
-      role: 'SELLER',
-      emailVerified: true,
-      preferences: {
-        create: {
-          newsletter: true,
-          notifications: true,
-          currency: 'USD',
-          language: 'en',
-          theme: 'light',
-          layoutMode: 'elegant',
-        },
-      },
-    },
-  });
-  console.log('✅ Created SELLER test account:', testSeller.email);
-
-  // Create seller's store
-  const testSellerStore = await prisma.store.upsert({
-    where: { userId: testSeller.id },
-    update: {},
-    create: {
-      name: 'Test Seller Store',
-      slug: 'test-seller-store',
-      description: 'A test store for product management and seller features',
-      userId: testSeller.id,
-      status: 'ACTIVE', // Pre-approved for testing
-      email: 'seller@test.com',
-      phone: '+1234567890',
-    },
-  });
-  console.log('✅ Created ACTIVE store for seller:', testSellerStore.name);
-
-  // 4. ADMIN Test Account
-  const testAdmin = await prisma.user.upsert({
-    where: { email: 'admin@test.com' },
-    update: {},
-    create: {
-      email: 'admin@test.com',
-      firstName: 'Test',
-      lastName: 'Admin',
-      password: testPassword,
-      role: 'ADMIN',
-      emailVerified: true,
-      preferences: {
-        create: {
-          newsletter: true,
-          notifications: true,
-          currency: 'USD',
+          currency: 'EUR',
           language: 'en',
           theme: 'dark',
           layoutMode: 'elegant',
@@ -157,106 +179,25 @@ async function main() {
       },
     },
   });
-  console.log('✅ Created ADMIN test account:', testAdmin.email);
+  console.log('✅ Created BUYER:', buyer2.email);
 
-  // 5. SUPER_ADMIN Test Account
-  const testSuperAdmin = await prisma.user.upsert({
-    where: { email: 'superadmin@test.com' },
+  const buyer3 = await prisma.user.upsert({
+    where: { email: 'buyer3@nextpik.com' },
     update: {},
     create: {
-      email: 'superadmin@test.com',
-      firstName: 'Test',
-      lastName: 'SuperAdmin',
+      email: 'buyer3@nextpik.com',
+      firstName: 'Buyer',
+      lastName: 'Three',
       password: testPassword,
-      role: 'SUPER_ADMIN',
+      role: 'BUYER',
       emailVerified: true,
-      preferences: {
-        create: {
-          newsletter: true,
-          notifications: true,
-          currency: 'USD',
-          language: 'en',
-          theme: 'dark',
-          layoutMode: 'elegant',
-        },
-      },
-    },
-  });
-  console.log('✅ Created SUPER_ADMIN test account:', testSuperAdmin.email);
-
-  console.log('');
-  console.log('📝 Creating additional demo accounts...');
-
-  // Create Regular Admin user
-  const admin = await prisma.user.upsert({
-    where: { email: 'john.admin@luxury.com' },
-    update: {},
-    create: {
-      email: 'john.admin@luxury.com',
-      firstName: 'John',
-      lastName: 'Administrator',
-      password: defaultPassword,
-      role: 'ADMIN',
-      emailVerified: true,
-      phone: '+1234567890',
-      preferences: {
-        create: {
-          newsletter: true,
-          notifications: true,
-          currency: 'USD',
-          language: 'en',
-          theme: 'light',
-          layoutMode: 'elegant',
-        },
-      },
-    },
-  });
-
-  console.log('✅ Created admin user:', admin.email);
-
-  // Create Test Customer Users
-  const customer1 = await prisma.user.upsert({
-    where: { email: 'sarah.customer@luxury.com' },
-    update: {},
-    create: {
-      email: 'sarah.customer@luxury.com',
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      password: defaultPassword,
-      role: 'CUSTOMER',
-      emailVerified: true,
-      phone: '+1234567891',
-      preferences: {
-        create: {
-          newsletter: true,
-          notifications: true,
-          currency: 'USD',
-          language: 'en',
-          theme: 'dark',
-          layoutMode: 'elegant',
-        },
-      },
-    },
-  });
-
-  console.log('✅ Created customer user:', customer1.email);
-
-  const customer2 = await prisma.user.upsert({
-    where: { email: 'michael.smith@luxury.com' },
-    update: {},
-    create: {
-      email: 'michael.smith@luxury.com',
-      firstName: 'Michael',
-      lastName: 'Smith',
-      password: defaultPassword,
-      role: 'CUSTOMER',
-      emailVerified: true,
-      phone: '+1234567892',
+      isActive: true,
+      phone: '+250788000012',
       preferences: {
         create: {
           newsletter: false,
           notifications: true,
-          currency: 'EUR',
+          currency: 'RWF',
           language: 'en',
           theme: 'light',
           layoutMode: 'compact',
@@ -264,25 +205,28 @@ async function main() {
       },
     },
   });
+  console.log('✅ Created BUYER:', buyer3.email);
 
-  console.log('✅ Created customer user:', customer2.email);
-
-  const customer3 = await prisma.user.upsert({
-    where: { email: 'emma.wilson@luxury.com' },
+  // ========================================
+  // SELLER (3 users with Stores)
+  // ========================================
+  const seller1 = await prisma.user.upsert({
+    where: { email: 'seller1@nextpik.com' },
     update: {},
     create: {
-      email: 'emma.wilson@luxury.com',
-      firstName: 'Emma',
-      lastName: 'Wilson',
-      password: defaultPassword,
-      role: 'CUSTOMER',
-      emailVerified: false,
-      phone: '+1234567893',
+      email: 'seller1@nextpik.com',
+      firstName: 'Seller',
+      lastName: 'One',
+      password: testPassword,
+      role: 'SELLER',
+      emailVerified: true,
+      isActive: true,
+      phone: '+250788000020',
       preferences: {
         create: {
           newsletter: true,
-          notifications: false,
-          currency: 'GBP',
+          notifications: true,
+          currency: 'USD',
           language: 'en',
           theme: 'dark',
           layoutMode: 'elegant',
@@ -290,8 +234,113 @@ async function main() {
       },
     },
   });
+  console.log('✅ Created SELLER:', seller1.email);
 
-  console.log('✅ Created customer user:', customer3.email);
+  const seller1Store = await prisma.store.upsert({
+    where: { userId: seller1.id },
+    update: {},
+    create: {
+      name: 'Luxury Timepieces',
+      slug: 'luxury-timepieces',
+      description: 'Premium watches and timepieces from around the world',
+      userId: seller1.id,
+      status: 'ACTIVE',
+      email: 'seller1@nextpik.com',
+      phone: '+250788000020',
+      country: 'Rwanda',
+      city: 'Kigali',
+    },
+  });
+  console.log('   └─ Created Store:', seller1Store.name);
+
+  const seller2 = await prisma.user.upsert({
+    where: { email: 'seller2@nextpik.com' },
+    update: {},
+    create: {
+      email: 'seller2@nextpik.com',
+      firstName: 'Seller',
+      lastName: 'Two',
+      password: testPassword,
+      role: 'SELLER',
+      emailVerified: true,
+      isActive: true,
+      phone: '+250788000021',
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'USD',
+          language: 'en',
+          theme: 'light',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+  console.log('✅ Created SELLER:', seller2.email);
+
+  const seller2Store = await prisma.store.upsert({
+    where: { userId: seller2.id },
+    update: {},
+    create: {
+      name: 'Elegant Jewelry Co',
+      slug: 'elegant-jewelry-co',
+      description: 'Fine jewelry and precious gems',
+      userId: seller2.id,
+      status: 'ACTIVE',
+      email: 'seller2@nextpik.com',
+      phone: '+250788000021',
+      country: 'Rwanda',
+      city: 'Kigali',
+    },
+  });
+  console.log('   └─ Created Store:', seller2Store.name);
+
+  const seller3 = await prisma.user.upsert({
+    where: { email: 'seller3@nextpik.com' },
+    update: {},
+    create: {
+      email: 'seller3@nextpik.com',
+      firstName: 'Seller',
+      lastName: 'Three',
+      password: testPassword,
+      role: 'SELLER',
+      emailVerified: true,
+      isActive: true,
+      phone: '+250788000022',
+      preferences: {
+        create: {
+          newsletter: true,
+          notifications: true,
+          currency: 'EUR',
+          language: 'en',
+          theme: 'dark',
+          layoutMode: 'elegant',
+        },
+      },
+    },
+  });
+  console.log('✅ Created SELLER:', seller3.email);
+
+  const seller3Store = await prisma.store.upsert({
+    where: { userId: seller3.id },
+    update: {},
+    create: {
+      name: 'Fashion Forward',
+      slug: 'fashion-forward',
+      description: 'Luxury fashion and designer clothing',
+      userId: seller3.id,
+      status: 'ACTIVE',
+      email: 'seller3@nextpik.com',
+      phone: '+250788000022',
+      country: 'Rwanda',
+      city: 'Kigali',
+    },
+  });
+  console.log('   └─ Created Store:', seller3Store.name);
+
+  // Store the first seller's store for product seeding later
+  const testSellerStore = seller1Store;
 
   // ========================================
   // CREATE CURRENCY RATES
@@ -1600,10 +1649,10 @@ async function main() {
   const settings = await Promise.all([
     // Escrow Settings
     prisma.systemSetting.upsert({
-      where: { key: 'escrow.enabled' },
+      where: { key: 'escrow_enabled' },
       update: {},
       create: {
-        key: 'escrow.enabled',
+        key: 'escrow_enabled',
         category: 'PAYMENT',
         value: true,
         valueType: 'BOOLEAN',
@@ -1618,10 +1667,10 @@ async function main() {
     }),
 
     prisma.systemSetting.upsert({
-      where: { key: 'escrow.immediate_payout_enabled' },
+      where: { key: 'escrow_immediate_payout_enabled' },
       update: {},
       create: {
-        key: 'escrow.immediate_payout_enabled',
+        key: 'escrow_immediate_payout_enabled',
         category: 'PAYMENT',
         value: false,
         valueType: 'BOOLEAN',
@@ -1636,10 +1685,10 @@ async function main() {
     }),
 
     prisma.systemSetting.upsert({
-      where: { key: 'escrow.hold_period_days' },
+      where: { key: 'escrow_hold_period_days' },
       update: {},
       create: {
-        key: 'escrow.hold_period_days',
+        key: 'escrow_hold_period_days',
         category: 'PAYMENT',
         value: 7,
         valueType: 'NUMBER',
@@ -1654,10 +1703,10 @@ async function main() {
     }),
 
     prisma.systemSetting.upsert({
-      where: { key: 'escrow.auto_release_enabled' },
+      where: { key: 'escrow_auto_release_enabled' },
       update: {},
       create: {
-        key: 'escrow.auto_release_enabled',
+        key: 'escrow_auto_release_enabled',
         category: 'PAYMENT',
         value: true,
         valueType: 'BOOLEAN',
@@ -1673,10 +1722,10 @@ async function main() {
 
     // Payout Settings
     prisma.systemSetting.upsert({
-      where: { key: 'payout.minimum_amount' },
+      where: { key: 'payout_minimum_amount' },
       update: {},
       create: {
-        key: 'payout.minimum_amount',
+        key: 'payout_minimum_amount',
         category: 'PAYOUT',
         value: 50.00,
         valueType: 'NUMBER',
@@ -1691,10 +1740,10 @@ async function main() {
     }),
 
     prisma.systemSetting.upsert({
-      where: { key: 'payout.default_frequency' },
+      where: { key: 'payout_default_frequency' },
       update: {},
       create: {
-        key: 'payout.default_frequency',
+        key: 'payout_default_frequency',
         category: 'PAYOUT',
         value: 'WEEKLY',
         valueType: 'STRING',
@@ -1709,10 +1758,10 @@ async function main() {
     }),
 
     prisma.systemSetting.upsert({
-      where: { key: 'payout.auto_schedule_enabled' },
+      where: { key: 'payout_auto_schedule_enabled' },
       update: {},
       create: {
-        key: 'payout.auto_schedule_enabled',
+        key: 'payout_auto_schedule_enabled',
         category: 'PAYOUT',
         value: true,
         valueType: 'BOOLEAN',
@@ -1728,10 +1777,10 @@ async function main() {
 
     // Audit & Logging
     prisma.systemSetting.upsert({
-      where: { key: 'audit.log_all_escrow_actions' },
+      where: { key: 'audit_log_all_escrow_actions' },
       update: {},
       create: {
-        key: 'audit.log_all_escrow_actions',
+        key: 'audit_log_all_escrow_actions',
         category: 'SECURITY',
         value: true,
         valueType: 'BOOLEAN',
@@ -1746,10 +1795,10 @@ async function main() {
     }),
 
     prisma.systemSetting.upsert({
-      where: { key: 'audit.log_retention_days' },
+      where: { key: 'audit_log_retention_days' },
       update: {},
       create: {
-        key: 'audit.log_retention_days',
+        key: 'audit_log_retention_days',
         category: 'SECURITY',
         value: 2555, // 7 years
         valueType: 'NUMBER',
@@ -1765,10 +1814,10 @@ async function main() {
 
     // Commission & Fee Settings
     prisma.systemSetting.upsert({
-      where: { key: 'commission.default_rate' },
+      where: { key: 'commission_default_rate' },
       update: {},
       create: {
-        key: 'commission.default_rate',
+        key: 'commission_default_rate',
         category: 'COMMISSION',
         value: 10.0,
         valueType: 'NUMBER',
@@ -1799,6 +1848,7 @@ async function main() {
       name: 'FedEx',
       slug: 'fedex',
       type: 'API_INTEGRATED',
+      serviceType: 'INTERNATIONAL',
       description: 'Leading international courier delivery services',
       contactEmail: 'support@fedex.com',
       contactPhone: '+1-800-463-3339',
@@ -1821,6 +1871,7 @@ async function main() {
       name: 'UPS',
       slug: 'ups',
       type: 'API_INTEGRATED',
+      serviceType: 'INTERNATIONAL',
       description: 'United Parcel Service - Global shipping and logistics',
       contactEmail: 'support@ups.com',
       contactPhone: '+1-800-742-5877',
@@ -1843,6 +1894,7 @@ async function main() {
       name: 'DHL Express',
       slug: 'dhl',
       type: 'API_INTEGRATED',
+      serviceType: 'INTERNATIONAL',
       description: 'DHL Express - International shipping and courier services',
       contactEmail: 'support@dhl.com',
       contactPhone: '+1-800-225-5345',
@@ -1859,16 +1911,17 @@ async function main() {
   });
 
   const localCourier = await prisma.deliveryProvider.upsert({
-    where: { slug: 'luxury-express' },
+    where: { slug: 'nextpik-express' },
     update: {},
     create: {
-      name: 'Luxury Express',
-      slug: 'luxury-express',
+      name: 'NextPik Express',
+      slug: 'nextpik-express',
       type: 'PARTNER',
+      serviceType: 'LOCAL',
       description: 'Premium local delivery service for luxury goods - Serving Rwanda, Uganda, and Kenya',
-      contactEmail: 'contact@luxuryexpress.com',
+      contactEmail: 'contact@nextpikexpress.com',
       contactPhone: '+250-788-123-456',
-      website: 'https://luxuryexpress.com',
+      website: 'https://nextpikexpress.com',
       apiEnabled: false,
       countries: ['RW', 'UG', 'KE'],
       commissionType: 'PERCENTAGE',
@@ -1879,23 +1932,26 @@ async function main() {
     },
   });
 
-  console.log('✅ Created 4 delivery providers (FedEx, UPS, DHL, Luxury Express)');
+  console.log('✅ Created 4 delivery providers (FedEx, UPS, DHL, NextPik Express)');
 
-  // Create Delivery Partner Test Accounts
+  // ========================================
+  // DELIVERY_PARTNER (2 users)
+  // ========================================
   console.log('');
-  console.log('👷 Creating delivery partner accounts...');
+  console.log('🚚 Creating delivery partner test users...');
 
-  const partner1 = await prisma.user.upsert({
-    where: { email: 'partner1@test.com' },
+  const deliverypartner1 = await prisma.user.upsert({
+    where: { email: 'deliverypartner1@nextpik.com' },
     update: {},
     create: {
-      email: 'partner1@test.com',
-      firstName: 'John',
-      lastName: 'Courier',
+      email: 'deliverypartner1@nextpik.com',
+      firstName: 'Delivery',
+      lastName: 'Partner One',
       password: testPassword,
       role: 'DELIVERY_PARTNER',
       emailVerified: true,
-      phone: '+250-788-111-111',
+      isActive: true,
+      phone: '+250788000030',
       deliveryProviderId: localCourier.id,
       preferences: {
         create: {
@@ -1909,19 +1965,22 @@ async function main() {
       },
     },
   });
+  console.log('✅ Created DELIVERY_PARTNER:', deliverypartner1.email);
+  console.log('   └─ Provider: NextPik Express');
 
-  const partner2 = await prisma.user.upsert({
-    where: { email: 'partner2@test.com' },
+  const deliverypartner2 = await prisma.user.upsert({
+    where: { email: 'deliverypartner2@nextpik.com' },
     update: {},
     create: {
-      email: 'partner2@test.com',
-      firstName: 'Sarah',
-      lastName: 'Delivery',
+      email: 'deliverypartner2@nextpik.com',
+      firstName: 'Delivery',
+      lastName: 'Partner Two',
       password: testPassword,
       role: 'DELIVERY_PARTNER',
       emailVerified: true,
-      phone: '+250-788-222-222',
-      deliveryProviderId: localCourier.id,
+      isActive: true,
+      phone: '+250788000031',
+      deliveryProviderId: fedex.id,
       preferences: {
         create: {
           newsletter: false,
@@ -1934,80 +1993,42 @@ async function main() {
       },
     },
   });
-
-  const partner3 = await prisma.user.upsert({
-    where: { email: 'partner3@test.com' },
-    update: {},
-    create: {
-      email: 'partner3@test.com',
-      firstName: 'Mike',
-      lastName: 'Express',
-      password: testPassword,
-      role: 'DELIVERY_PARTNER',
-      emailVerified: true,
-      phone: '+250-788-333-333',
-      deliveryProviderId: fedex.id,
-      preferences: {
-        create: {
-          newsletter: false,
-          notifications: true,
-          currency: 'USD',
-          language: 'en',
-          theme: 'light',
-          layoutMode: 'compact',
-        },
-      },
-    },
-  });
-
-  console.log('✅ Created 3 delivery partner accounts (partner1-3@test.com)');
-  console.log(`   - ${partner1.email} → Luxury Express`);
-  console.log(`   - ${partner2.email} → Luxury Express`);
-  console.log(`   - ${partner3.email} → FedEx`);
+  console.log('✅ Created DELIVERY_PARTNER:', deliverypartner2.email);
+  console.log('   └─ Provider: FedEx');
 
   console.log('');
   console.log('🎉 Seeding completed!');
   console.log('');
-  console.log('═══════════════════════════════════════════════════════');
-  console.log('📋 TEST ACCOUNT CREDENTIALS (Password: Test@123)');
-  console.log('═══════════════════════════════════════════════════════');
+  console.log('═══════════════════════════════════════════════════════════════');
+  console.log('📋 TEST ACCOUNT CREDENTIALS (Password: Password123!)');
+  console.log('═══════════════════════════════════════════════════════════════');
   console.log('');
-  console.log('1. BUYER Account:');
-  console.log('   Email:     buyer@test.com');
-  console.log('   Password:  Test@123');
-  console.log('   Dashboard: http://localhost:3000/dashboard/buyer');
+  console.log('🔵 SUPER_ADMIN (1 user):');
+  console.log('   superadmin@nextpik.com');
   console.log('');
-  console.log('2. CUSTOMER Account (Legacy):');
-  console.log('   Email:     customer@test.com');
-  console.log('   Password:  Test@123');
-  console.log('   Dashboard: http://localhost:3000/dashboard/buyer');
+  console.log('🟢 ADMIN (2 users):');
+  console.log('   admin1@nextpik.com');
+  console.log('   admin2@nextpik.com');
   console.log('');
-  console.log('3. SELLER Account:');
-  console.log('   Email:     seller@test.com');
-  console.log('   Password:  Test@123');
-  console.log('   Dashboard: http://localhost:3000/dashboard/seller');
-  console.log('   Products:  http://localhost:3000/seller/products');
+  console.log('🟡 BUYER (3 users):');
+  console.log('   buyer1@nextpik.com');
+  console.log('   buyer2@nextpik.com');
+  console.log('   buyer3@nextpik.com');
   console.log('');
-  console.log('4. ADMIN Account:');
-  console.log('   Email:     admin@test.com');
-  console.log('   Password:  Test@123');
-  console.log('   Dashboard: http://localhost:3000/admin/dashboard');
+  console.log('🟣 SELLER (3 users with Stores):');
+  console.log('   seller1@nextpik.com → Luxury Timepieces');
+  console.log('   seller2@nextpik.com → Elegant Jewelry Co');
+  console.log('   seller3@nextpik.com → Fashion Forward');
   console.log('');
-  console.log('5. SUPER_ADMIN Account:');
-  console.log('   Email:     superadmin@test.com');
-  console.log('   Password:  Test@123');
-  console.log('   Dashboard: http://localhost:3000/admin/dashboard');
+  console.log('🚚 DELIVERY_PARTNER (2 users):');
+  console.log('   deliverypartner1@nextpik.com → NextPik Express');
+  console.log('   deliverypartner2@nextpik.com → FedEx');
   console.log('');
-  console.log('6. DELIVERY PARTNER Accounts:');
-  console.log('   Email:     partner1@test.com (Luxury Express)');
-  console.log('   Email:     partner2@test.com (Luxury Express)');
-  console.log('   Email:     partner3@test.com (FedEx)');
-  console.log('   Password:  Test@123');
-  console.log('   Dashboard: http://localhost:3000/delivery-partner/dashboard');
-  console.log('');
-  console.log('═══════════════════════════════════════════════════════');
+  console.log('═══════════════════════════════════════════════════════════════');
+  console.log('🔑 All passwords: Password123!');
   console.log('🔗 Login URL: http://localhost:3000/auth/login');
-  console.log('═══════════════════════════════════════════════════════');
+  console.log('📄 Full test users list: See TEST_USERS.md');
+  console.log('═══════════════════════════════════════════════════════════════');
   console.log('');
 }
 

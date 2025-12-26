@@ -42,7 +42,7 @@ Elegant input field with floating label animation.
 #### Import
 
 ```tsx
-import { FloatingInput } from '@luxury/ui/components/floating-input';
+import { FloatingInput } from '@nextpik/ui/components/floating-input';
 ```
 
 #### Basic Usage
@@ -119,7 +119,7 @@ Beautiful 6-digit OTP input with auto-advance.
 #### Import
 
 ```tsx
-import { OTPInput } from '@luxury/ui/components/otp-input';
+import { OTPInput } from '@nextpik/ui/components/otp-input';
 ```
 
 #### Basic Usage
@@ -249,8 +249,8 @@ import AuthLayout from '@/components/auth/auth-layout';
 
 import { useState } from 'react';
 import AuthLayout from '@/components/auth/auth-layout';
-import { FloatingInput } from '@luxury/ui/components/floating-input';
-import { OTPInput } from '@luxury/ui/components/otp-input';
+import { FloatingInput } from '@nextpik/ui/components/floating-input';
+import { OTPInput } from '@nextpik/ui/components/otp-input';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -312,7 +312,7 @@ export default function LoginPage() {
 
 import { useState } from 'react';
 import AuthLayout from '@/components/auth/auth-layout';
-import { FloatingInput } from '@luxury/ui/components/floating-input';
+import { FloatingInput } from '@nextpik/ui/components/floating-input';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -378,7 +378,7 @@ export default function RegisterPage() {
 'use client';
 
 import { useState } from 'react';
-import { OTPInput } from '@luxury/ui/components/otp-input';
+import { OTPInput } from '@nextpik/ui/components/otp-input';
 
 export default function Setup2FAPage() {
   const [otp, setOtp] = useState('');

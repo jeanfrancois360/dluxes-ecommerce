@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
-import { FloatingInput, Button } from '@luxury/ui';
+import { FloatingInput, Button } from '@nextpik/ui';
 import type { UserRole } from '@/lib/api/types';
 
 type AccountType = 'BUYER' | 'SELLER';

@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Switch } from '@nextpik/ui';
 import { AlertCircle, Loader2, Shield, X, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
@@ -40,9 +40,10 @@ export function SecuritySettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as SecuritySettings);
+      form.reset(formData as SecuritySettings, { keepDirtyValues: false });
     }
-  }, [settings, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]); // form is stable, don't include it
 
   const onSubmit = async (data: SecuritySettings) => {
     try {
@@ -60,7 +61,7 @@ export function SecuritySettingsSection() {
   const addFileType = () => {
     const current = form.watch('allowed_file_types') || [];
     if (newFileType && !current.includes(newFileType)) {
-      form.setValue('allowed_file_types', [...current, newFileType]);
+      form.setValue('allowed_file_types', [...current, newFileType], { shouldDirty: true });
       setNewFileType('');
     }
   };
@@ -71,7 +72,7 @@ export function SecuritySettingsSection() {
       toast.error('At least one file type must be allowed');
       return;
     }
-    form.setValue('allowed_file_types', current.filter(t => t !== type));
+    form.setValue('allowed_file_types', current.filter(t => t !== type), { shouldDirty: true });
   };
 
   if (loading) {
@@ -84,20 +85,27 @@ export function SecuritySettingsSection() {
     );
   }
 
+  const isDirty = form.formState.isDirty;
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Card>
-        <CardHeader>
+      <Card className="border-muted shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="border-b bg-muted/30">
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
             Security Settings
+            {isDirty && (
+              <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                Unsaved changes
+              </span>
+            )}
           </CardTitle>
           <CardDescription>
             Configure authentication, session, and file upload security
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pb-12">
           {/* 2FA for Admin */}
           <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
             <div className="space-y-0.5">
@@ -109,7 +117,7 @@ export function SecuritySettingsSection() {
             <Switch
               id="2fa_required_for_admin"
               checked={form.watch('2fa_required_for_admin')}
-              onCheckedChange={(checked) => form.setValue('2fa_required_for_admin', checked)}
+              onCheckedChange={(checked) => form.setValue('2fa_required_for_admin', checked, { shouldDirty: true })}
             />
           </div>
 
@@ -192,7 +200,7 @@ export function SecuritySettingsSection() {
               <Switch
                 id="password_require_special_chars"
                 checked={form.watch('password_require_special_chars')}
-                onCheckedChange={(checked) => form.setValue('password_require_special_chars', checked)}
+                onCheckedChange={(checked) => form.setValue('password_require_special_chars', checked, { shouldDirty: true })}
               />
             </div>
           </div>
@@ -273,7 +281,7 @@ export function SecuritySettingsSection() {
                       type="button"
                       onClick={() => {
                         const current = form.watch('allowed_file_types') || [];
-                        form.setValue('allowed_file_types', [...current, type]);
+                        form.setValue('allowed_file_types', [...current, type], { shouldDirty: true });
                       }}
                       className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80"
                     >
@@ -292,18 +300,31 @@ export function SecuritySettingsSection() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between border-t bg-muted/30 pt-6">
           <Button
             type="button"
             variant="outline"
             onClick={() => form.reset()}
-            disabled={updating}
+            disabled={updating || !isDirty}
+            className="gap-2"
           >
             Reset
           </Button>
-          <Button type="submit" disabled={updating}>
-            {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
+          <Button
+            type="submit"
+            disabled={updating || !isDirty}
+            className="gap-2 min-w-[140px]"
+          >
+            {updating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                Save Changes
+              </>
+            )}
           </Button>
         </CardFooter>
       </Card>
