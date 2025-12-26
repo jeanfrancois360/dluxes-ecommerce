@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useCurrencyConverter } from './use-currency';
-import { QuickViewProduct } from '@luxury/ui';
+import { QuickViewProduct } from '@nextpik/ui';
 
 /**
  * Hook to convert product prices to selected currency

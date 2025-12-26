@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
 import Link from 'next/link';
-import { cn } from '@luxury/ui';
+import { cn } from '@nextpik/ui';
 import { SearchBar } from '@/components/search/search-bar';
 import { SearchModal } from '@/components/search/search-modal';
 import { MegaMenu, shopMegaMenuData, shopMegaMenuFeatured, collectionsMegaMenuData } from './mega-menu';

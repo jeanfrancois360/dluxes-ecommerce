@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Badge } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Textarea } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Badge } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Textarea } from '@nextpik/ui';
 import {
   Dialog,
   DialogContent,
@@ -14,20 +14,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {
   Package,
   Truck,

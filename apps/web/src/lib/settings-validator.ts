@@ -25,7 +25,7 @@ export interface ValidationResult {
 export const REQUIRED_SETTINGS: SettingRequirement[] = [
   {
     key: 'escrow_enabled',
-    category: 'payment',
+    category: 'PAYMENT', // Note: Stored in uppercase PAYMENT category in database
     label: 'Escrow System',
     description: 'Escrow must be enabled for secure payments',
     requiredFor: ['checkout', 'orders', 'payments'],

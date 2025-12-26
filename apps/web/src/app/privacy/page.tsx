@@ -24,7 +24,7 @@ export default function PrivacyPage() {
             <section className="mb-12">
               <h2 className="text-3xl font-serif font-bold text-black mb-4">1. Introduction</h2>
               <p className="text-neutral-700 leading-relaxed mb-4">
-                At Luxury E-commerce ("we," "our," or "us"), we respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we look after your personal data when you visit our website and tell you about your privacy rights.
+                At NextPik E-commerce ("we," "our," or "us"), we respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we look after your personal data when you visit our website and tell you about your privacy rights.
               </p>
               <p className="text-neutral-700 leading-relaxed">
                 This privacy policy applies to information we collect when you use our website, mobile application, or otherwise interact with us.
@@ -162,7 +162,7 @@ export default function PrivacyPage() {
               <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200">
                 <p className="text-neutral-700">
                   <strong>Data Protection Officer</strong><br />
-                  Luxury E-commerce<br />
+                  NextPik E-commerce<br />
                   123 Design Avenue<br />
                   New York, NY 10001<br />
                   Email: privacy@luxury.com<br />

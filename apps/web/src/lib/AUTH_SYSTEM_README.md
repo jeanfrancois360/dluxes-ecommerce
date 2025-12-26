@@ -1,6 +1,6 @@
 # Authentication System Documentation
 
-Complete authentication system for the Luxury E-commerce platform built with Next.js 15, React 19, and TypeScript.
+Complete authentication system for the NextPik E-commerce platform built with Next.js 15, React 19, and TypeScript.
 
 ## Table of Contents
 

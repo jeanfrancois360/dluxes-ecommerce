@@ -1,5 +1,5 @@
 /**
- * Luxury E-commerce Design System - Spacing Tokens
+ * NextPik E-commerce Design System - Spacing Tokens
  * Based on 8px grid system with generous white space
  */
 

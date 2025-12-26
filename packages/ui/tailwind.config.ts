@@ -1,5 +1,5 @@
 import type { Config } from 'tailwindcss';
-import { colors, spacing, fontSize, fontWeight, fontFamily, shadows } from '@luxury/design-system';
+import { colors, spacing, fontSize, fontWeight, fontFamily, shadows } from '@nextpik/design-system';
 
 const config: Config = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],

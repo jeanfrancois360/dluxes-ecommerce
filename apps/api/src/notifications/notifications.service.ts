@@ -45,7 +45,7 @@ export class NotificationsService {
     private readonly emailService: EmailService,
   ) {
     this.fromEmail = this.configService.get('EMAIL_FROM', 'noreply@luxuryecommerce.com');
-    this.siteName = this.configService.get('SITE_NAME', 'Luxury E-commerce');
+    this.siteName = this.configService.get('SITE_NAME', 'NextPik E-commerce');
   }
 
   /**

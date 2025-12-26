@@ -1,5 +1,5 @@
 /**
- * Luxury E-commerce Design System - Color Tokens
+ * NextPik E-commerce Design System - Color Tokens
  * Modern minimalist luxury palette (Apple meets Chanel)
  */
 

@@ -1,5 +1,5 @@
 {
-  "name": "@luxury/ui",
+  "name": "@nextpik/ui",
   "version": "1.0.0",
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",
@@ -16,7 +16,7 @@
     "build-storybook": "storybook build -o .storybook-build"
   },
   "dependencies": {
-    "@luxury/design-system": "workspace:*",
+    "@nextpik/design-system": "workspace:*",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-dropdown-menu": "^2.1.2",

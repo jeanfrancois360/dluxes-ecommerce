@@ -65,6 +65,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [imageUrl, setImageUrl] = useState('');
   const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  const [isDragging, setIsDragging] = useState(false);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -305,8 +306,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const processFiles = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
 
     // Validate files before upload
@@ -326,7 +326,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
     if (validationErrors.length > 0) {
       alert(`Upload errors:\n${validationErrors.join('\n')}`);
-      e.target.value = '';
       return;
     }
 
@@ -389,7 +388,43 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       alert('Failed to upload images. Please try again.');
     } finally {
       setUploadingImages(false);
-      e.target.value = '';
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    await processFiles(files);
+    e.target.value = ''; // Reset input
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      await processFiles(files);
     }
   };
 
@@ -824,11 +859,19 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           {/* File Upload */}
           <div>
             <label className="block">
-              <div className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
-                errors.images
-                  ? 'border-red-300 bg-red-50 hover:border-red-400'
-                  : 'border-gray-300 hover:border-[#CBB57B] hover:bg-gray-50'
-              }`}>
+              <div
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
+                  errors.images
+                    ? 'border-red-300 bg-red-50 hover:border-red-400'
+                    : isDragging
+                    ? 'border-[#CBB57B] bg-[#CBB57B]/10 scale-[1.02]'
+                    : 'border-gray-300 hover:border-[#CBB57B] hover:bg-gray-50'
+                }`}
+                onDragEnter={handleDragEnter}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
                 {uploadingImages ? (
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-12 h-12 border-4 border-[#CBB57B] border-t-transparent rounded-full animate-spin"></div>

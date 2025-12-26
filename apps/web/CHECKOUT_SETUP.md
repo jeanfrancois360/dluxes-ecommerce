@@ -73,7 +73,7 @@ npm run dev
 - Check browser console for detailed error messages
 
 ### Components not found
-- All components are exported from `@luxury/ui`
+- All components are exported from `@nextpik/ui`
 - Run `npm install` in the root directory
 - Build the UI package: `cd packages/ui && npm run build`
 

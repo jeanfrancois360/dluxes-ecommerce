@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ProductCard } from '@luxury/ui';
+import { ProductCard } from '@nextpik/ui';
 import { useSearch } from '@/hooks/use-search';
 import { FiltersSidebar } from '@/components/filters-sidebar';
 import { Product } from '@/lib/api/types';

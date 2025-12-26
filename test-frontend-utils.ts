@@ -7,7 +7,7 @@
 const mockSettings = [
   {
     key: 'site_name',
-    value: 'Luxury E-commerce',
+    value: 'NextPik E-commerce',
     category: 'general',
     valueType: 'STRING',
     isPublic: true,

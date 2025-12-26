@@ -3,8 +3,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, Image as ImageIcon, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { Card, CardContent } from '@luxury/ui';
-import { Button } from '@luxury/ui';
+import { Card, CardContent } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
 import { createClient } from '@supabase/supabase-js';
 import { api } from '@/lib/api/client';
 

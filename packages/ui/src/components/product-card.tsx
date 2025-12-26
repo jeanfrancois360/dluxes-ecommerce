@@ -50,7 +50,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
   onNavigate,
   inWishlist = false,
   className,
-  priority = false,
+  priority: _priority = false,
   currencySymbol = '$',
   inStock = true,
   stockQuantity,

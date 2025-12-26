@@ -29,7 +29,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import { toast } from 'sonner';
 import { ShieldCheck, DollarSign, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';

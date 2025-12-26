@@ -17,8 +17,8 @@ import {
   Search,
   BarChart3
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
 import { useSettingsValidation } from '@/hooks/use-settings-validation';
 import { REQUIRED_SETTINGS } from '@/lib/settings-validator';
 import { formatNumber } from '@/lib/utils/number-format';

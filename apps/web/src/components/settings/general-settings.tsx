@@ -3,11 +3,11 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Switch } from '@nextpik/ui';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
@@ -34,9 +34,10 @@ export function GeneralSettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as GeneralSettings);
+      form.reset(formData as GeneralSettings, { keepDirtyValues: false });
     }
-  }, [settings, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]); // form is stable, don't include it
 
   const onSubmit = async (data: GeneralSettings) => {
     try {
@@ -102,14 +103,14 @@ export function GeneralSettingsSection() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6 pt-6">
+        <CardContent className="space-y-6 pt-6 pb-12">
           {/* Site Name */}
           <div className="space-y-2">
             <Label htmlFor="site_name">Site Name *</Label>
             <Input
               id="site_name"
               {...form.register('site_name')}
-              placeholder="Luxury E-commerce"
+              placeholder="NextPik E-commerce"
             />
             {form.formState.errors.site_name && (
               <p className="text-sm text-destructive flex items-center gap-1">
@@ -186,12 +187,12 @@ export function GeneralSettingsSection() {
             <Switch
               id="maintenance_mode"
               checked={form.watch('maintenance_mode')}
-              onCheckedChange={(checked) => form.setValue('maintenance_mode', checked)}
+              onCheckedChange={(checked) => form.setValue('maintenance_mode', checked, { shouldDirty: true })}
             />
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between border-t bg-muted/30 mt-6">
+        <CardFooter className="flex justify-between border-t bg-muted/30 pt-6">
           <Button
             type="button"
             variant="outline"

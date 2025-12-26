@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, memo, useCallback } from 'react';
-import { ProductCard, type QuickViewProduct } from '@luxury/ui';
+import { ProductCard, type QuickViewProduct } from '@nextpik/ui';
 
 export interface ProductCarouselProps {
   title: string;

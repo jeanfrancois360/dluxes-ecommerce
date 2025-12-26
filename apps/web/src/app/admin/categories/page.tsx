@@ -16,7 +16,6 @@ function CategoriesContent() {
     slug: '',
     description: '',
     parentId: undefined,
-    featured: false,
     showInNavbar: true,
     showInFooter: false,
     showOnHomepage: false,
@@ -36,7 +35,7 @@ function CategoriesContent() {
       }
       setIsCreating(false);
       setEditingId(null);
-      setFormData({ name: '', slug: '', description: '', parentId: undefined, featured: false, showInNavbar: true, showInFooter: false, showOnHomepage: false, isFeatured: false });
+      setFormData({ name: '', slug: '', description: '', parentId: undefined, showInNavbar: true, showInFooter: false, showOnHomepage: false, isFeatured: false });
       refetch();
     } catch (error) {
       toast.error('Failed to save category');
@@ -50,7 +49,6 @@ function CategoriesContent() {
       slug: category.slug,
       description: category.description,
       parentId: category.parentId,
-      featured: category.featured,
       showInNavbar: category.showInNavbar ?? true,
       showInFooter: category.showInFooter ?? false,
       showOnHomepage: category.showOnHomepage ?? false,
@@ -79,7 +77,7 @@ function CategoriesContent() {
   const handleCancel = () => {
     setIsCreating(false);
     setEditingId(null);
-    setFormData({ name: '', slug: '', description: '', parentId: undefined, featured: false, showInNavbar: true, showInFooter: false, showOnHomepage: false, isFeatured: false });
+    setFormData({ name: '', slug: '', description: '', parentId: undefined, showInNavbar: true, showInFooter: false, showOnHomepage: false, isFeatured: false });
   };
 
   const handleVisibilityToggle = async (id: string, field: string, value: boolean) => {

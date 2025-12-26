@@ -30,7 +30,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import { toast } from 'sonner';
 import { Percent, Users, TrendingUp, Plus, Edit, Trash2 } from 'lucide-react';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';

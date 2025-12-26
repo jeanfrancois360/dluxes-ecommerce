@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   Button,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import { adminProductsApi } from '@/lib/api/admin';
 import { toast } from 'sonner';
 import { Loader2, TrendingUp, TrendingDown, Package, AlertCircle } from 'lucide-react';

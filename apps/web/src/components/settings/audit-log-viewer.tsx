@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useSettingsAudit } from '@/hooks/use-settings';
-import { Card, CardContent } from '@luxury/ui';
-import { Badge } from '@luxury/ui';
-import { Button } from '@luxury/ui';
+import { Card, CardContent } from '@nextpik/ui';
+import { Badge } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
 import { Clock, User, ArrowRightLeft, Loader2, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 

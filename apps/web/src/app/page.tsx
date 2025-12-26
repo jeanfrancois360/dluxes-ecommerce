@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { PageLayout } from '@/components/layout/page-layout';
 import { ProductCarousel } from '@/components/product-carousel';
-import { type QuickViewProduct, QuickViewModal } from '@luxury/ui';
+import { type QuickViewProduct, QuickViewModal } from '@nextpik/ui';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useFeaturedProducts, useNewArrivals, useTrendingProducts, useOnSaleProducts } from '@/hooks/use-products';

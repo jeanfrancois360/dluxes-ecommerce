@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Switch } from '@nextpik/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
 import { AlertCircle, Loader2, X, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
@@ -52,10 +52,11 @@ export function CurrencySettingsSection() {
       console.log('Transformed form data:', formData);
       console.log('supported_currencies type:', typeof formData.supported_currencies);
       console.log('supported_currencies value:', formData.supported_currencies);
-      form.reset(formData as CurrencySettings);
+      form.reset(formData as CurrencySettings, { keepDirtyValues: false });
       console.log('Form after reset:', form.getValues());
     }
-  }, [settings, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]); // form is stable, don't include it
 
   const onSubmit = async (data: CurrencySettings) => {
     try {
@@ -121,7 +122,7 @@ export function CurrencySettingsSection() {
     if (!current.includes(code)) {
       const newCurrencies = [...current, code];
       console.log('New supported currencies after addition:', newCurrencies);
-      form.setValue('supported_currencies', newCurrencies);
+      form.setValue('supported_currencies', newCurrencies, { shouldDirty: true });
       setNewCurrency('');
     } else {
       console.log(`Currency ${code} already in supported list`);
@@ -149,7 +150,7 @@ export function CurrencySettingsSection() {
 
     const newCurrencies = current.filter(c => c !== code);
     console.log('New supported currencies after removal:', newCurrencies);
-    form.setValue('supported_currencies', newCurrencies);
+    form.setValue('supported_currencies', newCurrencies, { shouldDirty: true });
   };
 
   if (loading || currenciesLoading) {
@@ -164,6 +165,7 @@ export function CurrencySettingsSection() {
 
   // Get only active currencies for the dropdown
   const activeCurrencies = availableCurrencies.filter(c => c.isActive);
+  const isDirty = form.formState.isDirty;
 
   // Show error if currencies failed to load
   if (currenciesError) {
@@ -189,21 +191,28 @@ export function CurrencySettingsSection() {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Card>
-        <CardHeader>
-          <CardTitle>Currency Settings</CardTitle>
+      <Card className="border-muted shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="border-b bg-muted/30">
+          <CardTitle className="flex items-center gap-2">
+            Currency Settings
+            {isDirty && (
+              <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                Unsaved changes
+              </span>
+            )}
+          </CardTitle>
           <CardDescription>
             Configure supported currencies and exchange rate synchronization
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pb-12">
           {/* Default Currency */}
           <div className="space-y-2">
             <Label htmlFor="default_currency">Default Currency *</Label>
             <Select
               value={form.watch('default_currency')}
-              onValueChange={(value) => form.setValue('default_currency', value)}
+              onValueChange={(value) => form.setValue('default_currency', value, { shouldDirty: true })}
             >
               <SelectTrigger id="default_currency" className="max-w-[300px]">
                 <SelectValue placeholder="Select currency" />
@@ -355,7 +364,7 @@ export function CurrencySettingsSection() {
             <Switch
               id="currency_auto_sync"
               checked={form.watch('currency_auto_sync')}
-              onCheckedChange={(checked) => form.setValue('currency_auto_sync', checked)}
+              onCheckedChange={(checked) => form.setValue('currency_auto_sync', checked, { shouldDirty: true })}
             />
           </div>
 
@@ -365,7 +374,7 @@ export function CurrencySettingsSection() {
               <Label htmlFor="currency_sync_frequency">Sync Frequency *</Label>
               <Select
                 value={form.watch('currency_sync_frequency')}
-                onValueChange={(value) => form.setValue('currency_sync_frequency', value as any)}
+                onValueChange={(value) => form.setValue('currency_sync_frequency', value as any, { shouldDirty: true })}
               >
                 <SelectTrigger id="currency_sync_frequency" className="max-w-[300px]">
                   <SelectValue placeholder="Select frequency" />
@@ -389,18 +398,31 @@ export function CurrencySettingsSection() {
           )}
         </CardContent>
 
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between border-t bg-muted/30 pt-6">
           <Button
             type="button"
             variant="outline"
             onClick={() => form.reset()}
-            disabled={updating}
+            disabled={updating || !isDirty}
+            className="gap-2"
           >
             Reset
           </Button>
-          <Button type="submit" disabled={updating}>
-            {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
+          <Button
+            type="submit"
+            disabled={updating || !isDirty}
+            className="gap-2 min-w-[140px]"
+          >
+            {updating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                Save Changes
+              </>
+            )}
           </Button>
         </CardFooter>
       </Card>

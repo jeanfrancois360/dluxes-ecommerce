@@ -1,7 +1,7 @@
 # 🔐 Test Account Credentials
 
 ## Overview
-This document contains all test account credentials for the Luxury E-commerce platform.
+This document contains all test account credentials for the NextPik E-commerce platform.
 All accounts use the same password for easy testing: **Test@123**
 
 ---

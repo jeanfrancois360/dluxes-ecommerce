@@ -1,5 +1,5 @@
 /**
- * @luxury/ui
+ * @nextpik/ui
  * Elegant component library for luxury e-commerce
  */
 

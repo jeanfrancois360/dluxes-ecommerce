@@ -1,5 +1,5 @@
 {
-  "name": "@luxury/web",
+  "name": "@nextpik/web",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "@luxury/design-system": "workspace:*",
-    "@luxury/shared": "workspace:*",
-    "@luxury/ui": "workspace:*",
+    "@nextpik/design-system": "workspace:*",
+    "@nextpik/shared": "workspace:*",
+    "@nextpik/ui": "workspace:*",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-dropdown-menu": "^2.1.2",

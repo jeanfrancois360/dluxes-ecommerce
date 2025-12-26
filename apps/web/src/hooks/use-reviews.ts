@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Review, ReviewFilters, ReviewListResponse, CreateReviewInput } from '@luxury/shared';
+import type { Review, ReviewFilters, ReviewListResponse, CreateReviewInput } from '@nextpik/shared';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 

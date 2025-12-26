@@ -69,7 +69,7 @@ echo "5. Testing PATCH /api/v1/settings/site_name..."
 UPDATE_RESPONSE=$(curl -s -X PATCH http://localhost:4000/api/v1/settings/site_name \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"value":"Luxury E-commerce Test"}')
+  -d '{"value":"NextPik E-commerce Test"}')
 
 UPDATE_SUCCESS=$(echo $UPDATE_RESPONSE | python3 -c "import sys, json; print(json.load(sys.stdin).get('success', False))" 2>/dev/null)
 if [ "$UPDATE_SUCCESS" == "True" ]; then
@@ -85,7 +85,7 @@ if [ "$UPDATE_SUCCESS" == "True" ]; then
   curl -s -X PATCH http://localhost:4000/api/v1/settings/site_name \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
-    -d '{"value":"Luxury E-commerce"}' > /dev/null
+    -d '{"value":"NextPik E-commerce"}' > /dev/null
   echo "   ✅ Reverted to original value"
 else
   echo "   ❌ Update failed"

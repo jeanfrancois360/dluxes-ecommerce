@@ -19,7 +19,7 @@ export class EmailService {
     }
 
     this.resend = new Resend(apiKey || 'dummy-key');
-    this.fromEmail = process.env.EMAIL_FROM || 'noreply@luxury-ecommerce.com';
+    this.fromEmail = process.env.EMAIL_FROM || 'noreply@nextpik.com';
     this.frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   }
 
@@ -74,7 +74,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '🔑 Reset Your Password - Luxury E-commerce',
+        subject: '🔑 Reset Your Password - NextPik E-commerce',
         html,
       });
 
@@ -106,7 +106,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✨ Welcome to Luxury E-commerce, ${name}!`,
+        subject: `✨ Welcome to NextPik E-commerce, ${name}!`,
         html,
       });
 
@@ -148,7 +148,7 @@ export class EmailService {
             <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
               <div style="background: linear-gradient(135deg, #000000 0%, #1A1A1A 100%); padding: 40px; text-align: center; border-radius: 16px 16px 0 0;">
                 <h1 style="color: #FFFFFF; font-size: 28px; margin: 0; font-weight: 700;">Verify Your Email</h1>
-                <p style="color: #A3A3A3; font-size: 16px; margin: 12px 0 0;">Welcome to Luxury E-commerce</p>
+                <p style="color: #A3A3A3; font-size: 16px; margin: 12px 0 0;">Welcome to NextPik E-commerce</p>
               </div>
 
               <div style="background-color: #FFFFFF; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);">
@@ -186,7 +186,7 @@ export class EmailService {
 
               <div style="text-align: center; padding-top: 24px;">
                 <p style="color: #A3A3A3; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} Luxury E-commerce. All rights reserved.
+                  © ${new Date().getFullYear()} NextPik E-commerce. All rights reserved.
                 </p>
               </div>
             </div>
@@ -197,7 +197,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '✉️ Verify Your Email - Luxury E-commerce',
+        subject: '✉️ Verify Your Email - NextPik E-commerce',
         html,
       });
 
@@ -297,7 +297,9 @@ export class EmailService {
     try {
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
-        this.logger.log(`Product inquiry from ${inquiryData.customerEmail} for ${inquiryData.productName}`);
+        this.logger.log(
+          `Product inquiry from ${inquiryData.customerEmail} for ${inquiryData.productName}`
+        );
         return false;
       }
 
@@ -345,7 +347,9 @@ export class EmailService {
                       </a>
                     </td>
                   </tr>
-                  ${inquiryData.customerPhone ? `
+                  ${
+                    inquiryData.customerPhone
+                      ? `
                   <tr>
                     <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5;">
                       <strong style="color: #737373; font-size: 14px;">Phone:</strong>
@@ -356,7 +360,9 @@ export class EmailService {
                       </a>
                     </td>
                   </tr>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </table>
 
                 <h3 style="color: #000000; font-size: 18px; margin: 24px 0 12px 0; font-weight: 600;">Message</h3>
@@ -383,7 +389,7 @@ export class EmailService {
 
               <div style="text-align: center; padding-top: 24px;">
                 <p style="color: #A3A3A3; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} Luxury E-commerce. All rights reserved.
+                  © ${new Date().getFullYear()} NextPik E-commerce. All rights reserved.
                 </p>
               </div>
             </div>

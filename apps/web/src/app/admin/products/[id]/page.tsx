@@ -16,7 +16,7 @@ import { InventoryHistoryModal } from '@/components/admin/inventory-history-moda
 import { useAdminProduct } from '@/hooks/use-admin';
 import { adminProductsApi, type AdminProduct } from '@/lib/api/admin';
 import { toast } from '@/lib/toast';
-import { Button } from '@luxury/ui';
+import { Button } from '@nextpik/ui';
 import { Package, History, RefreshCw } from 'lucide-react';
 
 function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {

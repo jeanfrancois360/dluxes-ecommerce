@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Badge } from '@luxury/ui';
-import { Input } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Badge } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
 import {
   Table,
   TableBody,
@@ -12,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {  DollarSign, TrendingUp, Package, Calendar as CalendarIcon, Download } from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';

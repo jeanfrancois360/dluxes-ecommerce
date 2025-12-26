@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AuthLayout from '@/components/auth/auth-layout';
-import { Button, FloatingInput } from '@luxury/ui';
+import { Button, FloatingInput } from '@nextpik/ui';
 import { api } from '@/lib/api/client';
 
 type VerificationState = 'verifying' | 'success' | 'error' | 'expired' | 'resend';

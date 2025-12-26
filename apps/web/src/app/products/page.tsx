@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ProductGrid, QuickViewModal, type QuickViewProduct } from '@luxury/ui';
+import { ProductGrid, QuickViewModal, type QuickViewProduct } from '@nextpik/ui';
 import { PageLayout } from '@/components/layout/page-layout';
 import Link from 'next/link';
 import { useProducts } from '@/hooks/use-products';

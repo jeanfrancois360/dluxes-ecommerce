@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { ArrowUpIcon, ArrowDownIcon, LucideIcon } from 'lucide-react';
-import { Card, CardContent } from '@luxury/ui';
+import { Card, CardContent } from '@nextpik/ui';
 import { cn } from '@/lib/utils';
 
 interface StatsCardProps {

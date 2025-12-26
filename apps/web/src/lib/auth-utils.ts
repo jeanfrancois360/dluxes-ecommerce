@@ -11,8 +11,8 @@ import type { User } from './api/types';
 // Constants
 // ============================================================================
 
-const USER_KEY = 'luxury_ecommerce_user';
-const TOKEN_EXPIRY_KEY = 'luxury_ecommerce_token_expiry';
+const USER_KEY = 'nextpik_ecommerce_user';
+const TOKEN_EXPIRY_KEY = 'nextpik_ecommerce_token_expiry';
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 // ============================================================================

@@ -12,7 +12,7 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   experimental: {
-    optimizePackageImports: ['@luxury/ui', '@luxury/design-system'],
+    optimizePackageImports: ['@nextpik/ui', '@nextpik/design-system'],
   },
   images: {
     formats: ['image/avif', 'image/webp'],
@@ -21,6 +21,9 @@ const nextConfig = {
     minimumCacheTTL: 60,
     // Configure quality levels to prevent warnings
     qualities: [75, 90, 95],
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
         protocol: 'http',
@@ -60,7 +63,7 @@ const nextConfig = {
           },
           {
             key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
+            value: 'strict-origin-when-cross-origin',
           },
           {
             key: 'Permissions-Policy',
@@ -71,7 +74,7 @@ const nextConfig = {
     ];
   },
   // Transpile packages from workspace
-  transpilePackages: ['@luxury/ui', '@luxury/design-system', '@luxury/shared'],
+  transpilePackages: ['@nextpik/ui', '@nextpik/design-system', '@nextpik/shared'],
   // Disable static page generation for troubleshooting
   // output: 'export',
 };

@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Switch } from '@nextpik/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
 import { AlertCircle, Loader2, Lock, CreditCard, CheckCircle, XCircle, RefreshCw, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
@@ -30,6 +30,7 @@ interface StripeStatus {
 
 export function PaymentSettingsSection() {
   const { settings, loading, refetch } = useSettings('payment');
+  const { settings: paymentSettingsUpper, refetch: refetchUpper } = useSettings('PAYMENT');
   const { updateSetting, updating } = useSettingsUpdate();
 
   // Stripe-specific state
@@ -42,9 +43,7 @@ export function PaymentSettingsSection() {
   const form = useForm<PaymentSettings>({
     resolver: zodResolver(paymentSettingsSchema),
     defaultValues: {
-      escrow_enabled: true,
       escrow_default_hold_days: 7,
-      escrow_auto_release_enabled: true,
       min_payout_amount: 50,
       payout_schedule: 'weekly',
       payment_methods: ['stripe', 'paypal'],
@@ -53,14 +52,28 @@ export function PaymentSettingsSection() {
 
   useEffect(() => {
     if (settings.length > 0) {
-      const formData = transformSettingsToForm(settings);
-      form.reset(formData as PaymentSettings);
+      const allFormData = transformSettingsToForm(settings);
+
+      // Filter to only include fields that are in the PaymentSettings schema
+      // to avoid validation errors from extra Stripe fields
+      // Note: escrow_enabled and escrow_auto_release_enabled are excluded as they save immediately
+      const filteredData: Partial<PaymentSettings> = {
+        escrow_default_hold_days: allFormData.escrow_default_hold_days ?? 7,
+        min_payout_amount: allFormData.min_payout_amount ?? 50,
+        payout_schedule: allFormData.payout_schedule ?? 'weekly',
+        payment_methods: allFormData.payment_methods ?? ['stripe', 'paypal'],
+      };
+
+      // Reset with keepDirtyValues: false to ensure form is not dirty after reset
+      form.reset(filteredData as PaymentSettings, { keepDirtyValues: false });
     }
-  }, [settings, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]); // form is stable, don't include it
 
   // Fetch Stripe status on component mount
   useEffect(() => {
     fetchStripeStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchStripeStatus = async () => {
@@ -96,7 +109,6 @@ export function PaymentSettingsSection() {
   const updateStripeSettingWithReload = async (key: string, value: any, reason: string) => {
     try {
       await updateSetting(key, value, reason);
-      // Automatically reload Stripe configuration after updating any Stripe setting
       await api.post('/settings/stripe/reload');
       await Promise.all([refetch(), fetchStripeStatus()]);
     } catch (error: any) {
@@ -108,13 +120,19 @@ export function PaymentSettingsSection() {
   const onSubmit = async (data: PaymentSettings) => {
     try {
       const updates = Object.entries(data);
+
       for (const [key, value] of updates) {
+        // Skip fields that save immediately via their own toggles
+        if (key === 'escrow_enabled' || key === 'escrow_auto_release_enabled') continue;
+
         await updateSetting(key, value, 'Updated via settings panel');
       }
+
       toast.success('Payment settings saved successfully');
       await refetch();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save settings:', error);
+      toast.error(error?.message || 'Failed to save settings. Please try again.');
     }
   };
 
@@ -129,11 +147,44 @@ export function PaymentSettingsSection() {
   }
 
   const isProduction = process.env.NODE_ENV === 'production';
+  const isDirty = form.formState.isDirty;
 
   // Helper to get Stripe setting value
   const getStripeSetting = (key: string) => {
     const setting = settings.find(s => s.key === key);
     return setting?.value;
+  };
+
+  // Helper to get lowercase payment category setting with proper type conversion
+  const getPaymentSetting = (key: string) => {
+    const setting = settings.find(s => s.key === key);
+    if (!setting) return undefined;
+
+    // Apply type conversion based on valueType
+    if (setting.valueType === 'BOOLEAN') {
+      if (typeof setting.value === 'string') {
+        return setting.value === 'true' || setting.value === '1';
+      }
+      return Boolean(setting.value);
+    }
+
+    return setting.value;
+  };
+
+  // Helper to get uppercase PAYMENT category setting with proper type conversion
+  const getUpperPaymentSetting = (key: string) => {
+    const setting = paymentSettingsUpper.find(s => s.key === key);
+    if (!setting) return undefined;
+
+    // Apply type conversion based on valueType
+    if (setting.valueType === 'BOOLEAN') {
+      if (typeof setting.value === 'string') {
+        return setting.value === 'true' || setting.value === '1';
+      }
+      return Boolean(setting.value);
+    }
+
+    return setting.value;
   };
 
   return (
@@ -426,176 +477,224 @@ export function PaymentSettingsSection() {
         </CardContent>
       </Card>
 
-      {/* Existing Payment & Escrow Settings Card */}
+      {/* Payment & Escrow Settings Form */}
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment & Escrow Settings</CardTitle>
+        <Card className="border-muted shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="border-b bg-muted/30">
+            <CardTitle className="flex items-center gap-2">
+              Payment & Escrow Settings
+              {isDirty && (
+                <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                  Unsaved changes
+                </span>
+              )}
+            </CardTitle>
             <CardDescription>
               Manage payment processing and escrow configuration
             </CardDescription>
           </CardHeader>
 
-        <CardContent className="space-y-6">
-          {/* Escrow Enabled */}
-          <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
-            <div className="space-y-0.5 flex-1">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="escrow_enabled">Escrow System</Label>
-                {isProduction && <Lock className="h-3 w-3 text-muted-foreground" />}
+          <CardContent className="space-y-6 pt-6 pb-12">
+            {/* Show validation errors if form was submitted with errors */}
+            {Object.keys(form.formState.errors).length > 0 && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <h4 className="text-sm font-medium text-red-900 dark:text-red-100">
+                    Form Validation Errors
+                  </h4>
+                </div>
+                <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-7">
+                  {Object.entries(form.formState.errors).map(([field, error]: any) => (
+                    <li key={field}>
+                      <strong>{field}:</strong> {error.message}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Enable secure payment holding until delivery confirmation
-                {isProduction && ' (Required in production)'}
-              </p>
+            )}
+
+            {/* Escrow Enabled - Uses uppercase PAYMENT category */}
+            <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
+              <div className="space-y-0.5 flex-1">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="escrow_enabled">Escrow System</Label>
+                  {isProduction && <Lock className="h-3 w-3 text-muted-foreground" />}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Enable secure payment holding until delivery confirmation
+                  {isProduction && ' (Required in production)'}
+                </p>
+              </div>
+              <Switch
+                id="escrow_enabled"
+                checked={getUpperPaymentSetting('escrow_enabled') ?? true}
+                onCheckedChange={async (checked) => {
+                  await updateSetting('escrow_enabled', checked, 'Toggled escrow system');
+                  await Promise.all([refetch(), refetchUpper()]);
+                }}
+                disabled={isProduction || updating}
+              />
             </div>
-            <Switch
-              id="escrow_enabled"
-              checked={form.watch('escrow_enabled')}
-              onCheckedChange={(checked) => form.setValue('escrow_enabled', checked)}
-              disabled={isProduction || updating}
-            />
-          </div>
 
-          {/* Escrow Hold Days */}
-          <div className="space-y-2">
-            <Label htmlFor="escrow_default_hold_days">Escrow Hold Period (Days) *</Label>
-            <Input
-              id="escrow_default_hold_days"
-              type="number"
-              min={1}
-              max={90}
-              {...form.register('escrow_default_hold_days', { valueAsNumber: true })}
-              placeholder="7"
-            />
-            {form.formState.errors.escrow_default_hold_days && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.escrow_default_hold_days.message}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Default days to hold payment after delivery (1-90 days)
-            </p>
-          </div>
-
-          {/* Auto Release */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="escrow_auto_release_enabled">Auto-Release Escrow</Label>
-              <p className="text-sm text-muted-foreground">
-                Automatically release payment after hold period expires
-              </p>
-            </div>
-            <Switch
-              id="escrow_auto_release_enabled"
-              checked={form.watch('escrow_auto_release_enabled')}
-              onCheckedChange={(checked) => form.setValue('escrow_auto_release_enabled', checked)}
-            />
-          </div>
-
-          {/* Minimum Payout */}
-          <div className="space-y-2">
-            <Label htmlFor="min_payout_amount">Minimum Payout Amount (USD) *</Label>
-            <Input
-              id="min_payout_amount"
-              type="number"
-              min={0}
-              step="0.01"
-              {...form.register('min_payout_amount', { valueAsNumber: true })}
-              placeholder="50.00"
-            />
-            {form.formState.errors.min_payout_amount && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.min_payout_amount.message}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Sellers must reach this amount to request payout
-            </p>
-          </div>
-
-          {/* Payout Schedule */}
-          <div className="space-y-2">
-            <Label htmlFor="payout_schedule">Payout Schedule *</Label>
-            <Select
-              value={form.watch('payout_schedule')}
-              onValueChange={(value) => form.setValue('payout_schedule', value as any)}
-            >
-              <SelectTrigger id="payout_schedule">
-                <SelectValue placeholder="Select schedule" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="biweekly">Bi-weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select>
-            {form.formState.errors.payout_schedule && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.payout_schedule.message}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              How often payouts are processed
-            </p>
-          </div>
-
-          {/* Payment Methods */}
-          <div className="space-y-2">
-            <Label>Enabled Payment Methods</Label>
+            {/* Escrow Hold Days */}
             <div className="space-y-2">
-              {['stripe', 'paypal', 'bank_transfer'].map((method) => {
-                const currentMethods = form.watch('payment_methods') || [];
-                const isChecked = Array.isArray(currentMethods) && currentMethods.includes(method);
-
-                return (
-                  <div key={method} className="flex items-center space-x-3">
-                    <Switch
-                      id={`payment_method_${method}`}
-                      checked={isChecked}
-                      onCheckedChange={(checked) => {
-                        const current = form.watch('payment_methods') || [];
-                        if (checked) {
-                          form.setValue('payment_methods', [...current, method], { shouldDirty: true });
-                        } else {
-                          form.setValue('payment_methods', current.filter(m => m !== method), { shouldDirty: true });
-                        }
-                      }}
-                    />
-                    <Label htmlFor={`payment_method_${method}`} className="capitalize cursor-pointer text-sm font-medium">
-                      {method.replace('_', ' ')}
-                    </Label>
-                  </div>
-                );
-              })}
-            </div>
-            {form.formState.errors.payment_methods && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.payment_methods.message}
+              <Label htmlFor="escrow_default_hold_days">Escrow Hold Period (Days) *</Label>
+              <Input
+                id="escrow_default_hold_days"
+                type="number"
+                min={1}
+                max={90}
+                {...form.register('escrow_default_hold_days', { valueAsNumber: true })}
+                placeholder="7"
+                className="max-w-[200px]"
+              />
+              {form.formState.errors.escrow_default_hold_days && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {form.formState.errors.escrow_default_hold_days.message}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Default days to hold payment after delivery (1-90 days)
               </p>
-            )}
-          </div>
-        </CardContent>
+            </div>
 
-        <CardFooter className="flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => form.reset()}
-            disabled={updating}
-          >
-            Reset
-          </Button>
-          <Button type="submit" disabled={updating}>
-            {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </CardFooter>
+            {/* Auto Release - Saves immediately like Escrow System toggle */}
+            <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
+              <div className="space-y-0.5">
+                <Label htmlFor="escrow_auto_release_enabled">Auto-Release Escrow</Label>
+                <p className="text-sm text-muted-foreground">
+                  Automatically release payment after hold period expires
+                </p>
+              </div>
+              <Switch
+                id="escrow_auto_release_enabled"
+                checked={getUpperPaymentSetting('escrow_auto_release_enabled') ?? true}
+                onCheckedChange={async (checked) => {
+                  await updateSetting('escrow_auto_release_enabled', checked, 'Toggled auto-release escrow');
+                  await Promise.all([refetch(), refetchUpper()]);
+                }}
+                disabled={updating}
+              />
+            </div>
+
+            {/* Minimum Payout */}
+            <div className="space-y-2">
+              <Label htmlFor="min_payout_amount">Minimum Payout Amount (USD) *</Label>
+              <Input
+                id="min_payout_amount"
+                type="number"
+                min={0}
+                step="0.01"
+                {...form.register('min_payout_amount', { valueAsNumber: true })}
+                placeholder="50.00"
+                className="max-w-[200px]"
+              />
+              {form.formState.errors.min_payout_amount && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {form.formState.errors.min_payout_amount.message}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Sellers must reach this amount to request payout
+              </p>
+            </div>
+
+            {/* Payout Schedule */}
+            <div className="space-y-2">
+              <Label htmlFor="payout_schedule">Payout Schedule *</Label>
+              <Select
+                value={form.watch('payout_schedule')}
+                onValueChange={(value) => form.setValue('payout_schedule', value as any, { shouldDirty: true })}
+              >
+                <SelectTrigger id="payout_schedule" className="max-w-[300px]">
+                  <SelectValue placeholder="Select schedule" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.formState.errors.payout_schedule && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {form.formState.errors.payout_schedule.message}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                How often payouts are processed
+              </p>
+            </div>
+
+            {/* Payment Methods */}
+            <div className="space-y-2">
+              <Label>Enabled Payment Methods *</Label>
+              <div className="space-y-2">
+                {['stripe', 'paypal', 'bank_transfer'].map((method) => {
+                  const currentMethods = form.watch('payment_methods') || [];
+                  const isChecked = Array.isArray(currentMethods) && currentMethods.includes(method);
+
+                  return (
+                    <div key={method} className="flex items-center space-x-3">
+                      <Switch
+                        id={`payment_method_${method}`}
+                        checked={isChecked}
+                        onCheckedChange={(checked) => {
+                          const current = form.watch('payment_methods') || [];
+                          if (checked) {
+                            form.setValue('payment_methods', [...current, method], { shouldDirty: true });
+                          } else {
+                            form.setValue('payment_methods', current.filter(m => m !== method), { shouldDirty: true });
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`payment_method_${method}`} className="capitalize cursor-pointer text-sm font-medium">
+                        {method.replace('_', ' ')}
+                      </Label>
+                    </div>
+                  );
+                })}
+              </div>
+              {form.formState.errors.payment_methods && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {form.formState.errors.payment_methods.message}
+                </p>
+              )}
+            </div>
+          </CardContent>
+
+          <CardFooter className="flex justify-between border-t bg-muted/30 pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => form.reset()}
+              disabled={updating || !isDirty}
+              className="gap-2"
+            >
+              Reset
+            </Button>
+            <Button
+              type="submit"
+              disabled={updating || !isDirty}
+              className="gap-2 min-w-[140px]"
+            >
+              {updating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </CardFooter>
         </Card>
       </form>
     </div>

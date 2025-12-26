@@ -17,7 +17,7 @@ import * as path from 'path';
 export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService,
+    private readonly emailService: EmailService
   ) {}
 
   /**
@@ -32,7 +32,7 @@ export class ProductsService {
   }
 
   private transformProducts(products: any[]) {
-    return products.map(p => this.transformProduct(p));
+    return products.map((p) => this.transformProduct(p));
   }
 
   /**
@@ -552,15 +552,27 @@ export class ProductsService {
    * Create new product
    */
   async create(createProductDto: CreateProductDto) {
-    const { badges, seoKeywords, colors, sizes, materials, categoryId, purchaseType, price, inventory, ...productData } =
-      createProductDto;
+    const {
+      badges,
+      seoKeywords,
+      colors,
+      sizes,
+      materials,
+      categoryId,
+      purchaseType,
+      price,
+      inventory,
+      ...productData
+    } = createProductDto;
 
     // Set defaults based on purchaseType
     const finalPurchaseType = purchaseType || PurchaseType.INSTANT;
 
     // For INSTANT products, ensure price and inventory have defaults if not provided
-    const finalPrice = price !== undefined ? price : (finalPurchaseType === PurchaseType.INSTANT ? 0 : null);
-    const finalInventory = inventory !== undefined ? inventory : (finalPurchaseType === PurchaseType.INSTANT ? 0 : null);
+    const finalPrice =
+      price !== undefined ? price : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
+    const finalInventory =
+      inventory !== undefined ? inventory : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
 
     return this.prisma.product.create({
       data: {
@@ -715,8 +727,8 @@ export class ProductsService {
         this.prisma.productImage.update({
           where: { id: item.id },
           data: { displayOrder: item.order },
-        }),
-      ),
+        })
+      )
     );
 
     return this.findById(productId);
@@ -793,7 +805,7 @@ export class ProductsService {
     // }
 
     // Get admin email from environment or use default
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@luxury-ecommerce.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@nextpik.com';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
     // Send email notification
@@ -830,7 +842,7 @@ export class ProductsService {
   }
 
   private transformVariants(variants: any[]) {
-    return variants.map(v => this.transformVariant(v));
+    return variants.map((v) => this.transformVariant(v));
   }
 
   /**
@@ -937,7 +949,7 @@ export class ProductsService {
     }
 
     // Check SKU uniqueness across all DTOs
-    const skus = dtos.map(dto => dto.sku);
+    const skus = dtos.map((dto) => dto.sku);
     const duplicateSkus = skus.filter((sku, index) => skus.indexOf(sku) !== index);
     if (duplicateSkus.length > 0) {
       throw new BadRequestException(`Duplicate SKUs in request: ${duplicateSkus.join(', ')}`);
@@ -950,7 +962,7 @@ export class ProductsService {
     });
 
     if (existingSkus.length > 0) {
-      const existing = existingSkus.map(v => v.sku).join(', ');
+      const existing = existingSkus.map((v) => v.sku).join(', ');
       throw new BadRequestException(`SKUs already exist: ${existing}`);
     }
 
@@ -1089,8 +1101,8 @@ export class ProductsService {
           select: {
             cartItems: true,
             orderItems: true,
-          }
-        }
+          },
+        },
       },
     });
 
@@ -1177,7 +1189,9 @@ export class ProductsService {
    * Bulk delete products (Admin only)
    * @param ids - Array of product IDs to delete
    */
-  async bulkDeleteProducts(ids: string[]): Promise<{ success: boolean; deleted: number; failed: string[] }> {
+  async bulkDeleteProducts(
+    ids: string[]
+  ): Promise<{ success: boolean; deleted: number; failed: string[] }> {
     const failed: string[] = [];
     let deleted = 0;
 
@@ -1203,7 +1217,10 @@ export class ProductsService {
    * @param ids - Array of product IDs to update
    * @param status - New status to apply
    */
-  async bulkUpdateStatus(ids: string[], status: ProductStatus): Promise<{ success: boolean; updated: number; failed: string[] }> {
+  async bulkUpdateStatus(
+    ids: string[],
+    status: ProductStatus
+  ): Promise<{ success: boolean; updated: number; failed: string[] }> {
     const failed: string[] = [];
     let updated = 0;
 

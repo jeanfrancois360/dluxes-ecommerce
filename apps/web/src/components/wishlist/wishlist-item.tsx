@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import type { WishlistItem } from '@luxury/shared';
+import type { WishlistItem } from '@nextpik/shared';
 import { formatDistanceToNow } from 'date-fns';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 

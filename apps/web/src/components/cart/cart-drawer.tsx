@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { cn } from '@luxury/ui';
+import { cn } from '@nextpik/ui';
 import { useCart } from '@/hooks/use-cart';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
