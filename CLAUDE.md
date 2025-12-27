@@ -32,6 +32,12 @@
 - `packages/database/prisma/migrations/` - Do not delete or modify existing migrations
 - `packages/database/prisma/seed.ts` - Contains 38+ system settings
 
+### Database Name (CRITICAL)
+- ✅ **Correct database name:** `nextpik_ecommerce`
+- ❌ **NEVER use:** `luxury_ecommerce` (obsolete database from old development)
+- All `.env` files, `docker-compose.yml`, and scripts MUST use `nextpik_ecommerce`
+- Port 5433 (Docker) or 5432 (local) depending on setup
+
 ### Authentication & Security
 - `apps/api/src/auth/` - JWT, 2FA, sessions
 - `apps/api/src/auth/strategies/jwt.strategy.ts` - Returns `{ id, userId, email, role }`
@@ -164,6 +170,44 @@ pnpm build                # Build all packages
 4. **JsonArray type** - Cast to `string[]` when reading array settings
 5. **MulterModule missing** - Upload module MUST import MulterModule for file uploads
 6. **req.user.id undefined** - JWT strategy must return both `id` and `userId`
+7. **Creating workarounds** - Never create database aliases, modify node_modules, or hardcode values. Always fix the source configuration (`.env` files) and regenerate.
+
+
+## ⛔ FORBIDDEN Actions - NEVER Do These
+
+### 1. Never Create Workarounds
+When facing configuration or connection issues:
+- ❌ DO NOT create database aliases or duplicates
+- ❌ DO NOT modify files in `node_modules/`
+- ❌ DO NOT hardcode values to bypass config issues
+- ❌ DO NOT create "temporary fixes" that mask root causes
+- ✅ ALWAYS fix the source configuration (`.env` files)
+- ✅ ALWAYS regenerate after config changes
+
+### 2. Database Configuration
+- ✅ **Correct:** `nextpik_ecommerce`
+- ❌ **NEVER:** `luxury_ecommerce` (deprecated, do not create or reference)
+- If Prisma shows wrong database, fix `.env` and regenerate - NEVER create DB aliases
+
+### 3. When Prisma Has Wrong Configuration
+```bash
+# ✅ CORRECT approach:
+1. Fix the .env file (packages/database/.env, apps/api/.env)
+2. rm -rf node_modules/.prisma packages/database/node_modules/.prisma
+3. pnpm prisma:generate
+4. Verify: grep -r "wrong_value" . --include="*.env*"
+
+# ❌ WRONG approaches:
+- Creating database aliases (CREATE DATABASE x TEMPLATE y)
+- Modifying generated files in node_modules
+- Hardcoding connection strings in source code
+- Any "quick fix" that doesn't address root cause
+```
+
+### 4. The Golden Rule
+> **If you're about to create a workaround, STOP.**
+> Ask yourself: "Am I fixing the root cause or masking the problem?"
+> If masking, find and fix the actual source of the issue instead.
 
 ---
 

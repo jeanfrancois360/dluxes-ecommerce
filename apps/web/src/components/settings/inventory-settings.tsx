@@ -55,11 +55,12 @@ export function InventorySettingsSection() {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/settings/category/inventory');
+      // API client unwraps the response, so we get the array directly
+      const data = await api.get<any[]>('/settings/category/inventory');
 
-      if (response.success && response.data) {
+      if (data && Array.isArray(data) && data.length > 0) {
         const settingsMap: any = {};
-        response.data.forEach((setting: any) => {
+        data.forEach((setting: any) => {
           settingsMap[setting.key] = {
             value: setting.value,
             label: setting.label,
@@ -67,6 +68,10 @@ export function InventorySettingsSection() {
           };
         });
         setSettings(settingsMap);
+      } else {
+        // No settings found, show error
+        console.warn('No inventory settings found in response');
+        toast.error('No inventory settings configured');
       }
     } catch (error) {
       console.error('Failed to fetch inventory settings:', error);
@@ -79,24 +84,25 @@ export function InventorySettingsSection() {
   const updateSetting = async (key: string, value: any) => {
     try {
       setSaving(key);
-      const response = await api.patch(`/settings/${key}`, { value });
+      // API client unwraps the response, so we get the updated setting directly
+      const updatedSetting = await api.patch(`/settings/${key}`, { value });
 
-      if (response.success) {
-        toast.success('Setting updated successfully');
-        // Update local state
-        if (settings) {
-          setSettings({
-            ...settings,
-            [key]: {
-              ...settings[key as keyof InventorySettings],
-              value,
-            },
-          });
-        }
+      // If we got here without error, the update was successful
+      toast.success('Setting updated successfully');
+
+      // Update local state
+      if (settings) {
+        setSettings({
+          ...settings,
+          [key]: {
+            ...settings[key as keyof InventorySettings],
+            value,
+          },
+        });
       }
     } catch (error: any) {
       console.error('Failed to update setting:', error);
-      toast.error(error.response?.data?.message || 'Failed to update setting');
+      toast.error(error.message || 'Failed to update setting');
     } finally {
       setSaving(null);
     }
