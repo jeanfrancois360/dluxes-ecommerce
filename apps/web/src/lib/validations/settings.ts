@@ -32,7 +32,22 @@ export const commissionSettingsSchema = z.object({
   global_commission_rate: z.number().min(0, 'Commission rate cannot be negative').max(100, 'Commission rate cannot exceed 100%'),
   commission_type: z.enum(['percentage', 'fixed', 'tiered']),
   commission_applies_to_shipping: z.boolean(),
-});
+  commission_min_amount: z.number().min(0, 'Minimum amount cannot be negative').max(100, 'Minimum amount cannot exceed $100'),
+  commission_max_amount: z.number().min(0, 'Maximum amount cannot be negative'),
+  commission_fixed_fee: z.number().min(0, 'Fixed fee cannot be negative').max(50, 'Fixed fee cannot exceed $50'),
+}).refine(
+  (data) => {
+    // If max is set (not 0), it must be greater than min
+    if (data.commission_max_amount > 0 && data.commission_min_amount > data.commission_max_amount) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Maximum commission must be greater than minimum commission',
+    path: ['commission_max_amount'],
+  }
+);
 
 // ============================================================================
 // CURRENCY SETTINGS
