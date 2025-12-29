@@ -2,6 +2,7 @@ import type { Config } from 'tailwindcss';
 import { colors, spacing, fontSize, fontWeight, fontFamily, shadows } from '@nextpik/design-system';
 
 const config: Config = {
+  darkMode: 'class', // Disable automatic dark mode based on OS preference
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',

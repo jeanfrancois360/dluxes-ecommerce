@@ -12,6 +12,7 @@ import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { securitySettingsSchema, type SecuritySettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 const COMMON_FILE_TYPES = [
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
@@ -56,6 +57,12 @@ export function SecuritySettingsSection() {
       console.error('Failed to save settings:', error);
     }
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
 
   const addFileType = () => {
     const current = form.watch('allowed_file_types') || [];

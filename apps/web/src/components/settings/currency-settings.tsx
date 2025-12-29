@@ -15,6 +15,7 @@ import { currencySettingsSchema, type CurrencySettings } from '@/lib/validations
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { invalidateCurrencySettings } from '@/lib/settings-cache';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 export function CurrencySettingsSection() {
   const { settings, loading, refetch } = useSettings('currency');
@@ -83,6 +84,12 @@ export function CurrencySettingsSection() {
       console.error('Failed to save settings:', error);
     }
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
 
   const addCurrency = (code: string) => {
     if (!code || code.startsWith('__')) {

@@ -11,6 +11,7 @@ import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { generalSettingsSchema, type GeneralSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 export function GeneralSettingsSection() {
   const { settings, loading, refetch } = useSettings('general');
@@ -49,6 +50,12 @@ export function GeneralSettingsSection() {
       console.error('Failed to save settings:', error);
     }
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
 
   if (loading) {
     return (

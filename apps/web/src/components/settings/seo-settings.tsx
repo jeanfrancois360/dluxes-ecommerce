@@ -13,6 +13,7 @@ import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { seoSettingsSchema, type SeoSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 export function SeoSettingsSection() {
   const { settings, loading, refetch } = useSettings('seo');
@@ -48,6 +49,12 @@ export function SeoSettingsSection() {
       console.error('Failed to save settings:', error);
     }
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
 
   if (loading) {
     return (

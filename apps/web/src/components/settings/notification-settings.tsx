@@ -12,6 +12,7 @@ import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { notificationSettingsSchema, type NotificationSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsToggle, SettingsFooter } from './shared';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 const NOTIFICATION_EVENTS = [
   { value: 'order_placed', label: 'Order Placed', description: 'When a new order is created' },
@@ -57,6 +58,12 @@ export function NotificationSettingsSection() {
       console.error('Failed to save settings:', error);
     }
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
 
   const toggleEvent = (eventValue: string) => {
     const current = form.watch('notification_events') || [];
