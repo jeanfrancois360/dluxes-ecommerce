@@ -138,6 +138,8 @@ export interface Category {
   featured: boolean;
   image?: string;
   showInNavbar?: boolean;
+  showInTopBar?: boolean;
+  showInSidebar?: boolean;
   showInFooter?: boolean;
   showOnHomepage?: boolean;
   isFeatured?: boolean;
@@ -376,7 +378,7 @@ export const adminProductsApi = {
     productId: string,
     data: {
       quantity: number;
-      type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'RESTOCK';
+      type: 'SALE' | 'RETURN' | 'RESTOCK' | 'ADJUSTMENT' | 'DAMAGE';
       reason?: string;
       notes?: string;
     }
@@ -390,7 +392,7 @@ export const adminProductsApi = {
     variantId: string,
     data: {
       quantity: number;
-      type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'RESTOCK';
+      type: 'SALE' | 'RETURN' | 'RESTOCK' | 'ADJUSTMENT' | 'DAMAGE';
       reason?: string;
       notes?: string;
     }
@@ -527,16 +529,34 @@ export const adminCategoriesApi = {
 
   async create(data: Partial<Category>): Promise<Category> {
     const response = await api.post('/categories', data);
+
+    // Check if backend returned success: false
+    if (response.success === false) {
+      throw new Error(response.message || 'Failed to create category');
+    }
+
     return response.data || response;
   },
 
   async update(id: string, data: Partial<Category>): Promise<Category> {
     const response = await api.patch(`/categories/${id}`, data);
+
+    // Check if backend returned success: false
+    if (response.success === false) {
+      throw new Error(response.message || 'Failed to update category');
+    }
+
     return response.data || response;
   },
 
   async updateVisibility(id: string, data: { showInNavbar?: boolean; showInFooter?: boolean; showOnHomepage?: boolean; isFeatured?: boolean }): Promise<Category> {
     const response = await api.patch(`/categories/${id}/visibility`, data);
+
+    // Check if backend returned success: false
+    if (response.success === false) {
+      throw new Error(response.message || 'Failed to update visibility');
+    }
+
     return response.data || response;
   },
 
