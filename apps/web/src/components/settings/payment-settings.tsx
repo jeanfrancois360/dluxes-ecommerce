@@ -16,6 +16,7 @@ import { paymentSettingsSchema, type PaymentSettings } from '@/lib/validations/s
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { api } from '@/lib/api/client';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 // Stripe configuration status interface
 interface StripeStatus {
@@ -129,6 +130,12 @@ export function PaymentSettingsSection() {
       toast.error(error?.message || 'Failed to save settings. Please try again.');
     }
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
 
   if (loading) {
     return (

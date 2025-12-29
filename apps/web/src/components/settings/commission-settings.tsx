@@ -14,6 +14,7 @@ import { commissionSettingsSchema, type CommissionSettings } from '@/lib/validat
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 export function CommissionSettingsSection() {
   const { settings, loading, refetch } = useSettings('commission');
@@ -54,6 +55,12 @@ export function CommissionSettingsSection() {
       console.error('Failed to save settings:', error);
     }
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
 
   if (loading) {
     return (
