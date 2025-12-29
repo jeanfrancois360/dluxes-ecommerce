@@ -493,6 +493,14 @@ export const adminOrdersApi = {
   },
 };
 
+export interface CustomerStats {
+  total: number;
+  newThisMonth: number;
+  growthPercent: number;
+  vipCount: number;
+  totalRevenue: number;
+}
+
 // Customers APIs
 export const adminCustomersApi = {
   async getAll(params?: {
@@ -500,23 +508,145 @@ export const adminCustomersApi = {
     limit?: number;
     search?: string;
     status?: string;
+    role?: string;
+    segment?: string;
+    sortBy?: string;
   }): Promise<{ customers: AdminCustomer[]; total: number; pages: number }> {
-    const response = await api.get(`/admin/customers${buildQueryString(params)}`);
+    const queryParams: any = {};
+    if (params?.page) queryParams.page = params.page;
+    if (params?.limit) queryParams.pageSize = params.limit; // Backend uses pageSize, not limit
+    if (params?.search) queryParams.search = params.search;
+    if (params?.status) queryParams.status = params.status;
+    if (params?.role) queryParams.role = params.role;
+
+    const response = await api.get(`/admin/users${buildQueryString(queryParams)}`);
+    const data = response.data || response;
+
+    // Map response to expected format
+    let customers = (data.users || []).map((user: any) => ({
+      id: user.id,
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      totalOrders: user._count?.orders || 0,
+      totalSpent: user.totalSpent || 0,
+      status: user.isActive ? 'active' : user.isSuspended ? 'suspended' : 'inactive',
+      createdAt: user.createdAt,
+      lastLoginAt: user.lastLoginAt,
+    }));
+
+    // Apply segment filter on frontend (backend doesn't support this)
+    if (params?.segment) {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+      customers = customers.filter((c: any) => {
+        switch (params.segment) {
+          case 'vip':
+            return c.totalSpent >= 1000;
+          case 'regular':
+            return c.totalSpent < 1000 && c.totalSpent > 0;
+          case 'new':
+            return new Date(c.createdAt) >= thirtyDaysAgo;
+          case 'at-risk':
+            return !c.lastLoginAt || new Date(c.lastLoginAt) < ninetyDaysAgo;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply sorting on frontend
+    if (params?.sortBy) {
+      const [field, order] = params.sortBy.split('-');
+      customers.sort((a: any, b: any) => {
+        let aVal = a[field];
+        let bVal = b[field];
+
+        // Handle date fields
+        if (field === 'createdAt' || field === 'lastLoginAt') {
+          aVal = aVal ? new Date(aVal).getTime() : 0;
+          bVal = bVal ? new Date(bVal).getTime() : 0;
+        }
+
+        // Handle name sorting
+        if (field === 'name') {
+          aVal = (aVal || '').toLowerCase();
+          bVal = (bVal || '').toLowerCase();
+        }
+
+        // Handle orderCount
+        if (field === 'orderCount') {
+          aVal = a.totalOrders || 0;
+          bVal = b.totalOrders || 0;
+        }
+
+        if (order === 'desc') {
+          return bVal > aVal ? 1 : bVal < aVal ? -1 : 0;
+        }
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      });
+    }
+
+    return {
+      customers,
+      total: params?.segment ? customers.length : (data.total || 0),
+      pages: params?.segment ? Math.ceil(customers.length / (params?.limit || 25)) : (data.pages || 0),
+    };
+  },
+
+  async getStats(): Promise<CustomerStats> {
+    const response = await api.get('/admin/customers/stats');
     return response;
   },
 
-  async getById(id: string): Promise<AdminCustomer & { orders: AdminOrder[] }> {
-    const response = await api.get(`/admin/customers/${id}`);
-    return response;
+  async getById(id: string): Promise<any> {
+    const response = await api.get(`/admin/users/${id}`);
+    const data = response.data || response;
+    return data;
   },
 
-  async update(id: string, data: Partial<AdminCustomer>): Promise<AdminCustomer> {
-    const response = await api.put(`/admin/customers/${id}`, data);
-    return response;
+  async update(id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    role?: string;
+    isActive?: boolean;
+  }): Promise<any> {
+    const response = await api.patch(`/admin/users/${id}`, data);
+    return response.data || response;
+  },
+
+  async suspend(id: string): Promise<any> {
+    const response = await api.patch(`/admin/users/${id}/suspend`, {});
+    return response.data || response;
+  },
+
+  async activate(id: string): Promise<any> {
+    const response = await api.patch(`/admin/users/${id}/activate`, {});
+    return response.data || response;
   },
 
   async delete(id: string): Promise<void> {
-    await api.delete(`/admin/customers/${id}`);
+    await api.delete(`/admin/users/${id}`);
+  },
+
+  // Admin Notes
+  async getNotes(customerId: string): Promise<any[]> {
+    const response = await api.get(`/admin/customers/${customerId}/notes`);
+    return response.data || response;
+  },
+
+  async addNote(customerId: string, content: string): Promise<any> {
+    const response = await api.post(`/admin/customers/${customerId}/notes`, { content });
+    return response.data || response;
+  },
+
+  async deleteNote(customerId: string, noteId: string): Promise<void> {
+    await api.delete(`/admin/customers/${customerId}/notes/${noteId}`);
   },
 };
 

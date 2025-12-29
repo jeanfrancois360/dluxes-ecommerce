@@ -112,23 +112,29 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
       <h3 className="text-sm font-semibold text-gray-700 mb-3">Visibility Options</h3>
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-start gap-2 cursor-pointer">
           <input
             type="checkbox"
             checked={formData.showInNavbar ?? true}
             onChange={(e) => onFormDataChange({ ...formData, showInNavbar: e.target.checked })}
-            className="rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]"
+            className="rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B] mt-0.5"
           />
-          <span className="text-sm font-medium text-gray-700">Show in Navbar</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-gray-700">Show in Mega Menu</span>
+            <span className="text-xs text-muted-foreground text-gray-500">(Shop/Collections dropdown)</span>
+          </div>
         </label>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-start gap-2 cursor-pointer">
           <input
             type="checkbox"
             checked={formData.showInTopBar ?? false}
             onChange={(e) => onFormDataChange({ ...formData, showInTopBar: e.target.checked })}
-            className="rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]"
+            className="rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B] mt-0.5"
           />
-          <span className="text-sm font-medium text-gray-700">Show in Top Bar</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-gray-700">Show in Category Bar</span>
+            <span className="text-xs text-muted-foreground text-gray-500">(Filter pills: All Products, Watches, etc.)</span>
+          </div>
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
           <input
@@ -636,12 +642,12 @@ function CategoriesContent() {
                             <div className="flex flex-wrap items-center gap-1">
                               {parent.showInNavbar && (
                                 <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
-                                  Nav
+                                  Menu
                                 </span>
                               )}
                               {parent.showInTopBar && (
                                 <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                                  TopBar
+                                  Cat Bar
                                 </span>
                               )}
                               {parent.showInSidebar && (
@@ -739,12 +745,12 @@ function CategoriesContent() {
                                 <div className="flex flex-wrap items-center gap-1">
                                   {child.showInNavbar && (
                                     <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
-                                      Nav
+                                      Menu
                                     </span>
                                   )}
                                   {child.showInTopBar && (
                                     <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                                      TopBar
+                                      Cat Bar
                                     </span>
                                   )}
                                   {child.showInSidebar && (

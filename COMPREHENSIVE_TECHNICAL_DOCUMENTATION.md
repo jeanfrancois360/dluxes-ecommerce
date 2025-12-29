@@ -2537,6 +2537,7 @@ Version 2.3.0 focuses on polishing the user experience, fixing critical producti
 4. **Performance Optimizations** - M1 Mac optimizations reducing CPU usage by 40-50% and RAM by 54%
 5. **Category Management** - Enhanced category forms with better parent category selection
 6. **Upload Service** - Fixed multipart file upload with proper MulterModule configuration
+7. **Admin Notes System** - Complete admin notes implementation for customer management (December 29, 2025)
 
 **Release Date:** December 26, 2025
 **Breaking Changes:** None
@@ -2789,7 +2790,8 @@ imports: [
 ### 12.8 Files Modified Summary
 
 **Backend (API):**
-- `/apps/api/src/admin/admin.controller.ts` - Dashboard routes added
+- `/apps/api/src/admin/admin.controller.ts` - Dashboard routes + Admin notes endpoints added
+- `/apps/api/src/admin/admin.service.ts` - Admin notes service methods added
 - `/apps/api/src/auth/strategies/jwt.strategy.ts` - JWT user object fixed
 - `/apps/api/src/categories/dto/create-category.dto.ts` - Category validation
 - `/apps/api/src/upload/upload.module.ts` - MulterModule added
@@ -2798,6 +2800,8 @@ imports: [
 
 **Frontend (Web):**
 - `/apps/web/src/app/admin/categories/page.tsx` - Category management UI
+- `/apps/web/src/app/admin/customers/[id]/page.tsx` - Customer detail page with admin notes
+- `/apps/web/src/lib/api/admin.ts` - Admin notes API client methods
 - `/apps/web/src/components/admin/product-form.tsx` - Product form improvements
 - `/apps/web/src/components/preload-resources.tsx` - Preloading optimization
 - `/apps/web/next.config.js` - Next.js configuration
@@ -2805,6 +2809,9 @@ imports: [
 
 **Configuration:**
 - `/package.json` - New dev scripts and optimizations
+
+**Database:**
+- `/packages/database/prisma/schema.prisma` - AdminNote model and User relations added
 
 **Deleted Files:**
 - `/apps/web/src/components/seller/ProductForm-incomplete.tsx` - Removed broken file
@@ -2822,6 +2829,7 @@ imports: [
 - ✅ Address forms with country selector validated
 - ✅ Product cards display correctly with stock badges
 - ✅ Topbar navigation and account menu functional
+- ✅ Admin notes backend compiled and API endpoints created
 
 **Performance Testing:**
 - ✅ CPU usage reduced by 40-50%
@@ -2831,7 +2839,104 @@ imports: [
 
 ---
 
-### 12.10 Known Issues & Future Improvements
+### 12.10 Admin Notes System (December 29, 2025)
+
+**Feature Overview:**
+Complete backend and frontend implementation of the Admin Notes system for internal customer management notes. Allows administrators to add, view, and delete private notes about customers that are only visible to admin users.
+
+**Database Schema Changes:**
+
+Added new `AdminNote` model to Prisma schema:
+```prisma
+model AdminNote {
+  id        String   @id @default(cuid())
+  userId    String   // Customer this note is about
+  content   String   @db.Text
+  createdBy String   // Admin who created the note
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user   User @relation("CustomerNotes", fields: [userId], references: [id], onDelete: Cascade)
+  author User @relation("AuthoredNotes", fields: [createdBy], references: [id])
+
+  @@index([userId])
+  @@index([createdBy])
+  @@index([createdAt])
+  @@map("admin_notes")
+}
+```
+
+**API Endpoints Added:**
+
+Three new protected endpoints (require ADMIN or SUPER_ADMIN role):
+
+1. `GET /api/v1/admin/customers/:id/notes`
+   - Retrieves all notes for a specific customer
+   - Returns notes with author details (firstName, lastName, email, avatar)
+   - Ordered by createdAt descending (newest first)
+
+2. `POST /api/v1/admin/customers/:id/notes`
+   - Creates a new note for a customer
+   - Request body: `{ content: string }`
+   - Automatically captures admin user ID from JWT token
+   - Returns created note with author information
+
+3. `DELETE /api/v1/admin/customers/:id/notes/:noteId`
+   - Deletes a specific note
+   - Validates note exists before deletion
+   - Returns success confirmation
+
+**Backend Service Methods:**
+
+Added three methods to `AdminService`:
+
+- `getCustomerNotes(userId)` - Fetches notes with author relation
+- `addCustomerNote(userId, content, createdBy)` - Creates note with validation
+- `deleteCustomerNote(noteId, requesterId)` - Deletes note after validation
+
+**Frontend Integration:**
+
+Enhanced customer detail page (`/admin/customers/[id]/page.tsx`):
+- Added notes state management with React hooks
+- Note textarea input with character limit
+- Real-time note list display with author info and timestamps
+- Delete functionality with confirmation dialog
+- Empty state message when no notes exist
+- Toast notifications for success/error feedback
+
+Added API client methods to `adminCustomersApi`:
+- `getNotes(customerId)` - Fetch notes
+- `addNote(customerId, content)` - Create note
+- `deleteNote(customerId, noteId)` - Delete note
+
+**Files Modified:**
+- `packages/database/prisma/schema.prisma` - AdminNote model and User relations
+- `apps/api/src/admin/admin.service.ts` - Service methods for notes CRUD
+- `apps/api/src/admin/admin.controller.ts` - API endpoints and route handlers
+- `apps/web/src/lib/api/admin.ts` - Frontend API client methods
+- `apps/web/src/app/admin/customers/[id]/page.tsx` - UI integration
+
+**Security Features:**
+- JWT authentication required for all endpoints
+- Role-based access control (ADMIN, SUPER_ADMIN only)
+- Notes cascade delete when customer is deleted
+- Author tracking for accountability
+- Input validation on backend and frontend
+
+**Usage:**
+Administrators can now:
+1. View all internal notes about a customer on their detail page
+2. Add new notes with rich text content
+3. See who created each note and when
+4. Delete notes when no longer needed
+5. All notes are private and only visible to admin users
+
+**Tested:** ✅ Backend compiled successfully, API endpoints created, frontend integrated
+
+---
+
+### 12.11 Known Issues & Future Improvements
 
 **Monitoring Required:**
 1. Long-term stability of JWT authentication across all user roles
@@ -2847,9 +2952,16 @@ imports: [
 
 ---
 
-### 12.11 Migration Notes
+### 12.12 Migration Notes
 
-**No Migration Required** - All changes are backward compatible.
+**Database Migration Required** for Admin Notes feature:
+```bash
+cd packages/database
+pnpm prisma db push
+pnpm prisma generate
+```
+
+**All other changes** are backward compatible.
 
 **Optional Performance Improvements:**
 - Update local development workflow to use new `dev:web` or `dev:api` scripts
@@ -2858,11 +2970,11 @@ imports: [
 
 ---
 
-### 12.12 Deployment Checklist
+### 12.13 Deployment Checklist
 
 - ✅ All critical stability fixes applied and tested
 - ✅ No breaking changes to existing APIs
-- ✅ Database schema unchanged (no migrations needed)
+- ✅ Database schema updated with AdminNote model (migration required)
 - ✅ Environment variables unchanged
 - ✅ TypeScript compilation successful
 - ✅ Manual testing completed for all fixed features
@@ -2871,14 +2983,15 @@ imports: [
 **Deployment Steps:**
 1. Pull latest code from repository
 2. Run `pnpm install` to update dependencies
-3. Rebuild backend: `pnpm --filter=@nextpik/api build`
-4. Rebuild frontend: `pnpm --filter=@nextpik/web build`
-5. Restart services
-6. Verify admin dashboard, seller portal, and product management
+3. Run database migration: `cd packages/database && pnpm prisma db push && pnpm prisma generate`
+4. Rebuild backend: `pnpm --filter=@nextpik/api build`
+5. Rebuild frontend: `pnpm --filter=@nextpik/web build`
+6. Restart services
+7. Verify admin dashboard, seller portal, product management, and admin notes
 
 ---
 
-### 12.13 Impact & Benefits
+### 12.14 Impact & Benefits
 
 **User Experience:**
 - ✅ Smoother, more polished interface
