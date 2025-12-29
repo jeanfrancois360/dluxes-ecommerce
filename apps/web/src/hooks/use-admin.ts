@@ -24,6 +24,7 @@ import {
   type AdminCustomer,
   type Category,
   type Review,
+  type CustomerStats,
 } from '@/lib/api/admin';
 
 // Dashboard Hooks
@@ -333,6 +334,9 @@ export function useAdminCustomers(params?: Parameters<typeof adminCustomersApi.g
     params?.limit,
     params?.search,
     params?.status,
+    params?.role,
+    params?.segment,
+    params?.sortBy,
   ]);
 
   const fetchCustomers = useCallback(async () => {
@@ -355,6 +359,37 @@ export function useAdminCustomers(params?: Parameters<typeof adminCustomersApi.g
   }, [fetchCustomers]);
 
   return { customers, total, pages, loading, error, refetch: fetchCustomers };
+}
+
+export function useCustomerStats() {
+  const [stats, setStats] = useState<CustomerStats>({
+    total: 0,
+    newThisMonth: 0,
+    growthPercent: 0,
+    vipCount: 0,
+    totalRevenue: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        setLoading(true);
+        const data = await adminCustomersApi.getStats();
+        setStats(data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch customer stats');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchStats();
+  }, []);
+
+  return { stats, loading, error };
 }
 
 // Categories Hooks

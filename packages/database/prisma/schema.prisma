@@ -64,6 +64,10 @@ model User {
   deliveryProvider    DeliveryProvider? @relation("DeliveryProviderUsers", fields: [deliveryProviderId], references: [id], onDelete: SetNull)
   deliveryAssignments Delivery[]        @relation("DeliveryPartnerAssignments")
 
+  // Admin Notes
+  adminNotes    AdminNote[] @relation("CustomerNotes") // Notes about this customer
+  authoredNotes AdminNote[] @relation("AuthoredNotes") // Notes created by this admin
+
   @@index([email])
   @@index([lastLoginAt])
   @@index([deliveryProviderId])
@@ -2282,4 +2286,23 @@ model DeliveryProviderPayout {
   @@index([periodStart])
   @@index([periodEnd])
   @@map("delivery_provider_payouts")
+}
+
+// Admin Notes - For internal notes about customers
+model AdminNote {
+  id        String   @id @default(cuid())
+  userId    String // The customer this note is about
+  content   String   @db.Text
+  createdBy String // Admin who created the note
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user   User @relation("CustomerNotes", fields: [userId], references: [id], onDelete: Cascade)
+  author User @relation("AuthoredNotes", fields: [createdBy], references: [id])
+
+  @@index([userId])
+  @@index([createdBy])
+  @@index([createdAt])
+  @@map("admin_notes")
 }

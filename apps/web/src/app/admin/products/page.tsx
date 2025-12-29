@@ -6,13 +6,14 @@
  * List all products with search, filter, sort, and bulk actions
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { ModernTable } from '@/components/admin/modern-table';
 import { StockStatusBadge } from '@/components/admin/stock-status-badge';
 import { BulkInventoryModal } from '@/components/admin/bulk-inventory-modal';
 import { useAdminProducts } from '@/hooks/use-admin';
+import { useDebounce } from '@/hooks/use-debounce';
 import { adminProductsApi } from '@/lib/api/admin';
 import { categoriesAPI, Category } from '@/lib/api/categories';
 import { toast } from '@/lib/toast';
@@ -20,6 +21,7 @@ import Link from 'next/link';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
 import { useInventorySettings } from '@/hooks/use-inventory-settings';
+import { Search, X } from 'lucide-react';
 
 function ProductsContent() {
   const [page, setPage] = useState(1);
@@ -34,8 +36,58 @@ function ProductsContent() {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [showBulkInventoryModal, setShowBulkInventoryModal] = useState(false);
 
+  // Debounce search to reduce API calls
+  const debouncedSearch = useDebounce(search, 300);
+
   // Fetch inventory settings from backend
   const { lowStockThreshold } = useInventorySettings();
+
+  // Calculate active filters and filter state
+  const activeFilters = useMemo(() => {
+    const filters: Array<{ key: string; label: string; value: string }> = [];
+    if (debouncedSearch) {
+      filters.push({ key: 'search', label: 'Search', value: `"${debouncedSearch}"` });
+    }
+    if (category) {
+      const categoryName = categories.find((c) => c.slug === category)?.name || category;
+      filters.push({ key: 'category', label: 'Category', value: categoryName });
+    }
+    if (status) {
+      filters.push({ key: 'status', label: 'Status', value: status });
+    }
+    return filters;
+  }, [debouncedSearch, category, status, categories]);
+
+  const hasActiveFilters = activeFilters.length > 0;
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearch('');
+    setCategory('');
+    setStatus('');
+    setPage(1);
+  };
+
+  // Clear individual filter
+  const clearFilter = (key: string) => {
+    switch (key) {
+      case 'search':
+        setSearch('');
+        break;
+      case 'category':
+        setCategory('');
+        break;
+      case 'status':
+        setStatus('');
+        break;
+    }
+    setPage(1);
+  };
+
+  // Get category name helper
+  const getCategoryName = (categorySlug: string) => {
+    return categories.find((c) => c.slug === categorySlug)?.name || categorySlug;
+  };
 
   // Fetch categories on mount
   useEffect(() => {
@@ -45,7 +97,7 @@ function ProductsContent() {
         setCategories(data);
       } catch (error) {
         console.error('Failed to load categories:', error);
-        toast({ title: 'Failed to load categories', variant: 'error' });
+        toast.error('Failed to load categories');
       } finally {
         setLoadingCategories(false);
       }
@@ -57,7 +109,7 @@ function ProductsContent() {
   const { products, total, pages, loading, refetch } = useAdminProducts({
     page,
     limit,
-    search,
+    search: debouncedSearch,
     category,
     status,
     sortBy,
@@ -163,70 +215,147 @@ function ProductsContent() {
         </Link>
       </div>
 
-      {/* Filters & Search */}
-      <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <input
-              type="text"
-              placeholder="Search by name or SKU..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all font-medium"
-            />
+      {/* Unified Filter Bar */}
+      <div className="bg-white border rounded-lg p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Search */}
+          <div className="flex-1 min-w-[200px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all text-sm"
+              />
+              {search && (
+                <button
+                  onClick={() => {
+                    setSearch('');
+                    setPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
-          <div>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              disabled={loadingCategories}
-              className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {loadingCategories ? 'Loading categories...' : 'All Categories'}
+
+          {/* Category Filter */}
+          <select
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setPage(1);
+            }}
+            disabled={loadingCategories}
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed min-w-[180px]"
+          >
+            <option value="">
+              {loadingCategories ? 'Loading...' : 'All Categories'}
+            </option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.slug}>
+                {cat.name}
+                {cat._count?.products !== undefined && cat._count.products > 0 ? ` (${cat._count.products})` : ''}
               </option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                  {cat._count?.products !== undefined ? ` (${cat._count.products})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all font-medium cursor-pointer"
+            ))}
+          </select>
+
+          {/* Status Filter */}
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all text-sm font-medium cursor-pointer min-w-[140px]"
+          >
+            <option value="">All Status</option>
+            <option value="ACTIVE">Active</option>
+            <option value="DRAFT">Draft</option>
+            <option value="ARCHIVED">Archived</option>
+            <option value="OUT_OF_STOCK">Out of Stock</option>
+          </select>
+
+          {/* Sort */}
+          <select
+            value={`${sortBy}-${sortOrder}`}
+            onChange={(e) => {
+              const [field, order] = e.target.value.split('-');
+              setSortBy(field);
+              setSortOrder(order as 'asc' | 'desc');
+              setPage(1);
+            }}
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all text-sm font-medium cursor-pointer min-w-[160px]"
+          >
+            <option value="createdAt-desc">Newest First</option>
+            <option value="createdAt-asc">Oldest First</option>
+            <option value="name-asc">Name: A to Z</option>
+            <option value="name-desc">Name: Z to A</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="inventory-asc">Stock: Low to High</option>
+            <option value="inventory-desc">Stock: High to Low</option>
+          </select>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearAllFilters}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors"
+              title="Clear all filters"
             >
-              <option value="">All Status</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-              <option value="DRAFT">Draft</option>
-            </select>
-          </div>
-          <div>
-            <select
-              value={`${sortBy}-${sortOrder}`}
-              onChange={(e) => {
-                const [field, order] = e.target.value.split('-');
-                setSortBy(field);
-                setSortOrder(order as 'asc' | 'desc');
-              }}
-              className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-all font-medium cursor-pointer"
-            >
-              <option value="createdAt-desc">Newest First</option>
-              <option value="createdAt-asc">Oldest First</option>
-              <option value="name-asc">Name (A-Z)</option>
-              <option value="name-desc">Name (Z-A)</option>
-              <option value="price-asc">Price (Low-High)</option>
-              <option value="price-desc">Price (High-Low)</option>
-              <option value="inventory-asc">Stock (Low-High)</option>
-              <option value="inventory-desc">Stock (High-Low)</option>
-            </select>
-          </div>
+              <X className="h-4 w-4" />
+              Clear ({activeFilters.length})
+            </button>
+          )}
         </div>
+
+        {/* Active Filters Pills */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200">
+            {activeFilters.map((filter) => (
+              <span
+                key={filter.key}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium"
+              >
+                <span className="text-gray-500">{filter.label}:</span>
+                {filter.value}
+                <button
+                  onClick={() => clearFilter(filter.key)}
+                  className="ml-1 text-gray-500 hover:text-gray-700 transition-colors"
+                  title={`Clear ${filter.label} filter`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Results Summary */}
+      {!loading && products && (
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <p>
+            Showing <span className="font-semibold text-gray-900">{products.length}</span> of{' '}
+            <span className="font-semibold text-gray-900">{total}</span> products
+            {hasActiveFilters && <span className="text-gray-500"> (filtered)</span>}
+          </p>
+          {selectedIds.length > 0 && (
+            <p className="text-[#CBB57B] font-semibold">
+              {selectedIds.length} product{selectedIds.length !== 1 ? 's' : ''} selected
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Bulk Actions */}
       {selectedIds.length > 0 && (

@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Delete,
   Param,
@@ -9,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { PrismaService } from '../database/prisma.service';
@@ -108,17 +110,131 @@ export class AdminController {
   async getAllUsers(
     @Query('role') role?: UserRole,
     @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
   ) {
     try {
       const data = await this.adminService.getAllUsers({
         role,
         page: page ? parseInt(page) : undefined,
         pageSize: pageSize ? parseInt(pageSize) : undefined,
+        search,
+        status,
       });
       return {
         success: true,
         data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Get customer stats
+   * @route GET /admin/customers/stats
+   */
+  @Get('customers/stats')
+  async getCustomerStats() {
+    try {
+      const data = await this.adminService.getCustomerStats();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Get single user by ID
+   * @route GET /admin/users/:id
+   */
+  @Get('users/:id')
+  async getUserById(@Param('id') id: string) {
+    try {
+      const data = await this.adminService.getUserById(id);
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Update user details
+   * @route PATCH /admin/users/:id
+   */
+  @Patch('users/:id')
+  async updateUser(
+    @Param('id') id: string,
+    @Body() body: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      role?: UserRole;
+      isActive?: boolean;
+    }
+  ) {
+    try {
+      const data = await this.adminService.updateUser(id, body);
+      return {
+        success: true,
+        data,
+        message: 'User updated successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Suspend user
+   * @route PATCH /admin/users/:id/suspend
+   */
+  @Patch('users/:id/suspend')
+  async suspendUser(@Param('id') id: string) {
+    try {
+      const data = await this.adminService.suspendUser(id);
+      return {
+        success: true,
+        data,
+        message: 'User suspended successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Activate user
+   * @route PATCH /admin/users/:id/activate
+   */
+  @Patch('users/:id/activate')
+  async activateUser(@Param('id') id: string) {
+    try {
+      const data = await this.adminService.activateUser(id);
+      return {
+        success: true,
+        data,
+        message: 'User activated successfully',
       };
     } catch (error) {
       return {
@@ -427,6 +543,46 @@ export class AdminController {
         message: error instanceof Error ? error.message : "An error occurred",
       };
     }
+  }
+
+  // === ADMIN NOTES ===
+
+  /**
+   * Get all notes for a customer
+   */
+  @Get('customers/:id/notes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getCustomerNotes(@Param('id') id: string) {
+    return this.adminService.getCustomerNotes(id);
+  }
+
+  /**
+   * Add a new note for a customer
+   */
+  @Post('customers/:id/notes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async addCustomerNote(
+    @Param('id') id: string,
+    @Body() body: { content: string },
+    @Req() req,
+  ) {
+    return this.adminService.addCustomerNote(id, body.content, req.user.id);
+  }
+
+  /**
+   * Delete a customer note
+   */
+  @Delete('customers/:id/notes/:noteId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async deleteCustomerNote(
+    @Param('id') customerId: string,
+    @Param('noteId') noteId: string,
+    @Req() req,
+  ) {
+    return this.adminService.deleteCustomerNote(noteId, req.user.id);
   }
 }
 
