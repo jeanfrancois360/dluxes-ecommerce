@@ -3,15 +3,15 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nextpik/ui';
-import { Button } from '@nextpik/ui';
+import { Card, CardContent } from '@nextpik/ui';
 import { Label } from '@nextpik/ui';
 import { Switch } from '@nextpik/ui';
-import { AlertCircle, Loader2, Bell } from 'lucide-react';
+import { AlertCircle, Loader2, Bell, Mail, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { notificationSettingsSchema, type NotificationSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
+import { SettingsCard, SettingsToggle, SettingsFooter } from './shared';
 
 const NOTIFICATION_EVENTS = [
   { value: 'order_placed', label: 'Order Placed', description: 'When a new order is created' },
@@ -43,7 +43,7 @@ export function NotificationSettingsSection() {
       form.reset(formData as NotificationSettings, { keepDirtyValues: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings]); // form is stable, don't include it
+  }, [settings]);
 
   const onSubmit = async (data: NotificationSettings) => {
     try {
@@ -80,146 +80,92 @@ export function NotificationSettingsSection() {
   const isDirty = form.formState.isDirty;
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Card className="border-muted shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="border-b bg-muted/30">
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notification Settings
-            {isDirty && (
-              <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
-                Unsaved changes
-              </span>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Configure how and when to send notifications to users
-          </CardDescription>
-        </CardHeader>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <SettingsCard
+        icon={Bell}
+        title="Notification Channels"
+        description="Configure how to send notifications to users"
+      >
+        <SettingsToggle
+          label="Email Notifications"
+          description="Send notifications via email"
+          checked={form.watch('email_notifications_enabled')}
+          onCheckedChange={(checked) => form.setValue('email_notifications_enabled', checked, { shouldDirty: true })}
+          tooltip="Enable or disable email notifications for all events"
+        />
 
-        <CardContent className="space-y-6 pb-12">
-          {/* Email Notifications */}
-          <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
-            <div className="space-y-0.5">
-              <Label htmlFor="email_notifications_enabled">Email Notifications</Label>
-              <p className="text-sm text-muted-foreground">
-                Send notifications via email
-              </p>
-            </div>
-            <Switch
-              id="email_notifications_enabled"
-              checked={form.watch('email_notifications_enabled')}
-              onCheckedChange={(checked) => form.setValue('email_notifications_enabled', checked, { shouldDirty: true })}
-            />
-          </div>
+        <SettingsToggle
+          label="SMS Notifications"
+          description="Send notifications via SMS (requires SMS provider)"
+          checked={form.watch('sms_notifications_enabled')}
+          onCheckedChange={(checked) => form.setValue('sms_notifications_enabled', checked, { shouldDirty: true })}
+          tooltip="Enable or disable SMS notifications. Requires SMS provider configuration."
+        />
+      </SettingsCard>
 
-          {/* SMS Notifications */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="sms_notifications_enabled">SMS Notifications</Label>
-              <p className="text-sm text-muted-foreground">
-                Send notifications via SMS (requires SMS provider)
-              </p>
-            </div>
-            <Switch
-              id="sms_notifications_enabled"
-              checked={form.watch('sms_notifications_enabled')}
-              onCheckedChange={(checked) => form.setValue('sms_notifications_enabled', checked, { shouldDirty: true })}
-            />
-          </div>
-
-          {/* Notification Events */}
-          <div className="space-y-4">
-            <div>
-              <Label>Enabled Notification Events *</Label>
-              <p className="text-sm text-muted-foreground mt-1">
-                Select which events trigger notifications
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              {NOTIFICATION_EVENTS.map((event) => {
-                const isChecked = form.watch('notification_events')?.includes(event.value);
-                return (
-                  <div
-                    key={event.value}
-                    className={`flex items-start justify-between rounded-lg border p-4 transition-colors ${isChecked ? 'border-primary bg-primary/5' : ''
-                      }`}
+      <SettingsCard
+        icon={MessageSquare}
+        title="Notification Events"
+        description="Select which events trigger notifications"
+      >
+        <div className="space-y-2">
+          {NOTIFICATION_EVENTS.map((event) => {
+            const isChecked = form.watch('notification_events')?.includes(event.value);
+            return (
+              <div
+                key={event.value}
+                className={`flex items-start justify-between rounded-lg border p-4 transition-colors ${isChecked ? 'border-primary bg-primary/5' : ''}`}
+              >
+                <div className="space-y-0.5 flex-1">
+                  <Label
+                    htmlFor={`event_${event.value}`}
+                    className="cursor-pointer font-medium"
                   >
-                    <div className="space-y-0.5 flex-1">
-                      <Label
-                        htmlFor={`event_${event.value}`}
-                        className="cursor-pointer font-medium"
-                      >
-                        {event.label}
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        {event.description}
-                      </p>
-                    </div>
-                    <Switch
-                      id={`event_${event.value}`}
-                      checked={isChecked}
-                      onCheckedChange={() => toggleEvent(event.value)}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+                    {event.label}
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {event.description}
+                  </p>
+                </div>
+                <Switch
+                  id={`event_${event.value}`}
+                  checked={isChecked}
+                  onCheckedChange={() => toggleEvent(event.value)}
+                />
+              </div>
+            );
+          })}
+        </div>
 
-            {form.formState.errors.notification_events && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.notification_events.message}
-              </p>
-            )}
+        {form.formState.errors.notification_events && (
+          <p className="text-sm text-destructive flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {form.formState.errors.notification_events.message}
+          </p>
+        )}
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
+          <p className="text-sm font-medium mb-2">Active Notifications</p>
+          <div className="text-sm text-muted-foreground space-y-1">
+            <p>
+              Email: {form.watch('email_notifications_enabled') ? 'Enabled' : 'Disabled'}
+            </p>
+            <p>
+              SMS: {form.watch('sms_notifications_enabled') ? 'Enabled' : 'Disabled'}
+            </p>
+            <p>
+              Events: {form.watch('notification_events')?.length || 0} selected
+            </p>
           </div>
+        </div>
+      </SettingsCard>
 
-          {/* Summary */}
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-            <p className="text-sm font-medium mb-2">Active Notifications</p>
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>
-                Email: {form.watch('email_notifications_enabled') ? 'Enabled' : 'Disabled'}
-              </p>
-              <p>
-                SMS: {form.watch('sms_notifications_enabled') ? 'Enabled' : 'Disabled'}
-              </p>
-              <p>
-                Events: {form.watch('notification_events')?.length || 0} selected
-              </p>
-            </div>
-          </div>
-        </CardContent>
-
-        <CardFooter className="flex justify-between border-t bg-muted/30 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => form.reset()}
-            disabled={updating || !isDirty}
-            className="gap-2"
-          >
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            disabled={updating || !isDirty}
-            className="gap-2 min-w-[140px]"
-          >
-            {updating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                Save Changes
-              </>
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
+      <SettingsFooter
+        onReset={() => form.reset()}
+        onSave={() => form.handleSubmit(onSubmit)()}
+        isLoading={updating}
+        isDirty={isDirty}
+      />
     </form>
   );
 }

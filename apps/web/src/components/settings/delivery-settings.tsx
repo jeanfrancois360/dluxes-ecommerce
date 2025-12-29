@@ -3,16 +3,14 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nextpik/ui';
-import { Button } from '@nextpik/ui';
+import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
-import { Label } from '@nextpik/ui';
-import { Switch } from '@nextpik/ui';
-import { AlertCircle, Loader2, Lock, Info } from 'lucide-react';
+import { Loader2, Truck, Info, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { deliverySettingsSchema, type DeliverySettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
+import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 
 export function DeliverySettingsSection() {
   const { settings, loading, refetch } = useSettings('delivery');
@@ -34,7 +32,7 @@ export function DeliverySettingsSection() {
       form.reset(formData as DeliverySettings, { keepDirtyValues: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings]); // form is stable, don't include it
+  }, [settings]);
 
   const onSubmit = async (data: DeliverySettings) => {
     try {
@@ -59,79 +57,56 @@ export function DeliverySettingsSection() {
     );
   }
 
-  const isProduction = process.env.NODE_ENV === 'production';
   const isDirty = form.formState.isDirty;
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Card className="border-muted shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="border-b bg-muted/30">
-          <CardTitle className="flex items-center gap-2">
-            Delivery Settings
-            {isDirty && (
-              <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
-                Unsaved changes
-              </span>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Configure delivery and shipping options
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-6 pb-12">
-          {/* Delivery Confirmation Required */}
-          <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
-            <div className="space-y-0.5 flex-1">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="delivery_confirmation_required">Delivery Confirmation</Label>
-                <Lock className="h-3 w-3 text-muted-foreground" />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Require delivery confirmation before releasing escrow (Required)
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <SettingsCard
+        icon={Truck}
+        title="Delivery Configuration"
+        description="Configure delivery and shipping options"
+      >
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+          <div className="flex gap-2">
+            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                Escrow Integration
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                When delivery is confirmed, escrow hold period starts automatically. Payment releases after hold period expires.
               </p>
             </div>
-            <Switch
-              id="delivery_confirmation_required"
-              checked={form.watch('delivery_confirmation_required')}
-              onCheckedChange={(checked) => form.setValue('delivery_confirmation_required', checked, { shouldDirty: true })}
-              disabled={true}
-            />
           </div>
+        </div>
 
-          {/* Escrow Integration Info */}
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-            <div className="flex gap-2">
-              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  Escrow Integration
-                </p>
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  When delivery is confirmed, escrow hold period starts automatically. Payment releases after hold period expires.
-                </p>
-              </div>
-            </div>
-          </div>
+        <SettingsToggle
+          label="Delivery Confirmation"
+          description="Require delivery confirmation before releasing escrow (Required)"
+          checked={form.watch('delivery_confirmation_required')}
+          onCheckedChange={(checked) => form.setValue('delivery_confirmation_required', checked, { shouldDirty: true })}
+          disabled={true}
+          tooltip="This setting is required and cannot be disabled for security reasons"
+        />
 
-          {/* Auto Assign Delivery */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="delivery_auto_assign">Auto-Assign Delivery Partners</Label>
-              <p className="text-sm text-muted-foreground">
-                Automatically assign orders to available delivery partners
-              </p>
-            </div>
-            <Switch
-              id="delivery_auto_assign"
-              checked={form.watch('delivery_auto_assign')}
-              onCheckedChange={(checked) => form.setValue('delivery_auto_assign', checked, { shouldDirty: true })}
-            />
-          </div>
+        <SettingsToggle
+          label="Auto-Assign Delivery Partners"
+          description="Automatically assign orders to available delivery partners"
+          checked={form.watch('delivery_auto_assign')}
+          onCheckedChange={(checked) => form.setValue('delivery_auto_assign', checked, { shouldDirty: true })}
+          tooltip="When enabled, orders will be automatically assigned to available delivery partners based on location and availability"
+        />
 
-          {/* Delivery Partner Commission */}
-          <div className="space-y-2">
-            <Label htmlFor="delivery_partner_commission">Delivery Partner Commission *</Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <SettingsField
+            label="Delivery Partner Commission"
+            id="delivery_partner_commission"
+            required
+            tooltip="Percentage commission paid to delivery partners per order"
+            error={form.formState.errors.delivery_partner_commission?.message}
+            helperText="Commission paid to delivery partners per order"
+            suffix="%"
+          >
             <div className="flex gap-2 items-center">
               <Input
                 id="delivery_partner_commission"
@@ -141,24 +116,21 @@ export function DeliverySettingsSection() {
                 step="0.1"
                 {...form.register('delivery_partner_commission', { valueAsNumber: true })}
                 placeholder="5"
-                className="max-w-[200px]"
+                className="flex-1"
               />
               <span className="text-muted-foreground">%</span>
             </div>
-            {form.formState.errors.delivery_partner_commission && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.delivery_partner_commission.message}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Commission paid to delivery partners per order
-            </p>
-          </div>
+          </SettingsField>
 
-          {/* Free Shipping Threshold */}
-          <div className="space-y-2">
-            <Label htmlFor="free_shipping_threshold">Free Shipping Threshold (USD) *</Label>
+          <SettingsField
+            label="Free Shipping Threshold (USD)"
+            id="free_shipping_threshold"
+            required
+            tooltip="Order total required for free shipping. Set to 0 to disable free shipping."
+            error={form.formState.errors.free_shipping_threshold?.message}
+            helperText="Order total required for free shipping (set to 0 to disable)"
+            prefix="$"
+          >
             <div className="flex gap-2 items-center">
               <span className="text-muted-foreground">$</span>
               <Input
@@ -168,60 +140,29 @@ export function DeliverySettingsSection() {
                 step="0.01"
                 {...form.register('free_shipping_threshold', { valueAsNumber: true })}
                 placeholder="100.00"
-                className="max-w-[200px]"
+                className="flex-1"
               />
             </div>
-            {form.formState.errors.free_shipping_threshold && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.free_shipping_threshold.message}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Order total required for free shipping (set to 0 to disable)
+          </SettingsField>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
+          <p className="text-sm font-medium mb-2">Customer Experience</p>
+          <div className="text-sm text-muted-foreground space-y-1">
+            <p>Cart Total: $85.00 → Shipping: Calculated</p>
+            <p>
+              Cart Total: ${form.watch('free_shipping_threshold') || 100}.00+ → Shipping: FREE
             </p>
           </div>
+        </div>
+      </SettingsCard>
 
-          {/* Example Display */}
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-            <p className="text-sm font-medium mb-2">Customer Experience</p>
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>Cart Total: $85.00 → Shipping: Calculated</p>
-              <p>
-                Cart Total: ${form.watch('free_shipping_threshold') || 100}.00+ → Shipping: FREE
-              </p>
-            </div>
-          </div>
-        </CardContent>
-
-        <CardFooter className="flex justify-between border-t bg-muted/30 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => form.reset()}
-            disabled={updating || !isDirty}
-            className="gap-2"
-          >
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            disabled={updating || !isDirty}
-            className="gap-2 min-w-[140px]"
-          >
-            {updating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                Save Changes
-              </>
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
+      <SettingsFooter
+        onReset={() => form.reset()}
+        onSave={() => form.handleSubmit(onSubmit)()}
+        isLoading={updating}
+        isDirty={isDirty}
+      />
     </form>
   );
 }
