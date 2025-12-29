@@ -27,13 +27,20 @@ export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   /**
-   * Get all categories with hierarchical structure
+   * Get all categories (flat list including subcategories)
    * @route GET /categories
    */
   @Get()
   async findAll() {
     try {
-      const data = await this.categoriesService.findAll();
+      const categories = await this.categoriesService.findAllFlat();
+
+      // Transform _count.products to productCount for frontend compatibility
+      const data = categories.map(category => ({
+        ...category,
+        productCount: category._count?.products || 0,
+      }));
+
       return {
         success: true,
         data,
