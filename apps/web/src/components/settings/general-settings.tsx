@@ -3,16 +3,14 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nextpik/ui';
-import { Button } from '@nextpik/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
-import { Label } from '@nextpik/ui';
-import { Switch } from '@nextpik/ui';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Settings, Globe, Mail, Phone, Clock, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { generalSettingsSchema, type GeneralSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
+import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 
 export function GeneralSettingsSection() {
   const { settings, loading, refetch } = useSettings('general');
@@ -37,7 +35,7 @@ export function GeneralSettingsSection() {
       form.reset(formData as GeneralSettings, { keepDirtyValues: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings]); // form is stable, don't include it
+  }, [settings]);
 
   const onSubmit = async (data: GeneralSettings) => {
     try {
@@ -62,21 +60,20 @@ export function GeneralSettingsSection() {
     );
   }
 
-  // Show helpful message if no settings exist
   if (!loading && settings.length === 0) {
     return (
-      <Card className="border-yellow-200 bg-yellow-50">
+      <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-900">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-yellow-800">
+          <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
             <AlertCircle className="h-5 w-5" />
             Settings Not Initialized
           </CardTitle>
-          <CardDescription className="text-yellow-700">
+          <CardDescription className="text-yellow-700 dark:text-yellow-300">
             General settings have not been created yet. Please run the settings seed script.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="bg-yellow-100 p-4 rounded text-sm overflow-x-auto">
+          <pre className="bg-yellow-100 dark:bg-yellow-900/30 p-4 rounded text-sm overflow-x-auto">
             npx tsx packages/database/prisma/seed-settings.ts
           </pre>
         </CardContent>
@@ -87,139 +84,142 @@ export function GeneralSettingsSection() {
   const isDirty = form.formState.isDirty;
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Card className="border-muted shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="border-b bg-muted/30">
-          <CardTitle className="flex items-center gap-2">
-            General Settings
-            {isDirty && (
-              <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
-                Unsaved changes
-              </span>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Manage basic information about your platform
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-6 pt-6 pb-12">
-          {/* Site Name */}
-          <div className="space-y-2">
-            <Label htmlFor="site_name">Site Name *</Label>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      {/* Site Information */}
+      <SettingsCard
+        icon={Globe}
+        title="Site Information"
+        description="Basic information about your e-commerce platform"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <SettingsField
+            label="Site Name"
+            id="site_name"
+            required
+            tooltip="The name of your e-commerce platform displayed across the site"
+            error={form.formState.errors.site_name?.message}
+          >
             <Input
               id="site_name"
               {...form.register('site_name')}
               placeholder="NextPik E-commerce"
+              className={form.formState.errors.site_name ? 'border-red-500' : ''}
             />
-            {form.formState.errors.site_name && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.site_name.message}
-              </p>
-            )}
-          </div>
+          </SettingsField>
 
-          {/* Site Tagline */}
-          <div className="space-y-2">
-            <Label htmlFor="site_tagline">Site Tagline *</Label>
+          <SettingsField
+            label="Site Tagline"
+            id="site_tagline"
+            required
+            tooltip="A short tagline that describes your brand or value proposition"
+            error={form.formState.errors.site_tagline?.message}
+          >
             <Input
               id="site_tagline"
               {...form.register('site_tagline')}
               placeholder="Where Elegance Meets Excellence"
+              className={form.formState.errors.site_tagline ? 'border-red-500' : ''}
             />
-            {form.formState.errors.site_tagline && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.site_tagline.message}
-              </p>
-            )}
-          </div>
+          </SettingsField>
+        </div>
+      </SettingsCard>
 
-          {/* Contact Email */}
-          <div className="space-y-2">
-            <Label htmlFor="contact_email">Contact Email *</Label>
+      {/* Contact Information */}
+      <SettingsCard
+        icon={Mail}
+        title="Contact Information"
+        description="How customers can reach your support team"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <SettingsField
+            label="Contact Email"
+            id="contact_email"
+            required
+            tooltip="Primary email address for customer inquiries and support"
+            helperText="This email will be displayed on contact pages and order confirmations"
+            error={form.formState.errors.contact_email?.message}
+          >
             <Input
               id="contact_email"
               type="email"
               {...form.register('contact_email')}
               placeholder="support@luxury.com"
+              className={form.formState.errors.contact_email ? 'border-red-500' : ''}
             />
-            {form.formState.errors.contact_email && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.contact_email.message}
-              </p>
-            )}
-          </div>
+          </SettingsField>
 
-          {/* Contact Phone */}
-          <div className="space-y-2">
-            <Label htmlFor="contact_phone">Contact Phone</Label>
+          <SettingsField
+            label="Contact Phone"
+            id="contact_phone"
+            tooltip="Primary phone number for customer support (optional)"
+            helperText="Include country code for international customers"
+          >
             <Input
               id="contact_phone"
               {...form.register('contact_phone')}
               placeholder="+1-800-LUXURY"
             />
-          </div>
+          </SettingsField>
+        </div>
+      </SettingsCard>
 
-          {/* Timezone */}
-          <div className="space-y-2">
-            <Label htmlFor="timezone">Timezone *</Label>
+      {/* System Configuration */}
+      <SettingsCard
+        icon={Settings}
+        title="System Configuration"
+        description="Platform-wide system settings"
+      >
+        <SettingsField
+          label="Timezone"
+          id="timezone"
+          required
+          tooltip="Default timezone for the entire platform"
+          helperText="⚠️ Changing timezone requires application restart to take effect"
+          error={form.formState.errors.timezone?.message}
+        >
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-slate-500" />
             <Input
               id="timezone"
               {...form.register('timezone')}
               placeholder="America/New_York"
+              className={`flex-1 ${form.formState.errors.timezone ? 'border-red-500' : ''}`}
             />
-            <p className="text-sm text-muted-foreground">
-              Changing timezone requires application restart
-            </p>
           </div>
+        </SettingsField>
 
-          {/* Maintenance Mode */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="maintenance_mode">Maintenance Mode</Label>
-              <p className="text-sm text-muted-foreground">
-                Disable all transactions and show maintenance message
+        <SettingsToggle
+          label="Maintenance Mode"
+          description="Disable all transactions and show maintenance message to visitors"
+          checked={form.watch('maintenance_mode')}
+          onCheckedChange={(checked) =>
+            form.setValue('maintenance_mode', checked, { shouldDirty: true })
+          }
+          tooltip="When enabled, customers cannot place orders and will see a maintenance notice"
+        />
+
+        {form.watch('maintenance_mode') && (
+          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                Maintenance Mode Active
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                Your platform is currently in maintenance mode. Customers cannot place orders.
               </p>
             </div>
-            <Switch
-              id="maintenance_mode"
-              checked={form.watch('maintenance_mode')}
-              onCheckedChange={(checked) => form.setValue('maintenance_mode', checked, { shouldDirty: true })}
-            />
           </div>
-        </CardContent>
+        )}
+      </SettingsCard>
 
-        <CardFooter className="flex justify-between border-t bg-muted/30 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => form.reset()}
-            disabled={updating || !isDirty}
-            className="gap-2"
-          >
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            disabled={updating || !isDirty}
-            className="gap-2 min-w-[140px]"
-          >
-            {updating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                Save Changes
-              </>
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
+      {/* Footer with Reset and Save buttons */}
+      <SettingsFooter
+        onReset={() => form.reset()}
+        onSave={() => {}} // Form submission handled by form onSubmit
+        isLoading={updating}
+        isDirty={isDirty}
+      />
     </form>
   );
 }

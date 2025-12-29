@@ -44,12 +44,14 @@ export function useCurrencySettings() {
   );
 
   const defaultCurrency = useMemo(() => {
-    const setting = settings?.find(s => s.key === 'default_currency');
+    if (!settings || !Array.isArray(settings)) return 'USD';
+    const setting = settings.find(s => s.key === 'default_currency');
     return setting?.value || 'USD';
   }, [settings]);
 
   const supportedCurrencies = useMemo(() => {
-    const setting = settings?.find(s => s.key === 'supported_currencies');
+    if (!settings || !Array.isArray(settings)) return ['USD', 'EUR', 'GBP', 'JPY', 'RWF'];
+    const setting = settings.find(s => s.key === 'supported_currencies');
     return setting?.value || ['USD', 'EUR', 'GBP', 'JPY', 'RWF'];
   }, [settings]);
 
