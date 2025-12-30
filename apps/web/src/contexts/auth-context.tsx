@@ -8,7 +8,7 @@
 
 import React, { createContext, useCallback, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import type { User, LoginRequest, RegisterRequest } from '@/lib/api/types';
+import type { User, LoginRequest, RegisterRequest, ProfileUpdateData } from '@/lib/api/types';
 import * as authApi from '@/lib/api/auth';
 import { TokenManager, ToastNotifier } from '@/lib/api/client';
 import {
@@ -63,7 +63,7 @@ export interface AuthContextValue {
   regenerateBackupCodes: () => Promise<{ backupCodes: string[] }>;
 
   // Profile Methods
-  updateProfile: (data: Partial<RegisterRequest>) => Promise<void>;
+  updateProfile: (data: ProfileUpdateData) => Promise<void>;
   uploadAvatar: (file: File, onProgress?: (progress: number) => void) => Promise<void>;
   deleteAvatar: () => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
@@ -668,7 +668,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Profile Methods
   // ============================================================================
 
-  const updateProfile = useCallback(async (data: Partial<RegisterRequest>) => {
+  const updateProfile = useCallback(async (data: ProfileUpdateData) => {
     try {
       setIsLoading(true);
       setError(null);

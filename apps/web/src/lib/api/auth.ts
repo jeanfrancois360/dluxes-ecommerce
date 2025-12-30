@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { LoginCredentials, RegisterData, AuthResponse } from './types';
+import type { LoginCredentials, RegisterData, AuthResponse, ProfileUpdateData } from './types';
 
 export const authAPI = {
   login: (credentials: LoginCredentials) =>
@@ -18,7 +18,7 @@ export const authAPI = {
   getProfile: () =>
     api.get('/auth/me'),
 
-  updateProfile: (data: Partial<RegisterData>) =>
+  updateProfile: (data: ProfileUpdateData) =>
     api.patch('/users/me', data),
 
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
@@ -42,7 +42,7 @@ export const login = (credentials: LoginCredentials) => authAPI.login(credential
 export const register = (data: RegisterData) => authAPI.register(data);
 export const logout = () => authAPI.logout();
 export const getCurrentUser = () => authAPI.getProfile();
-export const updateProfile = (data: Partial<RegisterData>) => authAPI.updateProfile(data);
+export const updateProfile = (data: ProfileUpdateData) => authAPI.updateProfile(data);
 export const changePassword = (currentPassword: string, newPassword: string, confirmPassword: string) =>
   authAPI.changePassword({ currentPassword, newPassword });
 export const requestPasswordReset = (data: { email: string }) => authAPI.forgotPassword(data.email);
