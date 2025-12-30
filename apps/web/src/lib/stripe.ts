@@ -23,7 +23,7 @@ async function fetchPublishableKey(): Promise<string> {
       if (result.success && result.data?.publishableKey) {
         publishableKeyCache = result.data.publishableKey;
         console.log('✅ Loaded Stripe publishable key from database settings');
-        return publishableKeyCache;
+        return result.data.publishableKey;
       }
     }
 

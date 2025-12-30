@@ -12,6 +12,8 @@ import {
   Truck,
 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
 interface Driver {
   id: string;
   firstName: string;
@@ -51,7 +53,7 @@ export default function DriversPage() {
         return;
       }
 
-      const response = await fetch('/api/v1/delivery-company/drivers', {
+      const response = await fetch(`${API_URL}/delivery-company/drivers`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

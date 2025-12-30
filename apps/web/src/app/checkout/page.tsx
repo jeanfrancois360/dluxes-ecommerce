@@ -419,7 +419,6 @@ export default function CheckoutPage() {
                 tax={totals.tax}
                 total={totalWithShipping}
                 shippingMethod={{
-                  id: selectedShippingMethod,
                   name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
                   price: shippingCalculation.finalPrice,
                 }}

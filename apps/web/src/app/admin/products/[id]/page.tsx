@@ -116,11 +116,11 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
     category: typeof product.category === 'object' ? (product.category as any)?.slug : product.category,
     images: Array.isArray(product.images)
       ? product.images.map((img: any) => typeof img === 'string' ? img : img.url)
-      : [product.heroImage].filter(Boolean),
+      : [(product as any).heroImage].filter(Boolean),
     tags: Array.isArray(product.tags)
       ? product.tags.map((tag: any) => typeof tag === 'string' ? tag : tag.name)
       : [],
-    stock: product.inventory ?? product.stock ?? 0,
+    stock: (product as any).inventory ?? (product as any).stock ?? 0,
   } : undefined;
 
   return (
@@ -184,7 +184,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
         onOpenChange={setShowInventoryModal}
         productId={!isNew ? resolvedParams.id : undefined}
         productName={product?.name}
-        currentStock={product?.inventory ?? product?.stock ?? 0}
+        currentStock={(product as any)?.inventory ?? (product as any)?.stock ?? 0}
         onSuccess={() => {
           refetch();
           toast.success('Inventory adjusted successfully');

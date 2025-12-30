@@ -13,6 +13,8 @@ import {
   Calendar
 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
 interface CompanyStats {
   provider: {
     id: string;
@@ -49,7 +51,7 @@ export default function DeliveryCompanyDashboard() {
         return;
       }
 
-      const response = await fetch('/api/v1/delivery-company/statistics', {
+      const response = await fetch(`${API_URL}/delivery-company/statistics`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

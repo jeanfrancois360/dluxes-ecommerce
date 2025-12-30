@@ -48,6 +48,8 @@ import {
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useDebounce } from '@/hooks/use-debounce';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
 type PayoutStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 interface Payout {
@@ -119,7 +121,7 @@ function PayoutsContent() {
 
   const fetchPayouts = async () => {
     try {
-      const response = await fetch('/api/v1/payouts/admin/all?limit=50', {
+      const response = await fetch(`${API_URL}/payouts/admin/all?limit=50`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -139,7 +141,7 @@ function PayoutsContent() {
 
   const fetchSchedule = async () => {
     try {
-      const response = await fetch('/api/v1/payouts/schedule');
+      const response = await fetch(`${API_URL}/payouts/schedule`);
       if (response.ok) {
         const data = await response.json();
         setSchedule(data);
@@ -260,7 +262,7 @@ function PayoutsContent() {
 
     setProcessing(true);
     try {
-      const response = await fetch('/api/v1/payouts/admin/process', {
+      const response = await fetch(`${API_URL}/payouts/admin/process`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -286,7 +288,7 @@ function PayoutsContent() {
 
   const handleTriggerSeller = async (sellerId: string) => {
     try {
-      const response = await fetch(`/api/v1/payouts/admin/seller/${sellerId}/trigger`, {
+      const response = await fetch(`${API_URL}/payouts/admin/seller/${sellerId}/trigger`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -309,7 +311,7 @@ function PayoutsContent() {
     if (!completeDialog.payout) return;
 
     try {
-      const response = await fetch(`/api/v1/payouts/admin/${completeDialog.payout.id}/complete`, {
+      const response = await fetch(`${API_URL}/payouts/admin/${completeDialog.payout.id}/complete`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -339,7 +341,7 @@ function PayoutsContent() {
     if (!reason) return;
 
     try {
-      const response = await fetch(`/api/v1/payouts/admin/${payoutId}/fail`, {
+      const response = await fetch(`${API_URL}/payouts/admin/${payoutId}/fail`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -393,7 +395,7 @@ function PayoutsContent() {
       const payout = filteredPayouts.find((p) => p.id === id);
       if (payout && (payout.status === 'PENDING' || payout.status === 'PROCESSING')) {
         try {
-          const response = await fetch(`/api/v1/payouts/admin/${id}/fail`, {
+          const response = await fetch(`${API_URL}/payouts/admin/${id}/fail`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',

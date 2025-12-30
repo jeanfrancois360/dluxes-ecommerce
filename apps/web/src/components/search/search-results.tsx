@@ -193,7 +193,7 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
           )}
 
           {/* Results Grid */}
-          {data && data.data.length > 0 && (
+          {data && data.products.length > 0 && (
             <>
               <AnimatePresence mode="wait">
                 <motion.div
@@ -204,7 +204,7 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
                   transition={{ duration: 0.3 }}
                   className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12"
                 >
-                  {data.data.map((product: Product, index: number) => (
+                  {data.products.map((product: Product, index: number) => (
                     <motion.div
                       key={product.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -280,7 +280,7 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
           )}
 
           {/* Empty State */}
-          {data && data.data.length === 0 && !isLoading && (
+          {data && data.products.length === 0 && !isLoading && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
