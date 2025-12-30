@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -123,7 +123,20 @@ export class CartService {
     });
 
     if (!product) {
-      throw new Error('Product not found');
+      throw new BadRequestException('Product not found');
+    }
+
+    // Block inquiry-based products from being added to cart
+    // These products require contacting the seller instead of direct purchase
+    const isInquiryProduct =
+      product.purchaseType === 'INQUIRY' ||
+      product.productType === 'REAL_ESTATE' ||
+      product.productType === 'VEHICLE';
+
+    if (isInquiryProduct) {
+      throw new BadRequestException(
+        'This product requires contacting the seller. It cannot be added to cart.'
+      );
     }
 
     // Check inventory availability

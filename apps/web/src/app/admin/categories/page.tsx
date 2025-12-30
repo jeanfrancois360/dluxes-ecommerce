@@ -200,6 +200,9 @@ function CategoriesContent() {
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [searchInput, setSearchInput] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [parentFilter, setParentFilter] = useState('');
   const [formData, setFormData] = useState<Partial<Category>>({
     name: '',
     slug: '',
@@ -212,6 +215,53 @@ function CategoriesContent() {
     showOnHomepage: false,
     isFeatured: false,
   });
+
+  // Calculate stats
+  const stats = React.useMemo(() => {
+    const totalCategories = categories.length;
+    const activeCategories = categories.filter(c => c.showInNavbar || c.showInTopBar || c.showInSidebar).length;
+    const withProducts = categories.filter(c => (c.productCount || 0) > 0).length;
+    const emptyCategories = categories.filter(c => (c.productCount || 0) === 0).length;
+    return { totalCategories, activeCategories, withProducts, emptyCategories };
+  }, [categories]);
+
+  // Filter categories
+  const filteredCategories = React.useMemo(() => {
+    return categories.filter(cat => {
+      // Search filter
+      if (searchInput) {
+        const searchLower = searchInput.toLowerCase();
+        if (!cat.name.toLowerCase().includes(searchLower) && !cat.slug.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+      // Status filter
+      if (statusFilter === 'active' && !cat.showInNavbar && !cat.showInTopBar && !cat.showInSidebar) {
+        return false;
+      }
+      if (statusFilter === 'inactive' && (cat.showInNavbar || cat.showInTopBar || cat.showInSidebar)) {
+        return false;
+      }
+      // Parent filter
+      if (parentFilter === 'root' && cat.parentId) {
+        return false;
+      }
+      if (parentFilter === 'child' && !cat.parentId) {
+        return false;
+      }
+      return true;
+    });
+  }, [categories, searchInput, statusFilter, parentFilter]);
+
+  // Active filters
+  const hasActiveFilters = searchInput || statusFilter || parentFilter;
+  const activeFilterCount = [searchInput, statusFilter, parentFilter].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setSearchInput('');
+    setStatusFilter('');
+    setParentFilter('');
+  };
 
   // Toggle expand/collapse for parent categories
   const toggleExpand = (categoryId: string) => {
@@ -228,10 +278,10 @@ function CategoriesContent() {
 
   // Build category tree structure
   const buildCategoryTree = () => {
-    const parentCategories = categories.filter(c => !c.parentId);
+    const parentCategories = filteredCategories.filter(c => !c.parentId);
     const childrenMap = new Map<string, Category[]>();
 
-    categories.forEach(c => {
+    filteredCategories.forEach(c => {
       if (c.parentId) {
         const siblings = childrenMap.get(c.parentId) || [];
         siblings.push(c);
@@ -433,22 +483,168 @@ function CategoriesContent() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-black">Categories</h1>
-          <p className="text-neutral-600 mt-1">Organize your products into categories</p>
-        </div>
+        <p className="text-neutral-600">Organize your products into categories</p>
         <button
           onClick={() => {
             setIsCreating(true);
             setSlugManuallyEdited(false);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors shadow-lg"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors shadow-lg"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Add Category
         </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm text-neutral-600 mb-1">Total Categories</p>
+              <p className="text-2xl font-bold text-black">{stats.totalCategories}</p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm text-neutral-600 mb-1">Active</p>
+              <p className="text-2xl font-bold text-black">{stats.activeCategories}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm text-neutral-600 mb-1">With Products</p>
+              <p className="text-2xl font-bold text-black">{stats.withProducts}</p>
+            </div>
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className={`bg-white rounded-xl shadow-sm border p-6 ${stats.emptyCategories > 0 ? 'border-amber-200 bg-amber-50/30' : 'border-neutral-200'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm text-neutral-600 mb-1">Empty Categories</p>
+              <p className={`text-2xl font-bold ${stats.emptyCategories > 0 ? 'text-amber-600' : 'text-black'}`}>{stats.emptyCategories}</p>
+            </div>
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stats.emptyCategories > 0 ? 'bg-amber-100' : 'bg-neutral-100'}`}>
+              <svg className={`w-6 h-6 ${stats.emptyCategories > 0 ? 'text-amber-600' : 'text-neutral-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Search */}
+          <div className="flex-1 min-w-[200px] relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search categories..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full pl-10 pr-10 py-2 bg-white border border-neutral-300 text-black placeholder-neutral-400 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+            />
+            {searchInput && (
+              <button
+                onClick={() => setSearchInput('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+          >
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+
+          {/* Parent Filter */}
+          <select
+            value={parentFilter}
+            onChange={(e) => setParentFilter(e.target.value)}
+            className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+          >
+            <option value="">All Levels</option>
+            <option value="root">Root Level</option>
+            <option value="child">Has Parent</option>
+          </select>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors flex items-center gap-1"
+            >
+              <X className="w-4 h-4" />
+              Clear ({activeFilterCount})
+            </button>
+          )}
+        </div>
+
+        {/* Active Filter Pills */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-neutral-200">
+            {searchInput && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
+                Search: "{searchInput}"
+                <button onClick={() => setSearchInput('')} className="hover:text-neutral-900">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {statusFilter && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
+                Status: {statusFilter}
+                <button onClick={() => setStatusFilter('')} className="hover:text-neutral-900">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {parentFilter && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
+                Level: {parentFilter === 'root' ? 'Root Level' : 'Has Parent'}
+                <button onClick={() => setParentFilter('')} className="hover:text-neutral-900">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Create Form - Collapsible */}
@@ -550,13 +746,15 @@ function CategoriesContent() {
               </div>
               <p className="mt-4 text-neutral-700 font-semibold">Loading categories...</p>
             </div>
-          ) : categories.length === 0 ? (
+          ) : filteredCategories.length === 0 ? (
             <div className="p-16 text-center">
               <svg className="w-16 h-16 mx-auto text-neutral-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
               </svg>
               <p className="text-neutral-600 font-medium">No categories found</p>
-              <p className="text-neutral-500 text-sm mt-2">Click &quot;Add Category&quot; to create your first category</p>
+              <p className="text-neutral-500 text-sm mt-2">
+                {hasActiveFilters ? 'Try adjusting your filters' : 'Click "Add Category" to create your first category'}
+              </p>
             </div>
           ) : (
             <table className="w-full">
