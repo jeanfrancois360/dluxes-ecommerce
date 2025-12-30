@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { OrdersService } from './orders.service';
+import { CartService } from '../cart/cart.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -29,7 +30,10 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly cartService: CartService,
+  ) {}
 
   /**
    * Get user's orders with pagination
@@ -202,6 +206,66 @@ export class OrdersController {
       return {
         success: true,
         data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Reorder - Add all items from a previous order to cart
+   * @route POST /orders/:id/reorder
+   */
+  @Post(':id/reorder')
+  async reorder(@Param('id') id: string, @Request() req) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const sessionId = req.headers['x-session-id'] || req.sessionID || `session-${userId}`;
+
+      // Get the order
+      const order = await this.ordersService.findOne(id, userId);
+
+      // Get or create cart
+      const cart = await this.cartService.getCart(sessionId, userId);
+
+      // Track results
+      const results = {
+        added: [] as string[],
+        skipped: [] as { name: string; reason: string }[],
+      };
+
+      // Add each item from the order to the cart
+      for (const item of order.items) {
+        try {
+          await this.cartService.addItem(cart.id, {
+            productId: item.productId,
+            variantId: item.variantId || undefined,
+            quantity: item.quantity,
+          });
+          results.added.push(item.name);
+        } catch (error) {
+          results.skipped.push({
+            name: item.name,
+            reason: error instanceof Error ? error.message : 'Failed to add item',
+          });
+        }
+      }
+
+      // Get updated cart
+      const updatedCart = await this.cartService.getCart(sessionId, userId);
+
+      return {
+        success: true,
+        data: {
+          cart: updatedCart,
+          results,
+        },
+        message: results.added.length > 0
+          ? `Added ${results.added.length} item(s) to cart`
+          : 'No items could be added to cart',
       };
     } catch (error) {
       return {

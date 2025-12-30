@@ -29,11 +29,56 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   const { createReview, isLoading: isSubmittingReview } = useCreateReview();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<{
     id: string;
     name: string;
   } | null>(null);
   const [reviewableProducts, setReviewableProducts] = useState<Record<string, boolean>>({});
+
+  const handleReorder = async () => {
+    if (!order) return;
+
+    try {
+      setIsReordering(true);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+
+      const response = await fetch(`${apiUrl}/orders/${order.id}/reorder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const { results } = data.data;
+        if (results.added.length > 0) {
+          toast.success(
+            'Items Added to Cart',
+            `${results.added.length} item(s) added to your cart`
+          );
+          // Redirect to cart
+          router.push('/cart');
+        } else if (results.skipped.length > 0) {
+          toast.error(
+            'Could Not Reorder',
+            results.skipped[0]?.reason || 'Some items could not be added'
+          );
+        }
+      } else {
+        toast.error('Reorder Failed', data.message || 'Failed to reorder');
+      }
+    } catch (error) {
+      toast.error('Reorder Failed', 'An error occurred while reordering');
+    } finally {
+      setIsReordering(false);
+    }
+  };
 
   // Check which products can be reviewed (for delivered orders)
   useEffect(() => {
@@ -343,6 +388,30 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
               {/* Actions */}
               <div className="space-y-3">
+                {/* Reorder Button */}
+                <button
+                  onClick={handleReorder}
+                  disabled={isReordering}
+                  className="w-full px-6 py-3 bg-gold text-black rounded-xl hover:bg-gold/90 transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isReordering ? (
+                    <>
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Adding to Cart...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Reorder
+                    </>
+                  )}
+                </button>
+
                 {/* Download Invoice */}
                 <button
                   onClick={() => {
