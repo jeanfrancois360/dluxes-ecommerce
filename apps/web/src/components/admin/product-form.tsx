@@ -17,6 +17,7 @@ import { adminCategoriesApi, type Category } from '@/lib/api/admin';
 import { VariantManager } from './variant-manager';
 import { StockLevelIndicator } from './stock-status-badge';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
+import { RealEstateFields, VehicleFields, DigitalFields, ServiceFields, RentalFields } from './product-type-fields';
 
 interface ProductFormProps {
   product?: AdminProduct;
@@ -57,6 +58,94 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     // Additional fields
     featured: (product as any)?.featured || false,
     weight: (product as any)?.weight || undefined,
+    // Real Estate Fields
+    propertyType: (product as any)?.propertyType || '',
+    bedrooms: (product as any)?.bedrooms || undefined,
+    bathrooms: (product as any)?.bathrooms || undefined,
+    squareFeet: (product as any)?.squareFeet || undefined,
+    lotSize: (product as any)?.lotSize || undefined,
+    yearBuilt: (product as any)?.yearBuilt || undefined,
+    parkingSpaces: (product as any)?.parkingSpaces || undefined,
+    amenities: (product as any)?.amenities || [],
+    propertyAddress: (product as any)?.propertyAddress || '',
+    propertyCity: (product as any)?.propertyCity || '',
+    propertyState: (product as any)?.propertyState || '',
+    propertyCountry: (product as any)?.propertyCountry || '',
+    propertyZipCode: (product as any)?.propertyZipCode || '',
+    propertyLatitude: (product as any)?.propertyLatitude || undefined,
+    propertyLongitude: (product as any)?.propertyLongitude || undefined,
+    virtualTourUrl: (product as any)?.virtualTourUrl || '',
+    // Vehicle Fields
+    vehicleMake: (product as any)?.vehicleMake || '',
+    vehicleModel: (product as any)?.vehicleModel || '',
+    vehicleYear: (product as any)?.vehicleYear || undefined,
+    vehicleMileage: (product as any)?.vehicleMileage || undefined,
+    vehicleVIN: (product as any)?.vehicleVIN || '',
+    vehicleCondition: (product as any)?.vehicleCondition || '',
+    vehicleTransmission: (product as any)?.vehicleTransmission || '',
+    vehicleFuelType: (product as any)?.vehicleFuelType || '',
+    vehicleBodyType: (product as any)?.vehicleBodyType || '',
+    vehicleExteriorColor: (product as any)?.vehicleExteriorColor || '',
+    vehicleInteriorColor: (product as any)?.vehicleInteriorColor || '',
+    vehicleDrivetrain: (product as any)?.vehicleDrivetrain || '',
+    vehicleEngine: (product as any)?.vehicleEngine || '',
+    vehicleFeatures: (product as any)?.vehicleFeatures || [],
+    vehicleHistory: (product as any)?.vehicleHistory || '',
+    vehicleWarranty: (product as any)?.vehicleWarranty || '',
+    vehicleTestDriveAvailable: (product as any)?.vehicleTestDriveAvailable ?? true,
+    // Digital Fields
+    digitalFileUrl: (product as any)?.digitalFileUrl || '',
+    digitalFileSize: (product as any)?.digitalFileSize || undefined,
+    digitalFileFormat: (product as any)?.digitalFileFormat || '',
+    digitalFileName: (product as any)?.digitalFileName || '',
+    digitalVersion: (product as any)?.digitalVersion || '',
+    digitalLicenseType: (product as any)?.digitalLicenseType || '',
+    digitalDownloadLimit: (product as any)?.digitalDownloadLimit || undefined,
+    digitalPreviewUrl: (product as any)?.digitalPreviewUrl || '',
+    digitalRequirements: (product as any)?.digitalRequirements || '',
+    digitalInstructions: (product as any)?.digitalInstructions || '',
+    digitalUpdatePolicy: (product as any)?.digitalUpdatePolicy || '',
+    digitalSupportEmail: (product as any)?.digitalSupportEmail || '',
+    // Service Fields
+    serviceType: (product as any)?.serviceType || '',
+    serviceDuration: (product as any)?.serviceDuration || undefined,
+    serviceDurationUnit: (product as any)?.serviceDurationUnit || '',
+    serviceLocation: (product as any)?.serviceLocation || '',
+    serviceArea: (product as any)?.serviceArea || '',
+    serviceAvailability: (product as any)?.serviceAvailability || '',
+    serviceBookingRequired: (product as any)?.serviceBookingRequired ?? true,
+    serviceBookingLeadTime: (product as any)?.serviceBookingLeadTime || undefined,
+    serviceProviderName: (product as any)?.serviceProviderName || '',
+    serviceProviderBio: (product as any)?.serviceProviderBio || '',
+    serviceProviderImage: (product as any)?.serviceProviderImage || '',
+    serviceProviderCredentials: (product as any)?.serviceProviderCredentials || [],
+    serviceMaxClients: (product as any)?.serviceMaxClients || undefined,
+    serviceCancellationPolicy: (product as any)?.serviceCancellationPolicy || '',
+    serviceIncludes: (product as any)?.serviceIncludes || [],
+    serviceExcludes: (product as any)?.serviceExcludes || [],
+    serviceRequirements: (product as any)?.serviceRequirements || '',
+    // Rental Fields
+    rentalPeriodType: (product as any)?.rentalPeriodType || '',
+    rentalMinPeriod: (product as any)?.rentalMinPeriod || undefined,
+    rentalMaxPeriod: (product as any)?.rentalMaxPeriod || undefined,
+    rentalPriceHourly: (product as any)?.rentalPriceHourly || undefined,
+    rentalPriceDaily: (product as any)?.rentalPriceDaily || undefined,
+    rentalPriceWeekly: (product as any)?.rentalPriceWeekly || undefined,
+    rentalPriceMonthly: (product as any)?.rentalPriceMonthly || undefined,
+    rentalSecurityDeposit: (product as any)?.rentalSecurityDeposit || undefined,
+    rentalPickupLocation: (product as any)?.rentalPickupLocation || '',
+    rentalDeliveryAvailable: (product as any)?.rentalDeliveryAvailable ?? false,
+    rentalDeliveryFee: (product as any)?.rentalDeliveryFee || undefined,
+    rentalLateReturnFee: (product as any)?.rentalLateReturnFee || undefined,
+    rentalConditions: (product as any)?.rentalConditions || '',
+    rentalAvailability: (product as any)?.rentalAvailability || '',
+    rentalInsuranceRequired: (product as any)?.rentalInsuranceRequired ?? false,
+    rentalInsuranceOptions: (product as any)?.rentalInsuranceOptions || '',
+    rentalAgeRequirement: (product as any)?.rentalAgeRequirement || undefined,
+    rentalIdRequired: (product as any)?.rentalIdRequired ?? true,
+    rentalIncludes: (product as any)?.rentalIncludes || [],
+    rentalExcludes: (product as any)?.rentalExcludes || [],
+    rentalNotes: (product as any)?.rentalNotes || '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -112,6 +201,94 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         materials: (product as any)?.materials || [],
         featured: (product as any)?.featured || false,
         weight: (product as any)?.weight || undefined,
+        // Real Estate Fields
+        propertyType: (product as any)?.propertyType || '',
+        bedrooms: (product as any)?.bedrooms || undefined,
+        bathrooms: (product as any)?.bathrooms || undefined,
+        squareFeet: (product as any)?.squareFeet || undefined,
+        lotSize: (product as any)?.lotSize || undefined,
+        yearBuilt: (product as any)?.yearBuilt || undefined,
+        parkingSpaces: (product as any)?.parkingSpaces || undefined,
+        amenities: (product as any)?.amenities || [],
+        propertyAddress: (product as any)?.propertyAddress || '',
+        propertyCity: (product as any)?.propertyCity || '',
+        propertyState: (product as any)?.propertyState || '',
+        propertyCountry: (product as any)?.propertyCountry || '',
+        propertyZipCode: (product as any)?.propertyZipCode || '',
+        propertyLatitude: (product as any)?.propertyLatitude || undefined,
+        propertyLongitude: (product as any)?.propertyLongitude || undefined,
+        virtualTourUrl: (product as any)?.virtualTourUrl || '',
+        // Vehicle Fields
+        vehicleMake: (product as any)?.vehicleMake || '',
+        vehicleModel: (product as any)?.vehicleModel || '',
+        vehicleYear: (product as any)?.vehicleYear || undefined,
+        vehicleMileage: (product as any)?.vehicleMileage || undefined,
+        vehicleVIN: (product as any)?.vehicleVIN || '',
+        vehicleCondition: (product as any)?.vehicleCondition || '',
+        vehicleTransmission: (product as any)?.vehicleTransmission || '',
+        vehicleFuelType: (product as any)?.vehicleFuelType || '',
+        vehicleBodyType: (product as any)?.vehicleBodyType || '',
+        vehicleExteriorColor: (product as any)?.vehicleExteriorColor || '',
+        vehicleInteriorColor: (product as any)?.vehicleInteriorColor || '',
+        vehicleDrivetrain: (product as any)?.vehicleDrivetrain || '',
+        vehicleEngine: (product as any)?.vehicleEngine || '',
+        vehicleFeatures: (product as any)?.vehicleFeatures || [],
+        vehicleHistory: (product as any)?.vehicleHistory || '',
+        vehicleWarranty: (product as any)?.vehicleWarranty || '',
+        vehicleTestDriveAvailable: (product as any)?.vehicleTestDriveAvailable ?? true,
+        // Digital Fields
+        digitalFileUrl: (product as any)?.digitalFileUrl || '',
+        digitalFileSize: (product as any)?.digitalFileSize || undefined,
+        digitalFileFormat: (product as any)?.digitalFileFormat || '',
+        digitalFileName: (product as any)?.digitalFileName || '',
+        digitalVersion: (product as any)?.digitalVersion || '',
+        digitalLicenseType: (product as any)?.digitalLicenseType || '',
+        digitalDownloadLimit: (product as any)?.digitalDownloadLimit || undefined,
+        digitalPreviewUrl: (product as any)?.digitalPreviewUrl || '',
+        digitalRequirements: (product as any)?.digitalRequirements || '',
+        digitalInstructions: (product as any)?.digitalInstructions || '',
+        digitalUpdatePolicy: (product as any)?.digitalUpdatePolicy || '',
+        digitalSupportEmail: (product as any)?.digitalSupportEmail || '',
+        // Service Fields
+        serviceType: (product as any)?.serviceType || '',
+        serviceDuration: (product as any)?.serviceDuration || undefined,
+        serviceDurationUnit: (product as any)?.serviceDurationUnit || '',
+        serviceLocation: (product as any)?.serviceLocation || '',
+        serviceArea: (product as any)?.serviceArea || '',
+        serviceAvailability: (product as any)?.serviceAvailability || '',
+        serviceBookingRequired: (product as any)?.serviceBookingRequired ?? true,
+        serviceBookingLeadTime: (product as any)?.serviceBookingLeadTime || undefined,
+        serviceProviderName: (product as any)?.serviceProviderName || '',
+        serviceProviderBio: (product as any)?.serviceProviderBio || '',
+        serviceProviderImage: (product as any)?.serviceProviderImage || '',
+        serviceProviderCredentials: (product as any)?.serviceProviderCredentials || [],
+        serviceMaxClients: (product as any)?.serviceMaxClients || undefined,
+        serviceCancellationPolicy: (product as any)?.serviceCancellationPolicy || '',
+        serviceIncludes: (product as any)?.serviceIncludes || [],
+        serviceExcludes: (product as any)?.serviceExcludes || [],
+        serviceRequirements: (product as any)?.serviceRequirements || '',
+        // Rental Fields
+        rentalPeriodType: (product as any)?.rentalPeriodType || '',
+        rentalMinPeriod: (product as any)?.rentalMinPeriod || undefined,
+        rentalMaxPeriod: (product as any)?.rentalMaxPeriod || undefined,
+        rentalPriceHourly: (product as any)?.rentalPriceHourly || undefined,
+        rentalPriceDaily: (product as any)?.rentalPriceDaily || undefined,
+        rentalPriceWeekly: (product as any)?.rentalPriceWeekly || undefined,
+        rentalPriceMonthly: (product as any)?.rentalPriceMonthly || undefined,
+        rentalSecurityDeposit: (product as any)?.rentalSecurityDeposit || undefined,
+        rentalPickupLocation: (product as any)?.rentalPickupLocation || '',
+        rentalDeliveryAvailable: (product as any)?.rentalDeliveryAvailable ?? false,
+        rentalDeliveryFee: (product as any)?.rentalDeliveryFee || undefined,
+        rentalLateReturnFee: (product as any)?.rentalLateReturnFee || undefined,
+        rentalConditions: (product as any)?.rentalConditions || '',
+        rentalAvailability: (product as any)?.rentalAvailability || '',
+        rentalInsuranceRequired: (product as any)?.rentalInsuranceRequired ?? false,
+        rentalInsuranceOptions: (product as any)?.rentalInsuranceOptions || '',
+        rentalAgeRequirement: (product as any)?.rentalAgeRequirement || undefined,
+        rentalIdRequired: (product as any)?.rentalIdRequired ?? true,
+        rentalIncludes: (product as any)?.rentalIncludes || [],
+        rentalExcludes: (product as any)?.rentalExcludes || [],
+        rentalNotes: (product as any)?.rentalNotes || '',
       });
     }
   }, [product]);
@@ -241,6 +418,119 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         sizes: formData.sizes || [],
         materials: formData.materials || [],
       };
+
+      // Add real estate fields if product type is REAL_ESTATE
+      if (formData.productType === 'REAL_ESTATE') {
+        Object.assign(submitData, {
+          propertyType: formData.propertyType || undefined,
+          bedrooms: formData.bedrooms !== undefined && formData.bedrooms !== '' ? Number(formData.bedrooms) : undefined,
+          bathrooms: formData.bathrooms !== undefined && formData.bathrooms !== '' ? Number(formData.bathrooms) : undefined,
+          squareFeet: formData.squareFeet !== undefined && formData.squareFeet !== '' ? Number(formData.squareFeet) : undefined,
+          lotSize: formData.lotSize !== undefined && formData.lotSize !== '' ? Number(formData.lotSize) : undefined,
+          yearBuilt: formData.yearBuilt !== undefined && formData.yearBuilt !== '' ? Number(formData.yearBuilt) : undefined,
+          parkingSpaces: formData.parkingSpaces !== undefined && formData.parkingSpaces !== '' ? Number(formData.parkingSpaces) : undefined,
+          amenities: formData.amenities || [],
+          propertyAddress: formData.propertyAddress || undefined,
+          propertyCity: formData.propertyCity || undefined,
+          propertyState: formData.propertyState || undefined,
+          propertyCountry: formData.propertyCountry || undefined,
+          propertyZipCode: formData.propertyZipCode || undefined,
+          propertyLatitude: formData.propertyLatitude !== undefined && formData.propertyLatitude !== '' ? Number(formData.propertyLatitude) : undefined,
+          propertyLongitude: formData.propertyLongitude !== undefined && formData.propertyLongitude !== '' ? Number(formData.propertyLongitude) : undefined,
+          virtualTourUrl: formData.virtualTourUrl || undefined,
+        });
+      }
+
+      // Add vehicle fields if product type is VEHICLE
+      if (formData.productType === 'VEHICLE') {
+        Object.assign(submitData, {
+          vehicleMake: formData.vehicleMake || undefined,
+          vehicleModel: formData.vehicleModel || undefined,
+          vehicleYear: formData.vehicleYear !== undefined && formData.vehicleYear !== '' ? Number(formData.vehicleYear) : undefined,
+          vehicleMileage: formData.vehicleMileage !== undefined && formData.vehicleMileage !== '' ? Number(formData.vehicleMileage) : undefined,
+          vehicleVIN: formData.vehicleVIN || undefined,
+          vehicleCondition: formData.vehicleCondition || undefined,
+          vehicleTransmission: formData.vehicleTransmission || undefined,
+          vehicleFuelType: formData.vehicleFuelType || undefined,
+          vehicleBodyType: formData.vehicleBodyType || undefined,
+          vehicleExteriorColor: formData.vehicleExteriorColor || undefined,
+          vehicleInteriorColor: formData.vehicleInteriorColor || undefined,
+          vehicleDrivetrain: formData.vehicleDrivetrain || undefined,
+          vehicleEngine: formData.vehicleEngine || undefined,
+          vehicleFeatures: formData.vehicleFeatures || [],
+          vehicleHistory: formData.vehicleHistory || undefined,
+          vehicleWarranty: formData.vehicleWarranty || undefined,
+          vehicleTestDriveAvailable: formData.vehicleTestDriveAvailable,
+        });
+      }
+
+      // Add digital fields if product type is DIGITAL
+      if (formData.productType === 'DIGITAL') {
+        Object.assign(submitData, {
+          digitalFileUrl: formData.digitalFileUrl || undefined,
+          digitalFileSize: formData.digitalFileSize !== undefined && formData.digitalFileSize !== '' ? Number(formData.digitalFileSize) : undefined,
+          digitalFileFormat: formData.digitalFileFormat || undefined,
+          digitalFileName: formData.digitalFileName || undefined,
+          digitalVersion: formData.digitalVersion || undefined,
+          digitalLicenseType: formData.digitalLicenseType || undefined,
+          digitalDownloadLimit: formData.digitalDownloadLimit !== undefined && formData.digitalDownloadLimit !== '' ? Number(formData.digitalDownloadLimit) : undefined,
+          digitalPreviewUrl: formData.digitalPreviewUrl || undefined,
+          digitalRequirements: formData.digitalRequirements || undefined,
+          digitalInstructions: formData.digitalInstructions || undefined,
+          digitalUpdatePolicy: formData.digitalUpdatePolicy || undefined,
+          digitalSupportEmail: formData.digitalSupportEmail || undefined,
+        });
+      }
+
+      // Add service fields if product type is SERVICE
+      if (formData.productType === 'SERVICE') {
+        Object.assign(submitData, {
+          serviceType: formData.serviceType || undefined,
+          serviceDuration: formData.serviceDuration !== undefined && formData.serviceDuration !== '' ? Number(formData.serviceDuration) : undefined,
+          serviceDurationUnit: formData.serviceDurationUnit || undefined,
+          serviceLocation: formData.serviceLocation || undefined,
+          serviceArea: formData.serviceArea || undefined,
+          serviceAvailability: formData.serviceAvailability || undefined,
+          serviceBookingRequired: formData.serviceBookingRequired,
+          serviceBookingLeadTime: formData.serviceBookingLeadTime !== undefined && formData.serviceBookingLeadTime !== '' ? Number(formData.serviceBookingLeadTime) : undefined,
+          serviceProviderName: formData.serviceProviderName || undefined,
+          serviceProviderBio: formData.serviceProviderBio || undefined,
+          serviceProviderImage: formData.serviceProviderImage || undefined,
+          serviceProviderCredentials: formData.serviceProviderCredentials || [],
+          serviceMaxClients: formData.serviceMaxClients !== undefined && formData.serviceMaxClients !== '' ? Number(formData.serviceMaxClients) : undefined,
+          serviceCancellationPolicy: formData.serviceCancellationPolicy || undefined,
+          serviceIncludes: formData.serviceIncludes || [],
+          serviceExcludes: formData.serviceExcludes || [],
+          serviceRequirements: formData.serviceRequirements || undefined,
+        });
+      }
+
+      // Add rental fields if product type is RENTAL
+      if (formData.productType === 'RENTAL') {
+        Object.assign(submitData, {
+          rentalPeriodType: formData.rentalPeriodType || undefined,
+          rentalMinPeriod: formData.rentalMinPeriod !== undefined && formData.rentalMinPeriod !== '' ? Number(formData.rentalMinPeriod) : undefined,
+          rentalMaxPeriod: formData.rentalMaxPeriod !== undefined && formData.rentalMaxPeriod !== '' ? Number(formData.rentalMaxPeriod) : undefined,
+          rentalPriceHourly: formData.rentalPriceHourly !== undefined && formData.rentalPriceHourly !== '' ? Number(formData.rentalPriceHourly) : undefined,
+          rentalPriceDaily: formData.rentalPriceDaily !== undefined && formData.rentalPriceDaily !== '' ? Number(formData.rentalPriceDaily) : undefined,
+          rentalPriceWeekly: formData.rentalPriceWeekly !== undefined && formData.rentalPriceWeekly !== '' ? Number(formData.rentalPriceWeekly) : undefined,
+          rentalPriceMonthly: formData.rentalPriceMonthly !== undefined && formData.rentalPriceMonthly !== '' ? Number(formData.rentalPriceMonthly) : undefined,
+          rentalSecurityDeposit: formData.rentalSecurityDeposit !== undefined && formData.rentalSecurityDeposit !== '' ? Number(formData.rentalSecurityDeposit) : undefined,
+          rentalPickupLocation: formData.rentalPickupLocation || undefined,
+          rentalDeliveryAvailable: formData.rentalDeliveryAvailable,
+          rentalDeliveryFee: formData.rentalDeliveryFee !== undefined && formData.rentalDeliveryFee !== '' ? Number(formData.rentalDeliveryFee) : undefined,
+          rentalLateReturnFee: formData.rentalLateReturnFee !== undefined && formData.rentalLateReturnFee !== '' ? Number(formData.rentalLateReturnFee) : undefined,
+          rentalConditions: formData.rentalConditions || undefined,
+          rentalAvailability: formData.rentalAvailability || undefined,
+          rentalInsuranceRequired: formData.rentalInsuranceRequired,
+          rentalInsuranceOptions: formData.rentalInsuranceOptions || undefined,
+          rentalAgeRequirement: formData.rentalAgeRequirement !== undefined && formData.rentalAgeRequirement !== '' ? Number(formData.rentalAgeRequirement) : undefined,
+          rentalIdRequired: formData.rentalIdRequired,
+          rentalIncludes: formData.rentalIncludes || [],
+          rentalExcludes: formData.rentalExcludes || [],
+          rentalNotes: formData.rentalNotes || undefined,
+        });
+      }
 
       // Only include heroImage if we have images
       if (formData.images && formData.images.length > 0) {
@@ -556,6 +846,56 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           </div>
         </div>
       </div>
+
+      {/* Real Estate Fields - Conditional based on Product Type */}
+      {formData.productType === 'REAL_ESTATE' && (
+        <RealEstateFields
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={loading}
+        />
+      )}
+
+      {/* Vehicle Fields - Conditional based on Product Type */}
+      {formData.productType === 'VEHICLE' && (
+        <VehicleFields
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={loading}
+        />
+      )}
+
+      {/* Digital Fields - Conditional based on Product Type */}
+      {formData.productType === 'DIGITAL' && (
+        <DigitalFields
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={loading}
+        />
+      )}
+
+      {/* Service Fields - Conditional based on Product Type */}
+      {formData.productType === 'SERVICE' && (
+        <ServiceFields
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={loading}
+        />
+      )}
+
+      {/* Rental Fields - Conditional based on Product Type */}
+      {formData.productType === 'RENTAL' && (
+        <RentalFields
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={loading}
+        />
+      )}
 
       {/* Pricing & Inventory */}
       <div className="bg-white rounded-lg shadow p-6">

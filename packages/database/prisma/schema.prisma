@@ -68,6 +68,10 @@ model User {
   adminNotes    AdminNote[] @relation("CustomerNotes") // Notes about this customer
   authoredNotes AdminNote[] @relation("AuthoredNotes") // Notes created by this admin
 
+  // Product Inquiries (for REAL_ESTATE, VEHICLE, INQUIRY products)
+  sellerInquiries ProductInquiry[] @relation("SellerInquiries") // Inquiries received as seller
+  buyerInquiries  ProductInquiry[] @relation("BuyerInquiries")  // Inquiries submitted as buyer
+
   @@index([email])
   @@index([lastLoginAt])
   @@index([deliveryProviderId])
@@ -192,6 +196,9 @@ model Store {
   escrowTransactions EscrowTransaction[]
   escrowAllocations  EscrowSplitAllocation[] @relation("StoreEscrowAllocations")
 
+  // Product Inquiries
+  inquiries ProductInquiry[]
+
   @@index([slug])
   @@index([status])
   @@index([userId])
@@ -260,6 +267,99 @@ model Product {
   materials  String[] // Material tags
   dimensions Json? // {length, width, height, unit}
 
+  // ============ REAL ESTATE FIELDS (optional - only for REAL_ESTATE productType) ============
+  propertyType      String?   // house, apartment, condo, townhouse, land, commercial
+  bedrooms          Int?
+  bathrooms         Decimal?  @db.Decimal(3, 1)  // Supports 2.5 bathrooms
+  squareFeet        Decimal?  @db.Decimal(10, 2)
+  lotSize           Decimal?  @db.Decimal(10, 2) // In sqft or acres
+  yearBuilt         Int?
+  parkingSpaces     Int?
+  amenities         String[]  @default([])       // Pool, Gym, Garage, Garden, etc.
+  propertyAddress   String?
+  propertyCity      String?
+  propertyState     String?
+  propertyCountry   String?
+  propertyZipCode   String?
+  propertyLatitude  Decimal?  @db.Decimal(10, 7)
+  propertyLongitude Decimal?  @db.Decimal(10, 7)
+  virtualTourUrl    String?
+
+  // ============ VEHICLE FIELDS (optional - only for VEHICLE productType) ============
+  vehicleMake       String?   // Toyota, Honda, BMW, etc.
+  vehicleModel      String?   // Camry, Civic, X5, etc.
+  vehicleYear       Int?      // 2020, 2021, etc.
+  vehicleMileage    Int?      // Odometer reading
+  vehicleVIN        String?   // Vehicle Identification Number
+  vehicleCondition  String?   // new, used, certified_preowned
+  vehicleTransmission String? // automatic, manual, cvt
+  vehicleFuelType   String?   // petrol, diesel, electric, hybrid, plugin_hybrid
+  vehicleBodyType   String?   // sedan, suv, truck, coupe, hatchback, van, wagon, convertible
+  vehicleExteriorColor String?
+  vehicleInteriorColor String?
+  vehicleDrivetrain String?   // fwd, rwd, awd, 4wd
+  vehicleEngine     String?   // Engine specs, e.g., "2.5L 4-Cylinder"
+  vehicleFeatures   String[]  @default([]) // Leather seats, Sunroof, Navigation, etc.
+  vehicleHistory    String?   @db.Text // CARFAX, accident history, service records
+  vehicleWarranty   String?   // Warranty information
+  vehicleTestDriveAvailable Boolean @default(true)
+
+  // ============ DIGITAL FIELDS (optional - only for DIGITAL productType) ============
+  digitalFileUrl      String?   // URL to the downloadable file (stored in cloud)
+  digitalFileSize     BigInt?   // File size in bytes
+  digitalFileFormat   String?   // PDF, ZIP, MP3, MP4, PNG, etc.
+  digitalFileName     String?   // Original filename
+  digitalVersion      String?   // Version number, e.g., "1.0.0", "2024.1"
+  digitalLicenseType  String?   // personal, commercial, extended, unlimited
+  digitalDownloadLimit Int?     // Max number of downloads allowed (null = unlimited)
+  digitalPreviewUrl   String?   // Preview/sample URL for customers to try before buying
+  digitalRequirements String?   @db.Text // System requirements or compatibility info
+  digitalInstructions String?   @db.Text // Installation/usage instructions
+  digitalUpdatePolicy String?   // free_lifetime, free_1year, paid_updates
+  digitalSupportEmail String?   // Support email for this digital product
+
+  // ============ SERVICE FIELDS (optional - only for SERVICE productType) ============
+  serviceType           String?   // in_person, online, hybrid
+  serviceDuration       Int?      // Duration value (e.g., 60)
+  serviceDurationUnit   String?   // minutes, hours, days, sessions
+  serviceLocation       String?   // Where service is provided (for in-person)
+  serviceArea           String?   // Service coverage area/regions
+  serviceAvailability   String?   @db.Text // Availability schedule (JSON or text description)
+  serviceBookingRequired Boolean  @default(true)
+  serviceBookingLeadTime Int?     // Hours in advance required to book
+  serviceProviderName   String?   // Name of the service provider
+  serviceProviderBio    String?   @db.Text // Bio/description of the provider
+  serviceProviderImage  String?   // Provider's photo URL
+  serviceProviderCredentials String[] @default([]) // Qualifications, certifications, licenses
+  serviceMaxClients     Int?      // Max clients per session (for group services)
+  serviceCancellationPolicy String? @db.Text // Cancellation terms and conditions
+  serviceIncludes       String[]  @default([]) // What's included in the service
+  serviceExcludes       String[]  @default([]) // What's NOT included
+  serviceRequirements   String?   @db.Text // What client needs to prepare/bring
+
+  // ============ RENTAL FIELDS (optional - only for RENTAL productType) ============
+  rentalPeriodType      String?   // hourly, daily, weekly, monthly
+  rentalMinPeriod       Int?      // Minimum rental period (in units of rentalPeriodType)
+  rentalMaxPeriod       Int?      // Maximum rental period (in units of rentalPeriodType)
+  rentalPriceHourly     Decimal?  @db.Decimal(10, 2) // Price per hour
+  rentalPriceDaily      Decimal?  @db.Decimal(10, 2) // Price per day
+  rentalPriceWeekly     Decimal?  @db.Decimal(10, 2) // Price per week
+  rentalPriceMonthly    Decimal?  @db.Decimal(10, 2) // Price per month
+  rentalSecurityDeposit Decimal?  @db.Decimal(10, 2) // Required security deposit
+  rentalPickupLocation  String?   // Where to pick up the rental
+  rentalDeliveryAvailable Boolean @default(false) // Whether delivery is available
+  rentalDeliveryFee     Decimal?  @db.Decimal(10, 2) // Delivery fee if applicable
+  rentalLateReturnFee   Decimal?  @db.Decimal(10, 2) // Fee per late period
+  rentalConditions      String?   @db.Text // Terms and conditions
+  rentalAvailability    String?   @db.Text // Availability info (JSON or text)
+  rentalInsuranceRequired Boolean @default(false) // Whether insurance is required
+  rentalInsuranceOptions String?  @db.Text // Available insurance options
+  rentalAgeRequirement  Int?      // Minimum age to rent
+  rentalIdRequired      Boolean   @default(true) // Whether ID is required
+  rentalIncludes        String[]  @default([]) // What's included in the rental
+  rentalExcludes        String[]  @default([]) // What's NOT included
+  rentalNotes           String?   @db.Text // Additional notes/instructions
+
   // Relations
   store                 Store?                  @relation(fields: [storeId], references: [id], onDelete: SetNull)
   category              Category?               @relation(fields: [categoryId], references: [id])
@@ -276,6 +376,7 @@ model Product {
   recommendations       ProductRecommendation[] @relation("RecommendedProducts")
   sourceRecommendations ProductRecommendation[] @relation("SourceProducts")
   inventoryTransactions InventoryTransaction[]
+  inquiries             ProductInquiry[]
 
   @@index([slug])
   @@index([storeId])
@@ -642,6 +743,17 @@ enum CategoryType {
   DIGITAL // Digital product categories (software, courses, etc.)
 }
 
+enum InquiryStatus {
+  NEW               // Just received, not yet viewed
+  CONTACTED         // Seller has contacted buyer
+  VIEWING_SCHEDULED // Property viewing scheduled (real estate)
+  TEST_DRIVE_SCHEDULED // Test drive scheduled (vehicle)
+  NEGOTIATING       // Price negotiation in progress
+  CONVERTED         // Converted to sale
+  CLOSED            // Inquiry closed (no sale)
+  SPAM              // Marked as spam
+}
+
 model ProductImage {
   id        String  @id @default(cuid())
   productId String
@@ -717,6 +829,63 @@ model ProductTag {
   @@unique([productId, name])
   @@index([name])
   @@map("product_tags")
+}
+
+// ============================================================================
+// Product Inquiry System (for REAL_ESTATE, VEHICLE, and INQUIRY-type products)
+// ============================================================================
+
+model ProductInquiry {
+  id        String @id @default(cuid())
+  productId String
+  sellerId  String
+  storeId   String?
+
+  // Buyer information (can be guest or registered user)
+  userId     String? // Optional - guests can submit inquiries
+  buyerName  String
+  buyerEmail String
+  buyerPhone String?
+
+  // Inquiry details
+  message          String  @db.Text
+  preferredContact String? // email, phone, both
+  preferredTime    String? // morning, afternoon, evening, anytime
+
+  // Real estate specific fields
+  scheduledViewing DateTime? // Requested property viewing date
+  preApproved      Boolean   @default(false) // Pre-approved for mortgage
+
+  // Vehicle specific fields
+  scheduledTestDrive DateTime? // Requested test drive date
+  tradeInInterest    Boolean   @default(false) // Has vehicle to trade in
+
+  // Status management
+  status      InquiryStatus @default(NEW)
+  sellerNotes String?       @db.Text
+  respondedAt DateTime?
+
+  // Metadata
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  seller  User    @relation("SellerInquiries", fields: [sellerId], references: [id], onDelete: Cascade)
+  user    User?   @relation("BuyerInquiries", fields: [userId], references: [id], onDelete: SetNull)
+  store   Store?  @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([sellerId])
+  @@index([userId])
+  @@index([storeId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([sellerId, status])
+  @@index([status, createdAt])
+  @@map("product_inquiries")
 }
 
 // Shopping Cart
