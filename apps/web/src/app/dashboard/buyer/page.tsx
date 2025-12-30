@@ -503,6 +503,25 @@ export default function BuyerDashboard() {
                     </svg>
                   </Link>
                 </motion.div>
+
+                <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                  <Link
+                    href="/account/notifications"
+                    className="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-transparent transition-all group border border-transparent hover:border-orange-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                        <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-neutral-700 group-hover:text-black transition-colors">Notifications</span>
+                    </div>
+                    <svg className="w-5 h-5 text-neutral-400 group-hover:text-gold transition-all group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </motion.div>
               </div>
             </div>
 
