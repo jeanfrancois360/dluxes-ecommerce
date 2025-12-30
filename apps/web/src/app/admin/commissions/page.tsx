@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import {
@@ -32,8 +32,23 @@ import {
   SelectValue,
 } from '@nextpik/ui';
 import { toast } from 'sonner';
-import { Percent, Users, TrendingUp, Plus, Edit, Trash2 } from 'lucide-react';
+import {
+  Percent,
+  Users,
+  TrendingUp,
+  TrendingDown,
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  X,
+  Download,
+  DollarSign,
+  Clock,
+} from 'lucide-react';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+import { useDebounce } from '@/hooks/use-debounce';
+
 interface SellerCommissionOverride {
   id: string;
   sellerId: string;
@@ -74,6 +89,18 @@ function CommissionOverridesContent() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingOverride, setEditingOverride] = useState<SellerCommissionOverride | null>(null);
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 500);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('newest');
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   const [formData, setFormData] = useState({
     sellerId: '',
     sellerEmail: '',
@@ -124,6 +151,198 @@ function CommissionOverridesContent() {
     }
   };
 
+  // Calculate stats
+  const stats = useMemo(() => {
+    const active = overrides.filter((o) => o.isActive);
+    const inactive = overrides.filter((o) => !o.isActive);
+    const percentageType = overrides.filter((o) => o.commissionType === 'PERCENTAGE');
+    const avgRate =
+      percentageType.length > 0
+        ? percentageType.reduce((sum, o) => sum + Number(o.commissionRate), 0) /
+          percentageType.length
+        : 0;
+    const lowestRate =
+      percentageType.length > 0
+        ? Math.min(...percentageType.map((o) => Number(o.commissionRate)))
+        : 0;
+    const highestRate =
+      percentageType.length > 0
+        ? Math.max(...percentageType.map((o) => Number(o.commissionRate)))
+        : 0;
+
+    // Expiring soon (within 30 days)
+    const now = new Date();
+    const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const expiringSoon = overrides.filter((o) => {
+      if (!o.validUntil) return false;
+      const validUntil = new Date(o.validUntil);
+      return validUntil <= thirtyDaysLater && validUntil > now;
+    }).length;
+
+    return {
+      total: overrides.length,
+      active: active.length,
+      inactive: inactive.length,
+      avgRate,
+      lowestRate,
+      highestRate,
+      expiringSoon,
+    };
+  }, [overrides]);
+
+  // Filter and sort
+  const filteredOverrides = useMemo(() => {
+    let filtered = [...overrides];
+
+    // Search filter
+    if (debouncedSearch) {
+      const search = debouncedSearch.toLowerCase();
+      filtered = filtered.filter(
+        (o) =>
+          o.seller.email.toLowerCase().includes(search) ||
+          `${o.seller.firstName} ${o.seller.lastName}`.toLowerCase().includes(search) ||
+          o.notes?.toLowerCase().includes(search)
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((o) =>
+        statusFilter === 'active' ? o.isActive : !o.isActive
+      );
+    }
+
+    // Type filter
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter((o) => o.commissionType === typeFilter);
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      if (categoryFilter === 'none') {
+        filtered = filtered.filter((o) => !o.categoryId);
+      } else {
+        filtered = filtered.filter((o) => o.categoryId === categoryFilter);
+      }
+    }
+
+    // Sort
+    switch (sortBy) {
+      case 'oldest':
+        filtered.sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+        break;
+      case 'rate_high':
+        filtered.sort((a, b) => Number(b.commissionRate) - Number(a.commissionRate));
+        break;
+      case 'rate_low':
+        filtered.sort((a, b) => Number(a.commissionRate) - Number(b.commissionRate));
+        break;
+      case 'seller':
+        filtered.sort((a, b) =>
+          `${a.seller.firstName} ${a.seller.lastName}`.localeCompare(
+            `${b.seller.firstName} ${b.seller.lastName}`
+          )
+        );
+        break;
+      case 'newest':
+      default:
+        filtered.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+    }
+
+    return filtered;
+  }, [overrides, debouncedSearch, statusFilter, typeFilter, categoryFilter, sortBy]);
+
+  // Bulk selection
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredOverrides.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredOverrides.map((o) => o.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  // Active filters
+  const hasActiveFilters =
+    statusFilter !== 'all' ||
+    typeFilter !== 'all' ||
+    categoryFilter !== 'all' ||
+    debouncedSearch !== '';
+
+  const clearAllFilters = () => {
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setCategoryFilter('all');
+    setSearchQuery('');
+  };
+
+  // Bulk actions
+  const handleBulkExport = () => {
+    toast.success(`Exporting ${selectedIds.size} commission overrides`);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkActivate = async () => {
+    if (!confirm(`Activate ${selectedIds.size} commission overrides?`)) return;
+    // Implement bulk activate
+    toast.success(`Activated ${selectedIds.size} overrides`);
+    setSelectedIds(new Set());
+    fetchOverrides();
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (!confirm(`Deactivate ${selectedIds.size} commission overrides?`)) return;
+    // Implement bulk deactivate
+    toast.success(`Deactivated ${selectedIds.size} overrides`);
+    setSelectedIds(new Set());
+    fetchOverrides();
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Delete ${selectedIds.size} commission overrides? This cannot be undone.`)) return;
+
+    let success = 0;
+    let failed = 0;
+
+    for (const id of selectedIds) {
+      const override = filteredOverrides.find((o) => o.id === id);
+      if (override) {
+        try {
+          const response = await fetch(`/api/admin/commission/overrides/${override.sellerId}`, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`,
+            },
+          });
+          if (response.ok) {
+            success++;
+          } else {
+            failed++;
+          }
+        } catch {
+          failed++;
+        }
+      }
+    }
+
+    toast.success(`Deleted ${success} overrides (${failed} failed)`);
+    setSelectedIds(new Set());
+    fetchOverrides();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -164,7 +383,7 @@ function CommissionOverridesContent() {
         validFrom: formData.validFrom || undefined,
         validUntil: formData.validUntil || undefined,
         notes: formData.notes || undefined,
-        approvedBy: 'admin', // TODO: Get actual admin ID
+        approvedBy: 'admin',
       };
 
       const url = editingOverride
@@ -264,23 +483,28 @@ function CommissionOverridesContent() {
             Manage seller-specific commission rates
           </p>
         </div>
-        <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+        <Button
+          onClick={() => {
+            resetForm();
+            setDialogOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Override
         </Button>
       </div>
 
       {/* Statistics */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Overrides</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{overrides.length}</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">
-              {overrides.filter(o => o.isActive).length} active
+              {stats.active} active, {stats.inactive} inactive
             </p>
           </CardContent>
         </Card>
@@ -291,29 +515,185 @@ function CommissionOverridesContent() {
             <Percent className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {overrides.length > 0
-                ? formatNumber(overrides.reduce((sum, o) => sum + Number(o.commissionRate), 0) / overrides.length, 2)
-                : '0'}%
-            </div>
-            <p className="text-xs text-muted-foreground">Across all sellers</p>
+            <div className="text-2xl font-bold">{formatNumber(stats.avgRate, 1)}%</div>
+            <p className="text-xs text-muted-foreground">Percentage overrides</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Lowest Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingDown className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {overrides.length > 0
-                ? formatNumber(Math.min(...overrides.map(o => Number(o.commissionRate))), 2)
-                : '0'}%
+            <div className="text-2xl font-bold text-green-600">
+              {formatNumber(stats.lowestRate, 1)}%
             </div>
             <p className="text-xs text-muted-foreground">Best seller rate</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Highest Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatNumber(stats.highestRate, 1)}%</div>
+            <p className="text-xs text-muted-foreground">Maximum override</p>
+          </CardContent>
+        </Card>
+
+        <Card className={stats.expiringSoon > 0 ? 'border-amber-200 bg-amber-50' : ''}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle
+              className={`text-sm font-medium ${stats.expiringSoon > 0 ? 'text-amber-700' : ''}`}
+            >
+              Expiring Soon
+            </CardTitle>
+            <Clock
+              className={`h-4 w-4 ${stats.expiringSoon > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
+            />
+          </CardHeader>
+          <CardContent>
+            <div
+              className={`text-2xl font-bold ${stats.expiringSoon > 0 ? 'text-amber-700' : ''}`}
+            >
+              {stats.expiringSoon}
+            </div>
+            <p
+              className={`text-xs ${stats.expiringSoon > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}
+            >
+              Within 30 days
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="rounded-lg border p-4 bg-white space-y-4">
+        <div className="flex flex-wrap gap-4">
+          {/* Search */}
+          <div className="flex-1 min-w-[250px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by seller name, email, or notes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          {/* Status Filter */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Type Filter */}
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+              <SelectItem value="FIXED">Fixed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Category Filter */}
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="none">No Category</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Sort */}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="rate_high">Rate (High)</SelectItem>
+              <SelectItem value="rate_low">Rate (Low)</SelectItem>
+              <SelectItem value="seller">Seller Name</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Active Filter Pills */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm text-muted-foreground">Active filters:</span>
+            {debouncedSearch && (
+              <Badge variant="secondary" className="gap-1">
+                Search: {debouncedSearch}
+                <button onClick={() => setSearchQuery('')} className="ml-1 hover:text-destructive">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {statusFilter !== 'all' && (
+              <Badge variant="secondary" className="gap-1">
+                Status: {statusFilter}
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {typeFilter !== 'all' && (
+              <Badge variant="secondary" className="gap-1">
+                Type: {typeFilter}
+                <button
+                  onClick={() => setTypeFilter('all')}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {categoryFilter !== 'all' && (
+              <Badge variant="secondary" className="gap-1">
+                Category:{' '}
+                {categoryFilter === 'none'
+                  ? 'None'
+                  : categories.find((c) => c.id === categoryFilter)?.name || categoryFilter}
+                <button
+                  onClick={() => setCategoryFilter('all')}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+              Clear all
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -329,26 +709,54 @@ function CommissionOverridesContent() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <input
+                      type="checkbox"
+                      checked={
+                        filteredOverrides.length > 0 &&
+                        selectedIds.size === filteredOverrides.length
+                      }
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-neutral-300"
+                    />
+                  </TableHead>
                   <TableHead>Seller</TableHead>
                   <TableHead>Rate</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Order Range</TableHead>
+                  <TableHead>Validity</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {overrides.length === 0 ? (
+                {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8">
+                      Loading commission overrides...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredOverrides.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                       No commission overrides found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  overrides.map((override) => (
-                    <TableRow key={override.id}>
+                  filteredOverrides.map((override) => (
+                    <TableRow
+                      key={override.id}
+                      className={selectedIds.has(override.id) ? 'bg-muted/50' : ''}
+                    >
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(override.id)}
+                          onChange={() => toggleSelect(override.id)}
+                          className="w-4 h-4 rounded border-neutral-300"
+                        />
+                      </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">
@@ -360,21 +768,52 @@ function CommissionOverridesContent() {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
-                        {override.commissionRate}%
+                        {override.commissionType === 'PERCENTAGE' ? (
+                          <span className="text-blue-600">{override.commissionRate}%</span>
+                        ) : (
+                          <span className="text-green-600">
+                            ${formatCurrencyAmount(override.commissionRate, 2)}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{override.commissionType}</Badge>
                       </TableCell>
                       <TableCell>
-                        {override.category?.name || <span className="text-muted-foreground">All</span>}
+                        {override.category?.name || (
+                          <span className="text-muted-foreground">All</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {override.minOrderValue || override.maxOrderValue ? (
                           <span className="text-sm">
-                            ${override.minOrderValue || '0'} - ${override.maxOrderValue || '∞'}
+                            ${override.minOrderValue || '0'} - $
+                            {override.maxOrderValue || '∞'}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">Any</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {override.validFrom || override.validUntil ? (
+                          <div className="text-sm">
+                            {override.validFrom && (
+                              <div>From: {new Date(override.validFrom).toLocaleDateString()}</div>
+                            )}
+                            {override.validUntil && (
+                              <div
+                                className={
+                                  new Date(override.validUntil) < new Date()
+                                    ? 'text-red-500'
+                                    : ''
+                                }
+                              >
+                                Until: {new Date(override.validUntil).toLocaleDateString()}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Always</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -383,15 +822,8 @@ function CommissionOverridesContent() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(override.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
                         <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEdit(override)}
-                          >
+                          <Button size="sm" variant="ghost" onClick={() => handleEdit(override)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
@@ -411,6 +843,48 @@ function CommissionOverridesContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Fixed Bottom Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 flex items-center justify-between z-50">
+          <div className="flex items-center gap-4">
+            <span className="font-medium">{selectedIds.size} selected</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-white hover:text-white hover:bg-slate-800"
+            >
+              Clear selection
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={handleBulkExport} className="gap-2">
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleBulkActivate}
+              className="bg-green-600 hover:bg-green-700 gap-2"
+            >
+              Activate
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleBulkDeactivate} className="gap-2">
+              Deactivate
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              className="gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

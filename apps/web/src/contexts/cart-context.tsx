@@ -149,6 +149,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       if (!sessionId) throw new Error('No session ID');
 
+      // Fetch product details to validate if it can be added to cart
+      const productResponse = await axios.get(`${API_URL}/products/${productId}`);
+      const product = productResponse.data?.data || productResponse.data;
+
+      // Block inquiry-based products from being added to cart
+      const isInquiryProduct =
+        product?.purchaseType === 'INQUIRY' ||
+        product?.productType === 'REAL_ESTATE' ||
+        product?.productType === 'VEHICLE';
+
+      if (isInquiryProduct) {
+        const errorMessage = 'This product requires contacting the seller. It cannot be added to cart.';
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      }
+
       const response = await axios.post(
         `${API_URL}/cart/items`,
         { productId, quantity, variantId },

@@ -218,10 +218,22 @@ export default function ProductDetailPage() {
   }, [product, selectedVariant]);
 
   // Check if this is an inquiry product
+  // Inquiry products require contacting the seller instead of adding to cart
   const isInquiryProduct = useMemo(() => {
     if (!product) return false;
+
+    // Check if purchaseType is INQUIRY
+    if (product.purchaseType === 'INQUIRY') return true;
+
+    // Real estate and vehicles always require inquiry (high-value items)
+    if (product.productType === 'REAL_ESTATE') return true;
+    if (product.productType === 'VEHICLE') return true;
+
+    // Fallback: also check for zero/null price (legacy behavior)
     const price = currentPrice?.price || product.price;
-    return price === null || price === undefined || price === 0;
+    if (price === null || price === undefined || price === 0) return true;
+
+    return false;
   }, [product, currentPrice]);
 
   const renderStars = (rating: number) => {

@@ -61,6 +61,11 @@ export interface PasswordResetConfirm {
   newPassword: string;
 }
 
+// Product Type Enums
+export type ProductType = 'PHYSICAL' | 'REAL_ESTATE' | 'VEHICLE' | 'SERVICE' | 'RENTAL' | 'DIGITAL';
+export type PurchaseType = 'INSTANT' | 'INQUIRY';
+export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+
 // Product Types
 export interface Product {
   id: string;
@@ -91,6 +96,12 @@ export interface Product {
   metaTitle?: string;
   metaDescription?: string;
   canonicalUrl?: string;
+  // Product type properties
+  productType?: ProductType;
+  purchaseType?: PurchaseType;
+  status?: ProductStatus;
+  contactRequired?: boolean;
+  isPreOrder?: boolean;
   createdAt: string;
   updatedAt: string;
 }

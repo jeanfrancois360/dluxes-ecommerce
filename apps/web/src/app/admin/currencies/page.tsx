@@ -1,25 +1,167 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useMemo } from 'react';
+import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { currencyAdminApi, CurrencyRate } from '@/lib/api/currency';
 import useSWR from 'swr';
 import { toast } from '@/lib/toast';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
-export default function AdminCurrenciesPage() {
+import { useDebounce } from '@/hooks/use-debounce';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@nextpik/ui';
+import {
+  DollarSign,
+  Search,
+  X,
+  Download,
+  Plus,
+  Edit,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  Globe,
+  TrendingUp,
+  Clock,
+} from 'lucide-react';
+
+function CurrenciesContent() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCurrency, setEditingCurrency] = useState<CurrencyRate | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 500);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('name');
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   // Fetch all currencies (including inactive)
-  const { data: currencies, error, isLoading, mutate } = useSWR(
-    '/currency/admin/all',
-    currencyAdminApi.getAllCurrencies,
-    {
-      revalidateOnFocus: true,
+  const {
+    data: currencies,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR('/currency/admin/all', currencyAdminApi.getAllCurrencies, {
+    revalidateOnFocus: true,
+  });
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    if (!currencies) return { total: 0, active: 0, inactive: 0, recentlyUpdated: 0 };
+
+    const active = currencies.filter((c) => c.isActive).length;
+    const inactive = currencies.filter((c) => !c.isActive).length;
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentlyUpdated = currencies.filter(
+      (c) => new Date(c.lastUpdated) > oneDayAgo
+    ).length;
+
+    return { total: currencies.length, active, inactive, recentlyUpdated };
+  }, [currencies]);
+
+  // Filter and sort
+  const filteredCurrencies = useMemo(() => {
+    if (!currencies) return [];
+
+    let filtered = [...currencies];
+
+    // Search filter
+    if (debouncedSearch) {
+      const search = debouncedSearch.toLowerCase();
+      filtered = filtered.filter(
+        (c) =>
+          c.currencyCode.toLowerCase().includes(search) ||
+          c.currencyName.toLowerCase().includes(search) ||
+          c.symbol.toLowerCase().includes(search)
+      );
     }
-  );
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((c) =>
+        statusFilter === 'active' ? c.isActive : !c.isActive
+      );
+    }
+
+    // Sort
+    switch (sortBy) {
+      case 'code':
+        filtered.sort((a, b) => a.currencyCode.localeCompare(b.currencyCode));
+        break;
+      case 'rate_high':
+        filtered.sort((a, b) => Number(b.rate) - Number(a.rate));
+        break;
+      case 'rate_low':
+        filtered.sort((a, b) => Number(a.rate) - Number(b.rate));
+        break;
+      case 'updated':
+        filtered.sort(
+          (a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
+        );
+        break;
+      case 'name':
+      default:
+        filtered.sort((a, b) => a.currencyName.localeCompare(b.currencyName));
+    }
+
+    return filtered;
+  }, [currencies, debouncedSearch, statusFilter, sortBy]);
+
+  // Bulk selection
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredCurrencies.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredCurrencies.map((c) => c.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  // Active filters
+  const hasActiveFilters = statusFilter !== 'all' || debouncedSearch !== '';
+
+  const clearAllFilters = () => {
+    setStatusFilter('all');
+    setSearchQuery('');
+  };
 
   const handleToggleActive = async (currency: CurrencyRate) => {
     try {
@@ -40,7 +182,9 @@ export default function AdminCurrenciesPage() {
       return;
     }
 
-    const confirmed = confirm(`Are you sure you want to delete ${currency.currencyName}? This action cannot be undone.`);
+    const confirmed = confirm(
+      `Are you sure you want to delete ${currency.currencyName}? This action cannot be undone.`
+    );
     if (!confirmed) return;
 
     try {
@@ -65,250 +209,422 @@ export default function AdminCurrenciesPage() {
     mutate();
   };
 
+  // Bulk actions
+  const handleBulkExport = () => {
+    toast.success('Export started', `Exporting ${selectedIds.size} currencies`);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkActivate = async () => {
+    if (!confirm(`Activate ${selectedIds.size} currencies?`)) return;
+
+    let success = 0;
+    let failed = 0;
+
+    for (const id of selectedIds) {
+      const currency = filteredCurrencies.find((c) => c.id === id);
+      if (currency && !currency.isActive) {
+        try {
+          await currencyAdminApi.toggleActive(currency.currencyCode);
+          success++;
+        } catch {
+          failed++;
+        }
+      }
+    }
+
+    toast.success('Bulk activate', `Activated ${success} currencies (${failed} failed)`);
+    setSelectedIds(new Set());
+    mutate();
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (!confirm(`Deactivate ${selectedIds.size} currencies?`)) return;
+
+    let success = 0;
+    let failed = 0;
+
+    for (const id of selectedIds) {
+      const currency = filteredCurrencies.find((c) => c.id === id);
+      if (currency && currency.isActive && currency.currencyCode !== 'USD') {
+        try {
+          await currencyAdminApi.toggleActive(currency.currencyCode);
+          success++;
+        } catch {
+          failed++;
+        }
+      }
+    }
+
+    toast.success('Bulk deactivate', `Deactivated ${success} currencies (${failed} failed)`);
+    setSelectedIds(new Set());
+    mutate();
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Delete ${selectedIds.size} currencies? This cannot be undone.`)) return;
+
+    let success = 0;
+    let failed = 0;
+
+    for (const id of selectedIds) {
+      const currency = filteredCurrencies.find((c) => c.id === id);
+      if (currency && currency.currencyCode !== 'USD') {
+        try {
+          await currencyAdminApi.deleteRate(currency.currencyCode);
+          success++;
+        } catch {
+          failed++;
+        }
+      }
+    }
+
+    toast.success('Bulk delete', `Deleted ${success} currencies (${failed} failed)`);
+    setSelectedIds(new Set());
+    mutate();
+  };
+
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Currency Management</h1>
-            <p className="text-gray-600 mt-2">
-              Manage exchange rates and currency settings for the platform
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Currency Management</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage exchange rates and currency settings for the platform
+          </p>
+        </div>
+        <Button onClick={() => setIsAddModalOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Currency
+        </Button>
+      </div>
+
+      {/* Statistics */}
+      <div className="grid gap-4 md:grid-cols-5">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Currencies</CardTitle>
+            <Globe className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">All currencies</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+            <p className="text-xs text-muted-foreground">Available for use</p>
+          </CardContent>
+        </Card>
+
+        <Card className={stats.inactive > 0 ? 'border-amber-200 bg-amber-50' : ''}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle
+              className={`text-sm font-medium ${stats.inactive > 0 ? 'text-amber-700' : ''}`}
+            >
+              Inactive
+            </CardTitle>
+            <XCircle
+              className={`h-4 w-4 ${stats.inactive > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
+            />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${stats.inactive > 0 ? 'text-amber-700' : ''}`}>
+              {stats.inactive}
+            </div>
+            <p
+              className={`text-xs ${stats.inactive > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}
+            >
+              Disabled currencies
             </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recently Updated</CardTitle>
+            <Clock className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats.recentlyUpdated}</div>
+            <p className="text-xs text-muted-foreground">Last 24 hours</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Base Currency</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">USD</div>
+            <p className="text-xs text-muted-foreground">US Dollar</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="rounded-lg border p-4 bg-white space-y-4">
+        <div className="flex flex-wrap gap-4">
+          {/* Search */}
+          <div className="flex-1 min-w-[250px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by code, name, or symbol..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2 font-medium"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Currency
-          </button>
+
+          {/* Status Filter */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Sort */}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Name (A-Z)</SelectItem>
+              <SelectItem value="code">Code (A-Z)</SelectItem>
+              <SelectItem value="rate_high">Rate (High)</SelectItem>
+              <SelectItem value="rate_low">Rate (Low)</SelectItem>
+              <SelectItem value="updated">Last Updated</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Active Currencies</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {currencies?.filter(c => c.isActive).length || 0}
-                </p>
-              </div>
-            </div>
+        {/* Active Filter Pills */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm text-muted-foreground">Active filters:</span>
+            {debouncedSearch && (
+              <Badge variant="secondary" className="gap-1">
+                Search: {debouncedSearch}
+                <button onClick={() => setSearchQuery('')} className="ml-1 hover:text-destructive">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {statusFilter !== 'all' && (
+              <Badge variant="secondary" className="gap-1">
+                Status: {statusFilter}
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+              Clear all
+            </Button>
           </div>
+        )}
+      </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Currencies</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {currencies?.length || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-[#CBB57B]/10 flex items-center justify-center">
-                <svg className="w-6 h-6 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Base Currency</p>
-                <p className="text-2xl font-bold text-gray-900">USD</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Currencies Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Currency
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Code
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Symbol
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Exchange Rate
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Last Updated
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
+      {/* Currencies Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Currencies</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <input
+                      type="checkbox"
+                      checked={
+                        filteredCurrencies.length > 0 &&
+                        selectedIds.size === filteredCurrencies.length
+                      }
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-neutral-300"
+                    />
+                  </TableHead>
+                  <TableHead>Currency</TableHead>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Symbol</TableHead>
+                  <TableHead>Exchange Rate</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last Updated</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>
-                      <td colSpan={7} className="px-6 py-4">
-                        <div className="h-12 bg-gray-200 rounded animate-pulse" />
-                      </td>
-                    </tr>
-                  ))
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      Loading currencies...
+                    </TableCell>
+                  </TableRow>
                 ) : error ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
-                      <div className="text-red-600">
-                        <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p className="text-lg font-medium">Failed to load currencies</p>
-                        <p className="text-sm text-gray-600 mt-1">{error.message}</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : currencies && currencies.length > 0 ? (
-                  currencies.map((currency) => (
-                    <tr key={currency.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-red-500">
+                      Failed to load currencies
+                    </TableCell>
+                  </TableRow>
+                ) : filteredCurrencies.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                      No currencies found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredCurrencies.map((currency) => (
+                    <TableRow
+                      key={currency.id}
+                      className={selectedIds.has(currency.id) ? 'bg-muted/50' : ''}
+                    >
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(currency.id)}
+                          onChange={() => toggleSelect(currency.id)}
+                          className="w-4 h-4 rounded border-neutral-300"
+                        />
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl">
                             {currency.symbol}
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{currency.currencyName}</p>
+                            <div className="font-medium">{currency.currencyName}</div>
                             {currency.currencyCode === 'USD' && (
-                              <span className="text-xs text-[#CBB57B] font-medium">Base Currency</span>
+                              <span className="text-xs text-amber-600 font-medium">
+                                Base Currency
+                              </span>
                             )}
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-mono font-medium text-gray-900">{currency.currencyCode}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-gray-700">{currency.symbol}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="font-medium text-gray-900">
-                            {formatCurrencyAmount(currency.rate, 6)}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            1 USD = {formatNumber(currency.rate, currency.decimalDigits)} {currency.currencyCode}
-                          </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono font-medium">{currency.currencyCode}</span>
+                      </TableCell>
+                      <TableCell>{currency.symbol}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{formatCurrencyAmount(currency.rate, 6)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            1 USD = {formatNumber(currency.rate, currency.decimalDigits)}{' '}
+                            {currency.currencyCode}
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {currency.isActive ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5"></span>
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            <span className="w-1.5 h-1.5 rounded-full bg-gray-600 mr-1.5"></span>
-                            Inactive
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-gray-900">
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={currency.isActive ? 'default' : 'secondary'}>
+                          {currency.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
                           {new Date(currency.lastUpdated).toLocaleDateString()}
-                        </p>
-                        <p className="text-xs text-gray-500">
+                        </div>
+                        <div className="text-xs text-muted-foreground">
                           {new Date(currency.lastUpdated).toLocaleTimeString()}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => setEditingCurrency(currency)}
-                            className="p-2 text-gray-600 hover:text-[#CBB57B] hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Edit"
                           >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => handleToggleActive(currency)}
-                            className={`p-2 rounded-lg transition-colors ${
-                              currency.isActive
-                                ? 'text-gray-600 hover:text-red-600 hover:bg-red-50'
-                                : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
-                            }`}
-                            title={currency.isActive ? 'Deactivate' : 'Activate'}
                           >
                             {currency.isActive ? (
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                              </svg>
+                              <XCircle className="h-4 w-4" />
                             ) : (
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
+                              <CheckCircle className="h-4 w-4" />
                             )}
-                          </button>
+                          </Button>
                           {currency.currencyCode !== 'USD' && (
-                            <button
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               onClick={() => handleDelete(currency)}
                               disabled={deletingId === currency.id}
-                              className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Delete"
                             >
-                              {deletingId === currency.id ? (
-                                <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                              ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              )}
-                            </button>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
-                      <div className="text-gray-400">
-                        <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p className="text-lg font-medium">No currencies found</p>
-                        <p className="text-sm mt-1">Add your first currency to get started</p>
-                      </div>
-                    </td>
-                  </tr>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Fixed Bottom Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 flex items-center justify-between z-50">
+          <div className="flex items-center gap-4">
+            <span className="font-medium">{selectedIds.size} selected</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-white hover:text-white hover:bg-slate-800"
+            >
+              Clear selection
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={handleBulkExport} className="gap-2">
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleBulkActivate}
+              className="bg-green-600 hover:bg-green-700 gap-2"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Activate
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleBulkDeactivate} className="gap-2">
+              <XCircle className="h-4 w-4" />
+              Deactivate
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Add Currency Modal */}
       <CurrencyFormModal
@@ -326,7 +642,7 @@ export default function AdminCurrenciesPage() {
         mode="edit"
         currency={editingCurrency}
       />
-    </AdminLayout>
+    </div>
   );
 }
 
@@ -339,7 +655,13 @@ interface CurrencyFormModalProps {
   currency?: CurrencyRate | null;
 }
 
-function CurrencyFormModal({ isOpen, onClose, onSuccess, mode, currency }: CurrencyFormModalProps) {
+function CurrencyFormModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  mode,
+  currency,
+}: CurrencyFormModalProps) {
   const [formData, setFormData] = useState({
     currencyCode: '',
     currencyName: '',
@@ -364,7 +686,6 @@ function CurrencyFormModal({ isOpen, onClose, onSuccess, mode, currency }: Curre
         isActive: currency.isActive,
       });
     } else if (mode === 'add') {
-      // Reset form for add mode
       setFormData({
         currencyCode: '',
         currencyName: '',
@@ -387,7 +708,10 @@ function CurrencyFormModal({ isOpen, onClose, onSuccess, mode, currency }: Curre
         toast.success('Currency Added', `${formData.currencyName} has been added successfully`);
       } else if (currency) {
         await currencyAdminApi.updateRate(currency.currencyCode, formData);
-        toast.success('Currency Updated', `${formData.currencyName} has been updated successfully`);
+        toast.success(
+          'Currency Updated',
+          `${formData.currencyName} has been updated successfully`
+        );
       }
       onSuccess();
     } catch (error: any) {
@@ -397,184 +721,154 @@ function CurrencyFormModal({ isOpen, onClose, onSuccess, mode, currency }: Curre
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        />
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === 'add' ? 'Add New Currency' : 'Edit Currency'}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'add'
+              ? 'Add a new currency to the platform'
+              : 'Update currency settings and exchange rate'}
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Modal */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-        >
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {mode === 'add' ? 'Add New Currency' : 'Edit Currency'}
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="currencyCode">Currency Code *</Label>
+              <Input
+                id="currencyCode"
+                value={formData.currencyCode}
+                onChange={(e) =>
+                  setFormData({ ...formData, currencyCode: e.target.value.toUpperCase() })
+                }
+                placeholder="USD"
+                maxLength={3}
+                required
+                disabled={mode === 'edit'}
+              />
+              <p className="text-xs text-muted-foreground">ISO 4217 code (3 letters)</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currencyName">Currency Name *</Label>
+              <Input
+                id="currencyName"
+                value={formData.currencyName}
+                onChange={(e) => setFormData({ ...formData, currencyName: e.target.value })}
+                placeholder="US Dollar"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="symbol">Symbol *</Label>
+              <Input
+                id="symbol"
+                value={formData.symbol}
+                onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
+                placeholder="$"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rate">Exchange Rate (to USD) *</Label>
+              <Input
+                id="rate"
+                type="number"
+                step="0.000001"
+                value={formData.rate}
+                onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) })}
+                placeholder="1.0"
+                min={0}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                1 USD = {formData.rate} {formData.currencyCode || '...'}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="decimalDigits">Decimal Places</Label>
+              <Select
+                value={formData.decimalDigits.toString()}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, decimalDigits: parseInt(value) })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">0</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="position">Symbol Position</Label>
+              <Select
+                value={formData.position}
+                onValueChange={(value: 'before' | 'after') =>
+                  setFormData({ ...formData, position: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="before">Before ({formData.symbol}100)</SelectItem>
+                  <SelectItem value="after">After (100{formData.symbol})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Currency Code */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Currency Code <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.currencyCode}
-                  onChange={(e) => setFormData({ ...formData, currencyCode: e.target.value.toUpperCase() })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent uppercase"
-                  placeholder="USD"
-                  maxLength={3}
-                  required
-                  disabled={mode === 'edit'}
-                />
-                <p className="text-xs text-gray-500 mt-1">ISO 4217 code (3 letters)</p>
-              </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={formData.isActive}
+              onChange={(e) =>
+                setFormData({ ...formData, isActive: e.target.checked })
+              }
+              className="w-4 h-4 rounded border-neutral-300"
+            />
+            <Label htmlFor="isActive">Activate this currency immediately</Label>
+          </div>
 
-              {/* Currency Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Currency Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.currencyName}
-                  onChange={(e) => setFormData({ ...formData, currencyName: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  placeholder="US Dollar"
-                  required
-                />
-              </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? mode === 'add'
+                  ? 'Adding...'
+                  : 'Updating...'
+                : mode === 'add'
+                  ? 'Add Currency'
+                  : 'Update Currency'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-              {/* Symbol */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Symbol <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.symbol}
-                  onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  placeholder="$"
-                  required
-                />
-              </div>
-
-              {/* Exchange Rate */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Exchange Rate (to USD) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={formData.rate}
-                  onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  placeholder="1.0"
-                  min="0"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">1 USD = {formData.rate} {formData.currencyCode || '...'}</p>
-              </div>
-
-              {/* Decimal Digits */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Decimal Places
-                </label>
-                <select
-                  value={formData.decimalDigits}
-                  onChange={(e) => setFormData({ ...formData, decimalDigits: parseInt(e.target.value) })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                >
-                  <option value={0}>0 (e.g., ¥100)</option>
-                  <option value={2}>2 (e.g., $100.00)</option>
-                  <option value={3}>3 (e.g., $100.000)</option>
-                </select>
-              </div>
-
-              {/* Symbol Position */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Symbol Position
-                </label>
-                <select
-                  value={formData.position}
-                  onChange={(e) => setFormData({ ...formData, position: e.target.value as 'before' | 'after' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                >
-                  <option value="before">Before ({formData.symbol}100)</option>
-                  <option value="after">After (100{formData.symbol})</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Active Status */}
-            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={formData.isActive}
-                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                className="w-5 h-5 text-[#CBB57B] border-gray-300 rounded focus:ring-2 focus:ring-[#CBB57B]"
-              />
-              <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
-                Activate this currency immediately
-              </label>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    {mode === 'add' ? 'Adding...' : 'Updating...'}
-                  </>
-                ) : (
-                  <>{mode === 'add' ? 'Add Currency' : 'Update Currency'}</>
-                )}
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+export default function AdminCurrenciesPage() {
+  return (
+    <AdminRoute>
+      <AdminLayout>
+        <CurrenciesContent />
+      </AdminLayout>
+    </AdminRoute>
   );
 }
