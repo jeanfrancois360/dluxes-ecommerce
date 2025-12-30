@@ -72,6 +72,9 @@ model User {
   sellerInquiries ProductInquiry[] @relation("SellerInquiries") // Inquiries received as seller
   buyerInquiries  ProductInquiry[] @relation("BuyerInquiries")  // Inquiries submitted as buyer
 
+  // Return Requests
+  returnRequests  ReturnRequest[]
+
   @@index([email])
   @@index([lastLoginAt])
   @@index([deliveryProviderId])
@@ -993,6 +996,9 @@ model Order {
   deliveryConfirmation DeliveryConfirmation?
   delivery             Delivery?
 
+  // Returns
+  returnRequests       ReturnRequest[]
+
   @@index([userId])
   @@index([orderNumber])
   @@index([status])
@@ -1070,6 +1076,9 @@ model OrderItem {
   product Product         @relation(fields: [productId], references: [id])
   variant ProductVariant? @relation(fields: [variantId], references: [id])
 
+  // Returns
+  returnRequests ReturnRequest[]
+
   @@index([orderId])
   @@index([productId])
   @@map("order_items")
@@ -1093,6 +1102,64 @@ model OrderTimeline {
   @@index([orderId])
   @@index([createdAt])
   @@map("order_timeline")
+}
+
+// Return Request for handling returns and refunds
+model ReturnRequest {
+  id          String       @id @default(cuid())
+  orderId     String
+  orderItemId String?      // Optional: for item-specific returns
+  userId      String
+
+  // Return Details
+  reason      ReturnReason
+  description String?      @db.Text
+  images      Json?        // Array of image URLs for proof
+
+  // Status & Resolution
+  status      ReturnStatus @default(PENDING)
+  resolution  String?      @db.Text // Admin notes on resolution
+
+  // Refund Information
+  refundAmount   Decimal?  @db.Decimal(10, 2)
+  refundMethod   String?   // Original payment method, store credit, etc.
+  refundedAt     DateTime?
+
+  // Timestamps
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  resolvedAt  DateTime?
+
+  // Relations
+  order     Order      @relation(fields: [orderId], references: [id])
+  orderItem OrderItem? @relation(fields: [orderItemId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@map("return_requests")
+}
+
+enum ReturnReason {
+  DEFECTIVE        // Product is defective or damaged
+  WRONG_ITEM       // Received wrong item
+  NOT_AS_DESCRIBED // Product not as described
+  CHANGED_MIND     // Customer changed their mind
+  SIZE_FIT         // Size/fit issues
+  QUALITY          // Quality not as expected
+  LATE_DELIVERY    // Delivery was too late
+  OTHER            // Other reason
+}
+
+enum ReturnStatus {
+  PENDING          // Awaiting review
+  APPROVED         // Return approved, awaiting item
+  REJECTED         // Return request rejected
+  ITEM_RECEIVED    // Returned item received
+  REFUND_PROCESSING // Refund being processed
+  REFUNDED         // Refund completed
+  CANCELLED        // Request cancelled by customer
 }
 
 // Wishlist for premium UX

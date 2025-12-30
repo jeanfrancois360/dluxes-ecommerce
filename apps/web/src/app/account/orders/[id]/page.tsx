@@ -12,6 +12,11 @@ import { useCreateReview } from '@/hooks/use-reviews';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { reviewsApi } from '@/lib/api/reviews';
 import { downloadsApi, type DigitalPurchase } from '@/lib/api/downloads';
+import {
+  returnsApi,
+  type ReturnReason,
+  RETURN_REASON_LABELS,
+} from '@/lib/api/returns';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
@@ -56,6 +61,19 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   const [reviewableProducts, setReviewableProducts] = useState<Record<string, boolean>>({});
   const [digitalDownloads, setDigitalDownloads] = useState<DigitalPurchase[]>([]);
   const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
+  const [showReturnForm, setShowReturnForm] = useState(false);
+  const [canRequestReturn, setCanRequestReturn] = useState(false);
+  const [returnEligibilityReason, setReturnEligibilityReason] = useState<string | null>(null);
+  const [daysRemainingForReturn, setDaysRemainingForReturn] = useState<number | null>(null);
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+  const [returnFormData, setReturnFormData] = useState<{
+    reason: ReturnReason;
+    description: string;
+    orderItemId?: string;
+  }>({
+    reason: 'CHANGED_MIND',
+    description: '',
+  });
 
   const handleReorder = async () => {
     if (!order) return;
@@ -122,6 +140,30 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
     };
     checkReviewable();
   }, [order?.status, order?.items]);
+
+  // Check if order is eligible for return
+  useEffect(() => {
+    const checkReturnEligibility = async () => {
+      if (!order?.id) return;
+      // Only check for delivered orders
+      if (order.status?.toUpperCase() !== 'DELIVERED') {
+        setCanRequestReturn(false);
+        return;
+      }
+      try {
+        const response = await returnsApi.canRequestReturn(order.id);
+        if (response?.data) {
+          setCanRequestReturn(response.data.canReturn);
+          setReturnEligibilityReason(response.data.reason || null);
+          setDaysRemainingForReturn(response.data.daysRemaining || null);
+        }
+      } catch (error) {
+        console.error('Failed to check return eligibility:', error);
+        setCanRequestReturn(false);
+      }
+    };
+    checkReturnEligibility();
+  }, [order?.id, order?.status]);
 
   // Fetch digital downloads for this order
   useEffect(() => {
@@ -201,6 +243,35 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       setShowCancelConfirm(false);
     } catch (error) {
       toast.error('Cancellation Failed', 'Failed to cancel order. Please contact support.');
+    }
+  };
+
+  const handleSubmitReturn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!order?.id) return;
+
+    try {
+      setIsSubmittingReturn(true);
+      const response = await returnsApi.createReturnRequest({
+        orderId: order.id,
+        reason: returnFormData.reason,
+        description: returnFormData.description || undefined,
+        orderItemId: returnFormData.orderItemId || undefined,
+      });
+
+      if (response?.data) {
+        toast.success('Return Request Submitted', 'We will review your request and get back to you soon');
+        setShowReturnForm(false);
+        setCanRequestReturn(false);
+        // Redirect to returns page
+        router.push('/account/returns');
+      } else {
+        toast.error('Request Failed', 'Failed to submit return request. Please try again.');
+      }
+    } catch (error) {
+      toast.error('Request Failed', error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setIsSubmittingReturn(false);
     }
   };
 
@@ -611,6 +682,38 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                   </button>
                 )}
 
+                {/* Request Return Button for Delivered Orders */}
+                {order.status?.toUpperCase() === 'DELIVERED' && (
+                  <div>
+                    {canRequestReturn ? (
+                      <button
+                        onClick={() => setShowReturnForm(true)}
+                        className="w-full px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors font-semibold flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                        Request Return
+                      </button>
+                    ) : returnEligibilityReason ? (
+                      <div className="px-4 py-3 bg-gray-100 rounded-xl text-sm text-gray-600 text-center">
+                        <p className="font-medium text-gray-900 mb-1">Return Not Available</p>
+                        <p>{returnEligibilityReason}</p>
+                      </div>
+                    ) : daysRemainingForReturn !== null && daysRemainingForReturn > 0 ? (
+                      <button
+                        onClick={() => setShowReturnForm(true)}
+                        className="w-full px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors font-semibold flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                        Request Return ({daysRemainingForReturn} days left)
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+
                 <Link
                   href="/contact"
                   className="w-full block text-center px-6 py-3 border-2 border-neutral-200 rounded-xl hover:border-gold hover:bg-gold/5 transition-all font-semibold"
@@ -692,6 +795,154 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           onSubmit={handleSubmitReview}
         />
       )}
+
+      {/* Return Request Modal */}
+      <AnimatePresence>
+        {showReturnForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowReturnForm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold">Request Return</h3>
+                  <p className="text-gray-600">Order #{order.orderNumber}</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmitReturn} className="space-y-6">
+                {/* Select Item (Optional) */}
+                {order.items && order.items.length > 1 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Which item do you want to return?
+                    </label>
+                    <select
+                      value={returnFormData.orderItemId || ''}
+                      onChange={(e) =>
+                        setReturnFormData((prev) => ({
+                          ...prev,
+                          orderItemId: e.target.value || undefined,
+                        }))
+                      }
+                      className="w-full px-4 py-3 border-2 border-neutral-200 rounded-xl focus:border-orange-500 focus:ring-0 transition-colors"
+                    >
+                      <option value="">All items in this order</option>
+                      {order.items.map((item, index) => (
+                        <option key={index} value={item.id}>
+                          {item.name} (x{item.quantity})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Reason */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reason for return <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={returnFormData.reason}
+                    onChange={(e) =>
+                      setReturnFormData((prev) => ({
+                        ...prev,
+                        reason: e.target.value as ReturnReason,
+                      }))
+                    }
+                    required
+                    className="w-full px-4 py-3 border-2 border-neutral-200 rounded-xl focus:border-orange-500 focus:ring-0 transition-colors"
+                  >
+                    {Object.entries(RETURN_REASON_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Additional details (optional)
+                  </label>
+                  <textarea
+                    value={returnFormData.description}
+                    onChange={(e) =>
+                      setReturnFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    placeholder="Please provide any additional details about your return request..."
+                    rows={4}
+                    className="w-full px-4 py-3 border-2 border-neutral-200 rounded-xl focus:border-orange-500 focus:ring-0 transition-colors resize-none"
+                  />
+                </div>
+
+                {/* Return Policy Note */}
+                <div className="bg-orange-50 rounded-xl p-4">
+                  <h4 className="font-semibold text-orange-900 mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Return Policy
+                  </h4>
+                  <ul className="text-sm text-orange-800 space-y-1">
+                    <li>• Returns must be requested within 30 days of delivery</li>
+                    <li>• Items must be unused and in original packaging</li>
+                    <li>• Refunds are processed within 5-7 business days</li>
+                    <li>• Shipping costs may apply for non-defective returns</li>
+                  </ul>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowReturnForm(false)}
+                    className="flex-1 px-6 py-3 border-2 border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReturn}
+                    className="flex-1 px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingReturn ? (
+                      <>
+                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit Request'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageLayout>
   );
 }
