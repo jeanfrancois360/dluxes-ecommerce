@@ -435,6 +435,17 @@ export function TopBar() {
                               </Link>
 
                               <Link
+                                href="/account/returns"
+                                onClick={() => setAccountOpen(false)}
+                                className="w-full px-4 py-2.5 flex items-center gap-3 text-white/80 hover:bg-white/5 hover:text-white transition-all duration-200 group"
+                              >
+                                <svg className="w-4 h-4 text-white/60 group-hover:text-[#CBB57B] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                                <span className="text-sm font-medium">My Returns</span>
+                              </Link>
+
+                              <Link
                                 href="/account/notifications"
                                 onClick={() => setAccountOpen(false)}
                                 className="w-full px-4 py-2.5 flex items-center gap-3 text-white/80 hover:bg-white/5 hover:text-white transition-all duration-200 group"

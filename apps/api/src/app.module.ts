@@ -33,6 +33,7 @@ import { DeliveryPartnerModule } from './delivery-partner/delivery-partner.modul
 import { DeliveryPayoutsModule } from './delivery-payouts/delivery-payouts.module';
 import { InquiriesModule } from './inquiries/inquiries.module';
 import { DownloadsModule } from './downloads/downloads.module';
+import { ReturnsModule } from './returns/returns.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
@@ -82,6 +83,7 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
     DeliveryPayoutsModule,
     InquiriesModule,
     DownloadsModule,
+    ReturnsModule,
     // QueueModule, // Commented out - requires Redis setup
   ],
   providers: [
