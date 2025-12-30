@@ -22,6 +22,9 @@ import { getColorHex } from '@/lib/utils/color-mapping';
 import { Price } from '@/components/price';
 import { isLightColor, calculateDiscountPercentage } from '@nextpik/ui/lib/utils/color-utils';
 import { framerMotion } from '@nextpik/design-system/animations';
+import { RealEstateDetails, VehicleDetails, DigitalDetails, ServiceDetails, RentalDetails } from '@/components/products/type-details';
+import { RealEstateInquiryForm } from '@/components/products/RealEstateInquiryForm';
+import { VehicleInquiryForm } from '@/components/products/VehicleInquiryForm';
 
 // Reviews Section Component
 function ReviewsSection({ productId }: { productId: string }) {
@@ -488,13 +491,47 @@ export default function ProductDetailPage() {
                   {!showInquiryForm ? (
                     <button
                       onClick={() => setShowInquiryForm(true)}
-                      className="w-full py-4 px-8 bg-gradient-to-r from-gold to-accent-700 text-black font-bold text-lg rounded-xl hover:from-black hover:to-neutral-800 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
+                      className={`w-full py-4 px-8 font-bold text-lg rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 ${
+                        product.productType === 'REAL_ESTATE'
+                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                          : product.productType === 'VEHICLE'
+                          ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
+                          : 'bg-gradient-to-r from-gold to-accent-700 text-black hover:from-black hover:to-neutral-800 hover:text-white'
+                      }`}
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      Contact About This Product
+                      {product.productType === 'REAL_ESTATE'
+                        ? 'Schedule a Viewing'
+                        : product.productType === 'VEHICLE'
+                        ? 'Schedule a Test Drive'
+                        : 'Contact About This Product'}
                     </button>
+                  ) : product.productType === 'REAL_ESTATE' ? (
+                    <RealEstateInquiryForm
+                      productId={product.id}
+                      productName={product.name}
+                      productType={product.propertyType || 'property'}
+                      onSuccess={() => {
+                        toast.success('Inquiry Submitted', 'Our agent will contact you soon!');
+                        setShowInquiryForm(false);
+                      }}
+                      onCancel={() => setShowInquiryForm(false)}
+                    />
+                  ) : product.productType === 'VEHICLE' ? (
+                    <VehicleInquiryForm
+                      productId={product.id}
+                      productName={product.name}
+                      vehicleInfo={product.vehicleYear && product.vehicleMake && product.vehicleModel
+                        ? `${product.vehicleYear} ${product.vehicleMake} ${product.vehicleModel}`
+                        : undefined}
+                      onSuccess={() => {
+                        toast.success('Inquiry Submitted', 'Our sales team will contact you soon!');
+                        setShowInquiryForm(false);
+                      }}
+                      onCancel={() => setShowInquiryForm(false)}
+                    />
                   ) : (
                     <ProductInquiryForm
                       productId={product.id}
@@ -667,6 +704,41 @@ export default function ProductDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Real Estate Details - Only shown for REAL_ESTATE products */}
+          {product.productType === 'REAL_ESTATE' && (
+            <div className="mb-12">
+              <RealEstateDetails product={product} />
+            </div>
+          )}
+
+          {/* Vehicle Details - Only shown for VEHICLE products */}
+          {product.productType === 'VEHICLE' && (
+            <div className="mb-12">
+              <VehicleDetails product={product} />
+            </div>
+          )}
+
+          {/* Digital Details - Only shown for DIGITAL products */}
+          {product.productType === 'DIGITAL' && (
+            <div className="mb-12">
+              <DigitalDetails product={product} />
+            </div>
+          )}
+
+          {/* Service Details - Only shown for SERVICE products */}
+          {product.productType === 'SERVICE' && (
+            <div className="mb-12">
+              <ServiceDetails product={product} />
+            </div>
+          )}
+
+          {/* Rental Details - Only shown for RENTAL products */}
+          {product.productType === 'RENTAL' && (
+            <div className="mb-12">
+              <RentalDetails product={product} />
+            </div>
+          )}
 
           {/* Tabs Section */}
           <div className="border-t border-neutral-200 pt-12 mb-16">

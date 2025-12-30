@@ -144,6 +144,66 @@ export interface SellerOrder {
   createdAt: string;
 }
 
+// Inquiry Types
+export type InquiryStatus =
+  | 'NEW'
+  | 'CONTACTED'
+  | 'VIEWING_SCHEDULED'
+  | 'TEST_DRIVE_SCHEDULED'
+  | 'NEGOTIATING'
+  | 'CONVERTED'
+  | 'CLOSED'
+  | 'SPAM';
+
+export interface Inquiry {
+  id: string;
+  productId: string;
+  sellerId: string;
+  storeId?: string;
+  userId?: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string;
+  message: string;
+  preferredContact?: string;
+  preferredTime?: string;
+  scheduledViewing?: string;
+  preApproved: boolean;
+  scheduledTestDrive?: string;
+  tradeInInterest: boolean;
+  status: InquiryStatus;
+  sellerNotes?: string;
+  respondedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  product?: {
+    id: string;
+    name: string;
+    slug: string;
+    productType: string;
+    heroImage?: string;
+    images?: Array<{ url: string }>;
+  };
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email: string;
+  };
+  store?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface InquiryStats {
+  total: number;
+  new: number;
+  contacted: number;
+  scheduled: number;
+  converted: number;
+}
+
 // ============================================================================
 // Seller API
 // ============================================================================
@@ -284,6 +344,23 @@ export const sellerAPI = {
     api.patch(`/seller/notifications/${id}/read`),
 
   markAllNotificationsAsRead: () => api.patch('/seller/notifications/read-all'),
+
+  // Inquiries
+  getInquiries: (params?: {
+    page?: number;
+    limit?: number;
+    status?: InquiryStatus;
+  }) => api.get<{
+    inquiries: Inquiry[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  }>('/inquiries/seller', { params } as any),
+
+  getInquiryStats: () => api.get<InquiryStats>('/inquiries/seller/stats'),
+
+  getInquiry: (id: string) => api.get<Inquiry>(`/inquiries/${id}`),
+
+  updateInquiryStatus: (id: string, data: { status: InquiryStatus; sellerNotes?: string }) =>
+    api.patch<Inquiry>(`/inquiries/${id}/status`, data),
 };
 
 // Export lowercase alias for consistency
