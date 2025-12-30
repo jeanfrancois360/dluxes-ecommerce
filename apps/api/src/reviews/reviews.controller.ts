@@ -50,6 +50,51 @@ export class ReviewsController {
   }
 
   /**
+   * Get current user's reviews
+   * @route GET /reviews/my-reviews
+   */
+  @Get('my-reviews')
+  @UseGuards(JwtAuthGuard)
+  async getMyReviews(@Request() req) {
+    try {
+      const data = await this.reviewsService.findByUser(req.user.userId || req.user.id);
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Check if user can review a product (has purchased it in a delivered order)
+   * @route GET /reviews/can-review/:productId
+   */
+  @Get('can-review/:productId')
+  @UseGuards(JwtAuthGuard)
+  async canReviewProduct(@Request() req, @Param('productId') productId: string) {
+    try {
+      const data = await this.reviewsService.canReviewProduct(
+        req.user.userId || req.user.id,
+        productId
+      );
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
    * Create review
    * @route POST /reviews
    */
