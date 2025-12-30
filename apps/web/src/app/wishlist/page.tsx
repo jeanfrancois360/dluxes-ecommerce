@@ -122,12 +122,10 @@ export default function WishlistPage() {
 
   const handleSortChange = (newSortBy: typeof sortBy) => {
     setSortBy(newSortBy);
-    updateFilters({ sortBy: newSortBy });
   };
 
   const handleFilterChange = (availability: typeof filterAvailability) => {
     setFilterAvailability(availability);
-    updateFilters({ availability });
   };
 
   const totalValue = (items || []).reduce((sum, item) => sum + (Number(item.product?.price) || 0), 0);

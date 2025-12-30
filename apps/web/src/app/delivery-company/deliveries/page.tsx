@@ -16,6 +16,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
 interface Delivery {
   id: string;
   trackingNumber: string;
@@ -87,7 +89,7 @@ export default function DeliveriesPage() {
         ...(filters.country && { country: filters.country }),
       });
 
-      const response = await fetch(`/api/v1/delivery-company/deliveries?${params}`, {
+      const response = await fetch(`${API_URL}/delivery-company/deliveries?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -84,6 +84,7 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
   };
 
   const fetchDelivery = async () => {
+    if (!order) return;
     try {
       const token = localStorage.getItem('auth_token');
       const response = await axios.get(

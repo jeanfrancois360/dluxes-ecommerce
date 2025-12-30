@@ -47,7 +47,7 @@ export function useSearch(initialParams?: any, options: UseSearchOptions = {}): 
       setData(result);
 
       // Track search analytics
-      if (result.data.length > 0) {
+      if (result.products.length > 0) {
         searchAPI.trackSearch(params.q, result.total);
       }
 

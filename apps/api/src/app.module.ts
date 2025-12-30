@@ -30,6 +30,7 @@ import { PayoutModule } from './payout/payout.module';
 import { DeliveryProviderModule } from './delivery-provider/delivery-provider.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { DeliveryPartnerModule } from './delivery-partner/delivery-partner.module';
+import { DeliveryPayoutsModule } from './delivery-payouts/delivery-payouts.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
@@ -76,6 +77,7 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
     DeliveryProviderModule,
     DeliveryModule,
     DeliveryPartnerModule,
+    DeliveryPayoutsModule,
     // QueueModule, // Commented out - requires Redis setup
   ],
   providers: [

@@ -16,6 +16,8 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
 interface DeliveryDetails {
   id: string;
   trackingNumber: string;
@@ -88,7 +90,7 @@ export default function DeliveryDetailsPage() {
   const fetchDeliveryDetails = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/v1/delivery-company/deliveries/${deliveryId}`, {
+      const response = await fetch(`${API_URL}/delivery-company/deliveries/${deliveryId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -107,7 +109,7 @@ export default function DeliveryDetailsPage() {
   const fetchDrivers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/v1/delivery-company/drivers', {
+      const response = await fetch(`${API_URL}/delivery-company/drivers`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -127,7 +129,7 @@ export default function DeliveryDetailsPage() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `/api/v1/delivery-company/deliveries/${deliveryId}/assign-driver`,
+        `${API_URL}/delivery-company/deliveries/${deliveryId}/assign-driver`,
         {
           method: 'POST',
           headers: {
@@ -156,7 +158,7 @@ export default function DeliveryDetailsPage() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `/api/v1/delivery-company/deliveries/${deliveryId}/status`,
+        `${API_URL}/delivery-company/deliveries/${deliveryId}/status`,
         {
           method: 'PUT',
           headers: {
@@ -184,7 +186,7 @@ export default function DeliveryDetailsPage() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `/api/v1/delivery-company/deliveries/${deliveryId}/proof`,
+        `${API_URL}/delivery-company/deliveries/${deliveryId}/proof`,
         {
           method: 'POST',
           headers: {

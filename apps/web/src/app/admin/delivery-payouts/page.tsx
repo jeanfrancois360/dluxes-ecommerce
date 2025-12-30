@@ -104,7 +104,7 @@ function DeliveryPayoutsContent() {
       setPayouts(data);
       calculateStats(data);
     } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to fetch payouts');
+      toast.error(error.response?.data?.message || 'Failed to fetch payouts');
     } finally {
       setLoading(false);
     }
@@ -133,7 +133,7 @@ function DeliveryPayoutsContent() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      toast.success('Success', 'Payout processed successfully');
+      toast.success('Payout processed successfully');
       setIsProcessDialogOpen(false);
       setSelectedPayout(null);
       setProcessData({
@@ -143,7 +143,7 @@ function DeliveryPayoutsContent() {
       });
       fetchPayouts();
     } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to process payout');
+      toast.error(error.response?.data?.message || 'Failed to process payout');
     }
   };
 
@@ -159,10 +159,10 @@ function DeliveryPayoutsContent() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      toast.success('Success', 'Payout marked as completed');
+      toast.success('Payout marked as completed');
       fetchPayouts();
     } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to complete payout');
+      toast.error(error.response?.data?.message || 'Failed to complete payout');
     }
   };
 
@@ -178,10 +178,10 @@ function DeliveryPayoutsContent() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      toast.success('Success', 'Payout cancelled');
+      toast.success('Payout cancelled');
       fetchPayouts();
     } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to cancel payout');
+      toast.error(error.response?.data?.message || 'Failed to cancel payout');
     }
   };
 
