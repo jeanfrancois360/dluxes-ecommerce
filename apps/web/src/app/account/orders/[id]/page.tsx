@@ -11,12 +11,31 @@ import { useOrder, useCancelOrder } from '@/hooks/use-orders';
 import { useCreateReview } from '@/hooks/use-reviews';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { reviewsApi } from '@/lib/api/reviews';
+import { downloadsApi, type DigitalPurchase } from '@/lib/api/downloads';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
 
 interface OrderDetailPageProps {
   params: Promise<{ id: string }>;
+}
+
+// Format file size helper
+function formatFileSize(bytes: string | null): string {
+  if (!bytes) return 'Unknown size';
+  const size = parseInt(bytes, 10);
+  if (isNaN(size)) return 'Unknown size';
+
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let unitIndex = 0;
+  let fileSize = size;
+
+  while (fileSize >= 1024 && unitIndex < units.length - 1) {
+    fileSize /= 1024;
+    unitIndex++;
+  }
+
+  return `${fileSize.toFixed(1)} ${units[unitIndex]}`;
 }
 
 export default function OrderDetailPage({ params }: OrderDetailPageProps) {
@@ -35,6 +54,8 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
     name: string;
   } | null>(null);
   const [reviewableProducts, setReviewableProducts] = useState<Record<string, boolean>>({});
+  const [digitalDownloads, setDigitalDownloads] = useState<DigitalPurchase[]>([]);
+  const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
 
   const handleReorder = async () => {
     if (!order) return;
@@ -101,6 +122,54 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
     };
     checkReviewable();
   }, [order?.status, order?.items]);
+
+  // Fetch digital downloads for this order
+  useEffect(() => {
+    const fetchDigitalDownloads = async () => {
+      if (!order?.id) return;
+      // Only fetch for paid orders
+      const validStatuses = ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'COMPLETED'];
+      if (!validStatuses.includes(order.status?.toUpperCase() || '')) return;
+
+      try {
+        const response = await downloadsApi.getOrderDigitalProducts(order.id);
+        if (response?.data) {
+          setDigitalDownloads(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch digital downloads:', error);
+      }
+    };
+    fetchDigitalDownloads();
+  }, [order?.id, order?.status]);
+
+  const handleDigitalDownload = async (download: DigitalPurchase) => {
+    if (!download.canDownload) {
+      toast.error('Download Limit Reached', 'You have reached the download limit for this file');
+      return;
+    }
+
+    try {
+      setDownloadingProductId(download.productId);
+      const response = await downloadsApi.getDownloadUrl(download.orderId, download.productId);
+
+      if (response?.data?.url) {
+        window.open(response.data.url, '_blank');
+        toast.success('Download Started', `Downloading ${response.data.fileName}`);
+        // Refresh downloads to update count
+        const refreshResponse = await downloadsApi.getOrderDigitalProducts(download.orderId);
+        if (refreshResponse?.data) {
+          setDigitalDownloads(refreshResponse.data);
+        }
+      } else {
+        toast.error('Download Failed', 'Could not get download link');
+      }
+    } catch (error) {
+      toast.error('Download Failed', 'An error occurred while starting download');
+    } finally {
+      setDownloadingProductId(null);
+    }
+  };
 
   const handleWriteReview = (productId: string, productName: string) => {
     setSelectedProduct({ id: productId, name: productName });
@@ -319,6 +388,112 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 ))}
               </div>
             </motion.div>
+
+            {/* Digital Downloads Section */}
+            {digitalDownloads.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-gradient-to-br from-purple-50 to-white rounded-xl border-2 border-purple-100 p-6"
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold font-['Poppins']">Digital Downloads</h2>
+                    <p className="text-sm text-gray-600">Download your digital products</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {digitalDownloads.map((download) => (
+                    <div
+                      key={download.productId}
+                      className="flex items-center gap-4 p-4 bg-white rounded-xl border border-purple-100"
+                    >
+                      {/* Product Image */}
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                        {download.productImage ? (
+                          <img
+                            src={download.productImage}
+                            alt={download.productName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-purple-100">
+                            <svg className="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Product Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-black truncate">{download.productName}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500">
+                          {download.digitalFileFormat && (
+                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded uppercase font-medium">
+                              {download.digitalFileFormat}
+                            </span>
+                          )}
+                          {download.digitalFileSize && (
+                            <span>{formatFileSize(download.digitalFileSize)}</span>
+                          )}
+                          {download.digitalDownloadLimit && (
+                            <span className="text-gray-400">
+                              {download.downloadCount}/{download.digitalDownloadLimit} downloads used
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Download Button */}
+                      <button
+                        onClick={() => handleDigitalDownload(download)}
+                        disabled={!download.canDownload || downloadingProductId === download.productId}
+                        className={`flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all ${
+                          download.canDownload
+                            ? 'bg-purple-500 text-white hover:bg-purple-600'
+                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        {downloadingProductId === download.productId ? (
+                          <>
+                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            <span className="hidden sm:inline">Downloading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span className="hidden sm:inline">Download</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-4 border-t border-purple-100">
+                  <Link
+                    href="/account/downloads"
+                    className="text-sm text-purple-600 hover:text-purple-700 font-medium inline-flex items-center gap-1"
+                  >
+                    View all downloads
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+              </motion.div>
+            )}
           </div>
 
           {/* Sidebar - Order Summary & Actions */}
