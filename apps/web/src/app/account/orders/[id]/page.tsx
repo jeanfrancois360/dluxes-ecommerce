@@ -1,13 +1,16 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import { OrderStatusBadge } from '@/components/orders/order-status-badge';
 import { OrderTimeline } from '@/components/orders/order-timeline';
 import { DeliveryTrackingSection } from '@/components/orders/delivery-tracking-section';
+import { ReviewForm } from '@/components/reviews/review-form';
 import { useOrder, useCancelOrder } from '@/hooks/use-orders';
+import { useCreateReview } from '@/hooks/use-reviews';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import { reviewsApi } from '@/lib/api/reviews';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
@@ -23,7 +26,58 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
   const { order, isLoading, error, refetch } = useOrder(id);
   const { cancelOrder, isLoading: isCancelling } = useCancelOrder();
+  const { createReview, isLoading: isSubmittingReview } = useCreateReview();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [reviewableProducts, setReviewableProducts] = useState<Record<string, boolean>>({});
+
+  // Check which products can be reviewed (for delivered orders)
+  useEffect(() => {
+    const checkReviewable = async () => {
+      const isDelivered = order?.status?.toLowerCase() === 'delivered';
+      if (isDelivered && order?.items) {
+        const reviewable: Record<string, boolean> = {};
+        for (const item of order.items) {
+          if (item.product?.id) {
+            try {
+              const response = await reviewsApi.canReviewProduct(item.product.id);
+              reviewable[item.product.id] = response?.data?.canReview ?? false;
+            } catch {
+              reviewable[item.product.id] = false;
+            }
+          }
+        }
+        setReviewableProducts(reviewable);
+      }
+    };
+    checkReviewable();
+  }, [order?.status, order?.items]);
+
+  const handleWriteReview = (productId: string, productName: string) => {
+    setSelectedProduct({ id: productId, name: productName });
+    setShowReviewForm(true);
+  };
+
+  const handleSubmitReview = async (data: { productId: string; rating: number; title?: string; comment: string; images?: File[] }) => {
+    try {
+      await createReview(data);
+      toast.success('Review Submitted', 'Thank you for your review!');
+      setShowReviewForm(false);
+      setSelectedProduct(null);
+      // Update reviewable products
+      setReviewableProducts(prev => ({
+        ...prev,
+        [data.productId]: false,
+      }));
+    } catch (error) {
+      toast.error('Review Failed', 'Failed to submit review. Please try again.');
+      throw error;
+    }
+  };
 
   const handleCancelOrder = async () => {
     try {
@@ -189,6 +243,27 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       <p className="text-sm text-gray-600 mt-1">
                         Quantity: {item.quantity} × ${formatCurrencyAmount(item.price, 2)}
                       </p>
+                      {/* Write Review Button for Delivered Orders */}
+                      {order.status?.toLowerCase() === 'delivered' && item.product?.id && (
+                        reviewableProducts[item.product.id] ? (
+                          <button
+                            onClick={() => handleWriteReview(item.product!.id, item.name)}
+                            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gold hover:text-gold/80 border border-gold/30 hover:border-gold rounded-lg transition-all hover:bg-gold/5"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            </svg>
+                            Write Review
+                          </button>
+                        ) : (
+                          <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-green-600 bg-green-50 rounded-lg">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Reviewed
+                          </span>
+                        )
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="font-serif text-xl font-bold">
@@ -345,6 +420,20 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Review Form Modal */}
+      {selectedProduct && (
+        <ReviewForm
+          isOpen={showReviewForm}
+          onClose={() => {
+            setShowReviewForm(false);
+            setSelectedProduct(null);
+          }}
+          productId={selectedProduct.id}
+          productName={selectedProduct.name}
+          onSubmit={handleSubmitReview}
+        />
+      )}
     </PageLayout>
   );
 }
