@@ -5,11 +5,20 @@ export interface User {
   firstName?: string;
   lastName?: string;
   phone?: string;
-  role: 'BUYER' | 'SELLER' | 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN';
+  avatar?: string;
+  role: 'BUYER' | 'SELLER' | 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN' | 'DELIVERY_PARTNER';
   emailVerified: boolean;
   twoFactorEnabled: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// Profile update data (subset of user fields that can be updated)
+export interface ProfileUpdateData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
 }
 
 export interface UserPreferences {
