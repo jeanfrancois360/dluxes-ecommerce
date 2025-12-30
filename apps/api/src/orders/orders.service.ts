@@ -519,6 +519,285 @@ export class OrdersService {
   }
 
   /**
+   * Generate invoice HTML for an order
+   */
+  async generateInvoiceHtml(orderId: string, userId: string): Promise<string> {
+    const order = await this.findOne(orderId, userId);
+
+    const formatCurrency = (amount: number | Decimal) => {
+      const num = typeof amount === 'number' ? amount : Number(amount);
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: order.currency || 'USD',
+      }).format(num);
+    };
+
+    const formatDate = (date: Date) => {
+      return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    };
+
+    const itemsHtml = order.items.map(item => {
+      // Extract variant info from options JSON or name
+      const variantInfo = item.variant
+        ? (item.variant.name || item.variant.colorName || '')
+        : '';
+
+      return `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            ${item.product?.images?.[0]?.url ? `<img src="${item.product.images[0].url}" alt="${item.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : ''}
+            <div>
+              <div style="font-weight: 500;">${item.name}</div>
+              ${variantInfo ? `<div style="font-size: 12px; color: #666;">Variant: ${variantInfo}</div>` : ''}
+            </div>
+          </div>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: center;">${item.quantity}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">${formatCurrency(Number(item.price))}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 500;">${formatCurrency(Number(item.price) * item.quantity)}</td>
+      </tr>
+    `;
+    }).join('');
+
+    const shippingAddr = order.shippingAddress;
+    const billingAddr = order.billingAddress || order.shippingAddress;
+
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Invoice #${order.orderNumber} - NextPik</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+          }
+          .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #CBB57B;
+          }
+          .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #000;
+          }
+          .logo span { color: #CBB57B; }
+          .invoice-title {
+            text-align: right;
+          }
+          .invoice-title h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 5px;
+          }
+          .invoice-number {
+            color: #666;
+            font-size: 14px;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+          }
+          .info-section h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #999;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+          }
+          .info-section p {
+            font-size: 14px;
+            margin-bottom: 4px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+          }
+          th {
+            background: #f8f8f8;
+            padding: 12px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #666;
+            letter-spacing: 0.5px;
+          }
+          th:nth-child(2), th:nth-child(3), th:nth-child(4) { text-align: center; }
+          th:last-child { text-align: right; }
+          .totals {
+            display: flex;
+            justify-content: flex-end;
+          }
+          .totals-table {
+            width: 300px;
+          }
+          .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e5e5;
+          }
+          .totals-row.total {
+            border-bottom: none;
+            border-top: 2px solid #333;
+            margin-top: 8px;
+            padding-top: 12px;
+            font-size: 18px;
+            font-weight: bold;
+          }
+          .totals-row.total .amount { color: #CBB57B; }
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e5e5;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+          }
+          .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+          }
+          .status-pending { background: #FEF3C7; color: #92400E; }
+          .status-confirmed { background: #DBEAFE; color: #1E40AF; }
+          .status-processing { background: #E0E7FF; color: #3730A3; }
+          .status-shipped { background: #CFFAFE; color: #0E7490; }
+          .status-delivered { background: #D1FAE5; color: #065F46; }
+          .status-cancelled { background: #FEE2E2; color: #991B1B; }
+          .status-refunded { background: #F3E8FF; color: #6B21A8; }
+          @media print {
+            body { background: white; padding: 0; }
+            .invoice-container { box-shadow: none; padding: 20px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-container">
+          <div class="header">
+            <div class="logo">Next<span>Pik</span></div>
+            <div class="invoice-title">
+              <h1>INVOICE</h1>
+              <div class="invoice-number">#${order.orderNumber}</div>
+            </div>
+          </div>
+
+          <div class="info-grid">
+            <div class="info-section">
+              <h3>Invoice Date</h3>
+              <p>${formatDate(order.createdAt)}</p>
+              <p style="margin-top: 12px;"><span class="status-badge status-${order.status.toLowerCase()}">${order.status}</span></p>
+            </div>
+            <div class="info-section">
+              <h3>Shipping Address</h3>
+              ${shippingAddr ? `
+                <p>${shippingAddr.firstName} ${shippingAddr.lastName}</p>
+                <p>${shippingAddr.address1}</p>
+                ${shippingAddr.address2 ? `<p>${shippingAddr.address2}</p>` : ''}
+                <p>${shippingAddr.city}, ${shippingAddr.province} ${shippingAddr.postalCode}</p>
+                <p>${shippingAddr.country}</p>
+              ` : '<p>N/A</p>'}
+            </div>
+            <div class="info-section">
+              <h3>Billing Address</h3>
+              ${billingAddr ? `
+                <p>${billingAddr.firstName} ${billingAddr.lastName}</p>
+                <p>${billingAddr.address1}</p>
+                ${billingAddr.address2 ? `<p>${billingAddr.address2}</p>` : ''}
+                <p>${billingAddr.city}, ${billingAddr.province} ${billingAddr.postalCode}</p>
+                <p>${billingAddr.country}</p>
+              ` : '<p>Same as shipping</p>'}
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="totals-table">
+              <div class="totals-row">
+                <span>Subtotal</span>
+                <span>${formatCurrency(Number(order.subtotal))}</span>
+              </div>
+              <div class="totals-row">
+                <span>Shipping</span>
+                <span>${formatCurrency(Number(order.shipping))}</span>
+              </div>
+              <div class="totals-row">
+                <span>Tax</span>
+                <span>${formatCurrency(Number(order.tax))}</span>
+              </div>
+              ${order.discount && Number(order.discount) > 0 ? `
+                <div class="totals-row">
+                  <span>Discount</span>
+                  <span>-${formatCurrency(Number(order.discount))}</span>
+                </div>
+              ` : ''}
+              <div class="totals-row total">
+                <span>Total</span>
+                <span class="amount">${formatCurrency(Number(order.total))}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <p>Thank you for shopping with NextPik!</p>
+            <p style="margin-top: 8px;">For questions about this invoice, please contact support@nextpik.com</p>
+          </div>
+        </div>
+
+        <div class="no-print" style="text-align: center; margin-top: 20px;">
+          <button onclick="window.print()" style="background: #000; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">
+            Print / Save as PDF
+          </button>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
    * Helper methods for timeline
    */
   private getStatusTitle(status: OrderStatus): string {

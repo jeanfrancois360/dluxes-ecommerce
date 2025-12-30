@@ -10,7 +10,10 @@ import {
   HttpCode,
   HttpStatus,
   Query,
+  Res,
+  Header,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -72,7 +75,7 @@ export class OrdersController {
   @Get(':id')
   async findOne(@Param('id') id: string, @Request() req) {
     try {
-      const data = await this.ordersService.findOne(id, req.user.userId);
+      const data = await this.ordersService.findOne(id, req.user.userId || req.user.id);
       return {
         success: true,
         data,
@@ -82,6 +85,34 @@ export class OrdersController {
         success: false,
         message: error instanceof Error ? error.message : "An error occurred",
       };
+    }
+  }
+
+  /**
+   * Get order invoice as HTML (for printing/PDF)
+   * @route GET /orders/:id/invoice
+   */
+  @Get(':id/invoice')
+  @Header('Content-Type', 'text/html')
+  async getInvoice(
+    @Param('id') id: string,
+    @Request() req,
+    @Res() res: Response
+  ) {
+    try {
+      const html = await this.ordersService.generateInvoiceHtml(id, req.user.userId || req.user.id);
+      res.send(html);
+    } catch (error) {
+      res.status(404).send(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>Error</title></head>
+          <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+            <h1>Invoice Not Found</h1>
+            <p>${error instanceof Error ? error.message : 'An error occurred'}</p>
+          </body>
+        </html>
+      `);
     }
   }
 
