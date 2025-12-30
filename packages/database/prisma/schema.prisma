@@ -100,6 +100,25 @@ model UserPreferences {
   theme      String @default("dark") // dark, light, auto
   layoutMode String @default("elegant") // elegant, compact
 
+  // Email Notification Preferences
+  emailOrderConfirmation Boolean @default(true)
+  emailOrderShipped      Boolean @default(true)
+  emailOrderDelivered    Boolean @default(true)
+  emailPaymentReceipt    Boolean @default(true)
+  emailRefundProcessed   Boolean @default(true)
+  emailPromotions        Boolean @default(false)
+  emailPriceDrops        Boolean @default(false)
+  emailBackInStock       Boolean @default(true)
+  emailReviewReminder    Boolean @default(true)
+  emailSecurityAlerts    Boolean @default(true)
+
+  // Push Notification Preferences (for future mobile/web push)
+  pushOrderUpdates    Boolean @default(true)
+  pushPromotions      Boolean @default(false)
+  pushPriceDrops      Boolean @default(false)
+  pushBackInStock     Boolean @default(true)
+  pushSecurityAlerts  Boolean @default(true)
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
