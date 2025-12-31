@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Delete, Body, Param, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -87,6 +87,70 @@ export class UsersController {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to delete account',
+      };
+    }
+  }
+
+  /**
+   * Get all active sessions for current user
+   * @route GET /users/sessions
+   */
+  @Get('sessions')
+  async getSessions(@Request() req) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const sessions = await this.usersService.getSessions(userId);
+      return {
+        success: true,
+        data: sessions,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to get sessions',
+      };
+    }
+  }
+
+  /**
+   * Revoke a specific session
+   * @route DELETE /users/sessions/:id
+   */
+  @Delete('sessions/:id')
+  async revokeSession(@Request() req, @Param('id') sessionId: string) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const result = await this.usersService.revokeSession(userId, sessionId);
+      return {
+        success: true,
+        message: result.message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to revoke session',
+      };
+    }
+  }
+
+  /**
+   * Revoke all other sessions except current
+   * @route POST /users/sessions/revoke-all
+   */
+  @Post('sessions/revoke-all')
+  @HttpCode(HttpStatus.OK)
+  async revokeAllSessions(@Request() req, @Body() body: { currentSessionId?: string }) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const result = await this.usersService.revokeAllSessions(userId, body.currentSessionId);
+      return {
+        success: true,
+        message: result.message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to revoke sessions',
       };
     }
   }

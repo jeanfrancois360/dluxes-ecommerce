@@ -13,9 +13,22 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/lib/toast';
+
+interface UserSession {
+  id: string;
+  deviceName: string | null;
+  deviceType: string | null;
+  browser: string | null;
+  os: string | null;
+  ipAddress: string | null;
+  location: string | null;
+  lastActiveAt: string;
+  createdAt: string;
+}
 
 interface PasswordFormData {
   currentPassword: string;
@@ -49,6 +62,24 @@ export default function SecurityPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+  const [isRevokingAll, setIsRevokingAll] = useState(false);
+
+  // Fetch active sessions
+  const { data: sessionsData, mutate: mutateSessions } = useSWR<{ success: boolean; data: UserSession[] }>(
+    isAuthenticated ? '/users/sessions' : null,
+    async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/sessions`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      return response.json();
+    },
+    { revalidateOnFocus: false }
+  );
+
+  const sessions = sessionsData?.data || [];
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -184,6 +215,103 @@ export default function SecurityPage() {
       setDeleteError(error.message || 'An error occurred while deleting your account');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRevokeSession = async (sessionId: string) => {
+    setRevokingSessionId(sessionId);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Session Revoked', 'The session has been logged out');
+        mutateSessions();
+      } else {
+        toast.error('Error', data.message || 'Failed to revoke session');
+      }
+    } catch {
+      toast.error('Error', 'Failed to revoke session');
+    } finally {
+      setRevokingSessionId(null);
+    }
+  };
+
+  const handleRevokeAllSessions = async () => {
+    setIsRevokingAll(true);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/sessions/revoke-all`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({}),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Sessions Revoked', 'All other sessions have been logged out');
+        mutateSessions();
+      } else {
+        toast.error('Error', data.message || 'Failed to revoke sessions');
+      }
+    } catch {
+      toast.error('Error', 'Failed to revoke sessions');
+    } finally {
+      setIsRevokingAll(false);
+    }
+  };
+
+  const formatSessionDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    });
+  };
+
+  const getDeviceIcon = (deviceType: string | null) => {
+    switch (deviceType?.toLowerCase()) {
+      case 'mobile':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        );
+      case 'tablet':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        );
     }
   };
 
@@ -773,6 +901,189 @@ export default function SecurityPage() {
                       Reset it here
                     </Link>
                   </p>
+                </div>
+              </div>
+
+              {/* Active Sessions Card */}
+              <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-8 mt-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <svg
+                        className="w-6 h-6 text-blue-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold font-['Poppins']">Active Sessions</h2>
+                      <p className="text-neutral-500">Manage devices where you&apos;re logged in</p>
+                    </div>
+                  </div>
+                  {sessions.length > 1 && (
+                    <button
+                      onClick={handleRevokeAllSessions}
+                      disabled={isRevokingAll}
+                      className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isRevokingAll ? 'Revoking...' : 'Log Out All Other'}
+                    </button>
+                  )}
+                </div>
+
+                {sessions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg
+                        className="w-8 h-8 text-neutral-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-neutral-500">No active sessions found</p>
+                    <p className="text-sm text-neutral-400 mt-1">
+                      Sessions will appear here when you log in from different devices
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {sessions.map((session, index) => (
+                      <div
+                        key={session.id}
+                        className={`flex items-center justify-between p-4 rounded-xl border ${
+                          index === 0
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-neutral-50 border-neutral-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div
+                            className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                              index === 0
+                                ? 'bg-green-100 text-green-600'
+                                : 'bg-neutral-200 text-neutral-600'
+                            }`}
+                          >
+                            {getDeviceIcon(session.deviceType)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-black">
+                                {session.browser || 'Unknown Browser'}
+                                {session.os && ` on ${session.os}`}
+                              </p>
+                              {index === 0 && (
+                                <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
+                                  Current
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-sm text-neutral-500 mt-1">
+                              {session.location && (
+                                <span className="flex items-center gap-1">
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                  </svg>
+                                  {session.location}
+                                </span>
+                              )}
+                              {session.ipAddress && (
+                                <span className="text-neutral-400">
+                                  IP: {session.ipAddress}
+                                </span>
+                              )}
+                              <span>
+                                Active {formatSessionDate(session.lastActiveAt)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        {index !== 0 && (
+                          <button
+                            onClick={() => handleRevokeSession(session.id)}
+                            disabled={revokingSessionId === session.id}
+                            className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {revokingSessionId === session.id ? (
+                              <span className="flex items-center gap-2">
+                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  />
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                  />
+                                </svg>
+                              </span>
+                            ) : (
+                              'Log Out'
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-6 pt-6 border-t border-neutral-200">
+                  <div className="flex items-start gap-3 text-sm text-neutral-500">
+                    <svg
+                      className="w-5 h-5 text-neutral-400 flex-shrink-0 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <p>
+                      If you see a session you don&apos;t recognize, log it out immediately and consider
+                      changing your password for security.
+                    </p>
+                  </div>
                 </div>
               </div>
 
