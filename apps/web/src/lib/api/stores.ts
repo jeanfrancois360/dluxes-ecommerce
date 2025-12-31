@@ -9,6 +9,85 @@ import { api } from './client';
 // Types
 // ============================================================================
 
+export interface PayoutSettings {
+  id: string;
+  name: string;
+  payoutMethod: 'bank_transfer' | 'paypal' | 'stripe_connect' | null;
+  payoutEmail: string | null;
+  payoutCurrency: string;
+  payoutMinAmount: number;
+  payoutFrequency: 'weekly' | 'biweekly' | 'monthly';
+  payoutDayOfWeek: number | null;
+  payoutDayOfMonth: number | null;
+  payoutAutomatic: boolean;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null; // Masked
+  bankRoutingNumber: string | null; // Masked
+  bankName: string | null;
+  bankBranchName: string | null;
+  bankSwiftCode: string | null;
+  bankIban: string | null; // Masked
+  bankCountry: string | null;
+  verified: boolean;
+  status: string;
+}
+
+export interface PayoutSettingsResponse {
+  settings: PayoutSettings;
+  balances: {
+    pending: number;
+    available: number;
+    currency: string;
+  };
+  nextPayoutDate: string;
+}
+
+export interface UpdatePayoutSettingsDto {
+  payoutMethod?: 'bank_transfer' | 'paypal' | 'stripe_connect';
+  payoutEmail?: string;
+  payoutCurrency?: string;
+  payoutMinAmount?: number;
+  payoutFrequency?: 'weekly' | 'biweekly' | 'monthly';
+  payoutDayOfWeek?: number;
+  payoutDayOfMonth?: number;
+  payoutAutomatic?: boolean;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankRoutingNumber?: string;
+  bankName?: string;
+  bankBranchName?: string;
+  bankSwiftCode?: string;
+  bankIban?: string;
+  bankCountry?: string;
+}
+
+export interface Payout {
+  id: string;
+  amount: number;
+  currency: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  paymentMethod: string;
+  paymentReference: string | null;
+  processedAt: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface PayoutHistoryResponse {
+  data: Payout[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  stats: {
+    totalPaid: number;
+    totalPending: number;
+    totalFailed: number;
+  };
+}
+
 export interface Store {
   id: string;
   userId: string;
@@ -156,6 +235,20 @@ export const storesAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     } as any);
   },
+
+  // Payout Settings
+  getPayoutSettings: () => api.get<PayoutSettingsResponse>('/stores/me/payout-settings'),
+
+  updatePayoutSettings: (data: UpdatePayoutSettingsDto) =>
+    api.patch<{ message: string; settings: PayoutSettings }>('/stores/me/payout-settings', data),
+
+  getPayoutHistory: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }) => api.get<PayoutHistoryResponse>('/stores/me/payouts', {
+    params,
+  } as any),
 };
 
 // Export lowercase alias for consistency
