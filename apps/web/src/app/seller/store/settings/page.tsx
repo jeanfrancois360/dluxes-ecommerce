@@ -6,7 +6,7 @@
  * Manage store information and configuration
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
@@ -15,6 +15,7 @@ import { CountrySelector } from '@/components/forms/country-selector';
 import { storesAPI } from '@/lib/api/stores';
 import useSWR from 'swr';
 import { toast } from 'sonner';
+import { Camera, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 
 interface StoreSettings {
   name: string;
@@ -39,6 +40,10 @@ export default function StoreSettingsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch store data from API
   const { data: store, error, mutate } = useSWR(
@@ -137,6 +142,70 @@ export default function StoreSettingsPage() {
     setSettings((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Logo must be less than 5MB');
+      return;
+    }
+
+    try {
+      setIsUploadingLogo(true);
+      await storesAPI.uploadLogo(file);
+      await mutate();
+      toast.success('Logo uploaded successfully!');
+    } catch (error: any) {
+      console.error('Failed to upload logo:', error);
+      toast.error(error?.message || 'Failed to upload logo');
+    } finally {
+      setIsUploadingLogo(false);
+      if (logoInputRef.current) {
+        logoInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Banner must be less than 10MB');
+      return;
+    }
+
+    try {
+      setIsUploadingBanner(true);
+      await storesAPI.uploadBanner(file);
+      await mutate();
+      toast.success('Banner uploaded successfully!');
+    } catch (error: any) {
+      console.error('Failed to upload banner:', error);
+      toast.error(error?.message || 'Failed to upload banner');
+    } finally {
+      setIsUploadingBanner(false);
+      if (bannerInputRef.current) {
+        bannerInputRef.current.value = '';
+      }
+    }
+  };
+
   const isLoading = !store && !error;
 
   if (authLoading || (isLoading && !user)) {
@@ -188,6 +257,148 @@ export default function StoreSettingsPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Store Branding Section */}
+        <div className="bg-white rounded-xl shadow-sm mb-6">
+          <div className="p-6 border-b border-neutral-200">
+            <h2 className="text-lg font-semibold text-black">Store Branding</h2>
+            <p className="text-sm text-neutral-500 mt-1">Upload your store logo and banner image</p>
+          </div>
+
+          <div className="p-6 space-y-8">
+            {/* Banner Upload */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-3">Store Banner</label>
+              <div className="relative">
+                <div
+                  className={`relative w-full h-48 rounded-xl overflow-hidden border-2 border-dashed transition-colors ${
+                    store?.banner ? 'border-transparent' : 'border-neutral-300 hover:border-gold'
+                  }`}
+                >
+                  {store?.banner ? (
+                    <>
+                      <img
+                        src={store.banner}
+                        alt="Store Banner"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button
+                          onClick={() => bannerInputRef.current?.click()}
+                          disabled={isUploadingBanner}
+                          className="px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-neutral-100 transition-colors flex items-center gap-2"
+                        >
+                          {isUploadingBanner ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Camera className="w-4 h-4" />
+                              Change Banner
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => bannerInputRef.current?.click()}
+                      disabled={isUploadingBanner}
+                      className="w-full h-full flex flex-col items-center justify-center text-neutral-500 hover:text-gold transition-colors"
+                    >
+                      {isUploadingBanner ? (
+                        <>
+                          <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                          <span className="text-sm">Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ImageIcon className="w-12 h-12 mb-2" />
+                          <span className="text-sm font-medium">Click to upload banner</span>
+                          <span className="text-xs text-neutral-400 mt-1">Recommended: 1200x300px, max 10MB</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={bannerInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleBannerUpload}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            {/* Logo Upload */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-3">Store Logo</label>
+              <div className="flex items-center gap-6">
+                <div className="relative">
+                  <div
+                    className={`w-32 h-32 rounded-xl overflow-hidden border-2 border-dashed transition-colors ${
+                      store?.logo ? 'border-transparent' : 'border-neutral-300 hover:border-gold'
+                    }`}
+                  >
+                    {store?.logo ? (
+                      <>
+                        <img
+                          src={store.logo}
+                          alt="Store Logo"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+                          <button
+                            onClick={() => logoInputRef.current?.click()}
+                            disabled={isUploadingLogo}
+                            className="p-2 bg-white rounded-full"
+                          >
+                            {isUploadingLogo ? (
+                              <Loader2 className="w-5 h-5 animate-spin text-black" />
+                            ) : (
+                              <Camera className="w-5 h-5 text-black" />
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={isUploadingLogo}
+                        className="w-full h-full flex flex-col items-center justify-center text-neutral-500 hover:text-gold transition-colors"
+                      >
+                        {isUploadingLogo ? (
+                          <Loader2 className="w-8 h-8 animate-spin" />
+                        ) : (
+                          <>
+                            <Upload className="w-8 h-8 mb-1" />
+                            <span className="text-xs">Upload</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                </div>
+                <div className="text-sm text-neutral-500">
+                  <p className="font-medium text-neutral-700 mb-1">Upload your store logo</p>
+                  <p>Recommended size: 200x200px</p>
+                  <p>Maximum file size: 5MB</p>
+                  <p>Formats: JPG, PNG, GIF, WebP</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-white rounded-xl shadow-sm">
           <div className="p-6 border-b border-neutral-200">
             <h2 className="text-lg font-semibold text-black">Store Information</h2>
