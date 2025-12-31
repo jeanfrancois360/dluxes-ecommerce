@@ -7,7 +7,7 @@
  * URL: /store/[slug]
  */
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useParams, notFound } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -44,18 +44,42 @@ type TabType = 'products' | 'about' | 'reviews' | 'policies';
 
 interface StoreReview {
   id: string;
-  userId: string;
   rating: number;
+  title?: string;
   comment: string;
+  images?: string[];
+  isVerified?: boolean;
   createdAt: string;
   user?: {
+    id: string;
     firstName: string;
     lastName: string;
     avatar?: string;
   };
   product?: {
+    id: string;
     name: string;
+    slug: string;
     heroImage: string;
+  };
+}
+
+interface StoreReviewsResponse {
+  data: StoreReview[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  summary: {
+    averageRating: number;
+    totalReviews: number;
+    breakdown: {
+      5: number;
+      4: number;
+      3: number;
+      2: number;
+      1: number;
+    };
   };
 }
 
@@ -82,27 +106,17 @@ function StarRating({ rating, size = 'md' }: { rating: number; size?: 'sm' | 'md
 }
 
 // Rating Breakdown Component
-function RatingBreakdown({ reviews }: { reviews: StoreReview[] }) {
-  const breakdown = useMemo(() => {
-    const counts = [0, 0, 0, 0, 0];
-    reviews.forEach(r => {
-      if (r.rating >= 1 && r.rating <= 5) {
-        counts[r.rating - 1]++;
-      }
-    });
-    return counts.reverse(); // 5 to 1
-  }, [reviews]);
-
-  const total = reviews.length;
+function RatingBreakdown({ breakdown, total }: { breakdown: { 5: number; 4: number; 3: number; 2: number; 1: number }; total: number }) {
+  const stars = [5, 4, 3, 2, 1] as const;
 
   return (
     <div className="space-y-2">
-      {breakdown.map((count, i) => {
-        const stars = 5 - i;
+      {stars.map((star, i) => {
+        const count = breakdown[star];
         const percentage = total > 0 ? (count / total) * 100 : 0;
         return (
-          <div key={stars} className="flex items-center gap-3">
-            <span className="text-sm text-neutral-600 w-12">{stars} star</span>
+          <div key={star} className="flex items-center gap-3">
+            <span className="text-sm text-neutral-600 w-12">{star} star</span>
             <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
@@ -272,14 +286,10 @@ export default function PublicStorePage() {
     { keepPreviousData: true }
   );
 
-  // Fetch store reviews (using product reviews from this store)
-  const { data: reviewsData, isLoading: reviewsLoading } = useSWR<{ data: StoreReview[]; total: number }>(
+  // Fetch store reviews (aggregated from product reviews)
+  const { data: reviewsData, isLoading: reviewsLoading } = useSWR<StoreReviewsResponse>(
     store?.id ? `store-reviews-${store.id}` : null,
-    async () => {
-      // For now, return empty reviews - this endpoint would need to be implemented
-      // In production, you'd aggregate product reviews or have store-level reviews
-      return { data: [], total: 0 };
-    }
+    () => storesAPI.getStoreReviews(store!.id, { page: 1, limit: 50 })
   );
 
   // Handle store not found or error
@@ -342,7 +352,9 @@ export default function PublicStorePage() {
   const totalProducts = productsData?.total || 0;
   const totalPages = Math.ceil(totalProducts / pageSize);
   const reviews = reviewsData?.data || [];
-  const averageRating = store.rating ? Number(store.rating) : 0;
+  const reviewsSummary = reviewsData?.summary;
+  const averageRating = reviewsSummary?.averageRating ?? (store.rating ? Number(store.rating) : 0);
+  const totalReviews = reviewsSummary?.totalReviews ?? store.reviewCount ?? 0;
 
   const memberSince = new Date(store.createdAt).toLocaleDateString('en-US', {
     month: 'long',
@@ -435,7 +447,7 @@ export default function PublicStorePage() {
                         <div className="flex items-center gap-1">
                           <StarRating rating={averageRating} size="sm" />
                           <span className="font-medium">{averageRating.toFixed(1)}</span>
-                          <span>({store.reviewCount} reviews)</span>
+                          <span>({totalReviews} reviews)</span>
                         </div>
                       )}
                       <div className="flex items-center gap-1">
@@ -707,7 +719,7 @@ export default function PublicStorePage() {
                       { label: 'Products', value: store.totalProducts, icon: Package },
                       { label: 'Total Sales', value: store.totalOrders, icon: ShoppingBag },
                       { label: 'Rating', value: averageRating > 0 ? averageRating.toFixed(1) : 'N/A', icon: Star },
-                      { label: 'Reviews', value: store.reviewCount, icon: MessageCircle },
+                      { label: 'Reviews', value: totalReviews, icon: MessageCircle },
                     ].map((stat) => (
                       <div
                         key={stat.label}
@@ -815,10 +827,12 @@ export default function PublicStorePage() {
                           </p>
                           <StarRating rating={averageRating} size="lg" />
                           <p className="text-neutral-500 mt-2">
-                            Based on {store.reviewCount} reviews
+                            Based on {totalReviews} reviews
                           </p>
                         </div>
-                        <RatingBreakdown reviews={reviews} />
+                        {reviewsSummary && (
+                          <RatingBreakdown breakdown={reviewsSummary.breakdown} total={totalReviews} />
+                        )}
                       </div>
                     </div>
 
