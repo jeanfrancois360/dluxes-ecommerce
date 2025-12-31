@@ -895,4 +895,140 @@ export class StoresService {
   private getDaysInMonth(date: Date): number {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   }
+
+  /**
+   * Get seller's vacation mode status
+   */
+  async getVacationStatus(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        vacationMode: true,
+        vacationMessage: true,
+        vacationStartDate: true,
+        vacationEndDate: true,
+        vacationAutoReply: true,
+        vacationHideProducts: true,
+        status: true,
+        isActive: true,
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Check if vacation should auto-end
+    const now = new Date();
+    let isVacationActive = store.vacationMode;
+    let autoEndTriggered = false;
+
+    if (store.vacationMode && store.vacationEndDate) {
+      const endDate = new Date(store.vacationEndDate);
+      if (now >= endDate) {
+        // Auto-end vacation
+        await this.prisma.store.update({
+          where: { userId },
+          data: {
+            vacationMode: false,
+            vacationStartDate: null,
+            vacationEndDate: null,
+          },
+        });
+        isVacationActive = false;
+        autoEndTriggered = true;
+      }
+    }
+
+    // Calculate days on vacation
+    let daysOnVacation = 0;
+    if (store.vacationMode && store.vacationStartDate) {
+      const startDate = new Date(store.vacationStartDate);
+      daysOnVacation = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    // Calculate days until vacation ends
+    let daysUntilEnd = null;
+    if (store.vacationMode && store.vacationEndDate) {
+      const endDate = new Date(store.vacationEndDate);
+      daysUntilEnd = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysUntilEnd < 0) daysUntilEnd = 0;
+    }
+
+    return {
+      vacationMode: isVacationActive,
+      vacationMessage: store.vacationMessage,
+      vacationStartDate: store.vacationStartDate,
+      vacationEndDate: store.vacationEndDate,
+      vacationAutoReply: store.vacationAutoReply,
+      vacationHideProducts: store.vacationHideProducts,
+      daysOnVacation: isVacationActive ? daysOnVacation : 0,
+      daysUntilEnd,
+      autoEndTriggered,
+      storeStatus: store.status,
+      storeActive: store.isActive,
+    };
+  }
+
+  /**
+   * Update seller's vacation mode
+   */
+  async updateVacationMode(userId: string, dto: any) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      vacationMode: dto.vacationMode,
+      vacationMessage: dto.vacationMessage || null,
+      vacationAutoReply: dto.vacationAutoReply || null,
+      vacationHideProducts: dto.vacationHideProducts ?? false,
+    };
+
+    // Handle vacation end date
+    if (dto.vacationEndDate) {
+      updateData.vacationEndDate = new Date(dto.vacationEndDate);
+    } else {
+      updateData.vacationEndDate = null;
+    }
+
+    // Set or clear start date based on vacation mode
+    if (dto.vacationMode && !store.vacationMode) {
+      // Enabling vacation mode - set start date
+      updateData.vacationStartDate = new Date();
+    } else if (!dto.vacationMode) {
+      // Disabling vacation mode - clear dates
+      updateData.vacationStartDate = null;
+      updateData.vacationEndDate = null;
+    }
+
+    const updatedStore = await this.prisma.store.update({
+      where: { userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        vacationMode: true,
+        vacationMessage: true,
+        vacationStartDate: true,
+        vacationEndDate: true,
+        vacationAutoReply: true,
+        vacationHideProducts: true,
+      },
+    });
+
+    return {
+      message: dto.vacationMode
+        ? 'Vacation mode enabled. Your store will display the vacation message.'
+        : 'Vacation mode disabled. Your store is now active.',
+      vacation: updatedStore,
+    };
+  }
 }

@@ -19,6 +19,7 @@ import { StoresService } from './stores.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { UpdatePayoutSettingsDto } from './dto/update-payout-settings.dto';
+import { UpdateVacationModeDto } from './dto/update-vacation-mode.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -180,6 +181,26 @@ export class StoresController {
       limit ? parseInt(limit) : 20,
       status,
     );
+  }
+
+  /**
+   * Get seller's vacation mode status
+   */
+  @Get('me/vacation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  getVacationStatus(@Req() req: any) {
+    return this.storesService.getVacationStatus(req.user.id);
+  }
+
+  /**
+   * Update seller's vacation mode
+   */
+  @Patch('me/vacation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  updateVacationMode(@Req() req: any, @Body() dto: UpdateVacationModeDto) {
+    return this.storesService.updateVacationMode(req.user.id, dto);
   }
 
   // ============================================================================

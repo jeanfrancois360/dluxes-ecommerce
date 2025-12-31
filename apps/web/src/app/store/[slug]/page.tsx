@@ -37,6 +37,7 @@ import {
   MessageCircle,
   AlertCircle,
   Store as StoreIcon,
+  Palmtree,
 } from 'lucide-react';
 
 type TabType = 'products' | 'about' | 'reviews' | 'policies';
@@ -466,6 +467,37 @@ export default function PublicStorePage() {
               </motion.div>
             </div>
           </div>
+
+          {/* Vacation Mode Banner */}
+          {store.vacationMode && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Palmtree className="w-6 h-6 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-amber-900 mb-1">Store on Vacation</h3>
+                  <p className="text-amber-800 text-sm">
+                    {store.vacationMessage || 'This store is currently on vacation. Orders may be delayed.'}
+                  </p>
+                  {store.vacationEndDate && (
+                    <p className="text-amber-600 text-xs mt-2">
+                      Expected return: {new Date(store.vacationEndDate).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {/* Tab Navigation */}
           <div className="border-b border-neutral-200 mb-8">
