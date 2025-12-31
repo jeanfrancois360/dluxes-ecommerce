@@ -88,11 +88,53 @@ export interface PayoutHistoryResponse {
   };
 }
 
+// Vacation Mode Types
+export interface VacationStatusResponse {
+  vacationMode: boolean;
+  vacationMessage: string | null;
+  vacationStartDate: string | null;
+  vacationEndDate: string | null;
+  vacationAutoReply: string | null;
+  vacationHideProducts: boolean;
+  daysOnVacation: number;
+  daysUntilEnd: number | null;
+  autoEndTriggered: boolean;
+  storeStatus: string;
+  storeActive: boolean;
+}
+
+export interface UpdateVacationModeDto {
+  vacationMode: boolean;
+  vacationMessage?: string;
+  vacationEndDate?: string;
+  vacationAutoReply?: string;
+  vacationHideProducts?: boolean;
+}
+
+export interface VacationUpdateResponse {
+  message: string;
+  vacation: {
+    id: string;
+    name: string;
+    vacationMode: boolean;
+    vacationMessage: string | null;
+    vacationStartDate: string | null;
+    vacationEndDate: string | null;
+    vacationAutoReply: string | null;
+    vacationHideProducts: boolean;
+  };
+}
+
 export interface Store {
   id: string;
   userId: string;
   name: string;
   slug: string;
+  // Vacation mode fields
+  vacationMode?: boolean;
+  vacationMessage?: string | null;
+  vacationStartDate?: string | null;
+  vacationEndDate?: string | null;
   description: string | null;
   logo: string | null;
   banner: string | null;
@@ -249,6 +291,12 @@ export const storesAPI = {
   }) => api.get<PayoutHistoryResponse>('/stores/me/payouts', {
     params,
   } as any),
+
+  // Vacation Mode
+  getVacationStatus: () => api.get<VacationStatusResponse>('/stores/me/vacation'),
+
+  updateVacationMode: (data: UpdateVacationModeDto) =>
+    api.patch<VacationUpdateResponse>('/stores/me/vacation', data),
 };
 
 // Export lowercase alias for consistency

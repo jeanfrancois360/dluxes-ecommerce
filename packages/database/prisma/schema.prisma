@@ -224,6 +224,14 @@ model Store {
   bankIban           String?  // For international transfers
   bankCountry        String?
 
+  // Vacation Mode
+  vacationMode        Boolean   @default(false)
+  vacationMessage     String?   @db.Text // Message to display on store page
+  vacationStartDate   DateTime? // When vacation mode was enabled
+  vacationEndDate     DateTime? // Optional auto-end date
+  vacationAutoReply   String?   @db.Text // Auto-reply for inquiries during vacation
+  vacationHideProducts Boolean  @default(false) // Hide products from search during vacation
+
   // SEO
   metaTitle       String?
   metaDescription String?
