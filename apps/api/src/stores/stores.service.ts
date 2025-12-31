@@ -1031,4 +1031,192 @@ export class StoresService {
       vacation: updatedStore,
     };
   }
+
+  // ============================================================================
+  // Store Following Methods
+  // ============================================================================
+
+  /**
+   * Get follower count for a store
+   */
+  async getFollowerCount(storeId: string) {
+    const count = await this.prisma.storeFollow.count({
+      where: { storeId },
+    });
+
+    return { count };
+  }
+
+  /**
+   * Get list of stores the user is following
+   */
+  async getFollowingStores(userId: string, page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+
+    const [follows, total] = await Promise.all([
+      this.prisma.storeFollow.findMany({
+        where: { userId },
+        include: {
+          store: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              description: true,
+              logo: true,
+              banner: true,
+              city: true,
+              country: true,
+              verified: true,
+              rating: true,
+              reviewCount: true,
+              totalProducts: true,
+              totalOrders: true,
+              vacationMode: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.storeFollow.count({
+        where: { userId },
+      }),
+    ]);
+
+    return {
+      data: follows.map((f) => ({
+        ...f.store,
+        followedAt: f.createdAt,
+      })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Check if user is following a specific store
+   */
+  async isFollowing(userId: string, storeId: string) {
+    const follow = await this.prisma.storeFollow.findUnique({
+      where: {
+        userId_storeId: {
+          userId,
+          storeId,
+        },
+      },
+    });
+
+    return { isFollowing: !!follow };
+  }
+
+  /**
+   * Follow a store
+   */
+  async followStore(userId: string, storeId: string) {
+    // Check if store exists and is active
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true, name: true, userId: true, status: true, isActive: true },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    if (store.status !== 'ACTIVE' || !store.isActive) {
+      throw new BadRequestException('Cannot follow an inactive store');
+    }
+
+    // Prevent following own store
+    if (store.userId === userId) {
+      throw new BadRequestException('You cannot follow your own store');
+    }
+
+    // Check if already following
+    const existingFollow = await this.prisma.storeFollow.findUnique({
+      where: {
+        userId_storeId: {
+          userId,
+          storeId,
+        },
+      },
+    });
+
+    if (existingFollow) {
+      throw new BadRequestException('You are already following this store');
+    }
+
+    // Create follow
+    await this.prisma.storeFollow.create({
+      data: {
+        userId,
+        storeId,
+      },
+    });
+
+    // Get updated follower count
+    const followerCount = await this.prisma.storeFollow.count({
+      where: { storeId },
+    });
+
+    return {
+      message: `You are now following ${store.name}`,
+      isFollowing: true,
+      followerCount,
+    };
+  }
+
+  /**
+   * Unfollow a store
+   */
+  async unfollowStore(userId: string, storeId: string) {
+    // Check if following
+    const follow = await this.prisma.storeFollow.findUnique({
+      where: {
+        userId_storeId: {
+          userId,
+          storeId,
+        },
+      },
+    });
+
+    if (!follow) {
+      throw new BadRequestException('You are not following this store');
+    }
+
+    // Delete follow
+    await this.prisma.storeFollow.delete({
+      where: {
+        userId_storeId: {
+          userId,
+          storeId,
+        },
+      },
+    });
+
+    // Get updated follower count
+    const followerCount = await this.prisma.storeFollow.count({
+      where: { storeId },
+    });
+
+    // Get store name for message
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { name: true },
+    });
+
+    return {
+      message: `You have unfollowed ${store?.name || 'the store'}`,
+      isFollowing: false,
+      followerCount,
+    };
+  }
 }

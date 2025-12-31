@@ -78,6 +78,9 @@ model User {
   // Return Requests
   returnRequests  ReturnRequest[]
 
+  // Followed Stores
+  followedStores StoreFollow[]
+
   @@index([email])
   @@index([lastLoginAt])
   @@index([deliveryProviderId])
@@ -252,6 +255,9 @@ model Store {
   // Product Inquiries
   inquiries ProductInquiry[]
 
+  // Store Followers
+  followers StoreFollow[]
+
   @@index([slug])
   @@index([status])
   @@index([userId])
@@ -265,6 +271,23 @@ enum StoreStatus {
   SUSPENDED // Temporarily suspended
   INACTIVE // Deactivated by seller
   REJECTED // Rejected by admin
+}
+
+// Store Followers (Buyers following stores)
+model StoreFollow {
+  id        String   @id @default(cuid())
+  userId    String
+  storeId   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId]) // Each user can only follow a store once
+  @@index([userId])
+  @@index([storeId])
+  @@map("store_follows")
 }
 
 // Product Catalog

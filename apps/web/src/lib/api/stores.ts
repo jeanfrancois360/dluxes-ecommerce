@@ -305,6 +305,36 @@ export const storesAPI = {
 
   updateVacationMode: (data: UpdateVacationModeDto) =>
     api.patch<VacationUpdateResponse>('/stores/me/vacation', data),
+
+  // Store Following
+  getFollowingStores: (params?: {
+    page?: number;
+    limit?: number;
+  }) => api.get<{
+    data: (Store & { followedAt: string })[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }>('/stores/me/following', { params } as any),
+
+  getFollowerCount: (storeId: string) =>
+    api.get<{ count: number }>(`/stores/${storeId}/followers/count`),
+
+  isFollowing: (storeId: string) =>
+    api.get<{ isFollowing: boolean }>(`/stores/${storeId}/is-following`),
+
+  followStore: (storeId: string) =>
+    api.post<{ message: string; isFollowing: boolean; followerCount: number }>(
+      `/stores/${storeId}/follow`
+    ),
+
+  unfollowStore: (storeId: string) =>
+    api.delete<{ message: string; isFollowing: boolean; followerCount: number }>(
+      `/stores/${storeId}/follow`
+    ),
 };
 
 // Export lowercase alias for consistency
