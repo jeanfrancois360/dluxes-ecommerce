@@ -86,6 +86,15 @@ export interface TopProduct {
   views: number;
 }
 
+export interface LowStockProduct {
+  id: string;
+  name: string;
+  slug: string;
+  heroImage: string | null;
+  inventory: number;
+  price: number;
+}
+
 export interface Commission {
   id: string;
   orderId: string;
@@ -286,6 +295,11 @@ export const sellerAPI = {
       params: { limit },
     } as any),
 
+  getLowStockProducts: (threshold: number = 10, limit: number = 10) =>
+    api.get<LowStockProduct[]>('/seller/products/low-stock', {
+      params: { threshold, limit },
+    } as any),
+
   getRecentActivity: (limit: number = 10) =>
     api.get<Activity[]>('/seller/analytics/recent-activity', {
       params: { limit },
@@ -432,4 +446,6 @@ export const getRevenueAnalytics = (period?: 'daily' | 'weekly' | 'monthly') =>
   sellerAPI.getRevenueAnalytics(period);
 export const getOrderStatusBreakdown = () => sellerAPI.getOrderStatusBreakdown();
 export const getTopProducts = (limit?: number) => sellerAPI.getTopProducts(limit);
+export const getLowStockProducts = (threshold?: number, limit?: number) =>
+  sellerAPI.getLowStockProducts(threshold, limit);
 export const getRecentActivity = (limit?: number) => sellerAPI.getRecentActivity(limit);
