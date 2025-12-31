@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -56,6 +56,37 @@ export class UsersController {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to update notification preferences',
+      };
+    }
+  }
+
+  /**
+   * Delete user account
+   * Requires password confirmation for security
+   * @route POST /users/delete-account
+   */
+  @Post('delete-account')
+  @HttpCode(HttpStatus.OK)
+  async deleteAccount(@Request() req, @Body() body: { password: string }) {
+    try {
+      const userId = req.user.userId || req.user.id;
+
+      if (!body.password) {
+        return {
+          success: false,
+          message: 'Password is required to delete account',
+        };
+      }
+
+      const result = await this.usersService.deleteAccount(userId, body.password);
+      return {
+        success: true,
+        message: result.message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to delete account',
       };
     }
   }
