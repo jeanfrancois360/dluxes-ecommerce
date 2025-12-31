@@ -144,6 +144,66 @@ export interface SellerOrder {
   createdAt: string;
 }
 
+// Detailed order type for individual order view
+export interface SellerOrderDetail {
+  id: string;
+  orderNumber: string;
+  status: string;
+  paymentStatus: string;
+  subtotal: number;
+  tax: number;
+  shippingCost: number;
+  total: number;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
+  items: Array<{
+    id: string;
+    quantity: number;
+    price: number;
+    total: number;
+    product: {
+      id: string;
+      name: string;
+      slug: string;
+      heroImage: string | null;
+    };
+  }>;
+  shippingAddress: {
+    id: string;
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    phone?: string | null;
+  } | null;
+  delivery: {
+    id: string;
+    status: string;
+    trackingNumber: string | null;
+    estimatedDelivery: string | null;
+    deliveredAt: string | null;
+    deliveryPartner?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      phone: string | null;
+    } | null;
+    provider?: {
+      id: string;
+      name: string;
+      contactPhone: string | null;
+    } | null;
+  } | null;
+}
+
 // Inquiry Types
 export type InquiryStatus =
   | 'NEW'
@@ -264,7 +324,7 @@ export const sellerAPI = {
     params,
   } as any),
 
-  getOrder: (id: string) => api.get<SellerOrder>(`/seller/orders/${id}`),
+  getOrder: (id: string) => api.get<SellerOrderDetail>(`/seller/orders/${id}`),
 
   updateOrderStatus: (id: string, data: { status: string; notes?: string }) =>
     api.patch(`/seller/orders/${id}/status`, data),
