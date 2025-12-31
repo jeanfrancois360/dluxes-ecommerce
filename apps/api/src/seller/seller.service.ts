@@ -155,6 +155,122 @@ export class SellerService {
   }
 
   /**
+   * Get reviews for seller's products
+   */
+  async getMyReviews(userId: string, query: any) {
+    const { page = 1, limit = 20, rating, productId } = query;
+    const skip = (page - 1) * Number(limit);
+
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const where: any = {
+      product: {
+        storeId: store.id,
+      },
+    };
+
+    if (rating) {
+      where.rating = Number(rating);
+    }
+
+    if (productId) {
+      where.productId = productId;
+    }
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            },
+          },
+          product: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              heroImage: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.review.count({ where }),
+    ]);
+
+    return {
+      data: reviews,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / Number(limit)),
+    };
+  }
+
+  /**
+   * Get review statistics for seller's products
+   */
+  async getReviewStats(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const reviews = await this.prisma.review.findMany({
+      where: {
+        product: {
+          storeId: store.id,
+        },
+      },
+      select: {
+        rating: true,
+        isApproved: true,
+      },
+    });
+
+    const total = reviews.length;
+    const approved = reviews.filter((r) => r.isApproved).length;
+    const pending = reviews.filter((r) => !r.isApproved).length;
+
+    // Rating distribution
+    const ratingDistribution = {
+      1: reviews.filter((r) => r.rating === 1).length,
+      2: reviews.filter((r) => r.rating === 2).length,
+      3: reviews.filter((r) => r.rating === 3).length,
+      4: reviews.filter((r) => r.rating === 4).length,
+      5: reviews.filter((r) => r.rating === 5).length,
+    };
+
+    // Average rating
+    const averageRating =
+      total > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / total : 0;
+
+    return {
+      total,
+      approved,
+      pending,
+      averageRating: Math.round(averageRating * 10) / 10,
+      ratingDistribution,
+    };
+  }
+
+  /**
    * Get seller's orders
    */
   async getMyOrders(userId: string, query: any) {

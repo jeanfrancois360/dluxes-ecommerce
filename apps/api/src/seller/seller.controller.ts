@@ -211,4 +211,35 @@ export class SellerController {
   getRecentActivity(@Req() req: any, @Query('limit') limit?: string) {
     return this.sellerService.getRecentActivity(req.user.userId, limit ? parseInt(limit) : 10);
   }
+
+  // ============================================================================
+  // Reviews
+  // ============================================================================
+
+  /**
+   * Get reviews for seller's products
+   */
+  @Get('reviews')
+  getMyReviews(
+    @Req() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('rating') rating?: string,
+    @Query('productId') productId?: string,
+  ) {
+    return this.sellerService.getMyReviews(req.user.userId, {
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 20,
+      rating: rating ? parseInt(rating) : undefined,
+      productId,
+    });
+  }
+
+  /**
+   * Get review statistics for seller's products
+   */
+  @Get('reviews/stats')
+  getReviewStats(@Req() req: any) {
+    return this.sellerService.getReviewStats(req.user.userId);
+  }
 }
