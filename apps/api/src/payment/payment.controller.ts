@@ -2,6 +2,8 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
+  Patch,
   Body,
   Param,
   Headers,
@@ -18,6 +20,109 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('payment')
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
+
+  // ==========================================
+  // PAYMENT METHODS MANAGEMENT
+  // ==========================================
+
+  /**
+   * Get saved payment methods for current user
+   * GET /payment/methods
+   */
+  @Get('methods')
+  @UseGuards(JwtAuthGuard)
+  async getPaymentMethods(@Request() req: any) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const data = await this.paymentService.listPaymentMethods(userId);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to get payment methods',
+      };
+    }
+  }
+
+  /**
+   * Create a SetupIntent for adding a new card
+   * POST /payment/methods/setup
+   */
+  @Post('methods/setup')
+  @UseGuards(JwtAuthGuard)
+  async createSetupIntent(@Request() req: any) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const data = await this.paymentService.createSetupIntent(userId);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to create setup intent',
+      };
+    }
+  }
+
+  /**
+   * Set a payment method as default
+   * PATCH /payment/methods/:id/default
+   */
+  @Patch('methods/:id/default')
+  @UseGuards(JwtAuthGuard)
+  async setDefaultPaymentMethod(@Request() req: any, @Param('id') paymentMethodId: string) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const data = await this.paymentService.setDefaultPaymentMethod(userId, paymentMethodId);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to set default payment method',
+      };
+    }
+  }
+
+  /**
+   * Remove a saved payment method
+   * DELETE /payment/methods/:id
+   */
+  @Delete('methods/:id')
+  @UseGuards(JwtAuthGuard)
+  async removePaymentMethod(@Request() req: any, @Param('id') paymentMethodId: string) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const data = await this.paymentService.removePaymentMethod(userId, paymentMethodId);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to remove payment method',
+      };
+    }
+  }
+
+  /**
+   * Create a payment intent with a saved payment method
+   * POST /payment/create-intent-saved
+   */
+  @Post('create-intent-saved')
+  @UseGuards(JwtAuthGuard)
+  async createPaymentIntentWithSavedMethod(
+    @Body() body: CreatePaymentIntentDto & { paymentMethodId: string },
+    @Request() req: any,
+  ) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const { paymentMethodId, ...dto } = body;
+      const data = await this.paymentService.createPaymentIntentWithSavedMethod(dto, userId, paymentMethodId);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to create payment intent',
+      };
+    }
+  }
 
   /**
    * Get supported payment currencies
