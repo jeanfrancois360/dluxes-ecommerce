@@ -233,7 +233,15 @@ export const storesAPI = {
     limit?: number;
     status?: string;
     verified?: boolean;
-  }) => api.get<{ data: Store[]; total: number }>('/stores', {
+  }) => api.get<{
+    data: Store[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }>('/stores', {
     params,
   } as any),
 

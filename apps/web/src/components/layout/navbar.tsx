@@ -31,6 +31,7 @@ export function Navbar({ className }: NavbarProps) {
   const navigationLinks = [
     { label: 'Home', href: '/' },
     { label: 'Shop', href: '/products', hasMegaMenu: true, megaMenuType: 'shop' },
+    { label: 'Stores', href: '/stores' },
     { label: 'Collections', href: '/collections', hasMegaMenu: true, megaMenuType: 'collections' },
     { label: 'Journal', href: '/about' },
     { label: 'Contact', href: '/contact' },
