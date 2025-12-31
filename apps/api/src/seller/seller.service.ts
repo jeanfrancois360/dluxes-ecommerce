@@ -1357,4 +1357,168 @@ export class SellerService {
       isPositive: percentChange >= 0,
     };
   }
+
+  // ============================================================================
+  // Seller Application
+  // ============================================================================
+
+  /**
+   * Apply to become a seller
+   */
+  async applyToBecomeSeller(userId: string, data: {
+    storeName: string;
+    storeDescription?: string;
+    businessType: string;
+    businessName?: string;
+    taxId?: string;
+    phone: string;
+    website?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+    productCategories?: string[];
+    monthlyVolume?: string;
+  }) {
+    // Check if user already has a store
+    const existingStore = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (existingStore) {
+      if (existingStore.status === 'ACTIVE') {
+        throw new ForbiddenException('You are already a seller');
+      }
+      if (existingStore.status === 'PENDING') {
+        throw new ForbiddenException('Your seller application is already pending review');
+      }
+      if (existingStore.status === 'REJECTED') {
+        // Allow re-application by updating the existing store
+        const updatedStore = await this.prisma.store.update({
+          where: { userId },
+          data: {
+            name: data.storeName,
+            slug: this.generateSlug(data.storeName),
+            description: data.storeDescription,
+            phone: data.phone,
+            website: data.website,
+            taxId: data.taxId,
+            address1: data.address,
+            city: data.city,
+            province: data.state,
+            postalCode: data.zipCode,
+            country: data.country,
+            status: 'PENDING',
+          },
+        });
+
+        return {
+          success: true,
+          message: 'Seller application resubmitted successfully. We will review your application and get back to you soon.',
+          store: {
+            id: updatedStore.id,
+            name: updatedStore.name,
+            status: updatedStore.status,
+          },
+        };
+      }
+    }
+
+    // Check if user is a buyer or customer
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.role !== 'BUYER' && user.role !== 'CUSTOMER') {
+      throw new ForbiddenException('Only buyers can apply to become sellers');
+    }
+
+    // Create the store with PENDING status
+    const store = await this.prisma.store.create({
+      data: {
+        userId,
+        name: data.storeName,
+        slug: this.generateSlug(data.storeName),
+        description: data.storeDescription,
+        email: user.email,
+        phone: data.phone,
+        website: data.website,
+        taxId: data.taxId,
+        address1: data.address,
+        city: data.city,
+        province: data.state,
+        postalCode: data.zipCode,
+        country: data.country,
+        status: 'PENDING',
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Seller application submitted successfully. We will review your application and get back to you soon.',
+      store: {
+        id: store.id,
+        name: store.name,
+        status: store.status,
+      },
+    };
+  }
+
+  /**
+   * Get seller application status
+   */
+  async getApplicationStatus(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        createdAt: true,
+        verifiedAt: true,
+      },
+    });
+
+    if (!store) {
+      return {
+        success: true,
+        data: {
+          hasApplication: false,
+          status: null,
+        },
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        hasApplication: true,
+        store: {
+          id: store.id,
+          name: store.name,
+          status: store.status,
+          appliedAt: store.createdAt,
+          approvedAt: store.verifiedAt,
+        },
+      },
+    };
+  }
+
+  /**
+   * Generate unique slug from store name
+   */
+  private generateSlug(name: string): string {
+    const baseSlug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    const uniqueSuffix = Date.now().toString(36).slice(-6);
+    return `${baseSlug}-${uniqueSuffix}`;
+  }
 }

@@ -19,10 +19,54 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
 @Controller('seller')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class SellerController {
   constructor(private sellerService: SellerService) {}
+
+  // ============================================================================
+  // Public/Buyer Endpoints (no seller role required)
+  // ============================================================================
+
+  /**
+   * Apply to become a seller (Buyer only)
+   * Creates a store with PENDING status
+   */
+  @Post('apply')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async applyToBecomeSeller(
+    @Req() req: any,
+    @Body() data: {
+      storeName: string;
+      storeDescription?: string;
+      businessType: string;
+      businessName?: string;
+      taxId?: string;
+      phone: string;
+      website?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+      country?: string;
+      productCategories?: string[];
+      monthlyVolume?: string;
+    }
+  ) {
+    return this.sellerService.applyToBecomeSeller(req.user.userId || req.user.id, data);
+  }
+
+  /**
+   * Check seller application status
+   */
+  @Get('application-status')
+  @UseGuards(JwtAuthGuard)
+  async getApplicationStatus(@Req() req: any) {
+    return this.sellerService.getApplicationStatus(req.user.userId || req.user.id);
+  }
+
+  // ============================================================================
+  // Protected Seller Endpoints
+  // ============================================================================
 
   // ============================================================================
   // Dashboard
@@ -32,6 +76,8 @@ export class SellerController {
    * Get seller dashboard summary
    */
   @Get('dashboard')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getDashboardSummary(@Req() req: any) {
     return this.sellerService.getDashboardSummary(req.user.userId);
   }
@@ -44,6 +90,8 @@ export class SellerController {
    * Get seller's products
    */
   @Get('products')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getMyProducts(@Req() req: any, @Query() query: any) {
     return this.sellerService.getMyProducts(req.user.userId, query);
   }
@@ -52,6 +100,8 @@ export class SellerController {
    * Get seller's product statistics
    */
   @Get('products/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getProductStats(@Req() req: any) {
     return this.sellerService.getProductStats(req.user.userId);
   }
@@ -60,6 +110,8 @@ export class SellerController {
    * Get products with low stock
    */
   @Get('products/low-stock')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getLowStockProducts(
     @Req() req: any,
     @Query('threshold') threshold?: string,
@@ -76,6 +128,8 @@ export class SellerController {
    * Get single product by ID
    */
   @Get('products/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getProduct(@Req() req: any, @Param('id') id: string) {
     return this.sellerService.getProduct(req.user.userId, id);
   }
@@ -84,6 +138,8 @@ export class SellerController {
    * Create new product
    */
   @Post('products')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.CREATED)
   createProduct(@Req() req: any, @Body() data: any) {
     return this.sellerService.createProduct(req.user.userId, data);
@@ -93,6 +149,8 @@ export class SellerController {
    * Update product
    */
   @Patch('products/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   updateProduct(@Req() req: any, @Param('id') id: string, @Body() data: any) {
     return this.sellerService.updateProduct(req.user.userId, id, data);
   }
@@ -101,6 +159,8 @@ export class SellerController {
    * Delete product
    */
   @Delete('products/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   deleteProduct(@Req() req: any, @Param('id') id: string) {
     return this.sellerService.deleteProduct(req.user.userId, id);
   }
@@ -109,6 +169,8 @@ export class SellerController {
    * Bulk update product status
    */
   @Patch('products/bulk/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   bulkUpdateStatus(
     @Req() req: any,
     @Body() data: { productIds: string[]; status: string },
@@ -120,6 +182,8 @@ export class SellerController {
    * Bulk delete products
    */
   @Delete('products/bulk/delete')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   bulkDelete(@Req() req: any, @Body() data: { productIds: string[] }) {
     return this.sellerService.bulkDelete(req.user.userId, data.productIds);
   }
@@ -132,6 +196,8 @@ export class SellerController {
    * Get seller's orders
    */
   @Get('orders')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getMyOrders(@Req() req: any, @Query() query: any) {
     return this.sellerService.getMyOrders(req.user.userId, query);
   }
@@ -140,6 +206,8 @@ export class SellerController {
    * Get seller's order statistics
    */
   @Get('orders/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getOrderStats(@Req() req: any) {
     return this.sellerService.getOrderStats(req.user.userId);
   }
@@ -148,6 +216,8 @@ export class SellerController {
    * Get single order details
    */
   @Get('orders/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getOrder(@Req() req: any, @Param('id') id: string) {
     return this.sellerService.getOrder(req.user.userId, id);
   }
@@ -156,6 +226,8 @@ export class SellerController {
    * Update order status (seller can only update to specific statuses)
    */
   @Patch('orders/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   updateOrderStatus(
     @Req() req: any,
     @Param('id') id: string,
@@ -168,6 +240,8 @@ export class SellerController {
    * Update shipping information
    */
   @Patch('orders/:id/shipping')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   updateShippingInfo(
     @Req() req: any,
     @Param('id') id: string,
@@ -184,6 +258,8 @@ export class SellerController {
    * Get revenue analytics with trend data
    */
   @Get('analytics/revenue')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getRevenueAnalytics(@Req() req: any, @Query('period') period?: 'daily' | 'weekly' | 'monthly') {
     return this.sellerService.getRevenueAnalytics(req.user.userId, period || 'monthly');
   }
@@ -192,6 +268,8 @@ export class SellerController {
    * Get order status breakdown
    */
   @Get('analytics/orders')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getOrderStatusBreakdown(@Req() req: any) {
     return this.sellerService.getOrderStatusBreakdown(req.user.userId);
   }
@@ -200,6 +278,8 @@ export class SellerController {
    * Get top performing products
    */
   @Get('analytics/top-products')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getTopProducts(@Req() req: any, @Query('limit') limit?: string) {
     return this.sellerService.getTopProducts(req.user.userId, limit ? parseInt(limit) : 5);
   }
@@ -208,6 +288,8 @@ export class SellerController {
    * Get recent activity feed
    */
   @Get('analytics/recent-activity')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getRecentActivity(@Req() req: any, @Query('limit') limit?: string) {
     return this.sellerService.getRecentActivity(req.user.userId, limit ? parseInt(limit) : 10);
   }
@@ -220,6 +302,8 @@ export class SellerController {
    * Get reviews for seller's products
    */
   @Get('reviews')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getMyReviews(
     @Req() req: any,
     @Query('page') page?: string,
@@ -239,6 +323,8 @@ export class SellerController {
    * Get review statistics for seller's products
    */
   @Get('reviews/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getReviewStats(@Req() req: any) {
     return this.sellerService.getReviewStats(req.user.userId);
   }

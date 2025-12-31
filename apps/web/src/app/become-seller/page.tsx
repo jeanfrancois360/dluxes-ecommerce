@@ -89,11 +89,23 @@ export default function BecomeSellerPage() {
 
     try {
       setIsSubmitting(true);
-      // TODO: Implement API call
-      // await api.post('/seller/apply', formData);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      alert('Application submitted successfully! We will review your application and get back to you soon.');
-      router.push('/dashboard/buyer');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(data.message || 'Application submitted successfully! We will review your application and get back to you soon.');
+        router.push('/dashboard/buyer');
+      } else {
+        alert(data.message || 'Failed to submit application. Please try again.');
+      }
     } catch (error) {
       console.error('Failed to submit application:', error);
       alert('Failed to submit application. Please try again.');
