@@ -11,8 +11,10 @@ import { RevenueChart } from '@/components/seller/analytics/revenue-chart';
 import { ActivityFeed } from '@/components/seller/analytics/activity-feed';
 import { OrderStatusDonut } from '@/components/seller/analytics/order-status-donut';
 import { PageLayout } from '@/components/layout/page-layout';
-import { DollarSign, ShoppingCart, Package, Wallet } from 'lucide-react';
-import { formatNumber } from '@/lib/utils/number-format';
+import { DollarSign, ShoppingCart, Package, Wallet, AlertTriangle } from 'lucide-react';
+import { formatNumber, formatCurrencyAmount } from '@/lib/utils/number-format';
+import { sellerAPI, LowStockProduct } from '@/lib/api/seller';
+import useSWR from 'swr';
 interface DashboardData {
   store: {
     id: string;
@@ -63,6 +65,13 @@ export default function SellerDashboard() {
     hasError,
     refetch,
   } = useCompleteDashboard();
+
+  // Fetch low stock products
+  const { data: lowStockProducts = [], isLoading: lowStockLoading } = useSWR<LowStockProduct[]>(
+    user?.role === 'SELLER' ? 'seller-low-stock' : null,
+    () => sellerAPI.getLowStockProducts(10, 5),
+    { revalidateOnFocus: false }
+  );
 
   // Get the actual error message
   const getErrorMessage = () => {
@@ -316,6 +325,112 @@ export default function SellerDashboard() {
             />
           </div>
         </div>
+
+        {/* Low Stock Alerts Section */}
+        {(lowStockProducts.length > 0 || products.lowStock > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="mb-10"
+          >
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-neutral-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                      <AlertTriangle className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-black">Low Stock Alerts</h3>
+                      <p className="text-sm text-neutral-500">
+                        {products.lowStock} product{products.lowStock !== 1 ? 's' : ''} running low on inventory
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/seller/products?filter=low-stock"
+                    className="text-sm text-gold hover:text-gold/80 font-medium"
+                  >
+                    View All
+                  </Link>
+                </div>
+              </div>
+
+              {lowStockLoading ? (
+                <div className="p-6">
+                  <div className="animate-pulse space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-neutral-200 rounded-lg" />
+                        <div className="flex-1">
+                          <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2" />
+                          <div className="h-3 bg-neutral-200 rounded w-1/2" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : lowStockProducts.length > 0 ? (
+                <div className="divide-y divide-neutral-100">
+                  {lowStockProducts.map((product) => (
+                    <div key={product.id} className="p-4 hover:bg-neutral-50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        {product.heroImage ? (
+                          <img
+                            src={product.heroImage}
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-neutral-100 rounded-lg flex items-center justify-center">
+                            <Package className="w-6 h-6 text-neutral-400" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <Link
+                            href={`/seller/products/${product.id}/edit`}
+                            className="font-medium text-black hover:text-gold transition-colors truncate block"
+                          >
+                            {product.name}
+                          </Link>
+                          <p className="text-sm text-neutral-500">
+                            {formatCurrencyAmount(product.price)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            product.inventory <= 3
+                              ? 'bg-red-100 text-red-700'
+                              : product.inventory <= 5
+                              ? 'bg-orange-100 text-orange-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {product.inventory} left
+                          </span>
+                        </div>
+                        <Link
+                          href={`/seller/products/${product.id}/edit`}
+                          className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                          title="Edit product"
+                        >
+                          <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 text-center text-neutral-500">
+                  <Package className="w-8 h-8 mx-auto mb-2 text-neutral-400" />
+                  <p>No products with low stock</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Activity Feed & Quick Actions Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

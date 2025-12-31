@@ -117,6 +117,44 @@ export class SellerService {
   }
 
   /**
+   * Get products with low stock (inventory <= threshold)
+   */
+  async getLowStockProducts(userId: string, threshold: number = 10, limit: number = 10) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const products = await this.prisma.product.findMany({
+      where: {
+        storeId: store.id,
+        inventory: {
+          gt: 0,
+          lte: threshold,
+        },
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        heroImage: true,
+        inventory: true,
+        price: true,
+      },
+      orderBy: {
+        inventory: 'asc',
+      },
+      take: limit,
+    });
+
+    return products;
+  }
+
+  /**
    * Get seller's orders
    */
   async getMyOrders(userId: string, query: any) {

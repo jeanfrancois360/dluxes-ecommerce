@@ -57,6 +57,22 @@ export class SellerController {
   }
 
   /**
+   * Get products with low stock
+   */
+  @Get('products/low-stock')
+  getLowStockProducts(
+    @Req() req: any,
+    @Query('threshold') threshold?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.sellerService.getLowStockProducts(
+      req.user.userId,
+      threshold ? parseInt(threshold) : 10,
+      limit ? parseInt(limit) : 10,
+    );
+  }
+
+  /**
    * Get single product by ID
    */
   @Get('products/:id')
