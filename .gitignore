@@ -18,6 +18,9 @@ build
 # Production
 dist
 
+# TypeScript build cache
+*.tsbuildinfo
+
 # Misc
 .DS_Store
 *.pem
