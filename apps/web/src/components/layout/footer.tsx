@@ -22,6 +22,7 @@ export function Footer() {
   const footerLinks = {
     shop: [
       { label: 'All Products', href: '/products' },
+      { label: 'All Stores', href: '/stores' },
       { label: 'New Arrivals', href: '/products?filter=new' },
       { label: 'Best Sellers', href: '/products?filter=bestsellers' },
       { label: 'Sale', href: '/products?filter=sale' },
