@@ -47,6 +47,22 @@ export class StoresController {
     return this.storesService.getBySlug(slug);
   }
 
+  /**
+   * Get store reviews (aggregated from product reviews)
+   */
+  @Get(':storeId/reviews')
+  getStoreReviews(
+    @Param('storeId') storeId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.storesService.getStoreReviews(
+      storeId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
   // ============================================================================
   // Seller Routes (Authenticated)
   // ============================================================================

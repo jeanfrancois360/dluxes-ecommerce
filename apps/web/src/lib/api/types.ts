@@ -75,6 +75,20 @@ export type ProductType = 'PHYSICAL' | 'REAL_ESTATE' | 'VEHICLE' | 'SERVICE' | '
 export type PurchaseType = 'INSTANT' | 'INQUIRY';
 export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
 
+// Store info for products
+export interface ProductStore {
+  id: string;
+  name: string;
+  slug: string;
+  logo?: string | null;
+  verified: boolean;
+  rating?: number | null;
+  reviewCount: number;
+  totalProducts: number;
+  city?: string | null;
+  country?: string | null;
+}
+
 // Product Types
 export interface Product {
   id: string;
@@ -98,6 +112,7 @@ export interface Product {
   category?: Category;
   tags: ProductTag[];
   variants: ProductVariant[];
+  store?: ProductStore;
   badges?: string[];
   isFeatured: boolean;
   isActive: boolean;
@@ -458,6 +473,7 @@ export interface SearchFilters {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+  storeId?: string;
 }
 
 export interface SearchResult<T> {

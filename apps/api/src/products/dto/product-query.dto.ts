@@ -90,4 +90,8 @@ export class ProductQueryDto {
   @IsOptional()
   @IsEnum(PurchaseType)
   purchaseType?: PurchaseType;
+
+  @IsOptional()
+  @IsString()
+  storeId?: string;
 }

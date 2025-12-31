@@ -482,6 +482,68 @@ export default function ProductDetailPage() {
                 <p className="text-sm text-neutral-600 mb-6">SKU: {product.sku}</p>
               </div>
 
+              {/* Store Info */}
+              {product.store && (
+                <Link
+                  href={`/store/${product.store.slug}`}
+                  className="flex items-center gap-4 p-4 bg-neutral-50 rounded-xl mb-8 hover:bg-neutral-100 transition-colors group"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-white border border-neutral-200 overflow-hidden flex-shrink-0">
+                    {product.store.logo ? (
+                      <img
+                        src={product.store.logo}
+                        alt={product.store.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gold to-amber-600 flex items-center justify-center">
+                        <span className="text-xl font-bold text-white">
+                          {product.store.name[0]}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-black group-hover:text-gold transition-colors">
+                        {product.store.name}
+                      </h4>
+                      {product.store.verified && (
+                        <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-neutral-500 mt-1">
+                      {product.store.rating && product.store.rating > 0 && (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4 text-gold" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                          {Number(product.store.rating).toFixed(1)}
+                        </span>
+                      )}
+                      <span>{product.store.totalProducts} products</span>
+                      {(product.store.city || product.store.country) && (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          {[product.store.city, product.store.country].filter(Boolean).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center text-gold group-hover:translate-x-1 transition-transform">
+                    <span className="text-sm font-medium mr-1">Visit Store</span>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </Link>
+              )}
+
               {/* Description */}
               <p className="text-neutral-700 mb-8 leading-relaxed">{product.description}</p>
 
