@@ -1830,6 +1830,295 @@ export class PaymentService {
     return currencyDetails.filter((c): c is NonNullable<typeof c> => c !== null);
   }
 
+  // ==========================================
+  // PAYMENT METHODS MANAGEMENT
+  // ==========================================
+
+  /**
+   * Get or create a Stripe customer for a user
+   */
+  async getOrCreateStripeCustomer(userId: string): Promise<string> {
+    const stripe = await this.getStripeClient();
+
+    // Get user from database
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        stripeCustomerId: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // If user already has a Stripe customer ID, verify it exists
+    if (user.stripeCustomerId) {
+      try {
+        const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+        if (!customer.deleted) {
+          return user.stripeCustomerId;
+        }
+      } catch (error) {
+        this.logger.warn(`Stripe customer ${user.stripeCustomerId} not found, creating new one`);
+      }
+    }
+
+    // Create new Stripe customer
+    const customer = await stripe.customers.create({
+      email: user.email,
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined,
+      metadata: {
+        userId: user.id,
+      },
+    });
+
+    // Save customer ID to user
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { stripeCustomerId: customer.id },
+    });
+
+    this.logger.log(`Created Stripe customer ${customer.id} for user ${userId}`);
+
+    return customer.id;
+  }
+
+  /**
+   * Create a SetupIntent for adding a new payment method
+   */
+  async createSetupIntent(userId: string) {
+    const stripe = await this.getStripeClient();
+    const customerId = await this.getOrCreateStripeCustomer(userId);
+
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      metadata: {
+        userId,
+      },
+    });
+
+    // Get publishable key for frontend
+    const config = await this.settingsService.getStripeConfig();
+    const publishableKey = config.publishableKey || this.configService.get<string>('STRIPE_PUBLISHABLE_KEY') || '';
+
+    this.logger.log(`Created SetupIntent ${setupIntent.id} for user ${userId}`);
+
+    return {
+      clientSecret: setupIntent.client_secret,
+      setupIntentId: setupIntent.id,
+      publishableKey,
+    };
+  }
+
+  /**
+   * List saved payment methods for a user
+   */
+  async listPaymentMethods(userId: string) {
+    const stripe = await this.getStripeClient();
+
+    // Get user with stripe customer ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true },
+    });
+
+    if (!user?.stripeCustomerId) {
+      return { paymentMethods: [], defaultPaymentMethodId: null };
+    }
+
+    // Get customer to find default payment method
+    let defaultPaymentMethodId: string | null = null;
+    try {
+      const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+      // Type guard: check if customer is not deleted
+      if (!('deleted' in customer && customer.deleted)) {
+        const activeCustomer = customer as Stripe.Customer;
+        if (activeCustomer.invoice_settings?.default_payment_method) {
+          defaultPaymentMethodId = activeCustomer.invoice_settings.default_payment_method as string;
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to get customer ${user.stripeCustomerId}:`, error);
+    }
+
+    // List payment methods
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: user.stripeCustomerId,
+      type: 'card',
+    });
+
+    return {
+      paymentMethods: paymentMethods.data.map((pm) => ({
+        id: pm.id,
+        brand: pm.card?.brand || 'unknown',
+        last4: pm.card?.last4 || '****',
+        expMonth: pm.card?.exp_month,
+        expYear: pm.card?.exp_year,
+        isDefault: pm.id === defaultPaymentMethodId,
+        funding: pm.card?.funding,
+        country: pm.card?.country,
+      })),
+      defaultPaymentMethodId,
+    };
+  }
+
+  /**
+   * Set a payment method as default
+   */
+  async setDefaultPaymentMethod(userId: string, paymentMethodId: string) {
+    const stripe = await this.getStripeClient();
+
+    // Get user with stripe customer ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true },
+    });
+
+    if (!user?.stripeCustomerId) {
+      throw new BadRequestException('No Stripe customer found for this user');
+    }
+
+    // Verify payment method belongs to customer
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    if (paymentMethod.customer !== user.stripeCustomerId) {
+      throw new BadRequestException('Payment method does not belong to this user');
+    }
+
+    // Update customer's default payment method
+    await stripe.customers.update(user.stripeCustomerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
+
+    this.logger.log(`Set default payment method ${paymentMethodId} for user ${userId}`);
+
+    return { success: true, message: 'Default payment method updated' };
+  }
+
+  /**
+   * Remove a saved payment method
+   */
+  async removePaymentMethod(userId: string, paymentMethodId: string) {
+    const stripe = await this.getStripeClient();
+
+    // Get user with stripe customer ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true },
+    });
+
+    if (!user?.stripeCustomerId) {
+      throw new BadRequestException('No Stripe customer found for this user');
+    }
+
+    // Verify payment method belongs to customer
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    if (paymentMethod.customer !== user.stripeCustomerId) {
+      throw new BadRequestException('Payment method does not belong to this user');
+    }
+
+    // Detach payment method
+    await stripe.paymentMethods.detach(paymentMethodId);
+
+    this.logger.log(`Removed payment method ${paymentMethodId} for user ${userId}`);
+
+    return { success: true, message: 'Payment method removed' };
+  }
+
+  /**
+   * Create payment intent with saved payment method
+   */
+  async createPaymentIntentWithSavedMethod(
+    dto: CreatePaymentIntentDto,
+    userId: string,
+    paymentMethodId: string,
+  ) {
+    const stripe = await this.getStripeClient();
+
+    // Get user with stripe customer ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true, email: true },
+    });
+
+    if (!user?.stripeCustomerId) {
+      throw new BadRequestException('No Stripe customer found for this user');
+    }
+
+    // Verify payment method belongs to customer
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    if (paymentMethod.customer !== user.stripeCustomerId) {
+      throw new BadRequestException('Payment method does not belong to this user');
+    }
+
+    // Get config and currency
+    const config = this.stripeConfig || await this.settingsService.getStripeConfig();
+    let paymentCurrency = dto.currency?.toUpperCase() || await this.getDefaultPaymentCurrency();
+    await this.validateCurrency(paymentCurrency);
+
+    const currencyDetails = await this.currencyService.getRateByCode(paymentCurrency);
+    const amountInSmallestUnit = this.convertToSmallestUnit(dto.amount, paymentCurrency);
+
+    // Create payment intent with saved payment method
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInSmallestUnit,
+      currency: paymentCurrency.toLowerCase(),
+      customer: user.stripeCustomerId,
+      payment_method: paymentMethodId,
+      off_session: false,
+      confirm: false, // Don't confirm yet - let frontend handle 3DS if needed
+      capture_method: config.captureMethod,
+      statement_descriptor_suffix: config.statementDescriptor?.substring(0, 22),
+      metadata: {
+        orderId: dto.orderId,
+        userId,
+        customerEmail: dto.customerEmail || user.email,
+        testMode: config.testMode.toString(),
+        originalCurrency: paymentCurrency,
+        usedSavedCard: 'true',
+      },
+    });
+
+    // Create payment transaction record
+    const transaction = await this.prisma.paymentTransaction.create({
+      data: {
+        orderId: dto.orderId,
+        userId,
+        stripePaymentIntentId: paymentIntent.id,
+        amount: new Decimal(dto.amount),
+        currency: paymentCurrency,
+        status: PaymentTransactionStatus.PENDING,
+        paymentMethod: PaymentMethod.STRIPE,
+        receiptEmail: dto.customerEmail || user.email,
+        metadata: {
+          currencySymbol: currencyDetails.symbol,
+          currencyName: currencyDetails.currencyName,
+          savedPaymentMethodId: paymentMethodId,
+        } as any,
+      },
+    });
+
+    this.logger.log(
+      `Payment intent created with saved method: ${paymentIntent.id} for order ${dto.orderId}`
+    );
+
+    return {
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+      transactionId: transaction.id,
+      currency: paymentCurrency,
+      amount: dto.amount,
+      paymentMethodId,
+    };
+  }
+
   /**
    * Get payment health metrics (Admin dashboard)
    */
