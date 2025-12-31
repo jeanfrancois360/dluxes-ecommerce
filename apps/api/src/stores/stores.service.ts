@@ -508,4 +508,106 @@ export class StoresService {
       store: updatedStore,
     };
   }
+
+  /**
+   * Get store reviews (aggregated from product reviews)
+   */
+  async getStoreReviews(storeId: string, page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+
+    // Get reviews from products that belong to this store
+    const [reviews, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where: {
+          product: {
+            storeId,
+          },
+          isApproved: true,
+        },
+        select: {
+          id: true,
+          rating: true,
+          title: true,
+          comment: true,
+          images: true,
+          isVerified: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            },
+          },
+          product: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              heroImage: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.review.count({
+        where: {
+          product: {
+            storeId,
+          },
+          isApproved: true,
+        },
+      }),
+    ]);
+
+    // Calculate rating breakdown
+    const ratingCounts = await this.prisma.review.groupBy({
+      by: ['rating'],
+      where: {
+        product: {
+          storeId,
+        },
+        isApproved: true,
+      },
+      _count: {
+        rating: true,
+      },
+    });
+
+    const breakdown = {
+      5: 0,
+      4: 0,
+      3: 0,
+      2: 0,
+      1: 0,
+    };
+
+    ratingCounts.forEach((item) => {
+      if (item.rating >= 1 && item.rating <= 5) {
+        breakdown[item.rating as keyof typeof breakdown] = item._count.rating;
+      }
+    });
+
+    const averageRating = total > 0
+      ? Object.entries(breakdown).reduce((sum, [rating, count]) => sum + Number(rating) * count, 0) / total
+      : 0;
+
+    return {
+      data: reviews,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      summary: {
+        averageRating: Math.round(averageRating * 10) / 10,
+        totalReviews: total,
+        breakdown,
+      },
+    };
+  }
 }

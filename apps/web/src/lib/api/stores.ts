@@ -118,6 +118,28 @@ export const storesAPI = {
 
   getStoreBySlug: (slug: string) => api.get<Store>(`/stores/${slug}`),
 
+  // Get store products (uses products API with storeId filter)
+  getStoreProducts: (storeId: string, params?: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }) => api.get('/products', {
+    params: {
+      storeId,
+      status: 'ACTIVE',
+      ...params,
+    },
+  } as any),
+
+  // Get store reviews (aggregated from product reviews)
+  getStoreReviews: (storeId: string, params?: {
+    page?: number;
+    limit?: number;
+  }) => api.get(`/stores/${storeId}/reviews`, {
+    params,
+  } as any),
+
   // File Upload
   uploadLogo: (file: File) => {
     const formData = new FormData();

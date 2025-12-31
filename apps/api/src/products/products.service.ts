@@ -141,6 +141,11 @@ export class ProductsService {
       where.purchaseType = purchaseType;
     }
 
+    // Store ID filter (for public store pages)
+    if (query.storeId) {
+      where.storeId = query.storeId;
+    }
+
     // Tags filter
     if (tags) {
       const tagArray = tags.split(',');
@@ -463,6 +468,20 @@ export class ProductsService {
           },
           orderBy: { createdAt: 'desc' },
           take: 10,
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logo: true,
+            verified: true,
+            rating: true,
+            reviewCount: true,
+            totalProducts: true,
+            city: true,
+            country: true,
+          },
         },
       },
     });
