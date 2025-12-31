@@ -6,7 +6,7 @@
  * View and manage individual order from seller's store
  */
 
-import React, { use, useState } from 'react';
+import React, { use, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
@@ -15,6 +15,7 @@ import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { sellerAPI, SellerOrderDetail } from '@/lib/api/seller';
 import { toast } from 'sonner';
 import useSWR from 'swr';
+import { PackingSlip } from '@/components/seller/packing-slip';
 import {
   ArrowLeft,
   Package,
@@ -29,6 +30,8 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Printer,
+  X,
 } from 'lucide-react';
 
 function StatusBadge({ status, type }: { status: string; type: 'order' | 'payment' }) {
@@ -75,6 +78,8 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   const [updating, setUpdating] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [shippingCarrier, setShippingCarrier] = useState('');
+  const [showPackingSlip, setShowPackingSlip] = useState(false);
+  const packingSlipRef = useRef<HTMLDivElement>(null);
 
   // Fetch order data
   const { data: order, error, isLoading, mutate } = useSWR<SellerOrderDetail>(
@@ -156,6 +161,14 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
     }
   };
 
+  const handlePrintPackingSlip = () => {
+    setShowPackingSlip(true);
+    // Delay print to allow modal to render
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
@@ -225,6 +238,13 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={handlePrintPackingSlip}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                Print Packing Slip
+              </button>
               <StatusBadge status={order.status} type="order" />
               <StatusBadge status={order.paymentStatus} type="payment" />
             </div>
@@ -507,6 +527,33 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
           </div>
         </div>
       </div>
+
+      {/* Packing Slip Modal */}
+      {showPackingSlip && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black/50 flex items-start justify-center p-4 no-print">
+          <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full my-8">
+            <div className="sticky top-0 bg-white border-b border-neutral-200 p-4 flex items-center justify-between rounded-t-lg no-print">
+              <h2 className="text-lg font-semibold text-black">Packing Slip Preview</h2>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors"
+                >
+                  <Printer className="w-4 h-4" />
+                  Print
+                </button>
+                <button
+                  onClick={() => setShowPackingSlip(false)}
+                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-neutral-500" />
+                </button>
+              </div>
+            </div>
+            <PackingSlip ref={packingSlipRef} order={order} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
