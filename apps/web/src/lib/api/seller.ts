@@ -95,6 +95,57 @@ export interface LowStockProduct {
   price: number;
 }
 
+export interface SellerReview {
+  id: string;
+  productId: string;
+  userId: string;
+  rating: number;
+  title: string | null;
+  comment: string;
+  images: string[];
+  videos: string[];
+  isVerified: boolean;
+  isApproved: boolean;
+  isPinned: boolean;
+  helpfulCount: number;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatar: string | null;
+  };
+  product: {
+    id: string;
+    name: string;
+    slug: string;
+    heroImage: string | null;
+  };
+}
+
+export interface SellerReviewStats {
+  total: number;
+  approved: number;
+  pending: number;
+  averageRating: number;
+  ratingDistribution: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
+}
+
+export interface SellerReviewsResponse {
+  data: SellerReview[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface Commission {
   id: string;
   orderId: string;
@@ -305,6 +356,12 @@ export const sellerAPI = {
       params: { limit },
     } as any),
 
+  // Reviews
+  getReviews: (params?: { page?: number; limit?: number; rating?: number; productId?: string }) =>
+    api.get<SellerReviewsResponse>('/seller/reviews', { params } as any),
+
+  getReviewStats: () => api.get<SellerReviewStats>('/seller/reviews/stats'),
+
   // Products
   getProducts: (params?: {
     page?: number;
@@ -449,3 +506,6 @@ export const getTopProducts = (limit?: number) => sellerAPI.getTopProducts(limit
 export const getLowStockProducts = (threshold?: number, limit?: number) =>
   sellerAPI.getLowStockProducts(threshold, limit);
 export const getRecentActivity = (limit?: number) => sellerAPI.getRecentActivity(limit);
+export const getReviews = (params?: { page?: number; limit?: number; rating?: number; productId?: string }) =>
+  sellerAPI.getReviews(params);
+export const getReviewStats = () => sellerAPI.getReviewStats();
