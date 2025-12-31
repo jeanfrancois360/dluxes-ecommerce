@@ -11,13 +11,15 @@ import { useState } from 'react';
 import { useParams, notFound } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { PageLayout } from '@/components/layout/page-layout';
 import { ProductCard } from '@nextpik/ui';
 import { storesAPI, Store } from '@/lib/api/stores';
 import { productsAPI } from '@/lib/api/products';
 import { Product, SearchResult } from '@/lib/api/types';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import { useAuth } from '@/hooks/use-auth';
+import { toast } from 'sonner';
 import {
   Star,
   MapPin,
@@ -38,6 +40,8 @@ import {
   AlertCircle,
   Store as StoreIcon,
   Palmtree,
+  Heart,
+  Users,
 } from 'lucide-react';
 
 type TabType = 'products' | 'about' | 'reviews' | 'policies';
@@ -251,11 +255,13 @@ function StoreSkeleton() {
 export default function PublicStorePage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { user, isAuthenticated } = useAuth();
 
   const [activeTab, setActiveTab] = useState<TabType>('products');
   const [productPage, setProductPage] = useState(1);
   const [sortBy, setSortBy] = useState<'newest' | 'price-asc' | 'price-desc' | 'popular'>('newest');
   const [gridCols, setGridCols] = useState<3 | 4>(4);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
   const pageSize = 12;
 
   // Fetch store data
@@ -291,6 +297,49 @@ export default function PublicStorePage() {
     store?.id ? `store-reviews-${store.id}` : null,
     () => storesAPI.getStoreReviews(store!.id, { page: 1, limit: 50 })
   );
+
+  // Fetch follow status (only if authenticated)
+  const { data: followData, mutate: mutateFollowStatus } = useSWR<{ isFollowing: boolean }>(
+    store?.id && isAuthenticated ? `store-follow-${store.id}` : null,
+    () => storesAPI.isFollowing(store!.id)
+  );
+
+  // Fetch follower count
+  const { data: followerData, mutate: mutateFollowerCount } = useSWR<{ count: number }>(
+    store?.id ? `store-followers-${store.id}` : null,
+    () => storesAPI.getFollowerCount(store!.id)
+  );
+
+  const isFollowing = followData?.isFollowing ?? false;
+  const followerCount = followerData?.count ?? 0;
+
+  // Handle follow/unfollow
+  const handleFollowToggle = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in to follow stores');
+      return;
+    }
+
+    if (!store?.id) return;
+
+    setIsFollowLoading(true);
+    try {
+      if (isFollowing) {
+        await storesAPI.unfollowStore(store.id);
+        toast.success(`Unfollowed ${store.name}`);
+      } else {
+        await storesAPI.followStore(store.id);
+        toast.success(`Now following ${store.name}`);
+      }
+      // Refresh follow status and count
+      mutateFollowStatus();
+      mutateFollowerCount();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update follow status');
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
 
   // Handle store not found or error
   if (storeError) {
@@ -467,14 +516,44 @@ export default function PublicStorePage() {
                     </div>
                   </div>
 
-                  {/* Contact Button */}
-                  <Link
-                    href={`mailto:${store.email}`}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-black font-semibold rounded-xl hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20"
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    Contact Seller
-                  </Link>
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-3">
+                    {/* Follow Button */}
+                    <motion.button
+                      onClick={handleFollowToggle}
+                      disabled={isFollowLoading}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`inline-flex items-center gap-2 px-5 py-3 font-semibold rounded-xl transition-all shadow-lg ${
+                        isFollowing
+                          ? 'bg-pink-100 text-pink-700 hover:bg-pink-200 shadow-pink-100'
+                          : 'bg-white text-neutral-700 hover:bg-neutral-50 border-2 border-neutral-200 hover:border-pink-300 shadow-neutral-100'
+                      }`}
+                    >
+                      <Heart
+                        className={`w-5 h-5 transition-all ${
+                          isFollowing ? 'fill-pink-500 text-pink-500' : ''
+                        } ${isFollowLoading ? 'animate-pulse' : ''}`}
+                      />
+                      <span>{isFollowing ? 'Following' : 'Follow'}</span>
+                      {followerCount > 0 && (
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${
+                          isFollowing ? 'bg-pink-200 text-pink-800' : 'bg-neutral-100 text-neutral-600'
+                        }`}>
+                          {followerCount.toLocaleString()}
+                        </span>
+                      )}
+                    </motion.button>
+
+                    {/* Contact Button */}
+                    <Link
+                      href={`mailto:${store.email}`}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-black font-semibold rounded-xl hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      Contact Seller
+                    </Link>
+                  </div>
                 </div>
               </motion.div>
             </div>
@@ -714,10 +793,11 @@ export default function PublicStorePage() {
                   </div>
 
                   {/* Store Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     {[
                       { label: 'Products', value: store.totalProducts, icon: Package },
                       { label: 'Total Sales', value: store.totalOrders, icon: ShoppingBag },
+                      { label: 'Followers', value: followerCount, icon: Users },
                       { label: 'Rating', value: averageRating > 0 ? averageRating.toFixed(1) : 'N/A', icon: Star },
                       { label: 'Reviews', value: totalReviews, icon: MessageCircle },
                     ].map((stat) => (

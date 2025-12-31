@@ -65,6 +65,64 @@ export class StoresController {
     );
   }
 
+  /**
+   * Get store follower count (public)
+   */
+  @Get(':storeId/followers/count')
+  getFollowerCount(@Param('storeId') storeId: string) {
+    return this.storesService.getFollowerCount(storeId);
+  }
+
+  // ============================================================================
+  // Buyer Routes (Following Stores)
+  // ============================================================================
+
+  /**
+   * Get list of stores the current user is following
+   */
+  @Get('me/following')
+  @UseGuards(JwtAuthGuard)
+  getFollowingStores(
+    @Req() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.storesService.getFollowingStores(
+      req.user.id,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
+  /**
+   * Check if user is following a specific store
+   */
+  @Get(':storeId/is-following')
+  @UseGuards(JwtAuthGuard)
+  isFollowing(@Req() req: any, @Param('storeId') storeId: string) {
+    return this.storesService.isFollowing(req.user.id, storeId);
+  }
+
+  /**
+   * Follow a store
+   */
+  @Post(':storeId/follow')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  followStore(@Req() req: any, @Param('storeId') storeId: string) {
+    return this.storesService.followStore(req.user.id, storeId);
+  }
+
+  /**
+   * Unfollow a store
+   */
+  @Delete(':storeId/follow')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  unfollowStore(@Req() req: any, @Param('storeId') storeId: string) {
+    return this.storesService.unfollowStore(req.user.id, storeId);
+  }
+
   // ============================================================================
   // Seller Routes (Authenticated)
   // ============================================================================
