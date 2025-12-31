@@ -610,4 +610,289 @@ export class StoresService {
       },
     };
   }
+
+  /**
+   * Get seller's payout settings
+   */
+  async getPayoutSettings(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        // Payout Settings
+        payoutMethod: true,
+        payoutEmail: true,
+        payoutCurrency: true,
+        payoutMinAmount: true,
+        payoutFrequency: true,
+        payoutDayOfWeek: true,
+        payoutDayOfMonth: true,
+        payoutAutomatic: true,
+        // Bank Account Details (mask sensitive data)
+        bankAccountName: true,
+        bankAccountNumber: true,
+        bankRoutingNumber: true,
+        bankName: true,
+        bankBranchName: true,
+        bankSwiftCode: true,
+        bankIban: true,
+        bankCountry: true,
+        // Store status info
+        verified: true,
+        status: true,
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Mask sensitive bank account details
+    const maskedSettings = {
+      ...store,
+      bankAccountNumber: store.bankAccountNumber
+        ? '****' + store.bankAccountNumber.slice(-4)
+        : null,
+      bankRoutingNumber: store.bankRoutingNumber
+        ? '****' + store.bankRoutingNumber.slice(-4)
+        : null,
+      bankIban: store.bankIban
+        ? store.bankIban.slice(0, 4) + '****' + store.bankIban.slice(-4)
+        : null,
+    };
+
+    // Get pending balance from escrow
+    const pendingBalance = await this.prisma.escrowTransaction.aggregate({
+      where: {
+        storeId: store.id,
+        status: 'HELD',
+      },
+      _sum: {
+        sellerAmount: true,
+      },
+    });
+
+    // Get available balance (released escrow)
+    const availableBalance = await this.prisma.escrowTransaction.aggregate({
+      where: {
+        storeId: store.id,
+        status: 'RELEASED',
+      },
+      _sum: {
+        sellerAmount: true,
+      },
+    });
+
+    // Get next scheduled payout date
+    const nextPayoutDate = this.calculateNextPayoutDate(
+      store.payoutFrequency || 'monthly',
+      store.payoutDayOfWeek,
+      store.payoutDayOfMonth || 1,
+    );
+
+    return {
+      settings: maskedSettings,
+      balances: {
+        pending: Number(pendingBalance._sum.sellerAmount || 0),
+        available: Number(availableBalance._sum.sellerAmount || 0),
+        currency: store.payoutCurrency || 'USD',
+      },
+      nextPayoutDate,
+    };
+  }
+
+  /**
+   * Update seller's payout settings
+   */
+  async updatePayoutSettings(userId: string, dto: any) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Convert payoutMinAmount to Decimal if provided
+    const updateData: any = { ...dto };
+    if (dto.payoutMinAmount !== undefined) {
+      updateData.payoutMinAmount = dto.payoutMinAmount;
+    }
+
+    const updatedStore = await this.prisma.store.update({
+      where: { userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        payoutMethod: true,
+        payoutEmail: true,
+        payoutCurrency: true,
+        payoutMinAmount: true,
+        payoutFrequency: true,
+        payoutDayOfWeek: true,
+        payoutDayOfMonth: true,
+        payoutAutomatic: true,
+        bankAccountName: true,
+        bankAccountNumber: true,
+        bankRoutingNumber: true,
+        bankName: true,
+        bankBranchName: true,
+        bankSwiftCode: true,
+        bankIban: true,
+        bankCountry: true,
+      },
+    });
+
+    // Mask sensitive data in response
+    return {
+      message: 'Payout settings updated successfully',
+      settings: {
+        ...updatedStore,
+        bankAccountNumber: updatedStore.bankAccountNumber
+          ? '****' + updatedStore.bankAccountNumber.slice(-4)
+          : null,
+        bankRoutingNumber: updatedStore.bankRoutingNumber
+          ? '****' + updatedStore.bankRoutingNumber.slice(-4)
+          : null,
+        bankIban: updatedStore.bankIban
+          ? updatedStore.bankIban.slice(0, 4) + '****' + updatedStore.bankIban.slice(-4)
+          : null,
+      },
+    };
+  }
+
+  /**
+   * Get seller's payout history
+   */
+  async getPayoutHistory(userId: string, page: number = 1, limit: number = 20, status?: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      storeId: store.id,
+    };
+
+    if (status) {
+      where.status = status.toUpperCase();
+    }
+
+    const [payouts, total] = await Promise.all([
+      this.prisma.payout.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          status: true,
+          paymentMethod: true,
+          paymentReference: true,
+          processedAt: true,
+          notes: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.payout.count({ where }),
+    ]);
+
+    // Calculate totals by status
+    const payoutStats = await this.prisma.payout.groupBy({
+      by: ['status'],
+      where: { storeId: store.id },
+      _sum: { amount: true },
+      _count: true,
+    });
+
+    const stats = {
+      totalPaid: 0,
+      totalPending: 0,
+      totalFailed: 0,
+    };
+
+    payoutStats.forEach((stat) => {
+      if (stat.status === 'COMPLETED') {
+        stats.totalPaid = Number(stat._sum.amount || 0);
+      } else if (stat.status === 'PENDING' || stat.status === 'PROCESSING') {
+        stats.totalPending = Number(stat._sum.amount || 0);
+      } else if (stat.status === 'FAILED') {
+        stats.totalFailed = Number(stat._sum.amount || 0);
+      }
+    });
+
+    return {
+      data: payouts,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+      stats,
+    };
+  }
+
+  /**
+   * Calculate next payout date based on frequency
+   */
+  private calculateNextPayoutDate(
+    frequency: string,
+    dayOfWeek?: number | null,
+    dayOfMonth?: number | null,
+  ): Date {
+    const now = new Date();
+    const nextDate = new Date(now);
+
+    switch (frequency) {
+      case 'weekly':
+        // Find next occurrence of dayOfWeek (0 = Sunday)
+        const targetDay = dayOfWeek ?? 1; // Default to Monday
+        const currentDay = now.getDay();
+        const daysUntil = (targetDay - currentDay + 7) % 7 || 7;
+        nextDate.setDate(now.getDate() + daysUntil);
+        break;
+
+      case 'biweekly':
+        // Next occurrence of dayOfWeek, at least 7 days away
+        const biweeklyTargetDay = dayOfWeek ?? 1;
+        const biweeklyCurrentDay = now.getDay();
+        let biweeklyDaysUntil = (biweeklyTargetDay - biweeklyCurrentDay + 7) % 7;
+        if (biweeklyDaysUntil < 7) {
+          biweeklyDaysUntil += 7; // At least one week away
+        }
+        nextDate.setDate(now.getDate() + biweeklyDaysUntil);
+        break;
+
+      case 'monthly':
+      default:
+        // Next occurrence of dayOfMonth
+        const targetDayOfMonth = dayOfMonth ?? 1;
+        if (now.getDate() >= targetDayOfMonth) {
+          // Move to next month
+          nextDate.setMonth(now.getMonth() + 1);
+        }
+        nextDate.setDate(Math.min(targetDayOfMonth, this.getDaysInMonth(nextDate)));
+        break;
+    }
+
+    nextDate.setHours(0, 0, 0, 0);
+    return nextDate;
+  }
+
+  /**
+   * Get days in a month
+   */
+  private getDaysInMonth(date: Date): number {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  }
 }

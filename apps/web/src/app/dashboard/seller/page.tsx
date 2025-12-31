@@ -545,6 +545,23 @@ export default function SellerDashboard() {
                 </Link>
 
                 <Link
+                  href="/seller/payout-settings"
+                  className="flex items-center justify-between p-4 rounded-xl hover:bg-neutral-50 transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                    </div>
+                    <span className="font-medium">Payout Settings</span>
+                  </div>
+                  <svg className="w-5 h-5 text-neutral-400 group-hover:text-gold transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+
+                <Link
                   href="/seller/inquiries"
                   className="flex items-center justify-between p-4 rounded-xl hover:bg-neutral-50 transition-colors group"
                 >

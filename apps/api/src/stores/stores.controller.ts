@@ -18,6 +18,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { StoresService } from './stores.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { UpdatePayoutSettingsDto } from './dto/update-payout-settings.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -139,6 +140,46 @@ export class StoresController {
   @HttpCode(HttpStatus.OK)
   uploadBanner(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
     return this.storesService.uploadBanner(req.user.id, file);
+  }
+
+  /**
+   * Get seller's payout settings
+   */
+  @Get('me/payout-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  getPayoutSettings(@Req() req: any) {
+    return this.storesService.getPayoutSettings(req.user.id);
+  }
+
+  /**
+   * Update seller's payout settings
+   */
+  @Patch('me/payout-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  updatePayoutSettings(@Req() req: any, @Body() dto: UpdatePayoutSettingsDto) {
+    return this.storesService.updatePayoutSettings(req.user.id, dto);
+  }
+
+  /**
+   * Get seller's payout history
+   */
+  @Get('me/payouts')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  getPayoutHistory(
+    @Req() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.storesService.getPayoutHistory(
+      req.user.id,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+      status,
+    );
   }
 
   // ============================================================================

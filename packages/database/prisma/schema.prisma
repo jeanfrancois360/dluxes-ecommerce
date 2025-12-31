@@ -204,6 +204,26 @@ model Store {
   currency String @default("USD")
   timezone String @default("UTC")
 
+  // Payout Settings
+  payoutMethod       String?  @default("bank_transfer") // bank_transfer, paypal, stripe_connect
+  payoutEmail        String?  // PayPal email or notification email
+  payoutCurrency     String   @default("USD")
+  payoutMinAmount    Decimal  @default(50) @db.Decimal(10, 2)
+  payoutFrequency    String   @default("monthly") // weekly, biweekly, monthly
+  payoutDayOfWeek    Int?     // 0-6 for weekly (0 = Sunday)
+  payoutDayOfMonth   Int?     @default(1) // 1-28 for monthly
+  payoutAutomatic    Boolean  @default(true)
+
+  // Bank Account Details (encrypted in production)
+  bankAccountName    String?
+  bankAccountNumber  String?  // Last 4 digits stored, full number encrypted
+  bankRoutingNumber  String?
+  bankName           String?
+  bankBranchName     String?
+  bankSwiftCode      String?  // For international transfers
+  bankIban           String?  // For international transfers
+  bankCountry        String?
+
   // SEO
   metaTitle       String?
   metaDescription String?
