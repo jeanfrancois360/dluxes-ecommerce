@@ -1,8 +1,8 @@
 # Comprehensive Technical Documentation
 # NextPik E-commerce Platform
 
-**Version:** 2.3.0
-**Last Updated:** December 26, 2025 (UI/UX Improvements & System Stabilization)
+**Version:** 2.4.0
+**Last Updated:** December 31, 2025 (Store Features & Following System)
 **Status:** Production-Ready
 
 ---
@@ -3203,6 +3203,230 @@ The Settings module backend is **100% functional** and ready for production. Any
 **Detailed Report:** `/SETTINGS_MODULE_AUDIT_REPORT.md`
 **Last Tested:** December 26, 2025
 **Module Version:** 2.3.0
+
+---
+
+### 12.15 Store Following System (December 31, 2025)
+
+**Feature Overview:**
+Complete implementation of store following/favorite functionality allowing buyers to follow their favorite stores and receive updates.
+
+**Database Schema Changes:**
+
+Added new `StoreFollow` model to Prisma schema:
+```prisma
+model StoreFollow {
+  id        String   @id @default(cuid())
+  userId    String
+  storeId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([userId])
+  @@index([storeId])
+  @@map("store_follows")
+}
+```
+
+**API Endpoints Added:**
+
+Five new endpoints for store following:
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/stores/:storeId/followers/count` | No | Get follower count for a store |
+| GET | `/stores/:storeId/is-following` | Yes | Check if current user follows store |
+| POST | `/stores/:storeId/follow` | Yes | Follow a store |
+| DELETE | `/stores/:storeId/follow` | Yes | Unfollow a store |
+| GET | `/stores/me/following` | Yes | Get stores current user follows |
+
+**Backend Implementation:**
+
+Service methods added to `StoresService`:
+- `getFollowerCount(storeId)` - Returns follower count
+- `isFollowing(userId, storeId)` - Checks follow status
+- `followStore(userId, storeId)` - Creates follow relationship with validation
+- `unfollowStore(userId, storeId)` - Removes follow relationship
+- `getFollowingStores(userId, page, limit)` - Paginated list of followed stores
+
+**Validation Rules:**
+- Cannot follow your own store
+- Cannot follow inactive stores
+- Cannot follow the same store twice
+- User must be authenticated
+
+**Frontend Implementation:**
+
+1. **Follow Button on Store Page** (`/store/[slug]`)
+   - Heart icon button next to "Contact Seller"
+   - Shows filled heart when following
+   - Optimistic UI updates
+   - Toast notifications for success/error
+
+2. **Follower Count Display**
+   - Shows in store About section
+   - Updates in real-time when following/unfollowing
+
+3. **Following Stores Page** (`/account/following`)
+   - Grid display of followed stores
+   - Store cards with rating, verification badge, location
+   - "Following since" date display
+   - Unfollow functionality with confirmation
+   - Pagination support (12 per page)
+   - Empty state with CTA to browse stores
+
+4. **Buyer Dashboard Integration**
+   - Added "Following Stores" quick action link
+
+**Files Modified:**
+- `packages/database/prisma/schema.prisma` - StoreFollow model
+- `apps/api/src/stores/stores.controller.ts` - API endpoints
+- `apps/api/src/stores/stores.service.ts` - Service methods
+- `apps/web/src/lib/api/stores.ts` - Frontend API client
+- `apps/web/src/app/store/[slug]/page.tsx` - Follow button
+- `apps/web/src/app/account/following/page.tsx` - New page
+- `apps/web/src/app/dashboard/buyer/page.tsx` - Quick action link
+
+**Tested:** ✅ API endpoints verified, follow/unfollow working, follower counts updating
+
+---
+
+### 12.16 Store Directory Page (December 31, 2025)
+
+**Feature Overview:**
+Public store directory page allowing users to browse all active stores on the platform.
+
+**Page Location:** `/stores`
+
+**Features Implemented:**
+- **Store Grid Display** - Responsive grid of store cards (12 per page)
+- **Store Cards** - Logo, banner, name, rating, product count, location, verified badge
+- **Search Functionality** - Client-side search by store name and description
+- **Verified Filter** - Toggle to show only verified stores
+- **Vacation Mode Indicator** - Shows when store is on vacation
+- **Statistics Dashboard** - Total stores, verified count, total products, total sales
+- **Pagination** - Full pagination with page numbers
+- **Loading States** - Skeleton loading animation
+- **Empty State** - Message when no stores found
+
+**Navigation Integration:**
+- Added "Stores" link to main navigation navbar
+- Added "Browse Stores" link to footer
+
+**Files Modified:**
+- `apps/web/src/app/stores/page.tsx` - New store directory page
+- `apps/web/src/lib/api/stores.ts` - API response type fix
+- Navigation components (navbar, footer)
+
+**Tested:** ✅ Page loads correctly, stores display, search works, pagination functional
+
+---
+
+### 12.17 Store Reviews Fix (December 31, 2025)
+
+**Issue:** Store reviews on public store page (`/store/[slug]`) were not displaying reviews from the API.
+
+**Root Cause:** The SWR fetcher was returning empty data instead of calling the API.
+
+**Solution:**
+- Updated SWR fetcher to call `storesAPI.getStoreReviews(store.id)`
+- Added proper response type `StoreReviewsResponse`
+- Connected rating breakdown component to API data
+
+**Files Modified:**
+- `apps/web/src/app/store/[slug]/page.tsx` - Reviews tab implementation
+
+**Tested:** ✅ Reviews now display correctly with rating breakdown chart
+
+---
+
+### 12.18 Comprehensive Store Seed Data (December 31, 2025)
+
+**Feature Overview:**
+Added comprehensive seed data for testing store functionality with diverse product types.
+
+**Seed File:** `packages/database/prisma/seeds/store-seed.ts`
+
+**Store Created:**
+- **Name:** Luxury Timepieces Co
+- **Slug:** `luxury-timepieces-co`
+- **URL:** `/store/luxury-timepieces-co`
+- **Rating:** 4.8 (124 reviews)
+- **Verified:** Yes
+- **Location:** New York, NY, USA
+
+**Products Created (13 total):**
+
+| Type | Count | Examples |
+|------|-------|----------|
+| PHYSICAL (Watches) | 6 | Rolex Submariner, Omega Seamaster, Patek Philippe Nautilus |
+| PHYSICAL (Accessories) | 3 | Leather Watch Roll, Cleaning Kit, Watch Box |
+| REAL_ESTATE | 1 | Luxury Penthouse Manhattan ($2.5M) |
+| VEHICLE | 1 | 2023 Porsche 911 Turbo S ($215K) |
+| DIGITAL | 1 | Watch Authentication Guide (PDF, $29) |
+| SERVICE | 1 | Watch Appraisal Service ($150) |
+
+**Additional Data:**
+- **Product Variants:** 3 (Rolex Submariner: Black, Blue, Green dial)
+- **Reviews:** 10 sample reviews (8 five-star, 2 four-star)
+- **Store Policies:** Return, shipping, and terms & conditions
+
+**Test Account:**
+- Email: `seller1@nextpik.com`
+- Password: `Password123!`
+
+**How to Run:**
+```bash
+cd packages/database
+npx tsx prisma/seeds/store-seed.ts
+```
+
+**Files Created:**
+- `packages/database/prisma/seeds/store-seed.ts`
+
+**Tested:** ✅ Seed runs successfully, all products created, reviews added
+
+---
+
+### 12.19 Version 2.4.0 Summary
+
+**Release Date:** December 31, 2025
+
+**New Features:**
+1. ✅ Store Following System (follow/unfollow stores)
+2. ✅ Following Stores Page (`/account/following`)
+3. ✅ Store Directory Page (`/stores`)
+4. ✅ Store Reviews Fix (API integration)
+5. ✅ Comprehensive Store Seed Data
+
+**API Endpoints Added:**
+- `GET /stores/:storeId/followers/count`
+- `GET /stores/:storeId/is-following`
+- `POST /stores/:storeId/follow`
+- `DELETE /stores/:storeId/follow`
+- `GET /stores/me/following`
+
+**Database Changes:**
+- Added `StoreFollow` model with unique constraint on userId+storeId
+
+**Files Modified:**
+- 7 files for store following feature
+- 3 files for store directory
+- 1 file for store reviews fix
+- 1 new seed file
+
+**Testing:**
+- ✅ All API endpoints verified
+- ✅ Follow/unfollow functionality tested
+- ✅ Store directory page functional
+- ✅ Store reviews displaying correctly
+- ✅ Seed data creates 13 products, 3 variants, 10 reviews
+
+**Breaking Changes:** None
+**Migration Required:** Run `npx prisma db push` for StoreFollow model
 
 ---
 
