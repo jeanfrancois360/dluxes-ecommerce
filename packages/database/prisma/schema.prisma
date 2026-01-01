@@ -73,10 +73,10 @@ model User {
 
   // Product Inquiries (for REAL_ESTATE, VEHICLE, INQUIRY products)
   sellerInquiries ProductInquiry[] @relation("SellerInquiries") // Inquiries received as seller
-  buyerInquiries  ProductInquiry[] @relation("BuyerInquiries")  // Inquiries submitted as buyer
+  buyerInquiries  ProductInquiry[] @relation("BuyerInquiries") // Inquiries submitted as buyer
 
   // Return Requests
-  returnRequests  ReturnRequest[]
+  returnRequests ReturnRequest[]
 
   // Followed Stores
   followedStores StoreFollow[]
@@ -122,11 +122,11 @@ model UserPreferences {
   emailSecurityAlerts    Boolean @default(true)
 
   // Push Notification Preferences (for future mobile/web push)
-  pushOrderUpdates    Boolean @default(true)
-  pushPromotions      Boolean @default(false)
-  pushPriceDrops      Boolean @default(false)
-  pushBackInStock     Boolean @default(true)
-  pushSecurityAlerts  Boolean @default(true)
+  pushOrderUpdates   Boolean @default(true)
+  pushPromotions     Boolean @default(false)
+  pushPriceDrops     Boolean @default(false)
+  pushBackInStock    Boolean @default(true)
+  pushSecurityAlerts Boolean @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -208,32 +208,32 @@ model Store {
   timezone String @default("UTC")
 
   // Payout Settings
-  payoutMethod       String?  @default("bank_transfer") // bank_transfer, paypal, stripe_connect
-  payoutEmail        String?  // PayPal email or notification email
-  payoutCurrency     String   @default("USD")
-  payoutMinAmount    Decimal  @default(50) @db.Decimal(10, 2)
-  payoutFrequency    String   @default("monthly") // weekly, biweekly, monthly
-  payoutDayOfWeek    Int?     // 0-6 for weekly (0 = Sunday)
-  payoutDayOfMonth   Int?     @default(1) // 1-28 for monthly
-  payoutAutomatic    Boolean  @default(true)
+  payoutMethod     String? @default("bank_transfer") // bank_transfer, paypal, stripe_connect
+  payoutEmail      String? // PayPal email or notification email
+  payoutCurrency   String  @default("USD")
+  payoutMinAmount  Decimal @default(50) @db.Decimal(10, 2)
+  payoutFrequency  String  @default("monthly") // weekly, biweekly, monthly
+  payoutDayOfWeek  Int? // 0-6 for weekly (0 = Sunday)
+  payoutDayOfMonth Int?    @default(1) // 1-28 for monthly
+  payoutAutomatic  Boolean @default(true)
 
   // Bank Account Details (encrypted in production)
-  bankAccountName    String?
-  bankAccountNumber  String?  // Last 4 digits stored, full number encrypted
-  bankRoutingNumber  String?
-  bankName           String?
-  bankBranchName     String?
-  bankSwiftCode      String?  // For international transfers
-  bankIban           String?  // For international transfers
-  bankCountry        String?
+  bankAccountName   String?
+  bankAccountNumber String? // Last 4 digits stored, full number encrypted
+  bankRoutingNumber String?
+  bankName          String?
+  bankBranchName    String?
+  bankSwiftCode     String? // For international transfers
+  bankIban          String? // For international transfers
+  bankCountry       String?
 
   // Vacation Mode
-  vacationMode        Boolean   @default(false)
-  vacationMessage     String?   @db.Text // Message to display on store page
-  vacationStartDate   DateTime? // When vacation mode was enabled
-  vacationEndDate     DateTime? // Optional auto-end date
-  vacationAutoReply   String?   @db.Text // Auto-reply for inquiries during vacation
-  vacationHideProducts Boolean  @default(false) // Hide products from search during vacation
+  vacationMode         Boolean   @default(false)
+  vacationMessage      String?   @db.Text // Message to display on store page
+  vacationStartDate    DateTime? // When vacation mode was enabled
+  vacationEndDate      DateTime? // Optional auto-end date
+  vacationAutoReply    String?   @db.Text // Auto-reply for inquiries during vacation
+  vacationHideProducts Boolean   @default(false) // Hide products from search during vacation
 
   // SEO
   metaTitle       String?
@@ -344,97 +344,97 @@ model Product {
   dimensions Json? // {length, width, height, unit}
 
   // ============ REAL ESTATE FIELDS (optional - only for REAL_ESTATE productType) ============
-  propertyType      String?   // house, apartment, condo, townhouse, land, commercial
+  propertyType      String? // house, apartment, condo, townhouse, land, commercial
   bedrooms          Int?
-  bathrooms         Decimal?  @db.Decimal(3, 1)  // Supports 2.5 bathrooms
-  squareFeet        Decimal?  @db.Decimal(10, 2)
-  lotSize           Decimal?  @db.Decimal(10, 2) // In sqft or acres
+  bathrooms         Decimal? @db.Decimal(3, 1) // Supports 2.5 bathrooms
+  squareFeet        Decimal? @db.Decimal(10, 2)
+  lotSize           Decimal? @db.Decimal(10, 2) // In sqft or acres
   yearBuilt         Int?
   parkingSpaces     Int?
-  amenities         String[]  @default([])       // Pool, Gym, Garage, Garden, etc.
+  amenities         String[] @default([]) // Pool, Gym, Garage, Garden, etc.
   propertyAddress   String?
   propertyCity      String?
   propertyState     String?
   propertyCountry   String?
   propertyZipCode   String?
-  propertyLatitude  Decimal?  @db.Decimal(10, 7)
-  propertyLongitude Decimal?  @db.Decimal(10, 7)
+  propertyLatitude  Decimal? @db.Decimal(10, 7)
+  propertyLongitude Decimal? @db.Decimal(10, 7)
   virtualTourUrl    String?
 
   // ============ VEHICLE FIELDS (optional - only for VEHICLE productType) ============
-  vehicleMake       String?   // Toyota, Honda, BMW, etc.
-  vehicleModel      String?   // Camry, Civic, X5, etc.
-  vehicleYear       Int?      // 2020, 2021, etc.
-  vehicleMileage    Int?      // Odometer reading
-  vehicleVIN        String?   // Vehicle Identification Number
-  vehicleCondition  String?   // new, used, certified_preowned
-  vehicleTransmission String? // automatic, manual, cvt
-  vehicleFuelType   String?   // petrol, diesel, electric, hybrid, plugin_hybrid
-  vehicleBodyType   String?   // sedan, suv, truck, coupe, hatchback, van, wagon, convertible
-  vehicleExteriorColor String?
-  vehicleInteriorColor String?
-  vehicleDrivetrain String?   // fwd, rwd, awd, 4wd
-  vehicleEngine     String?   // Engine specs, e.g., "2.5L 4-Cylinder"
-  vehicleFeatures   String[]  @default([]) // Leather seats, Sunroof, Navigation, etc.
-  vehicleHistory    String?   @db.Text // CARFAX, accident history, service records
-  vehicleWarranty   String?   // Warranty information
-  vehicleTestDriveAvailable Boolean @default(true)
+  vehicleMake               String? // Toyota, Honda, BMW, etc.
+  vehicleModel              String? // Camry, Civic, X5, etc.
+  vehicleYear               Int? // 2020, 2021, etc.
+  vehicleMileage            Int? // Odometer reading
+  vehicleVIN                String? // Vehicle Identification Number
+  vehicleCondition          String? // new, used, certified_preowned
+  vehicleTransmission       String? // automatic, manual, cvt
+  vehicleFuelType           String? // petrol, diesel, electric, hybrid, plugin_hybrid
+  vehicleBodyType           String? // sedan, suv, truck, coupe, hatchback, van, wagon, convertible
+  vehicleExteriorColor      String?
+  vehicleInteriorColor      String?
+  vehicleDrivetrain         String? // fwd, rwd, awd, 4wd
+  vehicleEngine             String? // Engine specs, e.g., "2.5L 4-Cylinder"
+  vehicleFeatures           String[] @default([]) // Leather seats, Sunroof, Navigation, etc.
+  vehicleHistory            String?  @db.Text // CARFAX, accident history, service records
+  vehicleWarranty           String? // Warranty information
+  vehicleTestDriveAvailable Boolean  @default(true)
 
   // ============ DIGITAL FIELDS (optional - only for DIGITAL productType) ============
-  digitalFileUrl      String?   // URL to the downloadable file (stored in cloud)
-  digitalFileSize     BigInt?   // File size in bytes
-  digitalFileFormat   String?   // PDF, ZIP, MP3, MP4, PNG, etc.
-  digitalFileName     String?   // Original filename
-  digitalVersion      String?   // Version number, e.g., "1.0.0", "2024.1"
-  digitalLicenseType  String?   // personal, commercial, extended, unlimited
-  digitalDownloadLimit Int?     // Max number of downloads allowed (null = unlimited)
-  digitalPreviewUrl   String?   // Preview/sample URL for customers to try before buying
-  digitalRequirements String?   @db.Text // System requirements or compatibility info
-  digitalInstructions String?   @db.Text // Installation/usage instructions
-  digitalUpdatePolicy String?   // free_lifetime, free_1year, paid_updates
-  digitalSupportEmail String?   // Support email for this digital product
+  digitalFileUrl       String? // URL to the downloadable file (stored in cloud)
+  digitalFileSize      BigInt? // File size in bytes
+  digitalFileFormat    String? // PDF, ZIP, MP3, MP4, PNG, etc.
+  digitalFileName      String? // Original filename
+  digitalVersion       String? // Version number, e.g., "1.0.0", "2024.1"
+  digitalLicenseType   String? // personal, commercial, extended, unlimited
+  digitalDownloadLimit Int? // Max number of downloads allowed (null = unlimited)
+  digitalPreviewUrl    String? // Preview/sample URL for customers to try before buying
+  digitalRequirements  String? @db.Text // System requirements or compatibility info
+  digitalInstructions  String? @db.Text // Installation/usage instructions
+  digitalUpdatePolicy  String? // free_lifetime, free_1year, paid_updates
+  digitalSupportEmail  String? // Support email for this digital product
 
   // ============ SERVICE FIELDS (optional - only for SERVICE productType) ============
-  serviceType           String?   // in_person, online, hybrid
-  serviceDuration       Int?      // Duration value (e.g., 60)
-  serviceDurationUnit   String?   // minutes, hours, days, sessions
-  serviceLocation       String?   // Where service is provided (for in-person)
-  serviceArea           String?   // Service coverage area/regions
-  serviceAvailability   String?   @db.Text // Availability schedule (JSON or text description)
-  serviceBookingRequired Boolean  @default(true)
-  serviceBookingLeadTime Int?     // Hours in advance required to book
-  serviceProviderName   String?   // Name of the service provider
-  serviceProviderBio    String?   @db.Text // Bio/description of the provider
-  serviceProviderImage  String?   // Provider's photo URL
+  serviceType                String? // in_person, online, hybrid
+  serviceDuration            Int? // Duration value (e.g., 60)
+  serviceDurationUnit        String? // minutes, hours, days, sessions
+  serviceLocation            String? // Where service is provided (for in-person)
+  serviceArea                String? // Service coverage area/regions
+  serviceAvailability        String?  @db.Text // Availability schedule (JSON or text description)
+  serviceBookingRequired     Boolean  @default(true)
+  serviceBookingLeadTime     Int? // Hours in advance required to book
+  serviceProviderName        String? // Name of the service provider
+  serviceProviderBio         String?  @db.Text // Bio/description of the provider
+  serviceProviderImage       String? // Provider's photo URL
   serviceProviderCredentials String[] @default([]) // Qualifications, certifications, licenses
-  serviceMaxClients     Int?      // Max clients per session (for group services)
-  serviceCancellationPolicy String? @db.Text // Cancellation terms and conditions
-  serviceIncludes       String[]  @default([]) // What's included in the service
-  serviceExcludes       String[]  @default([]) // What's NOT included
-  serviceRequirements   String?   @db.Text // What client needs to prepare/bring
+  serviceMaxClients          Int? // Max clients per session (for group services)
+  serviceCancellationPolicy  String?  @db.Text // Cancellation terms and conditions
+  serviceIncludes            String[] @default([]) // What's included in the service
+  serviceExcludes            String[] @default([]) // What's NOT included
+  serviceRequirements        String?  @db.Text // What client needs to prepare/bring
 
   // ============ RENTAL FIELDS (optional - only for RENTAL productType) ============
-  rentalPeriodType      String?   // hourly, daily, weekly, monthly
-  rentalMinPeriod       Int?      // Minimum rental period (in units of rentalPeriodType)
-  rentalMaxPeriod       Int?      // Maximum rental period (in units of rentalPeriodType)
-  rentalPriceHourly     Decimal?  @db.Decimal(10, 2) // Price per hour
-  rentalPriceDaily      Decimal?  @db.Decimal(10, 2) // Price per day
-  rentalPriceWeekly     Decimal?  @db.Decimal(10, 2) // Price per week
-  rentalPriceMonthly    Decimal?  @db.Decimal(10, 2) // Price per month
-  rentalSecurityDeposit Decimal?  @db.Decimal(10, 2) // Required security deposit
-  rentalPickupLocation  String?   // Where to pick up the rental
-  rentalDeliveryAvailable Boolean @default(false) // Whether delivery is available
-  rentalDeliveryFee     Decimal?  @db.Decimal(10, 2) // Delivery fee if applicable
-  rentalLateReturnFee   Decimal?  @db.Decimal(10, 2) // Fee per late period
-  rentalConditions      String?   @db.Text // Terms and conditions
-  rentalAvailability    String?   @db.Text // Availability info (JSON or text)
-  rentalInsuranceRequired Boolean @default(false) // Whether insurance is required
-  rentalInsuranceOptions String?  @db.Text // Available insurance options
-  rentalAgeRequirement  Int?      // Minimum age to rent
-  rentalIdRequired      Boolean   @default(true) // Whether ID is required
-  rentalIncludes        String[]  @default([]) // What's included in the rental
-  rentalExcludes        String[]  @default([]) // What's NOT included
-  rentalNotes           String?   @db.Text // Additional notes/instructions
+  rentalPeriodType        String? // hourly, daily, weekly, monthly
+  rentalMinPeriod         Int? // Minimum rental period (in units of rentalPeriodType)
+  rentalMaxPeriod         Int? // Maximum rental period (in units of rentalPeriodType)
+  rentalPriceHourly       Decimal? @db.Decimal(10, 2) // Price per hour
+  rentalPriceDaily        Decimal? @db.Decimal(10, 2) // Price per day
+  rentalPriceWeekly       Decimal? @db.Decimal(10, 2) // Price per week
+  rentalPriceMonthly      Decimal? @db.Decimal(10, 2) // Price per month
+  rentalSecurityDeposit   Decimal? @db.Decimal(10, 2) // Required security deposit
+  rentalPickupLocation    String? // Where to pick up the rental
+  rentalDeliveryAvailable Boolean  @default(false) // Whether delivery is available
+  rentalDeliveryFee       Decimal? @db.Decimal(10, 2) // Delivery fee if applicable
+  rentalLateReturnFee     Decimal? @db.Decimal(10, 2) // Fee per late period
+  rentalConditions        String?  @db.Text // Terms and conditions
+  rentalAvailability      String?  @db.Text // Availability info (JSON or text)
+  rentalInsuranceRequired Boolean  @default(false) // Whether insurance is required
+  rentalInsuranceOptions  String?  @db.Text // Available insurance options
+  rentalAgeRequirement    Int? // Minimum age to rent
+  rentalIdRequired        Boolean  @default(true) // Whether ID is required
+  rentalIncludes          String[] @default([]) // What's included in the rental
+  rentalExcludes          String[] @default([]) // What's NOT included
+  rentalNotes             String?  @db.Text // Additional notes/instructions
 
   // Relations
   store                 Store?                  @relation(fields: [storeId], references: [id], onDelete: SetNull)
@@ -820,14 +820,14 @@ enum CategoryType {
 }
 
 enum InquiryStatus {
-  NEW               // Just received, not yet viewed
-  CONTACTED         // Seller has contacted buyer
+  NEW // Just received, not yet viewed
+  CONTACTED // Seller has contacted buyer
   VIEWING_SCHEDULED // Property viewing scheduled (real estate)
   TEST_DRIVE_SCHEDULED // Test drive scheduled (vehicle)
-  NEGOTIATING       // Price negotiation in progress
-  CONVERTED         // Converted to sale
-  CLOSED            // Inquiry closed (no sale)
-  SPAM              // Marked as spam
+  NEGOTIATING // Price negotiation in progress
+  CONVERTED // Converted to sale
+  CLOSED // Inquiry closed (no sale)
+  SPAM // Marked as spam
 }
 
 model ProductImage {
@@ -845,8 +845,8 @@ model ProductImage {
   blurHash     String? // BlurHash for elegant loading states
 
   // Enhanced Metadata
-  size         Int?    // File size in bytes (optimized)
-  originalSize Int?    // Original file size before optimization
+  size         Int? // File size in bytes (optimized)
+  originalSize Int? // Original file size before optimization
   format       String? // Image format (webp, jpeg, png, etc.)
   mimeType     String? // MIME type
   optimizedUrl String? // Optimized version URL
@@ -912,7 +912,7 @@ model ProductTag {
 // ============================================================================
 
 model ProductInquiry {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   productId String
   sellerId  String
   storeId   String?
@@ -1051,7 +1051,7 @@ model Order {
   delivery             Delivery?
 
   // Returns
-  returnRequests       ReturnRequest[]
+  returnRequests ReturnRequest[]
 
   @@index([userId])
   @@index([orderNumber])
@@ -1077,8 +1077,8 @@ enum PaymentStatus {
   PARTIALLY_REFUNDED
   REFUNDED
   FAILED
-  CANCELLED  // Payment was canceled before completion
-  DISPUTED   // Payment is under dispute/chargeback
+  CANCELLED // Payment was canceled before completion
+  DISPUTED // Payment is under dispute/chargeback
 }
 
 enum PaymentMethod {
@@ -1160,29 +1160,29 @@ model OrderTimeline {
 
 // Return Request for handling returns and refunds
 model ReturnRequest {
-  id          String       @id @default(cuid())
+  id          String  @id @default(cuid())
   orderId     String
-  orderItemId String?      // Optional: for item-specific returns
+  orderItemId String? // Optional: for item-specific returns
   userId      String
 
   // Return Details
   reason      ReturnReason
   description String?      @db.Text
-  images      Json?        // Array of image URLs for proof
+  images      Json? // Array of image URLs for proof
 
   // Status & Resolution
-  status      ReturnStatus @default(PENDING)
-  resolution  String?      @db.Text // Admin notes on resolution
+  status     ReturnStatus @default(PENDING)
+  resolution String?      @db.Text // Admin notes on resolution
 
   // Refund Information
-  refundAmount   Decimal?  @db.Decimal(10, 2)
-  refundMethod   String?   // Original payment method, store credit, etc.
-  refundedAt     DateTime?
+  refundAmount Decimal?  @db.Decimal(10, 2)
+  refundMethod String? // Original payment method, store credit, etc.
+  refundedAt   DateTime?
 
   // Timestamps
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  resolvedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
 
   // Relations
   order     Order      @relation(fields: [orderId], references: [id])
@@ -1196,24 +1196,24 @@ model ReturnRequest {
 }
 
 enum ReturnReason {
-  DEFECTIVE        // Product is defective or damaged
-  WRONG_ITEM       // Received wrong item
+  DEFECTIVE // Product is defective or damaged
+  WRONG_ITEM // Received wrong item
   NOT_AS_DESCRIBED // Product not as described
-  CHANGED_MIND     // Customer changed their mind
-  SIZE_FIT         // Size/fit issues
-  QUALITY          // Quality not as expected
-  LATE_DELIVERY    // Delivery was too late
-  OTHER            // Other reason
+  CHANGED_MIND // Customer changed their mind
+  SIZE_FIT // Size/fit issues
+  QUALITY // Quality not as expected
+  LATE_DELIVERY // Delivery was too late
+  OTHER // Other reason
 }
 
 enum ReturnStatus {
-  PENDING          // Awaiting review
-  APPROVED         // Return approved, awaiting item
-  REJECTED         // Return request rejected
-  ITEM_RECEIVED    // Returned item received
+  PENDING // Awaiting review
+  APPROVED // Return approved, awaiting item
+  REJECTED // Return request rejected
+  ITEM_RECEIVED // Returned item received
   REFUND_PROCESSING // Refund being processed
-  REFUNDED         // Refund completed
-  CANCELLED        // Request cancelled by customer
+  REFUNDED // Refund completed
+  CANCELLED // Request cancelled by customer
 }
 
 // Wishlist for premium UX
@@ -1546,15 +1546,15 @@ model PaymentTransaction {
 enum PaymentTransactionStatus {
   PENDING
   PROCESSING
-  REQUIRES_ACTION  // 3D Secure or additional authentication required
+  REQUIRES_ACTION // 3D Secure or additional authentication required
   SUCCEEDED
   FAILED
   CANCELLED
-  CAPTURED         // Manual capture completed (for escrow)
+  CAPTURED // Manual capture completed (for escrow)
   REFUNDED
   PARTIALLY_REFUNDED
-  DISPUTED         // Chargeback/dispute initiated
-  LOST_DISPUTE     // Dispute was lost
+  DISPUTED // Chargeback/dispute initiated
+  LOST_DISPUTE // Dispute was lost
 }
 
 // Webhook Events for reliability and debugging
@@ -1883,6 +1883,32 @@ enum SubscriptionStatus {
   PAST_DUE
   CANCELLED
   EXPIRED
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUBSCRIPTION SYSTEM ENUMS (for inquiry-based products: SERVICE, RENTAL, VEHICLE, REAL_ESTATE)
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum SubscriptionTier {
+  FREE
+  STARTER
+  PROFESSIONAL
+  BUSINESS
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum CreditTransactionType {
+  ALLOCATION // Monthly credit allocation from subscription
+  PURCHASE // Additional credits purchased
+  DEBIT // Credit used for inquiry response
+  REFUND // Credit refunded
+  BONUS // Promotional credits
+  EXPIRATION // Credits expired
+  ADJUSTMENT // Manual adjustment by admin
 }
 
 // ============================================================================
@@ -2455,17 +2481,17 @@ model Delivery {
   expectedDeliveryDate DateTime?
 
   // Delivery Confirmation
-  confirmedBy      String? // User ID who confirmed
-  confirmationType DeliveryConfirmationType?
-  proofOfDelivery  Json? // { signature, photos, notes, gps }
+  confirmedBy        String? // User ID who confirmed
+  confirmationType   DeliveryConfirmationType?
+  proofOfDelivery    Json? // { signature, photos, notes, gps }
   proofOfDeliveryUrl String? // URL to uploaded proof file (photo/PDF)
 
   // Buyer Confirmation & Payout
-  buyerConfirmed     Boolean   @default(false)
-  buyerConfirmedAt   DateTime?
-  payoutReleased     Boolean   @default(false)
-  payoutReleasedAt   DateTime?
-  payoutReleasedBy   String? // Admin user ID who released payout
+  buyerConfirmed   Boolean   @default(false)
+  buyerConfirmedAt DateTime?
+  payoutReleased   Boolean   @default(false)
+  payoutReleasedAt DateTime?
+  payoutReleasedBy String? // Admin user ID who released payout
 
   // Issues & Disputes
   hasIssue         Boolean   @default(false)
