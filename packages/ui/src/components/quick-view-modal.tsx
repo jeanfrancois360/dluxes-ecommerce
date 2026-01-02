@@ -323,7 +323,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
                             return (
                               <motion.button
-                                key={color.value}
+                                key={`quickview-color-${color.value}`}
                                 onClick={() => setSelectedColor(color.value)}
                                 whileHover={framerMotion.interactions.swatchHover}
                                 whileTap={framerMotion.interactions.swatchTap}
@@ -359,7 +359,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                         <div className="flex flex-wrap gap-3">
                           {product.variants.sizes.map((size) => (
                             <motion.button
-                              key={size.value}
+                              key={`quickview-size-${size.value}`}
                               onClick={() => size.inStock && setSelectedSize(size.value)}
                               disabled={!size.inStock}
                               whileHover={size.inStock ? framerMotion.interactions.sizeHover : {}}

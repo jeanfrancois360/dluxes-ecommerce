@@ -10,6 +10,7 @@ import { ReviewsList } from '@/components/reviews/reviews-list';
 import { ReviewForm } from '@/components/reviews/review-form';
 import { WishlistButton } from '@/components/wishlist/wishlist-button';
 import { ProductInquiryForm } from '@/components/product-inquiry-form';
+import { InquiryForm } from '@/components/inquiry/InquiryForm';
 import { useReviews, useCreateReview, useMarkHelpful, useReportReview } from '@/hooks/use-reviews';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCart } from '@/hooks/use-cart';
@@ -25,6 +26,7 @@ import { framerMotion } from '@nextpik/design-system/animations';
 import { RealEstateDetails, VehicleDetails, DigitalDetails, ServiceDetails, RentalDetails } from '@/components/products/type-details';
 import { RealEstateInquiryForm } from '@/components/products/RealEstateInquiryForm';
 import { VehicleInquiryForm } from '@/components/products/VehicleInquiryForm';
+import { ProductDetailAd } from '@/components/ads';
 
 // Reviews Section Component
 function ReviewsSection({ productId }: { productId: string }) {
@@ -97,6 +99,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>('description');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
+  const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
   const [showInquiryForm, setShowInquiryForm] = useState(false);
 
   // Wishlist
@@ -129,7 +132,7 @@ export default function ProductDetailPage() {
       .map(v => ({
         name: v.attributes.size,
         value: v.attributes.size.toLowerCase(),
-        inStock: v.isAvailable && v.stock > 0,
+        inStock: v.isAvailable && v.inventory > 0,
       }));
     return Array.from(new Map(sizes.map(s => [s.value, s])).values());
   }, [product]);
@@ -147,8 +150,8 @@ export default function ProductDetailPage() {
 
     if (selectedVar) {
       return {
-        inStock: selectedVar.isAvailable && selectedVar.stock > 0,
-        quantity: selectedVar.stock,
+        inStock: selectedVar.isAvailable && selectedVar.inventory > 0,
+        quantity: selectedVar.inventory,
         showQuantity: true
       };
     }
@@ -228,9 +231,11 @@ export default function ProductDetailPage() {
     // Check if purchaseType is INQUIRY
     if (product.purchaseType === 'INQUIRY') return true;
 
-    // Real estate and vehicles always require inquiry (high-value items)
+    // Real estate, vehicles, services, and rentals always require inquiry
     if (product.productType === 'REAL_ESTATE') return true;
     if (product.productType === 'VEHICLE') return true;
+    if (product.productType === 'SERVICE') return true;
+    if (product.productType === 'RENTAL') return true;
 
     // Fallback: also check for zero/null price (legacy behavior)
     const price = currentPrice?.price || product.price;
@@ -290,9 +295,26 @@ export default function ProductDetailPage() {
     }
   };
 
+  // Fetch fresh product data for Quick View
+  const { product: quickViewFullProduct, isLoading: quickViewLoading } = useProduct(
+    quickViewSlug || '',
+    true
+  );
+
+  // Transform fresh product data for Quick View when it's loaded
+  useEffect(() => {
+    if (quickViewSlug && quickViewFullProduct && !quickViewLoading) {
+      const transformed = transformToQuickViewProducts([quickViewFullProduct])[0];
+      setQuickViewProduct(transformed || null);
+    }
+  }, [quickViewFullProduct, quickViewLoading, quickViewSlug]);
+
   const handleQuickView = (productId: string) => {
     const prod = relatedProducts.find(p => p.id === productId);
-    if (prod) setQuickViewProduct(prod);
+    if (prod) {
+      // Trigger fresh data fetch by setting the slug
+      setQuickViewSlug(prod.slug);
+    }
   };
 
   const handleNavigate = (slug: string) => {
@@ -371,7 +393,7 @@ export default function ProductDetailPage() {
 
         {/* Product Section */}
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-12">
-          <div className="grid lg:grid-cols-2 gap-12 mb-16">
+          <div className="grid lg:grid-cols-[1fr,1fr,300px] xl:grid-cols-[1fr,1fr,350px] gap-8 lg:gap-12 mb-16">
             {/* Image Gallery */}
             <div>
               {/* Main Image */}
@@ -568,6 +590,10 @@ export default function ProductDetailPage() {
                         ? 'Schedule a Viewing'
                         : product.productType === 'VEHICLE'
                         ? 'Schedule a Test Drive'
+                        : product.productType === 'SERVICE'
+                        ? 'Request Service Quote'
+                        : product.productType === 'RENTAL'
+                        ? 'Request Rental Information'
                         : 'Contact About This Product'}
                     </button>
                   ) : product.productType === 'REAL_ESTATE' ? (
@@ -594,6 +620,20 @@ export default function ProductDetailPage() {
                       }}
                       onCancel={() => setShowInquiryForm(false)}
                     />
+                  ) : product.productType === 'SERVICE' || product.productType === 'RENTAL' ? (
+                    <div>
+                      <InquiryForm
+                        productId={product.id}
+                        productName={product.name}
+                        sellerName={product.store?.name}
+                      />
+                      <button
+                        onClick={() => setShowInquiryForm(false)}
+                        className="mt-4 text-gray-600 hover:text-gray-800 text-sm font-medium"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   ) : (
                     <ProductInquiryForm
                       productId={product.id}
@@ -625,7 +665,7 @@ export default function ProductDetailPage() {
 
                       return (
                         <motion.button
-                          key={color.value}
+                          key={`detail-color-${color.value}`}
                           onClick={() => setSelectedVariant({ ...selectedVariant, color: color.value })}
                           whileHover={framerMotion.interactions.swatchHover}
                           whileTap={framerMotion.interactions.swatchTap}
@@ -659,7 +699,7 @@ export default function ProductDetailPage() {
                   <div className="flex gap-3 flex-wrap">
                     {availableSizes.map((size) => (
                       <motion.button
-                        key={size.value}
+                        key={`detail-size-${size.value}`}
                         onClick={() => size.inStock && setSelectedVariant({ ...selectedVariant, size: size.value })}
                         disabled={!size.inStock}
                         whileHover={size.inStock ? framerMotion.interactions.sizeHover : {}}
@@ -764,6 +804,14 @@ export default function ProductDetailPage() {
               )}
                 </>
               )}
+            </div>
+
+            {/* Product Detail Ad Sidebar - Hidden on mobile */}
+            <div className="hidden lg:block">
+              <ProductDetailAd
+                categoryId={product.categoryId}
+                className="sticky top-24"
+              />
             </div>
           </div>
 
@@ -931,8 +979,11 @@ export default function ProductDetailPage() {
 
       {/* Quick View Modal */}
       <QuickViewModal
-        isOpen={!!quickViewProduct}
-        onClose={() => setQuickViewProduct(null)}
+        isOpen={!!quickViewSlug}
+        onClose={() => {
+          setQuickViewSlug(null);
+          setQuickViewProduct(null);
+        }}
         product={quickViewProduct}
         onAddToCart={(id) => console.log('Add to cart:', id)}
         onViewDetails={handleNavigate}

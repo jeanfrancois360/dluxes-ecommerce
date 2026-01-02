@@ -422,7 +422,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       </Link>
                       {item.variant && (
                         <p className="text-sm text-gray-500">
-                          Variant: {item.variant.size || ''} {item.variant.color || ''}
+                          Variant: {item.variant.attributes?.size || ''} {item.variant.attributes?.color || ''}
                         </p>
                       )}
                       <p className="text-sm text-gray-600 mt-1">

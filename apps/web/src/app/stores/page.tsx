@@ -220,7 +220,7 @@ export default function StoresDirectoryPage() {
     () => storesAPI.getStores({
       page,
       limit: pageSize,
-      verified: verifiedOnly || undefined,
+      verified: verifiedOnly ? 'true' : undefined,
     }) as Promise<StoresResponse>,
     { keepPreviousData: true }
   );
@@ -348,7 +348,7 @@ export default function StoresDirectoryPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-black">
-                    {stores.filter(s => s.verified).length}+
+                    {stores.filter(s => s.verified).length}
                   </p>
                   <p className="text-xs text-neutral-500">Verified Sellers</p>
                 </div>
@@ -361,7 +361,7 @@ export default function StoresDirectoryPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-black">
-                    {stores.reduce((sum, s) => sum + (s.totalProducts || 0), 0).toLocaleString()}+
+                    {stores.reduce((sum, s) => sum + (s.totalProducts || 0), 0).toLocaleString()}
                   </p>
                   <p className="text-xs text-neutral-500">Products</p>
                 </div>
@@ -374,7 +374,7 @@ export default function StoresDirectoryPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-black">
-                    {stores.reduce((sum, s) => sum + (s.totalOrders || 0), 0).toLocaleString()}+
+                    {stores.reduce((sum, s) => sum + (s.totalOrders || 0), 0).toLocaleString()}
                   </p>
                   <p className="text-xs text-neutral-500">Total Sales</p>
                 </div>

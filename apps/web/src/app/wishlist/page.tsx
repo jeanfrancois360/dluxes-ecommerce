@@ -1,22 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import { WishlistItemComponent } from '@/components/wishlist/wishlist-item';
 import { QuickViewModal, type QuickViewProduct } from '@nextpik/ui';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCart } from '@/hooks/use-cart';
+import { useProduct } from '@/hooks/use-product';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 
 export default function WishlistPage() {
   const router = useRouter();
   const { items, total, isLoading, removeFromWishlist, clearWishlist } = useWishlist();
   const { addItem: addToCart } = useCart();
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
+  const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'priceAsc' | 'priceDesc'>('recent');
   const [filterAvailability, setFilterAvailability] = useState<'all' | 'inStock' | 'outOfStock'>('all');
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
@@ -101,22 +104,25 @@ export default function WishlistPage() {
     }
   };
 
+  // Fetch fresh product data for Quick View
+  const { product: quickViewFullProduct, isLoading: quickViewLoading } = useProduct(
+    quickViewSlug || '',
+    true
+  );
+
+  // Transform fresh product data for Quick View when it's loaded
+  useEffect(() => {
+    if (quickViewSlug && quickViewFullProduct && !quickViewLoading) {
+      const transformed = transformToQuickViewProducts([quickViewFullProduct])[0];
+      setQuickViewProduct(transformed || null);
+    }
+  }, [quickViewFullProduct, quickViewLoading, quickViewSlug]);
+
   const handleQuickView = (productId: string) => {
     const item = (items || []).find((i) => i.productId === productId);
     if (item) {
-      setQuickViewProduct({
-        id: item.product.id,
-        name: item.product.name,
-        slug: item.product.slug,
-        price: item.product.price,
-        compareAtPrice: item.product.compareAtPrice,
-        description: '',
-        image: item.product.heroImage,
-        images: [item.product.heroImage],
-        inStock: item.product.isAvailable,
-        rating: item.product.rating,
-        reviewCount: item.product.reviewCount,
-      });
+      // Trigger fresh data fetch by setting the slug
+      setQuickViewSlug(item.product.slug);
     }
   };
 
@@ -336,8 +342,11 @@ export default function WishlistPage() {
 
       {/* Quick View Modal */}
       <QuickViewModal
-        isOpen={!!quickViewProduct}
-        onClose={() => setQuickViewProduct(null)}
+        isOpen={!!quickViewSlug}
+        onClose={() => {
+          setQuickViewSlug(null);
+          setQuickViewProduct(null);
+        }}
         product={quickViewProduct}
         onAddToCart={handleAddToCart}
         onViewDetails={(slug) => {

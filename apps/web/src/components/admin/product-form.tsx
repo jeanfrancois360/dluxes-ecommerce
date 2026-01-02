@@ -187,7 +187,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         compareAtPrice: product.compareAtPrice || undefined,
         category: product.category || '',
         images: imageArray,
-        stock: product.stock || undefined,
+        stock: product.inventory || product.stock || undefined,
         status: product.status || 'DRAFT',
         tags: product.tags || [],
         productType: (product as any)?.productType || 'PHYSICAL',

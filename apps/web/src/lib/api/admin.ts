@@ -77,7 +77,8 @@ export interface AdminProduct {
   compareAtPrice?: number;
   category: string;
   images: string[];
-  stock: number;
+  stock?: number; // Legacy field name
+  inventory?: number; // Database field name
   status: 'active' | 'inactive' | 'draft';
   tags: string[];
   createdAt: string;

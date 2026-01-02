@@ -61,6 +61,8 @@ model User {
   escrowAllocations  EscrowSplitAllocation[]   @relation("SellerEscrowAllocations")
   commissionOverride SellerCommissionOverride? @relation("SellerCommissionOverrides")
   planSubscriptions  SellerPlanSubscription[]  @relation("SellerPlanSubscriptions")
+  sellerSubscription SellerSubscription?       @relation("UserSubscription") // Inquiry-based product subscription
+  creditBalance      CreditBalance?            @relation("UserCreditBalance") // Credit balance for inquiry responses
 
   // Delivery Provider Extensions
   deliveryProviderId  String?
@@ -592,8 +594,8 @@ model Advertisement {
   textColor       String?
   customCss       String? @db.Text
 
-  // Metadata
-  metadata Json?
+  // External Advertiser Tracking (for admin-created ads)
+  metadata Json? // { externalAdvertiser, contactEmail, invoiceNumber, contractValue, notes }
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2372,6 +2374,191 @@ model SellerPlanSubscription {
   @@index([status])
   @@index([currentPeriodEnd])
   @@map("seller_plan_subscriptions")
+}
+
+// ============================================================================
+// Subscription System (for inquiry-based products: SERVICE, RENTAL, VEHICLE, REAL_ESTATE)
+// ============================================================================
+
+model SubscriptionPlan {
+  id          String           @id @default(cuid())
+  tier        SubscriptionTier @unique
+  name        String // "Free", "Starter", "Professional", "Business"
+  description String?          @db.Text
+
+  // Pricing
+  monthlyPrice Decimal @db.Decimal(10, 2)
+  yearlyPrice  Decimal @db.Decimal(10, 2)
+  currency     String  @default("USD")
+
+  // Limits
+  maxActiveListings     Int @default(-1) // -1 for unlimited
+  monthlyCredits        Int // Credits allocated per month
+  listingDurationDays   Int @default(30)
+  featuredSlotsPerMonth Int @default(0)
+
+  // Permissions
+  allowedProductTypes Json // ["SERVICE", "RENTAL", "VEHICLE", "REAL_ESTATE"]
+  features            Json // ["Priority Support", "Analytics", ...]
+
+  // Stripe Integration
+  stripeProductId      String?
+  stripePriceIdMonthly String?
+  stripePriceIdYearly  String?
+
+  // Display
+  isPopular    Boolean @default(false)
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  subscriptions SellerSubscription[]
+
+  @@index([tier])
+  @@index([isActive, displayOrder])
+  @@map("subscription_plans")
+}
+
+model SellerSubscription {
+  id     String @id @default(cuid())
+  userId String @unique // One subscription per seller
+  planId String
+
+  // Subscription Status
+  status       SubscriptionStatus @default(ACTIVE)
+  billingCycle BillingCycle       @default(MONTHLY)
+
+  // Billing Period
+  currentPeriodStart DateTime  @default(now())
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean   @default(false)
+  canceledAt         DateTime?
+
+  // Credit Tracking (for this billing period)
+  creditsAllocated Int @default(0)
+  creditsUsed      Int @default(0)
+
+  // Usage Tracking
+  activeListingsCount Int @default(0)
+  featuredSlotsUsed   Int @default(0)
+
+  // Stripe
+  stripeSubscriptionId String?
+  stripeCustomerId     String?
+
+  // Trial
+  trialEndsAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User             @relation("UserSubscription", fields: [userId], references: [id], onDelete: Cascade)
+  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@map("seller_subscriptions")
+}
+
+model CreditTransaction {
+  id        String @id @default(cuid())
+  balanceId String
+
+  // Transaction Details
+  type   CreditTransactionType
+  amount Int // Positive for credit, negative for debit
+
+  // Balance Snapshot
+  balanceBefore Int
+  balanceAfter  Int
+
+  // Context
+  action      String? // "list_service", "feature_7_days", "purchase_100_pack"
+  description String?
+
+  // References
+  productId      String? // If related to a product listing
+  packageId      String? // If from a credit package purchase
+  subscriptionId String? // If from subscription allocation
+
+  // Admin
+  performedBy String? // Admin user ID if manual adjustment
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  balance CreditBalance @relation(fields: [balanceId], references: [id], onDelete: Cascade)
+
+  @@index([balanceId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([productId])
+  @@map("credit_transactions")
+}
+
+model CreditBalance {
+  id     String @id @default(cuid())
+  userId String @unique // One balance per user
+
+  // Current Balance
+  availableCredits Int @default(0)
+
+  // Lifetime Stats
+  lifetimeCredits Int @default(0) // Total ever received
+  lifetimeUsed    Int @default(0) // Total ever spent
+
+  // Expiration Tracking
+  expiringCredits Int       @default(0) // Credits expiring soon
+  expirationDate  DateTime? // When they expire
+
+  // Purchased vs Subscription Credits
+  purchasedCredits Int @default(0) // Credits bought separately
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user         User                @relation("UserCreditBalance", fields: [userId], references: [id], onDelete: Cascade)
+  transactions CreditTransaction[]
+
+  @@index([userId])
+  @@map("credit_balances")
+}
+
+model CreditPackage {
+  id String @id @default(cuid())
+
+  // Package Details
+  name        String  // "Starter Pack", "Value Bundle", etc.
+  description String?
+  credits     Int // Number of credits in package
+
+  // Pricing
+  price    Decimal @db.Decimal(10, 2)
+  currency String  @default("USD")
+
+  // Display
+  savingsPercent Int     @default(0) // "Save 20%"
+  savingsLabel   String? // "Best Value"
+  isPopular      Boolean @default(false)
+  isActive       Boolean @default(true)
+  displayOrder   Int     @default(0)
+
+  // Stripe
+  stripeProductId String?
+  stripePriceId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, displayOrder])
+  @@map("credit_packages")
 }
 
 // ============================================================================
