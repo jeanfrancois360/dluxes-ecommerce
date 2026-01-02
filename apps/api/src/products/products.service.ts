@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { CreditsService } from '../credits/credits.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -15,24 +22,102 @@ import * as path from 'path';
  */
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
+    private readonly subscriptionService: SubscriptionService,
+    private readonly creditsService: CreditsService,
   ) {}
 
   /**
    * Transform Decimal values to numbers for JSON serialization
    */
   private transformProduct(product: any) {
+    // Transform variants to include 'attributes' field for frontend compatibility
+    const variants = product.variants?.map((variant: any) => ({
+      ...variant,
+      price: variant.price ? Number(variant.price) : null,
+      compareAtPrice: variant.compareAtPrice ? Number(variant.compareAtPrice) : null,
+      attributes: variant.options || {}, // Map 'options' to 'attributes' for frontend
+    }));
+
     return {
       ...product,
       price: Number(product.price),
       compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
+      variants: variants || product.variants,
     };
   }
 
   private transformProducts(products: any[]) {
     return products.map((p) => this.transformProduct(p));
+  }
+
+  /**
+   * Check if user can create a subscription-based product
+   */
+  private async checkSubscriptionRequirements(
+    userId: string,
+    productType: string,
+  ): Promise<{ allowed: boolean; message?: string }> {
+    const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
+
+    // Skip check for commission-based products
+    if (!subscriptionTypes.includes(productType)) {
+      return { allowed: true };
+    }
+
+    const check = await this.subscriptionService.canListProductType(
+      userId,
+      productType,
+    );
+
+    if (!check.canList) {
+      const messages: string[] = [];
+      if (!check.reasons.productTypeAllowed) {
+        messages.push(`Your plan does not allow ${productType} listings`);
+      }
+      if (!check.reasons.meetsTierRequirement) {
+        messages.push(
+          `Upgrade your subscription to list ${productType} products`,
+        );
+      }
+      if (!check.reasons.hasListingCapacity) {
+        messages.push('You have reached your maximum listing limit');
+      }
+      if (!check.reasons.hasCredits) {
+        messages.push('Insufficient credits for this listing');
+      }
+
+      return { allowed: false, message: messages.join('. ') };
+    }
+
+    return { allowed: true };
+  }
+
+  /**
+   * Deduct credits for subscription-based product
+   */
+  private async deductListingCredits(
+    userId: string,
+    productType: string,
+    productId: string,
+  ): Promise<void> {
+    const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
+
+    if (!subscriptionTypes.includes(productType)) {
+      return; // No credits for commission-based products
+    }
+
+    const action = `list_${productType.toLowerCase()}`;
+    await this.creditsService.debitCredits(
+      userId,
+      action,
+      `Listed ${productType} product`,
+      productId,
+    );
   }
 
   /**
@@ -206,6 +291,21 @@ export class ProductsService {
           materials: true,
           inventory: true,
           status: true,
+          storeId: true,
+          store: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              logo: true,
+              verified: true,
+              rating: true,
+              reviewCount: true,
+              totalProducts: true,
+              city: true,
+              country: true,
+            },
+          },
           category: {
             select: {
               id: true,

@@ -1,10 +1,24 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { CreditsService } from '../credits/credits.service';
 import { ProductStatus } from '@prisma/client';
 
 @Injectable()
 export class SellerService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(SellerService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private subscriptionService: SubscriptionService,
+    private creditsService: CreditsService,
+  ) {}
 
   /**
    * Get seller's products
@@ -753,6 +767,37 @@ export class SellerService {
       throw new ForbiddenException('Your store must be approved before you can add products.');
     }
 
+    // Check subscription requirements for subscription-based product types
+    const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
+    const productType = data.productType;
+
+    if (productType && subscriptionTypes.includes(productType)) {
+      const check = await this.subscriptionService.canListProductType(
+        userId,
+        productType,
+      );
+
+      if (!check.canList) {
+        const messages: string[] = [];
+        if (!check.reasons.productTypeAllowed) {
+          messages.push(`Your plan does not allow ${productType} listings`);
+        }
+        if (!check.reasons.meetsTierRequirement) {
+          messages.push(
+            `Upgrade your subscription to list ${productType} products`,
+          );
+        }
+        if (!check.reasons.hasListingCapacity) {
+          messages.push('You have reached your maximum listing limit');
+        }
+        if (!check.reasons.hasCredits) {
+          messages.push('Insufficient credits for this listing');
+        }
+
+        throw new BadRequestException(messages.join('. '));
+      }
+    }
+
     // Create product with seller's store ID
     const product = await this.prisma.product.create({
       data: {
@@ -765,6 +810,24 @@ export class SellerService {
         images: true,
       },
     });
+
+    // Deduct credits for subscription-based product types
+    if (productType && subscriptionTypes.includes(productType)) {
+      try {
+        const action = `list_${productType.toLowerCase()}`;
+        await this.creditsService.debitCredits(
+          userId,
+          action,
+          `Listed ${productType} product`,
+          product.id,
+        );
+      } catch (error) {
+        // Log but don't fail - product is already created
+        this.logger.warn(
+          `Failed to deduct credits for product ${product.id}: ${error.message}`,
+        );
+      }
+    }
 
     // Update store product count
     await this.prisma.store.update({

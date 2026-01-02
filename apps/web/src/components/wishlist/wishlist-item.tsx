@@ -160,7 +160,7 @@ export function WishlistItemComponent({
         <div className="flex items-center gap-2 mb-3">
           <div className={`w-2 h-2 rounded-full ${product.isAvailable ? 'bg-green-500' : 'bg-red-500'}`} />
           <span className={`text-xs font-medium ${product.isAvailable ? 'text-green-600' : 'text-red-600'}`}>
-            {product.isAvailable ? `In Stock (${product.stock})` : 'Out of Stock'}
+            {product.isAvailable ? `In Stock (${product.inventory})` : 'Out of Stock'}
           </span>
         </div>
 

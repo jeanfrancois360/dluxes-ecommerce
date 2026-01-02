@@ -1943,6 +1943,482 @@ async function main() {
   console.log(`✅ Created ${settings.length} system settings`);
 
   // ============================================================================
+  // SUBSCRIPTION SYSTEM SETTINGS
+  // ============================================================================
+  console.log('📋 Creating subscription system settings...');
+
+  const subscriptionSettings = [
+    // General
+    {
+      key: 'subscription_system_enabled',
+      value: true,
+      valueType: 'BOOLEAN',
+      category: 'SUBSCRIPTION',
+      label: 'Enable Subscription System',
+      description: 'Enable/disable the subscription system for inquiry-based products',
+      isPublic: false,
+      isEditable: true,
+    },
+    {
+      key: 'subscription_product_types',
+      value: ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'],
+      valueType: 'ARRAY',
+      category: 'SUBSCRIPTION',
+      label: 'Subscription Product Types',
+      description: 'Product types that require subscription (inquiry-based)',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'commission_product_types',
+      value: ['PHYSICAL', 'DIGITAL'],
+      valueType: 'ARRAY',
+      category: 'SUBSCRIPTION',
+      label: 'Commission Product Types',
+      description: 'Product types that use commission model (cart-based)',
+      isPublic: true,
+      isEditable: true,
+    },
+
+    // Credit Costs
+    {
+      key: 'credit_cost_list_service',
+      value: 2,
+      valueType: 'NUMBER',
+      category: 'SUBSCRIPTION',
+      label: 'Credit Cost: List Service',
+      description: 'Credits required to list a SERVICE product',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'credit_cost_list_rental',
+      value: 2,
+      valueType: 'NUMBER',
+      category: 'SUBSCRIPTION',
+      label: 'Credit Cost: List Rental',
+      description: 'Credits required to list a RENTAL product',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'credit_cost_list_vehicle',
+      value: 5,
+      valueType: 'NUMBER',
+      category: 'SUBSCRIPTION',
+      label: 'Credit Cost: List Vehicle',
+      description: 'Credits required to list a VEHICLE product',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'credit_cost_list_real_estate',
+      value: 10,
+      valueType: 'NUMBER',
+      category: 'SUBSCRIPTION',
+      label: 'Credit Cost: List Real Estate',
+      description: 'Credits required to list a REAL_ESTATE product',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'credit_cost_feature_7_days',
+      value: 3,
+      valueType: 'NUMBER',
+      category: 'SUBSCRIPTION',
+      label: 'Credit Cost: Feature 7 Days',
+      description: 'Credits to feature a listing for 7 days',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'credit_cost_feature_30_days',
+      value: 10,
+      valueType: 'NUMBER',
+      category: 'SUBSCRIPTION',
+      label: 'Credit Cost: Feature 30 Days',
+      description: 'Credits to feature a listing for 30 days',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'credit_cost_boost_to_top',
+      value: 2,
+      valueType: 'NUMBER',
+      category: 'SUBSCRIPTION',
+      label: 'Credit Cost: Boost to Top',
+      description: 'Credits to boost listing to top of search',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'credit_cost_renew_listing',
+      value: 1,
+      valueType: 'NUMBER',
+      category: 'SUBSCRIPTION',
+      label: 'Credit Cost: Renew Listing',
+      description: 'Credits to renew an expired listing',
+      isPublic: true,
+      isEditable: true,
+    },
+
+    // Credit Expiration
+    {
+      key: 'subscription_credits_expiry_days',
+      value: 90,
+      valueType: 'NUMBER',
+      category: 'SUBSCRIPTION',
+      label: 'Subscription Credits Expiry (Days)',
+      description: 'Days until subscription credits expire (0 = never)',
+      isPublic: false,
+      isEditable: true,
+    },
+    {
+      key: 'purchased_credits_expire',
+      value: false,
+      valueType: 'BOOLEAN',
+      category: 'SUBSCRIPTION',
+      label: 'Purchased Credits Expire',
+      description: 'Whether purchased credits expire',
+      isPublic: false,
+      isEditable: true,
+    },
+
+    // Minimum Tier Requirements
+    {
+      key: 'min_tier_service',
+      value: 'FREE',
+      valueType: 'STRING',
+      category: 'SUBSCRIPTION',
+      label: 'Minimum Tier: Service',
+      description: 'Minimum subscription tier to list SERVICE products',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'min_tier_rental',
+      value: 'STARTER',
+      valueType: 'STRING',
+      category: 'SUBSCRIPTION',
+      label: 'Minimum Tier: Rental',
+      description: 'Minimum subscription tier to list RENTAL products',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'min_tier_vehicle',
+      value: 'STARTER',
+      valueType: 'STRING',
+      category: 'SUBSCRIPTION',
+      label: 'Minimum Tier: Vehicle',
+      description: 'Minimum subscription tier to list VEHICLE products',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'min_tier_real_estate',
+      value: 'PROFESSIONAL',
+      valueType: 'STRING',
+      category: 'SUBSCRIPTION',
+      label: 'Minimum Tier: Real Estate',
+      description: 'Minimum subscription tier to list REAL_ESTATE products',
+      isPublic: true,
+      isEditable: true,
+    },
+
+    // Bonuses
+    {
+      key: 'new_seller_bonus_credits',
+      value: 5,
+      valueType: 'NUMBER',
+      category: 'SUBSCRIPTION',
+      label: 'New Seller Bonus Credits',
+      description: 'Bonus credits for new sellers (0 = disabled)',
+      isPublic: false,
+      isEditable: true,
+    },
+  ];
+
+  for (const setting of subscriptionSettings) {
+    await prisma.systemSetting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
+    });
+  }
+  console.log(`✅ Created ${subscriptionSettings.length} subscription settings`);
+
+  // ============================================================================
+  // SUBSCRIPTION PLANS
+  // ============================================================================
+  console.log('📦 Creating subscription plans...');
+
+  const subscriptionPlans = [
+    {
+      tier: 'FREE' as const,
+      name: 'Free',
+      description: 'Get started with basic listings',
+      monthlyPrice: 0,
+      yearlyPrice: 0,
+      currency: 'USD',
+      maxActiveListings: 3,
+      monthlyCredits: 2,
+      listingDurationDays: 30,
+      featuredSlotsPerMonth: 0,
+      allowedProductTypes: ['SERVICE'],
+      features: ['3 Active Listings', '2 Credits/Month', 'Basic Support', 'Standard Visibility'],
+      isPopular: false,
+      isActive: true,
+      displayOrder: 1,
+    },
+    {
+      tier: 'STARTER' as const,
+      name: 'Starter',
+      description: 'Perfect for growing sellers',
+      monthlyPrice: 29.99,
+      yearlyPrice: 299.99,
+      currency: 'USD',
+      maxActiveListings: 15,
+      monthlyCredits: 10,
+      listingDurationDays: 45,
+      featuredSlotsPerMonth: 2,
+      allowedProductTypes: ['SERVICE', 'RENTAL', 'VEHICLE'],
+      features: ['15 Active Listings', '10 Credits/Month', '2 Featured Slots', 'Priority Support', '45-Day Listings'],
+      isPopular: false,
+      isActive: true,
+      displayOrder: 2,
+    },
+    {
+      tier: 'PROFESSIONAL' as const,
+      name: 'Professional',
+      description: 'For serious sellers',
+      monthlyPrice: 79.99,
+      yearlyPrice: 799.99,
+      currency: 'USD',
+      maxActiveListings: 50,
+      monthlyCredits: 30,
+      listingDurationDays: 60,
+      featuredSlotsPerMonth: 5,
+      allowedProductTypes: ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'],
+      features: ['50 Active Listings', '30 Credits/Month', '5 Featured Slots', 'Priority Support', '60-Day Listings', 'Analytics Dashboard', 'Real Estate Listings'],
+      isPopular: true,
+      isActive: true,
+      displayOrder: 3,
+    },
+    {
+      tier: 'BUSINESS' as const,
+      name: 'Business',
+      description: 'Unlimited potential for enterprises',
+      monthlyPrice: 199.99,
+      yearlyPrice: 1999.99,
+      currency: 'USD',
+      maxActiveListings: -1, // Unlimited
+      monthlyCredits: 100,
+      listingDurationDays: 90,
+      featuredSlotsPerMonth: 15,
+      allowedProductTypes: ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'],
+      features: ['Unlimited Listings', '100 Credits/Month', '15 Featured Slots', 'Dedicated Support', '90-Day Listings', 'Advanced Analytics', 'API Access', 'White-Label Options'],
+      isPopular: false,
+      isActive: true,
+      displayOrder: 4,
+    },
+  ];
+
+  for (const plan of subscriptionPlans) {
+    await prisma.subscriptionPlan.upsert({
+      where: { tier: plan.tier },
+      update: plan,
+      create: plan,
+    });
+  }
+  console.log(`✅ Created ${subscriptionPlans.length} subscription plans`);
+
+  // ============================================================================
+  // CREDIT PACKAGES
+  // ============================================================================
+  console.log('💳 Creating credit packages...');
+
+  const creditPackages = [
+    {
+      name: 'Starter Pack',
+      description: 'Perfect for trying out premium features',
+      credits: 10,
+      price: 9.99,
+      currency: 'USD',
+      savingsPercent: 0,
+      savingsLabel: null,
+      isPopular: false,
+      isActive: true,
+      displayOrder: 1,
+    },
+    {
+      name: 'Value Bundle',
+      description: 'Great value for regular sellers',
+      credits: 25,
+      price: 19.99,
+      currency: 'USD',
+      savingsPercent: 20,
+      savingsLabel: 'Save 20%',
+      isPopular: false,
+      isActive: true,
+      displayOrder: 2,
+    },
+    {
+      name: 'Pro Pack',
+      description: 'Most popular choice',
+      credits: 50,
+      price: 34.99,
+      currency: 'USD',
+      savingsPercent: 30,
+      savingsLabel: 'Best Value',
+      isPopular: true,
+      isActive: true,
+      displayOrder: 3,
+    },
+    {
+      name: 'Business Bundle',
+      description: 'For high-volume sellers',
+      credits: 100,
+      price: 59.99,
+      currency: 'USD',
+      savingsPercent: 40,
+      savingsLabel: 'Save 40%',
+      isPopular: false,
+      isActive: true,
+      displayOrder: 4,
+    },
+    {
+      name: 'Enterprise Pack',
+      description: 'Maximum credits at the best rate',
+      credits: 250,
+      price: 124.99,
+      currency: 'USD',
+      savingsPercent: 50,
+      savingsLabel: 'Save 50%',
+      isPopular: false,
+      isActive: true,
+      displayOrder: 5,
+    },
+  ];
+
+  for (const pkg of creditPackages) {
+    await prisma.creditPackage.upsert({
+      where: { id: `pkg_${pkg.credits}` },
+      update: pkg,
+      create: {
+        id: `pkg_${pkg.credits}`,
+        ...pkg,
+      },
+    });
+  }
+  console.log(`✅ Created ${creditPackages.length} credit packages`);
+
+  // ============================================================================
+  // ADVERTISEMENT PLANS
+  // ============================================================================
+  console.log('📢 Creating advertisement plans...');
+
+  const advertisementPlans = [
+    {
+      id: 'ad_plan_free',
+      name: 'Free',
+      slug: 'free',
+      description: 'Basic advertising for new sellers',
+      maxActiveAds: 1,
+      maxImpressions: 1000,
+      priorityBoost: 0,
+      allowedPlacements: ['PRODUCTS_SIDEBAR'],
+      price: 0,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 0,
+      isActive: true,
+      isFeatured: false,
+      displayOrder: 0,
+    },
+    {
+      id: 'ad_plan_basic',
+      name: 'Basic',
+      slug: 'basic',
+      description: 'Essential advertising features for growing sellers',
+      maxActiveAds: 3,
+      maxImpressions: 10000,
+      priorityBoost: 1,
+      allowedPlacements: ['PRODUCTS_SIDEBAR', 'PRODUCTS_INLINE', 'CATEGORY_BANNER'],
+      price: 29,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 7,
+      isActive: true,
+      isFeatured: false,
+      displayOrder: 1,
+    },
+    {
+      id: 'ad_plan_premium',
+      name: 'Premium',
+      slug: 'premium',
+      description: 'Advanced advertising with premium placements',
+      maxActiveAds: 10,
+      maxImpressions: 50000,
+      priorityBoost: 5,
+      allowedPlacements: [
+        'HOMEPAGE_FEATURED',
+        'HOMEPAGE_SIDEBAR',
+        'PRODUCTS_BANNER',
+        'PRODUCTS_SIDEBAR',
+        'PRODUCTS_INLINE',
+        'CATEGORY_BANNER',
+        'PRODUCT_DETAIL_SIDEBAR',
+        'SEARCH_RESULTS',
+      ],
+      price: 99,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 7,
+      isActive: true,
+      isFeatured: true,
+      displayOrder: 2,
+    },
+    {
+      id: 'ad_plan_enterprise',
+      name: 'Enterprise',
+      slug: 'enterprise',
+      description: 'Unlimited advertising with all premium features',
+      maxActiveAds: -1, // Unlimited
+      maxImpressions: null, // Unlimited
+      priorityBoost: 10,
+      allowedPlacements: [
+        'HOMEPAGE_HERO',
+        'HOMEPAGE_FEATURED',
+        'HOMEPAGE_SIDEBAR',
+        'PRODUCTS_BANNER',
+        'PRODUCTS_SIDEBAR',
+        'PRODUCTS_INLINE',
+        'CATEGORY_BANNER',
+        'PRODUCT_DETAIL_SIDEBAR',
+        'CHECKOUT_UPSELL',
+        'SEARCH_RESULTS',
+      ],
+      price: 299,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 14,
+      isActive: true,
+      isFeatured: false,
+      displayOrder: 3,
+    },
+  ];
+
+  for (const plan of advertisementPlans) {
+    await prisma.advertisementPlan.upsert({
+      where: { slug: plan.slug },
+      update: plan,
+      create: plan,
+    });
+  }
+  console.log(`✅ Created ${advertisementPlans.length} advertisement plans`);
+
+  // ============================================================================
   // DELIVERY PROVIDERS & PARTNERS
   // ============================================================================
   console.log('');

@@ -232,12 +232,14 @@ export interface ProductVariant {
   sku: string;
   price?: number;
   compareAtPrice?: number;
-  stock: number;
-  size?: string;
-  color?: string;
+  inventory: number; // Database field name (was 'stock')
   image?: string;
-  attributes: Record<string, string>; // e.g., { size: 'M', color: 'Blue' }
+  options?: Record<string, any>; // Database field - variant attributes from Prisma
+  attributes: Record<string, string>; // Helper field for easier access (mapped from options)
   isAvailable: boolean;
+  colorHex?: string; // From database - color swatch hex code
+  colorName?: string; // From database - color display name
+  displayOrder?: number; // From database
 }
 
 export interface ProductTag {

@@ -18,6 +18,7 @@ import { OrderSummary } from '@/components/checkout/order-summary';
 import { ShippingSummaryCard } from '@/components/checkout/shipping-summary-card';
 import { CheckoutSkeleton } from '@/components/loading/skeleton';
 import { calculateShippingCost, getShippingMethodById } from '@/lib/shipping-config';
+import { CheckoutUpsellAd } from '@/components/ads';
 
 // Wrapper component to handle async Stripe loading
 function StripeElementsWrapper({
@@ -411,7 +412,11 @@ export default function CheckoutPage() {
             </div>
 
             {/* Right Column - Order Summary */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 space-y-6">
+              {/* Checkout Upsell Ad */}
+              <CheckoutUpsellAd />
+
+              {/* Order Summary */}
               <OrderSummary
                 items={items}
                 subtotal={totals.subtotal}

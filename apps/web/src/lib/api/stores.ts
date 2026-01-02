@@ -232,7 +232,7 @@ export const storesAPI = {
     page?: number;
     limit?: number;
     status?: string;
-    verified?: boolean;
+    verified?: string;
   }) => api.get<{
     data: Store[];
     meta: {

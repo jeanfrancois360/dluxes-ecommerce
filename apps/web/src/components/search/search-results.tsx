@@ -6,6 +6,7 @@ import { ProductCard } from '@nextpik/ui';
 import { useSearch } from '@/hooks/use-search';
 import { FiltersSidebar } from '@/components/filters-sidebar';
 import { Product } from '@/lib/api/types';
+import { SearchResultsAd } from '@/components/ads';
 
 interface SearchResultsProps {
   initialQuery: string;
@@ -178,6 +179,13 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
               </span>
             )}
           </div>
+
+          {/* Sponsored Search Result Ad */}
+          {data && data.products.length > 0 && (
+            <div className="mb-6">
+              <SearchResultsAd />
+            </div>
+          )}
 
           {/* Loading State */}
           {isLoading && !data && (
