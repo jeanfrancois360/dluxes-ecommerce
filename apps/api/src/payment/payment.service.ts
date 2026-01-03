@@ -1,9 +1,10 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, Inject, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { CurrencyService } from '../currency/currency.service';
+import { StripeSubscriptionService } from '../subscription/stripe-subscription.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { PaymentStatus, PaymentTransactionStatus, PaymentMethod, WebhookStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -30,6 +31,7 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
     private readonly currencyService: CurrencyService,
+    @Optional() private readonly stripeSubscriptionService?: StripeSubscriptionService,
   ) {
     // Initialize Stripe on first use (lazy loading)
     this.logger.log('PaymentService initialized - Stripe will be configured on first use');
@@ -483,6 +485,21 @@ export class PaymentService {
 
         case 'charge.dispute.closed':
           await this.handleDisputeClosed(event.data.object as Stripe.Dispute, webhookEvent.id);
+          break;
+
+        // Subscription Events - Route to StripeSubscriptionService
+        case 'checkout.session.completed':
+        case 'customer.subscription.created':
+        case 'customer.subscription.updated':
+        case 'customer.subscription.deleted':
+        case 'invoice.paid':
+        case 'invoice.payment_failed':
+          if (this.stripeSubscriptionService) {
+            this.logger.log(`Routing ${event.type} to StripeSubscriptionService`);
+            await this.stripeSubscriptionService.handleWebhookEvent(event);
+          } else {
+            this.logger.warn(`StripeSubscriptionService not available to handle ${event.type}`);
+          }
           break;
 
         default:
