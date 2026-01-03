@@ -6,12 +6,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useCompleteDashboard } from '@/hooks/use-seller-dashboard';
+import { useMySubscription } from '@/hooks/use-subscription';
 import { StatsCard } from '@/components/seller/analytics/stats-card';
 import { RevenueChart } from '@/components/seller/analytics/revenue-chart';
 import { ActivityFeed } from '@/components/seller/analytics/activity-feed';
 import { OrderStatusDonut } from '@/components/seller/analytics/order-status-donut';
 import { PageLayout } from '@/components/layout/page-layout';
-import { DollarSign, ShoppingCart, Package, Wallet, AlertTriangle } from 'lucide-react';
+import { DollarSign, ShoppingCart, Package, Wallet, AlertTriangle, Crown, CreditCard } from 'lucide-react';
 import { formatNumber, formatCurrencyAmount } from '@/lib/utils/number-format';
 import { sellerAPI, LowStockProduct } from '@/lib/api/seller';
 import useSWR from 'swr';
@@ -65,6 +66,9 @@ export default function SellerDashboard() {
     hasError,
     refetch,
   } = useCompleteDashboard();
+
+  // Fetch subscription info
+  const { subscription, plan, isActive: subscriptionActive, isLoading: subLoading } = useMySubscription();
 
   // Fetch low stock products
   const { data: lowStockProducts = [], isLoading: lowStockLoading } = useSWR<LowStockProduct[]>(
@@ -295,6 +299,127 @@ export default function SellerDashboard() {
             isLoading={isLoading}
           />
         </div>
+
+        {/* Subscription Status Widget */}
+        {!subLoading && subscription && plan && (
+          <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 mb-10 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-[#CBB57B]/10 rounded-xl">
+                  <Crown className="w-6 h-6 text-[#CBB57B]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Your Subscription</h2>
+                  <p className="text-sm text-gray-500">{plan.name} Plan</p>
+                </div>
+              </div>
+              <Link
+                href="/seller/subscription"
+                className="px-4 py-2 text-sm font-medium text-[#CBB57B] hover:bg-[#CBB57B]/5 rounded-lg transition-colors"
+              >
+                Manage Plan →
+              </Link>
+            </div>
+
+            {/* Usage Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Active Listings */}
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Active Listings</p>
+                  <Package className="w-4 h-4 text-gray-400" />
+                </div>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <p className="text-2xl font-bold text-gray-900">{subscription.activeListingsCount || 0}</p>
+                  <p className="text-sm text-gray-500">/ {plan.maxActiveListings === -1 ? '∞' : plan.maxActiveListings}</p>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      plan.maxActiveListings !== -1 && (subscription.activeListingsCount || 0) >= plan.maxActiveListings
+                        ? 'bg-red-500'
+                        : (subscription.activeListingsCount || 0) >= plan.maxActiveListings * 0.8
+                        ? 'bg-amber-500'
+                        : 'bg-[#CBB57B]'
+                    }`}
+                    style={{
+                      width: plan.maxActiveListings === -1
+                        ? '0%'
+                        : `${Math.min(100, ((subscription.activeListingsCount || 0) / plan.maxActiveListings) * 100)}%`
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Featured Slots */}
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Featured Slots</p>
+                  <Crown className="w-4 h-4 text-gray-400" />
+                </div>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <p className="text-2xl font-bold text-gray-900">{subscription.featuredSlotsUsed || 0}</p>
+                  <p className="text-sm text-gray-500">/ {plan.featuredSlotsPerMonth}</p>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 rounded-full transition-all"
+                    style={{
+                      width: plan.featuredSlotsPerMonth > 0
+                        ? `${Math.min(100, ((subscription.featuredSlotsUsed || 0) / plan.featuredSlotsPerMonth) * 100)}%`
+                        : '0%'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Credits */}
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Credits</p>
+                  <CreditCard className="w-4 h-4 text-gray-400" />
+                </div>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <p className="text-2xl font-bold text-gray-900">
+                    {subscription.creditsAllocated - subscription.creditsUsed}
+                  </p>
+                  <p className="text-sm text-gray-500">/ {subscription.creditsAllocated}</p>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(100, ((subscription.creditsAllocated - subscription.creditsUsed) / subscription.creditsAllocated) * 100)}%`
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Upgrade CTA if near limits */}
+            {plan.maxActiveListings !== -1 && (subscription.activeListingsCount || 0) >= plan.maxActiveListings * 0.8 && (
+              <div className="mt-6 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-amber-900 mb-1">
+                      Running low on listings!
+                    </p>
+                    <p className="text-sm text-amber-800 mb-3">
+                      You've used {subscription.activeListingsCount} of {plan.maxActiveListings} active listings. Upgrade to list more products.
+                    </p>
+                    <Link
+                      href="/seller/plans"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                    >
+                      Upgrade Plan
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">

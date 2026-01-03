@@ -1,8 +1,8 @@
 # Comprehensive Technical Documentation
 # NextPik E-commerce Platform
 
-**Version:** 2.4.0
-**Last Updated:** December 31, 2025 (Store Features & Following System)
+**Version:** 2.5.0
+**Last Updated:** January 3, 2026 (Stripe Subscription Integration)
 **Status:** Production-Ready
 
 ---
@@ -20,11 +20,13 @@
 9. [Known Gaps & Limitations](#9-known-gaps--limitations)
 10. [Developer Setup Guide](#10-developer-setup-guide)
 11. [Operational Notes](#11-operational-notes)
-12. [Version 2.3.0 Changes & Enhancements](#12-version-230-changes--enhancements) **[NEW - UI/UX & Stabilization]**
-13. [Version 2.2.0 Changes & Enhancements](#13-version-220-changes--enhancements)
-14. [Version 2.1.1 Changes & Enhancements](#14-version-211-changes--enhancements)
-15. [Version 2.0 Changes & Enhancements](#15-version-20-changes--enhancements)
-16. [Roadmap Snapshot](#16-roadmap-snapshot)
+12. [Version 2.5.0 Changes & Enhancements](#12-version-250-changes--enhancements) **[NEW - Stripe Subscription Integration]**
+13. [Version 2.4.0 Changes & Enhancements](#13-version-240-changes--enhancements)
+14. [Version 2.3.0 Changes & Enhancements](#14-version-230-changes--enhancements)
+15. [Version 2.2.0 Changes & Enhancements](#15-version-220-changes--enhancements)
+16. [Version 2.1.1 Changes & Enhancements](#16-version-211-changes--enhancements)
+17. [Version 2.0 Changes & Enhancements](#17-version-20-changes--enhancements)
+18. [Roadmap Snapshot](#18-roadmap-snapshot)
 
 ---
 
@@ -2524,11 +2526,530 @@ pnpm install
 
 ---
 
-## 12. Version 2.3.0 Changes & Enhancements
+## 12. Version 2.5.0 Changes & Enhancements
 
-### 12.1 Overview - UI/UX Improvements & System Stabilization
+### 12.1 Overview - Stripe Subscription Integration
 
-Version 2.3.0 focuses on polishing the user experience, fixing critical production issues, and improving system stability:
+Version 2.5.0 introduces **complete Stripe payment integration** for recurring seller subscriptions, enabling monetization through tiered subscription plans with automatic billing.
+
+**Key Highlights:**
+1. **Stripe Checkout Integration** - Full Stripe Checkout Sessions for subscription purchases
+2. **Webhook Synchronization** - Real-time subscription status updates from Stripe events
+3. **Billing Portal** - Self-service subscription management via Stripe Customer Portal
+4. **Settings-Based Configuration** - Stripe keys managed through System Settings (hot-reload capable)
+5. **Automatic Price Sync** - Admin function to sync subscription plans with Stripe products/prices
+6. **Credit Management** - Automatic monthly credit reset on billing cycle renewals
+7. **Subscription Lifecycle** - Complete handling of trials, renewals, cancellations, and failures
+
+**Release Date:** January 3, 2026
+**Breaking Changes:** None
+**Migration Required:** No
+**Production Ready:** ✅ Yes (requires Stripe configuration)
+
+---
+
+### 12.2 Stripe Subscription Service
+
+**New Service:** `apps/api/src/subscription/stripe-subscription.service.ts` (700+ lines)
+
+**Features Implemented:**
+
+#### Customer Management
+- Create and retrieve Stripe customers
+- Link Stripe customer IDs to user accounts
+- Sync customer data across User and SellerSubscription tables
+
+#### Checkout Flow
+```typescript
+POST /subscription/create-checkout
+// Creates Stripe Checkout Session
+// Returns { sessionId, url } for redirect
+```
+
+- Monthly and yearly billing support
+- FREE plans skip Stripe checkout
+- Metadata tracking (userId, planId, billingCycle)
+- Success/cancel URL configuration
+
+#### Billing Portal
+```typescript
+POST /subscription/create-portal
+// Creates Stripe Customer Portal Session
+// Returns { url } for billing management
+```
+
+- Self-service subscription changes
+- Payment method updates
+- Invoice history
+- Cancellation management
+
+#### Webhook Event Handling
+Handles 6 Stripe webhook event types:
+
+1. **checkout.session.completed**
+   - Creates/updates subscription record
+   - Sets Stripe subscription ID
+   - Activates subscription
+
+2. **customer.subscription.created**
+   - Initial subscription setup
+   - Links to seller record
+
+3. **customer.subscription.updated**
+   - Updates subscription status
+   - Syncs period dates
+   - Updates cancel_at_period_end flag
+
+4. **customer.subscription.deleted**
+   - Downgrades to FREE plan
+   - Clears Stripe IDs
+   - Sets status to CANCELLED
+
+5. **invoice.paid**
+   - Resets monthly credits
+   - Confirms active status
+   - Extends current period
+
+6. **invoice.payment_failed**
+   - Sets status to PAST_DUE
+   - Triggers retry logic
+
+#### Subscription Management
+```typescript
+POST /subscription/cancel      // Cancel at period end
+POST /subscription/resume      // Resume cancelled subscription
+```
+
+#### Admin Functions
+```typescript
+POST /subscription/admin/sync-stripe
+// Syncs all active plans with Stripe
+// Creates products and prices automatically
+// Returns { synced: number, errors: string[] }
+```
+
+**Price Sync Process:**
+1. Reads all active SubscriptionPlan records
+2. Creates Stripe Product for each plan (if not exists)
+3. Creates monthly Price (if not exists)
+4. Creates yearly Price (if not exists)
+5. Updates database with Stripe IDs
+
+---
+
+### 12.3 Configuration Integration
+
+**Settings-Based Configuration (Primary):**
+
+Stripe keys managed via System Settings:
+- `stripe_secret_key` - Stripe secret key (sk_test_... or sk_live_...)
+- `stripe_publishable_key` - Stripe publishable key
+- `stripe_webhook_secret` - Webhook signing secret
+- `stripe_enabled` - Enable/disable Stripe
+- `stripe_test_mode` - Test mode toggle
+- `stripe_currency` - Default currency
+
+**Environment Variables (Fallback):**
+```bash
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+**Configuration Flow:**
+```typescript
+async initializeStripe(): Promise<void> {
+  // 1. Try SettingsService (database)
+  const config = await this.settingsService.getStripeConfig();
+
+  // 2. Fallback to ConfigService (.env)
+  if (!config.secretKey) {
+    secretKey = this.configService.get('STRIPE_SECRET_KEY');
+  }
+
+  // 3. Initialize Stripe client
+  this.stripe = new Stripe(secretKey, {
+    apiVersion: '2025-10-29.clover',
+  });
+}
+```
+
+**Benefits:**
+- ✅ Hot reload without restart
+- ✅ Admin UI configuration
+- ✅ Audit trail in SettingsAuditLog
+- ✅ Environment-specific overrides
+
+---
+
+### 12.4 Frontend Integration
+
+**Updated Files:**
+
+**1. API Client**
+`apps/web/src/lib/api/subscription.ts` - Added Stripe methods:
+```typescript
+subscriptionApi.createCheckout(planId, billingCycle)
+  → Creates checkout session, returns { sessionId, url }
+
+subscriptionApi.createPortalSession()
+  → Creates billing portal, returns { url }
+
+subscriptionApi.cancelSubscription()
+  → Cancels at period end
+
+subscriptionApi.resumeSubscription()
+  → Resumes cancelled subscription
+
+subscriptionApi.adminSyncStripePrices()
+  → Admin: syncs plans with Stripe
+```
+
+**2. Plans Page**
+`apps/web/src/app/seller/plans/page.tsx` - Stripe checkout integration:
+- Billing cycle toggle (Monthly/Yearly)
+- Dynamic pricing display
+- Checkout loading states
+- FREE plan handling
+- Redirects to Stripe Checkout on upgrade
+
+**User Flow:**
+```
+1. Seller navigates to /seller/plans
+2. Selects billing cycle (Monthly/Yearly)
+3. Clicks plan button
+4. Frontend calls createCheckout()
+5. Redirects to Stripe hosted checkout
+6. User completes payment on Stripe
+7. Webhook updates database
+8. Redirected to success page
+9. Subscription active
+```
+
+---
+
+### 12.5 Database Schema
+
+**Existing Stripe Fields (Already in Schema):**
+
+**SubscriptionPlan:**
+```prisma
+stripeProductId      String?  // Stripe Product ID
+stripePriceIdMonthly String?  // Monthly Price ID
+stripePriceIdYearly  String?  // Yearly Price ID
+```
+
+**SellerSubscription:**
+```prisma
+stripeSubscriptionId String?  // Stripe Subscription ID
+stripeCustomerId     String?  // Stripe Customer ID (cached)
+```
+
+**User:**
+```prisma
+stripeCustomerId String?  // Stripe Customer ID (primary)
+```
+
+**No migration required** - All fields existed in v2.4.0.
+
+---
+
+### 12.6 Testing & Documentation
+
+**Updated Documentation:**
+1. `SUBSCRIPTION_INTEGRATION_REPORT.md` - Complete integration guide
+   - Prerequisites and setup
+   - Stripe testing instructions
+   - Webhook event flow diagrams
+   - Test card numbers
+   - Step-by-step testing guide
+
+2. `COMPREHENSIVE_TECHNICAL_DOCUMENTATION.md` (this file)
+   - Version 2.5.0 section added
+   - Stripe architecture documented
+   - Configuration examples
+
+**Testing Resources:**
+
+**Stripe Test Cards:**
+```
+Success:            4242 4242 4242 4242
+Decline:            4000 0000 0000 0002
+3D Secure:          4000 0027 6000 3184
+Insufficient Funds: 4000 0000 0000 9995
+```
+
+**Webhook Testing:**
+```bash
+# Install Stripe CLI
+brew install stripe/stripe-cli/stripe
+
+# Forward webhooks to local API
+stripe listen --forward-to localhost:4000/api/v1/payment/webhook
+
+# Trigger test events
+stripe trigger checkout.session.completed
+stripe trigger customer.subscription.updated
+stripe trigger invoice.paid
+```
+
+**Manual Testing Steps:**
+1. Configure Stripe keys in Admin Settings
+2. Run admin price sync
+3. Test checkout flow (Monthly/Yearly)
+4. Test billing portal access
+5. Test subscription cancellation
+6. Test subscription resumption
+7. Verify webhook events update database
+
+---
+
+### 12.7 API Endpoints Added
+
+**Seller Subscription Endpoints:**
+```
+POST /subscription/create-checkout
+  Body: { planId: string, billingCycle: 'MONTHLY' | 'YEARLY' }
+  Returns: { sessionId: string, url: string }
+  Auth: SELLER role required
+
+POST /subscription/create-portal
+  Returns: { url: string }
+  Auth: SELLER role required
+
+POST /subscription/cancel
+  Returns: { message: string }
+  Auth: SELLER role required
+
+POST /subscription/resume
+  Returns: { message: string }
+  Auth: SELLER role required
+```
+
+**Admin Endpoints:**
+```
+POST /subscription/admin/sync-stripe
+  Returns: { synced: number, errors: string[] }
+  Auth: ADMIN or SUPER_ADMIN role required
+```
+
+**Webhook Endpoint (Already existed):**
+```
+POST /payment/webhook
+  - Now routes subscription events to StripeSubscriptionService
+  - Handles 6 subscription event types
+  - Validates webhook signature
+  - Updates database in real-time
+```
+
+---
+
+### 12.8 Module Architecture Updates
+
+**SubscriptionModule:**
+```typescript
+@Module({
+  imports: [
+    DatabaseModule,
+    SettingsModule,    // For Stripe config
+    ConfigModule,      // For .env fallback
+  ],
+  controllers: [SubscriptionController],
+  providers: [
+    SubscriptionService,
+    StripeSubscriptionService,  // NEW
+  ],
+  exports: [
+    SubscriptionService,
+    StripeSubscriptionService,  // Exported for PaymentModule
+  ],
+})
+export class SubscriptionModule {}
+```
+
+**PaymentModule:**
+```typescript
+@Module({
+  imports: [
+    // ... existing imports ...
+    SubscriptionModule,  // NEW - for webhook routing
+  ],
+  // ...
+})
+export class PaymentModule {}
+```
+
+**Webhook Routing:**
+```typescript
+// payment.service.ts
+async handleWebhook(signature: string, rawBody: Buffer) {
+  const event = stripe.webhooks.constructEvent(rawBody, signature, secret);
+
+  switch (event.type) {
+    // Payment events
+    case 'payment_intent.succeeded':
+      await this.handlePaymentSuccess(event.data.object);
+      break;
+
+    // Subscription events (NEW)
+    case 'checkout.session.completed':
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+    case 'customer.subscription.deleted':
+    case 'invoice.paid':
+    case 'invoice.payment_failed':
+      if (this.stripeSubscriptionService) {
+        await this.stripeSubscriptionService.handleWebhookEvent(event);
+      }
+      break;
+  }
+}
+```
+
+---
+
+### 12.9 Key Implementation Details
+
+**Lazy Initialization Pattern:**
+```typescript
+private stripe: Stripe | null = null;
+
+async getStripeClient(): Promise<Stripe> {
+  if (!this.stripe) {
+    await this.initializeStripe();
+  }
+
+  if (!this.stripe) {
+    throw new BadRequestException(
+      'Stripe not configured. Please configure Stripe in Admin Settings.'
+    );
+  }
+
+  return this.stripe;
+}
+```
+
+**Benefits:**
+- No errors if Stripe not configured
+- Graceful degradation
+- Hot reload capability
+- Consistent error messages
+
+**Metadata Tracking:**
+```typescript
+// All Stripe objects include metadata
+subscription_data: {
+  metadata: {
+    userId: 'user_123',
+    planId: 'plan_456',
+    billingCycle: 'MONTHLY',
+  },
+}
+```
+
+Enables:
+- Webhook event attribution
+- User lookup from Stripe data
+- Plan identification
+- Audit trail
+
+**Status Mapping:**
+```typescript
+private mapStripeStatus(stripeStatus: Stripe.Subscription.Status) {
+  switch (stripeStatus) {
+    case 'active':    return SubscriptionStatus.ACTIVE;
+    case 'trialing':  return SubscriptionStatus.TRIAL;
+    case 'past_due':  return SubscriptionStatus.PAST_DUE;
+    case 'canceled':  return SubscriptionStatus.CANCELLED;
+    case 'unpaid':    return SubscriptionStatus.CANCELLED;
+    default:          return SubscriptionStatus.ACTIVE;
+  }
+}
+```
+
+---
+
+### 12.10 Production Deployment Checklist
+
+**Pre-Deployment:**
+- [ ] Configure Stripe live keys in Admin Settings
+- [ ] Update webhook URLs in Stripe Dashboard
+- [ ] Test webhook signature validation
+- [ ] Run price sync for all plans
+- [ ] Verify all plans have Stripe product/price IDs
+- [ ] Test checkout flow end-to-end
+- [ ] Verify webhook events update database correctly
+
+**Post-Deployment:**
+- [ ] Monitor Stripe Dashboard for events
+- [ ] Check application logs for webhook processing
+- [ ] Verify subscription renewals work correctly
+- [ ] Test cancellation and resumption flows
+- [ ] Monitor database for data consistency
+- [ ] Set up Stripe webhook monitoring/alerts
+
+**Rollback Plan:**
+- System degrades gracefully if Stripe not configured
+- Can disable Stripe via `stripe_enabled` setting
+- No database migrations required
+- Can switch back to v2.4.0 without data loss
+
+---
+
+### 12.11 Known Limitations
+
+1. **Billing Portal UI:** Direct redirect to Stripe (no wrapper page)
+2. **Trial Periods:** Not configured in current plans (can be added)
+3. **Proration:** Uses Stripe defaults (can be customized)
+4. **Tax Handling:** Not configured (Stripe Tax can be enabled)
+5. **Multiple Subscriptions:** User limited to one active subscription
+
+### 12.11.1 Recently Resolved
+
+✅ **Success/Cancel Pages** - Dedicated post-checkout pages created:
+- `/seller/subscription/success` - Animated success page with subscription details and next steps
+- `/seller/subscription/cancel` - User-friendly cancellation page with retry options and help
+
+**Features:**
+- Professional animations using Framer Motion
+- Clear next steps and what to expect
+- Easy navigation to dashboard or subscription details
+- Helpful information for cancelled checkouts
+
+**Updated URLs in Stripe Service:**
+```typescript
+success_url: `${frontendUrl}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`
+cancel_url: `${frontendUrl}/seller/subscription/cancel`
+```
+
+---
+
+### 12.12 Future Enhancements
+
+**Phase 2 - Subscription Features:**
+1. Trial period configuration
+2. Proration handling for upgrades/downgrades
+3. Usage-based billing for credits
+4. Subscription analytics dashboard
+5. Automated email notifications
+6. Tax calculation integration
+7. Multiple currency support for subscriptions
+8. Discount codes and promotions
+
+**Phase 3 - Advanced Features:**
+1. Custom billing intervals
+2. Metered billing
+3. Add-on services
+4. Enterprise custom pricing
+5. Volume-based discounts
+6. Annual commitment discounts
+
+---
+
+## 13. Version 2.4.0 Changes & Enhancements
+
+### 13.1 Overview - Store Features & Following System
+
+Version 2.4.0 introduced store management features and buyer-seller following system:
 
 **Key Highlights:**
 1. **Enhanced UI/UX** - Improved product cards, topbar, stock badges, and overall design consistency
@@ -3430,9 +3951,20 @@ npx tsx prisma/seeds/store-seed.ts
 
 ---
 
-## 13. Version 2.2.0 Changes & Enhancements
+## 14. Version 2.3.0 Changes & Enhancements
 
-### 13.1 Overview - Stripe Payment Integration (Production-Ready)
+### 14.1 Overview - UI/UX Improvements & System Stabilization
+
+Version 2.3.0 focused on polishing the user experience, fixing critical production issues, and improving system stability. See full details in git history.
+
+**Release Date:** December 26, 2025
+**Breaking Changes:** None
+
+---
+
+## 15. Version 2.2.0 Changes & Enhancements
+
+### 15.1 Overview - Stripe Payment Integration (Production-Ready)
 
 Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integration with enterprise-grade features:
 
@@ -3671,9 +4203,9 @@ model WebhookEvent {
 
 ---
 
-## 13. Version 2.1.1 Changes & Enhancements
+## 16. Version 2.1.1 Changes & Enhancements
 
-### 13.1 Overview
+### 16.1 Overview
 
 Version 2.1.1 focuses on critical product management improvements and comprehensive filter system enhancements:
 1. **Product Form Field Persistence** - Fixed SKU and inventory field saving issues
@@ -4016,9 +4548,9 @@ curl "http://localhost:4000/api/v1/products?search=luxury&category=watches&statu
 
 ---
 
-## 14. Version 2.0 Changes & Enhancements
+## 17. Version 2.0 Changes & Enhancements
 
-### 14.1 Overview
+### 17.1 Overview
 
 Version 2.0 focuses on three major enhancements:
 1. **Currency System Settings Integration** - Seamless integration between Currency Management and System Settings
@@ -4605,9 +5137,9 @@ Shipping:          2,500.00
 
 ---
 
-## 15. Roadmap Snapshot
+## 18. Roadmap Snapshot
 
-### 15.1 Immediate Priorities (Next 1-3 Months)
+### 18.1 Immediate Priorities (Next 1-3 Months)
 
 **High Priority:**
 1. **Testing Infrastructure**
