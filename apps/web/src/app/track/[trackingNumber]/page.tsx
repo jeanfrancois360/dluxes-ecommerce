@@ -90,7 +90,7 @@ export default function TrackDeliveryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white ">
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
@@ -204,7 +204,7 @@ export default function TrackDeliveryPage() {
                               className={`rounded-full p-2 ${
                                 isCompleted
                                   ? 'bg-primary text-primary-foreground'
-                                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
+                                  : 'bg-gray-200 text-gray-400'
                               }`}
                             >
                               <Icon className="h-5 w-5" />
@@ -214,7 +214,7 @@ export default function TrackDeliveryPage() {
                                 className={`w-0.5 h-12 mt-2 ${
                                   isCompleted
                                     ? 'bg-primary'
-                                    : 'bg-gray-200 dark:bg-gray-700'
+                                    : 'bg-gray-200 '
                                 }`}
                               />
                             )}

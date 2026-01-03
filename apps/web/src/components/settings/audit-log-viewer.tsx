@@ -82,7 +82,7 @@ export function AuditLogViewer({ settingKey, limit = 20 }: AuditLogViewerProps) 
                   <div className="flex items-center gap-2 text-sm">
                     <div className="flex-1">
                       <p className="text-muted-foreground text-xs mb-1">Previous Value</p>
-                      <code className="bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs block truncate">
+                      <code className="bg-red-50 text-red-700 px-2 py-1 rounded text-xs block truncate">
                         {log.oldValue !== null && log.oldValue !== undefined
                           ? JSON.stringify(log.oldValue)
                           : 'null'}
@@ -91,7 +91,7 @@ export function AuditLogViewer({ settingKey, limit = 20 }: AuditLogViewerProps) 
                     <ArrowRightLeft className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1">
                       <p className="text-muted-foreground text-xs mb-1">New Value</p>
-                      <code className="bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs block truncate">
+                      <code className="bg-green-50 text-green-700 px-2 py-1 rounded text-xs block truncate">
                         {log.newValue !== null && log.newValue !== undefined
                           ? JSON.stringify(log.newValue)
                           : 'null'}

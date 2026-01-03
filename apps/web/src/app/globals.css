@@ -14,7 +14,6 @@
     --color-bg-primary: #ffffff;
     --color-bg-secondary: #fafafa;
     --color-bg-tertiary: #f5f5f5;
-    --color-bg-dark: #000000;
     --color-bg-overlay: rgba(0, 0, 0, 0.5);
 
     /* Text colors */
@@ -28,7 +27,6 @@
     /* Border colors */
     --color-border-light: #e5e5e5;
     --color-border: #d4d4d4;
-    --color-border-dark: #a3a3a3;
     --color-border-gold: #cbb57b;
 
     /* Semantic colors */
@@ -82,13 +80,6 @@
     border: 1px solid rgba(255, 255, 255, 0.3);
   }
 
-  .glass-dark {
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(10px) saturate(180%);
-    -webkit-backdrop-filter: blur(10px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
   .glass-gold {
     background: rgba(203, 181, 123, 0.1);
     backdrop-filter: blur(10px) saturate(180%);
@@ -99,10 +90,6 @@
   /* Gradient utilities */
   .gradient-gold {
     background: linear-gradient(135deg, #cbb57b 0%, #b89f63 100%);
-  }
-
-  .gradient-dark {
-    background: linear-gradient(135deg, #000000 0%, #262626 100%);
   }
 
   .gradient-radial-gold {

@@ -21,20 +21,20 @@ export function SettingsCard({
   className = '',
 }: SettingsCardProps) {
   return (
-    <Card className={`border-slate-200 dark:border-slate-800 shadow-sm ${className}`}>
+    <Card className={`border-slate-200 shadow-sm ${className}`}>
       <CardHeader className="pb-4">
         <div className="flex items-center gap-3">
           {Icon && (
-            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
-              <Icon className="h-5 w-5 text-slate-700 dark:text-slate-300" />
+            <div className="p-2 rounded-lg bg-slate-100 ">
+              <Icon className="h-5 w-5 text-slate-700 " />
             </div>
           )}
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-slate-900 ">
               {title}
             </h3>
             {description && (
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+              <p className="text-sm text-slate-600 mt-0.5">
                 {description}
               </p>
             )}
@@ -43,7 +43,7 @@ export function SettingsCard({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="h-4 w-4 text-slate-400 dark:text-slate-500 cursor-help" />
+                  <HelpCircle className="h-4 w-4 text-slate-400 cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p>{tooltip}</p>

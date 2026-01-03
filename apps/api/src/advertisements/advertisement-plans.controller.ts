@@ -16,86 +16,12 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PlanBillingPeriod, SubscriptionStatus } from '@prisma/client';
 
-@Controller('api/v1/advertisement-plans')
+@Controller('advertisement-plans')
 export class AdvertisementPlansController {
   constructor(private readonly plansService: AdvertisementPlansService) {}
 
-  /**
-   * Get all active plans (Public - for seller signup)
-   */
-  @Get()
-  async getActivePlans() {
-    return this.plansService.getActivePlans();
-  }
-
-  /**
-   * Get plan by slug
-   */
-  @Get(':slug')
-  async getPlanBySlug(@Param('slug') slug: string) {
-    return this.plansService.getPlanBySlug(slug);
-  }
-
-  /**
-   * Subscribe to a plan (Sellers only)
-   */
-  @Post('subscribe')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
-  async subscribe(
-    @Request() req,
-    @Body() body: {
-      planId: string;
-      autoRenew?: boolean;
-    }
-  ) {
-    return this.plansService.subscribeToPlan(
-      req.user.userId,
-      body.planId,
-      body.autoRenew ?? true
-    );
-  }
-
-  /**
-   * Get seller's active subscription
-   */
-  @Get('seller/subscription')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
-  async getSellerSubscription(@Request() req) {
-    return this.plansService.getSellerSubscription(req.user.userId);
-  }
-
-  /**
-   * Get all seller's subscriptions
-   */
-  @Get('seller/subscriptions/history')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
-  async getSellerSubscriptions(@Request() req) {
-    return this.plansService.getSellerSubscriptions(req.user.userId);
-  }
-
-  /**
-   * Cancel subscription
-   */
-  @Post('subscriptions/:id/cancel')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
-  async cancelSubscription(
-    @Request() req,
-    @Param('id') id: string,
-    @Body() body?: { reason?: string }
-  ) {
-    return this.plansService.cancelSubscription(
-      id,
-      req.user.userId,
-      body?.reason
-    );
-  }
-
   // ========================================================================
-  // Admin Endpoints
+  // Admin Endpoints (Must come BEFORE wildcard routes)
   // ========================================================================
 
   /**
@@ -185,5 +111,87 @@ export class AdvertisementPlansController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   async getStatistics() {
     return this.plansService.getSubscriptionStatistics();
+  }
+
+  // ========================================================================
+  // Seller Endpoints
+  // ========================================================================
+
+  /**
+   * Subscribe to a plan (Sellers only)
+   */
+  @Post('subscribe')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
+  async subscribe(
+    @Request() req,
+    @Body() body: {
+      planId: string;
+      autoRenew?: boolean;
+    }
+  ) {
+    return this.plansService.subscribeToPlan(
+      req.user.userId,
+      body.planId,
+      body.autoRenew ?? true
+    );
+  }
+
+  /**
+   * Get seller's active subscription
+   */
+  @Get('seller/subscription')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
+  async getSellerSubscription(@Request() req) {
+    return this.plansService.getSellerSubscription(req.user.userId);
+  }
+
+  /**
+   * Get all seller's subscriptions
+   */
+  @Get('seller/subscriptions/history')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
+  async getSellerSubscriptions(@Request() req) {
+    return this.plansService.getSellerSubscriptions(req.user.userId);
+  }
+
+  /**
+   * Cancel subscription
+   */
+  @Post('subscriptions/:id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
+  async cancelSubscription(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() body?: { reason?: string }
+  ) {
+    return this.plansService.cancelSubscription(
+      id,
+      req.user.userId,
+      body?.reason
+    );
+  }
+
+  // ========================================================================
+  // Public Endpoints (Wildcard routes MUST be last)
+  // ========================================================================
+
+  /**
+   * Get all active plans (Public - for seller signup)
+   */
+  @Get()
+  async getActivePlans() {
+    return this.plansService.getActivePlans();
+  }
+
+  /**
+   * Get plan by slug (MUST be last - wildcard route)
+   */
+  @Get(':slug')
+  async getPlanBySlug(@Param('slug') slug: string) {
+    return this.plansService.getPlanBySlug(slug);
   }
 }

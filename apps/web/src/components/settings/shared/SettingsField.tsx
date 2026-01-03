@@ -32,7 +32,7 @@ export function SettingsField({
   return (
     <div className={`space-y-2 ${className}`}>
       <div className="flex items-center gap-2">
-        <Label htmlFor={id} className="text-sm font-medium text-slate-900 dark:text-white">
+        <Label htmlFor={id} className="text-sm font-medium text-slate-900 ">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </Label>
@@ -40,7 +40,7 @@ export function SettingsField({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <HelpCircle className="h-4 w-4 text-slate-400 dark:text-slate-500 cursor-help" />
+                <HelpCircle className="h-4 w-4 text-slate-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p>{tooltip}</p>
@@ -54,7 +54,7 @@ export function SettingsField({
       {(prefix || suffix) && !children ? (
         <div className="relative">
           {prefix && (
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
               {prefix}
             </span>
           )}
@@ -62,7 +62,7 @@ export function SettingsField({
             {children}
           </div>
           {suffix && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
               {suffix}
             </span>
           )}
@@ -73,7 +73,7 @@ export function SettingsField({
 
       {/* Error message */}
       {error && (
-        <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+        <p className="text-xs text-red-600 flex items-center gap-1">
           <AlertCircle className="h-3 w-3" />
           {error}
         </p>
@@ -81,7 +81,7 @@ export function SettingsField({
 
       {/* Helper text (shown when no error) */}
       {!error && helperText && (
-        <p className="text-xs text-slate-500 dark:text-slate-400">{helperText}</p>
+        <p className="text-xs text-slate-500 ">{helperText}</p>
       )}
     </div>
   );

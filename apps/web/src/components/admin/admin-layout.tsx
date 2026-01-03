@@ -128,6 +128,12 @@ const DeliveryIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const CreditCardIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+  </svg>
+);
+
 const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
   { name: 'Products', href: '/admin/products', icon: PackageIcon },
@@ -135,6 +141,10 @@ const navigation: NavItem[] = [
   { name: 'Customers', href: '/admin/customers', icon: UsersIcon },
   { name: 'Categories', href: '/admin/categories', icon: FolderIcon },
   { name: 'Currencies', href: '/admin/currencies', icon: CurrencyIcon },
+  { name: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCardIcon },
+  { name: 'Subscription Plans', href: '/admin/subscriptions/plans', icon: CreditCardIcon },
+  { name: 'Ad Subscriptions', href: '/admin/subscriptions/advertisement', icon: CreditCardIcon },
+  { name: 'Seller Subscriptions', href: '/admin/subscriptions/sellers', icon: CreditCardIcon },
   { name: 'Escrow', href: '/admin/escrow', icon: ShieldCheckIcon },
   { name: 'Commissions', href: '/admin/commissions', icon: PercentIcon },
   { name: 'Shipping', href: '/admin/shipping', icon: TruckIcon },
@@ -172,28 +182,28 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
+    <div className="min-h-screen bg-gray-50">
       {/* Mobile menu backdrop */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-30 z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-[#1a1a1a] text-white transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col ${
+        className={`fixed top-0 left-0 z-50 h-full w-64 bg-black text-white transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-lg flex items-center justify-center shadow-sm">
               <span className="text-white font-bold text-lg">L</span>
             </div>
-            <span className="text-xl font-semibold">Luxury Admin</span>
+            <span className="text-xl font-semibold text-white">Luxury Admin</span>
           </div>
           <button
             onClick={() => setMobileMenuOpen(false)}

@@ -74,9 +74,9 @@ export default function DriversPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-black/50 backdrop-blur-sm">
+      <div className="border-b border-gray-200 bg-gray-50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <h1 className="text-3xl font-bold" style={{ fontFamily: 'Poppins' }}>
             Team Drivers
@@ -88,7 +88,7 @@ export default function DriversPage() {
       </div>
 
       {/* Navigation */}
-      <div className="border-b border-white/10">
+      <div className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8 py-4">
             <button
@@ -130,7 +130,7 @@ export default function DriversPage() {
             {drivers.map((driver) => (
               <div
                 key={driver.id}
-                className="bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/10 transition"
+                className="bg-white/5 border border-gray-200 rounded-lg p-6 hover:bg-white/10 transition"
               >
                 {/* Driver Header */}
                 <div className="flex items-center gap-4 mb-4">
@@ -175,7 +175,7 @@ export default function DriversPage() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 mb-4 pt-4 border-t border-white/10">
+                <div className="grid grid-cols-2 gap-4 mb-4 pt-4 border-t border-gray-200">
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <Truck className="w-4 h-4 text-orange-500" />
@@ -204,7 +204,7 @@ export default function DriversPage() {
 
                 {/* Active Deliveries List */}
                 {driver.deliveryAssignments.length > 0 && (
-                  <div className="mb-4 pt-4 border-t border-white/10">
+                  <div className="mb-4 pt-4 border-t border-gray-200">
                     <p className="text-xs font-semibold text-white/80 mb-2">
                       Current Deliveries:
                     </p>

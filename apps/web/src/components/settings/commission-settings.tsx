@@ -77,14 +77,14 @@ export function CommissionSettingsSection() {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       {/* Commission Priority Info */}
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 ">
         <div className="flex gap-2">
-          <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+            <p className="text-sm font-medium text-blue-900 ">
               Commission Priority
             </p>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
+            <p className="text-sm text-blue-700 ">
               Seller-specific override → Category override → Global rate (configured below)
             </p>
           </div>
@@ -121,7 +121,7 @@ export function CommissionSettingsSection() {
               <span className="text-muted-foreground">%</span>
             </div>
             {form.watch('global_commission_rate') > 30 && (
-              <p className="text-sm text-yellow-600 dark:text-yellow-500 flex items-center gap-1 mt-2">
+              <p className="text-sm text-yellow-600 flex items-center gap-1 mt-2">
                 <AlertCircle className="h-3 w-3" />
                 Warning: Commission rate above 30% may discourage sellers
               </p>
@@ -163,17 +163,17 @@ export function CommissionSettingsSection() {
         />
 
         {/* Commission Calculation Formula */}
-        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-950">
+        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 ">
           <div className="flex gap-2">
-            <Info className="h-5 w-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+            <Info className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-purple-900 dark:text-purple-100">
+              <p className="text-sm font-medium text-purple-900 ">
                 Commission Calculation Formula
               </p>
-              <p className="text-sm text-purple-700 dark:text-purple-300 font-mono">
+              <p className="text-sm text-purple-700 font-mono">
                 Commission = (Order Amount × Rate%) + Fixed Fee
               </p>
-              <p className="text-xs text-purple-600 dark:text-purple-400">
+              <p className="text-xs text-purple-600 ">
                 Then min/max limits are applied to the final commission amount (including fixed fee)
               </p>
             </div>
@@ -224,7 +224,7 @@ export function CommissionSettingsSection() {
 
               if (minAmount > 0 && fixedFee >= minAmount) {
                 return (
-                  <p className="text-sm text-yellow-600 dark:text-yellow-500 flex items-center gap-1 mt-2">
+                  <p className="text-sm text-yellow-600 flex items-center gap-1 mt-2">
                     <AlertCircle className="h-3 w-3" />
                     Fixed fee (${formatCurrencyAmount(fixedFee, 2)}) meets/exceeds minimum
                   </p>
@@ -312,14 +312,14 @@ export function CommissionSettingsSection() {
           {/* Category Overrides */}
           <a
             href="/admin/categories"
-            className="group relative flex items-center gap-4 p-4 rounded-lg border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 transition-all duration-200 hover:border-[#CBB57B] hover:bg-white dark:hover:bg-slate-950 hover:shadow-md"
+            className="group relative flex items-center gap-4 p-4 rounded-lg border-2 border-slate-200 bg-slate-50 transition-all duration-200 hover:border-[#CBB57B] hover:bg-white :bg-slate-950 hover:shadow-md"
           >
             <div className="p-2.5 rounded-lg flex-shrink-0" style={{ backgroundColor: '#CBB57B' }}>
               <FolderTree className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm text-slate-900 dark:text-white">Category Overrides</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">Custom rates per category</p>
+              <p className="font-medium text-sm text-slate-900 ">Category Overrides</p>
+              <p className="text-xs text-slate-600 ">Custom rates per category</p>
             </div>
             <div className="flex items-center gap-1 text-sm font-medium group-hover:gap-2 transition-all" style={{ color: '#CBB57B' }}>
               <span>View</span>
@@ -330,14 +330,14 @@ export function CommissionSettingsSection() {
           {/* Seller Overrides */}
           <a
             href="/admin/commissions"
-            className="group relative flex items-center gap-4 p-4 rounded-lg border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 transition-all duration-200 hover:border-[#CBB57B] hover:bg-white dark:hover:bg-slate-950 hover:shadow-md"
+            className="group relative flex items-center gap-4 p-4 rounded-lg border-2 border-slate-200 bg-slate-50 transition-all duration-200 hover:border-[#CBB57B] hover:bg-white :bg-slate-950 hover:shadow-md"
           >
             <div className="p-2.5 rounded-lg flex-shrink-0" style={{ backgroundColor: '#CBB57B' }}>
               <Users className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm text-slate-900 dark:text-white">Seller Overrides</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">Custom rates per seller</p>
+              <p className="font-medium text-sm text-slate-900 ">Seller Overrides</p>
+              <p className="text-xs text-slate-600 ">Custom rates per seller</p>
             </div>
             <div className="flex items-center gap-1 text-sm font-medium group-hover:gap-2 transition-all" style={{ color: '#CBB57B' }}>
               <span>View</span>
@@ -348,7 +348,7 @@ export function CommissionSettingsSection() {
 
         <div className="flex items-start gap-2.5 p-3.5 rounded-lg border" style={{ backgroundColor: 'rgba(203, 181, 123, 0.05)', borderColor: 'rgba(203, 181, 123, 0.2)' }}>
           <Info className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: '#CBB57B' }} />
-          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+          <p className="text-xs text-slate-700 leading-relaxed">
             <strong className="font-semibold" style={{ color: '#CBB57B' }}>Priority:</strong> Seller-specific override → Category override → Global rate
           </p>
         </div>
@@ -426,7 +426,7 @@ export function CommissionSettingsSection() {
                 2
               )}
               {form.watch('commission_applies_to_shipping') ? (
-                <span className="text-xs font-semibold text-green-600 dark:text-green-400 ml-1">(+ shipping)</span>
+                <span className="text-xs font-semibold text-green-600 ml-1">(+ shipping)</span>
               ) : (
                 <span className="text-xs text-muted-foreground ml-1">(product only)</span>
               )}
@@ -477,7 +477,7 @@ export function CommissionSettingsSection() {
                     <span className="text-muted-foreground">
                       {minApplied ? 'Minimum limit applied:' : 'Maximum limit applied:'}
                     </span>
-                    <span className="font-medium text-orange-600 dark:text-orange-400">
+                    <span className="font-medium text-orange-600 ">
                       ${formatCurrencyAmount(rawPercentageCommission, 2)} → ${formatCurrencyAmount(percentageCommission, 2)}
                     </span>
                   </div>
@@ -486,7 +486,7 @@ export function CommissionSettingsSection() {
                 {!minApplied && !maxApplied && percentageCommission > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">After limits:</span>
-                    <span className="font-medium text-green-600 dark:text-green-400">
+                    <span className="font-medium text-green-600 ">
                       No limits applied ✓
                     </span>
                   </div>
@@ -511,7 +511,7 @@ export function CommissionSettingsSection() {
                 </div>
                 <div className="flex justify-between text-base">
                   <span className="font-semibold">Seller Receives:</span>
-                  <span className="font-bold text-green-600 dark:text-green-400 text-lg">
+                  <span className="font-bold text-green-600 text-lg">
                     ${formatCurrencyAmount(sellerReceives, 2)}
                   </span>
                 </div>

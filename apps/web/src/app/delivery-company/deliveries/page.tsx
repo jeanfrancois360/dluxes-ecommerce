@@ -133,9 +133,9 @@ export default function DeliveriesPage() {
   );
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-black/50 backdrop-blur-sm">
+      <div className="border-b border-gray-200 bg-gray-50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <h1 className="text-3xl font-bold" style={{ fontFamily: 'Poppins' }}>
             Assigned Deliveries
@@ -147,7 +147,7 @@ export default function DeliveriesPage() {
       </div>
 
       {/* Navigation */}
-      <div className="border-b border-white/10">
+      <div className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8 py-4">
             <button
@@ -175,7 +175,7 @@ export default function DeliveriesPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters */}
-        <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
+        <div className="bg-white/5 border border-gray-200 rounded-lg p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div className="relative">
@@ -185,7 +185,7 @@ export default function DeliveriesPage() {
                 placeholder="Search tracking or order number..."
                 value={filters.search}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white placeholder-white/40 focus:outline-none focus:border-[#DDC36C]"
+                className="w-full bg-white/5 border border-gray-200 rounded-lg pl-10 pr-4 py-2 text-white placeholder-white/40 focus:outline-none focus:border-[#DDC36C]"
               />
             </div>
 
@@ -193,7 +193,7 @@ export default function DeliveriesPage() {
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#DDC36C]"
+              className="bg-white/5 border border-gray-200 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#DDC36C]"
             >
               <option value="">All Statuses</option>
               <option value="PENDING_PICKUP">Pending Pickup</option>
@@ -210,7 +210,7 @@ export default function DeliveriesPage() {
               placeholder="Filter by country..."
               value={filters.country}
               onChange={(e) => setFilters({ ...filters, country: e.target.value })}
-              className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-white/40 focus:outline-none focus:border-[#DDC36C]"
+              className="bg-white/5 border border-gray-200 rounded-lg px-4 py-2 text-white placeholder-white/40 focus:outline-none focus:border-[#DDC36C]"
             />
           </div>
         </div>
@@ -225,9 +225,9 @@ export default function DeliveriesPage() {
           </div>
         ) : (
           <>
-            <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
+            <div className="bg-white/5 border border-gray-200 rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-white/5 border-b border-white/10">
+                <thead className="bg-white/5 border-b border-gray-200">
                   <tr>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-white/80">
                       Tracking #
@@ -313,11 +313,11 @@ export default function DeliveriesPage() {
                     setPagination({ ...pagination, page: Math.max(1, pagination.page - 1) })
                   }
                   disabled={pagination.page === 1}
-                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 bg-white/5 border border-gray-200 rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <span className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg">
+                <span className="px-4 py-2 bg-white/5 border border-gray-200 rounded-lg">
                   Page {pagination.page} of {pagination.totalPages}
                 </span>
                 <button
@@ -328,7 +328,7 @@ export default function DeliveriesPage() {
                     })
                   }
                   disabled={pagination.page === pagination.totalPages}
-                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 bg-white/5 border border-gray-200 rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
