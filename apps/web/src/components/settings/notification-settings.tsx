@@ -151,7 +151,7 @@ export function NotificationSettingsSection() {
           </p>
         )}
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ">
           <p className="text-sm font-medium mb-2">Active Notifications</p>
           <div className="text-sm text-muted-foreground space-y-1">
             <p>

@@ -96,7 +96,7 @@ function AdImage({ src, mobileSrc, alt, fill = true, className = '', priority = 
 function SponsoredBadge({ variant = 'light' }: { variant?: 'light' | 'dark' | 'glass' }) {
   const styles = {
     light: 'bg-white/90 text-gray-600 border border-gray-200',
-    dark: 'bg-black/60 text-white backdrop-blur-sm',
+    dark: 'bg-gray-900 text-white border border-gray-700',
     glass: 'bg-white/20 text-white backdrop-blur-md border border-white/30',
   };
 

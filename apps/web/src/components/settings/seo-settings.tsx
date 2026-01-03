@@ -139,14 +139,14 @@ export function SeoSettingsSection() {
           />
         </SettingsField>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ">
           <p className="text-sm font-medium mb-3">Search Result Preview</p>
           <div className="space-y-2">
             <div>
-              <p className="text-lg text-blue-600 dark:text-blue-400 font-medium line-clamp-1">
+              <p className="text-lg text-blue-600 font-medium line-clamp-1">
                 {form.watch('seo_meta_title') || 'Your page title will appear here'}
               </p>
-              <p className="text-xs text-green-700 dark:text-green-500">
+              <p className="text-xs text-green-700 ">
                 https://yourdomain.com
               </p>
             </div>
@@ -156,11 +156,11 @@ export function SeoSettingsSection() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-          <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 ">
+          <p className="text-sm font-medium text-blue-900 mb-2">
             SEO Best Practices
           </p>
-          <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
+          <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
             <li>Keep titles under 60 characters to avoid truncation</li>
             <li>Write compelling descriptions (150-160 characters)</li>
             <li>Include primary keywords naturally</li>

@@ -110,13 +110,13 @@ export function SecuritySettingsSection() {
         />
 
         {form.watch('2fa_required_for_admin') && (
-          <div className="flex items-start gap-3 p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-lg">
-            <Shield className="h-5 w-5 text-green-600 dark:text-green-500 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-green-50 /30 border border-green-200 rounded-lg">
+            <Shield className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-green-900 dark:text-green-200">
+              <p className="text-sm font-medium text-green-900 ">
                 Enhanced Security Enabled
               </p>
-              <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+              <p className="text-xs text-green-700 mt-1">
                 Two-factor authentication is required for all admin accounts.
               </p>
             </div>
@@ -211,13 +211,13 @@ export function SecuritySettingsSection() {
         </div>
 
         {form.watch('password_min_length') < 8 && (
-          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg">
-            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-amber-50 /30 border border-amber-200 rounded-lg">
+            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+              <p className="text-sm font-medium text-amber-900 ">
                 Weak Password Policy
               </p>
-              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+              <p className="text-xs text-amber-700 mt-1">
                 Passwords shorter than 8 characters are vulnerable to brute-force attacks.
               </p>
             </div>
@@ -255,7 +255,7 @@ export function SecuritySettingsSection() {
         </SettingsField>
 
         <div className="space-y-3">
-          <label className="text-sm font-medium text-slate-900 dark:text-white">
+          <label className="text-sm font-medium text-slate-900 ">
             Allowed File Types <span className="text-red-500">*</span>
           </label>
           <div className="space-y-3">
@@ -264,14 +264,14 @@ export function SecuritySettingsSection() {
               {form.watch('allowed_file_types')?.map((type) => (
                 <div
                   key={type}
-                  className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 rounded-md text-sm font-medium"
+                  className="flex items-center gap-2 bg-slate-100 text-slate-900 px-3 py-1.5 rounded-md text-sm font-medium"
                 >
                   <span>{type}</span>
                   {form.watch('allowed_file_types')?.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeFileType(type)}
-                      className="hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-slate-200 :bg-slate-700 rounded-full p-0.5 transition-colors"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -302,7 +302,7 @@ export function SecuritySettingsSection() {
 
             {/* Quick add common types */}
             <div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+              <p className="text-xs text-slate-600 mb-2">
                 Quick add common types:
               </p>
               <div className="flex flex-wrap gap-2">
@@ -316,7 +316,7 @@ export function SecuritySettingsSection() {
                       const current = form.watch('allowed_file_types') || [];
                       form.setValue('allowed_file_types', [...current, type], { shouldDirty: true });
                     }}
-                    className="text-xs px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium"
+                    className="text-xs px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 :bg-slate-700 transition-colors font-medium"
                   >
                     + {type}
                   </button>
@@ -326,7 +326,7 @@ export function SecuritySettingsSection() {
           </div>
 
           {form.formState.errors.allowed_file_types && (
-            <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+            <p className="text-xs text-red-600 flex items-center gap-1">
               <AlertCircle className="h-3 w-3" />
               {form.formState.errors.allowed_file_types.message}
             </p>

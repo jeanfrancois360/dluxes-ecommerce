@@ -25,18 +25,18 @@ export function SettingsToggle({
 }: SettingsToggleProps) {
   return (
     <div
-      className={`flex items-center justify-between p-4 rounded-lg border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:border-slate-300 dark:hover:border-slate-700 transition-colors ${className}`}
+      className={`flex items-center justify-between p-4 rounded-lg border-2 border-slate-200 bg-white hover:border-slate-300 :border-slate-700 transition-colors ${className}`}
     >
       <div className="flex-1 space-y-0.5">
         <div className="flex items-center gap-2">
-          <Label className="text-sm font-medium text-slate-900 dark:text-white cursor-pointer">
+          <Label className="text-sm font-medium text-slate-900 cursor-pointer">
             {label}
           </Label>
           {tooltip && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="h-4 w-4 text-slate-400 dark:text-slate-500 cursor-help" />
+                  <HelpCircle className="h-4 w-4 text-slate-400 cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p>{tooltip}</p>
@@ -46,7 +46,7 @@ export function SettingsToggle({
           )}
         </div>
         {description && (
-          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+          <p className="text-xs text-slate-600 leading-relaxed">
             {description}
           </p>
         )}

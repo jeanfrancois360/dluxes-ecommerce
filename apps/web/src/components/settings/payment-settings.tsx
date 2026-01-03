@@ -460,14 +460,14 @@ export function PaymentSettingsSection() {
           description="Manage payment processing and escrow configuration"
         >
           {Object.keys(form.formState.errors).length > 0 && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 ">
               <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                <h4 className="text-sm font-medium text-red-900 dark:text-red-100">
+                <AlertCircle className="h-5 w-5 text-red-600 " />
+                <h4 className="text-sm font-medium text-red-900 ">
                   Form Validation Errors
                 </h4>
               </div>
-              <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-7">
+              <ul className="text-sm text-red-700 space-y-1 ml-7">
                 {Object.entries(form.formState.errors).map(([field, error]: any) => (
                   <li key={field}>
                     <strong>{field}:</strong> {error.message}

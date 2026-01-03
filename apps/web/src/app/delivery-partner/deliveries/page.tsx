@@ -274,7 +274,7 @@ export default function DeliveryPartnerDeliveriesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 ">
       <div className="container mx-auto p-6 space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Deliveries</h1>

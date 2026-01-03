@@ -73,14 +73,14 @@ export function DeliverySettingsSection() {
         title="Delivery Configuration"
         description="Configure delivery and shipping options"
       >
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 ">
           <div className="flex gap-2">
-            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              <p className="text-sm font-medium text-blue-900 ">
                 Escrow Integration
               </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="text-sm text-blue-700 ">
                 When delivery is confirmed, escrow hold period starts automatically. Payment releases after hold period expires.
               </p>
             </div>
@@ -153,7 +153,7 @@ export function DeliverySettingsSection() {
           </SettingsField>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ">
           <p className="text-sm font-medium mb-2">Customer Experience</p>
           <div className="text-sm text-muted-foreground space-y-1">
             <p>Cart Total: $85.00 → Shipping: Calculated</p>

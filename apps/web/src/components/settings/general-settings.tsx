@@ -69,18 +69,18 @@ export function GeneralSettingsSection() {
 
   if (!loading && settings.length === 0) {
     return (
-      <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-900">
+      <Card className="border-yellow-200 bg-yellow-50 /20 ">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+          <CardTitle className="flex items-center gap-2 text-yellow-800 ">
             <AlertCircle className="h-5 w-5" />
             Settings Not Initialized
           </CardTitle>
-          <CardDescription className="text-yellow-700 dark:text-yellow-300">
+          <CardDescription className="text-yellow-700 ">
             General settings have not been created yet. Please run the settings seed script.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="bg-yellow-100 dark:bg-yellow-900/30 p-4 rounded text-sm overflow-x-auto">
+          <pre className="bg-yellow-100 /30 p-4 rounded text-sm overflow-x-auto">
             npx tsx packages/database/prisma/seed-settings.ts
           </pre>
         </CardContent>
@@ -206,13 +206,13 @@ export function GeneralSettingsSection() {
         />
 
         {form.watch('maintenance_mode') && (
-          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg">
-            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-amber-50 /30 border border-amber-200 rounded-lg">
+            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+              <p className="text-sm font-medium text-amber-900 ">
                 Maintenance Mode Active
               </p>
-              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+              <p className="text-xs text-amber-700 mt-1">
                 Your platform is currently in maintenance mode. Customers cannot place orders.
               </p>
             </div>

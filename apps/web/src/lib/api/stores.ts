@@ -233,17 +233,23 @@ export const storesAPI = {
     limit?: number;
     status?: string;
     verified?: string;
-  }) => api.get<{
-    data: Store[];
-    meta: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
-  }>('/stores', {
-    params,
-  } as any),
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.status) searchParams.append('status', params.status);
+    if (params?.verified) searchParams.append('verified', params.verified);
+    const query = searchParams.toString();
+    return api.get<{
+      data: Store[];
+      meta: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      };
+    }>(`/stores${query ? `?${query}` : ''}`);
+  },
 
   getStoreBySlug: (slug: string) => api.get<Store>(`/stores/${slug}`),
 
