@@ -7,26 +7,25 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
+import { toast } from 'sonner';
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
-  const { confirmPasswordReset, isLoading: authLoading, error: authError, clearError } = useAuth();
+  const { confirmPasswordReset, isLoading: authLoading, clearError } = useAuth();
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [localError, setLocalError] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const isLoading = authLoading;
-  const error = authError || localError;
 
   useEffect(() => {
     if (!token) {
-      setLocalError('Invalid or missing reset token');
+      toast.error('Invalid or missing reset token');
     }
   }, [token]);
 
@@ -69,7 +68,6 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError('');
     clearError();
 
     if (!validateForm() || !token) return;
@@ -77,13 +75,15 @@ export default function ResetPasswordPage() {
     try {
       await confirmPasswordReset(token, password, confirmPassword);
       setIsSuccess(true);
+      toast.success('Password reset successfully! Redirecting to login...');
 
       // Redirect to login after 3 seconds
       setTimeout(() => {
         router.push('/auth/login');
       }, 3000);
     } catch (err: any) {
-      // Error is already set in auth context
+      const errorMessage = err?.message || 'Failed to reset password. Please try again.';
+      toast.error(errorMessage);
       console.error('Password reset error:', err);
     }
   };
@@ -158,16 +158,6 @@ export default function ResetPasswordPage() {
             Your new password must be different from previously used passwords
           </p>
         </div>
-
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 bg-error-light border border-error-DEFAULT rounded-lg text-error-dark text-sm"
-          >
-            {error}
-          </motion.div>
-        )}
 
         {/* New Password */}
         <div className="relative">

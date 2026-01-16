@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import AuthLayout from '@/components/auth/auth-layout';
 import { Button, FloatingInput } from '@nextpik/ui';
 import { api } from '@/lib/api/client';
+import { toast } from 'sonner';
 
 type VerificationState = 'verifying' | 'success' | 'error' | 'expired' | 'resend';
 
@@ -36,6 +37,7 @@ export default function VerifyEmailPage() {
 
       if (response.message) {
         setState('success');
+        toast.success('Email verified successfully! Redirecting to login...');
         // Redirect to login after 5 seconds
         setTimeout(() => {
           router.push('/auth/login');
@@ -44,6 +46,7 @@ export default function VerifyEmailPage() {
     } catch (err: any) {
       const errorMessage = err?.data?.message || err?.message || 'Verification failed';
       setError(errorMessage);
+      toast.error(errorMessage);
 
       if (errorMessage.toLowerCase().includes('expired')) {
         setState('expired');
@@ -64,13 +67,16 @@ export default function VerifyEmailPage() {
 
       await api.post('/auth/email/resend-verification', { email: resendEmail });
       setResendSuccess(true);
+      toast.success('Verification email sent! Please check your inbox.');
       setResendEmail('');
 
       setTimeout(() => {
         setResendSuccess(false);
       }, 5000);
     } catch (err: any) {
-      setError(err?.data?.message || err?.message || 'Failed to resend verification email');
+      const errorMessage = err?.data?.message || err?.message || 'Failed to resend verification email';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsResending(false);
     }
@@ -208,16 +214,6 @@ export default function VerifyEmailPage() {
             </p>
           </div>
 
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-warning-light border border-warning-DEFAULT rounded-lg text-warning-dark text-sm"
-            >
-              {error}
-            </motion.div>
-          )}
-
           <form onSubmit={handleResendVerification} className="space-y-4">
             <FloatingInput
               label="Email Address"
@@ -296,16 +292,6 @@ export default function VerifyEmailPage() {
           </div>
         )}
 
-        {error && state === 'error' && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 bg-error-light border border-error-DEFAULT rounded-lg text-error-dark text-sm"
-          >
-            {error}
-          </motion.div>
-        )}
-
         <form onSubmit={handleResendVerification} className="space-y-4">
           <FloatingInput
             label="Email Address"
@@ -328,16 +314,6 @@ export default function VerifyEmailPage() {
               className="p-4 bg-success-light border border-success-DEFAULT rounded-lg text-success-dark text-sm"
             >
               Verification email sent! Please check your inbox.
-            </motion.div>
-          )}
-
-          {error && state === 'resend' && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-error-light border border-error-DEFAULT rounded-lg text-error-dark text-sm"
-            >
-              {error}
             </motion.div>
           )}
 
