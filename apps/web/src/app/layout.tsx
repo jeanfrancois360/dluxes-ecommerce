@@ -128,8 +128,23 @@ export default function RootLayout({
               <CartProvider>
                 <WishlistProvider>
                   {children}
-                  <ToastListener />
-                  <Toaster position="top-right" richColors />
+                  <Toaster
+                    position="top-right"
+                    richColors
+                    expand={true}
+                    closeButton
+                    toastOptions={{
+                      duration: 4000,
+                      style: {
+                        background: 'white',
+                        color: '#0F172A',
+                        border: '1px solid #E2E8F0',
+                        fontSize: '14px',
+                        fontFamily: 'var(--font-poppins), sans-serif',
+                      },
+                      className: 'sonner-toast',
+                    }}
+                  />
                   <WhatsAppChat
                     phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890'}
                     businessName={process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'Luxury Marketplace'}
