@@ -48,3 +48,10 @@ prisma/migrations
 # Storybook
 storybook-static
 .storybook-build
+.env.local
+# Secrets
+*.pem
+*.key
+*secrets*
+.env*
+!.env.example
