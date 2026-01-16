@@ -9,7 +9,7 @@ import { getStripe } from '@/lib/stripe';
 import { useCart } from '@/hooks/use-cart';
 import { useCheckout } from '@/hooks/use-checkout';
 import { useAuth } from '@/hooks/use-auth';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { CheckoutStepper, CheckoutStep } from '@/components/checkout/checkout-stepper';
 import { AddressForm, Address } from '@/components/checkout/address-form';
 import { ShippingMethodSelector } from '@/components/checkout/shipping-method';
@@ -42,7 +42,7 @@ function StripeElementsWrapper({
       setStripePromise(Promise.resolve(stripe));
     }).catch((error) => {
       console.error('Failed to load Stripe:', error);
-      toast.error('Payment Error', 'Failed to initialize payment system. Please check your settings.');
+      toast.error('Failed to initialize payment system. Please check your settings.');
     });
   }, []);
 
@@ -119,7 +119,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     // Wait for auth to initialize before making redirect decision
     if (isInitialized && !user) {
-      toast.error('Login Required', 'Please login to continue checkout');
+      toast.warning('Please login to continue with checkout');
       router.push('/auth/login?redirect=/checkout');
     }
   }, [user, isInitialized, router]);
@@ -128,7 +128,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     // Only check after auth is initialized and user is confirmed
     if (isInitialized && user && items.length === 0) {
-      toast.error('Empty Cart', 'Your cart is empty. Please add items before checkout.');
+      toast.info('Your cart is empty. Please add items before checkout');
       router.push('/cart');
     }
   }, [items, router, isInitialized, user]);
@@ -145,7 +145,7 @@ export default function CheckoutPage() {
       }).catch((err) => {
         // Use longer duration for stock errors (they may contain multiple items)
         const duration = err.message?.includes('Insufficient stock') ? 8000 : 5000;
-        toast.error('Checkout Error', err.message || 'Failed to initialize checkout. Please try again.', duration);
+        toast.error(err.message || 'Failed to initialize checkout. Please try again.', { duration });
         setShippingMethodConfirmed(false);
         goToStep('shipping');
       });
@@ -172,9 +172,9 @@ export default function CheckoutPage() {
   const handleAddressSubmit = async (address: Address) => {
     try {
       await saveShippingAddress(address);
-      toast.success('Success', 'Shipping address saved successfully');
+      toast.success('Shipping address saved successfully');
     } catch (error) {
-      toast.error('Error', 'Failed to save shipping address');
+      toast.error('Failed to save shipping address');
     }
   };
 
@@ -206,17 +206,17 @@ export default function CheckoutPage() {
       // Redirect to success page
       router.push(`/checkout/success?orderId=${orderId}`);
 
-      toast.success('Order Placed', 'Your order has been placed successfully!');
+      standardToasts.order.created();
     } catch (error: any) {
       console.error('Payment completion failed:', error);
-      toast.error('Order Failed', error.message || 'Failed to complete order. Please contact support.');
+      toast.error(error.message || 'Failed to complete order. Please contact support.');
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handlePaymentError = (error: string) => {
-    toast.error('Payment Failed', error);
+    toast.error(error || 'Payment failed. Please try again.');
   };
 
   const handleStepClick = (stepId: CheckoutStep) => {

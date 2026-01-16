@@ -19,7 +19,7 @@ import {
 } from '@/lib/api/returns';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 interface OrderDetailPageProps {
   params: Promise<{ id: string }>;
@@ -97,23 +97,17 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       if (data.success) {
         const { results } = data.data;
         if (results.added.length > 0) {
-          toast.success(
-            'Items Added to Cart',
-            `${results.added.length} item(s) added to your cart`
-          );
+          toast.success(`${results.added.length} item(s) added to your cart`);
           // Redirect to cart
           router.push('/cart');
         } else if (results.skipped.length > 0) {
-          toast.error(
-            'Could Not Reorder',
-            results.skipped[0]?.reason || 'Some items could not be added'
-          );
+          toast.error(results.skipped[0]?.reason || 'Some items could not be added');
         }
       } else {
-        toast.error('Reorder Failed', data.message || 'Failed to reorder');
+        toast.error(data.message || 'Failed to reorder');
       }
     } catch (error) {
-      toast.error('Reorder Failed', 'An error occurred while reordering');
+      toast.error('An error occurred while reordering');
     } finally {
       setIsReordering(false);
     }
@@ -187,7 +181,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
   const handleDigitalDownload = async (download: DigitalPurchase) => {
     if (!download.canDownload) {
-      toast.error('Download Limit Reached', 'You have reached the download limit for this file');
+      toast.error('You have reached the download limit for this file');
       return;
     }
 
@@ -197,17 +191,17 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
       if (response?.data?.url) {
         window.open(response.data.url, '_blank');
-        toast.success('Download Started', `Downloading ${response.data.fileName}`);
+        toast.success(`Downloading ${response.data.fileName}`);
         // Refresh downloads to update count
         const refreshResponse = await downloadsApi.getOrderDigitalProducts(download.orderId);
         if (refreshResponse?.data) {
           setDigitalDownloads(refreshResponse.data);
         }
       } else {
-        toast.error('Download Failed', 'Could not get download link');
+        toast.error('Could not get download link');
       }
     } catch (error) {
-      toast.error('Download Failed', 'An error occurred while starting download');
+      toast.error('An error occurred while starting download');
     } finally {
       setDownloadingProductId(null);
     }
@@ -221,7 +215,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   const handleSubmitReview = async (data: { productId: string; rating: number; title?: string; comment: string; images?: File[] }) => {
     try {
       await createReview(data);
-      toast.success('Review Submitted', 'Thank you for your review!');
+      toast.success('Thank you for your review!');
       setShowReviewForm(false);
       setSelectedProduct(null);
       // Update reviewable products
@@ -230,7 +224,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
         [data.productId]: false,
       }));
     } catch (error) {
-      toast.error('Review Failed', 'Failed to submit review. Please try again.');
+      toast.error('Failed to submit review. Please try again.');
       throw error;
     }
   };
@@ -238,11 +232,11 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   const handleCancelOrder = async () => {
     try {
       await cancelOrder(id);
-      toast.success('Order Cancelled', 'Your order has been cancelled successfully');
+      standardToasts.order.cancelled();
       refetch();
       setShowCancelConfirm(false);
     } catch (error) {
-      toast.error('Cancellation Failed', 'Failed to cancel order. Please contact support.');
+      toast.error('Failed to cancel order. Please contact support.');
     }
   };
 
@@ -260,16 +254,16 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       });
 
       if (response?.data) {
-        toast.success('Return Request Submitted', 'We will review your request and get back to you soon');
+        toast.success('Return request submitted. We will review your request and get back to you soon');
         setShowReturnForm(false);
         setCanRequestReturn(false);
         // Redirect to returns page
         router.push('/account/returns');
       } else {
-        toast.error('Request Failed', 'Failed to submit return request. Please try again.');
+        toast.error('Failed to submit return request. Please try again.');
       }
     } catch (error) {
-      toast.error('Request Failed', error instanceof Error ? error.message : 'An error occurred');
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setIsSubmittingReturn(false);
     }

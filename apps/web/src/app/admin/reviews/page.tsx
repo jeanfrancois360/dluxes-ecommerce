@@ -12,7 +12,7 @@ import { AdminLayout } from '@/components/admin/admin-layout';
 import { useAdminReviews } from '@/hooks/use-admin';
 import { useDebounce } from '@/hooks/use-debounce';
 import { adminReviewsApi } from '@/lib/api/admin';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { format } from 'date-fns';
 import { formatNumber } from '@/lib/utils/number-format';
 

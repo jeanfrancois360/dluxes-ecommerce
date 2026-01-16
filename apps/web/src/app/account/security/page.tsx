@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 interface UserSession {
   id: string;
@@ -159,7 +159,7 @@ export default function SecurityPage() {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error('Validation Error', 'Please fix the errors before submitting');
+      standardToasts.generic.validationError('Please fix the errors before submitting');
       return;
     }
 
@@ -206,7 +206,7 @@ export default function SecurityPage() {
       if (data.success) {
         // Clear local storage and redirect
         localStorage.removeItem('token');
-        toast.success('Account Deleted', 'Your account has been successfully deleted');
+        toast.success('Your account has been successfully deleted');
         router.push('/');
       } else {
         setDeleteError(data.message || 'Failed to delete account');
@@ -232,13 +232,13 @@ export default function SecurityPage() {
       const data = await response.json();
 
       if (data.success) {
-        toast.success('Session Revoked', 'The session has been logged out');
+        toast.success('The session has been logged out');
         mutateSessions();
       } else {
-        toast.error('Error', data.message || 'Failed to revoke session');
+        toast.error(data.message || 'Failed to revoke session');
       }
     } catch {
-      toast.error('Error', 'Failed to revoke session');
+      toast.error('Failed to revoke session');
     } finally {
       setRevokingSessionId(null);
     }
@@ -260,13 +260,13 @@ export default function SecurityPage() {
       const data = await response.json();
 
       if (data.success) {
-        toast.success('Sessions Revoked', 'All other sessions have been logged out');
+        toast.success('All other sessions have been logged out');
         mutateSessions();
       } else {
-        toast.error('Error', data.message || 'Failed to revoke sessions');
+        toast.error(data.message || 'Failed to revoke sessions');
       }
     } catch {
-      toast.error('Error', 'Failed to revoke sessions');
+      toast.error('Failed to revoke sessions');
     } finally {
       setIsRevokingAll(false);
     }

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { PageLayout } from '@/components/layout/page-layout';
 import { reviewsApi, type Review } from '@/lib/api/reviews';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 // Rating display component
 function StarRating({ rating }: { rating: number }) {
@@ -43,7 +43,7 @@ export default function MyReviewsPage() {
         }
       } catch (error) {
         console.error('Failed to fetch reviews:', error);
-        toast.error('Error', 'Failed to load your reviews');
+        toast.error('Failed to load your reviews');
       } finally {
         setIsLoading(false);
       }
@@ -59,10 +59,10 @@ export default function MyReviewsPage() {
       setDeletingId(reviewId);
       await reviewsApi.deleteReview(reviewId);
       setReviews(prev => prev.filter(r => r.id !== reviewId));
-      toast.success('Review Deleted', 'Your review has been deleted');
+      toast.success('Your review has been deleted');
       setShowDeleteConfirm(null);
     } catch (error) {
-      toast.error('Delete Failed', 'Failed to delete review');
+      toast.error('Failed to delete review');
     } finally {
       setDeletingId(null);
     }

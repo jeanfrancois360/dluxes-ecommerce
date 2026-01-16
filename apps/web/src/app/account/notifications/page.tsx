@@ -9,7 +9,7 @@ import {
   notificationPreferencesApi,
   type NotificationPreferences,
 } from '@/lib/api/notification-preferences';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 // Toggle Switch Component
 function ToggleSwitch({
@@ -116,7 +116,7 @@ export default function NotificationPreferencesPage() {
         }
       } catch (error) {
         console.error('Failed to fetch notification preferences:', error);
-        toast.error('Error', 'Failed to load notification preferences');
+        toast.error('Failed to load notification preferences');
       } finally {
         setIsLoading(false);
       }
@@ -138,12 +138,12 @@ export default function NotificationPreferencesPage() {
       const response = await notificationPreferencesApi.updatePreferences({ [key]: value });
       if (response?.data) {
         setPreferences(response.data);
-        toast.success('Saved', 'Preference updated successfully');
+        toast.success('Preference updated successfully');
       }
     } catch (error) {
       // Revert on error
       setPreferences({ ...preferences, [key]: !value });
-      toast.error('Error', 'Failed to update preference');
+      toast.error('Failed to update preference');
     } finally {
       setIsSaving(false);
     }

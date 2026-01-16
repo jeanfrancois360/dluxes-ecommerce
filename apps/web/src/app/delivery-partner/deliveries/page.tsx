@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface Delivery {
   id: string;
@@ -146,7 +146,7 @@ export default function DeliveryPartnerDeliveriesPage() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      toast.success('Success', 'Delivery accepted successfully');
+      toast.success('Delivery accepted successfully');
       fetchAvailableDeliveries();
       setActiveTab('assigned');
     } catch (error: any) {
@@ -166,7 +166,7 @@ export default function DeliveryPartnerDeliveriesPage() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      toast.success('Success', 'Status updated successfully');
+      toast.success('Status updated successfully');
       setIsUpdateStatusDialogOpen(false);
       setSelectedDelivery(null);
       setStatusData({ status: '', notes: '' });
@@ -201,7 +201,7 @@ export default function DeliveryPartnerDeliveriesPage() {
                 headers: { Authorization: `Bearer ${token}` },
               }
             );
-            toast.success('Success', 'Delivery confirmed successfully');
+            toast.success('Delivery confirmed successfully');
             setIsConfirmDialogOpen(false);
             setSelectedDelivery(null);
             setConfirmData({ signature: '', photos: [], notes: '', gps: { latitude: 0, longitude: 0 } });
@@ -216,7 +216,7 @@ export default function DeliveryPartnerDeliveriesPage() {
                 headers: { Authorization: `Bearer ${token}` },
               }
             );
-            toast.success('Success', 'Delivery confirmed successfully (without GPS)');
+            toast.success('Delivery confirmed successfully (without GPS)');
             setIsConfirmDialogOpen(false);
             setSelectedDelivery(null);
             setConfirmData({ signature: '', photos: [], notes: '', gps: { latitude: 0, longitude: 0 } });
@@ -231,7 +231,7 @@ export default function DeliveryPartnerDeliveriesPage() {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        toast.success('Success', 'Delivery confirmed successfully');
+        toast.success('Delivery confirmed successfully');
         setIsConfirmDialogOpen(false);
         setSelectedDelivery(null);
         setConfirmData({ signature: '', photos: [], notes: '', gps: { latitude: 0, longitude: 0 } });

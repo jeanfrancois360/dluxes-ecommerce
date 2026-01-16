@@ -15,7 +15,7 @@ import { useAdminProducts } from '@/hooks/use-admin';
 import { useDebounce } from '@/hooks/use-debounce';
 import { adminProductsApi } from '@/lib/api/admin';
 import { categoriesAPI, Category } from '@/lib/api/categories';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import Link from 'next/link';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useInventorySettings } from '@/hooks/use-inventory-settings';

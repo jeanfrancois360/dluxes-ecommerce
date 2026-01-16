@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 interface ProfileFormData {
   firstName: string;
@@ -121,7 +121,7 @@ export default function ProfilePage() {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error('Validation Error', 'Please fix the errors before saving');
+      standardToasts.generic.validationError('Please fix the errors before saving');
       return;
     }
 
@@ -151,13 +151,13 @@ export default function ProfilePage() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast.error('Invalid File', 'Please select an image file');
+      toast.error('Please select an image file');
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('File Too Large', 'Please select an image under 5MB');
+      toast.error('Please select an image under 5MB');
       return;
     }
 

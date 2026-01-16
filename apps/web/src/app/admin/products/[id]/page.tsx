@@ -15,7 +15,7 @@ import { InventoryAdjustmentModal } from '@/components/admin/inventory-adjustmen
 import { InventoryHistoryModal } from '@/components/admin/inventory-history-modal';
 import { useAdminProduct } from '@/hooks/use-admin';
 import { adminProductsApi, type AdminProduct } from '@/lib/api/admin';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { Button } from '@nextpik/ui';
 import { Package, History, RefreshCw } from 'lucide-react';
 

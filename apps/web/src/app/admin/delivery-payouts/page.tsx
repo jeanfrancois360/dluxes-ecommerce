@@ -35,7 +35,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@next
 import { Search, DollarSign, Clock, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface DeliveryPayout {
   id: string;

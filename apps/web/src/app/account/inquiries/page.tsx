@@ -15,7 +15,7 @@ import Image from 'next/image';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
 import { inquiriesApi, Inquiry, InquiryStatus } from '@/lib/api/inquiries';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 const STATUS_CONFIG: Record<
@@ -111,7 +111,7 @@ export default function MyInquiriesPage() {
       } catch (err: any) {
         console.error('Failed to fetch inquiries:', err);
         setError(err.message || 'Failed to load inquiries');
-        toast.error('Error', 'Failed to load your inquiries');
+        toast.error('Failed to load your inquiries');
       } finally {
         setIsLoading(false);
       }

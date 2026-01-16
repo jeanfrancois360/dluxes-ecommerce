@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import useSWR from 'swr';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { subscriptionApi, type SellerSubscription } from '@/lib/api/subscription';
 
@@ -114,29 +114,29 @@ function SellerSubscriptionsContent() {
   // Show error toast if data fetch fails
   React.useEffect(() => {
     if (error) {
-      toast.error('Error', 'Failed to fetch seller subscriptions');
+      toast.error('Failed to fetch seller subscriptions');
     }
   }, [error]);
 
   const handleCancelSubscription = async (id: string) => {
     try {
       await subscriptionApi.adminCancelSubscription(id);
-      toast.success('Success', 'Subscription cancelled successfully');
+      toast.success('Subscription cancelled successfully');
       mutate(); // Refresh data after update
     } catch (error) {
       console.error('Error cancelling subscription:', error);
-      toast.error('Error', 'Failed to cancel subscription');
+      toast.error('Failed to cancel subscription');
     }
   };
 
   const handleReactivateSubscription = async (id: string) => {
     try {
       await subscriptionApi.adminReactivateSubscription(id);
-      toast.success('Success', 'Subscription reactivated successfully');
+      toast.success('Subscription reactivated successfully');
       mutate(); // Refresh data after update
     } catch (error) {
       console.error('Error reactivating subscription:', error);
-      toast.error('Error', 'Failed to reactivate subscription');
+      toast.error('Failed to reactivate subscription');
     }
   };
 

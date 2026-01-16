@@ -13,7 +13,7 @@ import {
   RETURN_STATUS_COLORS,
 } from '@/lib/api/returns';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 // Status Badge Component
 function StatusBadge({ status }: { status: ReturnRequest['status'] }) {
@@ -42,7 +42,7 @@ export default function MyReturnsPage() {
         }
       } catch (error) {
         console.error('Failed to fetch returns:', error);
-        toast.error('Error', 'Failed to load return requests');
+        toast.error('Failed to load return requests');
       } finally {
         setIsLoading(false);
       }
@@ -61,12 +61,12 @@ export default function MyReturnsPage() {
         setReturns((prev) =>
           prev.map((r) => (r.id === returnId ? { ...r, status: 'CANCELLED' as const } : r))
         );
-        toast.success('Cancelled', 'Return request has been cancelled');
+        toast.success('Return request has been cancelled');
       } else {
-        toast.error('Error', response?.message || 'Failed to cancel return request');
+        toast.error(response?.message || 'Failed to cancel return request');
       }
     } catch (error) {
-      toast.error('Error', 'Failed to cancel return request');
+      toast.error('Failed to cancel return request');
     } finally {
       setCancellingId(null);
     }

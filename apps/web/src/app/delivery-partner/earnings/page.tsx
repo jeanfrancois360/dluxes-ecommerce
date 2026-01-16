@@ -16,7 +16,7 @@ import {
 import {  DollarSign, TrendingUp, Package, Calendar as CalendarIcon, Download } from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 interface EarningsSummary {
@@ -99,7 +99,7 @@ export default function DeliveryPartnerEarningsPage() {
     a.click();
     window.URL.revokeObjectURL(url);
 
-    toast.success('Success', 'Earnings exported successfully');
+    toast.success('Earnings exported successfully');
   };
 
   return (

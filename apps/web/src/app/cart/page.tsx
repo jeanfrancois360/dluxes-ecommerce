@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import Link from 'next/link';
 import { useCart } from '@/hooks/use-cart';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { useRouter } from 'next/navigation';
 import { Price } from '@/components/price';
 import { CartPageSkeleton } from '@/components/loading/skeleton';
@@ -27,16 +27,16 @@ export default function CartPage() {
     try {
       await updateQuantity(id, newQuantity);
     } catch (error) {
-      toast.error('Error', 'Failed to update quantity');
+      toast.error('Failed to update quantity');
     }
   };
 
   const handleRemoveItem = async (id: string) => {
     try {
       await removeItem(id);
-      toast.success('Removed', 'Item removed from cart');
+      toast.success('Item removed from cart');
     } catch (error) {
-      toast.error('Error', 'Failed to remove item');
+      toast.error('Failed to remove item');
     }
   };
 

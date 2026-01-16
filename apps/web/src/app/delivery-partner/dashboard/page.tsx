@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface DashboardStats {
   totalDeliveries: number;

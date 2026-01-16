@@ -52,7 +52,7 @@ import {
   AlertTriangle,
   Timer,
 } from 'lucide-react';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { format, differenceInDays, subDays, isToday } from 'date-fns';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -216,7 +216,7 @@ function DeliveriesContent() {
         setTotalPages(response.data.pagination?.totalPages || 1);
       }
     } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to fetch deliveries');
+      toast.error(error.response?.data?.message || 'Failed to fetch deliveries');
     } finally {
       setLoading(false);
     }
@@ -250,13 +250,13 @@ function DeliveriesContent() {
       );
 
       if (response.data.success) {
-        toast.success('Success', 'Payout released successfully');
+        toast.success('Payout released successfully');
         fetchDeliveries();
         fetchStatistics();
         fetchAllDeliveries();
       }
     } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to release payout');
+      toast.error(error.response?.data?.message || 'Failed to release payout');
     } finally {
       setReleasingPayout(null);
     }
@@ -374,12 +374,12 @@ function DeliveriesContent() {
 
   // Bulk actions
   const handleBulkExport = () => {
-    toast.success('Export started', `Exporting ${selectedIds.size} deliveries`);
+    toast.success(`Exporting ${selectedIds.size} deliveries`);
     setSelectedIds(new Set());
   };
 
   const handleBulkPrintLabels = () => {
-    toast.success('Print started', `Printing labels for ${selectedIds.size} deliveries`);
+    toast.success(`Printing labels for ${selectedIds.size} deliveries`);
     setSelectedIds(new Set());
   };
 
@@ -391,7 +391,7 @@ function DeliveriesContent() {
     );
 
     if (eligibleDeliveries.length === 0) {
-      toast.error('No eligible deliveries', 'Selected deliveries are not ready for payout release');
+      toast.error('Selected deliveries are not ready for payout release');
       return;
     }
 
@@ -412,7 +412,7 @@ function DeliveriesContent() {
       }
     }
 
-    toast.success('Bulk payout', `Released ${success} payouts (${failed} failed)`);
+    toast.success(`Released ${success} payouts (${failed} failed)`);
     setSelectedIds(new Set());
     fetchDeliveries();
     fetchStatistics();

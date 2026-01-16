@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { adminCustomersApi } from '@/lib/api/admin';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
