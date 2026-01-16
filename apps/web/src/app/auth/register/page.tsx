@@ -55,6 +55,8 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
+    storeName: '',
+    storeDescription: '',
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -104,6 +106,11 @@ export default function RegisterPage() {
         firstName: formData.firstName,
         lastName: formData.lastName,
         role: accountType as UserRole,
+        // Include store fields if user is registering as a seller
+        ...(accountType === 'SELLER' && {
+          storeName: formData.storeName,
+          storeDescription: formData.storeDescription,
+        }),
       });
       // Auth context handles redirect
     } catch (err: any) {
@@ -360,6 +367,66 @@ export default function RegisterPage() {
               }
               required
             />
+
+            {/* Store Information (Seller Only) */}
+            {accountType === 'SELLER' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-4 pt-4 border-t border-neutral-200"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <h3 className="font-semibold text-black">Store Information (Optional)</h3>
+                </div>
+
+                {/* Pending Approval Notice */}
+                <div className="p-4 bg-warning-light border border-warning-DEFAULT/30 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-warning-dark flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                      <p className="font-semibold text-warning-dark text-sm mb-1">Pending Approval</p>
+                      <p className="text-xs text-warning-dark/80">
+                        Your seller application will be reviewed by our team. You can add store details now or complete them later after approval.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <FloatingInput
+                  label="Store Name (Optional)"
+                  value={formData.storeName}
+                  onChange={(e) => handleChange('storeName', e.target.value)}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  }
+                  placeholder="e.g., Luxury Fashion Boutique"
+                />
+
+                <div className="relative">
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Store Description (Optional)
+                  </label>
+                  <textarea
+                    value={formData.storeDescription}
+                    onChange={(e) => handleChange('storeDescription', e.target.value)}
+                    rows={3}
+                    className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:border-gold focus:ring-2 focus:ring-gold/20 transition-all resize-none"
+                    placeholder="Tell us about your store and the products you plan to sell..."
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {formData.storeDescription.length}/500 characters
+                  </p>
+                </div>
+              </motion.div>
+            )}
 
             {/* Terms & Conditions */}
             <label className="flex items-start cursor-pointer group">

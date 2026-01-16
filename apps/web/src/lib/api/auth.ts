@@ -77,3 +77,25 @@ export const deleteAccount = (password: string) => api.post('/auth/delete-accoun
 export const getSessions = () => api.get('/auth/sessions');
 export const revokeSession = (sessionId: string) => api.delete(`/auth/sessions/${sessionId}`);
 export const revokeAllSessions = () => api.delete('/auth/sessions');
+
+// Email OTP functions
+export const requestEmailOTP = (type: 'TWO_FACTOR_BACKUP' | 'ACCOUNT_RECOVERY' | 'SENSITIVE_ACTION') =>
+  api.post('/auth/email-otp/request', { type });
+export const verifyEmailOTP = (code: string, type: 'TWO_FACTOR_BACKUP' | 'ACCOUNT_RECOVERY' | 'SENSITIVE_ACTION') =>
+  api.post('/auth/email-otp/verify', { code, type });
+export const enableEmailOTP = () => api.post('/auth/email-otp/enable');
+export const disableEmailOTP = () => api.post('/auth/email-otp/disable');
+export const getEmailOTPStatus = () => api.get('/auth/email-otp/status');
+export const loginWithEmailOTP = (email: string, password: string, otpCode: string) =>
+  api.post('/auth/login/email-otp', { email, password, otpCode });
+
+// Google OAuth functions
+export const initiateGoogleAuth = () => {
+  if (typeof window !== 'undefined') {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+    window.location.href = `${apiUrl}/auth/google`;
+  }
+};
+export const linkGoogleAccount = (googleToken: string) =>
+  api.post('/auth/google/link', { googleToken });
+export const unlinkGoogleAccount = () => api.post('/auth/google/unlink');

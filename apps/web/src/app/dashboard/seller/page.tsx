@@ -64,6 +64,7 @@ export default function SellerDashboard() {
     recentActivity,
     isLoading,
     hasError,
+    dashboardError,
     refetch,
   } = useCompleteDashboard();
 
@@ -96,6 +97,9 @@ export default function SellerDashboard() {
 
   const error = getErrorMessage();
 
+  // Check if the error is specifically about missing store
+  const isStoreNotFoundError = dashboardError?.message?.includes('Store not found');
+
   // Log errors for debugging
   if (hasError) {
     console.error('Dashboard errors:', {
@@ -105,6 +109,7 @@ export default function SellerDashboard() {
       topProducts,
       recentActivity,
     });
+    console.error('Dashboard error message:', dashboardError?.message);
   }
 
   const getStoreStatusColor = (status: string): string => {
@@ -135,7 +140,7 @@ export default function SellerDashboard() {
     );
   }
 
-  if (error && error.includes('Store not found')) {
+  if (isStoreNotFoundError) {
     return (
       <PageLayout showCategoryNav={false}>
         <div className="min-h-screen bg-neutral-50">
