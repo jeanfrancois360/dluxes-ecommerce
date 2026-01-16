@@ -7,7 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
-import { toast } from 'sonner';
+import { toast, getUserFriendlyError } from '@/lib/utils/toast';
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
@@ -82,9 +82,12 @@ export default function ResetPasswordPage() {
         router.push('/auth/login');
       }, 3000);
     } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to reset password. Please try again.';
-      toast.error(errorMessage);
-      console.error('Password reset error:', err);
+      const friendlyMessage = getUserFriendlyError(
+        err,
+        'Unable to reset your password. Please try again.',
+        'Password Reset'
+      );
+      toast.error(friendlyMessage);
     }
   };
 

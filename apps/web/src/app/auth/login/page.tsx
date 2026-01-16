@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, OTPInput, Button } from '@nextpik/ui';
 import { initiateGoogleAuth } from '@/lib/api/auth';
-import { toast, standardToasts } from '@/lib/utils/toast';
+import { toast, standardToasts, getUserFriendlyError } from '@/lib/utils/toast';
 
 export default function LoginPage() {
   const { login, isLoading: authLoading, error: authError, clearError } = useAuth();
@@ -45,10 +45,12 @@ export default function LoginPage() {
       standardToasts.auth.loginSuccess();
       // Auth context handles redirect
     } catch (err: any) {
-      // Show professional error toast
-      const errorMessage = err?.message || 'Invalid email or password';
-      standardToasts.auth.loginError();
-      console.error('Login error:', err);
+      const friendlyMessage = getUserFriendlyError(
+        err,
+        'Unable to sign in. Please check your credentials and try again.',
+        'Login'
+      );
+      toast.error(friendlyMessage);
     }
   };
 

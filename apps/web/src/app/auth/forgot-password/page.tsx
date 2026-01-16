@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
-import { toast } from 'sonner';
+import { toast, getUserFriendlyError } from '@/lib/utils/toast';
 
 export default function ForgotPasswordPage() {
   const { requestPasswordReset, isLoading: authLoading, clearError } = useAuth();
@@ -35,9 +35,12 @@ export default function ForgotPasswordPage() {
       await requestPasswordReset(email);
       setIsSuccess(true);
     } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to send reset link. Please try again.';
-      toast.error(errorMessage);
-      console.error('Password reset error:', err);
+      const friendlyMessage = getUserFriendlyError(
+        err,
+        'Unable to send password reset link. Please try again.',
+        'Forgot Password'
+      );
+      toast.error(friendlyMessage);
     }
   };
 

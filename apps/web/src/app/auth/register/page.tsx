@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
 import type { UserRole } from '@/lib/api/types';
-import { toast, standardToasts } from '@/lib/utils/toast';
+import { toast, standardToasts, getUserFriendlyError } from '@/lib/utils/toast';
 
 type AccountType = 'BUYER' | 'SELLER';
 
@@ -125,10 +125,12 @@ export default function RegisterPage() {
       }
       // Auth context handles redirect
     } catch (err: any) {
-      // Show professional error toast
-      const errorMessage = err?.message || 'Registration failed. Please try again.';
-      standardToasts.auth.registerError(errorMessage);
-      console.error('Registration error:', err);
+      const friendlyMessage = getUserFriendlyError(
+        err,
+        'Unable to create your account. Please try again.',
+        'Registration'
+      );
+      toast.error(friendlyMessage);
     }
   };
 
