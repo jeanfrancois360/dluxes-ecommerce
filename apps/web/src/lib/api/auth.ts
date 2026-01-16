@@ -53,8 +53,8 @@ export const resendEmailVerification = () => api.post('/auth/resend-verification
 export const refreshToken = () => api.post('/auth/refresh');
 
 // Magic link functions
-export const requestMagicLink = (data: { email: string }) => api.post('/auth/magic-link', data);
-export const verifyMagicLink = (token: string) => api.post(`/auth/magic-link/verify/${token}`);
+export const requestMagicLink = (data: { email: string }) => api.post('/auth/magic-link/request', data);
+export const verifyMagicLink = (token: string) => api.post('/auth/magic-link/verify', { token });
 
 // 2FA functions
 export const setupTwoFactor = () => api.post('/auth/2fa/setup');
