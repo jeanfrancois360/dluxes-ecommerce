@@ -130,19 +130,10 @@ export default function RootLayout({
                   {children}
                   <Toaster
                     position="top-right"
-                    richColors
-                    expand={true}
+                    theme="dark"
                     closeButton
                     toastOptions={{
                       duration: 4000,
-                      style: {
-                        background: 'white',
-                        color: '#0F172A',
-                        border: '1px solid #E2E8F0',
-                        fontSize: '14px',
-                        fontFamily: 'var(--font-poppins), sans-serif',
-                      },
-                      className: 'sonner-toast',
                     }}
                   />
                   <WhatsAppChat
