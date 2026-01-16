@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
@@ -18,27 +19,26 @@ export default function MagicLinkPage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isSent, setIsSent] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [localError, setLocalError] = useState('');
 
   const isLoading = authLoading;
-  const error = authError || localError;
 
   const handleVerifyMagicLink = useCallback(async (magicToken: string) => {
     setIsVerifying(true);
-    setLocalError('');
     clearError();
 
     try {
       await verifyMagicLink(magicToken);
       setIsSuccess(true);
+      toast.success('Successfully signed in!');
       // Auth context handles redirect
     } catch (err: any) {
-      // Error is already set in auth context
+      const errorMessage = err?.message || authError || 'Failed to verify magic link';
+      toast.error(errorMessage);
       console.error('Magic link verification error:', err);
     } finally {
       setIsVerifying(false);
     }
-  }, [verifyMagicLink, clearError]);
+  }, [verifyMagicLink, clearError, authError]);
 
   // Auto-verify if token is present in URL
   useEffect(() => {
@@ -49,25 +49,26 @@ export default function MagicLinkPage() {
 
   const handleRequestMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError('');
     clearError();
 
     // Validate email
     if (!email) {
-      setLocalError('Please enter your email address');
+      toast.error('Please enter your email address');
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      setLocalError('Please enter a valid email address');
+      toast.error('Please enter a valid email address');
       return;
     }
 
     try {
       await requestMagicLink(email);
       setIsSent(true);
+      toast.success('Magic link sent! Check your email.');
     } catch (err: any) {
-      // Error is already set in auth context
+      const errorMessage = err?.message || authError || 'Failed to send magic link';
+      toast.error(errorMessage);
       console.error('Magic link request error:', err);
     }
   };
@@ -226,16 +227,6 @@ export default function MagicLinkPage() {
             Enter your email and we'll send you a secure link to sign in instantly
           </p>
         </div>
-
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 bg-error-light border border-error-DEFAULT rounded-lg text-error-dark text-sm"
-          >
-            {error}
-          </motion.div>
-        )}
 
         {/* Email Input */}
         <FloatingInput

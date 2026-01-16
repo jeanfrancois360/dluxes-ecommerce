@@ -257,16 +257,6 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            {authError && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-error-light border border-error-DEFAULT rounded-lg text-error-dark text-sm"
-              >
-                {authError}
-              </motion.div>
-            )}
-
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <FloatingInput
