@@ -7,7 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import AuthLayout from '@/components/auth/auth-layout';
 import { Button, FloatingInput } from '@nextpik/ui';
 import { api } from '@/lib/api/client';
-import { toast } from 'sonner';
+import { toast, getUserFriendlyError } from '@/lib/utils/toast';
 
 type VerificationState = 'verifying' | 'success' | 'error' | 'expired' | 'resend';
 
@@ -44,11 +44,15 @@ export default function VerifyEmailPage() {
         }, 5000);
       }
     } catch (err: any) {
-      const errorMessage = err?.data?.message || err?.message || 'Verification failed';
-      setError(errorMessage);
-      toast.error(errorMessage);
+      const friendlyMessage = getUserFriendlyError(
+        err,
+        'Unable to verify your email. The link may be invalid or expired.',
+        'Email Verification'
+      );
+      setError(friendlyMessage);
+      toast.error(friendlyMessage);
 
-      if (errorMessage.toLowerCase().includes('expired')) {
+      if (friendlyMessage.toLowerCase().includes('expired')) {
         setState('expired');
       } else {
         setState('error');
@@ -74,9 +78,13 @@ export default function VerifyEmailPage() {
         setResendSuccess(false);
       }, 5000);
     } catch (err: any) {
-      const errorMessage = err?.data?.message || err?.message || 'Failed to resend verification email';
-      setError(errorMessage);
-      toast.error(errorMessage);
+      const friendlyMessage = getUserFriendlyError(
+        err,
+        'Unable to resend verification email. Please try again.',
+        'Resend Verification'
+      );
+      setError(friendlyMessage);
+      toast.error(friendlyMessage);
     } finally {
       setIsResending(false);
     }

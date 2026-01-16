@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { toast, getUserFriendlyError } from '@/lib/utils/toast';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
@@ -32,9 +32,12 @@ export default function MagicLinkPage() {
       toast.success('Successfully signed in!');
       // Auth context handles redirect
     } catch (err: any) {
-      const errorMessage = err?.message || authError || 'Failed to verify magic link';
-      toast.error(errorMessage);
-      console.error('Magic link verification error:', err);
+      const friendlyMessage = getUserFriendlyError(
+        err,
+        'This link is invalid or has expired. Please request a new one.',
+        'Magic Link Verification'
+      );
+      toast.error(friendlyMessage);
     } finally {
       setIsVerifying(false);
     }
@@ -67,9 +70,12 @@ export default function MagicLinkPage() {
       setIsSent(true);
       toast.success('Magic link sent! Check your email.');
     } catch (err: any) {
-      const errorMessage = err?.message || authError || 'Failed to send magic link';
-      toast.error(errorMessage);
-      console.error('Magic link request error:', err);
+      const friendlyMessage = getUserFriendlyError(
+        err,
+        'We couldn\'t send the link. Please try again.',
+        'Magic Link Request'
+      );
+      toast.error(friendlyMessage);
     }
   };
 

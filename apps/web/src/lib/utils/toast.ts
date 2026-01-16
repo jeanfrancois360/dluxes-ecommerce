@@ -279,4 +279,128 @@ export const showFormError = (errors: Record<string, string[]>) => {
   toast.error(errorMessages || 'Please fix the form errors');
 };
 
+/**
+ * Convert technical error to user-friendly message
+ * Logs technical details to console while showing friendly message to user
+ *
+ * @param error - The error object from catch block
+ * @param fallbackMessage - Fallback message if no specific mapping exists
+ * @param context - Additional context for console logging (e.g., 'Login Error', 'Magic Link')
+ * @returns User-friendly error message
+ */
+export function getUserFriendlyError(
+  error: any,
+  fallbackMessage: string = 'Something went wrong. Please try again.',
+  context?: string
+): string {
+  // Log technical error to console
+  if (context) {
+    console.error(`[${context}]`, error);
+  } else {
+    console.error('Error:', error);
+  }
+
+  // Extract error message from various error formats
+  const technicalMessage =
+    error?.response?.data?.message ||
+    error?.data?.message ||
+    error?.message ||
+    '';
+
+  // Map technical errors to user-friendly messages
+  const errorMappings: Record<string, string> = {
+    // Network errors
+    'Network Error': 'Unable to connect. Please check your internet connection.',
+    'Failed to fetch': 'Unable to connect. Please check your internet connection.',
+    'ERR_NETWORK': 'Unable to connect. Please check your internet connection.',
+    'ERR_CONNECTION_REFUSED': 'Unable to connect to the server. Please try again later.',
+    'ECONNREFUSED': 'Unable to connect to the server. Please try again later.',
+
+    // HTTP errors
+    'Cannot POST': 'Unable to process your request. Please try again.',
+    'Cannot GET': 'Unable to load data. Please try again.',
+    'Cannot PUT': 'Unable to update. Please try again.',
+    'Cannot DELETE': 'Unable to delete. Please try again.',
+    'Cannot PATCH': 'Unable to update. Please try again.',
+
+    // Auth errors
+    'Invalid credentials': 'The email or password you entered is incorrect.',
+    'Invalid email or password': 'The email or password you entered is incorrect.',
+    'Unauthorized': 'You need to sign in to access this.',
+    'Token expired': 'Your session has expired. Please sign in again.',
+    'Invalid token': 'This link has expired or is invalid. Please request a new one.',
+    'Email already exists': 'An account with this email already exists.',
+    'User not found': 'No account found with this email address.',
+    'Account not verified': 'Please verify your email address to continue.',
+
+    // Magic link specific
+    'Magic link expired': 'This link has expired. Please request a new one.',
+    'Invalid magic link': 'This link is invalid. Please request a new one.',
+    'Failed to send magic link': 'We couldn\'t send the link. Please try again.',
+    'Failed to verify magic link': 'This link is invalid or has expired. Please request a new one.',
+
+    // Password reset
+    'Invalid reset token': 'This reset link has expired. Please request a new one.',
+    'Password reset token expired': 'This reset link has expired. Please request a new one.',
+
+    // Email verification
+    'Verification token expired': 'This verification link has expired. We\'ll send you a new one.',
+    'Email already verified': 'Your email is already verified.',
+
+    // Server errors
+    'Internal server error': 'Something went wrong on our end. Please try again later.',
+    '500': 'Something went wrong on our end. Please try again later.',
+    '502': 'Server is temporarily unavailable. Please try again in a moment.',
+    '503': 'Service temporarily unavailable. Please try again in a moment.',
+    '504': 'Request timed out. Please try again.',
+
+    // Validation errors
+    'Validation failed': 'Please check your input and try again.',
+    'Invalid input': 'Please check your input and try again.',
+    'Missing required fields': 'Please fill in all required fields.',
+
+    // Rate limiting
+    'Too many requests': 'Too many attempts. Please wait a moment and try again.',
+    'Rate limit exceeded': 'Too many attempts. Please wait a moment and try again.',
+  };
+
+  // Check for exact matches
+  for (const [key, friendlyMessage] of Object.entries(errorMappings)) {
+    if (technicalMessage.includes(key)) {
+      return friendlyMessage;
+    }
+  }
+
+  // Check for status codes
+  const statusCode = error?.response?.status || error?.status;
+  if (statusCode) {
+    if (statusCode === 401) {
+      return 'You need to sign in to access this.';
+    } else if (statusCode === 403) {
+      return 'You don\'t have permission to do this.';
+    } else if (statusCode === 404) {
+      return 'The requested resource was not found.';
+    } else if (statusCode === 409) {
+      return 'This action conflicts with existing data.';
+    } else if (statusCode === 422) {
+      return 'Please check your input and try again.';
+    } else if (statusCode === 429) {
+      return 'Too many attempts. Please wait a moment and try again.';
+    } else if (statusCode >= 500) {
+      return 'Something went wrong on our end. Please try again later.';
+    }
+  }
+
+  // If the technical message is already user-friendly (no technical jargon), use it
+  const technicalJargon = ['POST', 'GET', 'PUT', 'PATCH', 'DELETE', 'api/v1', 'Error:', 'err:', 'Exception'];
+  const hasTechnicalJargon = technicalJargon.some(term => technicalMessage.includes(term));
+
+  if (technicalMessage && !hasTechnicalJargon && technicalMessage.length < 100) {
+    return technicalMessage;
+  }
+
+  // Fall back to the provided fallback message
+  return fallbackMessage;
+}
+
 export default toast;
