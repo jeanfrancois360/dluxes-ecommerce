@@ -5,7 +5,7 @@ import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { useCategories } from '@/hooks/use-admin';
 import { adminCategoriesApi, type Category } from '@/lib/api/admin';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { Link2, X } from 'lucide-react';
 
 // Helper function to generate slug from name

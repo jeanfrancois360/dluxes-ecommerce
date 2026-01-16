@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { PageLayout } from '@/components/layout/page-layout';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -61,7 +61,7 @@ export default function SellerPlansPage() {
       setPlans(transformedPlans);
     } catch (error) {
       console.error('Error fetching subscription plans:', error);
-      toast.error('Error', 'Failed to fetch subscription plans');
+      toast.error('Failed to fetch subscription plans');
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export default function SellerPlansPage() {
 
       // Handle FREE plan separately
       if (price === 0) {
-        toast.info('Info', 'FREE plan is automatically applied to new sellers');
+        toast.info('FREE plan is automatically applied to new sellers');
         setCheckoutLoading(null);
         return;
       }
@@ -93,7 +93,7 @@ export default function SellerPlansPage() {
 
       // Redirect to Stripe checkout
       if (url) {
-        toast.success('Success', 'Redirecting to checkout...');
+        toast.success('Redirecting to checkout...');
         window.location.href = url;
       } else {
         throw new Error('No checkout URL received');

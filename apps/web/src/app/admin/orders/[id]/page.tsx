@@ -12,7 +12,7 @@ import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { useAdminOrder } from '@/hooks/use-admin';
 import { adminOrdersApi } from '@/lib/api/admin';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { format } from 'date-fns';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import axios from 'axios';

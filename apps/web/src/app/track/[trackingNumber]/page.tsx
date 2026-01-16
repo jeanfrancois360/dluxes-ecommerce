@@ -19,7 +19,7 @@ import {
 import axios from 'axios';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 interface TrackingInfo {
   trackingNumber: string;

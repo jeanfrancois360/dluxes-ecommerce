@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { Plus, Edit, Trash2, MoreVertical, Copy, ToggleLeft, ToggleRight, X, Loader2, Check } from 'lucide-react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { subscriptionApi, type SubscriptionPlan, type CreatePlanData } from '@/lib/api/subscription';
 
@@ -71,7 +71,7 @@ function SubscriptionPlansContent() {
   // Show error toast if data fetch fails
   React.useEffect(() => {
     if (error) {
-      toast.error('Error', 'Failed to fetch subscription plans');
+      toast.error('Failed to fetch subscription plans');
     }
   }, [error]);
 
@@ -135,16 +135,16 @@ function SubscriptionPlansContent() {
         // When editing, don't include tier (it's not allowed to change)
         const { tier, ...updateData } = data;
         await subscriptionApi.adminUpdatePlan(editingPlan.id, updateData);
-        toast.success('Success', 'Plan updated successfully');
+        toast.success('Plan updated successfully');
       } else {
         await subscriptionApi.adminCreatePlan(data);
-        toast.success('Success', 'Plan created successfully');
+        toast.success('Plan created successfully');
       }
 
       setIsModalOpen(false);
       mutate();
     } catch (error: any) {
-      toast.error('Error', error.message || 'Failed to save plan');
+      toast.error(error.message || 'Failed to save plan');
     } finally {
       setIsSubmitting(false);
     }
@@ -156,11 +156,11 @@ function SubscriptionPlansContent() {
 
     try {
       await subscriptionApi.adminDeletePlan(deleteConfirm.id);
-      toast.success('Success', 'Plan deleted successfully');
+      toast.success('Plan deleted successfully');
       setDeleteConfirm(null);
       mutate();
     } catch (error: any) {
-      toast.error('Error', error.message || 'Failed to delete plan');
+      toast.error(error.message || 'Failed to delete plan');
     }
   };
 
@@ -168,10 +168,10 @@ function SubscriptionPlansContent() {
   const handleToggle = async (plan: SubscriptionPlan) => {
     try {
       await subscriptionApi.adminTogglePlanStatusById(plan.id);
-      toast.success('Success', `Plan ${plan.isActive ? 'deactivated' : 'activated'}`);
+      toast.success(`Plan ${plan.isActive ? 'deactivated' : 'activated'}`);
       mutate();
     } catch (error) {
-      toast.error('Error', 'Failed to update plan status');
+      toast.error('Failed to update plan status');
     }
     setOpenMenuId(null);
   };
@@ -180,10 +180,10 @@ function SubscriptionPlansContent() {
   const handleDuplicate = async (plan: SubscriptionPlan) => {
     try {
       await subscriptionApi.adminDuplicatePlan(plan.id);
-      toast.success('Success', 'Plan duplicated successfully');
+      toast.success('Plan duplicated successfully');
       mutate();
     } catch (error) {
-      toast.error('Error', 'Failed to duplicate plan');
+      toast.error('Failed to duplicate plan');
     }
     setOpenMenuId(null);
   };

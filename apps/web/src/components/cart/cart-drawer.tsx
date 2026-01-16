@@ -6,7 +6,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
 import { cn } from '@nextpik/ui';
 import { useCart } from '@/hooks/use-cart';
 import { useRouter } from 'next/navigation';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 interface CartDrawerProps {
@@ -30,16 +30,16 @@ export function CartDrawer({
     try {
       await updateQuantity(id, quantity);
     } catch (error) {
-      toast.error('Error', 'Failed to update quantity');
+      toast.error('Failed to update quantity');
     }
   };
 
   const handleRemove = async (id: string) => {
     try {
       await removeItem(id);
-      toast.success('Removed', 'Item removed from cart');
+      toast.success('Item removed from cart');
     } catch (error) {
-      toast.error('Error', 'Failed to remove item');
+      toast.error('Failed to remove item');
     }
   };
 

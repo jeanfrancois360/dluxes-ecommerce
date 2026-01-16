@@ -5,7 +5,7 @@ import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { currencyAdminApi, CurrencyRate } from '@/lib/api/currency';
 import useSWR from 'swr';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useDebounce } from '@/hooks/use-debounce';
 import {
@@ -167,18 +167,17 @@ function CurrenciesContent() {
     try {
       await currencyAdminApi.toggleActive(currency.currencyCode);
       toast.success(
-        currency.isActive ? 'Currency Deactivated' : 'Currency Activated',
         `${currency.currencyName} has been ${currency.isActive ? 'deactivated' : 'activated'}`
       );
       mutate();
     } catch (error: any) {
-      toast.error('Error', error.message || 'Failed to toggle currency status');
+      toast.error(error.message || 'Failed to toggle currency status');
     }
   };
 
   const handleDelete = async (currency: CurrencyRate) => {
     if (currency.currencyCode === 'USD') {
-      toast.error('Cannot Delete', 'USD is the base currency and cannot be deleted');
+      toast.error('USD is the base currency and cannot be deleted');
       return;
     }
 
@@ -190,10 +189,10 @@ function CurrenciesContent() {
     try {
       setDeletingId(currency.id);
       await currencyAdminApi.deleteRate(currency.currencyCode);
-      toast.success('Currency Deleted', `${currency.currencyName} has been deleted`);
+      toast.success(`${currency.currencyName} has been deleted`);
       mutate();
     } catch (error: any) {
-      toast.error('Error', error.message || 'Failed to delete currency');
+      toast.error(error.message || 'Failed to delete currency');
     } finally {
       setDeletingId(null);
     }
@@ -211,7 +210,7 @@ function CurrenciesContent() {
 
   // Bulk actions
   const handleBulkExport = () => {
-    toast.success('Export started', `Exporting ${selectedIds.size} currencies`);
+    toast.success(`Exporting ${selectedIds.size} currencies`);
     setSelectedIds(new Set());
   };
 
@@ -233,7 +232,7 @@ function CurrenciesContent() {
       }
     }
 
-    toast.success('Bulk activate', `Activated ${success} currencies (${failed} failed)`);
+    toast.success(`Activated ${success} currencies (${failed} failed)`);
     setSelectedIds(new Set());
     mutate();
   };
@@ -256,7 +255,7 @@ function CurrenciesContent() {
       }
     }
 
-    toast.success('Bulk deactivate', `Deactivated ${success} currencies (${failed} failed)`);
+    toast.success(`Deactivated ${success} currencies (${failed} failed)`);
     setSelectedIds(new Set());
     mutate();
   };
@@ -279,7 +278,7 @@ function CurrenciesContent() {
       }
     }
 
-    toast.success('Bulk delete', `Deleted ${success} currencies (${failed} failed)`);
+    toast.success(`Deleted ${success} currencies (${failed} failed)`);
     setSelectedIds(new Set());
     mutate();
   };
@@ -705,17 +704,16 @@ function CurrencyFormModal({
     try {
       if (mode === 'add') {
         await currencyAdminApi.createRate(formData);
-        toast.success('Currency Added', `${formData.currencyName} has been added successfully`);
+        toast.success(`${formData.currencyName} has been added successfully`);
       } else if (currency) {
         await currencyAdminApi.updateRate(currency.currencyCode, formData);
         toast.success(
-          'Currency Updated',
           `${formData.currencyName} has been updated successfully`
         );
       }
       onSuccess();
     } catch (error: any) {
-      toast.error('Error', error.message || `Failed to ${mode} currency`);
+      toast.error(error.message || `Failed to ${mode} currency`);
     } finally {
       setIsSubmitting(false);
     }

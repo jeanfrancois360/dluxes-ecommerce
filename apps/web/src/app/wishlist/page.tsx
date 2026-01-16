@@ -8,7 +8,7 @@ import { QuickViewModal, type QuickViewProduct } from '@nextpik/ui';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCart } from '@/hooks/use-cart';
 import { useProduct } from '@/hooks/use-product';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
@@ -27,10 +27,10 @@ export default function WishlistPage() {
   const handleRemove = async (productId: string) => {
     try {
       await removeFromWishlist(productId);
-      toast.success('Removed', 'Item removed from wishlist');
+      toast.success('Item removed from wishlist');
     } catch (error) {
       console.error('Failed to remove from wishlist:', error);
-      toast.error('Error', 'Failed to remove from wishlist');
+      toast.error('Failed to remove from wishlist');
     }
   };
 
@@ -38,10 +38,10 @@ export default function WishlistPage() {
     if (confirm('Are you sure you want to clear your entire wishlist?')) {
       try {
         await clearWishlist();
-        toast.success('Cleared', 'Wishlist cleared successfully');
+        toast.success('Wishlist cleared successfully');
       } catch (error) {
         console.error('Failed to clear wishlist:', error);
-        toast.error('Error', 'Failed to clear wishlist');
+        toast.error('Failed to clear wishlist');
       }
     }
   };
@@ -56,10 +56,10 @@ export default function WishlistPage() {
       // await removeFromWishlist(productId);
       // refetch();
 
-      toast.success('Added to Cart', 'Item has been added to your cart');
+      toast.success('Item has been added to your cart');
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
-      toast.error('Error', error.message || 'Failed to add to cart');
+      toast.error(error.message || 'Failed to add to cart');
     } finally {
       setAddingToCart(null);
     }
@@ -73,7 +73,7 @@ export default function WishlistPage() {
     );
 
     if (inStockItems.length === 0) {
-      toast.error('No Items', 'No items available to add to cart');
+      toast.error('No items available to add to cart');
       return;
     }
 
@@ -92,15 +92,15 @@ export default function WishlistPage() {
       }
 
       if (successCount > 0) {
-        toast.success('Success', `${successCount} item${successCount > 1 ? 's' : ''} added to cart`);
+        toast.success(`${successCount} item${successCount > 1 ? 's' : ''} added to cart`);
       }
 
       if (failedCount > 0) {
-        toast.error('Partial Failure', `Failed to add ${failedCount} item${failedCount > 1 ? 's' : ''}`);
+        toast.error(`Failed to add ${failedCount} item${failedCount > 1 ? 's' : ''}`);
       }
     } catch (error) {
       console.error('Failed to move items to cart:', error);
-      toast.error('Error', 'Failed to add items to cart');
+      toast.error('Failed to add items to cart');
     }
   };
 

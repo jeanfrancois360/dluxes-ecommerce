@@ -8,7 +8,7 @@ import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import Link from 'next/link';
 import { subscriptionApi } from '@/lib/api/subscription';
 import { advertisementPlansApi } from '@/lib/api/advertisement-plans';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 // Stat Card Component
 function StatCard({
@@ -73,7 +73,7 @@ function SubscriptionsDashboardContent() {
   // Show error toast if data fetch fails
   React.useEffect(() => {
     if (error) {
-      toast.error('Error', 'Failed to load subscription statistics');
+      toast.error('Failed to load subscription statistics');
     }
   }, [error]);
 

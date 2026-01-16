@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { PageLayout } from '@/components/layout/page-layout';
 import { downloadsApi, type DigitalPurchase } from '@/lib/api/downloads';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 // Format file size
 function formatFileSize(bytes: string | null): string {
@@ -75,7 +75,7 @@ export default function MyDownloadsPage() {
         }
       } catch (error) {
         console.error('Failed to fetch downloads:', error);
-        toast.error('Error', 'Failed to load your downloads');
+        toast.error('Failed to load your downloads');
       } finally {
         setIsLoading(false);
       }
@@ -88,7 +88,7 @@ export default function MyDownloadsPage() {
 
   const handleDownload = async (purchase: DigitalPurchase) => {
     if (!purchase.canDownload) {
-      toast.error('Download Limit Reached', 'You have reached the download limit for this file');
+      toast.error('You have reached the download limit for this file');
       return;
     }
 
@@ -99,12 +99,12 @@ export default function MyDownloadsPage() {
       if (response?.data?.url) {
         // Open download in new tab
         window.open(response.data.url, '_blank');
-        toast.success('Download Started', `Downloading ${response.data.fileName}`);
+        toast.success(`Downloading ${response.data.fileName}`);
       } else {
-        toast.error('Download Failed', 'Could not get download link');
+        toast.error('Could not get download link');
       }
     } catch (error) {
-      toast.error('Download Failed', 'An error occurred while starting download');
+      toast.error('An error occurred while starting download');
     } finally {
       setDownloadingId(null);
     }

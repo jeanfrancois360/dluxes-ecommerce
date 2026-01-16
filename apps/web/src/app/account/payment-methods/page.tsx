@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import {
   paymentMethodsApi,
   type SavedPaymentMethod,
@@ -115,7 +115,7 @@ function AddCardModal({
       }
 
       if (setupIntent?.status === 'succeeded') {
-        toast.success('Card Added', 'Your card has been saved successfully');
+        toast.success('Your card has been saved successfully');
         onSuccess();
         onClose();
       } else {
@@ -124,7 +124,7 @@ function AddCardModal({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add card';
       setError(message);
-      toast.error('Error', message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -273,7 +273,7 @@ export default function PaymentMethodsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch payment methods:', error);
-      toast.error('Error', 'Failed to load payment methods');
+      toast.error('Failed to load payment methods');
     } finally {
       setIsLoading(false);
     }
@@ -290,13 +290,13 @@ export default function PaymentMethodsPage() {
       setIsSettingDefault(paymentMethodId);
       const response = await paymentMethodsApi.setDefault(paymentMethodId);
       if (response?.success) {
-        toast.success('Default Updated', 'Your default payment method has been updated');
+        toast.success('Your default payment method has been updated');
         fetchPaymentMethods();
       } else {
         throw new Error(response?.message || 'Failed to set default');
       }
     } catch (error) {
-      toast.error('Error', error instanceof Error ? error.message : 'Failed to update default');
+      toast.error(error instanceof Error ? error.message : 'Failed to update default');
     } finally {
       setIsSettingDefault(null);
     }
@@ -307,14 +307,14 @@ export default function PaymentMethodsPage() {
       setIsDeleting(true);
       const response = await paymentMethodsApi.remove(paymentMethodId);
       if (response?.success) {
-        toast.success('Card Removed', 'Your card has been removed');
+        toast.success('Your card has been removed');
         setShowDeleteConfirm(null);
         fetchPaymentMethods();
       } else {
         throw new Error(response?.message || 'Failed to remove card');
       }
     } catch (error) {
-      toast.error('Error', error instanceof Error ? error.message : 'Failed to remove card');
+      toast.error(error instanceof Error ? error.message : 'Failed to remove card');
     } finally {
       setIsDeleting(false);
     }

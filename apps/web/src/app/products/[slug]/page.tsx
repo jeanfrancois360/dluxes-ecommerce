@@ -14,7 +14,7 @@ import { InquiryForm } from '@/components/inquiry/InquiryForm';
 import { useReviews, useCreateReview, useMarkHelpful, useReportReview } from '@/hooks/use-reviews';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCart } from '@/hooks/use-cart';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import Link from 'next/link';
 import { useParams, useRouter, notFound } from 'next/navigation';
 import { useProduct, useRelatedProducts } from '@/hooks/use-product';
@@ -273,10 +273,10 @@ export default function ProductDetailPage() {
       }
 
       await addToCart(product.id, quantity, variantId);
-      toast.success('Added to Cart', `${product.name} has been added to your cart`);
+      toast.success(`${product.name} has been added to your cart`);
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
-      toast.error('Error', error.message || 'Failed to add item to cart');
+      toast.error(error.message || 'Failed to add item to cart');
     }
   };
 
@@ -602,7 +602,7 @@ export default function ProductDetailPage() {
                       productName={product.name}
                       productType={product.propertyType || 'property'}
                       onSuccess={() => {
-                        toast.success('Inquiry Submitted', 'Our agent will contact you soon!');
+                        toast.success('Our agent will contact you soon!');
                         setShowInquiryForm(false);
                       }}
                       onCancel={() => setShowInquiryForm(false)}
@@ -615,7 +615,7 @@ export default function ProductDetailPage() {
                         ? `${product.vehicleYear} ${product.vehicleMake} ${product.vehicleModel}`
                         : undefined}
                       onSuccess={() => {
-                        toast.success('Inquiry Submitted', 'Our sales team will contact you soon!');
+                        toast.success('Our sales team will contact you soon!');
                         setShowInquiryForm(false);
                       }}
                       onCancel={() => setShowInquiryForm(false)}
@@ -639,7 +639,7 @@ export default function ProductDetailPage() {
                       productId={product.id}
                       productName={product.name}
                       onSuccess={() => {
-                        toast.success('Inquiry Submitted', 'We will contact you soon!');
+                        toast.success('We will contact you soon!');
                         setShowInquiryForm(false);
                       }}
                       onCancel={() => setShowInquiryForm(false)}

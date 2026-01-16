@@ -15,7 +15,7 @@ import { useCart } from '@/hooks/use-cart';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCurrencyProducts } from '@/hooks/use-currency-products';
 import { useSelectedCurrency } from '@/hooks/use-currency';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { navigateWithLoading } from '@/lib/navigation';
 
 // Lazy load heavy components
@@ -87,7 +87,7 @@ export default function Home() {
     setAddingToCart(productId);
     try {
       await addToCartApi(productId, 1);
-      toast.success('Added to Cart', 'Item has been added to your cart');
+      toast.success('Item has been added to your cart');
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
       toast.error('Error', error.message || 'Failed to add item to cart');
@@ -100,14 +100,14 @@ export default function Home() {
     if (addingToWishlist) return;
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
-      toast.error('Login Required', 'Please login to add items to wishlist');
+      toast.error('Please login to add items to wishlist');
       router.push('/auth/login');
       return;
     }
     setAddingToWishlist(productId);
     try {
       await addToWishlistApi(productId);
-      toast.success('Added to Wishlist', 'Item has been added to your wishlist');
+      toast.success('Item has been added to your wishlist');
     } catch (error: any) {
       console.error('Failed to add to wishlist:', error);
       toast.error('Error', error.message || 'Failed to add item to wishlist');
