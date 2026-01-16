@@ -396,55 +396,21 @@ body {
   min-width: 356px !important;
 }
 
-/* Success Toast */
-:where([data-sonner-toast][data-type="success"]) {
-  background: #262626 !important;
-  border-color: #10b981 !important;
-  color: #fafafa !important;
-}
-
+/* Colored Icons Only - No Border Colors */
 :where([data-sonner-toast][data-type="success"] [data-icon]) {
   color: #10b981 !important;
-}
-
-/* Error Toast */
-:where([data-sonner-toast][data-type="error"]) {
-  background: #262626 !important;
-  border-color: #ef4444 !important;
-  color: #fafafa !important;
 }
 
 :where([data-sonner-toast][data-type="error"] [data-icon]) {
   color: #ef4444 !important;
 }
 
-/* Warning Toast */
-:where([data-sonner-toast][data-type="warning"]) {
-  background: #262626 !important;
-  border-color: #f59e0b !important;
-  color: #fafafa !important;
-}
-
 :where([data-sonner-toast][data-type="warning"] [data-icon]) {
   color: #f59e0b !important;
 }
 
-/* Info Toast */
-:where([data-sonner-toast][data-type="info"]) {
-  background: #262626 !important;
-  border-color: #3b82f6 !important;
-  color: #fafafa !important;
-}
-
 :where([data-sonner-toast][data-type="info"] [data-icon]) {
   color: #3b82f6 !important;
-}
-
-/* Loading Toast */
-:where([data-sonner-toast][data-type="loading"]) {
-  background: #262626 !important;
-  border-color: #404040 !important;
-  color: #fafafa !important;
 }
 
 /* Toast Title */
@@ -503,19 +469,7 @@ body {
   background: rgba(255, 255, 255, 0.15) !important;
 }
 
-/* Toast Loading Spinner */
-:where([data-sonner-toast] [data-icon] svg) {
-  animation: spin 1s linear infinite !important;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* Toast Loading Spinner - No rotation */
 
 /* Toast Enter Animation */
 @keyframes toast-enter {
