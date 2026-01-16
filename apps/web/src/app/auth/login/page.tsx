@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, OTPInput, Button } from '@nextpik/ui';
 import { initiateGoogleAuth } from '@/lib/api/auth';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 export default function LoginPage() {
   const { login, isLoading: authLoading, error: authError, clearError } = useAuth();
@@ -29,20 +30,24 @@ export default function LoginPage() {
 
     // Validate fields
     if (!email || !password) {
-      setLocalError('Please enter both email and password');
+      toast.error('Please enter both email and password');
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      setLocalError('Please enter a valid email address');
+      toast.error('Please enter a valid email address');
       return;
     }
 
     try {
       await login({ email, password });
+      // Show success toast
+      standardToasts.auth.loginSuccess();
       // Auth context handles redirect
     } catch (err: any) {
-      // Error is already set in auth context
+      // Show professional error toast
+      const errorMessage = err?.message || 'Invalid email or password';
+      standardToasts.auth.loginError();
       console.error('Login error:', err);
     }
   };

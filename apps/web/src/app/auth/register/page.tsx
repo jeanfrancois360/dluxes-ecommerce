@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
 import type { UserRole } from '@/lib/api/types';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 type AccountType = 'BUYER' | 'SELLER';
 
@@ -97,7 +98,10 @@ export default function RegisterPage() {
     e.preventDefault();
     clearError();
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      toast.error('Please fill in all required fields correctly');
+      return;
+    }
 
     try {
       await register({
@@ -112,9 +116,18 @@ export default function RegisterPage() {
           storeDescription: formData.storeDescription,
         }),
       });
+
+      // Show appropriate success message
+      if (accountType === 'SELLER') {
+        standardToasts.store.created();
+      } else {
+        standardToasts.auth.registerSuccess();
+      }
       // Auth context handles redirect
     } catch (err: any) {
-      // Error is already set in auth context
+      // Show professional error toast
+      const errorMessage = err?.message || 'Registration failed. Please try again.';
+      standardToasts.auth.registerError(errorMessage);
       console.error('Registration error:', err);
     }
   };
