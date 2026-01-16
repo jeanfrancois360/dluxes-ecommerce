@@ -43,6 +43,9 @@ export interface RegisterData {
   firstName?: string;
   lastName?: string;
   role?: UserRole;
+  // Seller-specific fields
+  storeName?: string;
+  storeDescription?: string;
 }
 
 // Type aliases for compatibility

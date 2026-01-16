@@ -1,7 +1,7 @@
 # CLAUDE.md - NextPik
 
 ## Project Context
-**NextPik** is a **production-ready multi-vendor luxury e-commerce platform** (v2.3.0) with:
+**NextPik** is a **production-ready multi-vendor luxury e-commerce platform** (v2.6.0) with:
 - **Stripe payment processing** with escrow system
 - **Multi-currency support** (46+ currencies)
 - **Commission & payout system** for sellers
@@ -408,6 +408,9 @@ nextpik/
 
 | Version | Date | Key Changes |
 |---------|------|-------------|
+| 2.6.0 | Jan 16, 2026 | Authentication enhancements: Email OTP 2FA, Google OAuth, seller store auto-creation |
+| 2.5.0 | Jan 3, 2026 | Stripe subscription integration with webhooks and billing portal |
+| 2.4.0 | Dec 31, 2025 | Store following system, admin notes, enhanced UI/UX |
 | 2.3.0 | Dec 26, 2025 | UI/UX fixes, JWT auth fix, upload fix, M1 optimizations |
 | 2.2.0 | Dec 13, 2025 | Stripe integration (production-ready) |
 | 2.1.1 | Dec 13, 2025 | Product form fixes, filter system |
@@ -429,8 +432,8 @@ Check DEADLINE_TRACKER.md and tell me what I should work on today
 
 ---
 
-*Last Updated: December 26, 2025*
-*Deadline: January 3, 2026*
+*Last Updated: January 16, 2026*
+*Version: 2.6.0 - Authentication Enhancements*
 ---
 
 ## 📝 DOCUMENTATION RULES

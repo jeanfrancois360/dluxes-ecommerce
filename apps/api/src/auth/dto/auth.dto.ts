@@ -30,6 +30,15 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   sessionId?: string;
+
+  // Seller-specific fields
+  @IsOptional()
+  @IsString()
+  storeName?: string;
+
+  @IsOptional()
+  @IsString()
+  storeDescription?: string;
 }
 
 export class LoginDto {

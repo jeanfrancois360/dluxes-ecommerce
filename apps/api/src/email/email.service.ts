@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
+import { EmailOTPType } from '@prisma/client';
 import { magicLinkTemplate } from './templates/magic-link.template';
 import { passwordResetTemplate } from './templates/password-reset.template';
 import { welcomeTemplate } from './templates/welcome.template';
+import { getEmailOTPTemplate } from './templates/email-otp.template';
 
 @Injectable()
 export class EmailService {
@@ -414,6 +416,52 @@ export class EmailService {
       return true;
     } catch (error) {
       this.logger.error('Error sending product inquiry email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send email OTP code
+   */
+  async sendEmailOTP(
+    email: string,
+    firstName: string,
+    code: string,
+    type: EmailOTPType,
+    ipAddress?: string,
+  ): Promise<boolean> {
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.log(`Email OTP code for ${email}: ${code} (Type: ${type})`);
+        return false;
+      }
+
+      const { subject, html } = getEmailOTPTemplate({
+        firstName,
+        code,
+        expiresInMinutes: 10,
+        type,
+        ipAddress,
+        timestamp: new Date(),
+      });
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send email OTP', error);
+        return false;
+      }
+
+      this.logger.log(`Email OTP sent to ${email} (ID: ${data?.id}, Type: ${type})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending email OTP', error);
       return false;
     }
   }

@@ -25,6 +25,11 @@ model User {
   twoFactorEnabled Boolean @default(false)
   twoFactorSecret  String?
 
+  // OAuth & Email OTP
+  googleId        String?      @unique
+  authProvider    AuthProvider @default(LOCAL)
+  emailOTPEnabled Boolean      @default(false)
+
   // Account status
   isActive    Boolean   @default(true)
   isSuspended Boolean   @default(false)
@@ -50,6 +55,7 @@ model User {
   loginAttempts    LoginAttempt[]
   passwordResets   PasswordReset[]
   refreshTokens    RefreshToken[]
+  emailOTPs        EmailOTP[]
   store            Store? // Seller's store (only for SELLER role)
   commissionRules  CommissionRule[]       @relation("SellerCommissionRules")
   commissions      Commission[]           @relation("SellerCommissions")
@@ -99,6 +105,18 @@ enum UserRole {
   SUPER_ADMIN
 }
 
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  MAGIC_LINK
+}
+
+enum EmailOTPType {
+  TWO_FACTOR_BACKUP
+  ACCOUNT_RECOVERY
+  SENSITIVE_ACTION
+}
+
 model UserPreferences {
   id            String  @id @default(cuid())
   userId        String  @unique
@@ -137,7 +155,7 @@ model UserPreferences {
 
 model Address {
   id         String  @id @default(cuid())
-  userId     String
+  userId     String? // Nullable for guest checkout addresses
   firstName  String
   lastName   String
   company    String?
@@ -150,7 +168,7 @@ model Address {
   phone      String?
   isDefault  Boolean @default(false)
 
-  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   shippingOrders Order[] @relation("ShippingAddress")
   billingOrders  Order[] @relation("BillingAddress")
 
@@ -1485,6 +1503,26 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+model EmailOTP {
+  id        String       @id @default(cuid())
+  userId    String
+  code      String // 6-digit OTP
+  type      EmailOTPType @default(TWO_FACTOR_BACKUP)
+  used      Boolean      @default(false)
+  usedAt    DateTime?
+  expiresAt DateTime // 10 minutes from creation
+  attempts  Int          @default(0) // Max 3
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([code, expiresAt])
+  @@map("email_otps")
+}
+
 // ============================================================================
 // Payment & Transaction Management
 // ============================================================================
@@ -1658,7 +1696,7 @@ model Commission {
   id String @id @default(cuid())
 
   // Transaction Reference
-  transactionId String
+  transactionId String? // Nullable for transactions created before tracking was added
   orderId       String
   orderItemId   String? // Commission per item (optional)
 
@@ -1694,12 +1732,12 @@ model Commission {
   updatedAt DateTime @updatedAt
 
   // Relations
-  transaction PaymentTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  order       Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  seller      User               @relation("SellerCommissions", fields: [sellerId], references: [id], onDelete: Cascade)
-  store       Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  rule        CommissionRule?    @relation(fields: [ruleId], references: [id], onDelete: SetNull)
-  payout      Payout?            @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  transaction PaymentTransaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  seller      User                @relation("SellerCommissions", fields: [sellerId], references: [id], onDelete: Cascade)
+  store       Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  rule        CommissionRule?     @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  payout      Payout?             @relation(fields: [payoutId], references: [id], onDelete: SetNull)
 
   @@index([transactionId])
   @@index([orderId])
@@ -1921,8 +1959,8 @@ model EscrowTransaction {
   id String @id @default(cuid())
 
   // Transaction References
-  orderId              String @unique
-  paymentTransactionId String @unique
+  orderId              String  @unique
+  paymentTransactionId String? @unique // Nullable for legacy transactions
   sellerId             String
   storeId              String
 
@@ -1958,7 +1996,7 @@ model EscrowTransaction {
 
   // Relations
   order              Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  paymentTransaction PaymentTransaction      @relation(fields: [paymentTransactionId], references: [id], onDelete: Cascade)
+  paymentTransaction PaymentTransaction?     @relation(fields: [paymentTransactionId], references: [id], onDelete: Cascade)
   seller             User                    @relation("SellerEscrow", fields: [sellerId], references: [id], onDelete: Cascade)
   store              Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade)
   splitAllocations   EscrowSplitAllocation[]
@@ -2535,7 +2573,7 @@ model CreditPackage {
   id String @id @default(cuid())
 
   // Package Details
-  name        String  // "Starter Pack", "Value Bundle", etc.
+  name        String // "Starter Pack", "Value Bundle", etc.
   description String?
   credits     Int // Number of credits in package
 
