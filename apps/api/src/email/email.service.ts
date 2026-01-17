@@ -30,13 +30,21 @@ export class EmailService {
    */
   async sendMagicLink(email: string, name: string, token: string): Promise<boolean> {
     try {
+      const magicLink = `${this.frontendUrl}/auth/magic-link?token=${token}`;
+
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
-        this.logger.log(`Magic link token for ${email}: ${token}`);
-        return false;
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`🔗 MAGIC LINK FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Name: ${name}`);
+        this.logger.log(`Link: ${magicLink}`);
+        this.logger.log(`Token: ${token}`);
+        this.logger.warn('='.repeat(80));
+        // Return true to indicate the token was generated successfully
+        return true;
       }
 
-      const magicLink = `${this.frontendUrl}/auth/magic-link?token=${token}`;
       const html = magicLinkTemplate(name, magicLink);
 
       const { data, error } = await this.resend.emails.send({
@@ -64,13 +72,21 @@ export class EmailService {
    */
   async sendPasswordReset(email: string, name: string, token: string): Promise<boolean> {
     try {
+      const resetLink = `${this.frontendUrl}/auth/reset-password?token=${token}`;
+
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
-        this.logger.log(`Password reset token for ${email}: ${token}`);
-        return false;
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`🔑 PASSWORD RESET LINK FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Name: ${name}`);
+        this.logger.log(`Link: ${resetLink}`);
+        this.logger.log(`Token: ${token}`);
+        this.logger.warn('='.repeat(80));
+        // Return true to indicate the token was generated successfully
+        return true;
       }
 
-      const resetLink = `${this.frontendUrl}/auth/reset-password?token=${token}`;
       const html = passwordResetTemplate(name, resetLink);
 
       const { data, error } = await this.resend.emails.send({
