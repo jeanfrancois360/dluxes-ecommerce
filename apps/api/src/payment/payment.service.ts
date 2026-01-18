@@ -43,18 +43,16 @@ export class PaymentService {
    */
   async initializeStripe(): Promise<void> {
     try {
-      // Try to get Stripe config from database settings first
+      // Get Stripe config (API keys from env, business config from database)
       const config = await this.settingsService.getStripeConfig();
 
-      let secretKey = config.secretKey;
-      let enabled = config.enabled;
+      const secretKey = config.secretKey; // From environment variables
+      const enabled = config.enabled; // From database settings
 
-      // Fallback to environment variables if settings not configured
       if (!secretKey) {
-        secretKey = this.configService.get<string>('STRIPE_SECRET_KEY') || '';
-        this.logger.log('Using Stripe secret key from environment variables');
+        this.logger.warn('Stripe secret key not found in environment variables');
       } else {
-        this.logger.log('Using Stripe secret key from database settings');
+        this.logger.log('Stripe configured: API keys from environment, business settings from database');
       }
 
       if (!secretKey || secretKey === 'your-stripe-key') {

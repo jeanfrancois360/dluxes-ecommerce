@@ -3,19 +3,20 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
-import { Button } from '@nextpik/ui';
+import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 import { Label } from '@nextpik/ui';
 import { Switch } from '@nextpik/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
-import { AlertCircle, Loader2, Lock, CreditCard, CheckCircle, XCircle, RefreshCw, AlertTriangle, Eye, EyeOff, DollarSign, Clock } from 'lucide-react';
+import { AlertCircle, Loader2, Lock, CreditCard, DollarSign, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { paymentSettingsSchema, type PaymentSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { api } from '@/lib/api/client';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
+import { PaymentGatewayCard } from './payment/PaymentGatewayCard';
+import { GatewayBusinessConfig } from './payment/GatewayBusinessConfig';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 // Stripe configuration status interface
@@ -30,6 +31,35 @@ interface StripeStatus {
   captureMethod: string;
 }
 
+// Currency options
+const CURRENCY_OPTIONS = [
+  { value: 'USD', label: 'USD - US Dollar' },
+  { value: 'EUR', label: 'EUR - Euro' },
+  { value: 'GBP', label: 'GBP - British Pound' },
+  { value: 'RWF', label: 'RWF - Rwandan Franc' },
+];
+
+// Capture method options
+const CAPTURE_METHOD_OPTIONS = [
+  { value: 'manual', label: 'Manual (Escrow Compatible)' },
+  { value: 'automatic', label: 'Automatic (Instant Capture)' },
+];
+
+// Payout schedule options
+const PAYOUT_SCHEDULE_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-weekly' },
+  { value: 'monthly', label: 'Monthly' },
+];
+
+// Payment method options
+const PAYMENT_METHODS = [
+  { id: 'stripe', label: 'Stripe' },
+  { id: 'paypal', label: 'PayPal' },
+  { id: 'bank_transfer', label: 'Bank Transfer' },
+];
+
 export function PaymentSettingsSection() {
   const { settings, loading, refetch } = useSettings('payment');
   const { settings: paymentSettingsUpper, refetch: refetchUpper } = useSettings('PAYMENT');
@@ -39,8 +69,6 @@ export function PaymentSettingsSection() {
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
   const [loadingStripeStatus, setLoadingStripeStatus] = useState(true);
   const [reloadingStripe, setReloadingStripe] = useState(false);
-  const [showSecretKey, setShowSecretKey] = useState(false);
-  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
 
   const form = useForm<PaymentSettings>({
     resolver: zodResolver(paymentSettingsSchema),
@@ -52,34 +80,32 @@ export function PaymentSettingsSection() {
     },
   });
 
+  // Load settings into form
   useEffect(() => {
     if (settings.length > 0) {
       const allFormData = transformSettingsToForm(settings);
-
       const filteredData: Partial<PaymentSettings> = {
         escrow_default_hold_days: allFormData.escrow_default_hold_days ?? 7,
         min_payout_amount: allFormData.min_payout_amount ?? 50,
         payout_schedule: allFormData.payout_schedule ?? 'weekly',
         payment_methods: allFormData.payment_methods ?? ['stripe', 'paypal'],
       };
-
       form.reset(filteredData as PaymentSettings, { keepDirtyValues: false });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings]);
+  }, [settings, form]);
 
-  // Fetch Stripe status on component mount
+  // Fetch Stripe status on mount
   useEffect(() => {
     fetchStripeStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchStripeStatus = async () => {
     try {
       setLoadingStripeStatus(true);
-      const response = await api.get('/settings/stripe/status');
-      if (response.data?.data) {
-        setStripeStatus(response.data.data);
+      // api.get already unwraps { success, data } - response IS the data
+      const response = await api.get<any>('/settings/stripe/status');
+      if (response) {
+        setStripeStatus(response);
       }
     } catch (error) {
       console.error('Failed to fetch Stripe status:', error);
@@ -91,13 +117,12 @@ export function PaymentSettingsSection() {
   const handleReloadStripe = async () => {
     try {
       setReloadingStripe(true);
-      const response = await api.post('/settings/stripe/reload');
-      if (response.data?.success) {
-        toast.success('Stripe configuration reloaded successfully');
-        await fetchStripeStatus();
-      }
+      // api.post already unwraps the response
+      await api.post('/settings/stripe/reload');
+      toast.success('Stripe configuration reloaded successfully');
+      await fetchStripeStatus();
     } catch (error: any) {
-      toast.error('Failed to reload Stripe', error.message || 'Please try again');
+      toast.error(error.message || 'Failed to reload Stripe');
     } finally {
       setReloadingStripe(false);
     }
@@ -117,12 +142,10 @@ export function PaymentSettingsSection() {
   const onSubmit = async (data: PaymentSettings) => {
     try {
       const updates = Object.entries(data);
-
       for (const [key, value] of updates) {
         if (key === 'escrow_enabled' || key === 'escrow_auto_release_enabled') continue;
         await updateSetting(key, value, 'Updated via settings panel');
       }
-
       toast.success('Payment settings saved successfully');
       await refetch();
     } catch (error: any) {
@@ -137,6 +160,24 @@ export function PaymentSettingsSection() {
     onReset: () => form.reset(),
   });
 
+  // Helper to get setting value
+  const getSetting = (key: string) => {
+    const setting = settings.find(s => s.key === key);
+    return setting?.value;
+  };
+
+  const getUpperPaymentSetting = (key: string) => {
+    const setting = paymentSettingsUpper.find(s => s.key === key);
+    if (!setting) return undefined;
+    if (setting.valueType === 'BOOLEAN') {
+      if (typeof setting.value === 'string') {
+        return setting.value === 'true' || setting.value === '1';
+      }
+      return Boolean(setting.value);
+    }
+    return setting.value;
+  };
+
   if (loading) {
     return (
       <Card>
@@ -150,309 +191,130 @@ export function PaymentSettingsSection() {
   const isProduction = process.env.NODE_ENV === 'production';
   const isDirty = form.formState.isDirty;
 
-  const getStripeSetting = (key: string) => {
-    const setting = settings.find(s => s.key === key);
-    return setting?.value;
-  };
-
-  const getUpperPaymentSetting = (key: string) => {
-    const setting = paymentSettingsUpper.find(s => s.key === key);
-    if (!setting) return undefined;
-
-    if (setting.valueType === 'BOOLEAN') {
-      if (typeof setting.value === 'string') {
-        return setting.value === 'true' || setting.value === '1';
-      }
-      return Boolean(setting.value);
-    }
-
-    return setting.value;
-  };
-
   return (
     <div className="space-y-6">
-      {/* Stripe Configuration Card - Keep special handling */}
-      <Card className="border-[#CBB57B]/20">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-[#CBB57B]/10">
-                <CreditCard className="h-5 w-5 text-[#CBB57B]" />
-              </div>
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  Stripe Payment Gateway
-                  {loadingStripeStatus ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : stripeStatus ? (
-                    stripeStatus.configured && stripeStatus.enabled ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        <CheckCircle className="h-3 w-3" />
-                        Connected
-                      </span>
-                    ) : !stripeStatus.configured ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        <AlertTriangle className="h-3 w-3" />
-                        Not Configured
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        <XCircle className="h-3 w-3" />
-                        Disabled
-                      </span>
-                    )
-                  ) : null}
-                  {stripeStatus?.testMode && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                      Test Mode
-                    </span>
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  Configure Stripe integration for secure payment processing
-                </CardDescription>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleReloadStripe}
-              disabled={reloadingStripe || loadingStripeStatus}
-              className="gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${reloadingStripe ? 'animate-spin' : ''}`} />
-              Reload Config
-            </Button>
-          </div>
-        </CardHeader>
+      {/* Stripe Payment Gateway */}
+      <PaymentGatewayCard
+        name="Stripe Payment Gateway"
+        icon={CreditCard}
+        description="Configure Stripe integration for secure payment processing"
+        status={
+          stripeStatus
+            ? {
+                configured: stripeStatus.configured,
+                enabled: stripeStatus.enabled,
+                testMode: stripeStatus.testMode,
+                keys: {
+                  stripe_publishable_key: stripeStatus.hasPublishableKey,
+                  stripe_secret_key: stripeStatus.hasSecretKey,
+                  stripe_webhook_secret: stripeStatus.hasWebhookSecret,
+                },
+              }
+            : null
+        }
+        loading={loadingStripeStatus}
+        onReload={handleReloadStripe}
+        reloading={reloadingStripe}
+        envKeyPrefix="stripe"
+        setupInstructions={{
+          dashboardUrl: 'https://dashboard.stripe.com/apikeys',
+          steps: [
+            'Visit <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">Stripe Dashboard</a>',
+            'Copy your Publishable Key (starts with pk_)',
+            'Copy your Secret Key (starts with sk_)',
+            'Get Webhook Secret from Webhooks section (starts with whsec_)',
+            'Add to <code class="px-1 py-0.5 bg-gray-100 rounded text-xs">apps/api/.env</code>',
+            'Restart the API server',
+            'Configure business settings below',
+          ],
+        }}
+      >
+        <GatewayBusinessConfig
+          title="Stripe Business Configuration"
+          fields={[
+            {
+              key: 'stripe_test_mode',
+              label: 'Test Mode',
+              type: 'toggle',
+              description: 'Use Stripe test environment (sandbox)',
+              value: getSetting('stripe_test_mode'),
+              onChange: (checked) =>
+                updateStripeSettingWithReload('stripe_test_mode', checked, 'Toggled Stripe test mode'),
+              disabled: updating,
+            },
+            {
+              key: 'stripe_currency',
+              label: 'Default Currency',
+              type: 'select',
+              description: 'Currency for Stripe transactions',
+              value: getSetting('stripe_currency') || 'USD',
+              options: CURRENCY_OPTIONS,
+              onChange: (value) =>
+                updateStripeSettingWithReload('stripe_currency', value, 'Updated Stripe currency'),
+              disabled: updating,
+            },
+            {
+              key: 'stripe_capture_method',
+              label: 'Capture Method',
+              type: 'select',
+              description: 'Payment capture timing',
+              value: getSetting('stripe_capture_method') || 'manual',
+              options: CAPTURE_METHOD_OPTIONS,
+              onChange: (value) =>
+                updateStripeSettingWithReload('stripe_capture_method', value, 'Updated Stripe capture method'),
+              disabled: updating,
+            },
+            {
+              key: 'stripe_statement_descriptor',
+              label: 'Statement Descriptor',
+              type: 'input',
+              description: 'Text shown on customer credit card statements (max 22 characters)',
+              value: getSetting('stripe_statement_descriptor') || 'LUXURY ECOM',
+              maxLength: 22,
+              placeholder: 'LUXURY ECOM',
+              onChange: (value) =>
+                updateStripeSettingWithReload('stripe_statement_descriptor', value, 'Updated statement descriptor'),
+              disabled: updating,
+            },
+          ]}
+        />
+      </PaymentGatewayCard>
 
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="stripe_enabled">Enable Stripe</Label>
-                <p className="text-xs text-muted-foreground">
-                  Activate Stripe payment processing
-                </p>
-              </div>
-              <Switch
-                id="stripe_enabled"
-                checked={getStripeSetting('stripe_enabled') ?? false}
-                onCheckedChange={async (checked) => {
-                  await updateStripeSettingWithReload('stripe_enabled', checked, 'Toggled Stripe enabled status');
-                }}
-                disabled={updating}
-              />
-            </div>
+      {/* PayPal Payment Gateway */}
+      <PaymentGatewayCard
+        name="PayPal Payment Gateway"
+        icon={Wallet}
+        description="Configure PayPal integration for alternative payment processing"
+        status={{
+          configured: true, // Credentials configured in .env
+          enabled: true, // Status controlled by Payment Methods section below
+          keys: {
+            paypal_client_id: true,
+            paypal_client_secret: true,
+          },
+        }}
+        envKeyPrefix="paypal"
+        setupInstructions={{
+          dashboardUrl: 'https://developer.paypal.com/dashboard',
+          steps: [
+            'Visit <a href="https://developer.paypal.com/dashboard/applications/live" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">PayPal Developer Dashboard</a>',
+            'Create a new REST API app or select an existing one',
+            'Copy your Client ID and Client Secret',
+            'Add to <code class="px-1 py-0.5 bg-gray-100 rounded text-xs">apps/api/.env</code>:<pre class="mt-2 p-2 bg-gray-800 text-gray-100 rounded text-xs overflow-x-auto">PAYPAL_CLIENT_ID=your_client_id_here\nPAYPAL_CLIENT_SECRET=your_client_secret_here</pre>',
+            'Restart the API server',
+            'Enable PayPal in <strong>Payment Methods</strong> section below to make it available to customers',
+          ],
+        }}
+      >
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm text-blue-700">
+            <strong>Note:</strong> PayPal business configuration will be available in future updates.
+            To enable/disable PayPal for customers, use the <strong>Payment Methods</strong> section below.
+          </p>
+        </div>
+      </PaymentGatewayCard>
 
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="stripe_test_mode">Test Mode</Label>
-                <p className="text-xs text-muted-foreground">
-                  Use test API keys (sandbox)
-                </p>
-              </div>
-              <Switch
-                id="stripe_test_mode"
-                checked={getStripeSetting('stripe_test_mode') ?? true}
-                onCheckedChange={async (checked) => {
-                  await updateStripeSettingWithReload('stripe_test_mode', checked, 'Toggled Stripe test mode');
-                }}
-                disabled={updating}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="stripe_publishable_key">Publishable Key</Label>
-            <Input
-              id="stripe_publishable_key"
-              type="text"
-              placeholder="pk_test_... or pk_live_..."
-              defaultValue={getStripeSetting('stripe_publishable_key') || ''}
-              onBlur={async (e) => {
-                if (e.target.value !== getStripeSetting('stripe_publishable_key')) {
-                  await updateStripeSettingWithReload('stripe_publishable_key', e.target.value, 'Updated Stripe publishable key');
-                }
-              }}
-              disabled={updating}
-            />
-            <p className="text-xs text-muted-foreground">
-              Safe to expose to frontend (starts with pk_)
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="stripe_secret_key" className="flex items-center gap-2">
-              Secret Key
-              <Lock className="h-3 w-3 text-muted-foreground" />
-            </Label>
-            <div className="relative">
-              <Input
-                id="stripe_secret_key"
-                type={showSecretKey ? 'text' : 'password'}
-                placeholder="sk_test_... or sk_live_..."
-                defaultValue={getStripeSetting('stripe_secret_key') || ''}
-                onBlur={async (e) => {
-                  if (e.target.value !== getStripeSetting('stripe_secret_key')) {
-                    await updateStripeSettingWithReload('stripe_secret_key', e.target.value, 'Updated Stripe secret key');
-                  }
-                }}
-                disabled={updating}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowSecretKey(!showSecretKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-destructive flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
-              Never expose this key to frontend (starts with sk_)
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="stripe_webhook_secret" className="flex items-center gap-2">
-              Webhook Signing Secret
-              <Lock className="h-3 w-3 text-muted-foreground" />
-            </Label>
-            <div className="relative">
-              <Input
-                id="stripe_webhook_secret"
-                type={showWebhookSecret ? 'text' : 'password'}
-                placeholder="whsec_..."
-                defaultValue={getStripeSetting('stripe_webhook_secret') || ''}
-                onBlur={async (e) => {
-                  if (e.target.value !== getStripeSetting('stripe_webhook_secret')) {
-                    await updateStripeSettingWithReload('stripe_webhook_secret', e.target.value, 'Updated Stripe webhook secret');
-                  }
-                }}
-                disabled={updating}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowWebhookSecret(!showWebhookSecret)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Used for webhook signature verification (starts with whsec_)
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="stripe_currency">Default Currency</Label>
-              <Select
-                value={getStripeSetting('stripe_currency') || 'USD'}
-                onValueChange={async (value) => {
-                  await updateStripeSettingWithReload('stripe_currency', value, 'Updated Stripe currency');
-                }}
-                disabled={updating}
-              >
-                <SelectTrigger id="stripe_currency">
-                  <SelectValue placeholder="Select currency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">USD - US Dollar</SelectItem>
-                  <SelectItem value="EUR">EUR - Euro</SelectItem>
-                  <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                  <SelectItem value="RWF">RWF - Rwandan Franc</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="stripe_capture_method">Capture Method</Label>
-              <Select
-                value={getStripeSetting('stripe_capture_method') || 'manual'}
-                onValueChange={async (value) => {
-                  await updateStripeSettingWithReload('stripe_capture_method', value, 'Updated Stripe capture method');
-                }}
-                disabled={updating}
-              >
-                <SelectTrigger id="stripe_capture_method">
-                  <SelectValue placeholder="Select method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Manual (Escrow Compatible)</SelectItem>
-                  <SelectItem value="automatic">Automatic (Instant Capture)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="stripe_statement_descriptor">Statement Descriptor</Label>
-            <Input
-              id="stripe_statement_descriptor"
-              type="text"
-              maxLength={22}
-              placeholder="LUXURY ECOM"
-              defaultValue={getStripeSetting('stripe_statement_descriptor') || 'LUXURY ECOM'}
-              onBlur={async (e) => {
-                if (e.target.value !== getStripeSetting('stripe_statement_descriptor')) {
-                  await updateStripeSettingWithReload('stripe_statement_descriptor', e.target.value, 'Updated statement descriptor');
-                }
-              }}
-              disabled={updating}
-            />
-            <p className="text-xs text-muted-foreground">
-              Text shown on customer credit card statements (max 22 characters)
-            </p>
-          </div>
-
-          {stripeStatus && !loadingStripeStatus && (
-            <div className="rounded-lg border bg-muted/50 p-4">
-              <h4 className="text-sm font-medium mb-3">Configuration Status</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2">
-                  {stripeStatus.hasPublishableKey ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <span>Publishable Key</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {stripeStatus.hasSecretKey ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <span>Secret Key</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {stripeStatus.hasWebhookSecret ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  )}
-                  <span>Webhook Secret</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {stripeStatus.enabled ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <span>Integration {stripeStatus.enabled ? 'Enabled' : 'Disabled'}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Payment & Escrow Settings - Standardized with shared components */}
+      {/* Payment & Escrow Settings */}
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <SettingsCard
           icon={Lock}
@@ -460,12 +322,10 @@ export function PaymentSettingsSection() {
           description="Manage payment processing and escrow configuration"
         >
           {Object.keys(form.formState.errors).length > 0 && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 ">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
               <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="h-5 w-5 text-red-600 " />
-                <h4 className="text-sm font-medium text-red-900 ">
-                  Form Validation Errors
-                </h4>
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <h4 className="text-sm font-medium text-red-900">Form Validation Errors</h4>
               </div>
               <ul className="text-sm text-red-700 space-y-1 ml-7">
                 {Object.entries(form.formState.errors).map(([field, error]: any) => (
@@ -559,10 +419,11 @@ export function PaymentSettingsSection() {
                   <SelectValue placeholder="Select schedule" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="biweekly">Bi-weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
+                  {PAYOUT_SCHEDULE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </SettingsField>
@@ -572,32 +433,80 @@ export function PaymentSettingsSection() {
         <SettingsCard
           icon={CreditCard}
           title="Payment Methods"
-          description="Enable payment methods for customers"
+          description="Enable/disable payment methods available to customers"
         >
-          <div className="space-y-2">
-            <Label>Enabled Payment Methods *</Label>
-            <div className="space-y-2">
-              {['stripe', 'paypal', 'bank_transfer'].map((method) => {
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 mb-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-medium text-amber-900 mb-1">
+                  Single Source of Truth
+                </h4>
+                <p className="text-sm text-amber-700">
+                  This section controls which payment methods are available to customers during checkout.
+                  Gateway configuration above sets up API credentials and business logic, while these toggles
+                  control customer-facing availability.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">Available Payment Methods *</Label>
+            <div className="space-y-3">
+              {PAYMENT_METHODS.map((method) => {
                 const currentMethods = form.watch('payment_methods') || [];
-                const isChecked = Array.isArray(currentMethods) && currentMethods.includes(method);
+                const isChecked = Array.isArray(currentMethods) && currentMethods.includes(method.id);
+
+                // Determine if gateway is configured
+                let isConfigured = true;
+                let configWarning = '';
+
+                if (method.id === 'stripe') {
+                  isConfigured = stripeStatus?.configured ?? false;
+                  configWarning = !isConfigured ? 'Configure Stripe API keys above first' : '';
+                } else if (method.id === 'paypal') {
+                  // PayPal is configured via .env, assume available
+                  isConfigured = true;
+                }
 
                 return (
-                  <div key={method} className="flex items-center space-x-3">
+                  <div key={method.id} className="flex items-start justify-between rounded-lg border p-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`payment_method_${method.id}`} className="cursor-pointer text-sm font-medium">
+                          {method.label}
+                        </Label>
+                        {!isConfigured && (
+                          <span className="text-xs text-red-600 font-medium">Not Configured</span>
+                        )}
+                      </div>
+                      {configWarning && (
+                        <p className="text-xs text-muted-foreground text-red-600">
+                          {configWarning}
+                        </p>
+                      )}
+                      {isConfigured && (
+                        <p className="text-xs text-muted-foreground">
+                          {method.id === 'stripe' && 'Credit/Debit cards via Stripe'}
+                          {method.id === 'paypal' && 'PayPal and PayPal Credit'}
+                          {method.id === 'bank_transfer' && 'Direct bank transfers'}
+                        </p>
+                      )}
+                    </div>
                     <Switch
-                      id={`payment_method_${method}`}
+                      id={`payment_method_${method.id}`}
                       checked={isChecked}
+                      disabled={!isConfigured}
                       onCheckedChange={(checked) => {
                         const current = form.watch('payment_methods') || [];
                         if (checked) {
-                          form.setValue('payment_methods', [...current, method], { shouldDirty: true });
+                          form.setValue('payment_methods', [...current, method.id], { shouldDirty: true });
                         } else {
-                          form.setValue('payment_methods', current.filter(m => m !== method), { shouldDirty: true });
+                          form.setValue('payment_methods', current.filter(m => m !== method.id), { shouldDirty: true });
                         }
                       }}
                     />
-                    <Label htmlFor={`payment_method_${method}`} className="capitalize cursor-pointer text-sm font-medium">
-                      {method.replace('_', ' ')}
-                    </Label>
                   </div>
                 );
               })}

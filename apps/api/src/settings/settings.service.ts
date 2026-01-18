@@ -586,15 +586,14 @@ export class SettingsService {
 
   /**
    * Get Stripe configuration (for dynamic Stripe client initialization)
+   * NOTE: API keys are read from environment variables (.env), not database
+   * Business configuration (enabled, currency, etc.) comes from database
    */
   async getStripeConfig() {
     try {
       const [
         enabled,
         testMode,
-        publishableKey,
-        secretKey,
-        webhookSecret,
         currency,
         captureMethod,
         statementDescriptor,
@@ -602,21 +601,23 @@ export class SettingsService {
       ] = await Promise.all([
         this.getSetting('stripe_enabled').catch(() => ({ value: false })),
         this.getSetting('stripe_test_mode').catch(() => ({ value: true })),
-        this.getSetting('stripe_publishable_key').catch(() => ({ value: '' })),
-        this.getSetting('stripe_secret_key').catch(() => ({ value: '' })),
-        this.getSetting('stripe_webhook_secret').catch(() => ({ value: '' })),
         this.getSetting('stripe_currency').catch(() => ({ value: 'USD' })),
         this.getSetting('stripe_capture_method').catch(() => ({ value: 'manual' })),
         this.getSetting('stripe_statement_descriptor').catch(() => ({ value: 'LUXURY ECOM' })),
         this.getSetting('stripe_auto_payout_enabled').catch(() => ({ value: false })),
       ]);
 
+      // Read API keys from environment variables
+      const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || '';
+      const secretKey = process.env.STRIPE_SECRET_KEY || '';
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+
       return {
         enabled: Boolean(enabled.value),
         testMode: Boolean(testMode.value),
-        publishableKey: String(publishableKey.value || ''),
-        secretKey: String(secretKey.value || ''),
-        webhookSecret: String(webhookSecret.value || ''),
+        publishableKey,
+        secretKey,
+        webhookSecret,
         currency: String(currency.value || 'USD'),
         captureMethod: String(captureMethod.value || 'manual') as 'automatic' | 'manual',
         statementDescriptor: String(statementDescriptor.value || 'LUXURY ECOM'),
@@ -624,12 +625,13 @@ export class SettingsService {
       };
     } catch (error) {
       this.logger.error('Failed to get Stripe config:', error);
+      // Fallback to environment variables even on error
       return {
         enabled: false,
         testMode: true,
-        publishableKey: '',
-        secretKey: '',
-        webhookSecret: '',
+        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+        secretKey: process.env.STRIPE_SECRET_KEY || '',
+        webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
         currency: 'USD',
         captureMethod: 'manual' as 'automatic' | 'manual',
         statementDescriptor: 'LUXURY ECOM',
@@ -639,12 +641,14 @@ export class SettingsService {
   }
 
   /**
-   * Check if Stripe is properly configured and enabled
+   * Check if Stripe is properly configured (has required API keys)
+   * NOTE: This checks if keys exist in environment, not if integration is enabled
    */
   async isStripeConfigured(): Promise<boolean> {
     try {
       const config = await this.getStripeConfig();
-      return config.enabled && !!config.secretKey && !!config.publishableKey;
+      // Check if required keys are present (from environment variables)
+      return !!config.secretKey && !!config.publishableKey;
     } catch (error) {
       return false;
     }
@@ -652,38 +656,26 @@ export class SettingsService {
 
   /**
    * Get Stripe publishable key (safe for frontend)
+   * Reads from environment variables, not database
    */
   async getStripePublishableKey(): Promise<string> {
-    try {
-      const setting = await this.getSetting('stripe_publishable_key');
-      return String(setting.value || '');
-    } catch (error) {
-      return '';
-    }
+    return process.env.STRIPE_PUBLISHABLE_KEY || '';
   }
 
   /**
    * Get Stripe secret key (backend only)
+   * Reads from environment variables, not database
    */
   async getStripeSecretKey(): Promise<string> {
-    try {
-      const setting = await this.getSetting('stripe_secret_key');
-      return String(setting.value || '');
-    } catch (error) {
-      return '';
-    }
+    return process.env.STRIPE_SECRET_KEY || '';
   }
 
   /**
    * Get Stripe webhook secret (backend only)
+   * Reads from environment variables, not database
    */
   async getStripeWebhookSecret(): Promise<string> {
-    try {
-      const setting = await this.getSetting('stripe_webhook_secret');
-      return String(setting.value || '');
-    } catch (error) {
-      return '';
-    }
+    return process.env.STRIPE_WEBHOOK_SECRET || '';
   }
 
   /**
