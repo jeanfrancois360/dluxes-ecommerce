@@ -388,16 +388,16 @@ export default function RegisterPage() {
                   <h3 className="font-semibold text-black">Store Information (Optional)</h3>
                 </div>
 
-                {/* Pending Approval Notice */}
-                <div className="p-4 bg-warning-light border border-warning-DEFAULT/30 rounded-lg">
+                {/* Instant Store Activation Notice */}
+                <div className="p-4 bg-success-light border border-success-DEFAULT/30 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-warning-dark flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <svg className="w-5 h-5 text-success-dark flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                      <p className="font-semibold text-warning-dark text-sm mb-1">Pending Approval</p>
-                      <p className="text-xs text-warning-dark/80">
-                        Your seller application will be reviewed by our team. You can add store details now or complete them later after approval.
+                      <p className="font-semibold text-success-dark text-sm mb-1">Instant Store Activation</p>
+                      <p className="text-xs text-success-dark/80">
+                        Your store will be activated immediately upon registration. You can start listing products right away!
                       </p>
                     </div>
                   </div>
