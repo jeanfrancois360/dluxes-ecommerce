@@ -38,7 +38,7 @@ export interface AuthContextValue {
   error: string | null;
 
   // Authentication Methods
-  login: (credentials: LoginRequest) => Promise<void>;
+  login: (credentials: LoginRequest) => Promise<{ requires2FA?: boolean; userId?: string; success?: boolean } | void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -254,17 +254,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const response = await authApi.login(credentials);
 
+        // Check if 2FA is required
+        if (response && (response as any).requires2FA) {
+          // Return the 2FA response to the caller
+          return {
+            requires2FA: true,
+            userId: (response as any).userId,
+          };
+        }
+
+        // Validate response structure for normal login
+        if (!response || !response.user) {
+          throw new Error('Invalid response from server. Please try again.');
+        }
+
         // Handle different response formats
         const userData = response.user;
         const token = response.accessToken || response.token || response.access_token;
         const refreshToken = response.refreshToken;
 
-        // Store tokens if present
-        if (token) {
-          TokenManager.setAccessToken(token);
-          if (refreshToken) {
-            TokenManager.setRefreshToken(refreshToken);
-          }
+        // Validate essential data
+        if (!userData || !token) {
+          throw new Error('Invalid authentication response. Please try again.');
+        }
+
+        // Store tokens
+        TokenManager.setAccessToken(token);
+        if (refreshToken) {
+          TokenManager.setRefreshToken(refreshToken);
         }
 
         setUser(userData);
@@ -277,13 +294,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Start session timer
         startSessionTimer(handleSessionTimeout);
 
-        standardToasts.auth.loginSuccess(userData.firstName);
+        // Show success toast with user's name
+        standardToasts.auth.loginSuccess(userData.firstName || 'User');
 
         // Redirect based on user role
         const redirectUrl = getAuthRedirectUrl(userData);
         router.push(redirectUrl);
+
+        return { success: true };
       } catch (error: any) {
-        const errorMessage = error.response?.data?.message || 'Login failed. Please try again.';
+        const errorMessage = error.response?.data?.message || error.message || 'Login failed. Please try again.';
         setError(errorMessage);
         throw error;
       } finally {
@@ -301,17 +321,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const response = await authApi.register(data);
 
+        // Validate response structure
+        if (!response || !response.user) {
+          throw new Error('Invalid response from server. Please try again.');
+        }
+
         // Handle different response formats
         const userData = response.user;
         const token = response.accessToken || response.token || response.access_token;
         const refreshToken = response.refreshToken;
 
-        // Store tokens if present
-        if (token) {
-          TokenManager.setAccessToken(token);
-          if (refreshToken) {
-            TokenManager.setRefreshToken(refreshToken);
-          }
+        // Validate essential data
+        if (!userData || !token) {
+          throw new Error('Invalid registration response. Please try again.');
+        }
+
+        // Store tokens
+        TokenManager.setAccessToken(token);
+        if (refreshToken) {
+          TokenManager.setRefreshToken(refreshToken);
         }
 
         setUser(userData);
@@ -330,7 +358,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         router.push('/account');
       } catch (error: any) {
         const errorMessage =
-          error.response?.data?.message || 'Registration failed. Please try again.';
+          error.response?.data?.message || error.message || 'Registration failed. Please try again.';
         setError(errorMessage);
         throw error;
       } finally {
