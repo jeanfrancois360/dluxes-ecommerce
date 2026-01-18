@@ -94,6 +94,20 @@ export class SubscriptionService {
       hasCredits: boolean;
     };
   }> {
+    // PHYSICAL products don't require any subscription - always allowed
+    if (productType === 'PHYSICAL') {
+      return {
+        canList: true,
+        reasons: {
+          productTypeAllowed: true,
+          meetsTierRequirement: true,
+          hasListingCapacity: true,
+          hasCredits: true,
+        },
+      };
+    }
+
+    // For SERVICE and other premium product types, check subscription
     const subscription = await this.getOrCreateSubscription(userId);
     const plan = subscription.plan;
 
