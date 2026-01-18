@@ -217,7 +217,7 @@ export class CommissionService {
    */
   private async getDefaultCommissionRate(): Promise<Decimal> {
     try {
-      const setting = await this.settingsService.getSetting('commission.default_rate');
+      const setting = await this.settingsService.getSetting('commission_default_rate');
       const rate = Number(setting.value);
       if (rate && !isNaN(rate)) {
         return new Decimal(rate);

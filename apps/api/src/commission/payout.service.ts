@@ -521,7 +521,7 @@ export class PayoutService {
    */
   private async getMinimumPayoutAmount(): Promise<Decimal> {
     try {
-      const setting = await this.settingsService.getSetting('payout.minimum_amount');
+      const setting = await this.settingsService.getSetting('payout_minimum_amount');
       const amount = Number(setting.value);
       if (amount && !isNaN(amount)) {
         return new Decimal(amount);
@@ -544,7 +544,7 @@ export class PayoutService {
    */
   private async isAutoScheduleEnabled(): Promise<boolean> {
     try {
-      const setting = await this.settingsService.getSetting('payout.auto_schedule_enabled');
+      const setting = await this.settingsService.getSetting('payout_auto_schedule_enabled');
       return setting.value === 'true' || setting.value === true;
     } catch (error) {
       this.logger.warn('Auto schedule setting not found, defaulting to true');
@@ -557,7 +557,7 @@ export class PayoutService {
    */
   private async getDefaultPayoutFrequency(): Promise<string> {
     try {
-      const setting = await this.settingsService.getSetting('payout.default_frequency');
+      const setting = await this.settingsService.getSetting('payout_default_frequency');
       return String(setting.value) || 'WEEKLY';
     } catch (error) {
       this.logger.warn('Default payout frequency setting not found, using WEEKLY');

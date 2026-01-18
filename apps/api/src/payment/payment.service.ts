@@ -233,7 +233,7 @@ export class PaymentService {
   private async getEscrowHoldPeriodDays(): Promise<number> {
     try {
       const setting = await this.prisma.systemSetting.findUnique({
-        where: { key: 'escrow_default_hold_days' },
+        where: { key: 'escrow_hold_period_days' },
       });
       return typeof setting?.value === 'number' ? setting.value : 7;
     } catch (error) {

@@ -49,7 +49,7 @@ export class EscrowService {
     let holdPeriodDays = data.holdPeriodDays;
     if (!holdPeriodDays) {
       try {
-        const setting = await this.settingsService.getSetting('escrow_default_hold_days');
+        const setting = await this.settingsService.getSetting('escrow_hold_period_days');
         holdPeriodDays = Number(setting.value) || 7;
       } catch (error) {
         // Fallback to env var if setting not found
