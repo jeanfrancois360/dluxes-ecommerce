@@ -125,7 +125,7 @@ export class EnhancedAuthService {
       user: this.sanitizeUser(user),
       store: store ? { id: store.id, name: store.name, status: store.status } : null,
       message: store
-        ? 'Registration successful. Your store application is pending approval.'
+        ? 'Registration successful! Your store is ready. Start listing products now.'
         : 'Registration successful',
     };
   }
@@ -157,8 +157,8 @@ export class EnhancedAuthService {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    // Check if email is verified (block unverified users)
-    if (!user.emailVerified) {
+    // Check if email is verified (skip in development mode)
+    if (!user.emailVerified && process.env.NODE_ENV !== 'development') {
       throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for the verification link.');
     }
 
