@@ -256,7 +256,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         // Handle different response formats
         const userData = response.user;
-        const token = response.token || response.access_token;
+        const token = response.accessToken || response.token || response.access_token;
         const refreshToken = response.refreshToken;
 
         // Store tokens if present
@@ -303,7 +303,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         // Handle different response formats
         const userData = response.user;
-        const token = response.token || response.access_token;
+        const token = response.accessToken || response.token || response.access_token;
         const refreshToken = response.refreshToken;
 
         // Store tokens if present
