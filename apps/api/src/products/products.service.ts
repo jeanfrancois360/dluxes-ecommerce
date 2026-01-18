@@ -8,6 +8,7 @@ import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
+import { SearchService } from '../search/search.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -29,6 +30,7 @@ export class ProductsService {
     private readonly emailService: EmailService,
     private readonly subscriptionService: SubscriptionService,
     private readonly creditsService: CreditsService,
+    private readonly searchService: SearchService,
   ) {}
 
   /**
@@ -693,7 +695,7 @@ export class ProductsService {
     const finalInventory =
       inventory !== undefined ? inventory : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
 
-    return this.prisma.product.create({
+    const product = await this.prisma.product.create({
       data: {
         ...productData,
         purchaseType: finalPurchaseType,
@@ -718,6 +720,11 @@ export class ProductsService {
         tags: true,
       },
     });
+
+    // Auto-index in Meilisearch (async, non-blocking)
+    this.indexProductAsync(product.id);
+
+    return product;
   }
 
   /**
@@ -751,7 +758,7 @@ export class ProductsService {
       }
     }
 
-    return this.prisma.product.update({
+    const product = await this.prisma.product.update({
       where: { id },
       data: updateData,
       include: {
@@ -761,6 +768,11 @@ export class ProductsService {
         tags: true,
       },
     });
+
+    // Auto-re-index in Meilisearch (async, non-blocking)
+    this.indexProductAsync(id);
+
+    return product;
   }
 
   /**
@@ -859,9 +871,14 @@ export class ProductsService {
   async delete(id: string) {
     await this.findById(id); // Check if exists
 
-    return this.prisma.product.delete({
+    const product = await this.prisma.product.delete({
       where: { id },
     });
+
+    // Auto-remove from Meilisearch index (async, non-blocking)
+    this.deleteProductFromIndexAsync(id);
+
+    return product;
   }
 
   /**
@@ -1358,5 +1375,31 @@ export class ProductsService {
       updated,
       failed,
     };
+  }
+
+  // ==================== MEILISEARCH AUTO-INDEXING ====================
+
+  /**
+   * Index product in Meilisearch (async, non-blocking)
+   * Called after product creation or update to keep search index in sync
+   */
+  private indexProductAsync(productId: string): void {
+    this.searchService.indexProduct(productId).catch((error) => {
+      this.logger.error(
+        `Failed to index product ${productId} in Meilisearch: ${error.message}`,
+      );
+    });
+  }
+
+  /**
+   * Remove product from Meilisearch index (async, non-blocking)
+   * Called after product deletion to keep search index in sync
+   */
+  private deleteProductFromIndexAsync(productId: string): void {
+    this.searchService.deleteProduct(productId).catch((error) => {
+      this.logger.error(
+        `Failed to delete product ${productId} from Meilisearch: ${error.message}`,
+      );
+    });
   }
 }

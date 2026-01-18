@@ -6,9 +6,10 @@ import { DatabaseModule } from '../database/database.module';
 import { EmailModule } from '../email/email.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { CreditsModule } from '../credits/credits.module';
+import { SearchModule } from '../search/search.module';
 
 @Module({
-  imports: [DatabaseModule, EmailModule, SubscriptionModule, CreditsModule],
+  imports: [DatabaseModule, EmailModule, SubscriptionModule, CreditsModule, SearchModule],
   providers: [ProductsService, InventoryService],
   controllers: [ProductsController],
   exports: [ProductsService, InventoryService],
