@@ -55,7 +55,8 @@ export type RegisterRequest = RegisterData;
 export interface AuthResponse {
   user: User;
   token?: string;
-  access_token?: string; // Support both naming conventions
+  accessToken?: string; // Support camelCase naming
+  access_token?: string; // Support snake_case naming
   refreshToken?: string;
   expiresIn?: number; // Token expiry time in milliseconds
 }
