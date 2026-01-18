@@ -80,9 +80,9 @@ export class EnhancedAuthService {
       },
     });
 
-    // If user is a seller and store details are provided, create store with PENDING status
+    // Auto-create store for all sellers (v2.6.0 feature)
     let store = null;
-    if (userRole === 'SELLER' && (data.storeName || data.storeDescription)) {
+    if (userRole === 'SELLER') {
       const storeName = data.storeName || `${user.firstName}'s Store`;
       const slug = storeName
         .toLowerCase()
@@ -98,7 +98,7 @@ export class EnhancedAuthService {
           slug,
           email: user.email,
           description: data.storeDescription || '',
-          status: 'PENDING', // Requires admin approval
+          status: 'ACTIVE', // Auto-approved for immediate selling
         },
       });
 
