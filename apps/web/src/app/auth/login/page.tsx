@@ -40,9 +40,19 @@ export default function LoginPage() {
     }
 
     try {
-      await login({ email, password });
-      // Show success toast
-      standardToasts.auth.loginSuccess();
+      const result = await login({ email, password });
+
+      // Check if 2FA is required
+      if (result && (result as any).requires2FA) {
+        setShow2FA(true);
+        toast.info('Please enter your 2FA code to continue');
+        return;
+      }
+
+      // Show success toast only if not 2FA (2FA will show success after code verification)
+      if (!show2FA) {
+        standardToasts.auth.loginSuccess();
+      }
       // Auth context handles redirect
     } catch (err: any) {
       const friendlyMessage = getUserFriendlyError(
