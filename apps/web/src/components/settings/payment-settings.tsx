@@ -45,12 +45,6 @@ const CAPTURE_METHOD_OPTIONS = [
   { value: 'automatic', label: 'Automatic (Instant Capture)' },
 ];
 
-// PayPal mode options
-const PAYPAL_MODE_OPTIONS = [
-  { value: 'sandbox', label: 'Sandbox (Test Environment)' },
-  { value: 'live', label: 'Live (Production)' },
-];
-
 // PayPal capture method options
 const PAYPAL_CAPTURE_OPTIONS = [
   { value: 'authorize', label: 'Authorize (Manual Capture)' },
@@ -265,11 +259,12 @@ export function PaymentSettingsSection() {
           dashboardUrl: 'https://dashboard.stripe.com/apikeys',
           steps: [
             'Visit <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">Stripe Dashboard</a>',
-            'Copy your Publishable Key (starts with pk_)',
-            'Copy your Secret Key (starts with sk_)',
-            'Get Webhook Secret from Webhooks section (starts with whsec_)',
-            'Add to <code class="px-1 py-0.5 bg-gray-100 rounded text-xs">apps/api/.env</code>',
-            'Restart the API server',
+            'For <strong>testing</strong>: Use test keys (pk_test_... / sk_test_...)',
+            'For <strong>production</strong>: Use live keys (pk_live_... / sk_live_...)',
+            'Copy your Publishable Key and Secret Key',
+            'Get Webhook Secret from Webhooks section (whsec_...)',
+            'Add to <code class="px-1 py-0.5 bg-gray-100 rounded text-xs">apps/api/.env</code>:<pre class="mt-2 p-2 bg-gray-800 text-gray-100 rounded text-xs overflow-x-auto">STRIPE_PUBLISHABLE_KEY=pk_test_...\nSTRIPE_SECRET_KEY=sk_test_...\nSTRIPE_WEBHOOK_SECRET=whsec_...</pre>',
+            'Restart the API server - mode is auto-detected from key type',
             'Configure business settings below',
           ],
         }}
@@ -277,16 +272,6 @@ export function PaymentSettingsSection() {
         <GatewayBusinessConfig
           title="Stripe Business Configuration"
           fields={[
-            {
-              key: 'stripe_test_mode',
-              label: 'Test Mode',
-              type: 'toggle',
-              description: 'Use Stripe test environment (sandbox)',
-              value: getSetting('stripe_test_mode'),
-              onChange: (checked) =>
-                updateStripeSettingWithReload('stripe_test_mode', checked, 'Toggled Stripe test mode'),
-              disabled: updating,
-            },
             {
               key: 'stripe_currency',
               label: 'Default Currency',
@@ -333,7 +318,7 @@ export function PaymentSettingsSection() {
         status={{
           configured: true, // Credentials configured in .env
           enabled: getSetting('paypal_enabled') !== false,
-          testMode: getSetting('paypal_mode') === 'sandbox',
+          // testMode will be auto-detected by backend from credentials in future update
           keys: {
             paypal_client_id: true,
             paypal_client_secret: true,
@@ -344,11 +329,13 @@ export function PaymentSettingsSection() {
           dashboardUrl: 'https://developer.paypal.com/dashboard',
           steps: [
             'Visit <a href="https://developer.paypal.com/dashboard/applications/live" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">PayPal Developer Dashboard</a>',
-            'Create a new REST API app or select an existing one',
+            'Create a new REST API app (or use existing)',
+            'For <strong>testing</strong>: Use Sandbox credentials',
+            'For <strong>production</strong>: Use Live credentials',
             'Copy your Client ID and Client Secret',
-            'Add to <code class="px-1 py-0.5 bg-gray-100 rounded text-xs">apps/api/.env</code>:<pre class="mt-2 p-2 bg-gray-800 text-gray-100 rounded text-xs overflow-x-auto">PAYPAL_CLIENT_ID=your_client_id_here\nPAYPAL_CLIENT_SECRET=your_client_secret_here</pre>',
+            'Add to <code class="px-1 py-0.5 bg-gray-100 rounded text-xs">apps/api/.env</code>:<pre class="mt-2 p-2 bg-gray-800 text-gray-100 rounded text-xs overflow-x-auto">PAYPAL_CLIENT_ID=your_client_id_here\nPAYPAL_CLIENT_SECRET=your_client_secret_here\nPAYPAL_MODE=sandbox  # or \'live\' for production</pre>',
             'Restart the API server',
-            'Enable PayPal in <strong>Payment Methods</strong> section below to make it available to customers',
+            'Enable PayPal in configuration below to make it available to customers',
           ],
         }}
       >
@@ -363,17 +350,6 @@ export function PaymentSettingsSection() {
               value: getSetting('paypal_enabled'),
               onChange: (checked) =>
                 updatePayPalSetting('paypal_enabled', checked, 'Toggled PayPal integration'),
-              disabled: updating,
-            },
-            {
-              key: 'paypal_mode',
-              label: 'PayPal Mode',
-              type: 'select',
-              description: 'Payment environment (sandbox for testing, live for production)',
-              value: getSetting('paypal_mode') || 'sandbox',
-              options: PAYPAL_MODE_OPTIONS,
-              onChange: (value) =>
-                updatePayPalSetting('paypal_mode', value, 'Updated PayPal mode'),
               disabled: updating,
             },
             {
