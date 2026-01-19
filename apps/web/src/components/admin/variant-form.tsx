@@ -87,12 +87,22 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
     }
 
     // Validate price: must be a valid number >= 0, or use productPrice as fallback
-    const finalPrice = typeof formData.price === 'number' && !isNaN(formData.price)
-      ? formData.price
-      : productPrice;
+    let finalPrice: number | undefined;
 
-    if (finalPrice === undefined || isNaN(finalPrice) || finalPrice < 0) {
-      alert('Please enter a valid price (must be 0 or greater)');
+    if (typeof formData.price === 'number' && !isNaN(formData.price)) {
+      // User entered a price for this variant
+      finalPrice = formData.price;
+    } else if (typeof productPrice === 'number' && !isNaN(productPrice)) {
+      // Inherit from product price
+      finalPrice = productPrice;
+    } else {
+      // No valid price available
+      alert('Please enter a variant price. The product does not have a base price to inherit.');
+      return;
+    }
+
+    if (finalPrice < 0) {
+      alert('Price must be 0 or greater');
       return;
     }
 
@@ -207,7 +217,7 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Price (USD)
+            Price (USD) {!productPrice && <span className="text-red-500">*</span>}
           </label>
           <div className="relative">
             <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
@@ -220,12 +230,21 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
                 const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
                 handleChange('price', value !== undefined && !isNaN(value) ? value : undefined);
               }}
-              className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
-              placeholder={productPrice ? `Inherits ${formatNumber(productPrice)}` : '0.00'}
+              className={`w-full pl-8 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm ${
+                !productPrice && !formData.price ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
+              placeholder={
+                productPrice
+                  ? `Leave empty to inherit ${formatNumber(productPrice)}`
+                  : 'Required - enter variant price'
+              }
+              required={!productPrice}
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            {productPrice ? 'Leave empty to inherit product price' : 'Enter variant price'}
+          <p className={`text-xs mt-1 ${!productPrice ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+            {productPrice
+              ? `Leave empty to inherit product price of ${formatNumber(productPrice)}`
+              : 'Product has no base price - you must enter a price for this variant'}
           </p>
         </div>
 
