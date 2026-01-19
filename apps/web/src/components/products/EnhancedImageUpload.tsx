@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, Image as ImageIcon, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@nextpik/ui';
@@ -113,7 +113,7 @@ export default function EnhancedImageUpload({
     return await uploadViaAPI(file);
   };
 
-  const handleFileSelect = async (files: FileList | null) => {
+  const handleFileSelect = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     const fileArray = Array.from(files);
@@ -181,15 +181,11 @@ export default function EnhancedImageUpload({
         );
       }
     }
-  };
+  }, [images, maxImages, uploadFile]);
 
-  const removeImage = (id: string) => {
-    setImages((prev) => {
-      const updated = prev.filter((img) => img.id !== id);
-      updateParent(updated);
-      return updated;
-    });
-  };
+  const removeImage = useCallback((id: string) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -205,12 +201,12 @@ export default function EnhancedImageUpload({
     e.preventDefault();
     setIsDragging(false);
     handleFileSelect(e.dataTransfer.files);
-  }, []);
+  }, [handleFileSelect]);
 
   // Update parent when images change
-  useState(() => {
+  useEffect(() => {
     updateParent(images);
-  });
+  }, [images, updateParent]);
 
   const canAddMore = images.length < maxImages;
 

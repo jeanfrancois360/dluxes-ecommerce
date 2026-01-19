@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
@@ -22,6 +22,7 @@ const COMMON_FILE_TYPES = [
 export function SecuritySettingsSection() {
   const { settings, loading, refetch } = useSettings('security');
   const { updateSetting, updating } = useSettingsUpdate();
+  const justSavedRef = useRef(false);
   const [newFileType, setNewFileType] = useState('');
 
   const form = useForm<SecuritySettings>({
@@ -40,7 +41,10 @@ export function SecuritySettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as SecuritySettings, { keepDirtyValues: false });
+      if (!form.formState.isDirty || justSavedRef.current) {
+        form.reset(formData as SecuritySettings);
+        justSavedRef.current = false;
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
@@ -51,10 +55,12 @@ export function SecuritySettingsSection() {
       for (const [key, value] of updates) {
         await updateSetting(key, value, 'Updated via settings panel');
       }
+      justSavedRef.current = true;
       toast.success('Security settings saved successfully');
       await refetch();
     } catch (error) {
       console.error('Failed to save settings:', error);
+      justSavedRef.current = false;
     }
   };
 

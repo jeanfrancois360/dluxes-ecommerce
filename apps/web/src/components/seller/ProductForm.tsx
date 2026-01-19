@@ -14,11 +14,18 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { categoriesAPI, type Category } from '@/lib/api/categories';
 import { VariantManager } from '../admin/variant-manager';
 import { StockLevelIndicator } from '../admin/stock-status-badge';
 import { RealEstateFields, VehicleFields, DigitalFields, ServiceFields, RentalFields } from '../admin/product-type-fields';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
+
+// Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
+const EnhancedImageUpload = dynamic(() => import('../products/EnhancedImageUpload'), {
+  ssr: false,
+  loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-lg" />,
+});
 
 // Product interface for seller
 interface ProductData {
@@ -180,10 +187,6 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [newTag, setNewTag] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [uploadingImages, setUploadingImages] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
-  const [isDragging, setIsDragging] = useState(false);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -430,74 +433,6 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
     }));
   };
 
-  // Handle image management
-  const addImage = () => {
-    if (imageUrl.trim() && !formData.images.includes(imageUrl.trim())) {
-      setFormData((prev: any) => ({
-        ...prev,
-        images: [...prev.images, imageUrl.trim()]
-      }));
-      setImageUrl('');
-    }
-  };
-
-  const removeImage = (imageToRemove: string) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      images: prev.images.filter((img: string) => img !== imageToRemove)
-    }));
-  };
-
-  // Handle file upload
-  const handleFileUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-
-    setUploadingImages(true);
-    const uploadedUrls: string[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const formDataUpload = new FormData();
-      formDataUpload.append('file', file);
-
-      try {
-        // Mock upload - replace with actual upload endpoint
-        console.log('Uploading file:', file.name);
-        // const response = await uploadImage(formDataUpload);
-        // uploadedUrls.push(response.url);
-
-        // For now, create object URL
-        const objectUrl = URL.createObjectURL(file);
-        uploadedUrls.push(objectUrl);
-      } catch (error) {
-        console.error('Failed to upload image:', error);
-      }
-    }
-
-    setFormData((prev: any) => ({
-      ...prev,
-      images: [...prev.images, ...uploadedUrls]
-    }));
-    setUploadingImages(false);
-  };
-
-  // Drag and drop handlers
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    handleFileUpload(files);
-  };
 
   // Handle array field changes (badges, colors, sizes, materials)
   const handleArrayFieldAdd = (field: string, value: string) => {
@@ -836,96 +771,12 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Product Images</h3>
 
-        {/* Image Upload Area */}
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-lg p-8 text-center ${
-            isDragging ? 'border-primary-500 bg-primary-50' : 'border-gray-300'
-          }`}
-        >
-          <div className="space-y-4">
-            <div>
-              <input
-                type="file"
-                id="imageUpload"
-                multiple
-                accept="image/*"
-                onChange={(e) => handleFileUpload(e.target.files)}
-                className="hidden"
-              />
-              <label
-                htmlFor="imageUpload"
-                className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 cursor-pointer"
-              >
-                Upload Images
-              </label>
-            </div>
-            <p className="text-sm text-gray-500">
-              or drag and drop images here
-            </p>
-          </div>
-        </div>
-
-        {/* Image URL Input */}
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Or add image URL
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://example.com/image.jpg"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-            <button
-              type="button"
-              onClick={addImage}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-
-        {/* Image Preview Grid */}
-        {formData.images.length > 0 && (
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-            {formData.images.map((image: string, index: number) => (
-              <div key={index} className="relative group">
-                <img
-                  src={image}
-                  alt={`Product ${index + 1}`}
-                  className="w-full h-32 object-cover rounded-lg"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImage(image)}
-                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-                {index === 0 && (
-                  <span className="absolute bottom-2 left-2 px-2 py-1 bg-primary-600 text-white text-xs rounded">
-                    Primary
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {uploadingImages && (
-          <div className="mt-4 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p className="mt-2 text-sm text-gray-600">Uploading images...</p>
-          </div>
-        )}
+        <EnhancedImageUpload
+          onImagesChange={(urls) => setFormData({ ...formData, images: urls })}
+          initialImages={formData.images}
+          maxImages={10}
+          folder="products"
+        />
       </div>
 
       {/* Attributes */}

@@ -7,8 +7,15 @@
  */
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { ProductVariant, CreateProductVariantDto, UpdateProductVariantDto } from '@/lib/api/variants';
 import { formatNumber } from '@/lib/utils/number-format';
+
+// Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
+const EnhancedImageUpload = dynamic(() => import('../products/EnhancedImageUpload'), {
+  ssr: false,
+  loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-lg" />,
+});
 
 interface VariantFormProps {
   variant?: ProductVariant;
@@ -289,15 +296,14 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Image URL
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Variant Image
           </label>
-          <input
-            type="url"
-            value={formData.image}
-            onChange={(e) => handleChange('image', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
-            placeholder="https://..."
+          <EnhancedImageUpload
+            onImagesChange={(urls) => handleChange('image', urls[0] || '')}
+            initialImages={formData.image ? [formData.image] : []}
+            maxImages={1}
+            folder="products/variants"
           />
         </div>
       </div>

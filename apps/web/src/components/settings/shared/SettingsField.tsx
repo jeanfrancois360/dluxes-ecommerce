@@ -32,7 +32,7 @@ export function SettingsField({
   return (
     <div className={`space-y-2 ${className}`}>
       <div className="flex items-center gap-2">
-        <Label htmlFor={id} className="text-sm font-medium text-slate-900 ">
+        <Label htmlFor={id} className="text-sm font-medium text-gray-900">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </Label>
@@ -40,7 +40,7 @@ export function SettingsField({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <HelpCircle className="h-4 w-4 text-slate-400 cursor-help" />
+                <HelpCircle className="h-4 w-4 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p>{tooltip}</p>
@@ -81,7 +81,7 @@ export function SettingsField({
 
       {/* Helper text (shown when no error) */}
       {!error && helperText && (
-        <p className="text-xs text-slate-500 ">{helperText}</p>
+        <p className="text-xs text-gray-500">{helperText}</p>
       )}
     </div>
   );
