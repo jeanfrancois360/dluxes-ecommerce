@@ -86,11 +86,28 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
       return;
     }
 
+    // Validate price: must be a valid number >= 0, or use productPrice as fallback
+    const finalPrice = typeof formData.price === 'number' && !isNaN(formData.price)
+      ? formData.price
+      : productPrice;
+
+    if (finalPrice === undefined || isNaN(finalPrice) || finalPrice < 0) {
+      alert('Please enter a valid price (must be 0 or greater)');
+      return;
+    }
+
+    // Validate compareAtPrice if provided
+    if (formData.compareAtPrice !== undefined &&
+        (isNaN(formData.compareAtPrice) || formData.compareAtPrice < 0)) {
+      alert('Compare at price must be a valid number (0 or greater)');
+      return;
+    }
+
     try {
       await onSubmit({
         name: formData.name,
         sku: formData.sku,
-        price: formData.price,
+        price: finalPrice,
         compareAtPrice: formData.compareAtPrice,
         inventory: formData.inventory,
         attributes: formData.attributes,
@@ -198,8 +215,11 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
               type="number"
               min="0"
               step="0.01"
-              value={formData.price || ''}
-              onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : undefined)}
+              value={formData.price !== undefined ? formData.price : ''}
+              onChange={(e) => {
+                const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                handleChange('price', value !== undefined && !isNaN(value) ? value : undefined);
+              }}
               className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
               placeholder={productPrice ? `Inherits ${formatNumber(productPrice)}` : '0.00'}
             />
@@ -219,10 +239,11 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
               type="number"
               min="0"
               step="0.01"
-              value={formData.compareAtPrice || ''}
-              onChange={(e) =>
-                handleChange('compareAtPrice', e.target.value ? parseFloat(e.target.value) : undefined)
-              }
+              value={formData.compareAtPrice !== undefined ? formData.compareAtPrice : ''}
+              onChange={(e) => {
+                const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                handleChange('compareAtPrice', value !== undefined && !isNaN(value) ? value : undefined);
+              }}
               className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
               placeholder="0.00"
             />
