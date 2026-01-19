@@ -13,7 +13,7 @@
  * - Professional UX/UI matching admin design
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { categoriesAPI, type Category } from '@/lib/api/categories';
 import { VariantManager } from '../admin/variant-manager';
@@ -340,6 +340,11 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
         : prev.slug
     }));
   };
+
+  // Memoized callback to prevent infinite loop in EnhancedImageUpload
+  const handleImagesChange = useCallback((urls: string[]) => {
+    setFormData((prev: any) => ({ ...prev, images: urls }));
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
@@ -772,7 +777,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Product Images</h3>
 
         <EnhancedImageUpload
-          onImagesChange={(urls) => setFormData({ ...formData, images: urls })}
+          onImagesChange={handleImagesChange}
           initialImages={formData.images}
           maxImages={10}
           folder="products"
