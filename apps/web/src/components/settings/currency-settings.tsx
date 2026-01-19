@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
@@ -21,6 +21,7 @@ export function CurrencySettingsSection() {
   const { settings, loading, refetch } = useSettings('currency');
   const { updateSetting, updating } = useSettingsUpdate();
   const { currencies: availableCurrencies, isLoading: currenciesLoading, error: currenciesError } = useCurrencyAdmin();
+  const justSavedRef = useRef(false);
   const [newCurrency, setNewCurrency] = useState('');
 
   useEffect(() => {
@@ -43,7 +44,10 @@ export function CurrencySettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as CurrencySettings, { keepDirtyValues: false });
+      if (!form.formState.isDirty || justSavedRef.current) {
+        form.reset(formData as CurrencySettings);
+        justSavedRef.current = false;
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
@@ -74,6 +78,7 @@ export function CurrencySettingsSection() {
         }
       }
 
+      justSavedRef.current = true;
       toast.success('Currency settings saved successfully');
 
       await Promise.all([
@@ -82,6 +87,7 @@ export function CurrencySettingsSection() {
       ]);
     } catch (error: any) {
       console.error('Failed to save settings:', error);
+      justSavedRef.current = false;
     }
   };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
@@ -19,6 +19,7 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 export function CommissionSettingsSection() {
   const { settings, loading, refetch } = useSettings('commission');
   const { updateSetting, updating } = useSettingsUpdate();
+  const justSavedRef = useRef(false);
 
   const [calcProductPrice, setCalcProductPrice] = useState(1000);
   const [calcShippingFee, setCalcShippingFee] = useState(50);
@@ -38,7 +39,11 @@ export function CommissionSettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as CommissionSettings, { keepDirtyValues: false });
+      // Reset if not dirty (initial load) OR if we just saved (force update)
+      if (!form.formState.isDirty || justSavedRef.current) {
+        form.reset(formData as CommissionSettings);
+        justSavedRef.current = false;
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
@@ -49,10 +54,12 @@ export function CommissionSettingsSection() {
       for (const [key, value] of updates) {
         await updateSetting(key, value, 'Updated via settings panel');
       }
-      toast.success('Commission settings saved successfully');
+      justSavedRef.current = true;
       await refetch();
+      toast.success('Commission settings saved successfully');
     } catch (error) {
       console.error('Failed to save settings:', error);
+      justSavedRef.current = false;
     }
   };
 

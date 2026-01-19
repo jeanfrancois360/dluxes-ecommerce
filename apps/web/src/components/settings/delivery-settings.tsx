@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
@@ -16,6 +16,7 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 export function DeliverySettingsSection() {
   const { settings, loading, refetch } = useSettings('delivery');
   const { updateSetting, updating } = useSettingsUpdate();
+  const justSavedRef = useRef(false);
 
   const form = useForm<DeliverySettings>({
     resolver: zodResolver(deliverySettingsSchema),
@@ -30,7 +31,10 @@ export function DeliverySettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as DeliverySettings, { keepDirtyValues: false });
+      if (!form.formState.isDirty || justSavedRef.current) {
+        form.reset(formData as DeliverySettings);
+        justSavedRef.current = false;
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
@@ -41,10 +45,12 @@ export function DeliverySettingsSection() {
       for (const [key, value] of updates) {
         await updateSetting(key, value, 'Updated via settings panel');
       }
+      justSavedRef.current = true;
       toast.success('Delivery settings saved successfully');
       await refetch();
     } catch (error) {
       console.error('Failed to save settings:', error);
+      justSavedRef.current = false;
     }
   };
 

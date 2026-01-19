@@ -12,12 +12,19 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import type { AdminProduct } from '@/lib/api/admin';
 import { adminCategoriesApi, type Category } from '@/lib/api/admin';
 import { VariantManager } from './variant-manager';
 import { StockLevelIndicator } from './stock-status-badge';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
 import { RealEstateFields, VehicleFields, DigitalFields, ServiceFields, RentalFields } from './product-type-fields';
+
+// Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
+const EnhancedImageUpload = dynamic(() => import('../products/EnhancedImageUpload'), {
+  ssr: false,
+  loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-lg" />,
+});
 
 interface ProductFormProps {
   product?: AdminProduct;
@@ -151,10 +158,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [newTag, setNewTag] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [uploadingImages, setUploadingImages] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
-  const [isDragging, setIsDragging] = useState(false);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -572,151 +575,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     handleChange('tags', formData.tags?.filter((t: string) => t !== tag));
   };
 
-  const handleAddImage = () => {
-    if (imageUrl && !formData.images?.includes(imageUrl)) {
-      handleChange('images', [...(formData.images || []), imageUrl]);
-      setImageUrl('');
-    }
-  };
 
-  const handleRemoveImage = (url: string) => {
-    handleChange('images', formData.images?.filter((img: string) => img !== url));
-  };
-
-  const handleSetPrimaryImage = (img: string) => {
-    // Move the selected image to the first position (primary position)
-    const currentImages = [...(formData.images || [])];
-    const imageIndex = currentImages.indexOf(img);
-
-    if (imageIndex > 0) {
-      // Remove from current position and add to beginning
-      currentImages.splice(imageIndex, 1);
-      currentImages.unshift(img);
-      handleChange('images', currentImages);
-    }
-  };
-
-  const processFiles = async (files: FileList | File[]) => {
-    if (!files || files.length === 0) return;
-
-    // Validate files before upload
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-    const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-    const validationErrors: string[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.size > MAX_FILE_SIZE) {
-        validationErrors.push(`${file.name} is too large (max 5MB)`);
-      }
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        validationErrors.push(`${file.name} has unsupported format`);
-      }
-    }
-
-    if (validationErrors.length > 0) {
-      alert(`Upload errors:\n${validationErrors.join('\n')}`);
-      return;
-    }
-
-    setUploadingImages(true);
-    const uploadedUrls: string[] = [];
-    const failedUploads: string[] = [];
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileKey = `${file.name}-${Date.now()}`;
-
-        try {
-          setUploadProgress(prev => ({ ...prev, [fileKey]: 0 }));
-
-          const formData = new FormData();
-          formData.append('image', file);
-
-          const token = localStorage.getItem('auth_token');
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/upload/optimized?entityType=products`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-              body: formData,
-            }
-          );
-
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success && result.data?.url) {
-              uploadedUrls.push(result.data.url);
-              setUploadProgress(prev => ({ ...prev, [fileKey]: 100 }));
-            } else {
-              failedUploads.push(file.name);
-            }
-          } else {
-            failedUploads.push(file.name);
-          }
-
-          await new Promise(resolve => setTimeout(resolve, 200));
-        } catch (fileError) {
-          failedUploads.push(file.name);
-        }
-      }
-
-      if (uploadedUrls.length > 0) {
-        handleChange('images', [...(formData.images || []), ...uploadedUrls]);
-      }
-
-      if (failedUploads.length > 0) {
-        alert(`Upload completed:\n✓ ${uploadedUrls.length} image(s) uploaded successfully\n✗ ${failedUploads.length} image(s) failed:\n${failedUploads.join('\n')}`);
-      }
-
-      setTimeout(() => setUploadProgress({}), 1000);
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Failed to upload images. Please try again.');
-    } finally {
-      setUploadingImages(false);
-    }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    await processFiles(files);
-    e.target.value = ''; // Reset input
-  };
-
-  // Drag and drop handlers
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      await processFiles(files);
-    }
-  };
 
   // Helper component for error display
   const ErrorMessage = ({ field }: { field: string }) => (
@@ -1078,231 +937,20 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
       {/* Images */}
       <div className="bg-white rounded-lg shadow p-6" id="images">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Product Images {!product && <span className="text-red-500">*</span>}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {formData.images && formData.images.length > 0
-                ? `${formData.images.length} image${formData.images.length > 1 ? 's' : ''} uploaded`
-                : product
-                ? 'No images yet. Upload high-quality images to showcase your product'
-                : 'Upload at least one high-quality image to showcase your product'}
-            </p>
-          </div>
-          {formData.images && formData.images.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-medium text-green-600">Ready</span>
-            </div>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Product Images {!product && <span className="text-red-500">*</span>}
+        </h2>
 
-        {/* Image Grid - Show First */}
-        {formData.images && formData.images.length > 0 && (
-          <div className="mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {formData.images.map((img: string, index: number) => (
-                <div
-                  key={`${img}-${index}`}
-                  className="relative group aspect-square bg-gray-50 rounded-xl overflow-hidden border-2 border-gray-200 hover:border-[#CBB57B] transition-all duration-200"
-                >
-                  <img
-                    src={img}
-                    alt={`Product ${index + 1}`}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6"/%3E%3Ctext x="50%25" y="50%25" font-family="Arial" font-size="14" fill="%239ca3af" text-anchor="middle" dy=".3em"%3EImage Error%3C/text%3E%3C/svg%3E';
-                    }}
-                  />
+        <EnhancedImageUpload
+          onImagesChange={(urls) => handleChange('images', urls)}
+          initialImages={formData.images || []}
+          maxImages={10}
+          folder="products"
+        />
 
-                  {/* Primary Badge */}
-                  {index === 0 && (
-                    <div className="absolute top-2 left-2 px-3 py-1.5 bg-gradient-to-r from-[#CBB57B] to-[#a89158] text-white text-xs font-bold rounded-lg shadow-lg flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                      PRIMARY
-                    </div>
-                  )}
-
-                  {/* Image Number */}
-                  <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/70 backdrop-blur-sm text-white text-xs font-medium rounded-md">
-                    #{index + 1}
-                  </div>
-
-                  {/* Hover Overlay - Must come BEFORE buttons in DOM */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-200 pointer-events-none" />
-
-                  {/* Action Buttons */}
-                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
-                    {/* Set as Primary Button - Only show for non-primary images */}
-                    {index > 0 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleSetPrimaryImage(img);
-                        }}
-                        className="p-2 bg-[#CBB57B] text-white rounded-lg hover:bg-[#a89158] hover:scale-110 shadow-lg transition-all duration-200 cursor-pointer"
-                        title="Set as primary image"
-                      >
-                        <svg className="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      </button>
-                    )}
-
-                    {/* Remove Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleRemoveImage(img);
-                      }}
-                      className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 hover:scale-110 shadow-lg transition-all duration-200 cursor-pointer"
-                      title="Remove image"
-                    >
-                      <svg className="w-4 h-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="text-xs text-blue-800">
-                  <p className="font-semibold mb-1">About Primary Image:</p>
-                  <ul className="space-y-1">
-                    <li>• The <strong>PRIMARY</strong> image is used as the hero/main product image</li>
-                    <li>• Click the <strong>star icon</strong> on any image to set it as primary</li>
-                    <li>• The primary image appears first in product listings and detail pages</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
+        {errors.images && (
+          <p className="mt-2 text-sm text-red-600">{errors.images}</p>
         )}
-
-        <div className="space-y-4">
-          {/* File Upload */}
-          <div>
-            <label className="block">
-              <div
-                className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
-                  errors.images
-                    ? 'border-red-300 bg-red-50 hover:border-red-400'
-                    : isDragging
-                    ? 'border-[#CBB57B] bg-[#CBB57B]/10 scale-[1.02]'
-                    : 'border-gray-300 hover:border-[#CBB57B] hover:bg-gray-50'
-                }`}
-                onDragEnter={handleDragEnter}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                {uploadingImages ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 border-4 border-[#CBB57B] border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-sm font-medium text-gray-700">Uploading images...</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex justify-center mb-3">
-                      <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    </div>
-                    <div className="mb-2">
-                      <span className="text-sm font-semibold text-gray-700">Click to upload</span>
-                      <span className="text-sm text-gray-500"> or drag and drop</span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG, WebP or GIF (max. 5MB per file)
-                    </p>
-                  </>
-                )}
-              </div>
-              <input
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                multiple
-                onChange={handleFileUpload}
-                disabled={uploadingImages}
-                className="hidden"
-              />
-            </label>
-
-            <ErrorMessage field="images" />
-
-            {/* Upload Progress */}
-            {Object.keys(uploadProgress).length > 0 && (
-              <div className="mt-4 space-y-3">
-                {Object.entries(uploadProgress).map(([key, progress]) => (
-                  <div key={key} className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700 truncate">{key}</span>
-                      <span className="text-sm font-semibold text-[#CBB57B]">{progress}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#CBB57B] to-[#a89158] transition-all duration-300 ease-out"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <div className="relative flex justify-center">
-              <span className="px-3 py-1 bg-white text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Or add from URL
-              </span>
-            </div>
-          </div>
-
-          {/* URL Input */}
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddImage())}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleAddImage}
-              disabled={!imageUrl.trim()}
-              className="px-6 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            >
-              Add URL
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Product Variants */}

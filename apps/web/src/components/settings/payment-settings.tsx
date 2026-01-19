@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
@@ -64,6 +64,7 @@ export function PaymentSettingsSection() {
   const { settings, loading, refetch } = useSettings('payment');
   const { settings: paymentSettingsUpper, refetch: refetchUpper } = useSettings('PAYMENT');
   const { updateSetting, updating } = useSettingsUpdate();
+  const justSavedRef = useRef(false);
 
   // Stripe-specific state
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
@@ -90,7 +91,10 @@ export function PaymentSettingsSection() {
         payout_schedule: allFormData.payout_schedule ?? 'weekly',
         payment_methods: allFormData.payment_methods ?? ['stripe', 'paypal'],
       };
-      form.reset(filteredData as PaymentSettings, { keepDirtyValues: false });
+      if (!form.formState.isDirty || justSavedRef.current) {
+        form.reset(filteredData as PaymentSettings);
+        justSavedRef.current = false;
+      }
     }
   }, [settings, form]);
 
@@ -146,11 +150,13 @@ export function PaymentSettingsSection() {
         if (key === 'escrow_enabled' || key === 'escrow_auto_release_enabled') continue;
         await updateSetting(key, value, 'Updated via settings panel');
       }
-      toast.success('Payment settings saved successfully');
+      justSavedRef.current = true;
       await refetch();
+      toast.success('Payment settings saved successfully');
     } catch (error: any) {
       console.error('Failed to save settings:', error);
       toast.error(error?.message || 'Failed to save settings. Please try again.');
+      justSavedRef.current = false;
     }
   };
 

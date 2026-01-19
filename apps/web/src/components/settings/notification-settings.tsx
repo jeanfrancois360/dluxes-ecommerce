@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
@@ -28,6 +28,7 @@ const NOTIFICATION_EVENTS = [
 export function NotificationSettingsSection() {
   const { settings, loading, refetch } = useSettings('notifications');
   const { updateSetting, updating } = useSettingsUpdate();
+  const justSavedRef = useRef(false);
 
   const form = useForm<NotificationSettings>({
     resolver: zodResolver(notificationSettingsSchema),
@@ -41,7 +42,10 @@ export function NotificationSettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as NotificationSettings, { keepDirtyValues: false });
+      if (!form.formState.isDirty || justSavedRef.current) {
+        form.reset(formData as NotificationSettings);
+        justSavedRef.current = false;
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
@@ -52,10 +56,12 @@ export function NotificationSettingsSection() {
       for (const [key, value] of updates) {
         await updateSetting(key, value, 'Updated via settings panel');
       }
+      justSavedRef.current = true;
       toast.success('Notification settings saved successfully');
       await refetch();
     } catch (error) {
       console.error('Failed to save settings:', error);
+      justSavedRef.current = false;
     }
   };
 

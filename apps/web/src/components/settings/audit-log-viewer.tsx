@@ -115,7 +115,9 @@ export function AuditLogViewer({ settingKey, limit = 20 }: AuditLogViewerProps) 
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       <span>
-                        {formatDistanceToNow(new Date(log.changedAt), { addSuffix: true })}
+                        {log.createdAt
+                          ? formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })
+                          : 'Unknown'}
                       </span>
                     </div>
                     {log.ipAddress && (
