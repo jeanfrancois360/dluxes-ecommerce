@@ -37,7 +37,8 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
     setError(null);
     try {
       const data = await variantsApi.getProductVariants(productId);
-      setVariants(data);
+      // Filter out any null/undefined variants
+      setVariants(data?.filter((v: ProductVariant | null) => v != null) || []);
     } catch (err) {
       console.error('Failed to load variants:', err);
       setError('Failed to load variants. Please try again.');
@@ -56,8 +57,12 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
     setError(null);
     try {
       const newVariant = await variantsApi.createVariant(productId, data);
-      setVariants([...variants, newVariant]);
-      setShowForm(false);
+      if (newVariant) {
+        setVariants([...variants, newVariant]);
+        setShowForm(false);
+      } else {
+        throw new Error('Variant creation returned empty response');
+      }
     } catch (err: any) {
       console.error('Failed to create variant:', err);
       setError(err?.response?.data?.message || 'Failed to create variant. Please try again.');
@@ -72,8 +77,12 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
     setError(null);
     try {
       const updated = await variantsApi.updateVariant(variantId, data);
-      setVariants(variants.map(v => v.id === variantId ? updated : v));
-      setEditingVariant(null);
+      if (updated) {
+        setVariants(variants.map(v => v.id === variantId ? updated : v));
+        setEditingVariant(null);
+      } else {
+        throw new Error('Variant update returned empty response');
+      }
     } catch (err: any) {
       console.error('Failed to update variant:', err);
       setError(err?.response?.data?.message || 'Failed to update variant. Please try again.');
@@ -231,7 +240,7 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
         </div>
       ) : (
         <div className="space-y-3">
-          {variants.map((variant, index) => (
+          {variants.filter(v => v != null).map((variant, index) => (
             <div
               key={variant.id}
               className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:border-[#CBB57B] transition-colors"
