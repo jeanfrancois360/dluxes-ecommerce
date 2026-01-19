@@ -45,6 +45,18 @@ const CAPTURE_METHOD_OPTIONS = [
   { value: 'automatic', label: 'Automatic (Instant Capture)' },
 ];
 
+// PayPal mode options
+const PAYPAL_MODE_OPTIONS = [
+  { value: 'sandbox', label: 'Sandbox (Test Environment)' },
+  { value: 'live', label: 'Live (Production)' },
+];
+
+// PayPal capture method options
+const PAYPAL_CAPTURE_OPTIONS = [
+  { value: 'authorize', label: 'Authorize (Manual Capture)' },
+  { value: 'capture', label: 'Capture (Immediate)' },
+];
+
 // Payout schedule options
 const PAYOUT_SCHEDULE_OPTIONS = [
   { value: 'daily', label: 'Daily' },
@@ -139,6 +151,16 @@ export function PaymentSettingsSection() {
       await Promise.all([refetch(), fetchStripeStatus()]);
     } catch (error: any) {
       console.error('Failed to update Stripe setting:', error);
+      toast.error('Failed to update setting');
+    }
+  };
+
+  const updatePayPalSetting = async (key: string, value: any, reason: string) => {
+    try {
+      await updateSetting(key, value, reason);
+      await refetch();
+    } catch (error: any) {
+      console.error('Failed to update PayPal setting:', error);
       toast.error('Failed to update setting');
     }
   };
@@ -310,7 +332,8 @@ export function PaymentSettingsSection() {
         description="Configure PayPal integration for alternative payment processing"
         status={{
           configured: true, // Credentials configured in .env
-          enabled: true, // Status controlled by Payment Methods section below
+          enabled: getSetting('paypal_enabled') !== false,
+          testMode: getSetting('paypal_mode') === 'sandbox',
           keys: {
             paypal_client_id: true,
             paypal_client_secret: true,
@@ -329,12 +352,55 @@ export function PaymentSettingsSection() {
           ],
         }}
       >
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <p className="text-sm text-blue-700">
-            <strong>Note:</strong> PayPal business configuration will be available in future updates.
-            To enable/disable PayPal for customers, use the <strong>Payment Methods</strong> section below.
-          </p>
-        </div>
+        <GatewayBusinessConfig
+          title="PayPal Business Configuration"
+          fields={[
+            {
+              key: 'paypal_enabled',
+              label: 'Enable PayPal',
+              type: 'toggle',
+              description: 'Enable PayPal payment processing',
+              value: getSetting('paypal_enabled'),
+              onChange: (checked) =>
+                updatePayPalSetting('paypal_enabled', checked, 'Toggled PayPal integration'),
+              disabled: updating,
+            },
+            {
+              key: 'paypal_mode',
+              label: 'PayPal Mode',
+              type: 'select',
+              description: 'Payment environment (sandbox for testing, live for production)',
+              value: getSetting('paypal_mode') || 'sandbox',
+              options: PAYPAL_MODE_OPTIONS,
+              onChange: (value) =>
+                updatePayPalSetting('paypal_mode', value, 'Updated PayPal mode'),
+              disabled: updating,
+            },
+            {
+              key: 'paypal_brand_name',
+              label: 'Brand Name',
+              type: 'input',
+              description: 'Your business name shown to customers during PayPal checkout',
+              value: getSetting('paypal_brand_name') || 'NextPik',
+              maxLength: 127,
+              placeholder: 'NextPik',
+              onChange: (value) =>
+                updatePayPalSetting('paypal_brand_name', value, 'Updated PayPal brand name'),
+              disabled: updating,
+            },
+            {
+              key: 'paypal_capture_method',
+              label: 'Capture Method',
+              type: 'select',
+              description: 'Payment capture timing',
+              value: getSetting('paypal_capture_method') || 'authorize',
+              options: PAYPAL_CAPTURE_OPTIONS,
+              onChange: (value) =>
+                updatePayPalSetting('paypal_capture_method', value, 'Updated PayPal capture method'),
+              disabled: updating,
+            },
+          ]}
+        />
       </PaymentGatewayCard>
 
       {/* Payment & Escrow Settings */}
