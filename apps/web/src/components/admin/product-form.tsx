@@ -11,7 +11,7 @@
  * - Excellent UX/UI
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type { AdminProduct } from '@/lib/api/admin';
 import { adminCategoriesApi, type Category } from '@/lib/api/admin';
@@ -564,6 +564,19 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
   };
 
+  // Memoized callback to prevent infinite loop in EnhancedImageUpload
+  const handleImagesChange = useCallback((urls: string[]) => {
+    setFormData((prev: any) => ({ ...prev, images: urls }));
+    // Clear error for images field
+    if (errors.images) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.images;
+        return newErrors;
+      });
+    }
+  }, [errors.images]);
+
   const handleAddTag = () => {
     if (newTag && !formData.tags?.includes(newTag)) {
       handleChange('tags', [...(formData.tags || []), newTag]);
@@ -942,7 +955,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         </h2>
 
         <EnhancedImageUpload
-          onImagesChange={(urls) => handleChange('images', urls)}
+          onImagesChange={handleImagesChange}
           initialImages={formData.images || []}
           maxImages={10}
           folder="products"

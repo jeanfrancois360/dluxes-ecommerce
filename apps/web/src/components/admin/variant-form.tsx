@@ -6,7 +6,7 @@
  * Form for creating and editing product variants
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { ProductVariant, CreateProductVariantDto, UpdateProductVariantDto } from '@/lib/api/variants';
 import { formatNumber } from '@/lib/utils/number-format';
@@ -46,6 +46,11 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
   const handleChange = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
   };
+
+  // Memoized callback to prevent infinite loop in EnhancedImageUpload
+  const handleImageChange = useCallback((urls: string[]) => {
+    setFormData((prev) => ({ ...prev, image: urls[0] || '' }));
+  }, []);
 
   const handleAddAttribute = () => {
     if (newAttributeKey && newAttributeValue) {
@@ -300,7 +305,7 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
             Variant Image
           </label>
           <EnhancedImageUpload
-            onImagesChange={(urls) => handleChange('image', urls[0] || '')}
+            onImagesChange={handleImageChange}
             initialImages={formData.image ? [formData.image] : []}
             maxImages={1}
             folder="products/variants"
