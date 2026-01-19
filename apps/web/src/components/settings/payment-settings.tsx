@@ -168,8 +168,25 @@ export function PaymentSettingsSection() {
 
   // Helper to get setting value
   const getSetting = (key: string) => {
-    const setting = settings.find(s => s.key === key);
-    return setting?.value;
+    // First try lowercase 'payment' category
+    let setting = settings.find(s => s.key === key);
+
+    // Fallback to uppercase 'PAYMENT' category
+    if (!setting) {
+      setting = paymentSettingsUpper.find(s => s.key === key);
+    }
+
+    if (!setting) return undefined;
+
+    // Handle boolean conversion
+    if (setting.valueType === 'BOOLEAN') {
+      if (typeof setting.value === 'string') {
+        return setting.value === 'true' || setting.value === '1';
+      }
+      return Boolean(setting.value);
+    }
+
+    return setting.value;
   };
 
   const getUpperPaymentSetting = (key: string) => {
