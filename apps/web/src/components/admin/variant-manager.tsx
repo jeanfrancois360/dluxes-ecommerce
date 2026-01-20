@@ -22,6 +22,7 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
   const [showForm, setShowForm] = useState(false);
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const formRef = React.useRef<HTMLDivElement>(null);
 
   // Load variants when productId is available
   useEffect(() => {
@@ -29,6 +30,13 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
       loadVariants();
     }
   }, [productId]);
+
+  // Scroll to form when editing
+  useEffect(() => {
+    if (editingVariant && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [editingVariant]);
 
   const loadVariants = async () => {
     if (!productId) return;
@@ -201,7 +209,7 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
 
       {/* Variant Form (Create/Edit) */}
       {(showForm || editingVariant) && (
-        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <div ref={formRef} className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">
             {editingVariant ? 'Edit Variant' : 'New Variant'}
           </h3>
@@ -337,26 +345,38 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => setEditingVariant(variant)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Edit button clicked for variant:', variant.id);
+                    setShowForm(false); // Close create form if open
+                    setEditingVariant(variant);
+                  }}
                   disabled={loading}
-                  className="p-2 text-gray-600 hover:text-[#CBB57B] hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                  className="p-2 text-gray-600 hover:text-[#CBB57B] hover:bg-[#CBB57B]/10 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-[#CBB57B] cursor-pointer"
                   title="Edit variant"
+                  aria-label="Edit variant"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDeleteVariant(variant.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDeleteVariant(variant.id);
+                  }}
                   disabled={loading}
-                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-red-300 cursor-pointer"
                   title="Delete variant"
+                  aria-label="Delete variant"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>

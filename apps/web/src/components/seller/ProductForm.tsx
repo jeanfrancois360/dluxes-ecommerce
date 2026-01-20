@@ -81,18 +81,22 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
     images: product?.images || [],
     inventory: product?.inventory || product?.stock || undefined,
     status: product?.status || 'DRAFT',
-    tags: product?.tags || [],
+    tags: Array.isArray(product?.tags)
+      ? product.tags.map((tag: any) => typeof tag === 'string' ? tag : tag.name).filter(Boolean)
+      : [],
     productType: (product as any)?.productType || 'PHYSICAL',
     purchaseType: (product as any)?.purchaseType || 'INSTANT',
     // SEO fields
     metaTitle: (product as any)?.metaTitle || '',
     metaDescription: (product as any)?.metaDescription || '',
     seoKeywords: (product as any)?.seoKeywords || '',
-    // Attributes
-    badges: (product as any)?.badges || [],
-    colors: (product as any)?.colors || [],
-    sizes: (product as any)?.sizes || [],
-    materials: (product as any)?.materials || [],
+    // Attributes (ensure they're string arrays)
+    badges: Array.isArray((product as any)?.badges)
+      ? (product as any).badges.map((b: any) => typeof b === 'string' ? b : b.name || String(b)).filter(Boolean)
+      : [],
+    colors: Array.isArray((product as any)?.colors) ? (product as any).colors.filter(Boolean) : [],
+    sizes: Array.isArray((product as any)?.sizes) ? (product as any).sizes.filter(Boolean) : [],
+    materials: Array.isArray((product as any)?.materials) ? (product as any).materials.filter(Boolean) : [],
     weight: (product as any)?.weight || undefined,
     // Real Estate Fields
     propertyType: (product as any)?.propertyType || '',
@@ -102,7 +106,9 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
     lotSize: (product as any)?.lotSize || undefined,
     yearBuilt: (product as any)?.yearBuilt || undefined,
     parkingSpaces: (product as any)?.parkingSpaces || undefined,
-    amenities: (product as any)?.amenities || [],
+    amenities: Array.isArray((product as any)?.amenities)
+      ? (product as any).amenities.map((a: any) => typeof a === 'string' ? a : a.name || String(a)).filter(Boolean)
+      : [],
     propertyAddress: (product as any)?.propertyAddress || '',
     propertyCity: (product as any)?.propertyCity || '',
     propertyState: (product as any)?.propertyState || '',
@@ -125,7 +131,9 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
     vehicleInteriorColor: (product as any)?.vehicleInteriorColor || '',
     vehicleDrivetrain: (product as any)?.vehicleDrivetrain || '',
     vehicleEngine: (product as any)?.vehicleEngine || '',
-    vehicleFeatures: (product as any)?.vehicleFeatures || [],
+    vehicleFeatures: Array.isArray((product as any)?.vehicleFeatures)
+      ? (product as any).vehicleFeatures.map((f: any) => typeof f === 'string' ? f : f.name || String(f)).filter(Boolean)
+      : [],
     vehicleHistory: (product as any)?.vehicleHistory || '',
     vehicleWarranty: (product as any)?.vehicleWarranty || '',
     vehicleTestDriveAvailable: (product as any)?.vehicleTestDriveAvailable ?? true,
@@ -240,7 +248,9 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
         lotSize: (product as any)?.lotSize || undefined,
         yearBuilt: (product as any)?.yearBuilt || undefined,
         parkingSpaces: (product as any)?.parkingSpaces || undefined,
-        amenities: (product as any)?.amenities || [],
+        amenities: Array.isArray((product as any)?.amenities)
+      ? (product as any).amenities.map((a: any) => typeof a === 'string' ? a : a.name || String(a)).filter(Boolean)
+      : [],
         propertyAddress: (product as any)?.propertyAddress || '',
         propertyCity: (product as any)?.propertyCity || '',
         propertyState: (product as any)?.propertyState || '',
@@ -262,7 +272,9 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
         vehicleInteriorColor: (product as any)?.vehicleInteriorColor || '',
         vehicleDrivetrain: (product as any)?.vehicleDrivetrain || '',
         vehicleEngine: (product as any)?.vehicleEngine || '',
-        vehicleFeatures: (product as any)?.vehicleFeatures || [],
+        vehicleFeatures: Array.isArray((product as any)?.vehicleFeatures)
+      ? (product as any).vehicleFeatures.map((f: any) => typeof f === 'string' ? f : f.name || String(f)).filter(Boolean)
+      : [],
         vehicleHistory: (product as any)?.vehicleHistory || '',
         vehicleWarranty: (product as any)?.vehicleWarranty || '',
         vehicleTestDriveAvailable: (product as any)?.vehicleTestDriveAvailable ?? true,
@@ -431,10 +443,14 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
     }
   };
 
-  const removeTag = (tagToRemove: string) => {
+  const removeTag = (tagToRemove: any) => {
+    const tagValue = typeof tagToRemove === 'string' ? tagToRemove : tagToRemove?.name;
     setFormData((prev: any) => ({
       ...prev,
-      tags: prev.tags.filter((tag: string) => tag !== tagToRemove)
+      tags: prev.tags.filter((tag: any) => {
+        const currentTagValue = typeof tag === 'string' ? tag : tag?.name;
+        return currentTagValue !== tagValue;
+      })
     }));
   };
 
@@ -473,7 +489,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               type="text"
               value={formData.name}
               onChange={(e) => handleNameChange(e.target.value)}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
                 errors.name ? 'border-red-500' : 'border-gray-300'
               }`}
               placeholder="Enter product name"
@@ -493,7 +509,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               type="text"
               value={formData.slug}
               onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
                 errors.slug ? 'border-red-500' : 'border-gray-300'
               }`}
               placeholder="product-slug"
@@ -516,7 +532,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               type="text"
               value={formData.sku}
               onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
               placeholder="SKU-12345"
             />
             <p className="mt-1 text-sm text-gray-500">
@@ -533,7 +549,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               id="productType"
               value={formData.productType}
               onChange={(e) => setFormData({ ...formData, productType: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
             >
               <option value="PHYSICAL">Physical Product</option>
               <option value="DIGITAL">Digital Product</option>
@@ -556,7 +572,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               id="purchaseType"
               value={formData.purchaseType}
               onChange={(e) => setFormData({ ...formData, purchaseType: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
             >
               <option value="INSTANT">Instant Purchase</option>
               <option value="INQUIRY">Inquiry Only</option>
@@ -576,7 +592,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                 id="categoryId"
                 value={formData.categoryId}
                 onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
                   errors.categoryId ? 'border-red-500' : 'border-gray-300'
                 }`}
               >
@@ -603,7 +619,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={6}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
                 errors.description ? 'border-red-500' : 'border-gray-300'
               }`}
               placeholder="Detailed product description..."
@@ -623,7 +639,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               value={formData.shortDescription}
               onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
               rows={2}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
               placeholder="Brief summary for search results and listings..."
               maxLength={160}
             />
@@ -652,7 +668,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                 step="0.01"
                 value={formData.price || ''}
                 onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || undefined })}
-                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
                   errors.price ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="0.00"
@@ -676,7 +692,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                 step="0.01"
                 value={formData.compareAtPrice || ''}
                 onChange={(e) => setFormData({ ...formData, compareAtPrice: parseFloat(e.target.value) || undefined })}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
                 placeholder="0.00"
               />
             </div>
@@ -696,7 +712,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                 type="number"
                 value={formData.inventory || ''}
                 onChange={(e) => setFormData({ ...formData, inventory: parseInt(e.target.value) || undefined })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
                   errors.inventory ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="0"
@@ -727,7 +743,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                 step="0.01"
                 value={formData.weight || ''}
                 onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || undefined })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
                 placeholder="0.00"
               />
             </div>
@@ -800,7 +816,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                   type="text"
                   id="colorInput"
                   placeholder="Enter color name"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -819,7 +835,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                       input.value = '';
                     }
                   }}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
                 >
                   Add
                 </button>
@@ -853,7 +869,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                   type="text"
                   id="sizeInput"
                   placeholder="Enter size (e.g., S, M, L)"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -872,7 +888,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                       input.value = '';
                     }
                   }}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
                 >
                   Add
                 </button>
@@ -906,7 +922,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                   type="text"
                   id="materialInput"
                   placeholder="Enter material"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -925,7 +941,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                       input.value = '';
                     }
                   }}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
                 >
                   Add
                 </button>
@@ -959,7 +975,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                   type="text"
                   id="badgeInput"
                   placeholder="Enter badge (e.g., New, Sale)"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -978,27 +994,30 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                       input.value = '';
                     }
                   }}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
                 >
                   Add
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {formData.badges.map((badge: string) => (
-                  <span
-                    key={badge}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium"
-                  >
-                    {badge}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayFieldRemove('badges', badge)}
-                      className="text-primary-500 hover:text-red-500"
+                {formData.badges.map((badge: any, index: number) => {
+                  const badgeValue = typeof badge === 'string' ? badge : badge?.name || String(badge);
+                  return (
+                    <span
+                      key={`badge-${index}-${badgeValue}`}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-[#f5f0e8] text-[#8b7a5e] rounded-full text-sm font-medium"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
+                      {badgeValue}
+                      <button
+                        type="button"
+                        onClick={() => handleArrayFieldRemove('badges', badge)}
+                        className="text-[#8b7a5e] hover:text-red-500"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1027,32 +1046,36 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                   }
                 }}
                 placeholder="Enter tag name"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
               />
               <button
                 type="button"
                 onClick={addTag}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
               >
                 Add
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {formData.tags.map((tag: string) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => removeTag(tag)}
-                    className="text-gray-500 hover:text-red-500"
+              {formData.tags.map((tag: any, index: number) => {
+                // Handle both string tags and object tags (defensive programming)
+                const tagValue = typeof tag === 'string' ? tag : tag?.name || String(tag);
+                return (
+                  <span
+                    key={`tag-${index}-${tagValue}`}
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
                   >
-                    ×
-                  </button>
-                </span>
-              ))}
+                    {tagValue}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="text-gray-500 hover:text-red-500"
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
             </div>
           </div>
 
@@ -1066,7 +1089,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               type="text"
               value={formData.metaTitle}
               onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
               placeholder="SEO optimized title for search engines"
               maxLength={60}
             />
@@ -1085,7 +1108,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               value={formData.metaDescription}
               onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
               placeholder="Meta description for search engines..."
               maxLength={160}
             />
@@ -1104,7 +1127,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               type="text"
               value={formData.seoKeywords}
               onChange={(e) => setFormData({ ...formData, seoKeywords: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
               placeholder="keyword1, keyword2, keyword3"
             />
             <p className="mt-1 text-sm text-gray-500">
@@ -1126,7 +1149,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
             id="status"
             value={formData.status}
             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
           >
             <option value="DRAFT">Draft - Not visible to customers</option>
             <option value="ACTIVE">Active - Published and visible</option>
@@ -1159,10 +1182,10 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-6 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
         >
           {loading && (
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
           )}
           {loading ? 'Saving...' : (isEdit ? 'Update Product' : 'Create Product')}
         </button>

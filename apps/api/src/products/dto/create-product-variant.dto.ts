@@ -8,6 +8,7 @@ import {
   IsNotEmpty,
   MaxLength,
   IsInt,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateProductVariantDto {
@@ -39,9 +40,10 @@ export class CreateProductVariantDto {
   @IsNotEmpty()
   attributes: Record<string, string>; // { size: 'M', color: 'Black', material: 'Cotton' }
 
+  @ValidateIf((o) => o.image !== null)
   @IsString()
   @IsOptional()
-  image?: string;
+  image?: string | null;
 
   @IsString()
   @IsOptional()

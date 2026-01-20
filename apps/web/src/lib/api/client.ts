@@ -179,16 +179,21 @@ export async function apiClient<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const { headers, ...restOptions } = options;
+  const { headers, body, ...restOptions } = options;
 
   const token = typeof window !== 'undefined'
     ? localStorage.getItem('auth_token')
     : null;
 
+  // Check if body is FormData to handle file uploads correctly
+  const isFormData = body instanceof FormData;
+
   const config: RequestInit = {
     ...restOptions,
+    body,
     headers: {
-      'Content-Type': 'application/json',
+      // Don't set Content-Type for FormData - browser will set it with boundary
+      ...(!isFormData && { 'Content-Type': 'application/json' }),
       ...(token && { Authorization: `Bearer ${token}` }),
       ...headers,
     },
@@ -206,21 +211,21 @@ export const api = {
     apiClient<T>(url, {
       ...options,
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
   put: <T = any>(url: string, data?: any, options?: RequestInit) =>
     apiClient<T>(url, {
       ...options,
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
   patch: <T = any>(url: string, data?: any, options?: RequestInit) =>
     apiClient<T>(url, {
       ...options,
       method: 'PATCH',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
   delete: <T = any>(url: string, options?: RequestInit) =>
