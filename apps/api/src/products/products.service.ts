@@ -1183,25 +1183,28 @@ export class ProductsService {
     const previousInventory = existing.inventory;
     const newInventory = dto.inventory ?? existing.inventory;
 
-    // Update variant
+    // Update variant - only include fields that are provided in DTO (undefined means skip)
+    const updateData: any = {};
+
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.sku !== undefined) updateData.sku = dto.sku;
+    if (dto.price !== undefined) updateData.price = dto.price;
+    if (dto.compareAtPrice !== undefined) updateData.compareAtPrice = dto.compareAtPrice;
+    if (dto.inventory !== undefined) updateData.inventory = dto.inventory;
+    if (inventoryChanged) updateData.previousStock = previousInventory;
+    if (dto.attributes !== undefined) updateData.options = dto.attributes;
+    // Image: undefined = skip, null = clear, string = set
+    if (dto.image !== undefined) updateData.image = dto.image;
+    if (dto.colorHex !== undefined) updateData.colorHex = dto.colorHex;
+    if (dto.colorName !== undefined) updateData.colorName = dto.colorName;
+    if (dto.sizeChart !== undefined) updateData.sizeChart = dto.sizeChart;
+    if (dto.isAvailable !== undefined) updateData.isAvailable = dto.isAvailable;
+    if (dto.lowStockThreshold !== undefined) updateData.lowStockThreshold = dto.lowStockThreshold;
+    if (dto.displayOrder !== undefined) updateData.displayOrder = dto.displayOrder;
+
     const updated = await this.prisma.productVariant.update({
       where: { id: variantId },
-      data: {
-        name: dto.name,
-        sku: dto.sku,
-        price: dto.price,
-        compareAtPrice: dto.compareAtPrice,
-        inventory: dto.inventory,
-        previousStock: inventoryChanged ? previousInventory : existing.previousStock,
-        options: dto.attributes,
-        image: dto.image,
-        colorHex: dto.colorHex,
-        colorName: dto.colorName ?? dto.attributes?.color,
-        sizeChart: dto.sizeChart,
-        isAvailable: dto.isAvailable,
-        lowStockThreshold: dto.lowStockThreshold,
-        displayOrder: dto.displayOrder,
-      },
+      data: updateData,
     });
 
     // Create inventory transaction if inventory changed

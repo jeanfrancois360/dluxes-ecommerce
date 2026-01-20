@@ -577,6 +577,23 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
   }, [errors.images]);
 
+  // Handle array field changes (colors, sizes, materials, badges)
+  const handleArrayFieldAdd = (field: string, value: string) => {
+    if (value.trim() && !formData[field].includes(value.trim())) {
+      setFormData((prev: any) => ({
+        ...prev,
+        [field]: [...prev[field], value.trim()]
+      }));
+    }
+  };
+
+  const handleArrayFieldRemove = (field: string, value: string) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      [field]: prev[field].filter((item: string) => item !== value)
+    }));
+  };
+
   const handleAddTag = () => {
     if (newTag && !formData.tags?.includes(newTag)) {
       handleChange('tags', [...(formData.tags || []), newTag]);
@@ -965,6 +982,230 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           <p className="mt-2 text-sm text-red-600">{errors.images}</p>
         )}
       </div>
+
+      {/* Product Attributes */}
+      {formData.productType === 'PHYSICAL' && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Product Attributes</h2>
+
+          <div className="space-y-6">
+            {/* Available Colors */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Available Colors
+              </label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  id="colorInput"
+                  placeholder="Enter color name"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      handleArrayFieldAdd('colors', input.value);
+                      input.value = '';
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('colorInput') as HTMLInputElement;
+                    if (input) {
+                      handleArrayFieldAdd('colors', input.value);
+                      input.value = '';
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.colors.map((color: string, index: number) => (
+                  <span
+                    key={`color-${index}-${color}`}
+                    className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
+                  >
+                    {color}
+                    <button
+                      type="button"
+                      onClick={() => handleArrayFieldRemove('colors', color)}
+                      className="hover:text-red-600 font-bold"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Available Sizes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Available Sizes
+              </label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  id="sizeInput"
+                  placeholder="Enter size (e.g., S, M, L)"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      handleArrayFieldAdd('sizes', input.value);
+                      input.value = '';
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('sizeInput') as HTMLInputElement;
+                    if (input) {
+                      handleArrayFieldAdd('sizes', input.value);
+                      input.value = '';
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.sizes.map((size: string, index: number) => (
+                  <span
+                    key={`size-${index}-${size}`}
+                    className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
+                  >
+                    {size}
+                    <button
+                      type="button"
+                      onClick={() => handleArrayFieldRemove('sizes', size)}
+                      className="hover:text-red-600 font-bold"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Materials */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Materials
+              </label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  id="materialInput"
+                  placeholder="Enter material"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      handleArrayFieldAdd('materials', input.value);
+                      input.value = '';
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('materialInput') as HTMLInputElement;
+                    if (input) {
+                      handleArrayFieldAdd('materials', input.value);
+                      input.value = '';
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.materials.map((material: string, index: number) => (
+                  <span
+                    key={`material-${index}-${material}`}
+                    className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
+                  >
+                    {material}
+                    <button
+                      type="button"
+                      onClick={() => handleArrayFieldRemove('materials', material)}
+                      className="hover:text-red-600 font-bold"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Product Badges */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Product Badges
+              </label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  id="badgeInput"
+                  placeholder="Enter badge (e.g., New, Sale)"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      handleArrayFieldAdd('badges', input.value);
+                      input.value = '';
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('badgeInput') as HTMLInputElement;
+                    if (input) {
+                      handleArrayFieldAdd('badges', input.value);
+                      input.value = '';
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.badges.map((badge: any, index: number) => {
+                  const badgeValue = typeof badge === 'string' ? badge : badge?.name || String(badge);
+                  return (
+                    <span
+                      key={`badge-${index}-${badgeValue}`}
+                      className="px-3 py-1 bg-[#CBB57B] text-black rounded-full text-sm flex items-center gap-2"
+                    >
+                      {badgeValue}
+                      <button
+                        type="button"
+                        onClick={() => handleArrayFieldRemove('badges', badge)}
+                        className="hover:text-red-600 font-bold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Product Variants */}
       <VariantManager

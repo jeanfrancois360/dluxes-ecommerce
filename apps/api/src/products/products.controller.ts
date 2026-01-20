@@ -435,18 +435,11 @@ export class ProductsController {
    */
   @Get(':productId/variants')
   async getProductVariants(@Param('productId') productId: string) {
-    try {
-      const data = await this.productsService.getProductVariants(productId);
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.getProductVariants(productId);
+    return {
+      success: true,
+      data,
+    };
   }
 
   /**
@@ -455,18 +448,11 @@ export class ProductsController {
    */
   @Get('variants/:variantId')
   async getVariantById(@Param('variantId') variantId: string) {
-    try {
-      const data = await this.productsService.getVariantById(variantId);
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.getVariantById(variantId);
+    return {
+      success: true,
+      data,
+    };
   }
 
   /**
@@ -480,19 +466,12 @@ export class ProductsController {
     @Param('productId') productId: string,
     @Body() dto: CreateProductVariantDto,
   ) {
-    try {
-      const data = await this.productsService.createVariant(productId, dto);
-      return {
-        success: true,
-        data,
-        message: 'Variant created successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.createVariant(productId, dto);
+    return {
+      success: true,
+      data,
+      message: 'Variant created successfully',
+    };
   }
 
   /**
@@ -506,19 +485,12 @@ export class ProductsController {
     @Param('productId') productId: string,
     @Body() dto: BulkCreateVariantsDto,
   ) {
-    try {
-      const data = await this.productsService.bulkCreateVariants(productId, dto.variants);
-      return {
-        success: true,
-        data,
-        message: `${data.length} variants created successfully`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.bulkCreateVariants(productId, dto.variants);
+    return {
+      success: true,
+      data,
+      message: `${data.length} variants created successfully`,
+    };
   }
 
   /**
@@ -532,19 +504,12 @@ export class ProductsController {
     @Param('variantId') variantId: string,
     @Body() dto: UpdateProductVariantDto,
   ) {
-    try {
-      const data = await this.productsService.updateVariant(variantId, dto);
-      return {
-        success: true,
-        data,
-        message: 'Variant updated successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.updateVariant(variantId, dto);
+    return {
+      success: true,
+      data,
+      message: 'Variant updated successfully',
+    };
   }
 
   /**
@@ -556,19 +521,12 @@ export class ProductsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   @HttpCode(HttpStatus.OK)
   async deleteVariant(@Param('variantId') variantId: string) {
-    try {
-      const data = await this.productsService.deleteVariant(variantId);
-      return {
-        success: true,
-        data,
-        message: 'Variant deleted successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.deleteVariant(variantId);
+    return {
+      success: true,
+      data,
+      message: 'Variant deleted successfully',
+    };
   }
 
   /**
@@ -582,19 +540,12 @@ export class ProductsController {
     @Param('productId') productId: string,
     @Body() body: { variantOrders: Array<{ id: string; order: number }> },
   ) {
-    try {
-      const data = await this.productsService.reorderVariants(productId, body.variantOrders);
-      return {
-        success: true,
-        data,
-        message: 'Variants reordered successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.reorderVariants(productId, body.variantOrders);
+    return {
+      success: true,
+      data,
+      message: 'Variants reordered successfully',
+    };
   }
 
   // ============================================================================

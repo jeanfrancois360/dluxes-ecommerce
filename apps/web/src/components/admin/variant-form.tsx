@@ -121,7 +121,8 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
         compareAtPrice: formData.compareAtPrice,
         inventory: formData.inventory,
         attributes: formData.attributes,
-        image: formData.image || undefined,
+        // Always include image field when updating (to allow clearing), but only when it has value when creating
+        image: formData.image || (variant ? null : undefined), // null to clear on update, undefined to omit on create
         colorHex: formData.colorHex || undefined,
         colorName: formData.colorName || undefined,
         isAvailable: formData.isAvailable,
@@ -303,8 +304,8 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
         </div>
       </div>
 
-      {/* Color & Image */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Color */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Color Hex Code
@@ -318,12 +319,11 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
               placeholder="#000000"
               maxLength={7}
             />
-            {formData.colorHex && (
-              <div
-                className="w-10 h-10 rounded border-2 border-gray-300"
-                style={{ backgroundColor: formData.colorHex }}
-              />
-            )}
+            <div
+              className="w-10 h-10 rounded border-2 border-gray-300 flex-shrink-0"
+              style={{ backgroundColor: formData.colorHex || '#f3f4f6' }}
+              title={formData.colorHex || 'No color set'}
+            />
           </div>
         </div>
 
@@ -339,11 +339,14 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
             placeholder="e.g., Midnight Black"
           />
         </div>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Variant Image
-          </label>
+      {/* Variant Image - Full Width */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Variant Image
+        </label>
+        <div className="max-w-2xl">
           <EnhancedImageUpload
             onImagesChange={handleImageChange}
             initialImages={formData.image ? [formData.image] : []}
