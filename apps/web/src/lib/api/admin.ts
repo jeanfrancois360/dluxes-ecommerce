@@ -96,15 +96,26 @@ export interface AdminOrder {
   items: Array<{
     id: string;
     productId: string;
+    variantId?: string;
     name: string;
     quantity: number;
     price: number;
     image?: string;
+    product?: {
+      id: string;
+      name: string;
+      store?: {
+        id: string;
+        name: string;
+        slug: string;
+      };
+    };
   }>;
   subtotal: number;
   tax: number;
   shipping: number;
   total: number;
+  currency?: string;
   status: string;
   paymentStatus: string;
   shippingAddress: {
@@ -114,6 +125,20 @@ export interface AdminOrder {
     zipCode: string;
     country: string;
   };
+  commissions?: Array<{
+    id: string;
+    storeId: string;
+    sellerId: string;
+    orderAmount: number;
+    commissionAmount: number;
+    currency: string;
+    status: string;
+    store: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -480,17 +505,20 @@ export const adminOrdersApi = {
   },
 
   async getById(id: string): Promise<AdminOrder> {
-    const response = await api.get(`/admin/orders/${id}`);
+    // Backend route is /orders/:id, not /admin/orders/:id
+    const response = await api.get(`/orders/${id}`);
     return response;
   },
 
   async updateStatus(id: string, status: string): Promise<AdminOrder> {
-    const response = await api.patch(`/admin/orders/${id}/status`, { status });
+    // Backend route is /orders/:id/status, not /admin/orders/:id/status
+    const response = await api.patch(`/orders/${id}/status`, { status });
     return response;
   },
 
   async refund(id: string, amount?: number): Promise<void> {
-    await api.post(`/admin/orders/${id}/refund`, { amount });
+    // Backend route is /payment/refund/:orderId
+    await api.post(`/payment/refund/${id}`, { amount });
   },
 };
 

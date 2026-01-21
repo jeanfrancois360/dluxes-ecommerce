@@ -10,6 +10,7 @@ import React, { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
+import { OrderBreakdown } from '@/components/admin/order-breakdown';
 import { useAdminOrder } from '@/hooks/use-admin';
 import { adminOrdersApi } from '@/lib/api/admin';
 import { toast, standardToasts } from '@/lib/utils/toast';
@@ -158,12 +159,14 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
             </svg>
             Back to Orders
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Order {order.orderNumber}</h1>
-          <p className="text-gray-600 mt-1">{format(new Date(order.createdAt), 'MMMM d, yyyy h:mm a')}</p>
+          <h1 className="text-2xl font-bold text-gray-900">Order {order.orderNumber || 'N/A'}</h1>
+          <p className="text-gray-600 mt-1">
+            {order.createdAt ? format(new Date(order.createdAt), 'MMMM d, yyyy h:mm a') : 'Date unavailable'}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <select
-            value={order.status}
+            value={order.status || 'pending'}
             onChange={(e) => handleStatusUpdate(e.target.value)}
             disabled={updating}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
@@ -187,64 +190,72 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Order Items */}
+          {/* Order Items with Enhanced Breakdown */}
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Order Items</h2>
             </div>
             <div className="p-6 space-y-4">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-4">
-                  {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded" />
-                  ) : (
-                    <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
-                      <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+              {order.items && order.items.length > 0 ? (
+                order.items.map((item) => (
+                  <div key={item.id} className="flex items-center gap-4">
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded" />
+                    ) : (
+                      <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900">{item.name}</h3>
+                      <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
+                      {item.product?.store && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          Sold by: {item.product.store.name}
+                        </p>
+                      )}
                     </div>
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{item.name}</h3>
-                    <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
+                    <div className="text-right">
+                      <p className="font-medium text-gray-900">${formatCurrencyAmount(item.price * item.quantity, 2)}</p>
+                      <p className="text-sm text-gray-500">${formatCurrencyAmount(item.price, 2)} each</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">${formatCurrencyAmount(item.price * item.quantity, 2)}</p>
-                    <p className="text-sm text-gray-500">${formatCurrencyAmount(item.price, 2)} each</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="p-6 border-t border-gray-200 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="text-gray-900">${formatCurrencyAmount(order.subtotal, 2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Tax</span>
-                <span className="text-gray-900">${formatCurrencyAmount(order.tax, 2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Shipping</span>
-                <span className="text-gray-900">${formatCurrencyAmount(order.shipping, 2)}</span>
-              </div>
-              <div className="flex justify-between text-lg font-semibold border-t pt-2">
-                <span>Total</span>
-                <span>${formatCurrencyAmount(order.total, 2)}</span>
-              </div>
+                ))
+              ) : (
+                <p className="text-center text-gray-500 py-4">No items in this order</p>
+              )}
             </div>
           </div>
+
+          {/* Enhanced Order Breakdown */}
+          <OrderBreakdown
+            items={order.items || []}
+            commissions={order.commissions || []}
+            subtotal={order.subtotal || 0}
+            tax={order.tax || 0}
+            shipping={order.shipping || 0}
+            total={order.total || 0}
+            currency={order.currency}
+          />
 
           {/* Shipping Information */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Shipping Information</h2>
             <div className="text-sm text-gray-600">
-              <p className="font-medium text-gray-900 mb-2">{order.customer.name}</p>
-              <p>{order.shippingAddress.street}</p>
-              <p>
-                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}
-              </p>
-              <p>{order.shippingAddress.country}</p>
+              <p className="font-medium text-gray-900 mb-2">{order.customer?.name || 'Guest Customer'}</p>
+              {order.shippingAddress ? (
+                <>
+                  <p>{order.shippingAddress.street}</p>
+                  <p>
+                    {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}
+                  </p>
+                  <p>{order.shippingAddress.country}</p>
+                </>
+              ) : (
+                <p className="text-gray-500">No shipping address provided</p>
+              )}
             </div>
           </div>
         </div>
@@ -255,14 +266,16 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer</h2>
             <div className="space-y-2">
-              <p className="font-medium text-gray-900">{order.customer.name}</p>
-              <p className="text-sm text-gray-600">{order.customer.email}</p>
-              <a
-                href={`/admin/customers/${order.customer.id}`}
-                className="text-sm text-[#CBB57B] hover:text-[#a89158] font-medium inline-block mt-2"
-              >
-                View Customer
-              </a>
+              <p className="font-medium text-gray-900">{order.customer?.name || 'Guest Customer'}</p>
+              <p className="text-sm text-gray-600">{order.customer?.email || 'No email provided'}</p>
+              {order.customer?.id && (
+                <a
+                  href={`/admin/customers/${order.customer.id}`}
+                  className="text-sm text-[#CBB57B] hover:text-[#a89158] font-medium inline-block mt-2"
+                >
+                  View Customer
+                </a>
+              )}
             </div>
           </div>
 
@@ -280,15 +293,19 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
                       ? 'bg-yellow-100 text-yellow-800'
                       : order.paymentStatus === 'refunded'
                       ? 'bg-gray-100 text-gray-800'
-                      : 'bg-red-100 text-red-800'
+                      : order.paymentStatus
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-gray-100 text-gray-600'
                   }`}
                 >
-                  {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+                  {order.paymentStatus
+                    ? order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)
+                    : 'Unknown'}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Total</span>
-                <span className="font-medium">${formatCurrencyAmount(order.total, 2)}</span>
+                <span className="font-medium">${formatCurrencyAmount(order.total || 0, 2)}</span>
               </div>
             </div>
           </div>

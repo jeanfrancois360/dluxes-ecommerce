@@ -6,6 +6,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { InventoryService } from '../inventory/inventory.service';
 import { ShippingTaxService } from './shipping-tax.service';
 import { CurrencyService } from '../currency/currency.service';
+import { EmailService } from '../email/email.service';
 
 /**
  * Orders Service
@@ -20,7 +21,8 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => CurrencyService))
-    private readonly currencyService: CurrencyService
+    private readonly currencyService: CurrencyService,
+    private readonly emailService: EmailService
   ) {
     this.inventoryService = new InventoryService(prisma);
     this.shippingTaxService = new ShippingTaxService(null as any);
@@ -176,13 +178,22 @@ export class OrdersService {
   /**
    * Get single order by ID
    */
-  async findOne(id: string, userId: string) {
+  async findOne(id: string, userId: string, isAdmin: boolean = false) {
     const order = await this.prisma.order.findFirst({
       where: {
         id,
-        userId,
+        // Admins can view any order, regular users only their own
+        ...(isAdmin ? {} : { userId }),
       },
       include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
         items: {
           include: {
             product: {
@@ -190,6 +201,13 @@ export class OrdersService {
                 images: {
                   take: 1,
                   orderBy: { displayOrder: 'asc' },
+                },
+                store: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  },
                 },
               },
             },
@@ -210,6 +228,17 @@ export class OrdersService {
                 slug: true,
                 type: true,
                 website: true,
+              },
+            },
+          },
+        },
+        commissions: {
+          include: {
+            store: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
               },
             },
           },
@@ -409,7 +438,167 @@ export class OrdersService {
       }
     }
 
-    // TODO: Send order confirmation email via queue
+    // Send order confirmation email
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, firstName: true, lastName: true },
+      });
+
+      if (user?.email) {
+        const customerName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
+
+        await this.emailService.sendOrderConfirmation(user.email, {
+          orderNumber: order.orderNumber,
+          customerName,
+          items: orderItems.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: Number(item.price),
+            image: item.image,
+          })),
+          subtotal: Number(subtotal),
+          tax: Number(tax),
+          shipping: Number(shipping),
+          total: Number(total),
+          currency,
+          shippingAddress: {
+            street: order.shippingAddress.address1,
+            city: order.shippingAddress.city,
+            state: order.shippingAddress.province || '',
+            zipCode: order.shippingAddress.postalCode,
+            country: order.shippingAddress.country,
+          },
+          orderId: order.id,
+        });
+
+        this.logger.log(`Order confirmation email queued for ${user.email}`);
+      }
+    } catch (emailError) {
+      // Don't fail the order if email fails
+      this.logger.error('Failed to send order confirmation email:', emailError);
+    }
+
+    // Send seller notifications for multi-vendor orders
+    try {
+      // Get full order with product and store details
+      const fullOrder: any = await this.prisma.order.findUnique({
+        where: { id: order.id },
+        include: {
+          items: {
+            include: {
+              product: {
+                include: {
+                  store: {
+                    select: {
+                      id: true,
+                      name: true,
+                      userId: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          shippingAddress: true,
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
+          commissions: {
+            include: {
+              store: true,
+            },
+          },
+        },
+      });
+
+      if (fullOrder) {
+        const customerName = `${fullOrder.user?.firstName || ''} ${fullOrder.user?.lastName || ''}`.trim() || 'Customer';
+
+        // Group items by store and send notification to each seller
+        const storeGroups = new Map<string, typeof fullOrder.items>();
+
+        fullOrder.items.forEach((item) => {
+          const storeId = item.product.store?.id;
+          if (storeId) {
+            if (!storeGroups.has(storeId)) {
+              storeGroups.set(storeId, []);
+            }
+            storeGroups.get(storeId)!.push(item);
+          }
+        });
+
+        // Send notification to each seller
+        for (const [storeId, storeItems] of storeGroups.entries()) {
+          const firstItem = storeItems[0];
+          const store = firstItem.product.store;
+
+          if (store && store.userId) {
+            // Get seller information
+            const seller = await this.prisma.user.findUnique({
+              where: { id: store.userId },
+              select: {
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            });
+
+            if (seller?.email) {
+              // Calculate subtotal for this seller's items
+              const sellerSubtotal = storeItems.reduce(
+                (sum, item) => sum + Number(item.price) * item.quantity,
+                0
+              );
+
+              // Find commission for this store
+              const commission = fullOrder.commissions?.find((c: any) => c.storeId === storeId);
+              const commissionAmount = commission ? Number(commission.commissionAmount) : 0;
+              const commissionRate = sellerSubtotal > 0 ? (commissionAmount / sellerSubtotal) * 100 : 10;
+              const netPayout = sellerSubtotal - commissionAmount;
+
+              const sellerName = `${seller.firstName || ''} ${seller.lastName || ''}`.trim() || 'Seller';
+
+              await this.emailService.sendSellerOrderNotification(seller.email, {
+                sellerName,
+                storeName: store.name,
+                orderNumber: fullOrder.orderNumber,
+                customerName,
+                items: storeItems.map((item: any) => ({
+                  name: item.name,
+                  quantity: item.quantity,
+                  price: Number(item.price),
+                  image: item.image || undefined,
+                  sku: item.sku,
+                })),
+                subtotal: sellerSubtotal,
+                commission: commissionAmount,
+                commissionRate,
+                netPayout,
+                currency: fullOrder.currency,
+                shippingAddress: {
+                  street: fullOrder.shippingAddress.address1,
+                  city: fullOrder.shippingAddress.city,
+                  state: fullOrder.shippingAddress.province || '',
+                  zipCode: fullOrder.shippingAddress.postalCode,
+                  country: fullOrder.shippingAddress.country,
+                },
+                orderId: fullOrder.id,
+                sellerId: store.userId,
+              });
+
+              this.logger.log(`Seller notification sent to ${seller.email} for store ${store.name}`);
+            }
+          }
+        }
+      }
+    } catch (sellerEmailError) {
+      // Don't fail the order if seller email fails
+      this.logger.error('Failed to send seller notification emails:', sellerEmailError);
+    }
 
     return order;
   }

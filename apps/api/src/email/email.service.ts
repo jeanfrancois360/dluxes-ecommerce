@@ -5,6 +5,8 @@ import { magicLinkTemplate } from './templates/magic-link.template';
 import { passwordResetTemplate } from './templates/password-reset.template';
 import { welcomeTemplate } from './templates/welcome.template';
 import { getEmailOTPTemplate } from './templates/email-otp.template';
+import { orderConfirmationTemplate } from './templates/order-confirmation.template';
+import { sellerOrderNotificationTemplate } from './templates/seller-order-notification.template';
 
 @Injectable()
 export class EmailService {
@@ -478,6 +480,153 @@ export class EmailService {
       return true;
     } catch (error) {
       this.logger.error('Error sending email OTP', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send order confirmation email
+   */
+  async sendOrderConfirmation(
+    email: string,
+    orderData: {
+      orderNumber: string;
+      customerName: string;
+      items: Array<{
+        name: string;
+        quantity: number;
+        price: number;
+        image?: string;
+      }>;
+      subtotal: number;
+      tax: number;
+      shipping: number;
+      total: number;
+      currency: string;
+      shippingAddress: {
+        street: string;
+        city: string;
+        state: string;
+        zipCode: string;
+        country: string;
+      };
+      orderId: string;
+      trackingUrl?: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const orderUrl = `${this.frontendUrl}/orders/${orderData.orderId}`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 ORDER CONFIRMATION FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Order: #${orderData.orderNumber}`);
+        this.logger.log(`Total: ${orderData.currency} ${orderData.total.toFixed(2)}`);
+        this.logger.log(`URL: ${orderUrl}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = orderConfirmationTemplate({
+        ...orderData,
+        orderUrl,
+      });
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `✅ Order Confirmation - #${orderData.orderNumber}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send order confirmation email', error);
+        return false;
+      }
+
+      this.logger.log(`Order confirmation email sent to ${email} (ID: ${data?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending order confirmation email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send seller order notification email
+   */
+  async sendSellerOrderNotification(
+    email: string,
+    notificationData: {
+      sellerName: string;
+      storeName: string;
+      orderNumber: string;
+      customerName: string;
+      items: Array<{
+        name: string;
+        quantity: number;
+        price: number;
+        image?: string;
+        sku?: string;
+      }>;
+      subtotal: number;
+      commission: number;
+      commissionRate: number;
+      netPayout: number;
+      currency: string;
+      shippingAddress: {
+        street: string;
+        city: string;
+        state: string;
+        zipCode: string;
+        country: string;
+      };
+      orderId: string;
+      sellerId: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const orderUrl = `${this.frontendUrl}/seller/orders/${notificationData.orderId}`;
+      const dashboardUrl = `${this.frontendUrl}/seller/dashboard`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 SELLER NOTIFICATION FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Seller: ${notificationData.sellerName}`);
+        this.logger.log(`Store: ${notificationData.storeName}`);
+        this.logger.log(`Order: #${notificationData.orderNumber}`);
+        this.logger.log(`Net Payout: ${notificationData.currency} ${notificationData.netPayout.toFixed(2)}`);
+        this.logger.log(`URL: ${orderUrl}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = sellerOrderNotificationTemplate({
+        ...notificationData,
+        orderUrl,
+        dashboardUrl,
+      });
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `🎉 New Order #${notificationData.orderNumber} - ${notificationData.storeName}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send seller notification email', error);
+        return false;
+      }
+
+      this.logger.log(`Seller notification email sent to ${email} (ID: ${data?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending seller notification email', error);
       return false;
     }
   }

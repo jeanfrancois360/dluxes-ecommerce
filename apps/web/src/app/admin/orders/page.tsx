@@ -219,13 +219,13 @@ function OrdersContent() {
       ['Order Number', 'Customer', 'Email', 'Items', 'Total', 'Status', 'Payment', 'Date'],
       ...orders.map(o => [
         o.orderNumber,
-        o.customer.name,
-        o.customer.email,
-        o.items.length,
+        o.customer?.name || 'Guest Customer',
+        o.customer?.email || 'N/A',
+        o.items?.length || 0,
         o.total,
         o.status,
         o.paymentStatus,
-        format(new Date(o.createdAt), 'yyyy-MM-dd'),
+        o.createdAt ? format(new Date(o.createdAt), 'yyyy-MM-dd') : 'N/A',
       ]),
     ].map(row => row.join(',')).join('\n');
 
@@ -243,13 +243,13 @@ function OrdersContent() {
       ['Order Number', 'Customer', 'Email', 'Items', 'Total', 'Status', 'Payment', 'Date'],
       ...selectedOrders.map(o => [
         o.orderNumber,
-        o.customer.name,
-        o.customer.email,
-        o.items.length,
+        o.customer?.name || 'Guest Customer',
+        o.customer?.email || 'N/A',
+        o.items?.length || 0,
         o.total,
         o.status,
         o.paymentStatus,
-        format(new Date(o.createdAt), 'yyyy-MM-dd'),
+        o.createdAt ? format(new Date(o.createdAt), 'yyyy-MM-dd') : 'N/A',
       ]),
     ].map(row => row.join(',')).join('\n');
 
@@ -270,8 +270,8 @@ function OrdersContent() {
 
       switch (field) {
         case 'createdAt':
-          aVal = new Date(a.createdAt).getTime();
-          bVal = new Date(b.createdAt).getTime();
+          aVal = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          bVal = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           break;
         case 'total':
           aVal = Number(a.total);
@@ -561,17 +561,17 @@ function OrdersContent() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 min-w-[40px] min-h-[40px] bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-full overflow-hidden flex items-center justify-center ring-2 ring-[#CBB57B]/30">
                           <span className="text-white font-semibold text-sm">
-                            {order.customer.name.charAt(0).toUpperCase()}
+                            {order.customer?.name?.charAt(0).toUpperCase() || 'G'}
                           </span>
                         </div>
                         <div>
-                          <div className="text-sm font-bold text-black">{order.customer.name}</div>
-                          <div className="text-xs text-neutral-600">{order.customer.email}</div>
+                          <div className="text-sm font-bold text-black">{order.customer?.name || 'Guest Customer'}</div>
+                          <div className="text-xs text-neutral-600">{order.customer?.email || 'No email provided'}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-700">
-                      {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
+                      {order.items?.length || 0} {(order.items?.length || 0) === 1 ? 'item' : 'items'}
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-bold text-black">${formatCurrencyAmount(order.total, 2)}</div>
@@ -583,7 +583,7 @@ function OrdersContent() {
                       <StatusBadge status={order.status} />
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-700">
-                      {format(new Date(order.createdAt), 'MMM d, yyyy')}
+                      {order.createdAt ? format(new Date(order.createdAt), 'MMM d, yyyy') : 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <Link

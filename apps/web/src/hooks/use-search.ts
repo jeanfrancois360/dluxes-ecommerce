@@ -98,8 +98,8 @@ export function useAutocomplete(query: string, debounceMs: number = 300) {
     timeoutRef.current = setTimeout(async () => {
       try {
         abortControllerRef.current = new AbortController();
-        const { data } = await searchAPI.autocomplete(query, 8);
-        setResults(data);
+        const response = await searchAPI.autocomplete(query, 8);
+        setResults(response?.data || []);
         setError(null);
       } catch (err) {
         if (err instanceof Error && err.name !== 'AbortError') {

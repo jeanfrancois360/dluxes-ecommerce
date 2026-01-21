@@ -755,8 +755,44 @@ export class PaymentService {
               );
             } else {
               // Multi-vendor order - create escrow with split allocations
-              // TODO: Implement multi-vendor escrow split
-              this.logger.warn(`Multi-vendor escrow not yet implemented for order ${orderId}`);
+              const { EscrowService } = await import('../escrow/escrow.service');
+              const escrowService = new EscrowService(this.prisma, this.settingsService);
+
+              // Build split items with commission data
+              const splitItems = [];
+
+              for (const item of order.items) {
+                if (item.product.store) {
+                  // Find commission for this specific item
+                  const itemCommission = commissions.find(
+                    c => c.orderItemId === item.id
+                  );
+
+                  splitItems.push({
+                    orderItemId: item.id,
+                    sellerId: item.product.store.userId,
+                    storeId: item.product.storeId!,
+                    amount: Number(item.total),
+                    platformFee: itemCommission ? Number(itemCommission.commissionAmount) : 0,
+                  });
+                }
+              }
+
+              if (splitItems.length > 0) {
+                await escrowService.createEscrowWithSplits({
+                  orderId,
+                  paymentTransactionId: transaction.id,
+                  currency: transaction.currency,
+                  holdPeriodDays,
+                  items: splitItems,
+                });
+
+                this.logger.log(
+                  `Multi-vendor escrow created for order ${orderId}: ${splitItems.length} sellers, ${sellerOrders.size} stores (hold period: ${holdPeriodDays} days)`
+                );
+              } else {
+                this.logger.warn(`No split items found for multi-vendor order ${orderId}`);
+              }
             }
           }
         } catch (escrowError) {
