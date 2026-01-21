@@ -79,7 +79,31 @@ export class OrdersController {
   @Get(':id')
   async findOne(@Param('id') id: string, @Request() req) {
     try {
-      const data = await this.ordersService.findOne(id, req.user.userId || req.user.id);
+      // Check if user is admin - admins can view any order
+      const isAdmin = req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN';
+      const order = await this.ordersService.findOne(id, req.user.userId || req.user.id, isAdmin);
+
+      // Transform data for frontend compatibility
+      const data = {
+        ...order,
+        customer: order.user ? {
+          id: order.user.id,
+          name: `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || null,
+          email: order.user.email,
+        } : null,
+        items: order.items?.map(item => ({
+          ...item,
+          image: item.product?.images?.[0]?.url || null,
+        })),
+        shippingAddress: order.shippingAddress ? {
+          street: order.shippingAddress.address1,
+          city: order.shippingAddress.city,
+          state: order.shippingAddress.province,
+          zipCode: order.shippingAddress.postalCode,
+          country: order.shippingAddress.country,
+        } : null,
+      };
+
       return {
         success: true,
         data,

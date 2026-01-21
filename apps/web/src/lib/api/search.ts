@@ -64,14 +64,30 @@ export const searchAPI = {
       return { data: [], total: 0 };
     }
 
-    return api.get<{ data: AutocompleteResult[]; total: number }>(
-      `/search/autocomplete?q=${encodeURIComponent(query)}&limit=${limit}`
-    );
+    try {
+      const url = `/search/autocomplete?q=${encodeURIComponent(query)}&limit=${limit}`;
+      // The API client unwraps { success, data } responses, so we get the array directly
+      const result = await api.get<AutocompleteResult[]>(url);
+      // Return in expected format with both data and total
+      return {
+        data: Array.isArray(result) ? result : [],
+        total: Array.isArray(result) ? result.length : 0
+      };
+    } catch (error) {
+      // Fallback to empty results if endpoint not available
+      return { data: [], total: 0 };
+    }
   },
 
   // Get trending searches
   getTrending: async (limit: number = 10) => {
-    return api.get<{ data: TrendingSearch[] }>(`/search/trending?limit=${limit}`);
+    try {
+      return await api.get<{ data: TrendingSearch[] }>(`/search/trending?limit=${limit}`);
+    } catch (error) {
+      // Endpoint not implemented yet - return empty array
+      // This prevents console errors for non-critical feature
+      return { data: [] };
+    }
   },
 
   // Get search suggestions based on partial query
@@ -80,9 +96,14 @@ export const searchAPI = {
       return { data: [] };
     }
 
-    return api.get<{ data: SearchSuggestion[] }>(
-      `/search/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`
-    );
+    try {
+      return await api.get<{ data: SearchSuggestion[] }>(
+        `/search/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`
+      );
+    } catch (error) {
+      // Fallback to empty suggestions if endpoint not available
+      return { data: [] };
+    }
   },
 
   // Track search analytics (fire and forget)

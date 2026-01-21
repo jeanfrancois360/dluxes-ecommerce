@@ -32,20 +32,44 @@ export const productsAPI = {
     api.get<Product[]>(`/products/featured?limit=${limit}`),
 
   // Get new arrivals
-  getNewArrivals: (limit: number = 8) =>
-    api.get<Product[]>(`/products/new-arrivals?limit=${limit}`),
+  getNewArrivals: async (limit: number = 8) => {
+    try {
+      return await api.get<Product[]>(`/products/new-arrivals?limit=${limit}`);
+    } catch (error) {
+      // Fallback to empty array if endpoint not available
+      return [];
+    }
+  },
 
   // Get trending/popular products
-  getTrending: (limit: number = 8) =>
-    api.get<Product[]>(`/products/trending?limit=${limit}`),
+  getTrending: async (limit: number = 8) => {
+    try {
+      return await api.get<Product[]>(`/products/trending?limit=${limit}`);
+    } catch (error) {
+      // Fallback to empty array if endpoint not available
+      return [];
+    }
+  },
 
   // Get products on sale
-  getOnSale: (limit: number = 8) =>
-    api.get<Product[]>(`/products/sale?limit=${limit}`),
+  getOnSale: async (limit: number = 8) => {
+    try {
+      return await api.get<Product[]>(`/products/sale?limit=${limit}`);
+    } catch (error) {
+      // Fallback to empty array if endpoint not available
+      return [];
+    }
+  },
 
   // Get related products (by category)
-  getRelated: (productId: string, limit: number = 4) =>
-    api.get<SearchResult<Product>>(`/products/${productId}/related?limit=${limit}`),
+  getRelated: async (productId: string, limit: number = 4) => {
+    try {
+      return await api.get<SearchResult<Product>>(`/products/${productId}/related?limit=${limit}`);
+    } catch (error) {
+      // Fallback to empty result if endpoint not available
+      return { products: [], total: 0, page: 1, pageSize: limit, totalPages: 0 };
+    }
+  },
 
   // Search products
   search: (filters: SearchFilters) =>
