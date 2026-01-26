@@ -10,9 +10,10 @@ import { AdminDeliveryService } from './admin-delivery.service';
 import { DatabaseModule } from '../database/database.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UploadModule } from '../upload/upload.module';
+import { DhlModule } from '../integrations/dhl/dhl.module';
 
 @Module({
-  imports: [DatabaseModule, NotificationsModule, UploadModule],
+  imports: [DatabaseModule, NotificationsModule, UploadModule, DhlModule],
   controllers: [
     DeliveryController,
     DeliveryCompanyController,

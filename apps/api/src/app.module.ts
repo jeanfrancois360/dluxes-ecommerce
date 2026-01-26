@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
@@ -37,6 +38,7 @@ import { ReturnsModule } from './returns/returns.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { CreditsModule } from './credits/credits.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { DhlModule } from './integrations/dhl/dhl.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
 // import { QueueModule } from './queue/queue.module'; // Commented out - requires Redis setup
@@ -48,6 +50,7 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
       envFilePath: '.env',
     }),
     SupabaseModule,
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 60 seconds
@@ -55,6 +58,7 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
       },
     ]),
     DatabaseModule,
+    DhlModule,
     AuthModule,
     UsersModule,
     ProductsModule,

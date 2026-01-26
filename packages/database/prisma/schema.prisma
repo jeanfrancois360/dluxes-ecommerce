@@ -2734,7 +2734,22 @@ model Delivery {
   // Tracking Information
   trackingNumber String?        @unique
   trackingUrl    String?
+  carrier        String?        @default("DHL") // Shipping carrier
   currentStatus  DeliveryStatus @default(PENDING_PICKUP)
+
+  // DHL API Integration Fields
+  dhlServiceType       String?   // EXPRESS, PARCEL, ECOMMERCE
+  dhlTrackingData      Json?     // Full DHL API response cache
+  dhlLastSyncedAt      DateTime? // Last API sync timestamp
+  dhlEstimatedDelivery DateTime? // From DHL API
+
+  // Package Details
+  packageWeight     String? // e.g., "2.5 kg"
+  packageDimensions String? // e.g., "30x20x10 cm"
+  shippedAt         DateTime?
+
+  // Current Location (from DHL API)
+  currentLocation Json? // { city, country, facility }
 
   // Addresses
   pickupAddress   Json // Seller/warehouse address
@@ -2788,7 +2803,8 @@ model Delivery {
   updatedAt DateTime @updatedAt
 
   // Relations
-  auditLogs DeliveryAuditLog[]
+  auditLogs      DeliveryAuditLog[]
+  trackingEvents DeliveryTrackingEvent[]
 
   @@index([orderId])
   @@index([providerId])
@@ -2796,6 +2812,7 @@ model Delivery {
   @@index([currentStatus])
   @@index([trackingNumber])
   @@index([expectedDeliveryDate])
+  @@index([dhlLastSyncedAt])
   @@map("deliveries")
 }
 
@@ -2809,6 +2826,7 @@ enum DeliveryStatus {
   FAILED_DELIVERY
   RETURNED
   CANCELLED
+  EXCEPTION // DHL exception events
 }
 
 // Audit Log for all delivery actions
@@ -2850,6 +2868,28 @@ enum DeliveryAuditAction {
   CANCELLED // Delivery cancelled
   ISSUE_REPORTED // Issue reported
   ISSUE_RESOLVED // Issue resolved
+}
+
+// Store individual DHL tracking events (from DHL API)
+model DeliveryTrackingEvent {
+  id         String   @id @default(cuid())
+  deliveryId String
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  // Event Data
+  timestamp         DateTime
+  status            String   // DHL event code (e.g., "PU", "IT", "OK")
+  statusDescription String   // Human-readable description
+  location          Json?    // { city, country, facility }
+
+  // Raw DHL event data
+  rawEventData Json
+
+  createdAt DateTime @default(now())
+
+  @@index([deliveryId])
+  @@index([timestamp])
+  @@map("delivery_tracking_events")
 }
 
 model DeliveryProviderPayout {

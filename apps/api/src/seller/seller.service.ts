@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
+import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
 import { ProductStatus } from '@prisma/client';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class SellerService {
     private prisma: PrismaService,
     private subscriptionService: SubscriptionService,
     private creditsService: CreditsService,
+    private dhlTrackingService: DhlTrackingService,
   ) {}
 
   /**
@@ -1570,6 +1572,184 @@ export class SellerService {
         },
       },
     };
+  }
+
+  /**
+   * Confirm shipment with DHL tracking number
+   * DHL API Integration - Day 1-2 Implementation
+   */
+  async confirmShipment(
+    userId: string,
+    orderId: string,
+    data: {
+      trackingNumber: string;
+      dhlServiceType?: string;
+      packageWeight?: string;
+      packageDimensions?: string;
+    },
+  ) {
+    // Get seller's store
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Find order and verify seller owns it
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                storeId: true,
+              },
+            },
+          },
+        },
+        delivery: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Verify seller owns at least one item in the order
+    const sellerOwnsOrder = order.items.some(
+      (item) => item.product.storeId === store.id,
+    );
+
+    if (!sellerOwnsOrder) {
+      throw new ForbiddenException('You do not have permission to ship this order');
+    }
+
+    // Validate order status
+    if (order.status === 'CANCELLED' || order.status === 'REFUNDED') {
+      throw new BadRequestException('Cannot ship a cancelled or refunded order');
+    }
+
+    if (order.status === 'SHIPPED' || order.status === 'DELIVERED') {
+      throw new BadRequestException('Order has already been shipped');
+    }
+
+    try {
+      // Update order status to SHIPPED
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'SHIPPED',
+        },
+      });
+
+      // Create or update delivery record
+      let delivery;
+      if (order.delivery) {
+        // Update existing delivery
+        delivery = await this.prisma.delivery.update({
+          where: { id: order.delivery.id },
+          data: {
+            trackingNumber: data.trackingNumber,
+            carrier: 'DHL',
+            currentStatus: 'PICKED_UP',
+            dhlServiceType: data.dhlServiceType || null,
+            packageWeight: data.packageWeight || null,
+            packageDimensions: data.packageDimensions || null,
+            shippedAt: new Date(),
+          },
+        });
+      } else {
+        // Create new delivery (requires pickup and delivery addresses)
+        // Get order with shipping address
+        const orderWithAddress = await this.prisma.order.findUnique({
+          where: { id: orderId },
+          include: {
+            shippingAddress: true,
+          },
+        });
+
+        if (!orderWithAddress?.shippingAddress) {
+          throw new BadRequestException('Order must have a shipping address to create delivery');
+        }
+
+        delivery = await this.prisma.delivery.create({
+          data: {
+            order: {
+              connect: { id: orderId },
+            },
+            trackingNumber: data.trackingNumber,
+            carrier: 'DHL',
+            currentStatus: 'PICKED_UP',
+            dhlServiceType: data.dhlServiceType || null,
+            packageWeight: data.packageWeight || null,
+            packageDimensions: data.packageDimensions || null,
+            shippedAt: new Date(),
+            pickupAddress: {}, // TODO: Get seller/warehouse address
+            deliveryAddress: {
+              address1: orderWithAddress.shippingAddress.address1,
+              address2: orderWithAddress.shippingAddress.address2 || '',
+              city: orderWithAddress.shippingAddress.city,
+              province: orderWithAddress.shippingAddress.province,
+              postalCode: orderWithAddress.shippingAddress.postalCode,
+              country: orderWithAddress.shippingAddress.country,
+            },
+          },
+        });
+      }
+
+      // Fetch initial DHL tracking data (async, non-blocking)
+      this.fetchInitialDhlTracking(delivery.id).catch((error) => {
+        this.logger.error(
+          `Failed to fetch initial DHL tracking for delivery ${delivery.id}`,
+          error.message,
+        );
+      });
+
+      // Generate tracking URL
+      const trackingUrl = this.dhlTrackingService.generateTrackingUrl(
+        data.trackingNumber,
+      );
+
+      this.logger.log(
+        `Order ${orderId} shipped successfully with DHL tracking ${data.trackingNumber}`,
+      );
+
+      return {
+        success: true,
+        message: 'Shipment confirmed successfully',
+        data: {
+          orderId: order.id,
+          deliveryId: delivery.id,
+          trackingNumber: data.trackingNumber,
+          trackingUrl,
+          status: delivery.currentStatus,
+          shippedAt: delivery.shippedAt,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to confirm shipment for order ${orderId}`, error.message);
+      throw new BadRequestException('Failed to confirm shipment');
+    }
+  }
+
+  /**
+   * Fetch initial DHL tracking data (private helper method)
+   * Runs asynchronously to avoid blocking the confirmation response
+   */
+  private async fetchInitialDhlTracking(deliveryId: string): Promise<void> {
+    try {
+      await this.dhlTrackingService.updateDeliveryFromDhl(deliveryId);
+      this.logger.log(`Initial DHL tracking data fetched for delivery ${deliveryId}`);
+    } catch (error) {
+      this.logger.warn(
+        `Could not fetch initial DHL tracking for delivery ${deliveryId}: ${error.message}`,
+      );
+      // Non-critical error, don't throw
+    }
   }
 
   /**
