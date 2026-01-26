@@ -30,7 +30,9 @@ export function TaxSettingsSection() {
 
   useEffect(() => {
     if (settings.length > 0) {
+      console.log('[Tax Settings] Raw settings from API:', settings);
       const formData = transformSettingsToForm(settings);
+      console.log('[Tax Settings] Transformed form data:', formData);
       if (!form.formState.isDirty || justSavedRef.current) {
         form.reset(formData as TaxSettings);
         justSavedRef.current = false;
@@ -40,15 +42,21 @@ export function TaxSettingsSection() {
   }, [settings]);
 
   const onSubmit = async (data: TaxSettings) => {
+    console.log('[Tax Settings] Form submitted with data:', data);
+    console.log('[Tax Settings] Data entries to save:', Object.entries(data));
     try {
       for (const [key, value] of Object.entries(data)) {
-        await updateSetting(key, value, 'Updated via settings panel');
+        console.log(`[Tax Settings] Saving ${key} = ${value} (type: ${typeof value})`);
+        const result = await updateSetting(key, value, 'Updated via settings panel');
+        console.log(`[Tax Settings] Save result for ${key}:`, result);
       }
       justSavedRef.current = true;
       toast.success('Tax settings saved successfully');
+      console.log('[Tax Settings] Refetching settings...');
       await refetch();
+      console.log('[Tax Settings] Refetch complete');
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      console.error('[Tax Settings] Failed to save settings:', error);
       toast.error('Failed to save tax settings');
       justSavedRef.current = false;
     }
