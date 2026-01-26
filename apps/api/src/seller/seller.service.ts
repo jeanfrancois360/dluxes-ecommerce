@@ -1586,6 +1586,9 @@ export class SellerService {
       dhlServiceType?: string;
       packageWeight?: string;
       packageDimensions?: string;
+      recipientPostalCode?: string;
+      originCountryCode?: string;
+      language?: string;
     },
   ) {
     // Get seller's store
@@ -1702,7 +1705,7 @@ export class SellerService {
       }
 
       // Fetch initial DHL tracking data (async, non-blocking)
-      this.fetchInitialDhlTracking(delivery.id).catch((error) => {
+      this.fetchInitialDhlTracking(delivery.id, data).catch((error) => {
         this.logger.error(
           `Failed to fetch initial DHL tracking for delivery ${delivery.id}`,
           error.message,
@@ -1740,9 +1743,29 @@ export class SellerService {
    * Fetch initial DHL tracking data (private helper method)
    * Runs asynchronously to avoid blocking the confirmation response
    */
-  private async fetchInitialDhlTracking(deliveryId: string): Promise<void> {
+  private async fetchInitialDhlTracking(
+    deliveryId: string,
+    data: {
+      dhlServiceType?: string;
+      recipientPostalCode?: string;
+      originCountryCode?: string;
+      language?: string;
+    },
+  ): Promise<void> {
     try {
-      await this.dhlTrackingService.updateDeliveryFromDhl(deliveryId);
+      // ✅ Pass optional parameters to DHL API for better tracking accuracy
+      const trackingOptions = {
+        service: data.dhlServiceType,
+        recipientPostalCode: data.recipientPostalCode,
+        originCountryCode: data.originCountryCode || 'RW', // Default to Rwanda
+        language: data.language || 'en',
+      };
+
+      await this.dhlTrackingService.updateDeliveryFromDhl(
+        deliveryId,
+        trackingOptions,
+      );
+
       this.logger.log(`Initial DHL tracking data fetched for delivery ${deliveryId}`);
     } catch (error) {
       this.logger.warn(
