@@ -19,7 +19,15 @@ export function CartDrawer({
   onClose,
 }: CartDrawerProps) {
   const router = useRouter();
-  const { items, totals, updateQuantity, removeItem } = useCart();
+  const {
+    items,
+    totals,
+    freeShippingThreshold = 200,
+    taxCalculationMode = 'disabled',
+    taxRate = 0,
+    updateQuantity,
+    removeItem
+  } = useCart();
 
   const handleCheckout = () => {
     onClose();
@@ -113,12 +121,12 @@ export function CartDrawer({
                   className="mt-6 p-4 bg-accent-50 border border-accent-200 rounded-lg"
                 >
                   <p className="text-sm text-neutral-700">
-                    Add <strong className="text-black">${formatCurrencyAmount(200 - (totals.subtotal || 0), 2)}</strong> more for <strong className="text-gold">free shipping</strong>
+                    Add <strong className="text-black">${formatCurrencyAmount(freeShippingThreshold - (totals.subtotal || 0), 2)}</strong> more for <strong className="text-gold">free shipping</strong>
                   </p>
                   <div className="mt-2 h-2 bg-neutral-200 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: `${(totals.subtotal / 200) * 100}%` }}
+                      animate={{ width: `${(totals.subtotal / freeShippingThreshold) * 100}%` }}
                       transition={{ duration: 0.5, ease: 'easeOut' }}
                       className="h-full bg-gradient-to-r from-gold to-accent-600"
                     />
@@ -145,10 +153,18 @@ export function CartDrawer({
                       {(totals.shipping || 0) === 0 ? 'Free' : `$${formatCurrencyAmount(totals.shipping || 0, 2)}`}
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-neutral-600">Tax</span>
-                    <span className="text-black">${formatCurrencyAmount(totals.tax || 0, 2)}</span>
-                  </div>
+                  {taxCalculationMode !== 'disabled' && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-600">
+                        Tax
+                        {taxCalculationMode === 'simple' && ` (${(taxRate * 100).toFixed(0)}%)`}
+                        {taxCalculationMode === 'by_state' && (
+                          <span className="text-xs ml-1">(At checkout)</span>
+                        )}
+                      </span>
+                      <span className="text-black">${formatCurrencyAmount(totals.tax || 0, 2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-xl font-serif font-bold pt-2 border-t border-neutral-200">
                     <span>Total</span>
                     <span className="text-gold">${formatCurrencyAmount(totals.total || 0, 2)}</span>

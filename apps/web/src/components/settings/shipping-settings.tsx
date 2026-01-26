@@ -1,0 +1,229 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Card, CardContent } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
+import { Loader2, Package, Info } from 'lucide-react';
+import { toast } from 'sonner';
+import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
+import { shippingSettingsSchema, type ShippingSettings } from '@/lib/validations/settings';
+import { transformSettingsToForm } from '@/lib/settings-utils';
+import { SettingsCard, SettingsField, SettingsFooter } from './shared';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+
+export function ShippingSettingsSection() {
+  const { settings, loading, refetch } = useSettings('shipping');
+  const { updateSetting, updating } = useSettingsUpdate();
+  const justSavedRef = useRef(false);
+
+  const form = useForm<ShippingSettings>({
+    resolver: zodResolver(shippingSettingsSchema),
+    defaultValues: {
+      shipping_mode: 'manual',
+      shipping_standard_rate: 9.99,
+      shipping_express_rate: 19.99,
+      shipping_overnight_rate: 29.99,
+      shipping_international_surcharge: 15.00,
+    },
+  });
+
+  useEffect(() => {
+    if (settings.length > 0) {
+      const formData = transformSettingsToForm(settings);
+      if (!form.formState.isDirty || justSavedRef.current) {
+        form.reset(formData as ShippingSettings);
+        justSavedRef.current = false;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
+
+  const onSubmit = async (data: ShippingSettings) => {
+    try {
+      for (const [key, value] of Object.entries(data)) {
+        await updateSetting(key, value, 'Updated via settings panel');
+      }
+      justSavedRef.current = true;
+      toast.success('Shipping settings saved successfully');
+      await refetch();
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      toast.error('Failed to save shipping settings');
+      justSavedRef.current = false;
+    }
+  };
+
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-12 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const isDirty = form.formState.isDirty;
+  const currentMode = form.watch('shipping_mode');
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <SettingsCard
+        icon={Package}
+        title="Shipping Configuration"
+        description="Configure shipping methods and rates"
+      >
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div className="flex gap-2">
+            <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-blue-900">Shipping Modes</p>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li><strong>Manual:</strong> Use manually configured rates (below)</li>
+                <li><strong>DHL API:</strong> Real-time rates from DHL (coming soon)</li>
+                <li><strong>Hybrid:</strong> Try DHL API, fallback to manual if unavailable</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <SettingsField
+          label="Shipping Mode"
+          id="shipping_mode"
+          required
+          tooltip="Choose how shipping rates are calculated"
+          error={form.formState.errors.shipping_mode?.message}
+        >
+          <Select
+            value={form.watch('shipping_mode')}
+            onValueChange={(value) => form.setValue('shipping_mode', value as any, { shouldDirty: true })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="manual">Manual Configuration</SelectItem>
+              <SelectItem value="dhl_api" disabled>DHL API (Coming Soon)</SelectItem>
+              <SelectItem value="hybrid" disabled>Hybrid (Coming Soon)</SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingsField>
+
+        {currentMode === 'manual' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <SettingsField
+                label="Standard Shipping Rate"
+                id="shipping_standard_rate"
+                required
+                tooltip="Base rate for standard shipping (5-7 business days)"
+                error={form.formState.errors.shipping_standard_rate?.message}
+              >
+                <div className="flex gap-2 items-center">
+                  <span className="text-muted-foreground">$</span>
+                  <Input
+                    id="shipping_standard_rate"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    {...form.register('shipping_standard_rate', { valueAsNumber: true })}
+                    placeholder="9.99"
+                    className="flex-1"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Express Shipping Rate"
+                id="shipping_express_rate"
+                required
+                tooltip="Base rate for express shipping (2-3 business days)"
+                error={form.formState.errors.shipping_express_rate?.message}
+              >
+                <div className="flex gap-2 items-center">
+                  <span className="text-muted-foreground">$</span>
+                  <Input
+                    id="shipping_express_rate"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    {...form.register('shipping_express_rate', { valueAsNumber: true })}
+                    placeholder="19.99"
+                    className="flex-1"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Overnight Shipping Rate"
+                id="shipping_overnight_rate"
+                required
+                tooltip="Base rate for overnight delivery (1 business day)"
+                error={form.formState.errors.shipping_overnight_rate?.message}
+              >
+                <div className="flex gap-2 items-center">
+                  <span className="text-muted-foreground">$</span>
+                  <Input
+                    id="shipping_overnight_rate"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    {...form.register('shipping_overnight_rate', { valueAsNumber: true })}
+                    placeholder="29.99"
+                    className="flex-1"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="International Surcharge"
+                id="shipping_international_surcharge"
+                required
+                tooltip="Additional fee for international orders"
+                error={form.formState.errors.shipping_international_surcharge?.message}
+              >
+                <div className="flex gap-2 items-center">
+                  <span className="text-muted-foreground">$</span>
+                  <Input
+                    id="shipping_international_surcharge"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    {...form.register('shipping_international_surcharge', { valueAsNumber: true })}
+                    placeholder="15.00"
+                    className="flex-1"
+                  />
+                </div>
+              </SettingsField>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm font-medium mb-2">Rate Preview</p>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>Standard (5-7 days): ${form.watch('shipping_standard_rate').toFixed(2)}</p>
+                <p>Express (2-3 days): ${form.watch('shipping_express_rate').toFixed(2)}</p>
+                <p>Overnight (1 day): ${form.watch('shipping_overnight_rate').toFixed(2)}</p>
+                <p>International Surcharge: +${form.watch('shipping_international_surcharge').toFixed(2)}</p>
+              </div>
+            </div>
+          </>
+        )}
+      </SettingsCard>
+
+      <SettingsFooter
+        onReset={() => form.reset()}
+        onSave={() => form.handleSubmit(onSubmit)()}
+        isLoading={updating}
+        isDirty={isDirty}
+      />
+    </form>
+  );
+}

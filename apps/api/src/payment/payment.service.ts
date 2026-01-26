@@ -1968,7 +1968,7 @@ export class PaymentService {
   }
 
   /**
-   * List saved payment methods for a user
+   * List saved payment methods for a user with enhanced data
    */
   async listPaymentMethods(userId: string) {
     const stripe = await this.getStripeClient();
@@ -1998,25 +1998,248 @@ export class PaymentService {
       this.logger.warn(`Failed to get customer ${user.stripeCustomerId}:`, error);
     }
 
-    // List payment methods
+    // List payment methods from Stripe
     const paymentMethods = await stripe.paymentMethods.list({
       customer: user.stripeCustomerId,
       type: 'card',
     });
 
+    // Get saved payment method details from our database for enhanced info
+    const savedMethods = await this.prisma.savedPaymentMethod.findMany({
+      where: { userId },
+    });
+
     return {
-      paymentMethods: paymentMethods.data.map((pm) => ({
-        id: pm.id,
-        brand: pm.card?.brand || 'unknown',
-        last4: pm.card?.last4 || '****',
-        expMonth: pm.card?.exp_month,
-        expYear: pm.card?.exp_year,
-        isDefault: pm.id === defaultPaymentMethodId,
-        funding: pm.card?.funding,
-        country: pm.card?.country,
-      })),
+      paymentMethods: paymentMethods.data.map((pm) => {
+        const savedMethod = savedMethods.find(sm => sm.stripePaymentMethodId === pm.id);
+        return {
+          id: pm.id,
+          brand: pm.card?.brand || 'unknown',
+          last4: pm.card?.last4 || '****',
+          expMonth: pm.card?.exp_month,
+          expYear: pm.card?.exp_year,
+          isDefault: pm.id === defaultPaymentMethodId,
+          funding: pm.card?.funding,
+          country: pm.card?.country,
+          // Enhanced data from our database
+          nickname: savedMethod?.nickname,
+          lastUsedAt: savedMethod?.lastUsedAt,
+          usageCount: savedMethod?.usageCount || 0,
+        };
+      }),
       defaultPaymentMethodId,
     };
+  }
+
+  /**
+   * Save payment method after successful payment
+   * Called when user checks "Save card for future purchases"
+   */
+  async savePaymentMethodAfterPayment(
+    paymentIntentId: string,
+    userId: string,
+    nickname?: string,
+  ) {
+    try {
+      const stripe = await this.getStripeClient();
+
+      // Get the payment intent to extract the payment method
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (!paymentIntent.payment_method) {
+        throw new BadRequestException('No payment method found on payment intent');
+      }
+
+      const paymentMethodId = typeof paymentIntent.payment_method === 'string'
+        ? paymentIntent.payment_method
+        : paymentIntent.payment_method.id;
+
+      // Get or create customer
+      const customerId = await this.getOrCreateStripeCustomer(userId);
+
+      // Attach payment method to customer (if not already attached)
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+
+      if (paymentMethod.customer !== customerId) {
+        await stripe.paymentMethods.attach(paymentMethodId, {
+          customer: customerId,
+        });
+        this.logger.log(`Attached payment method ${paymentMethodId} to customer ${customerId}`);
+      }
+
+      // Check if we already have this payment method saved in our database
+      const existing = await this.prisma.savedPaymentMethod.findUnique({
+        where: { stripePaymentMethodId: paymentMethodId },
+      });
+
+      if (existing) {
+        // Update usage stats
+        await this.prisma.savedPaymentMethod.update({
+          where: { id: existing.id },
+          data: {
+            lastUsedAt: new Date(),
+            usageCount: { increment: 1 },
+            nickname: nickname || existing.nickname,
+          },
+        });
+        this.logger.log(`Updated existing saved payment method ${paymentMethodId}`);
+        return { success: true, message: 'Card already saved', paymentMethodId };
+      }
+
+      // Create new saved payment method record
+      await this.prisma.savedPaymentMethod.create({
+        data: {
+          userId,
+          stripePaymentMethodId: paymentMethodId,
+          brand: paymentMethod.card?.brand || 'unknown',
+          last4: paymentMethod.card?.last4 || '****',
+          expMonth: paymentMethod.card?.exp_month || 12,
+          expYear: paymentMethod.card?.exp_year || new Date().getFullYear(),
+          funding: paymentMethod.card?.funding,
+          country: paymentMethod.card?.country,
+          nickname,
+          lastUsedAt: new Date(),
+          usageCount: 1,
+          isDefault: false, // User can set as default later
+        },
+      });
+
+      this.logger.log(`Saved new payment method ${paymentMethodId} for user ${userId}`);
+
+      return {
+        success: true,
+        message: 'Card saved successfully',
+        paymentMethodId,
+      };
+    } catch (error) {
+      this.logger.error('Error saving payment method after payment:', error);
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to save payment method'
+      );
+    }
+  }
+
+  /**
+   * Update card nickname
+   */
+  async updateCardNickname(userId: string, paymentMethodId: string, nickname: string) {
+    try {
+      // Verify the payment method belongs to this user
+      const savedMethod = await this.prisma.savedPaymentMethod.findFirst({
+        where: {
+          userId,
+          stripePaymentMethodId: paymentMethodId,
+        },
+      });
+
+      if (!savedMethod) {
+        throw new BadRequestException('Payment method not found');
+      }
+
+      // Update nickname
+      await this.prisma.savedPaymentMethod.update({
+        where: { id: savedMethod.id },
+        data: { nickname },
+      });
+
+      this.logger.log(`Updated nickname for payment method ${paymentMethodId} to "${nickname}"`);
+
+      return {
+        success: true,
+        message: 'Card nickname updated successfully',
+      };
+    } catch (error) {
+      this.logger.error('Error updating card nickname:', error);
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to update card nickname'
+      );
+    }
+  }
+
+  /**
+   * Update card usage statistics (internal method)
+   * Called automatically when a saved card is used for payment
+   */
+  async updateCardUsageStats(paymentMethodId: string) {
+    try {
+      const savedMethod = await this.prisma.savedPaymentMethod.findUnique({
+        where: { stripePaymentMethodId: paymentMethodId },
+      });
+
+      if (savedMethod) {
+        await this.prisma.savedPaymentMethod.update({
+          where: { id: savedMethod.id },
+          data: {
+            lastUsedAt: new Date(),
+            usageCount: { increment: 1 },
+          },
+        });
+        this.logger.log(`Updated usage stats for payment method ${paymentMethodId}`);
+      }
+    } catch (error) {
+      // Don't fail the payment if usage tracking fails
+      this.logger.warn('Failed to update card usage stats:', error);
+    }
+  }
+
+  /**
+   * Get detailed saved payment method information
+   */
+  async getSavedPaymentMethodDetails(userId: string, paymentMethodId: string) {
+    try {
+      const stripe = await this.getStripeClient();
+
+      // Get from our database
+      const savedMethod = await this.prisma.savedPaymentMethod.findFirst({
+        where: {
+          userId,
+          stripePaymentMethodId: paymentMethodId,
+        },
+      });
+
+      if (!savedMethod) {
+        throw new BadRequestException('Payment method not found');
+      }
+
+      // Get fresh data from Stripe
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+
+      // Get user's customer info for default status
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { stripeCustomerId: true },
+      });
+
+      let isDefault = false;
+      if (user?.stripeCustomerId) {
+        const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+        if (!('deleted' in customer && customer.deleted)) {
+          const activeCustomer = customer as Stripe.Customer;
+          isDefault = activeCustomer.invoice_settings?.default_payment_method === paymentMethodId;
+        }
+      }
+
+      return {
+        id: savedMethod.id,
+        stripePaymentMethodId: savedMethod.stripePaymentMethodId,
+        brand: paymentMethod.card?.brand || savedMethod.brand,
+        last4: paymentMethod.card?.last4 || savedMethod.last4,
+        expMonth: paymentMethod.card?.exp_month || savedMethod.expMonth,
+        expYear: paymentMethod.card?.exp_year || savedMethod.expYear,
+        funding: paymentMethod.card?.funding || savedMethod.funding,
+        country: paymentMethod.card?.country || savedMethod.country,
+        nickname: savedMethod.nickname,
+        isDefault,
+        lastUsedAt: savedMethod.lastUsedAt,
+        usageCount: savedMethod.usageCount,
+        createdAt: savedMethod.createdAt,
+      };
+    } catch (error) {
+      this.logger.error('Error getting saved payment method details:', error);
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to get payment method details'
+      );
+    }
   }
 
   /**
@@ -2158,6 +2381,11 @@ export class PaymentService {
 
     this.logger.log(
       `Payment intent created with saved method: ${paymentIntent.id} for order ${dto.orderId}`
+    );
+
+    // Update usage stats for this card (async, don't wait)
+    this.updateCardUsageStats(paymentMethodId).catch(err =>
+      this.logger.warn('Failed to update card usage stats:', err)
     );
 
     return {

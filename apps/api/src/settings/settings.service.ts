@@ -689,4 +689,103 @@ export class SettingsService {
       return true; // Default to test mode for safety
     }
   }
+
+  // ============================================================================
+  // TAX SETTINGS
+  // ============================================================================
+
+  /**
+   * Get tax calculation mode
+   */
+  async getTaxCalculationMode(): Promise<'disabled' | 'simple' | 'by_state'> {
+    try {
+      const setting = await this.getSetting('tax_calculation_mode');
+      const mode = String(setting.value);
+      if (mode === 'disabled' || mode === 'simple' || mode === 'by_state') {
+        return mode as 'disabled' | 'simple' | 'by_state';
+      }
+      return 'disabled';
+    } catch (error) {
+      return 'disabled'; // Default to no tax
+    }
+  }
+
+  /**
+   * Get tax default rate (for simple mode)
+   */
+  async getTaxDefaultRate(): Promise<number> {
+    try {
+      const setting = await this.getSetting('tax_default_rate');
+      const rate = Number(setting.value);
+      return isNaN(rate) ? 0.10 : rate;
+    } catch (error) {
+      return 0.10; // Default 10%
+    }
+  }
+
+  /**
+   * Check if tax calculation is enabled (legacy setting)
+   */
+  async isTaxCalculationEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.getSetting('tax_calculation_enabled');
+      return Boolean(setting.value);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // ============================================================================
+  // SHIPPING SETTINGS
+  // ============================================================================
+
+  /**
+   * Get shipping mode
+   */
+  async getShippingMode(): Promise<'manual' | 'dhl_api' | 'hybrid'> {
+    try {
+      const setting = await this.getSetting('shipping_mode');
+      const mode = String(setting.value);
+      if (mode === 'manual' || mode === 'dhl_api' || mode === 'hybrid') {
+        return mode as 'manual' | 'dhl_api' | 'hybrid';
+      }
+      return 'manual';
+    } catch (error) {
+      return 'manual'; // Default to manual mode
+    }
+  }
+
+  /**
+   * Get manual shipping rates (all methods)
+   */
+  async getShippingRates(): Promise<{
+    standard: number;
+    express: number;
+    overnight: number;
+    internationalSurcharge: number;
+  }> {
+    try {
+      const [standard, express, overnight, intlSurcharge] = await Promise.all([
+        this.getSetting('shipping_standard_rate').catch(() => ({ value: 9.99 })),
+        this.getSetting('shipping_express_rate').catch(() => ({ value: 19.99 })),
+        this.getSetting('shipping_overnight_rate').catch(() => ({ value: 29.99 })),
+        this.getSetting('shipping_international_surcharge').catch(() => ({ value: 15.00 })),
+      ]);
+
+      return {
+        standard: Number(standard.value) || 9.99,
+        express: Number(express.value) || 19.99,
+        overnight: Number(overnight.value) || 29.99,
+        internationalSurcharge: Number(intlSurcharge.value) || 15.00,
+      };
+    } catch (error) {
+      // Fallback to hardcoded defaults
+      return {
+        standard: 9.99,
+        express: 19.99,
+        overnight: 29.99,
+        internationalSurcharge: 15.00,
+      };
+    }
+  }
 }

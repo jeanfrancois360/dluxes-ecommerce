@@ -15,6 +15,10 @@ export interface SavedPaymentMethod {
   isDefault: boolean;
   funding?: string;
   country?: string;
+  // Enhanced fields
+  nickname?: string;
+  lastUsedAt?: string;
+  usageCount?: number;
 }
 
 export interface PaymentMethodsResponse {
@@ -91,6 +95,28 @@ export const paymentMethodsApi = {
    */
   remove: (paymentMethodId: string) =>
     api.delete<ActionResponse>(`/payment/methods/${paymentMethodId}`),
+
+  /**
+   * Save payment method after successful payment
+   * Called when user checks "Save card for future purchases"
+   */
+  saveAfterPayment: (paymentIntentId: string, nickname?: string) =>
+    api.post<ActionResponse>('/payment/methods/save-after-payment', {
+      paymentIntentId,
+      nickname,
+    }),
+
+  /**
+   * Update card nickname
+   */
+  updateNickname: (paymentMethodId: string, nickname: string) =>
+    api.patch<ActionResponse>(`/payment/methods/${paymentMethodId}/nickname`, { nickname }),
+
+  /**
+   * Get detailed payment method information
+   */
+  getDetails: (paymentMethodId: string) =>
+    api.get<{ success: boolean; data: SavedPaymentMethod }>(`/payment/methods/${paymentMethodId}/details`),
 };
 
 export default paymentMethodsApi;

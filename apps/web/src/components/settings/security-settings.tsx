@@ -51,7 +51,12 @@ export function SecuritySettingsSection() {
 
   const onSubmit = async (data: SecuritySettings) => {
     try {
-      const updates = Object.entries(data);
+      // Protected settings that cannot be edited
+      const protectedSettings = ['2fa_required_for_admin'];
+
+      // Filter out protected settings before saving
+      const updates = Object.entries(data).filter(([key]) => !protectedSettings.includes(key));
+
       for (const [key, value] of updates) {
         await updateSetting(key, value, 'Updated via settings panel');
       }

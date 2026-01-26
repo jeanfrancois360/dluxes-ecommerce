@@ -75,7 +75,46 @@ export const deliverySettingsSchema = z.object({
   delivery_confirmation_required: z.boolean(),
   delivery_auto_assign: z.boolean(),
   delivery_partner_commission: z.number().min(0).max(100),
+  free_shipping_enabled: z.boolean(),
   free_shipping_threshold: z.number().min(0, 'Threshold must be positive'),
+});
+
+// ============================================================================
+// TAX SETTINGS
+// ============================================================================
+export const taxSettingsSchema = z.object({
+  tax_calculation_mode: z.enum(['disabled', 'simple', 'by_state'], {
+    errorMap: () => ({ message: 'Tax mode must be disabled, simple, or by_state' }),
+  }),
+  tax_calculation_enabled: z.boolean(),
+  tax_default_rate: z.number()
+    .min(0, 'Tax rate cannot be negative')
+    .max(1, 'Tax rate cannot exceed 100%'),
+}).refine(
+  (data) => {
+    // If mode is 'simple', tax_default_rate must be > 0
+    if (data.tax_calculation_mode === 'simple' && data.tax_default_rate <= 0) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Default tax rate must be greater than 0 when using simple mode',
+    path: ['tax_default_rate'],
+  }
+);
+
+// ============================================================================
+// SHIPPING SETTINGS
+// ============================================================================
+export const shippingSettingsSchema = z.object({
+  shipping_mode: z.enum(['manual', 'dhl_api', 'hybrid'], {
+    errorMap: () => ({ message: 'Shipping mode must be manual, dhl_api, or hybrid' }),
+  }),
+  shipping_standard_rate: z.number().min(0, 'Rate cannot be negative'),
+  shipping_express_rate: z.number().min(0, 'Rate cannot be negative'),
+  shipping_overnight_rate: z.number().min(0, 'Rate cannot be negative'),
+  shipping_international_surcharge: z.number().min(0, 'Surcharge cannot be negative'),
 });
 
 // ============================================================================
@@ -128,6 +167,8 @@ export const allSettingsSchema = z.object({
   commission: commissionSettingsSchema,
   currency: currencySettingsSchema,
   delivery: deliverySettingsSchema,
+  tax: taxSettingsSchema,
+  shipping: shippingSettingsSchema,
   advertisement: advertisementSettingsSchema,
   security: securitySettingsSchema,
   notifications: notificationSettingsSchema,
@@ -140,6 +181,8 @@ export type PaymentSettings = z.infer<typeof paymentSettingsSchema>;
 export type CommissionSettings = z.infer<typeof commissionSettingsSchema>;
 export type CurrencySettings = z.infer<typeof currencySettingsSchema>;
 export type DeliverySettings = z.infer<typeof deliverySettingsSchema>;
+export type TaxSettings = z.infer<typeof taxSettingsSchema>;
+export type ShippingSettings = z.infer<typeof shippingSettingsSchema>;
 export type AdvertisementSettings = z.infer<typeof advertisementSettingsSchema>;
 export type SecuritySettings = z.infer<typeof securitySettingsSchema>;
 export type NotificationSettings = z.infer<typeof notificationSettingsSchema>;

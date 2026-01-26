@@ -12,7 +12,16 @@ import { useEffect, useState } from 'react';
 
 export default function CartPage() {
   const router = useRouter();
-  const { items = [], totals, updateQuantity, removeItem, isLoading } = useCart() || {};
+  const {
+    items = [],
+    totals,
+    freeShippingThreshold = 200,
+    taxCalculationMode = 'disabled',
+    taxRate = 0,
+    updateQuantity,
+    removeItem,
+    isLoading
+  } = useCart() || {};
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
@@ -252,10 +261,18 @@ export default function CartPage() {
                         {totals.shipping === 0 ? 'FREE' : <Price amount={totals.shipping} className="inline" />}
                       </span>
                     </div>
-                    <div className="flex justify-between text-neutral-600">
-                      <span>Tax (10%)</span>
-                      <Price amount={totals.tax} className="font-semibold text-black" />
-                    </div>
+                    {taxCalculationMode !== 'disabled' && (
+                      <div className="flex justify-between text-neutral-600">
+                        <span>
+                          Tax
+                          {taxCalculationMode === 'simple' && ` (${(taxRate * 100).toFixed(0)}%)`}
+                          {taxCalculationMode === 'by_state' && (
+                            <span className="text-xs ml-1">(Calculated at checkout)</span>
+                          )}
+                        </span>
+                        <Price amount={totals.tax} className="font-semibold text-black" />
+                      </div>
+                    )}
                   </div>
 
                   {/* Total */}
@@ -271,7 +288,7 @@ export default function CartPage() {
                       animate={{ opacity: 1 }}
                       className="mb-4 p-3 bg-accent-50 border border-accent-200 rounded-lg text-sm text-neutral-700"
                     >
-                      Add <Price amount={200 - totals.subtotal} className="font-semibold text-gold inline" /> more to get free shipping!
+                      Add <Price amount={freeShippingThreshold - totals.subtotal} className="font-semibold text-gold inline" /> more to get free shipping!
                     </motion.div>
                   )}
 
