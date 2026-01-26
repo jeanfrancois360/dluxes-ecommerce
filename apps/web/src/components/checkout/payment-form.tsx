@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { cn } from '@nextpik/ui';
 import type { StripeCardElementOptions } from '@stripe/stripe-js';
+import Link from 'next/link';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import {
   paymentMethodsApi,
   type SavedPaymentMethod,
   CARD_BRAND_LABELS,
 } from '@/lib/api/payment-methods';
+import { CardBrandLogo } from '@/components/payment/card-brand-logo';
 
 interface PaymentFormProps {
   amount: number;
@@ -188,6 +190,18 @@ export function PaymentForm({
       if (result.paymentIntent && (result.paymentIntent.status === 'succeeded' || result.paymentIntent.status === 'requires_capture')) {
         // Both 'succeeded' and 'requires_capture' mean payment was authorized successfully
         // 'requires_capture' is used for manual capture (escrow system)
+
+        // CRITICAL FIX: Save the card if user checked the "Save card" checkbox
+        if (useNewCard && saveCard && result.paymentIntent.id) {
+          try {
+            await paymentMethodsApi.saveAfterPayment(result.paymentIntent.id);
+            console.log('Card saved successfully for future use');
+          } catch (saveError) {
+            // Don't fail the payment if card saving fails
+            console.error('Failed to save card for future use:', saveError);
+          }
+        }
+
         onSuccess(result.paymentIntent.id);
       } else {
         throw new Error('Payment was not successful');
@@ -275,10 +289,8 @@ export function PaymentForm({
                     )}
                   </div>
 
-                  {/* Card Icon */}
-                  <div className="w-10 h-6 bg-neutral-100 rounded flex items-center justify-center text-xs font-bold text-neutral-600">
-                    {card.brand.toUpperCase().slice(0, 4)}
-                  </div>
+                  {/* Card Brand Logo */}
+                  <CardBrandLogo brand={card.brand} size="sm" />
 
                   {/* Card Details */}
                   <div className="text-left">
@@ -653,14 +665,26 @@ export function PaymentForm({
       </div>
 
       {/* Privacy Notice */}
-      <motion.p
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="text-xs text-center text-neutral-500"
+        className="space-y-2"
       >
-        Your payment information is encrypted and secure. We never store your full card details.
-      </motion.p>
+        <p className="text-xs text-center text-neutral-500">
+          Your payment information is encrypted and secure. We never store your full card details.
+        </p>
+        <p className="text-xs text-center text-neutral-500">
+          By completing your purchase, you agree to our{' '}
+          <Link href="/terms" className="text-gold hover:text-accent-700 transition-colors">
+            Terms of Service
+          </Link>
+          {' '}and{' '}
+          <Link href="/privacy" className="text-gold hover:text-accent-700 transition-colors">
+            Privacy Policy
+          </Link>
+        </p>
+      </motion.div>
 
       {/* Animations */}
       <style jsx global>{`

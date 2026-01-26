@@ -280,6 +280,20 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
+
+        {/* Legal Links */}
+        <div className="text-center pt-4 border-t border-neutral-200">
+          <p className="text-xs text-neutral-500">
+            By signing in, you agree to our{' '}
+            <Link href="/terms" className="text-gold hover:text-accent-700 transition-colors">
+              Terms of Service
+            </Link>
+            {' '}and{' '}
+            <Link href="/privacy" className="text-gold hover:text-accent-700 transition-colors">
+              Privacy Policy
+            </Link>
+          </p>
+        </div>
       </form>
     </AuthLayout>
   );

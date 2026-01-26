@@ -349,6 +349,25 @@ export default function BecomeSellerPage() {
                 </select>
               </div>
 
+              {/* Legal Agreement */}
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-neutral-700">
+                  By submitting this application, you agree to our{' '}
+                  <Link href="/terms" className="text-gold hover:text-accent-700 font-medium transition-colors">
+                    Terms of Service
+                  </Link>
+                  ,{' '}
+                  <Link href="/privacy" className="text-gold hover:text-accent-700 font-medium transition-colors">
+                    Privacy Policy
+                  </Link>
+                  , and{' '}
+                  <Link href="/seller-agreement" className="text-gold hover:text-accent-700 font-medium transition-colors">
+                    Seller Agreement
+                  </Link>
+                  . You understand that NextPik will review your application and may request additional information.
+                </p>
+              </div>
+
               {/* Submit */}
               <div className="flex items-center justify-between pt-6 border-t border-neutral-200">
                 <Link href="/dashboard/buyer" className="text-neutral-600 hover:text-black">
