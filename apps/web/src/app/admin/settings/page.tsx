@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@next
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 import { Button } from '@nextpik/ui';
-import { Settings, DollarSign, Percent, Globe, Truck, Shield, Bell, Search, History, Save, ChevronRight, Sparkles, Package, Receipt } from 'lucide-react';
+import { Settings, DollarSign, Percent, Globe, Truck, Shield, Bell, Search, History, Save, ChevronRight, Sparkles, Package, Receipt, Calculator, PackageCheck } from 'lucide-react';
 import { GeneralSettingsSection } from '@/components/settings/general-settings';
 import { PaymentSettingsSection } from '@/components/settings/payment-settings';
 import { CommissionSettingsSection } from '@/components/settings/commission-settings';
@@ -32,8 +32,8 @@ const tabsConfig = [
   { value: 'currency', label: 'Currency', icon: Globe, description: 'Multi-currency support' },
   { value: 'inventory', label: 'Inventory', icon: Package, description: 'Stock & inventory management' },
   { value: 'tax', label: 'Tax', icon: Receipt, description: 'Tax calculation & rates' },
-  { value: 'shipping', label: 'Shipping', icon: Truck, description: 'Shipping methods & rates' },
-  { value: 'delivery', label: 'Delivery', icon: Truck, description: 'Delivery settings & free shipping' },
+  { value: 'shipping', label: 'Shipping Rates', icon: Calculator, description: 'Shipping cost calculator & pricing' },
+  { value: 'delivery', label: 'Fulfillment', icon: PackageCheck, description: 'Order fulfillment & delivery partners' },
   { value: 'security', label: 'Security', icon: Shield, description: 'Authentication & security' },
   { value: 'notifications', label: 'Notifications', icon: Bell, description: 'Email & SMS notifications' },
   { value: 'seo', label: 'SEO', icon: Search, description: 'Search engine optimization' },

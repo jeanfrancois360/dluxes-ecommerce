@@ -69,14 +69,12 @@ export const currencySettingsSchema = z.object({
 );
 
 // ============================================================================
-// DELIVERY SETTINGS
+// DELIVERY/FULFILLMENT SETTINGS
 // ============================================================================
 export const deliverySettingsSchema = z.object({
   delivery_confirmation_required: z.boolean(),
   delivery_auto_assign: z.boolean(),
   delivery_partner_commission: z.number().min(0).max(100),
-  free_shipping_enabled: z.boolean(),
-  free_shipping_threshold: z.number().min(0, 'Threshold must be positive'),
 });
 
 // ============================================================================
@@ -105,7 +103,7 @@ export const taxSettingsSchema = z.object({
 );
 
 // ============================================================================
-// SHIPPING SETTINGS
+// SHIPPING RATES SETTINGS
 // ============================================================================
 export const shippingSettingsSchema = z.object({
   shipping_mode: z.enum(['manual', 'dhl_api', 'hybrid'], {
@@ -115,6 +113,8 @@ export const shippingSettingsSchema = z.object({
   shipping_express_rate: z.number().min(0, 'Rate cannot be negative'),
   shipping_overnight_rate: z.number().min(0, 'Rate cannot be negative'),
   shipping_international_surcharge: z.number().min(0, 'Surcharge cannot be negative'),
+  free_shipping_enabled: z.boolean(),
+  free_shipping_threshold: z.number().min(0, 'Threshold must be positive'),
 });
 
 // ============================================================================
