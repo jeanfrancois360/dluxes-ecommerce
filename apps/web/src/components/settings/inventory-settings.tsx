@@ -45,8 +45,16 @@ export function InventorySettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
+
+      // Inventory settings have "inventory." prefix in DB, strip it for form
+      const inventoryData: Partial<InventorySettings> = {};
+      Object.entries(formData).forEach(([key, value]) => {
+        const cleanKey = key.replace('inventory.', '');
+        inventoryData[cleanKey as keyof InventorySettings] = value;
+      });
+
       if (!form.formState.isDirty || justSavedRef.current) {
-        form.reset(formData as InventorySettings);
+        form.reset(inventoryData as InventorySettings);
         justSavedRef.current = false;
       }
     }
@@ -57,13 +65,16 @@ export function InventorySettingsSection() {
     try {
       const updates = Object.entries(data);
       for (const [key, value] of updates) {
-        await updateSetting(key, value, 'Updated via settings panel');
+        // Inventory settings in DB have "inventory." prefix
+        const fullKey = `inventory.${key}`;
+        await updateSetting(fullKey, value, 'Updated via settings panel');
       }
       justSavedRef.current = true;
       toast.success('Inventory settings saved successfully');
       await refetch();
     } catch (error) {
       console.error('Failed to save settings:', error);
+      toast.error('Failed to save inventory settings');
       justSavedRef.current = false;
     }
   };
