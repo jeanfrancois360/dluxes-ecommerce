@@ -19,48 +19,11 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import Link from 'next/link';
+import { CardBrandLogo } from '@/components/payment/card-brand-logo';
+import { CardExpiryBadge } from '@/components/payment/card-expiry-badge';
+import { CardListSkeleton } from '@/components/payment/card-skeleton';
 
-// Card brand SVG icons
-const CardBrandIcon = ({ brand }: { brand: string }) => {
-  const lowerBrand = brand.toLowerCase();
-
-  if (lowerBrand === 'visa') {
-    return (
-      <svg viewBox="0 0 50 50" className="w-10 h-6">
-        <rect fill="#1A1F71" width="50" height="50" rx="4" />
-        <text x="25" y="32" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">VISA</text>
-      </svg>
-    );
-  }
-
-  if (lowerBrand === 'mastercard') {
-    return (
-      <svg viewBox="0 0 50 50" className="w-10 h-6">
-        <rect fill="#000" width="50" height="50" rx="4" />
-        <circle cx="20" cy="25" r="12" fill="#EB001B" />
-        <circle cx="30" cy="25" r="12" fill="#F79E1B" />
-      </svg>
-    );
-  }
-
-  if (lowerBrand === 'amex') {
-    return (
-      <svg viewBox="0 0 50 50" className="w-10 h-6">
-        <rect fill="#006FCF" width="50" height="50" rx="4" />
-        <text x="25" y="32" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">AMEX</text>
-      </svg>
-    );
-  }
-
-  // Default card icon
-  return (
-    <svg viewBox="0 0 50 50" className="w-10 h-6">
-      <rect fill="#6B7280" width="50" height="50" rx="4" />
-      <rect x="5" y="15" width="40" height="6" fill="#9CA3AF" rx="1" />
-      <rect x="5" y="30" width="20" height="4" fill="#9CA3AF" rx="1" />
-    </svg>
-  );
-};
+// Card brand icon is now imported from components/payment/card-brand-logo.tsx
 
 // Add Card Modal Component
 function AddCardModal({
@@ -247,6 +210,10 @@ export default function PaymentMethodsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSettingDefault, setIsSettingDefault] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+  // Nickname editing state
+  const [editingNickname, setEditingNickname] = useState<string | null>(null);
+  const [nicknameValue, setNicknameValue] = useState('');
+  const [isSavingNickname, setIsSavingNickname] = useState(false);
 
   // Initialize Stripe
   useEffect(() => {
@@ -320,7 +287,53 @@ export default function PaymentMethodsPage() {
     }
   };
 
-  if (authLoading || isLoading) {
+  const handleEditNickname = (cardId: string, currentNickname?: string) => {
+    setEditingNickname(cardId);
+    setNicknameValue(currentNickname || '');
+  };
+
+  const handleSaveNickname = async (paymentMethodId: string) => {
+    if (!nicknameValue.trim()) {
+      toast.error('Please enter a nickname');
+      return;
+    }
+
+    try {
+      setIsSavingNickname(true);
+      const response = await paymentMethodsApi.updateNickname(paymentMethodId, nicknameValue.trim());
+      if (response?.success) {
+        toast.success('Card nickname updated');
+        setEditingNickname(null);
+        fetchPaymentMethods();
+      } else {
+        throw new Error(response?.message || 'Failed to update nickname');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update nickname');
+    } finally {
+      setIsSavingNickname(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNickname(null);
+    setNicknameValue('');
+  };
+
+  const formatLastUsed = (lastUsedAt?: string) => {
+    if (!lastUsedAt) return 'Never used';
+    const date = new Date(lastUsedAt);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Used today';
+    if (diffDays === 1) return 'Used yesterday';
+    if (diffDays < 7) return `Used ${diffDays} days ago`;
+    if (diffDays < 30) return `Used ${Math.floor(diffDays / 7)} weeks ago`;
+    return `Used ${Math.floor(diffDays / 30)} months ago`;
+  };
+
+  if (authLoading) {
     return (
       <PageLayout>
         <div className="min-h-[60vh] flex items-center justify-center">
@@ -405,7 +418,9 @@ export default function PaymentMethodsPage() {
           transition={{ delay: 0.1 }}
           className="space-y-4"
         >
-          {paymentMethods.length === 0 ? (
+          {isLoading ? (
+            <CardListSkeleton count={3} />
+          ) : paymentMethods.length === 0 ? (
             <div className="bg-white rounded-2xl border-2 border-neutral-100 p-12 text-center">
               <div className="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-10 h-10 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -433,32 +448,109 @@ export default function PaymentMethodsPage() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 * index }}
+                whileHover={{ scale: 1.01, y: -2 }}
                 className={`bg-white rounded-2xl border-2 p-6 transition-all ${
-                  card.isDefault ? 'border-blue-500 shadow-lg shadow-blue-100' : 'border-neutral-100 hover:border-neutral-200'
+                  card.isDefault
+                    ? 'border-blue-500 shadow-lg shadow-blue-100'
+                    : 'border-neutral-100 hover:border-blue-300 hover:shadow-md'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    {/* Card Icon */}
+                    {/* Card Brand Logo */}
                     <div className="flex-shrink-0">
-                      <CardBrandIcon brand={card.brand} />
+                      <CardBrandLogo brand={card.brand} size="md" />
                     </div>
 
                     {/* Card Details */}
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-black">
-                          {CARD_BRAND_LABELS[card.brand.toLowerCase()] || card.brand} ending in {card.last4}
-                        </p>
-                        {card.isDefault && (
-                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                            Default
-                          </span>
+                    <div className="flex-1">
+                      {/* Nickname editing or display */}
+                      {editingNickname === card.id ? (
+                        <div className="flex items-center gap-2 mb-1">
+                          <input
+                            type="text"
+                            value={nicknameValue}
+                            onChange={(e) => setNicknameValue(e.target.value)}
+                            placeholder="Enter card nickname"
+                            className="px-2 py-1 border border-blue-500 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                            autoFocus
+                            maxLength={30}
+                          />
+                          <button
+                            onClick={() => handleSaveNickname(card.id)}
+                            disabled={isSavingNickname}
+                            className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {isSavingNickname ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-2 py-1 border border-neutral-300 text-xs rounded hover:bg-neutral-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mb-1">
+                          {card.nickname ? (
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-black">{card.nickname}</p>
+                              <button
+                                onClick={() => handleEditNickname(card.id, card.nickname)}
+                                className="text-blue-600 hover:text-blue-700"
+                                title="Edit nickname"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleEditNickname(card.id)}
+                              className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                              Add nickname
+                            </button>
+                          )}
+                          {card.isDefault && (
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Card brand and number */}
+                      <p className="text-sm text-gray-700">
+                        {CARD_BRAND_LABELS[card.brand.toLowerCase()] || card.brand} •••• {card.last4}
+                      </p>
+
+                      {/* Expiry and usage stats */}
+                      <div className="flex items-center flex-wrap gap-2 mt-1">
+                        <span className="text-xs text-gray-500">
+                          Expires {card.expMonth.toString().padStart(2, '0')}/{card.expYear}
+                        </span>
+                        <CardExpiryBadge expMonth={card.expMonth} expYear={card.expYear} />
+
+                        {card.usageCount !== undefined && card.usageCount > 0 && (
+                          <>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">
+                              Used {card.usageCount} {card.usageCount === 1 ? 'time' : 'times'}
+                            </span>
+                          </>
+                        )}
+                        {card.lastUsedAt && (
+                          <>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">{formatLastUsed(card.lastUsedAt)}</span>
+                          </>
                         )}
                       </div>
-                      <p className="text-sm text-gray-500">
-                        Expires {card.expMonth.toString().padStart(2, '0')}/{card.expYear}
-                      </p>
                     </div>
                   </div>
 

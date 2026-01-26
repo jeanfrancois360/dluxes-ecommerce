@@ -102,6 +102,78 @@ export class PaymentController {
   }
 
   /**
+   * Save payment method after successful payment
+   * POST /payment/methods/save-after-payment
+   */
+  @Post('methods/save-after-payment')
+  @UseGuards(JwtAuthGuard)
+  async savePaymentMethodAfterPayment(
+    @Request() req: any,
+    @Body() body: { paymentIntentId: string; nickname?: string },
+  ) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const data = await this.paymentService.savePaymentMethodAfterPayment(
+        body.paymentIntentId,
+        userId,
+        body.nickname,
+      );
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to save payment method',
+      };
+    }
+  }
+
+  /**
+   * Update card nickname
+   * PATCH /payment/methods/:id/nickname
+   */
+  @Patch('methods/:id/nickname')
+  @UseGuards(JwtAuthGuard)
+  async updateCardNickname(
+    @Request() req: any,
+    @Param('id') paymentMethodId: string,
+    @Body() body: { nickname: string },
+  ) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const data = await this.paymentService.updateCardNickname(
+        userId,
+        paymentMethodId,
+        body.nickname,
+      );
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to update card nickname',
+      };
+    }
+  }
+
+  /**
+   * Get detailed payment method information
+   * GET /payment/methods/:id/details
+   */
+  @Get('methods/:id/details')
+  @UseGuards(JwtAuthGuard)
+  async getSavedPaymentMethodDetails(@Request() req: any, @Param('id') paymentMethodId: string) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const data = await this.paymentService.getSavedPaymentMethodDetails(userId, paymentMethodId);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to get payment method details',
+      };
+    }
+  }
+
+  /**
    * Create a payment intent with a saved payment method
    * POST /payment/create-intent-saved
    */

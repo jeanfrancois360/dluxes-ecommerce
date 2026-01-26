@@ -24,6 +24,7 @@ export function DeliverySettingsSection() {
       delivery_confirmation_required: true,
       delivery_auto_assign: false,
       delivery_partner_commission: 5,
+      free_shipping_enabled: true,
       free_shipping_threshold: 100,
     },
   });
@@ -41,7 +42,12 @@ export function DeliverySettingsSection() {
 
   const onSubmit = async (data: DeliverySettings) => {
     try {
-      const updates = Object.entries(data);
+      // Protected settings that cannot be edited
+      const protectedSettings = ['delivery_confirmation_required'];
+
+      // Filter out protected settings before saving
+      const updates = Object.entries(data).filter(([key]) => !protectedSettings.includes(key));
+
       for (const [key, value] of updates) {
         await updateSetting(key, value, 'Updated via settings panel');
       }
@@ -110,6 +116,14 @@ export function DeliverySettingsSection() {
           tooltip="When enabled, orders will be automatically assigned to available delivery partners based on location and availability"
         />
 
+        <SettingsToggle
+          label="Enable Free Shipping"
+          description="Offer free shipping when order total exceeds threshold"
+          checked={form.watch('free_shipping_enabled')}
+          onCheckedChange={(checked) => form.setValue('free_shipping_enabled', checked, { shouldDirty: true })}
+          tooltip="When enabled, orders above the threshold will qualify for free shipping"
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <SettingsField
             label="Delivery Partner Commission"
@@ -135,39 +149,43 @@ export function DeliverySettingsSection() {
             </div>
           </SettingsField>
 
-          <SettingsField
-            label="Free Shipping Threshold (USD)"
-            id="free_shipping_threshold"
-            required
-            tooltip="Order total required for free shipping. Set to 0 to disable free shipping."
-            error={form.formState.errors.free_shipping_threshold?.message}
-            helperText="Order total required for free shipping (set to 0 to disable)"
-            prefix="$"
-          >
-            <div className="flex gap-2 items-center">
-              <span className="text-muted-foreground">$</span>
-              <Input
-                id="free_shipping_threshold"
-                type="number"
-                min={0}
-                step="0.01"
-                {...form.register('free_shipping_threshold', { valueAsNumber: true })}
-                placeholder="100.00"
-                className="flex-1"
-              />
-            </div>
-          </SettingsField>
+          {form.watch('free_shipping_enabled') && (
+            <SettingsField
+              label="Free Shipping Threshold (USD)"
+              id="free_shipping_threshold"
+              required
+              tooltip="Order total required for free shipping"
+              error={form.formState.errors.free_shipping_threshold?.message}
+              helperText="Order total required for free shipping"
+              prefix="$"
+            >
+              <div className="flex gap-2 items-center">
+                <span className="text-muted-foreground">$</span>
+                <Input
+                  id="free_shipping_threshold"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  {...form.register('free_shipping_threshold', { valueAsNumber: true })}
+                  placeholder="100.00"
+                  className="flex-1"
+                />
+              </div>
+            </SettingsField>
+          )}
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ">
-          <p className="text-sm font-medium mb-2">Customer Experience</p>
-          <div className="text-sm text-muted-foreground space-y-1">
-            <p>Cart Total: $85.00 → Shipping: Calculated</p>
-            <p>
-              Cart Total: ${form.watch('free_shipping_threshold') || 100}.00+ → Shipping: FREE
-            </p>
+        {form.watch('free_shipping_enabled') && (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ">
+            <p className="text-sm font-medium mb-2">Customer Experience</p>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>Cart Total: $85.00 → Shipping: Calculated</p>
+              <p>
+                Cart Total: ${form.watch('free_shipping_threshold') || 100}.00+ → Shipping: FREE
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </SettingsCard>
 
       <SettingsFooter

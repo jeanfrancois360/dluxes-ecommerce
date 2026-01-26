@@ -242,6 +242,37 @@ return {
 - RAM: 54% reduction (5.5GB → 2.5GB)
 - Use `pnpm dev:web` or `pnpm dev:api` for single-area work
 
+### Tax & Shipping Configuration (v2.7.0 - Jan 25, 2026)
+
+**Tax System:**
+- Added `tax_calculation_mode` setting: 'disabled', 'simple', 'by_state'
+- Replaces hardcoded tax logic with admin-configurable settings
+- Simple mode: Single default rate for all orders
+- By-state mode: US state-specific tax rates (50 states + local estimates)
+- Admin can configure via new "Tax" tab in System Settings
+
+**Shipping System:**
+- Added `shipping_mode` setting: 'manual', 'dhl_api', 'hybrid'
+- Manual mode: Admin-configurable rates (standard, express, overnight)
+- Settings: `shipping_standard_rate`, `shipping_express_rate`, `shipping_overnight_rate`, `shipping_international_surcharge`
+- Foundation for future DHL API integration
+- Admin can configure via new "Shipping" tab in System Settings
+
+**Database:**
+- Added 6 new system settings (tax_calculation_mode, shipping_mode, 4 shipping rates)
+- Created default shipping zones (US Domestic, International) with rate tiers
+- ShippingZone and ShippingRate models ready for zone-based shipping (future)
+
+**Files Modified:**
+- Backend: `shipping-tax.service.ts`, `settings.service.ts`, `seed-settings.ts`, `orders.service.ts`
+- Frontend: `tax-settings.tsx`, `shipping-settings.tsx`, `settings/page.tsx`, `validations/settings.ts`
+- Database: Created `seed-shipping-zones.ts` script
+
+**Backward Compatibility:**
+- All settings use current hardcoded values as defaults
+- Fallback logic preserves existing behavior if settings not configured
+- No breaking changes to existing orders or checkout flow
+
 ---
 
 ## API Endpoints Quick Reference

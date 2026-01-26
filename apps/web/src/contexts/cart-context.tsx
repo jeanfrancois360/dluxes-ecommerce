@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useCurrencyConverter, useSelectedCurrency } from '@/hooks/use-currency';
 
 export interface CartItem {
   id: string;
@@ -29,6 +30,10 @@ interface CartContextType {
   totals: CartTotals;
   isLoading: boolean;
   error: string | null;
+  freeShippingEnabled: boolean;
+  freeShippingThreshold: number;
+  taxCalculationMode: 'disabled' | 'simple' | 'by_state';
+  taxRate: number;
   addItem: (productId: string, quantity: number, variantId?: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
@@ -40,17 +45,81 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
-// Shipping cost constants
-const FREE_SHIPPING_THRESHOLD = 200;
-const STANDARD_SHIPPING_COST = 10;
+// Default shipping cost constants (fallback if settings not loaded)
+const DEFAULT_FREE_SHIPPING_THRESHOLD = 200;
+const DEFAULT_STANDARD_SHIPPING_COST = 10;
 
-// Tax rate (10% flat rate)
-const TAX_RATE = 0.1;
+// Tax rate fallback (10% flat rate) - KEPT FOR BACKWARDS COMPATIBILITY
+const TAX_RATE_FALLBACK = 0.1;
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Currency conversion hooks
+  const { convertPrice } = useCurrencyConverter();
+  const { selectedCurrency } = useSelectedCurrency();
+
+  // Shipping settings from backend (stored in USD)
+  const [freeShippingEnabled, setFreeShippingEnabled] = useState<boolean>(true);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(DEFAULT_FREE_SHIPPING_THRESHOLD);
+  const [standardShippingCost, setStandardShippingCost] = useState<number>(DEFAULT_STANDARD_SHIPPING_COST);
+
+  // Tax settings from backend (uses new tax_calculation_mode)
+  const [taxCalculationMode, setTaxCalculationMode] = useState<'disabled' | 'simple' | 'by_state'>('disabled');
+  const [taxRate, setTaxRate] = useState<number>(0);
+
+  // Fetch settings from backend
+  useEffect(() => {
+    const fetchCartSettings = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/settings/public`);
+        const settings = response.data?.data || response.data;
+
+        // ===== SHIPPING SETTINGS =====
+        const freeShippingEnabledSetting = settings.find((s: any) => s.key === 'free_shipping_enabled');
+        const freeShippingThresholdSetting = settings.find((s: any) => s.key === 'free_shipping_threshold');
+
+        if (freeShippingEnabledSetting) {
+          setFreeShippingEnabled(freeShippingEnabledSetting.value === true || freeShippingEnabledSetting.value === 'true');
+        }
+
+        if (freeShippingThresholdSetting) {
+          setFreeShippingThreshold(Number(freeShippingThresholdSetting.value));
+        }
+
+        // ===== TAX SETTINGS (UPDATED to use tax_calculation_mode) =====
+        const taxModeSetting = settings.find((s: any) => s.key === 'tax_calculation_mode');
+        const taxDefaultRateSetting = settings.find((s: any) => s.key === 'tax_default_rate');
+
+        // Set tax calculation mode
+        const mode = taxModeSetting?.value || 'disabled';
+        setTaxCalculationMode(mode as 'disabled' | 'simple' | 'by_state');
+
+        // Set tax rate based on mode
+        if (mode === 'simple' && taxDefaultRateSetting) {
+          setTaxRate(Number(taxDefaultRateSetting.value));
+          console.log('[Cart] Tax mode: simple, rate:', Number(taxDefaultRateSetting.value));
+        } else if (mode === 'by_state') {
+          // For by_state mode, show estimated tax (or calculate at checkout)
+          setTaxRate(0); // Will show "Calculated at checkout"
+          console.log('[Cart] Tax mode: by_state (calculated at checkout)');
+        } else {
+          // Disabled mode - no tax
+          setTaxRate(0);
+          console.log('[Cart] Tax mode: disabled');
+        }
+      } catch (error) {
+        console.warn('[Cart] Failed to fetch settings, using fallbacks:', error);
+        // On error, disable tax (safest default)
+        setTaxCalculationMode('disabled');
+        setTaxRate(0);
+      }
+    };
+
+    fetchCartSettings();
+  }, []);
 
   // Generate or get session ID for cart
   const getSessionId = useCallback(() => {
@@ -64,11 +133,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return sessionId;
   }, []);
 
-  // Calculate totals
+  // Calculate totals using backend settings with currency conversion
   const calculateTotals = useCallback((cartItems: CartItem[]): CartTotals => {
     const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_COST;
-    const tax = subtotal * TAX_RATE;
+
+    // Convert threshold and shipping cost from USD to selected currency
+    const convertedThreshold = convertPrice(freeShippingThreshold, 'USD');
+    const convertedShippingCost = convertPrice(standardShippingCost, 'USD');
+
+    // Apply free shipping logic based on backend settings (with currency conversion)
+    let shipping = convertedShippingCost;
+    if (freeShippingEnabled && subtotal >= convertedThreshold) {
+      shipping = 0;
+    }
+
+    // Apply tax based on tax_calculation_mode
+    let tax = 0;
+    if (taxCalculationMode === 'simple') {
+      // Simple mode: apply default tax rate
+      tax = subtotal * taxRate;
+    } else if (taxCalculationMode === 'by_state') {
+      // By-state mode: tax calculated at checkout (show 0 in cart)
+      tax = 0;
+    }
+    // else: disabled mode - tax remains 0
+
     const total = subtotal + shipping + tax;
     const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -79,7 +168,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       total: Math.round(total * 100) / 100,
       itemCount,
     };
-  }, []);
+  }, [freeShippingEnabled, freeShippingThreshold, standardShippingCost, convertPrice, taxRate, taxCalculationMode]);
 
   const totals = calculateTotals(items);
 
@@ -299,11 +388,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     refreshCart();
   }, [refreshCart]);
 
+  // Convert threshold to selected currency for display
+  const convertedThreshold = convertPrice(freeShippingThreshold, 'USD');
+
   const value: CartContextType = {
     items,
     totals,
     isLoading,
     error,
+    freeShippingEnabled,
+    freeShippingThreshold: convertedThreshold,
+    taxCalculationMode,
+    taxRate,
     addItem,
     updateQuantity,
     removeItem,

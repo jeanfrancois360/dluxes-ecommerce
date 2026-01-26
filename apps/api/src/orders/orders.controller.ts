@@ -21,6 +21,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CalculateTotalsDto } from './dto/calculate-totals.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 /**
@@ -141,6 +142,30 @@ export class OrdersController {
           </body>
         </html>
       `);
+    }
+  }
+
+  /**
+   * Calculate order totals before checkout (NEW - P0-002)
+   * @route POST /orders/calculate-totals
+   * SAFE: Read-only operation, doesn't create any records
+   */
+  @Post('calculate-totals')
+  async calculateTotals(@Request() req, @Body() dto: CalculateTotalsDto) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const calculation = await this.ordersService.calculateOrderTotals(userId, dto);
+
+      return {
+        success: true,
+        data: calculation,
+      };
+    } catch (error) {
+      this.ordersService['logger'].error('Failed to calculate order totals:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to calculate order totals',
+      };
     }
   }
 

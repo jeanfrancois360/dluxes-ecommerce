@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CalculateTotalsDto, OrderCalculationResponse } from './dto/calculate-totals.dto';
 import { OrderStatus, PaymentStatus, InventoryTransactionType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { InventoryService } from '../inventory/inventory.service';
@@ -16,16 +17,15 @@ import { EmailService } from '../email/email.service';
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
   private readonly inventoryService: InventoryService;
-  private readonly shippingTaxService: ShippingTaxService;
 
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => CurrencyService))
     private readonly currencyService: CurrencyService,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
+    private readonly shippingTaxService: ShippingTaxService
   ) {
     this.inventoryService = new InventoryService(prisma);
-    this.shippingTaxService = new ShippingTaxService(null as any);
   }
 
   /**
@@ -42,7 +42,7 @@ export class OrdersService {
 
     const subtotal = items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
 
-    return this.shippingTaxService.calculateShippingOptions(
+    return await this.shippingTaxService.calculateShippingOptions(
       {
         country: address.country,
         state: address.province || undefined,
@@ -70,7 +70,7 @@ export class OrdersService {
       throw new BadRequestException('Address not found');
     }
 
-    return this.shippingTaxService.calculateTax(
+    return await this.shippingTaxService.calculateTax(
       {
         country: address.country,
         state: address.province || undefined,
@@ -321,7 +321,7 @@ export class OrdersService {
     }
 
     // Calculate shipping and tax using actual rates
-    const taxCalc = this.shippingTaxService.calculateTax(
+    const taxCalc = await this.shippingTaxService.calculateTax(
       {
         country: shippingAddress?.country || 'US',
         state: shippingAddress?.province || undefined,
@@ -331,7 +331,7 @@ export class OrdersService {
     );
 
     // Get shipping options and use standard by default
-    const shippingOptions = this.shippingTaxService.calculateShippingOptions(
+    const shippingOptions = await this.shippingTaxService.calculateShippingOptions(
       {
         country: shippingAddress?.country || 'US',
         state: shippingAddress?.province || undefined,
@@ -1026,5 +1026,184 @@ export class OrdersService {
       [OrderStatus.REFUNDED]: 'arrow-left',
     };
     return icons[status];
+  }
+
+  /**
+   * Calculate order totals before creating order (NEW - P0-002)
+   * SAFE: Read-only operation, doesn't modify any data
+   * Used by checkout to preview final price before order creation
+   */
+  async calculateOrderTotals(
+    userId: string,
+    dto: CalculateTotalsDto
+  ): Promise<OrderCalculationResponse> {
+    const warnings: string[] = [];
+
+    try {
+      // 1. Verify shipping address exists and belongs to user
+      const address = await this.prisma.address.findFirst({
+        where: {
+          id: dto.shippingAddressId,
+          userId,
+        },
+      });
+
+      if (!address) {
+        throw new BadRequestException('Invalid shipping address');
+      }
+
+      // 2. Verify item prices and calculate subtotal
+      let subtotal = 0;
+      const verifiedItems: any[] = [];
+
+      for (const item of dto.items) {
+        const product = await this.prisma.product.findUnique({
+          where: { id: item.productId },
+          include: {
+            variants: item.variantId
+              ? {
+                  where: { id: item.variantId },
+                }
+              : false,
+          },
+        });
+
+        if (!product) {
+          throw new BadRequestException(`Product ${item.productId} not found`);
+        }
+
+        // Get actual price from database
+        const actualPrice = item.variantId
+          ? Number(product.variants[0]?.price || product.price)
+          : Number(product.price);
+
+        // Verify price matches (allow 1 cent difference for rounding)
+        const priceDiff = Math.abs(actualPrice - item.price);
+        if (priceDiff > 0.01) {
+          warnings.push(
+            `Price mismatch for ${product.name}: expected $${actualPrice}, got $${item.price}. Using database price.`
+          );
+          this.logger.warn(
+            `Price mismatch for product ${product.id}: expected ${actualPrice}, got ${item.price}`
+          );
+        }
+
+        // Use database price (source of truth)
+        const verifiedPrice = actualPrice;
+        const itemTotal = verifiedPrice * item.quantity;
+        subtotal += itemTotal;
+
+        verifiedItems.push({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+          price: verifiedPrice,
+          total: itemTotal,
+        });
+      }
+
+      // 3. Calculate shipping options
+      const shippingOptions = await this.shippingTaxService.calculateShippingOptions(
+        {
+          country: address.country,
+          state: address.province || undefined,
+          postalCode: address.postalCode,
+          city: address.city,
+        },
+        verifiedItems,
+        subtotal
+      );
+
+      if (!shippingOptions || shippingOptions.length === 0) {
+        throw new BadRequestException('No shipping options available for this address');
+      }
+
+      // 4. Select shipping method
+      let selectedShipping = shippingOptions[0]; // Default to first option (standard)
+
+      if (dto.shippingMethod) {
+        const requestedShipping = shippingOptions.find(
+          opt => opt.id === dto.shippingMethod
+        );
+
+        if (requestedShipping) {
+          selectedShipping = requestedShipping;
+        } else {
+          warnings.push(
+            `Shipping method '${dto.shippingMethod}' not available. Using ${selectedShipping.name}.`
+          );
+        }
+      }
+
+      // 5. Calculate tax
+      const taxCalc = await this.shippingTaxService.calculateTax(
+        {
+          country: address.country,
+          state: address.province || undefined,
+          postalCode: address.postalCode,
+        },
+        subtotal
+      );
+
+      // 6. Apply coupon discount (future feature - placeholder)
+      let discount = 0;
+      let couponDetails = null;
+
+      if (dto.couponCode) {
+        // TODO: Implement coupon validation
+        // For now, just log that a coupon was provided
+        this.logger.log(
+          `Coupon code '${dto.couponCode}' provided but coupon system not yet implemented`
+        );
+        warnings.push(
+          'Coupon system not yet implemented. Coupon code will be ignored.'
+        );
+      }
+
+      // 7. Calculate final total
+      const shippingCost = selectedShipping.price;
+      const taxAmount = taxCalc.amount;
+      const total = subtotal + shippingCost + taxAmount - discount;
+
+      // 8. Return detailed calculation
+      return {
+        subtotal: Math.round(subtotal * 100) / 100,
+        shipping: {
+          method: selectedShipping.id,
+          name: selectedShipping.name,
+          price: Math.round(shippingCost * 100) / 100,
+          estimatedDays: selectedShipping.estimatedDays,
+          carrier: selectedShipping.carrier,
+        },
+        shippingOptions: shippingOptions.map(opt => ({
+          id: opt.id,
+          name: opt.name,
+          price: Math.round(opt.price * 100) / 100,
+          estimatedDays: opt.estimatedDays,
+          carrier: opt.carrier,
+        })),
+        tax: {
+          amount: Math.round(taxAmount * 100) / 100,
+          rate: taxCalc.rate,
+          jurisdiction: taxCalc.jurisdiction || 'N/A',
+          breakdown: taxCalc.breakdown,
+        },
+        discount: Math.round(discount * 100) / 100,
+        coupon: couponDetails,
+        total: Math.round(total * 100) / 100,
+        currency: dto.currency || 'USD',
+        breakdown: {
+          subtotal: Math.round(subtotal * 100) / 100,
+          shipping: Math.round(shippingCost * 100) / 100,
+          tax: Math.round(taxAmount * 100) / 100,
+          discount: Math.round(-discount * 100) / 100,
+          total: Math.round(total * 100) / 100,
+        },
+        ...(warnings.length > 0 && { warnings }),
+      };
+    } catch (error) {
+      this.logger.error('Order total calculation failed:', error);
+      throw error;
+    }
   }
 }
