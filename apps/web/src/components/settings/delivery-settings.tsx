@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
-import { Loader2, Truck, Info, DollarSign } from 'lucide-react';
+import { Loader2, PackageCheck, Info, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { deliverySettingsSchema, type DeliverySettings } from '@/lib/validations/settings';
@@ -23,9 +23,7 @@ export function DeliverySettingsSection() {
     defaultValues: {
       delivery_confirmation_required: true,
       delivery_auto_assign: false,
-      delivery_partner_commission: 5,
-      free_shipping_enabled: true,
-      free_shipping_threshold: 100,
+      delivery_partner_commission: 10,
     },
   });
 
@@ -81,9 +79,9 @@ export function DeliverySettingsSection() {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <SettingsCard
-        icon={Truck}
-        title="Delivery Configuration"
-        description="Configure delivery and shipping options"
+        icon={PackageCheck}
+        title="Order Fulfillment"
+        description="Configure order fulfillment workflow and delivery partner settings"
       >
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 ">
           <div className="flex gap-2">
@@ -116,76 +114,29 @@ export function DeliverySettingsSection() {
           tooltip="When enabled, orders will be automatically assigned to available delivery partners based on location and availability"
         />
 
-        <SettingsToggle
-          label="Enable Free Shipping"
-          description="Offer free shipping when order total exceeds threshold"
-          checked={form.watch('free_shipping_enabled')}
-          onCheckedChange={(checked) => form.setValue('free_shipping_enabled', checked, { shouldDirty: true })}
-          tooltip="When enabled, orders above the threshold will qualify for free shipping"
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <SettingsField
-            label="Delivery Partner Commission"
-            id="delivery_partner_commission"
-            required
-            tooltip="Percentage commission paid to delivery partners per order"
-            error={form.formState.errors.delivery_partner_commission?.message}
-            helperText="Commission paid to delivery partners per order"
-            suffix="%"
-          >
-            <div className="flex gap-2 items-center">
-              <Input
-                id="delivery_partner_commission"
-                type="number"
-                min={0}
-                max={100}
-                step="0.1"
-                {...form.register('delivery_partner_commission', { valueAsNumber: true })}
-                placeholder="5"
-                className="flex-1"
-              />
-              <span className="text-muted-foreground">%</span>
-            </div>
-          </SettingsField>
-
-          {form.watch('free_shipping_enabled') && (
-            <SettingsField
-              label="Free Shipping Threshold (USD)"
-              id="free_shipping_threshold"
-              required
-              tooltip="Order total required for free shipping"
-              error={form.formState.errors.free_shipping_threshold?.message}
-              helperText="Order total required for free shipping"
-              prefix="$"
-            >
-              <div className="flex gap-2 items-center">
-                <span className="text-muted-foreground">$</span>
-                <Input
-                  id="free_shipping_threshold"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  {...form.register('free_shipping_threshold', { valueAsNumber: true })}
-                  placeholder="100.00"
-                  className="flex-1"
-                />
-              </div>
-            </SettingsField>
-          )}
-        </div>
-
-        {form.watch('free_shipping_enabled') && (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ">
-            <p className="text-sm font-medium mb-2">Customer Experience</p>
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>Cart Total: $85.00 → Shipping: Calculated</p>
-              <p>
-                Cart Total: ${form.watch('free_shipping_threshold') || 100}.00+ → Shipping: FREE
-              </p>
-            </div>
+        <SettingsField
+          label="Delivery Partner Commission"
+          id="delivery_partner_commission"
+          required
+          tooltip="Percentage commission paid to delivery partners per order"
+          error={form.formState.errors.delivery_partner_commission?.message}
+          helperText="Commission paid to delivery partners per order"
+          suffix="%"
+        >
+          <div className="flex gap-2 items-center">
+            <Input
+              id="delivery_partner_commission"
+              type="number"
+              min={0}
+              max={100}
+              step="0.1"
+              {...form.register('delivery_partner_commission', { valueAsNumber: true })}
+              placeholder="10"
+              className="flex-1"
+            />
+            <span className="text-muted-foreground">%</span>
           </div>
-        )}
+        </SettingsField>
       </SettingsCard>
 
       <SettingsFooter

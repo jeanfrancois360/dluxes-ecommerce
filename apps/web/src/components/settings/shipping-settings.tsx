@@ -6,12 +6,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
-import { Loader2, Package, Info } from 'lucide-react';
+import { Loader2, Calculator, Info, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { shippingSettingsSchema, type ShippingSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
-import { SettingsCard, SettingsField, SettingsFooter } from './shared';
+import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 export function ShippingSettingsSection() {
@@ -27,6 +27,8 @@ export function ShippingSettingsSection() {
       shipping_express_rate: 19.99,
       shipping_overnight_rate: 29.99,
       shipping_international_surcharge: 15.00,
+      free_shipping_enabled: true,
+      free_shipping_threshold: 100,
     },
   });
 
@@ -73,13 +75,14 @@ export function ShippingSettingsSection() {
 
   const isDirty = form.formState.isDirty;
   const currentMode = form.watch('shipping_mode');
+  const freeShippingEnabled = form.watch('free_shipping_enabled');
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <SettingsCard
-        icon={Package}
-        title="Shipping Configuration"
-        description="Configure shipping methods and rates"
+        icon={Calculator}
+        title="Shipping Rates & Pricing"
+        description="Configure shipping cost calculator and free shipping promotions"
       >
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
           <div className="flex gap-2">
@@ -215,6 +218,45 @@ export function ShippingSettingsSection() {
               </div>
             </div>
           </>
+        )}
+      </SettingsCard>
+
+      <SettingsCard
+        icon={DollarSign}
+        title="Free Shipping Promotion"
+        description="Offer free shipping when order total exceeds threshold"
+      >
+        <SettingsToggle
+          label="Enable Free Shipping"
+          description="Offer free shipping when order total exceeds threshold"
+          checked={freeShippingEnabled}
+          onCheckedChange={(checked) => form.setValue('free_shipping_enabled', checked, { shouldDirty: true })}
+        />
+
+        {freeShippingEnabled && (
+          <SettingsField
+            label="Free Shipping Threshold"
+            id="free_shipping_threshold"
+            required
+            tooltip="Minimum order total to qualify for free shipping"
+            error={form.formState.errors.free_shipping_threshold?.message}
+          >
+            <div className="flex gap-2 items-center">
+              <span className="text-muted-foreground">$</span>
+              <Input
+                id="free_shipping_threshold"
+                type="number"
+                min={0}
+                step="0.01"
+                {...form.register('free_shipping_threshold', { valueAsNumber: true })}
+                placeholder="100.00"
+                className="flex-1"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Orders ${form.watch('free_shipping_threshold').toFixed(2)} or more will receive free shipping
+            </p>
+          </SettingsField>
         )}
       </SettingsCard>
 
