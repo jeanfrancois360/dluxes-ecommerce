@@ -1,28 +1,51 @@
-import { IsNotEmpty, IsString, IsOptional, Matches } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsEnum, MaxLength, Length } from 'class-validator';
+
+export enum DhlServiceType {
+  EXPRESS = 'express',
+  PARCEL = 'parcel-de',
+  ECOMMERCE = 'ecommerce',
+}
 
 export class ConfirmShipmentDto {
-  @IsNotEmpty()
+  @IsEnum(DhlServiceType)
+  dhlServiceType: DhlServiceType;
+
   @IsString()
-  @Matches(/^[A-Z0-9]+$/, {
-    message: 'Tracking number must contain only uppercase letters and numbers',
-  })
+  @MaxLength(100)
   trackingNumber: string;
 
   @IsOptional()
-  @IsString()
-  dhlServiceType?: string; // EXPRESS, PARCEL, ECOMMERCE
+  @IsDateString()
+  shippedAt?: string;
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d+(\.\d+)?\s?(kg|g|lb|oz)$/, {
-    message: 'Package weight must be in format: "2.5 kg" or "500 g"',
-  })
+  @MaxLength(50)
   packageWeight?: string;
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d+x\d+x\d+\s?(cm|in|m)$/, {
-    message: 'Package dimensions must be in format: "30x20x10 cm"',
-  })
+  @MaxLength(50)
   packageDimensions?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+
+  // ✅ NEW: Optional parameters for better DHL tracking accuracy
+  @IsOptional()
+  @IsString()
+  @Length(2, 10)
+  recipientPostalCode?: string; // Improves tracking accuracy
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 2)
+  originCountryCode?: string; // ISO 2-letter code (e.g., "RW", "US", "DE")
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 2)
+  language?: string; // e.g., "en", "de", "fr" - for localized status messages
 }

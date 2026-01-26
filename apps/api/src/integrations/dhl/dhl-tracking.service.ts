@@ -1,16 +1,8 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
-import { SettingsService } from '../../settings/settings.service';
 import { DeliveryStatus } from '@prisma/client';
 import axios, { AxiosInstance } from 'axios';
-
-interface DhlOAuthToken {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  expires_at: number; // Timestamp when token expires
-}
 
 interface DhlLocation {
   address?: {
@@ -50,137 +42,151 @@ interface DhlTrackingResponse {
   shipments: DhlShipment[];
 }
 
+interface TrackingOptions {
+  service?: string;
+  recipientPostalCode?: string;
+  originCountryCode?: string;
+  language?: string;
+}
+
 @Injectable()
 export class DhlTrackingService {
   private readonly logger = new Logger(DhlTrackingService.name);
-  private httpClient: AxiosInstance;
-  private tokenCache: DhlOAuthToken | null = null;
+  private apiClient: AxiosInstance;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly settingsService: SettingsService,
     private readonly configService: ConfigService,
   ) {
-    this.httpClient = axios.create({
+    const baseUrl = this.configService.get<string>('DHL_API_BASE_URL', 'https://api-eu.dhl.com');
+
+    this.apiClient = axios.create({
+      baseURL: baseUrl,
       timeout: 30000, // 30 seconds
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
     });
   }
 
   /**
-   * Get OAuth 2.0 access token with caching
+   * Check if DHL API is enabled
    */
-  private async getAccessToken(): Promise<string> {
-    // Check if we have a valid cached token
-    if (this.tokenCache && this.tokenCache.expires_at > Date.now()) {
-      this.logger.debug('Using cached DHL OAuth token');
-      return this.tokenCache.access_token;
-    }
-
-    // Fetch fresh token from DHL API using environment variables
-    const apiKey = this.configService.get<string>('DHL_API_KEY');
-    const apiSecret = this.configService.get<string>('DHL_API_SECRET');
-    const baseUrl = this.configService.get<string>('DHL_API_BASE_URL', 'https://api-eu.dhl.com');
-
-    if (!apiKey || !apiSecret) {
-      throw new HttpException(
-        'DHL API credentials not configured. Please configure in System Settings.',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
-
-    try {
-      this.logger.log('Fetching new DHL OAuth token...');
-
-      const response = await this.httpClient.post(
-        `${baseUrl}/oauth/token`,
-        {
-          grant_type: 'client_credentials',
-        },
-        {
-          auth: {
-            username: apiKey,
-            password: apiSecret,
-          },
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        },
-      );
-
-      const { access_token, token_type, expires_in } = response.data;
-
-      // Cache token with 5-minute buffer before expiration
-      this.tokenCache = {
-        access_token,
-        token_type,
-        expires_in,
-        expires_at: Date.now() + (expires_in - 300) * 1000,
-      };
-
-      this.logger.log('Successfully obtained DHL OAuth token');
-      return access_token;
-    } catch (error) {
-      this.logger.error('Failed to obtain DHL OAuth token', error.response?.data || error.message);
-      throw new HttpException(
-        'Failed to authenticate with DHL API',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
+  private isApiEnabled(): boolean {
+    return this.configService.get<boolean>('DHL_TRACKING_ENABLED', false);
   }
 
   /**
-   * Track a shipment by tracking number
+   * Track shipment with retry logic for transient errors
+   *
+   * @param trackingNumber DHL tracking number
+   * @param options Optional parameters to improve tracking accuracy
+   * @param retryCount Current retry attempt (internal use)
+   * @returns DHL tracking response
    */
-  async trackShipment(trackingNumber: string): Promise<DhlShipment | null> {
-    const apiEnabled = this.configService.get<boolean>('DHL_TRACKING_ENABLED', false);
+  async trackShipment(
+    trackingNumber: string,
+    options?: TrackingOptions,
+    retryCount: number = 0,
+  ): Promise<DhlTrackingResponse> {
+    const maxRetries = 3;
 
-    if (!apiEnabled) {
-      this.logger.warn('DHL Tracking API is disabled in environment config');
-      return null;
+    if (!this.isApiEnabled()) {
+      throw new HttpException(
+        'DHL API integration is disabled. Set DHL_TRACKING_ENABLED=true in .env',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // ✅ CORRECT: Get API key from environment (NOT OAuth)
+    const apiKey = this.configService.get<string>('DHL_API_KEY');
+
+    if (!apiKey) {
+      throw new HttpException(
+        'DHL API key not configured. Please set DHL_API_KEY in .env file.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    // Build query parameters
+    const params: any = {
+      trackingNumber,
+      service: options?.service || 'express',
+    };
+
+    // Add optional parameters (improves tracking quality)
+    if (options?.recipientPostalCode) {
+      params.recipientPostalCode = options.recipientPostalCode;
+    }
+
+    if (options?.originCountryCode) {
+      params.originCountryCode = options.originCountryCode;
+    }
+
+    if (options?.language) {
+      params.language = options.language;
     }
 
     try {
-      const accessToken = await this.getAccessToken();
-      const baseUrl = this.configService.get<string>('DHL_API_BASE_URL', 'https://api-eu.dhl.com');
-
-      this.logger.log(`Tracking shipment: ${trackingNumber}`);
-
-      const response = await this.httpClient.get<DhlTrackingResponse>(
-        `${baseUrl}/track/shipments`,
+      // ✅ CORRECT: Simple API key in header (NOT Bearer token)
+      const response = await this.apiClient.get<DhlTrackingResponse>(
+        '/track/shipments',
         {
-          params: {
-            trackingNumber,
-          },
+          params,
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            'DHL-API-Key': apiKey,  // ✅ Correct header name
           },
         },
       );
 
-      if (response.data.shipments && response.data.shipments.length > 0) {
-        const shipment = response.data.shipments[0];
-        this.logger.log(`Successfully tracked shipment: ${trackingNumber}`);
-        return shipment;
-      }
-
-      this.logger.warn(`No tracking data found for: ${trackingNumber}`);
-      return null;
+      this.logger.log(`DHL tracking data fetched for ${trackingNumber}`);
+      return response.data;
     } catch (error) {
-      if (error.response?.status === 404) {
-        this.logger.warn(`Tracking number not found: ${trackingNumber}`);
-        return null;
+      // Retry on rate limit (429) or server errors (5xx)
+      const shouldRetry =
+        error.response?.status === 429 ||
+        (error.response?.status >= 500 && error.response?.status < 600);
+
+      if (shouldRetry && retryCount < maxRetries) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = Math.pow(2, retryCount) * 1000;
+
+        this.logger.warn(
+          `DHL API error ${error.response?.status}. Retrying after ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`,
+        );
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.trackShipment(trackingNumber, options, retryCount + 1);
       }
 
+      // Log and rethrow error
       this.logger.error(
-        `Failed to track shipment ${trackingNumber}`,
+        `Failed to track DHL shipment ${trackingNumber}:`,
         error.response?.data || error.message,
       );
+
+      if (error.response?.status === 404) {
+        throw new HttpException('Tracking number not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (error.response?.status === 429) {
+        throw new HttpException(
+          'DHL API rate limit exceeded. Please try again later.',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        throw new HttpException(
+          'Invalid DHL API key. Please check your credentials.',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
       throw new HttpException(
-        'Failed to fetch tracking data from DHL',
-        HttpStatus.SERVICE_UNAVAILABLE,
+        `Failed to fetch tracking data from DHL: ${error.response?.data?.detail || error.message}`,
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -239,8 +245,14 @@ export class DhlTrackingService {
 
   /**
    * Update delivery record with latest DHL tracking data
+   *
+   * @param deliveryId Delivery ID to update
+   * @param options Optional parameters for DHL API
    */
-  async updateDeliveryFromDhl(deliveryId: string): Promise<void> {
+  async updateDeliveryFromDhl(
+    deliveryId: string,
+    options?: TrackingOptions,
+  ): Promise<void> {
     const delivery = await this.prisma.delivery.findUnique({
       where: { id: deliveryId },
       select: {
@@ -262,12 +274,17 @@ export class DhlTrackingService {
     }
 
     // Fetch tracking data from DHL
-    const shipment = await this.trackShipment(delivery.trackingNumber);
+    const trackingResponse = await this.trackShipment(
+      delivery.trackingNumber,
+      options,
+    );
 
-    if (!shipment) {
+    if (!trackingResponse.shipments || trackingResponse.shipments.length === 0) {
       this.logger.warn(`No DHL tracking data available for delivery ${deliveryId}`);
       return;
     }
+
+    const shipment = trackingResponse.shipments[0];
 
     // Map DHL status to our DeliveryStatus
     const newStatus = this.mapDhlStatusToDeliveryStatus(shipment.status.statusCode);
@@ -332,9 +349,7 @@ export class DhlTrackingService {
    * Called by cron job every 10 minutes
    */
   async syncAllActiveDeliveries(): Promise<void> {
-    const apiEnabled = this.configService.get<boolean>('DHL_TRACKING_ENABLED', false);
-
-    if (!apiEnabled) {
+    if (!this.isApiEnabled()) {
       this.logger.debug('DHL Tracking API is disabled, skipping sync');
       return;
     }

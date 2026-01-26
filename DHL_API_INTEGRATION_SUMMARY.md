@@ -20,7 +20,7 @@ Production-ready DHL Shipment Tracking API integration completed as part of Week
 **New Delivery Fields:**
 ```prisma
 carrier                String?        @default("DHL")
-dhlServiceType         String?        // EXPRESS, PARCEL, ECOMMERCE
+dhlServiceType         String?        // 'express', 'parcel-de', 'ecommerce'
 dhlTrackingData        Json?          // Full DHL API response cache
 dhlLastSyncedAt        DateTime?      // Last API sync timestamp
 dhlEstimatedDelivery   DateTime?      // From DHL API
@@ -40,7 +40,7 @@ Added to `apps/api/.env`:
 |---------------------|------|---------|-------------|
 | `DHL_TRACKING_ENABLED` | BOOLEAN | false | Enable DHL Tracking API |
 | `DHL_API_KEY` | STRING | "" | DHL API Key (Consumer Key) - **SENSITIVE** |
-| `DHL_API_SECRET` | STRING | "" | DHL API Secret (Consumer Secret) - **SENSITIVE** |
+| `DHL_API_SECRET` | STRING | "" | Not used for Tracking API (OAuth only) |
 | `DHL_API_BASE_URL` | STRING | "https://api-eu.dhl.com" | DHL API base URL |
 | `DHL_TRACKING_CACHE_TTL` | NUMBER | 300 | Cache TTL in seconds (5 min) |
 | `DHL_WEBHOOK_ENABLED` | BOOLEAN | false | Enable DHL webhooks |
@@ -50,27 +50,42 @@ Added to `apps/api/.env`:
 **File:** `apps/api/src/integrations/dhl/dhl-tracking.service.ts`
 
 **Key Methods:**
-- `getAccessToken()` - OAuth 2.0 authentication with token caching (5-min buffer)
-- `trackShipment(trackingNumber)` - Fetch tracking data from DHL API
-- `updateDeliveryFromDhl(deliveryId)` - Update delivery with latest DHL data
+- `trackShipment(trackingNumber, options?, retryCount?)` - Fetch tracking data from DHL API with retry logic
+- `updateDeliveryFromDhl(deliveryId, options?)` - Update delivery with latest DHL data
 - `mapDhlStatusToDeliveryStatus(statusCode)` - Map DHL status codes to system status
 - `generateTrackingUrl(trackingNumber)` - Generate customer tracking URL
 - `syncAllActiveDeliveries()` - Sync all active deliveries (called by cron)
 
-**OAuth 2.0 Implementation:**
-- Client Credentials grant type
-- Token caching with automatic refresh
-- 5-minute buffer before expiration
-- Secure credential storage via system settings
+**Authentication:**
+DHL Shipment Tracking - Unified API uses **simple API key authentication**.
+
+**Important:** This API does NOT use OAuth 2.0. OAuth is only for MyDHL API (shipping/label generation).
+
+- Uses `DHL-API-Key` header (NOT Bearer token)
+- API key obtained from developer.dhl.com
+- Credentials stored securely in `.env` file
+- No token refresh needed
+
+**Retry Logic:**
+- Automatic retry with exponential backoff (1s, 2s, 4s)
+- Retries on rate limit errors (429) and server errors (5xx)
+- Max 3 retry attempts
+- Prevents transient failures from breaking shipment tracking
 
 **Rate Limiting:**
 - DHL API: 250 calls/day initially, 1 call per 5 seconds
 - Implementation: 5-second delay between sync requests
 - Cache TTL: 300 seconds (5 minutes) - configurable
 
-### 4. DHL Sync Cron Job
+**Optional Query Parameters:**
+- `recipientPostalCode` - Improves tracking accuracy
+- `originCountryCode` - ISO 2-letter code (e.g., "RW", "US", "DE")
+- `language` - Localized status messages (e.g., "en", "de", "fr")
+
+### 4. DHL Sync Cron Jobs
 **File:** `apps/api/src/integrations/dhl/dhl-sync.service.ts`
 
+#### Job 1: Active Delivery Sync
 **Schedule:** Every 10 minutes (`*/10 * * * *`)
 
 **Behavior:**
@@ -80,6 +95,16 @@ Added to `apps/api/.env`:
 - Skips deliveries synced within cache TTL
 - Logs success/error counts
 
+#### Job 2: 30-Day Tracking Data Cleanup (Legal Compliance)
+**Schedule:** Daily at 2 AM (`CronExpression.EVERY_DAY_AT_2AM`)
+
+**Behavior:**
+- Deletes tracking events for shipments delivered >30 days ago
+- Clears `dhlTrackingData` from delivered shipments (privacy compliance)
+- DHL Terms of Use require deletion after 30 days
+- Logs cleanup counts for audit purposes
+- Non-blocking: errors logged but don't stop other operations
+
 ### 5. Seller Shipment Confirmation
 **Endpoint:** `POST /api/v1/seller/orders/:id/confirm-shipment`
 
@@ -87,11 +112,19 @@ Added to `apps/api/.env`:
 ```json
 {
   "trackingNumber": "1234567890",
-  "dhlServiceType": "EXPRESS",
+  "dhlServiceType": "express",
   "packageWeight": "2.5 kg",
-  "packageDimensions": "30x20x10 cm"
+  "packageDimensions": "30x20x10 cm",
+  "recipientPostalCode": "10115",
+  "originCountryCode": "RW",
+  "language": "en"
 }
 ```
+
+**Optional Parameters (for better tracking accuracy):**
+- `recipientPostalCode` - Recipient's postal code (improves DHL tracking accuracy)
+- `originCountryCode` - Origin country ISO code (e.g., "RW", "US", "DE")
+- `language` - Language for status messages (e.g., "en", "de", "fr")
 
 **Response:**
 ```json
@@ -230,7 +263,9 @@ Added to `apps/api/.env`:
 Get credentials from https://developer.dhl.com:
 1. Create an account at developer.dhl.com
 2. Subscribe to "Shipment Tracking - Unified API"
-3. Get Consumer Key (API Key) and Consumer Secret (API Secret)
+3. Get Consumer Key (API Key)
+
+**Note:** DHL Tracking API only requires the API Key. Consumer Secret is only needed for OAuth-based APIs like MyDHL API.
 
 ### Step 2: Configure Environment Variables
 **IMPORTANT:** For security reasons, DHL credentials are stored in `.env` file, NOT in the database.
@@ -243,12 +278,17 @@ Edit `apps/api/.env` and add:
 # ============================================================================
 DHL_TRACKING_ENABLED=true
 DHL_API_KEY=your-dhl-consumer-key-here
-DHL_API_SECRET=your-dhl-consumer-secret-here
+DHL_API_SECRET=not-required-for-tracking-api
 DHL_API_BASE_URL=https://api-eu.dhl.com  # or https://api-us.dhl.com for Americas
 DHL_TRACKING_CACHE_TTL=300  # 5 minutes
 DHL_WEBHOOK_ENABLED=false
 DHL_WEBHOOK_URL=
 ```
+
+**Important Notes:**
+- Only `DHL_API_KEY` is required for Tracking API
+- API Secret is not used (OAuth is only for MyDHL API)
+- Set `DHL_TRACKING_ENABLED=true` to activate the integration
 
 ### Step 3: Restart API Server
 After updating `.env`, restart the API server for changes to take effect:
@@ -278,9 +318,12 @@ curl -X POST http://localhost:4000/api/v1/seller/orders/ORDER_ID/confirm-shipmen
   -H "Content-Type: application/json" \
   -d '{
     "trackingNumber": "1234567890",
-    "dhlServiceType": "EXPRESS",
+    "dhlServiceType": "express",
     "packageWeight": "2.5 kg",
-    "packageDimensions": "30x20x10 cm"
+    "packageDimensions": "30x20x10 cm",
+    "recipientPostalCode": "10115",
+    "originCountryCode": "RW",
+    "language": "en"
   }'
 ```
 
@@ -288,6 +331,10 @@ curl -X POST http://localhost:4000/api/v1/seller/orders/ORDER_ID/confirm-shipmen
 - Status: 200 OK
 - success: true
 - data: { orderId, deliveryId, trackingNumber, trackingUrl, status, shippedAt }
+
+**Note:**
+- Service type values: 'express', 'parcel-de', 'ecommerce' (lowercase)
+- Optional parameters improve DHL tracking accuracy
 
 ### Test 2: Customer Tracks Shipment (Public)
 ```bash
@@ -300,7 +347,27 @@ curl http://localhost:4000/api/v1/deliveries/track/1234567890
 - trackingUrl present
 - timeline with DHL event history
 
-### Test 3: Cron Job Sync (Manual Trigger)
+### Test 3: Test DHL API Authentication Directly
+Test that API key authentication works with DHL API:
+
+```bash
+curl -X GET "https://api-eu.dhl.com/track/shipments?trackingNumber=1234567890&service=express" \
+  -H "DHL-API-Key: your-api-key-here" \
+  -H "Accept: application/json"
+```
+
+**Expected Responses:**
+- 200 OK: Valid tracking number, returns shipment data
+- 404 Not Found: Tracking number not found
+- 401 Unauthorized: Invalid API key
+- 429 Too Many Requests: Rate limit exceeded
+
+**Important:**
+- Uses `DHL-API-Key` header (NOT `Authorization: Bearer`)
+- No OAuth token required
+- API key is all you need
+
+### Test 4: Cron Job Sync (Manual Trigger)
 Check logs every 10 minutes for:
 ```
 [DhlSyncService] Starting DHL tracking sync cron job...
@@ -308,7 +375,14 @@ Check logs every 10 minutes for:
 [DhlSyncService] DHL sync completed: X successful, Y failed
 ```
 
-### Test 4: Verify Database Records
+Check logs daily at 2 AM for cleanup job:
+```
+[DhlSyncService] Starting DHL tracking data cleanup (30-day retention)...
+[DhlSyncService] Cleaned up X tracking events older than 30 days (legal compliance)
+[DhlSyncService] Cleared tracking data from Y delivered shipments
+```
+
+### Test 5: Verify Database Records
 ```sql
 -- Check delivery record
 SELECT
@@ -362,9 +436,9 @@ ORDER BY timestamp DESC;
 
 ### Caching Strategy
 - **Cache TTL:** 300 seconds (5 minutes) - configurable
-- **Token Cache:** OAuth token cached with 5-min buffer before expiry
 - **Tracking Data:** Cached in `dhlTrackingData` JSON field
 - **Last Synced:** Tracked via `dhlLastSyncedAt` timestamp
+- **No Token Cache:** API key authentication doesn't require token management
 
 ### Optimization
 - Async initial tracking fetch (non-blocking for seller confirmation)
@@ -376,19 +450,29 @@ ORDER BY timestamp DESC;
 
 ## 🚀 Deployment Checklist
 
+### Implementation Complete ✅
 - [x] Database schema updated (via prisma db push)
 - [x] DHL configuration added to seed (67 system settings total)
 - [x] DHL module integrated into app
 - [x] ScheduleModule enabled for cron jobs
 - [x] DHL credentials moved to environment variables (.env) for security
+- [x] Correct API key authentication implemented (removed OAuth)
+- [x] Retry logic with exponential backoff added
+- [x] 30-day cleanup cron job added (legal compliance)
+- [x] Optional parameters support (postal code, country, language)
 - [x] Type check passed: `pnpm type-check`
-- [ ] DHL API credentials configured in `.env` file
+
+### Testing Required 🧪
+- [ ] DHL API key configured in `.env` file (set `DHL_TRACKING_ENABLED=true`)
+- [ ] Test API key authentication with curl command
 - [ ] Build successful: `pnpm build`
 - [ ] Restart API server after .env changes
-- [ ] Test seller shipment confirmation endpoint
+- [ ] Test seller shipment confirmation endpoint with optional parameters
 - [ ] Test customer tracking endpoint
-- [ ] Verify cron job execution in logs
-- [ ] Monitor DHL API rate limits
+- [ ] Verify active delivery sync cron job (every 10 minutes)
+- [ ] Verify cleanup cron job (daily at 2 AM)
+- [ ] Test retry logic with rate limit scenarios
+- [ ] Monitor DHL API rate limits (250 calls/day)
 - [ ] Set up monitoring alerts for failed syncs
 - [ ] Verify .env is in .gitignore (prevent credential leaks)
 
@@ -399,13 +483,17 @@ ORDER BY timestamp DESC;
 ### Known Issues
 None identified during implementation.
 
+### Completed Features
+- ✅ **Retry Logic:** Exponential backoff for failed DHL API calls (1s, 2s, 4s)
+- ✅ **Data Cleanup:** 30-day automatic cleanup (legal compliance)
+- ✅ **Optional Parameters:** Postal code, origin country, language support
+
 ### Future Enhancements
 1. **Webhook Support:** Implement DHL webhook receiver for push notifications
 2. **Multi-Vendor:** Support multiple deliveries per order (remove @unique on orderId)
-3. **Retry Logic:** Add exponential backoff for failed DHL API calls
-4. **Admin UI:** Create DHL settings management page
-5. **Notifications:** Send real-time notifications on delivery status changes
-6. **Analytics:** Add DHL tracking analytics dashboard
+3. **Admin UI:** Create DHL settings management page
+4. **Notifications:** Send real-time notifications on delivery status changes
+5. **Analytics:** Add DHL tracking analytics dashboard
 
 ---
 
@@ -422,9 +510,12 @@ Confirm shipment with DHL tracking number.
 ```json
 {
   "trackingNumber": "string (required, uppercase alphanumeric)",
-  "dhlServiceType": "string (optional: EXPRESS, PARCEL, ECOMMERCE)",
+  "dhlServiceType": "string (optional: 'express', 'parcel-de', 'ecommerce')",
   "packageWeight": "string (optional: format: '2.5 kg')",
-  "packageDimensions": "string (optional: format: '30x20x10 cm')"
+  "packageDimensions": "string (optional: format: '30x20x10 cm')",
+  "recipientPostalCode": "string (optional: 2-10 chars, improves tracking)",
+  "originCountryCode": "string (optional: ISO 2-letter code, e.g., 'RW')",
+  "language": "string (optional: 2-letter code, e.g., 'en', 'de', 'fr')"
 }
 ```
 
@@ -509,10 +600,15 @@ Track delivery by tracking number (public, no authentication).
 ## 📞 Support & Resources
 
 - **DHL Developer Portal:** https://developer.dhl.com
-- **API Documentation:** https://developer.dhl.com/api-reference/shipment-tracking
-- **OAuth 2.0 Docs:** https://developer.dhl.com/api-reference/authentication
+- **Shipment Tracking API Docs:** https://developer.dhl.com/api-reference/shipment-tracking
+- **Authentication Guide:** https://developer.dhl.com/api-reference/shipment-tracking#get-started-section/user-guide/authentication
 - **Rate Limits:** https://developer.dhl.com/documentation/rate-limits
 - **Support Email:** apisupport@dhl.com
+
+**Important Note:**
+- This integration uses **Shipment Tracking - Unified API** (simple API key)
+- OAuth 2.0 is only for **MyDHL API** (shipping/label generation)
+- Don't confuse the two - they have different authentication methods
 
 ---
 
