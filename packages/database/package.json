@@ -14,7 +14,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@nestjs/schedule": "^6.1.0",
     "@prisma/client": "^6.19.0",
+    "axios": "^1.13.2",
     "bcrypt": "^5.1.1",
     "passport-google-oauth20": "^2.0.0"
   },

@@ -575,6 +575,24 @@ const defaultSettings = [
     defaultValue: 10,
   },
 
+  // DHL API INTEGRATION SETTINGS
+  {
+    key: 'shipping_primary_provider',
+    category: 'delivery',
+    value: 'DHL',
+    valueType: SettingValueType.STRING,
+    label: 'Primary Shipping Provider',
+    description: 'Primary shipping carrier for deliveries',
+    isPublic: true,
+    isEditable: false,
+    requiresRestart: false,
+    defaultValue: 'DHL',
+  },
+
+  // NOTE: DHL API credentials (DHL_API_KEY, DHL_API_SECRET, DHL_TRACKING_ENABLED, DHL_API_BASE_URL, DHL_TRACKING_CACHE_TTL)
+  // are now configured via environment variables (.env) for security reasons.
+  // See apps/api/.env for DHL configuration.
+
   // SECURITY SETTINGS
   {
     key: '2fa_required_for_admin',

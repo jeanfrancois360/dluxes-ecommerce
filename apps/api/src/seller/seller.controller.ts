@@ -250,6 +250,27 @@ export class SellerController {
     return this.sellerService.updateShippingInfo(req.user.userId, id, data);
   }
 
+  /**
+   * Confirm shipment with DHL tracking number
+   * DHL API Integration - Day 1-2 Implementation
+   */
+  @Post('orders/:id/confirm-shipment')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  confirmShipment(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() data: {
+      trackingNumber: string;
+      dhlServiceType?: string;
+      packageWeight?: string;
+      packageDimensions?: string;
+    },
+  ) {
+    return this.sellerService.confirmShipment(req.user.userId, id, data);
+  }
+
   // ============================================================================
   // Analytics
   // ============================================================================
