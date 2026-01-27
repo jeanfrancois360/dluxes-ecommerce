@@ -80,6 +80,14 @@ export function TaxSettingsSection() {
   const isDirty = form.formState.isDirty;
   const currentMode = form.watch('tax_calculation_mode');
 
+  console.log('[Tax Settings] Current form state:', {
+    tax_calculation_mode: form.watch('tax_calculation_mode'),
+    tax_default_rate: form.watch('tax_default_rate'),
+    tax_calculation_enabled: form.watch('tax_calculation_enabled'),
+    isDirty,
+    formValues: form.getValues(),
+  });
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <SettingsCard
@@ -109,8 +117,15 @@ export function TaxSettingsSection() {
           error={form.formState.errors.tax_calculation_mode?.message}
         >
           <Select
-            value={form.watch('tax_calculation_mode')}
-            onValueChange={(value) => form.setValue('tax_calculation_mode', value as any, { shouldDirty: true })}
+            value={(() => {
+              const val = form.watch('tax_calculation_mode');
+              console.log('[Tax Settings] Select value:', val, 'type:', typeof val, 'length:', val?.length);
+              return val;
+            })()}
+            onValueChange={(value) => {
+              console.log('[Tax Settings] Select onChange:', value, 'type:', typeof value);
+              form.setValue('tax_calculation_mode', value as any, { shouldDirty: true });
+            }}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select mode" />
