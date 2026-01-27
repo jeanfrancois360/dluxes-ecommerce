@@ -30,9 +30,7 @@ export function TaxSettingsSection() {
 
   useEffect(() => {
     if (settings.length > 0) {
-      console.log('[Tax Settings] Raw settings from API:', settings);
       const formData = transformSettingsToForm(settings);
-      console.log('[Tax Settings] Transformed form data:', formData);
       if (!form.formState.isDirty || justSavedRef.current) {
         form.reset(formData as TaxSettings);
         justSavedRef.current = false;
@@ -42,21 +40,15 @@ export function TaxSettingsSection() {
   }, [settings]);
 
   const onSubmit = async (data: TaxSettings) => {
-    console.log('[Tax Settings] Form submitted with data:', data);
-    console.log('[Tax Settings] Data entries to save:', Object.entries(data));
     try {
       for (const [key, value] of Object.entries(data)) {
-        console.log(`[Tax Settings] Saving ${key} = ${value} (type: ${typeof value})`);
-        const result = await updateSetting(key, value, 'Updated via settings panel');
-        console.log(`[Tax Settings] Save result for ${key}:`, result);
+        await updateSetting(key, value, 'Updated via settings panel');
       }
       justSavedRef.current = true;
       toast.success('Tax settings saved successfully');
-      console.log('[Tax Settings] Refetching settings...');
       await refetch();
-      console.log('[Tax Settings] Refetch complete');
     } catch (error) {
-      console.error('[Tax Settings] Failed to save settings:', error);
+      console.error('Failed to save settings:', error);
       toast.error('Failed to save tax settings');
       justSavedRef.current = false;
     }
@@ -79,14 +71,6 @@ export function TaxSettingsSection() {
 
   const isDirty = form.formState.isDirty;
   const currentMode = form.watch('tax_calculation_mode');
-
-  console.log('[Tax Settings] Current form state:', {
-    tax_calculation_mode: form.watch('tax_calculation_mode'),
-    tax_default_rate: form.watch('tax_default_rate'),
-    tax_calculation_enabled: form.watch('tax_calculation_enabled'),
-    isDirty,
-    formValues: form.getValues(),
-  });
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -117,14 +101,12 @@ export function TaxSettingsSection() {
           error={form.formState.errors.tax_calculation_mode?.message}
         >
           <Select
-            value={(() => {
-              const val = form.watch('tax_calculation_mode');
-              console.log('[Tax Settings] Select value:', val, 'type:', typeof val, 'length:', val?.length);
-              return val;
-            })()}
+            value={form.watch('tax_calculation_mode') || undefined}
             onValueChange={(value) => {
-              console.log('[Tax Settings] Select onChange:', value, 'type:', typeof value);
-              form.setValue('tax_calculation_mode', value as any, { shouldDirty: true });
+              // Prevent setting empty string (Radix UI Select bug workaround)
+              if (value && value.trim() !== '') {
+                form.setValue('tax_calculation_mode', value as any, { shouldDirty: true });
+              }
             }}
           >
             <SelectTrigger>
