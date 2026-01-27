@@ -22,6 +22,12 @@ export function transformSettingsToForm(settings: Setting[]): Record<string, any
   settings.forEach((setting) => {
     let parsedValue = setting.value;
 
+    console.log(`[transformSettingsToForm] Processing ${setting.key}:`, {
+      rawValue: setting.value,
+      rawType: typeof setting.value,
+      valueType: setting.valueType,
+    });
+
     // Parse value based on valueType to ensure correct type for form validation
     switch (setting.valueType) {
       case 'NUMBER':
@@ -62,10 +68,32 @@ export function transformSettingsToForm(settings: Setting[]): Record<string, any
 
       case 'STRING':
       default:
-        // Ensure it's a string
-        parsedValue = String(setting.value ?? '');
+        // For STRING type, check if it's a JSON string that needs parsing
+        if (typeof setting.value === 'string') {
+          // Try to detect if it's a JSON-encoded string (starts and ends with quotes)
+          const trimmed = setting.value.trim();
+          if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+            try {
+              // Parse to remove the JSON quotes
+              parsedValue = JSON.parse(setting.value);
+              console.log(`[transformSettingsToForm] Parsed JSON string for ${setting.key}: "${setting.value}" -> "${parsedValue}"`);
+            } catch (error) {
+              // If parsing fails, just use the string as-is
+              parsedValue = String(setting.value ?? '');
+            }
+          } else {
+            parsedValue = String(setting.value ?? '');
+          }
+        } else {
+          parsedValue = String(setting.value ?? '');
+        }
         break;
     }
+
+    console.log(`[transformSettingsToForm] Result for ${setting.key}:`, {
+      parsedValue,
+      parsedType: typeof parsedValue,
+    });
 
     form[setting.key] = parsedValue;
   });
