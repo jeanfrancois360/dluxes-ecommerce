@@ -84,7 +84,6 @@ export const taxSettingsSchema = z.object({
   tax_calculation_mode: z.enum(['disabled', 'simple', 'by_state'], {
     errorMap: () => ({ message: 'Tax mode must be disabled, simple, or by_state' }),
   }),
-  tax_calculation_enabled: z.boolean(),
   tax_default_rate: z.number()
     .min(0, 'Tax rate cannot be negative')
     .max(1, 'Tax rate cannot exceed 100%'),

@@ -415,18 +415,6 @@ const defaultSettings = [
 
   // TAX SETTINGS
   {
-    key: 'tax_calculation_enabled',
-    category: 'tax',
-    value: false,
-    valueType: SettingValueType.BOOLEAN,
-    label: 'Dynamic Tax Calculation Enabled',
-    description: 'Enable tax calculation from settings (false = use hardcoded 10%)',
-    isPublic: true,
-    isEditable: true,
-    requiresRestart: false,
-    defaultValue: false,
-  },
-  {
     key: 'tax_default_rate',
     category: 'tax',
     value: 0.10,
