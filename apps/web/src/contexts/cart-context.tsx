@@ -80,6 +80,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         // ===== SHIPPING SETTINGS =====
         const freeShippingEnabledSetting = settings.find((s: any) => s.key === 'free_shipping_enabled');
         const freeShippingThresholdSetting = settings.find((s: any) => s.key === 'free_shipping_threshold');
+        const standardShippingRateSetting = settings.find((s: any) => s.key === 'shipping_standard_rate');
 
         if (freeShippingEnabledSetting) {
           setFreeShippingEnabled(freeShippingEnabledSetting.value === true || freeShippingEnabledSetting.value === 'true');
@@ -87,6 +88,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
         if (freeShippingThresholdSetting) {
           setFreeShippingThreshold(Number(freeShippingThresholdSetting.value));
+        }
+
+        if (standardShippingRateSetting) {
+          setStandardShippingCost(Number(standardShippingRateSetting.value));
         }
 
         // ===== TAX SETTINGS (UPDATED to use tax_calculation_mode) =====
