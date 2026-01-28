@@ -15,6 +15,7 @@ export default function CartPage() {
   const {
     items = [],
     totals,
+    freeShippingEnabled = false,
     freeShippingThreshold = 200,
     taxCalculationMode = 'disabled',
     taxRate = 0,
@@ -282,7 +283,7 @@ export default function CartPage() {
                   </div>
 
                   {/* Free Shipping Message */}
-                  {totals.shipping > 0 && (
+                  {freeShippingEnabled && totals.shipping > 0 && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
