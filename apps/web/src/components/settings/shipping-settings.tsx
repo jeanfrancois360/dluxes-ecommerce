@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
@@ -30,6 +30,7 @@ export function ShippingSettingsSection() {
       free_shipping_enabled: true,
       free_shipping_threshold: 100,
     },
+    shouldUnregister: false,
   });
 
   useEffect(() => {
@@ -211,10 +212,10 @@ export function ShippingSettingsSection() {
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-sm font-medium mb-2">Rate Preview</p>
               <div className="text-sm text-muted-foreground space-y-1">
-                <p>Standard (5-7 days): ${form.watch('shipping_standard_rate').toFixed(2)}</p>
-                <p>Express (2-3 days): ${form.watch('shipping_express_rate').toFixed(2)}</p>
-                <p>Overnight (1 day): ${form.watch('shipping_overnight_rate').toFixed(2)}</p>
-                <p>International Surcharge: +${form.watch('shipping_international_surcharge').toFixed(2)}</p>
+                <p>Standard (5-7 days): ${(form.watch('shipping_standard_rate') ?? 9.99).toFixed(2)}</p>
+                <p>Express (2-3 days): ${(form.watch('shipping_express_rate') ?? 19.99).toFixed(2)}</p>
+                <p>Overnight (1 day): ${(form.watch('shipping_overnight_rate') ?? 29.99).toFixed(2)}</p>
+                <p>International Surcharge: +${(form.watch('shipping_international_surcharge') ?? 15.00).toFixed(2)}</p>
               </div>
             </div>
           </>
@@ -226,43 +227,51 @@ export function ShippingSettingsSection() {
         title="Free Shipping Promotion"
         description="Offer free shipping when order total exceeds threshold"
       >
-        <SettingsToggle
-          label="Enable Free Shipping"
-          description="Offer free shipping when order total exceeds threshold"
-          checked={freeShippingEnabled}
-          onCheckedChange={(checked) => form.setValue('free_shipping_enabled', checked, { shouldDirty: true })}
+        <Controller
+          name="free_shipping_enabled"
+          control={form.control}
+          render={({ field }) => (
+            <SettingsToggle
+              label="Enable Free Shipping"
+              description="Offer free shipping when order total exceeds threshold"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
+          )}
         />
 
-        {freeShippingEnabled && (
-          <SettingsField
-            label="Free Shipping Threshold"
-            id="free_shipping_threshold"
-            required
-            tooltip="Minimum order total to qualify for free shipping"
-            error={form.formState.errors.free_shipping_threshold?.message}
-          >
-            <div className="flex gap-2 items-center">
-              <span className="text-muted-foreground">$</span>
-              <Input
-                id="free_shipping_threshold"
-                type="number"
-                min={0}
-                step="0.01"
-                {...form.register('free_shipping_threshold', { valueAsNumber: true })}
-                placeholder="100.00"
-                className="flex-1"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Orders ${form.watch('free_shipping_threshold').toFixed(2)} or more will receive free shipping
-            </p>
-          </SettingsField>
-        )}
+        <SettingsField
+          label="Free Shipping Threshold"
+          id="free_shipping_threshold"
+          required
+          tooltip="Minimum order total to qualify for free shipping"
+          error={form.formState.errors.free_shipping_threshold?.message}
+          className={!freeShippingEnabled ? 'opacity-50 pointer-events-none' : ''}
+        >
+          <div className="flex gap-2 items-center">
+            <span className="text-muted-foreground">$</span>
+            <Input
+              id="free_shipping_threshold"
+              type="number"
+              min={0}
+              step="0.01"
+              {...form.register('free_shipping_threshold', {
+                valueAsNumber: true,
+              })}
+              placeholder="100.00"
+              className="flex-1"
+              disabled={!freeShippingEnabled}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Orders ${(form.watch('free_shipping_threshold') ?? 100).toFixed(2)} or more will receive free shipping
+          </p>
+        </SettingsField>
       </SettingsCard>
 
       <SettingsFooter
         onReset={() => form.reset()}
-        onSave={() => form.handleSubmit(onSubmit)()}
+        onSave={form.handleSubmit(onSubmit)}
         isLoading={updating}
         isDirty={isDirty}
       />

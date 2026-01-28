@@ -528,7 +528,7 @@ const defaultSettings = [
   },
   {
     key: 'free_shipping_enabled',
-    category: 'delivery',
+    category: 'shipping',
     value: true,
     valueType: SettingValueType.BOOLEAN,
     label: 'Free Shipping Enabled',
@@ -540,15 +540,15 @@ const defaultSettings = [
   },
   {
     key: 'free_shipping_threshold',
-    category: 'delivery',
-    value: 200,
+    category: 'shipping',
+    value: 100,
     valueType: SettingValueType.NUMBER,
     label: 'Free Shipping Threshold (USD)',
     description: 'Order total above which shipping is free',
     isPublic: true,
     isEditable: true,
     requiresRestart: false,
-    defaultValue: 200,
+    defaultValue: 100,
   },
   {
     key: 'delivery_auto_assign',
