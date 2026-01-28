@@ -724,12 +724,13 @@ export class SettingsService {
   }
 
   /**
-   * Check if tax calculation is enabled (legacy setting)
+   * Check if tax calculation is enabled
+   * Now uses tax_calculation_mode instead of legacy tax_calculation_enabled
    */
   async isTaxCalculationEnabled(): Promise<boolean> {
     try {
-      const setting = await this.getSetting('tax_calculation_enabled');
-      return Boolean(setting.value);
+      const setting = await this.getSetting('tax_calculation_mode');
+      return setting.value !== 'disabled';
     } catch (error) {
       return false;
     }

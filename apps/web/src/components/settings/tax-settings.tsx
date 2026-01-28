@@ -23,7 +23,6 @@ export function TaxSettingsSection() {
     resolver: zodResolver(taxSettingsSchema),
     defaultValues: {
       tax_calculation_mode: 'disabled',
-      tax_calculation_enabled: false,
       tax_default_rate: 0.10,
     },
   });
@@ -150,14 +149,6 @@ export function TaxSettingsSection() {
             </p>
           </div>
         )}
-
-        <SettingsToggle
-          label="Enable Tax Calculation (Legacy)"
-          description="Deprecated - use Tax Calculation Mode instead"
-          checked={form.watch('tax_calculation_enabled')}
-          onCheckedChange={(checked) => form.setValue('tax_calculation_enabled', checked, { shouldDirty: true })}
-          tooltip="This setting is deprecated. Use 'Tax Calculation Mode' instead."
-        />
       </SettingsCard>
 
       <SettingsFooter
