@@ -6,8 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 import { Label } from '@nextpik/ui';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
-import { AlertCircle, Loader2, Info, TrendingUp, Users, FolderTree, DollarSign, Settings as SettingsIcon } from 'lucide-react';
+import { AlertCircle, Loader2, Info, Percent, DollarSign, Settings as SettingsIcon, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { commissionSettingsSchema, type CommissionSettings } from '@/lib/validations/settings';
@@ -39,7 +38,6 @@ export function CommissionSettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      // Reset if not dirty (initial load) OR if we just saved (force update)
       if (!form.formState.isDirty || justSavedRef.current) {
         form.reset(formData as CommissionSettings);
         justSavedRef.current = false;
@@ -63,7 +61,6 @@ export function CommissionSettingsSection() {
     }
   };
 
-  // Keyboard shortcuts
   useKeyboardShortcuts({
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
@@ -83,125 +80,84 @@ export function CommissionSettingsSection() {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-      {/* Commission Priority Info */}
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 ">
+      {/* How Commission Works */}
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
         <div className="flex gap-2">
           <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-blue-900 ">
-              Commission Priority
-            </p>
-            <p className="text-sm text-blue-700 ">
-              Seller-specific override → Category override → Global rate (configured below)
-            </p>
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-blue-900">How Platform Commission Works</p>
+            <div className="text-sm text-blue-700 space-y-1">
+              <p><strong>Step 1:</strong> Calculate percentage of order value (product + shipping if enabled)</p>
+              <p><strong>Step 2:</strong> Apply min/max caps if percentage falls outside limits</p>
+              <p><strong>Step 3:</strong> Add fixed transaction fee (if any)</p>
+              <p className="text-xs pt-1 border-t border-blue-200 mt-2">💡 Example: $1000 sale @ 10% = $100 + $0.30 fixed fee = <strong>$100.30 total commission</strong></p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Global Settings */}
+      {/* Percentage Commission Settings */}
       <SettingsCard
-        icon={SettingsIcon}
-        title="Global Commission Settings"
-        description="Default commission rates applied to all sales"
+        icon={Percent}
+        title="Percentage Commission"
+        description="Commission rate as a percentage of order value"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Global Commission Rate */}
-          <SettingsField
-            label="Global Commission Rate"
-            id="global_commission_rate"
-            required
-            tooltip="The default commission percentage applied to all sales. Can be overridden at category or seller level."
-            error={form.formState.errors.global_commission_rate?.message}
-            suffix="%"
-          >
-            <div className="flex gap-2 items-center">
-              <Input
-                id="global_commission_rate"
-                type="number"
-                min={0}
-                max={100}
-                step="0.1"
-                {...form.register('global_commission_rate', { valueAsNumber: true })}
-                placeholder="10"
-                className="flex-1"
-              />
-              <span className="text-muted-foreground">%</span>
-            </div>
-            {form.watch('global_commission_rate') > 30 && (
-              <p className="text-sm text-yellow-600 flex items-center gap-1 mt-2">
-                <AlertCircle className="h-3 w-3" />
-                Warning: Commission rate above 30% may discourage sellers
-              </p>
-            )}
-          </SettingsField>
+        <SettingsField
+          label="Commission Percentage"
+          id="global_commission_rate"
+          required
+          tooltip="The percentage of each sale charged as commission (e.g., 10% means $10 commission on a $100 sale)"
+          error={form.formState.errors.global_commission_rate?.message}
+        >
+          <div className="flex gap-2 items-center">
+            <Input
+              id="global_commission_rate"
+              type="number"
+              min={0}
+              max={100}
+              step="0.1"
+              {...form.register('global_commission_rate', { valueAsNumber: true })}
+              placeholder="10"
+              className="flex-1"
+            />
+            <span className="text-muted-foreground font-medium">%</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {form.watch('global_commission_rate') || 0}% of order value = ${formatCurrencyAmount((calcProductPrice * (form.watch('global_commission_rate') || 0)) / 100, 2)} on a ${formatCurrencyAmount(calcProductPrice, 2)} order
+          </p>
+          {form.watch('global_commission_rate') > 30 && (
+            <p className="text-sm text-yellow-600 flex items-center gap-1 mt-2">
+              <AlertCircle className="h-3 w-3" />
+              Warning: Rates above 30% may discourage sellers
+            </p>
+          )}
+        </SettingsField>
 
-          {/* Commission Type */}
-          <SettingsField
-            label="Commission Type"
-            id="commission_type"
-            required
-            tooltip="Percentage: Commission based on sale amount | Fixed: Flat fee per transaction | Tiered: Rate varies by order value"
-            error={form.formState.errors.commission_type?.message}
-            helperText="How commission is calculated on sales"
-          >
-            <Select
-              value={form.watch('commission_type')}
-              onValueChange={(value) => form.setValue('commission_type', value as any, { shouldDirty: true })}
-            >
-              <SelectTrigger id="commission_type">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="percentage">Percentage</SelectItem>
-                <SelectItem value="fixed">Fixed Amount</SelectItem>
-                <SelectItem value="tiered">Tiered (varies by amount)</SelectItem>
-              </SelectContent>
-            </Select>
-          </SettingsField>
-        </div>
-
-        {/* Apply to Shipping Toggle */}
         <SettingsToggle
-          label="Apply Commission to Shipping"
-          description="Include shipping fees in commission calculation"
+          label="Include Shipping in Commission"
+          description="Apply commission percentage to both product price AND shipping fees"
           checked={form.watch('commission_applies_to_shipping')}
           onCheckedChange={(checked) => form.setValue('commission_applies_to_shipping', checked, { shouldDirty: true })}
-          tooltip="When enabled, the commission rate applies to both product price and shipping fees."
+          tooltip="When ON: Commission applies to (Product + Shipping). When OFF: Commission only applies to Product price."
         />
 
-        {/* Commission Calculation Formula */}
-        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 ">
-          <div className="flex gap-2">
-            <Info className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-purple-900 ">
-                Commission Calculation Formula
-              </p>
-              <p className="text-sm text-purple-700 font-mono">
-                Commission = (Order Amount × Rate%) + Fixed Fee
-              </p>
-              <p className="text-xs text-purple-600 ">
-                Then min/max limits are applied to the final commission amount (including fixed fee)
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Hidden field to maintain schema compatibility */}
+        <input type="hidden" {...form.register('commission_type')} value="percentage" />
       </SettingsCard>
 
-      {/* Commission Limits */}
+      {/* Commission Caps & Limits */}
       <SettingsCard
-        icon={TrendingUp}
-        title="Commission Limits"
-        description="Set minimum, maximum, and fixed fee constraints"
+        icon={DollarSign}
+        title="Commission Limits & Fees"
+        description="Set minimum/maximum caps and fixed transaction fees"
       >
         <div className="grid gap-6 md:grid-cols-3">
-          {/* Minimum Commission */}
+          {/* Minimum Commission Cap */}
           <SettingsField
             label="Minimum Commission"
             id="commission_min_amount"
-            tooltip="The minimum commission charged per transaction, regardless of the percentage rate. Useful for low-value items."
+            tooltip="Minimum commission per transaction. If percentage calculation is less than this, the minimum applies instead."
             error={form.formState.errors.commission_min_amount?.message}
-            prefix="$"
           >
             <div className="flex gap-2 items-center">
               <span className="text-muted-foreground">$</span>
@@ -215,44 +171,31 @@ export function CommissionSettingsSection() {
                 className="flex-1"
               />
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Protects against very low commissions on small sales
+            </p>
             {(() => {
               const minAmount = form.watch('commission_min_amount') || 0;
               const maxAmount = form.watch('commission_max_amount') || 0;
-              const fixedFee = form.watch('commission_fixed_fee') || 0;
 
               if (maxAmount > 0 && minAmount >= maxAmount) {
                 return (
                   <p className="text-sm text-destructive flex items-center gap-1 mt-2">
                     <AlertCircle className="h-3 w-3" />
-                    Minimum must be less than maximum (${formatCurrencyAmount(maxAmount, 2)})
+                    Min must be less than max (${formatCurrencyAmount(maxAmount, 2)})
                   </p>
                 );
               }
-
-              if (minAmount > 0 && fixedFee >= minAmount) {
-                return (
-                  <p className="text-sm text-yellow-600 flex items-center gap-1 mt-2">
-                    <AlertCircle className="h-3 w-3" />
-                    Fixed fee (${formatCurrencyAmount(fixedFee, 2)}) meets/exceeds minimum
-                  </p>
-                );
-              }
-
               return null;
             })()}
           </SettingsField>
 
-          {/* Maximum Commission */}
+          {/* Maximum Commission Cap */}
           <SettingsField
             label="Maximum Commission"
             id="commission_max_amount"
-            tooltip="The maximum commission cap per transaction. Set to $0 for no maximum limit. Useful for high-value items."
+            tooltip="Maximum commission per transaction. If percentage calculation exceeds this, the maximum applies instead. Set to $0 for no limit."
             error={form.formState.errors.commission_max_amount?.message}
-            prefix="$"
-            helperText={(() => {
-              const maxAmount = form.watch('commission_max_amount') || 0;
-              return maxAmount === 0 ? 'No maximum limit' : `Capped at $${formatCurrencyAmount(maxAmount, 2)}`;
-            })()}
           >
             <div className="flex gap-2 items-center">
               <span className="text-muted-foreground">$</span>
@@ -262,35 +205,24 @@ export function CommissionSettingsSection() {
                 min={0}
                 step="0.01"
                 {...form.register('commission_max_amount', { valueAsNumber: true })}
-                placeholder="0 (no maximum)"
+                placeholder="0 (no limit)"
                 className="flex-1"
               />
             </div>
-            {(() => {
-              const maxAmount = form.watch('commission_max_amount') || 0;
-              const minAmount = form.watch('commission_min_amount') || 0;
-
-              if (maxAmount > 0 && minAmount >= maxAmount) {
-                return (
-                  <p className="text-sm text-destructive flex items-center gap-1 mt-2">
-                    <AlertCircle className="h-3 w-3" />
-                    Maximum must be greater than minimum (${formatCurrencyAmount(minAmount, 2)})
-                  </p>
-                );
-              }
-
-              return null;
-            })()}
+            <p className="text-xs text-muted-foreground mt-1">
+              {(() => {
+                const maxAmount = form.watch('commission_max_amount') || 0;
+                return maxAmount === 0 ? 'No maximum limit set' : `Capped at $${formatCurrencyAmount(maxAmount, 2)}`;
+              })()}
+            </p>
           </SettingsField>
 
-          {/* Fixed Fee */}
+          {/* Fixed Transaction Fee */}
           <SettingsField
-            label="Fixed Fee per Transaction"
+            label="Fixed Transaction Fee"
             id="commission_fixed_fee"
-            tooltip="A flat fee added to every transaction (similar to Stripe's $0.30 fee). This is added on top of the percentage-based commission."
+            tooltip="Flat fee added to EVERY transaction, similar to payment processor fees (e.g., Stripe's $0.30). Added AFTER percentage commission."
             error={form.formState.errors.commission_fixed_fee?.message}
-            prefix="$"
-            helperText="Flat fee added to every transaction"
           >
             <div className="flex gap-2 items-center">
               <span className="text-muted-foreground">$</span>
@@ -304,68 +236,33 @@ export function CommissionSettingsSection() {
                 className="flex-1"
               />
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Added to every sale regardless of order value
+            </p>
           </SettingsField>
         </div>
-      </SettingsCard>
 
-      {/* Commission Overrides Summary */}
-      <SettingsCard
-        icon={Users}
-        title="Commission Overrides"
-        description="Custom rates for categories and sellers"
-        tooltip="Custom commission rates that override the global rate for specific categories or sellers."
-      >
-        <div className="grid gap-3 md:grid-cols-2">
-          {/* Category Overrides */}
-          <a
-            href="/admin/categories"
-            className="group relative flex items-center gap-4 p-4 rounded-lg border-2 border-slate-200 bg-slate-50 transition-all duration-200 hover:border-[#CBB57B] hover:bg-white :bg-slate-950 hover:shadow-md"
-          >
-            <div className="p-2.5 rounded-lg flex-shrink-0" style={{ backgroundColor: '#CBB57B' }}>
-              <FolderTree className="h-5 w-5 text-white" />
+        {/* Visual Formula */}
+        <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-4">
+          <div className="flex gap-2">
+            <Calculator className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-purple-900">Commission Calculation Formula</p>
+              <div className="font-mono text-sm text-purple-700 space-y-1">
+                <p>1. Percentage Fee = (Order Value × {form.watch('global_commission_rate') || 0}%)</p>
+                <p>2. Apply Min/Max Caps (if exceeded)</p>
+                <p>3. Total Commission = Percentage Fee + ${formatCurrencyAmount(form.watch('commission_fixed_fee') || 0, 2)} fixed</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm text-slate-900 ">Category Overrides</p>
-              <p className="text-xs text-slate-600 ">Custom rates per category</p>
-            </div>
-            <div className="flex items-center gap-1 text-sm font-medium group-hover:gap-2 transition-all" style={{ color: '#CBB57B' }}>
-              <span>View</span>
-              <span className="group-hover:translate-x-0.5 transition-transform">→</span>
-            </div>
-          </a>
-
-          {/* Seller Overrides */}
-          <a
-            href="/admin/commissions"
-            className="group relative flex items-center gap-4 p-4 rounded-lg border-2 border-slate-200 bg-slate-50 transition-all duration-200 hover:border-[#CBB57B] hover:bg-white :bg-slate-950 hover:shadow-md"
-          >
-            <div className="p-2.5 rounded-lg flex-shrink-0" style={{ backgroundColor: '#CBB57B' }}>
-              <Users className="h-5 w-5 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm text-slate-900 ">Seller Overrides</p>
-              <p className="text-xs text-slate-600 ">Custom rates per seller</p>
-            </div>
-            <div className="flex items-center gap-1 text-sm font-medium group-hover:gap-2 transition-all" style={{ color: '#CBB57B' }}>
-              <span>View</span>
-              <span className="group-hover:translate-x-0.5 transition-transform">→</span>
-            </div>
-          </a>
-        </div>
-
-        <div className="flex items-start gap-2.5 p-3.5 rounded-lg border" style={{ backgroundColor: 'rgba(203, 181, 123, 0.05)', borderColor: 'rgba(203, 181, 123, 0.2)' }}>
-          <Info className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: '#CBB57B' }} />
-          <p className="text-xs text-slate-700 leading-relaxed">
-            <strong className="font-semibold" style={{ color: '#CBB57B' }}>Priority:</strong> Seller-specific override → Category override → Global rate
-          </p>
+          </div>
         </div>
       </SettingsCard>
 
-      {/* Interactive Calculator */}
+      {/* Live Calculator */}
       <SettingsCard
-        icon={DollarSign}
-        title="Interactive Calculator"
-        description="Calculate commission based on current settings"
+        icon={Calculator}
+        title="Commission Calculator"
+        description="Test your commission settings with real numbers"
       >
         {/* Calculator Inputs */}
         <div className="grid gap-4 md:grid-cols-2">
@@ -404,44 +301,23 @@ export function CommissionSettingsSection() {
 
         {/* Calculation Breakdown */}
         <div className="space-y-3 p-4 rounded-lg bg-muted/30 border">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Product Price:</span>
-            <span className="font-medium">${formatCurrencyAmount(calcProductPrice, 2)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Shipping Fee:</span>
-            <span className="font-medium">${formatCurrencyAmount(calcShippingFee, 2)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Order Total:</span>
-            <span className="font-medium">${formatCurrencyAmount(calcProductPrice + calcShippingFee, 2)}</span>
-          </div>
-
-          <hr className="my-2" />
-
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Commission Rate:</span>
-            <span className="font-medium">{form.watch('global_commission_rate') || 0}%</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Base for Commission:</span>
-            <span className="font-medium">
-              ${formatCurrencyAmount(
-                form.watch('commission_applies_to_shipping')
-                  ? calcProductPrice + calcShippingFee
-                  : calcProductPrice,
-                2
-              )}
-              {form.watch('commission_applies_to_shipping') ? (
-                <span className="text-xs font-semibold text-green-600 ml-1">(+ shipping)</span>
-              ) : (
-                <span className="text-xs text-muted-foreground ml-1">(product only)</span>
-              )}
-            </span>
+          {/* Order Summary */}
+          <div className="space-y-2 pb-3 border-b">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Product Price:</span>
+              <span className="font-medium">${formatCurrencyAmount(calcProductPrice, 2)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Shipping Fee:</span>
+              <span className="font-medium">${formatCurrencyAmount(calcShippingFee, 2)}</span>
+            </div>
+            <div className="flex justify-between text-sm font-semibold">
+              <span>Order Total:</span>
+              <span>${formatCurrencyAmount(calcProductPrice + calcShippingFee, 2)}</span>
+            </div>
           </div>
 
-          <hr className="my-2" />
-
+          {/* Commission Calculation Steps */}
           {(() => {
             const rate = form.watch('global_commission_rate') || 0;
             const applyToShipping = form.watch('commission_applies_to_shipping');
@@ -449,78 +325,92 @@ export function CommissionSettingsSection() {
             const maxAmount = form.watch('commission_max_amount') || 0;
             const fixedFee = form.watch('commission_fixed_fee') || 0;
 
-            const base = applyToShipping ? calcProductPrice + calcShippingFee : calcProductPrice;
-            const rawPercentageCommission = (base * rate) / 100;
-            let percentageCommission = rawPercentageCommission;
-            let minApplied = false;
-            let maxApplied = false;
+            const commissionBase = applyToShipping ? calcProductPrice + calcShippingFee : calcProductPrice;
+            let percentageFee = (commissionBase * rate) / 100;
+            const originalPercentageFee = percentageFee;
+            let capApplied = '';
 
-            // Apply minimum
-            if (percentageCommission < minAmount) {
-              percentageCommission = minAmount;
-              minApplied = true;
+            // Apply min cap
+            if (percentageFee < minAmount) {
+              percentageFee = minAmount;
+              capApplied = 'minimum';
             }
 
-            // Apply maximum (if set)
-            if (maxAmount > 0 && percentageCommission > maxAmount) {
-              percentageCommission = maxAmount;
-              maxApplied = true;
+            // Apply max cap
+            if (maxAmount > 0 && percentageFee > maxAmount) {
+              percentageFee = maxAmount;
+              capApplied = 'maximum';
             }
 
-            // Add fixed fee
-            const totalCommission = percentageCommission + fixedFee;
+            const totalCommission = percentageFee + fixedFee;
             const sellerReceives = calcProductPrice + calcShippingFee - totalCommission;
 
             return (
               <>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Calculated ({rate}% of ${formatCurrencyAmount(base, 2)}):</span>
-                  <span className="font-medium">${formatCurrencyAmount(rawPercentageCommission, 2)}</span>
-                </div>
-
-                {/* Show when min/max is applied */}
-                {(minApplied || maxApplied) && (
+                {/* Step 1: Percentage Calculation */}
+                <div className="space-y-2 py-3 border-b">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Step 1: Percentage Commission</p>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
-                      {minApplied ? 'Minimum limit applied:' : 'Maximum limit applied:'}
+                      Commission Base{applyToShipping ? ' (Product + Shipping)' : ' (Product Only)'}:
                     </span>
-                    <span className="font-medium text-orange-600 ">
-                      ${formatCurrencyAmount(rawPercentageCommission, 2)} → ${formatCurrencyAmount(percentageCommission, 2)}
-                    </span>
+                    <span className="font-medium">${formatCurrencyAmount(commissionBase, 2)}</span>
                   </div>
-                )}
-
-                {!minApplied && !maxApplied && percentageCommission > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">After limits:</span>
-                    <span className="font-medium text-green-600 ">
-                      No limits applied ✓
+                    <span className="text-muted-foreground">Rate ({rate}%):</span>
+                    <span className="font-medium">${formatCurrencyAmount(originalPercentageFee, 2)}</span>
+                  </div>
+                </div>
+
+                {/* Step 2: Caps Applied */}
+                <div className="space-y-2 py-3 border-b">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Step 2: Apply Caps</p>
+                  {capApplied ? (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-orange-600 font-medium capitalize">{capApplied} cap applied:</span>
+                      <span className="font-semibold text-orange-600">
+                        ${formatCurrencyAmount(originalPercentageFee, 2)} → ${formatCurrencyAmount(percentageFee, 2)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-600">No caps applied:</span>
+                      <span className="text-green-600 font-medium">✓ Within limits</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Percentage Fee After Caps:</span>
+                    <span className="font-medium">${formatCurrencyAmount(percentageFee, 2)}</span>
+                  </div>
+                </div>
+
+                {/* Step 3: Add Fixed Fee */}
+                <div className="space-y-2 py-3 border-b">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Step 3: Add Transaction Fee</p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Percentage Fee:</span>
+                    <span className="font-medium">${formatCurrencyAmount(percentageFee, 2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Fixed Transaction Fee:</span>
+                    <span className="font-medium">+ ${formatCurrencyAmount(fixedFee, 2)}</span>
+                  </div>
+                </div>
+
+                {/* Final Result */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex justify-between text-base bg-primary/10 -mx-4 px-4 py-3 rounded">
+                    <span className="font-bold text-primary">Total Platform Commission:</span>
+                    <span className="font-bold text-primary text-xl">
+                      ${formatCurrencyAmount(totalCommission, 2)}
                     </span>
                   </div>
-                )}
-
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Percentage Fee:</span>
-                  <span className="font-medium">${formatCurrencyAmount(percentageCommission, 2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Fixed Fee:</span>
-                  <span className="font-medium">${formatCurrencyAmount(fixedFee, 2)}</span>
-                </div>
-
-                <hr className="my-3 border-primary/30" />
-
-                <div className="flex justify-between text-base">
-                  <span className="font-semibold text-primary">Total Platform Fee:</span>
-                  <span className="font-bold text-primary text-lg">
-                    ${formatCurrencyAmount(totalCommission, 2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-base">
-                  <span className="font-semibold">Seller Receives:</span>
-                  <span className="font-bold text-green-600 text-lg">
-                    ${formatCurrencyAmount(sellerReceives, 2)}
-                  </span>
+                  <div className="flex justify-between text-base bg-green-50 -mx-4 px-4 py-3 rounded">
+                    <span className="font-bold text-green-700">Seller Receives:</span>
+                    <span className="font-bold text-green-600 text-xl">
+                      ${formatCurrencyAmount(sellerReceives, 2)}
+                    </span>
+                  </div>
                 </div>
               </>
             );
@@ -528,10 +418,40 @@ export function CommissionSettingsSection() {
         </div>
       </SettingsCard>
 
+      {/* Commission Overrides Info */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div className="flex gap-2">
+          <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-amber-900">Override Priority</p>
+            <p className="text-sm text-amber-700">
+              These are default rates. You can set custom commission rates for specific sellers or categories.
+            </p>
+            <p className="text-xs text-amber-600 font-semibold">
+              Priority: Seller-specific override → Category override → Global rate (configured here)
+            </p>
+            <div className="flex gap-3 mt-3">
+              <a
+                href="/admin/categories"
+                className="text-xs font-medium text-amber-700 hover:text-amber-900 underline"
+              >
+                Manage Category Overrides →
+              </a>
+              <a
+                href="/admin/commissions"
+                className="text-xs font-medium text-amber-700 hover:text-amber-900 underline"
+              >
+                Manage Seller Overrides →
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Footer */}
       <SettingsFooter
         onReset={() => form.reset()}
-        onSave={() => form.handleSubmit(onSubmit)()}
+        onSave={form.handleSubmit(onSubmit)}
         isLoading={updating}
         isDirty={isDirty}
       />
