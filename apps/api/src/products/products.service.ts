@@ -60,36 +60,16 @@ export class ProductsService {
   }
 
   /**
-   * Generate SKU automatically based on inventory settings
+   * Generate SKU automatically - ALWAYS auto-generated, no custom SKUs allowed
    * Format: {SKU_PREFIX}-{MM}-{DD}-{SEQUENCE_NUMBER}
    * Example: PROD-01-29-000001, PROD-01-29-000002, etc.
    * Sequence resets daily.
    */
-  private async generateSKU(providedSKU?: string): Promise<string> {
-    // If SKU is provided, validate it's unique and return it
-    if (providedSKU) {
-      const existing = await this.prisma.product.findUnique({
-        where: { sku: providedSKU },
-      });
-      if (existing) {
-        throw new BadRequestException(`SKU '${providedSKU}' already exists`);
-      }
-      return providedSKU;
-    }
-
-    // Check if auto-generation is enabled
+  private async generateSKU(): Promise<string> {
     try {
-      const autoGenSetting = await this.settingsService.getSetting('inventory.auto_sku_generation');
-      const isAutoGenEnabled = Boolean(autoGenSetting.value);
-
-      if (!isAutoGenEnabled) {
-        // If auto-generation is disabled, SKU must be provided
-        throw new BadRequestException('SKU is required when auto-generation is disabled');
-      }
-
       // Get SKU prefix from settings
       const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
-      const prefix = String(prefixSetting.value || 'PROD').toUpperCase();
+      const prefix = String(prefixSetting.value || 'NEXTPIK').toUpperCase();
 
       // Get current date components
       const now = new Date();
@@ -138,12 +118,12 @@ export class ProductsService {
       this.logger.log(`Auto-generated SKU: ${generatedSKU}`);
       return generatedSKU;
     } catch (error) {
-      // If settings are not configured, default behavior
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      this.logger.warn('Failed to fetch SKU generation settings, using default behavior');
-      throw new BadRequestException('SKU is required (auto-generation not configured)');
+      this.logger.error('Failed to generate SKU:', error);
+      // Fallback to timestamp-based SKU if settings fail
+      const timestamp = Date.now();
+      const fallbackSKU = `PROD-${timestamp}`;
+      this.logger.warn(`Using fallback SKU: ${fallbackSKU}`);
+      return fallbackSKU;
     }
   }
 
@@ -773,12 +753,12 @@ export class ProductsService {
       purchaseType,
       price,
       inventory,
-      sku,
+      sku, // Ignore any provided SKU - always auto-generate
       ...productData
     } = createProductDto;
 
-    // Auto-generate SKU if not provided
-    const finalSKU = await this.generateSKU(sku);
+    // ALWAYS auto-generate SKU (custom SKUs not allowed)
+    const finalSKU = await this.generateSKU();
 
     // Set defaults based on purchaseType
     const finalPurchaseType = purchaseType || PurchaseType.INSTANT;
