@@ -258,19 +258,86 @@ export class CurrencyService {
   /**
    * Sync exchange rates from external API
    * Only runs if currency_auto_sync is enabled
+   * Uses exchangerate-api.com free tier (1,500 requests/month)
    */
   async syncExchangeRates() {
     const autoSyncEnabled = await this.isAutoSyncEnabled();
     if (!autoSyncEnabled) {
       this.logger.log('Currency auto-sync is disabled, skipping rate sync');
-      return { synced: 0, message: 'Auto-sync disabled' };
+      return { synced: 0, message: 'Auto-sync disabled', error: null };
     }
 
     this.logger.log('Syncing exchange rates from external API...');
-    // TODO: Implement external API sync (e.g., exchangerate-api.com)
-    // This is where you'd fetch latest rates and update the database
 
-    return { synced: 0, message: 'Auto-sync not yet implemented' };
+    try {
+      // Free API - no key required for basic usage
+      // Using USD as base currency (all rates are relative to USD)
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+
+      if (!response.ok) {
+        throw new Error(`Exchange rate API returned ${response.status}`);
+      }
+
+      const data: { rates?: Record<string, number> } = await response.json();
+
+      if (!data.rates) {
+        throw new Error('Invalid response from exchange rate API');
+      }
+
+      // Get all active currencies in our database
+      const activeCurrencies = await this.prisma.currencyRate.findMany({
+        where: { isActive: true },
+      });
+
+      let syncedCount = 0;
+      const errors: string[] = [];
+
+      // Update rates for all active currencies
+      for (const currency of activeCurrencies) {
+        const code = currency.currencyCode;
+        const newRate = data.rates[code];
+
+        if (newRate) {
+          try {
+            await this.prisma.currencyRate.update({
+              where: { id: currency.id },
+              data: {
+                rate: newRate,
+                lastUpdated: new Date(),
+                updatedBy: 'auto-sync',
+              },
+            });
+            syncedCount++;
+            this.logger.log(`Updated ${code}: ${currency.rate} → ${newRate}`);
+          } catch (error) {
+            errors.push(`${code}: ${error.message}`);
+            this.logger.error(`Failed to update ${code}:`, error);
+          }
+        } else {
+          this.logger.warn(`No rate found for ${code} in API response`);
+          errors.push(`${code}: Not found in API response`);
+        }
+      }
+
+      const message = `Successfully synced ${syncedCount} of ${activeCurrencies.length} currencies`;
+      this.logger.log(message);
+
+      return {
+        synced: syncedCount,
+        total: activeCurrencies.length,
+        message,
+        errors: errors.length > 0 ? errors : null,
+        lastSync: new Date().toISOString(),
+      };
+    } catch (error) {
+      const errorMessage = `Failed to sync exchange rates: ${error.message}`;
+      this.logger.error(errorMessage);
+      return {
+        synced: 0,
+        message: errorMessage,
+        error: error.message,
+      };
+    }
   }
 
   /**

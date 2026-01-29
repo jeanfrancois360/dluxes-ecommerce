@@ -23,6 +23,8 @@ export function CurrencySettingsSection() {
   const { currencies: availableCurrencies, isLoading: currenciesLoading, error: currenciesError } = useCurrencyAdmin();
   const justSavedRef = useRef(false);
   const [newCurrency, setNewCurrency] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncResult, setLastSyncResult] = useState<any>(null);
 
   useEffect(() => {
     if (currenciesError) {
@@ -96,6 +98,37 @@ export function CurrencySettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+
+  // Manual sync handler
+  const handleManualSync = async () => {
+    try {
+      setSyncing(true);
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+      const token = localStorage.getItem('auth_token');
+
+      const response = await fetch(`${API_URL}/currency/admin/sync`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setLastSyncResult(result.data);
+        toast.success(result.message || 'Exchange rates synced successfully');
+      } else {
+        toast.error(result.message || 'Failed to sync exchange rates');
+      }
+    } catch (error: any) {
+      console.error('Sync failed:', error);
+      toast.error('Failed to sync exchange rates');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const addCurrency = (code: string) => {
     if (!code || code.startsWith('__')) {
@@ -345,6 +378,58 @@ export function CurrencySettingsSection() {
             </Select>
           </SettingsField>
         )}
+
+        {/* Manual Sync Button */}
+        <div className="space-y-3">
+          <Button
+            type="button"
+            onClick={handleManualSync}
+            disabled={syncing}
+            variant="outline"
+            className="w-full"
+          >
+            {syncing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Syncing exchange rates...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Sync Now
+              </>
+            )}
+          </Button>
+
+          {/* Last Sync Result */}
+          {lastSyncResult && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+              <p className="text-sm font-medium text-blue-900">Last Sync Result</p>
+              <div className="mt-2 space-y-1 text-sm text-blue-700">
+                {lastSyncResult.synced > 0 && (
+                  <p>✓ Updated {lastSyncResult.synced} of {lastSyncResult.total} currencies</p>
+                )}
+                {lastSyncResult.lastSync && (
+                  <p className="text-xs text-blue-600">
+                    {new Date(lastSyncResult.lastSync).toLocaleString()}
+                  </p>
+                )}
+                {lastSyncResult.errors && lastSyncResult.errors.length > 0 && (
+                  <p className="text-xs text-yellow-600">
+                    ⚠ {lastSyncResult.errors.length} currencies failed to update
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Info Box */}
+        <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
+          <p className="text-xs text-purple-700">
+            <strong>Data Source:</strong> Exchange rates are fetched from exchangerate-api.com using USD as the base currency. All rates are updated relative to USD.
+          </p>
+        </div>
       </SettingsCard>
 
       <SettingsFooter
