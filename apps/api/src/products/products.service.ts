@@ -61,8 +61,9 @@ export class ProductsService {
 
   /**
    * Generate SKU automatically based on inventory settings
-   * Format: {SKU_PREFIX}-{SEQUENCE_NUMBER}
-   * Example: PROD-001, PROD-002, etc.
+   * Format: {SKU_PREFIX}-{MM}-{DD}-{SEQUENCE_NUMBER}
+   * Example: PROD-01-29-000001, PROD-01-29-000002, etc.
+   * Sequence resets daily.
    */
   private async generateSKU(providedSKU?: string): Promise<string> {
     // If SKU is provided, validate it's unique and return it
@@ -90,11 +91,19 @@ export class ProductsService {
       const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
       const prefix = String(prefixSetting.value || 'PROD').toUpperCase();
 
-      // Find the highest existing SKU number with this prefix
+      // Get current date components
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
+      const day = String(now.getDate()).padStart(2, '0'); // 01-31
+
+      // Format: PREFIX-MM-DD-
+      const datePrefix = `${prefix}-${month}-${day}-`;
+
+      // Find the highest existing SKU number for today's date with this prefix
       const products = await this.prisma.product.findMany({
         where: {
           sku: {
-            startsWith: `${prefix}-`,
+            startsWith: datePrefix,
           },
         },
         orderBy: {
@@ -106,15 +115,16 @@ export class ProductsService {
       let nextNumber = 1;
       if (products.length > 0) {
         const lastSKU = products[0].sku;
+        // Extract the sequence number from PREFIX-MM-DD-XXXXXX
         const match = lastSKU.match(/-(\d+)$/);
         if (match) {
           nextNumber = parseInt(match[1], 10) + 1;
         }
       }
 
-      // Format with leading zeros (minimum 3 digits)
-      const formattedNumber = String(nextNumber).padStart(3, '0');
-      const generatedSKU = `${prefix}-${formattedNumber}`;
+      // Format with leading zeros (6 digits)
+      const formattedNumber = String(nextNumber).padStart(6, '0');
+      const generatedSKU = `${datePrefix}${formattedNumber}`;
 
       // Double-check uniqueness (race condition protection)
       const duplicate = await this.prisma.product.findUnique({
