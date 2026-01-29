@@ -706,7 +706,9 @@ function CurrencyFormModal({
         await currencyAdminApi.createRate(formData);
         toast.success(`${formData.currencyName} has been added successfully`);
       } else if (currency) {
-        await currencyAdminApi.updateRate(currency.currencyCode, formData);
+        // Exclude currencyCode from update payload (it's in the URL)
+        const { currencyCode, ...updateData } = formData;
+        await currencyAdminApi.updateRate(currency.currencyCode, updateData);
         toast.success(
           `${formData.currencyName} has been updated successfully`
         );
