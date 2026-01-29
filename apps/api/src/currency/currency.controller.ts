@@ -229,4 +229,27 @@ export class CurrencyController {
       };
     }
   }
+
+  /**
+   * Manually trigger exchange rate sync (Admin only)
+   * @route POST /currency/admin/sync
+   */
+  @Post('admin/sync')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async syncExchangeRates() {
+    try {
+      const result = await this.currencyService.syncExchangeRates();
+      return {
+        success: result.synced > 0 || !result.error,
+        data: result,
+        message: result.message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
 }

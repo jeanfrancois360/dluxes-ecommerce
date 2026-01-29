@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
@@ -133,12 +133,18 @@ export function CommissionSettingsSection() {
           )}
         </SettingsField>
 
-        <SettingsToggle
-          label="Include Shipping in Commission"
-          description="Apply commission percentage to both product price AND shipping fees"
-          checked={form.watch('commission_applies_to_shipping')}
-          onCheckedChange={(checked) => form.setValue('commission_applies_to_shipping', checked, { shouldDirty: true })}
-          tooltip="When ON: Commission applies to (Product + Shipping). When OFF: Commission only applies to Product price."
+        <Controller
+          name="commission_applies_to_shipping"
+          control={form.control}
+          render={({ field }) => (
+            <SettingsToggle
+              label="Include Shipping in Commission"
+              description="Apply commission percentage to both product price AND shipping fees"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+              tooltip="When ON: Commission applies to (Product + Shipping). When OFF: Commission only applies to Product price."
+            />
+          )}
         />
 
         {/* Hidden field to maintain schema compatibility */}
