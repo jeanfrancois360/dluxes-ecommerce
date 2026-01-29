@@ -9,6 +9,7 @@ import { EmailService } from '../email/email.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
 import { SearchService } from '../search/search.service';
+import { SettingsService } from '../settings/settings.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -31,6 +32,7 @@ export class ProductsService {
     private readonly subscriptionService: SubscriptionService,
     private readonly creditsService: CreditsService,
     private readonly searchService: SearchService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   /**
@@ -55,6 +57,84 @@ export class ProductsService {
 
   private transformProducts(products: any[]) {
     return products.map((p) => this.transformProduct(p));
+  }
+
+  /**
+   * Generate SKU automatically based on inventory settings
+   * Format: {SKU_PREFIX}-{SEQUENCE_NUMBER}
+   * Example: PROD-001, PROD-002, etc.
+   */
+  private async generateSKU(providedSKU?: string): Promise<string> {
+    // If SKU is provided, validate it's unique and return it
+    if (providedSKU) {
+      const existing = await this.prisma.product.findUnique({
+        where: { sku: providedSKU },
+      });
+      if (existing) {
+        throw new BadRequestException(`SKU '${providedSKU}' already exists`);
+      }
+      return providedSKU;
+    }
+
+    // Check if auto-generation is enabled
+    try {
+      const autoGenSetting = await this.settingsService.getSetting('inventory.auto_sku_generation');
+      const isAutoGenEnabled = Boolean(autoGenSetting.value);
+
+      if (!isAutoGenEnabled) {
+        // If auto-generation is disabled, SKU must be provided
+        throw new BadRequestException('SKU is required when auto-generation is disabled');
+      }
+
+      // Get SKU prefix from settings
+      const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
+      const prefix = String(prefixSetting.value || 'PROD').toUpperCase();
+
+      // Find the highest existing SKU number with this prefix
+      const products = await this.prisma.product.findMany({
+        where: {
+          sku: {
+            startsWith: `${prefix}-`,
+          },
+        },
+        orderBy: {
+          sku: 'desc',
+        },
+        take: 1,
+      });
+
+      let nextNumber = 1;
+      if (products.length > 0) {
+        const lastSKU = products[0].sku;
+        const match = lastSKU.match(/-(\d+)$/);
+        if (match) {
+          nextNumber = parseInt(match[1], 10) + 1;
+        }
+      }
+
+      // Format with leading zeros (minimum 3 digits)
+      const formattedNumber = String(nextNumber).padStart(3, '0');
+      const generatedSKU = `${prefix}-${formattedNumber}`;
+
+      // Double-check uniqueness (race condition protection)
+      const duplicate = await this.prisma.product.findUnique({
+        where: { sku: generatedSKU },
+      });
+      if (duplicate) {
+        // Recursively try next number if collision occurs
+        return this.generateSKU();
+      }
+
+      this.logger.log(`Auto-generated SKU: ${generatedSKU}`);
+      return generatedSKU;
+    } catch (error) {
+      // If settings are not configured, default behavior
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.warn('Failed to fetch SKU generation settings, using default behavior');
+      throw new BadRequestException('SKU is required (auto-generation not configured)');
+    }
   }
 
   /**
@@ -683,8 +763,12 @@ export class ProductsService {
       purchaseType,
       price,
       inventory,
+      sku,
       ...productData
     } = createProductDto;
+
+    // Auto-generate SKU if not provided
+    const finalSKU = await this.generateSKU(sku);
 
     // Set defaults based on purchaseType
     const finalPurchaseType = purchaseType || PurchaseType.INSTANT;
@@ -698,6 +782,7 @@ export class ProductsService {
     const product = await this.prisma.product.create({
       data: {
         ...productData,
+        sku: finalSKU,
         purchaseType: finalPurchaseType,
         price: finalPrice,
         inventory: finalInventory,
