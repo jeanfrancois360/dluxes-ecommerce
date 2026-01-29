@@ -669,11 +669,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 value={formData.sku}
                 onChange={(e) => handleChange('sku', e.target.value)}
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.sku ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder={inventorySettings.autoSkuGeneration ? `Leave empty for auto-generation (${inventorySettings.skuPrefix}-###)` : "Enter unique SKU"}
+                placeholder={inventorySettings.autoSkuGeneration ? `Leave empty for auto-generation (${inventorySettings.skuPrefix}-MM-DD-XXXXXX)` : "Enter unique SKU"}
               />
               {inventorySettings.autoSkuGeneration && !formData.sku && (
                 <p className="text-xs text-blue-600 mt-1">
-                  ✨ SKU will be automatically generated as: <strong>{inventorySettings.skuPrefix}-###</strong>
+                  ✨ SKU will be automatically generated as: <strong>{inventorySettings.skuPrefix}-{new Date().getMonth() + 1 < 10 ? '0' : ''}{new Date().getMonth() + 1}-{new Date().getDate() < 10 ? '0' : ''}{new Date().getDate()}-XXXXXX</strong>
                 </p>
               )}
               <ErrorMessage field="sku" />
