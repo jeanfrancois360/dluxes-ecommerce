@@ -18,6 +18,7 @@ import { adminCategoriesApi, type Category } from '@/lib/api/admin';
 import { VariantManager } from './variant-manager';
 import { StockLevelIndicator } from './stock-status-badge';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
+import { useInventorySettings } from '@/hooks/use-inventory-settings';
 import { RealEstateFields, VehicleFields, DigitalFields, ServiceFields, RentalFields } from './product-type-fields';
 
 // Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
@@ -33,6 +34,9 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
+  // Inventory settings for auto-SKU generation
+  const { settings: inventorySettings, loading: loadingInventorySettings } = useInventorySettings();
+
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -335,8 +339,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       newErrors.slug = 'Slug must be lowercase letters, numbers, and hyphens only';
     }
 
-    if (!formData.sku?.trim()) {
-      newErrors.sku = 'SKU is required';
+    // SKU validation: Only required if auto-generation is disabled or if provided SKU is invalid
+    if (!inventorySettings.autoSkuGeneration && !formData.sku?.trim()) {
+      newErrors.sku = 'SKU is required when auto-generation is disabled';
     }
 
     // Purchase type specific validation
@@ -653,16 +658,24 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             </div>
             <div id="sku">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                SKU <span className="text-red-500">*</span>
+                SKU {!inventorySettings.autoSkuGeneration && <span className="text-red-500">*</span>}
+                {inventorySettings.autoSkuGeneration && (
+                  <span className="text-xs font-normal text-gray-500 ml-2">(Optional - Auto-generated)</span>
+                )}
               </label>
               <input
                 type="text"
-                required
+                required={!inventorySettings.autoSkuGeneration}
                 value={formData.sku}
                 onChange={(e) => handleChange('sku', e.target.value)}
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.sku ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="SKU-001"
+                placeholder={inventorySettings.autoSkuGeneration ? `Leave empty for auto-generation (${inventorySettings.skuPrefix}-###)` : "Enter unique SKU"}
               />
+              {inventorySettings.autoSkuGeneration && !formData.sku && (
+                <p className="text-xs text-blue-600 mt-1">
+                  ✨ SKU will be automatically generated as: <strong>{inventorySettings.skuPrefix}-###</strong>
+                </p>
+              )}
               <ErrorMessage field="sku" />
             </div>
           </div>
