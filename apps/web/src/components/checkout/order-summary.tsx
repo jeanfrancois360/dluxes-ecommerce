@@ -74,11 +74,12 @@ export function OrderSummary({
   const finalTotal = total - discount;
 
   // Helper function to format prices with selected currency
-  // NOTE: Item prices from cart are in USD, totals are already converted
+  // 🔒 UPDATED: Respects locked prices (priceAtAdd) - no conversion needed
   const formatWithCurrency = (amount: number, shouldConvert: boolean = false) => {
     if (!currency) return `$${formatCurrencyAmount(amount, 2)}`;
 
-    // Convert from USD if needed (for item prices)
+    // Convert from USD ONLY if shouldConvert is true and price is in USD
+    // For locked prices (priceAtAdd), shouldConvert will be false
     const displayAmount = shouldConvert ? convertPrice(amount, 'USD') : amount;
 
     const formatted = formatCurrencyAmount(displayAmount, currency.decimalDigits);
@@ -143,7 +144,11 @@ export function OrderSummary({
               <div className="flex items-center justify-between mt-1">
                 <span className="text-xs text-neutral-500">Qty: {item.quantity}</span>
                 <span className="text-sm font-serif font-semibold text-gold">
-                  {formatWithCurrency(item.price * item.quantity, true)}
+                  {/* 🔒 Use locked price (priceAtAdd) if available, otherwise convert from USD */}
+                  {formatWithCurrency(
+                    (item.priceAtAdd !== undefined ? item.priceAtAdd : item.price) * item.quantity,
+                    item.priceAtAdd === undefined // Only convert if no locked price
+                  )}
                 </span>
               </div>
             </div>

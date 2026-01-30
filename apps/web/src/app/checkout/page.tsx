@@ -138,9 +138,9 @@ export default function CheckoutPage() {
   // Create order and payment intent when shipping method is confirmed
   useEffect(() => {
     if (step === 'payment' && shippingMethodConfirmed && !clientSecret && items.length > 0 && shippingAddress && user) {
-      // Cart totals are now in selected currency, so we just use them directly
-      // The shipping cost from cart context is already properly calculated and converted
-      createOrderAndPaymentIntent(items, totals).catch((err) => {
+      // 🔒 Pass cart's locked currency to ensure payment uses same currency
+      // Cart totals are already in the locked currency
+      createOrderAndPaymentIntent(items, totals, cartCurrency).catch((err) => {
         // Use longer duration for stock errors (they may contain multiple items)
         const duration = err.message?.includes('Insufficient stock') ? 8000 : 5000;
         toast.error(err.message || 'Failed to initialize checkout. Please try again.', { duration });
@@ -148,7 +148,7 @@ export default function CheckoutPage() {
         goToStep('shipping');
       });
     }
-  }, [step, shippingMethodConfirmed, clientSecret, items, selectedShippingMethod, totals, shippingAddress, createOrderAndPaymentIntent, goToStep, user]);
+  }, [step, shippingMethodConfirmed, clientSecret, items, selectedShippingMethod, totals, shippingAddress, createOrderAndPaymentIntent, goToStep, user, cartCurrency]);
 
   // Reset shipping method confirmation when leaving payment step
   useEffect(() => {
