@@ -995,7 +995,12 @@ model Cart {
   subtotal  Decimal  @default(0) @db.Decimal(10, 2)
   discount  Decimal  @default(0) @db.Decimal(10, 2)
   total     Decimal  @default(0) @db.Decimal(10, 2)
-  currency  String   @default("USD")
+
+  // 🔒 CURRENCY LOCKING FIELDS
+  currency     String   @default("USD")
+  exchangeRate Decimal  @default(1) @db.Decimal(10, 6) // Rate when cart currency was locked (1 USD = X currency)
+  rateLockedAt DateTime @default(now()) // Timestamp when exchange rate was captured and frozen
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1014,10 +1019,15 @@ model CartItem {
   variantId String?
   name      String
   sku       String
-  price     Decimal @db.Decimal(10, 2)
-  quantity  Int
-  image     String?
-  metadata  Json? // For personalization options, gift wrapping, etc.
+
+  // 🔒 PRICE LOCKING FIELDS
+  price         Decimal @db.Decimal(10, 2) // Current price (kept for backwards compatibility)
+  priceAtAdd    Decimal @db.Decimal(10, 2) // Price when item was added to cart (in cart's locked currency)
+  currencyAtAdd String  @default("USD") // Currency when item was added (must match cart.currency)
+
+  quantity Int
+  image    String?
+  metadata Json? // For personalization options, gift wrapping, etc.
 
   // Smooth animations
   previousQuantity Int? // For transition effects
@@ -1752,10 +1762,17 @@ model Commission {
   ruleType  CommissionRuleType
   ruleValue Decimal            @db.Decimal(5, 2)
 
-  // Financial Details
+  // Financial Details (Order Currency - what buyer paid)
   orderAmount      Decimal @db.Decimal(10, 2) // Total order or item amount
   commissionAmount Decimal @db.Decimal(10, 2) // Calculated commission
-  currency         String  @default("USD")
+  currency         String  @default("USD") // Order currency (buyer's currency)
+
+  // 💱 PAYOUT CURRENCY CONVERSION FIELDS (Seller Currency - what seller receives)
+  payoutAmount    Decimal? @db.Decimal(10, 2) // Commission amount in seller's payout currency
+  payoutCurrency  String? // Seller's preferred payout currency (from store.payoutCurrency)
+  conversionRate  Decimal? @db.Decimal(10, 6) // Rate used: orderCurrency → payoutCurrency
+  rateSource      String? // Where rate came from: 'STRIPE', 'ECB', 'MANUAL'
+  rateTimestamp   DateTime? // When conversion rate was captured
 
   // Status
   status CommissionStatus @default(PENDING)
