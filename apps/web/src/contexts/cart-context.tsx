@@ -261,7 +261,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const response = await axios.post(
         `${API_URL}/cart/items`,
-        { productId, quantity, variantId },
+        {
+          productId,
+          quantity,
+          variantId,
+          currency: selectedCurrency // Send current selected currency
+        },
         {
           headers: {
             'x-session-id': sessionId,
@@ -278,7 +283,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [getSessionId, refreshCart]);
+  }, [getSessionId, refreshCart, selectedCurrency]);
 
   // Update item quantity
   const updateQuantity = useCallback(async (itemId: string, quantity: number) => {
