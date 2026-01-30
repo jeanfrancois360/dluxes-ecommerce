@@ -196,13 +196,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const cart = response.data;
 
-      // Sync cart currency with selected currency
-      if (cart.currency && cart.currency !== selectedCurrency) {
-        console.log(`[Cart] Syncing currency from ${selectedCurrency} to cart's ${cart.currency}`);
-        setSelectedCurrency(cart.currency);
+      // Only sync cart currency to selector if cart has items (currency is locked)
+      // If cart is empty, respect the user's selected currency
+      if (cart.currency) {
         setCartCurrency(cart.currency);
-      } else if (cart.currency) {
-        setCartCurrency(cart.currency);
+
+        // Only override selector if cart has items (locked currency takes precedence)
+        if (cart.items && cart.items.length > 0 && cart.currency !== selectedCurrency) {
+          console.log(`[Cart] Cart has items - syncing currency to cart's locked ${cart.currency}`);
+          setSelectedCurrency(cart.currency);
+        }
       }
 
       // Transform items to include slug from product
