@@ -150,8 +150,9 @@ export function useCheckout() {
   }, []);
 
   // Create order and then payment intent (CORRECT FLOW)
+  // 🔒 UPDATED: Uses locked prices and currency from cart
   const createOrderAndPaymentIntent = useCallback(
-    async (cartItems: any[], totals: any) => {
+    async (cartItems: any[], totals: any, cartCurrency?: string) => {
       setIsLoading(true);
       setError(null);
 
@@ -201,11 +202,12 @@ export function useCheckout() {
         }
 
         // Step 2: Create order from cart items
+        // 🔒 Use locked prices (priceAtAdd) from cart
         const orderItems = cartItems.map(item => ({
           productId: item.productId,
           variantId: item.variantId,
           quantity: item.quantity,
-          price: item.price,
+          price: item.priceAtAdd !== undefined ? item.priceAtAdd : item.price, // Use locked price
         }));
 
         const orderResponse = await axios.post(
@@ -235,11 +237,14 @@ export function useCheckout() {
           throw new Error(`Invalid order total: ${orderTotal}. Must be at least $0.50`);
         }
 
+        // 🔒 Use cart's locked currency for payment
+        const paymentCurrency = cartCurrency?.toLowerCase() || 'usd';
+
         const paymentResponse = await axios.post(
           `${API_URL}/payment/create-intent`,
           {
             amount: orderTotal,
-            currency: 'usd',
+            currency: paymentCurrency, // Use locked currency from cart
             orderId: order.id,
           },
           {
