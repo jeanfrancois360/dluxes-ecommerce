@@ -220,10 +220,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const hasItems = cart.items && cart.items.length > 0;
       const cartLocked = hasItems && cart.currency;
 
-      if (cart.currency) {
-        setCartCurrency(cart.currency);
-      }
-
       // 🔒 Update currency locking state
       setIsCurrencyLocked(cartLocked);
       setExchangeRate(Number(cart.exchangeRate) || 1);
@@ -231,18 +227,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       // Only sync cart currency to selector if cart has items (currency is locked)
       // If cart is empty, respect the user's selected currency
-      if (cartLocked && cart.currency !== selectedCurrency) {
-        console.log(
-          `[Cart] 🔒 Currency LOCKED to ${cart.currency} ` +
-          `(rate: ${cart.exchangeRate}, locked at: ${cart.rateLockedAt})`
-        );
-        setSelectedCurrency(cart.currency);
-      } else if (!hasItems) {
+      if (cartLocked) {
+        // Cart has items - use cart's locked currency
+        setCartCurrency(cart.currency);
+
+        // Sync to selector only if different
+        if (cart.currency !== selectedCurrency) {
+          console.log(
+            `[Cart] 🔒 Currency LOCKED to ${cart.currency} ` +
+            `(rate: ${cart.exchangeRate}, locked at: ${cart.rateLockedAt})`
+          );
+          setSelectedCurrency(cart.currency);
+        }
+      } else {
+        // Cart is empty - respect user's selected currency
         console.log(`[Cart] 🔓 Cart empty - currency UNLOCKED`);
-        // Reset locking state when cart is empty
+
+        // Reset locking state
         setIsCurrencyLocked(false);
         setExchangeRate(1);
         setRateLockedAt(null);
+
+        // Use user's selected currency for cart currency
+        setCartCurrency(selectedCurrency);
       }
 
       // Transform items to include slug from product and locked price fields
@@ -285,7 +292,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [getSessionId]);
+  }, [getSessionId, selectedCurrency, setSelectedCurrency]);
 
   // Add item to cart
   const addItem = useCallback(async (productId: string, quantity: number, variantId?: string) => {
@@ -422,9 +429,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsCurrencyLocked(false);
       setExchangeRate(1);
       setRateLockedAt(null);
-      setCartCurrency('USD');
 
-      console.log('[Cart] 🔓 Cart cleared - currency unlocked');
+      // Use user's currently selected currency (don't force USD)
+      setCartCurrency(selectedCurrency);
+
+      console.log(`[Cart] 🔓 Cart cleared - currency unlocked (using ${selectedCurrency})`);
 
       // Clear localStorage
       if (typeof window !== 'undefined') {
@@ -439,7 +448,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [getSessionId, refreshCart]);
+  }, [getSessionId, refreshCart, selectedCurrency]);
 
   // 🔒 Handle currency change requests
   const handleCurrencyChange = useCallback(async (newCurrency: string): Promise<{ allowed: boolean; message?: string }> => {
