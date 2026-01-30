@@ -9,6 +9,7 @@ import { getStripe } from '@/lib/stripe';
 import { useCart } from '@/hooks/use-cart';
 import { useCheckout } from '@/hooks/use-checkout';
 import { useAuth } from '@/hooks/use-auth';
+import { useCurrencyConverter } from '@/hooks/use-currency';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { CheckoutStepper, CheckoutStep } from '@/components/checkout/checkout-stepper';
 import { AddressForm, Address } from '@/components/checkout/address-form';
@@ -93,7 +94,8 @@ function StripeElementsWrapper({
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, isInitialized } = useAuth();
-  const { items, totals, clearCart } = useCart();
+  const { items, totals, clearCart, cartCurrency } = useCart();
+  const { convertPrice } = useCurrencyConverter();
   const {
     step,
     completedSteps,
@@ -138,10 +140,12 @@ export default function CheckoutPage() {
     if (step === 'payment' && shippingMethodConfirmed && !clientSecret && items.length > 0 && shippingAddress && user) {
       // Calculate dynamic shipping cost based on subtotal
       const shippingCalculation = calculateShippingCost(selectedShippingMethod, totals.subtotal);
+      // Convert shipping cost from USD to selected currency
+      const convertedShipping = convertPrice(shippingCalculation.finalPrice, 'USD');
 
       createOrderAndPaymentIntent(items, {
         ...totals,
-        shipping: shippingCalculation.finalPrice,
+        shipping: convertedShipping,
       }).catch((err) => {
         // Use longer duration for stock errors (they may contain multiple items)
         const duration = err.message?.includes('Insufficient stock') ? 8000 : 5000;
@@ -150,7 +154,7 @@ export default function CheckoutPage() {
         goToStep('shipping');
       });
     }
-  }, [step, shippingMethodConfirmed, clientSecret, items, selectedShippingMethod, totals, shippingAddress, createOrderAndPaymentIntent, goToStep, user]);
+  }, [step, shippingMethodConfirmed, clientSecret, items, selectedShippingMethod, totals, shippingAddress, createOrderAndPaymentIntent, goToStep, user, convertPrice]);
 
   // Reset shipping method confirmation when leaving payment step
   useEffect(() => {
@@ -181,12 +185,14 @@ export default function CheckoutPage() {
   const handleShippingMethodContinue = () => {
     const methodConfig = getShippingMethodById(selectedShippingMethod);
     const shippingCalculation = calculateShippingCost(selectedShippingMethod, totals.subtotal);
+    // Convert shipping cost from USD to selected currency
+    const convertedShipping = convertPrice(shippingCalculation.finalPrice, 'USD');
 
     if (methodConfig) {
       saveShippingMethod({
         id: methodConfig.id,
         name: methodConfig.name,
-        price: shippingCalculation.finalPrice,
+        price: convertedShipping,
       });
       // Confirm shipping method to trigger payment intent creation
       setShippingMethodConfirmed(true);
@@ -227,7 +233,9 @@ export default function CheckoutPage() {
 
   // Calculate totals with selected shipping method (dynamic pricing)
   const shippingCalculation = calculateShippingCost(selectedShippingMethod, totals.subtotal);
-  const totalWithShipping = totals.total - totals.shipping + shippingCalculation.finalPrice;
+  // Convert shipping cost from USD to selected currency
+  const convertedShippingCost = convertPrice(shippingCalculation.finalPrice, 'USD');
+  const totalWithShipping = totals.total - totals.shipping + convertedShippingCost;
 
   if (items.length === 0) {
     return null; // Will redirect
@@ -366,7 +374,7 @@ export default function CheckoutPage() {
                           <ShippingSummaryCard
                             shippingMethod={{
                               name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
-                              price: shippingCalculation.finalPrice,
+                              price: convertedShippingCost,
                               estimatedDays: getShippingMethodById(selectedShippingMethod)?.estimatedDays || '5-7 business days',
                             }}
                             shippingAddress={shippingAddress ? {
@@ -420,12 +428,12 @@ export default function CheckoutPage() {
               <OrderSummary
                 items={items}
                 subtotal={totals.subtotal}
-                shipping={shippingCalculation.finalPrice}
+                shipping={convertedShippingCost}
                 tax={totals.tax}
                 total={totalWithShipping}
                 shippingMethod={{
                   name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
-                  price: shippingCalculation.finalPrice,
+                  price: convertedShippingCost,
                 }}
               />
             </div>
