@@ -7,6 +7,7 @@ import { CurrencyModule } from '../currency/currency.module';
 import { CartModule } from '../cart/cart.module';
 import { EmailModule } from '../email/email.module';
 import { SettingsModule } from '../settings/settings.module';
+import { PaymentModule } from '../payment/payment.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { SettingsModule } from '../settings/settings.module';
     CartModule,
     EmailModule,
     SettingsModule,
+    PaymentModule,
   ],
   providers: [OrdersService, ShippingTaxService],
   controllers: [OrdersController],

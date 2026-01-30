@@ -8,6 +8,8 @@ import { InventoryService } from '../inventory/inventory.service';
 import { ShippingTaxService } from './shipping-tax.service';
 import { CurrencyService } from '../currency/currency.service';
 import { EmailService } from '../email/email.service';
+import { CartService } from '../cart/cart.service';
+import { PaymentService } from '../payment/payment.service';
 
 /**
  * Orders Service
@@ -23,7 +25,10 @@ export class OrdersService {
     @Inject(forwardRef(() => CurrencyService))
     private readonly currencyService: CurrencyService,
     private readonly emailService: EmailService,
-    private readonly shippingTaxService: ShippingTaxService
+    private readonly shippingTaxService: ShippingTaxService,
+    @Inject(forwardRef(() => CartService))
+    private readonly cartService: CartService,
+    private readonly paymentService: PaymentService,
   ) {
     this.inventoryService = new InventoryService(prisma);
   }
@@ -254,7 +259,257 @@ export class OrdersService {
   }
 
   /**
-   * Create new order from cart
+   * 🔒 Create order from cart with locked currency
+   * Uses cart's locked currency and exchange rate for the entire order
+   */
+  async createOrderFromCart(
+    userId: string,
+    sessionId: string,
+    shippingAddressId: string,
+    billingAddressId?: string,
+    notes?: string
+  ) {
+    // 1. Get cart with locked currency and totals
+    const cart = await this.cartService.getCart(sessionId, userId);
+
+    if (!cart || !cart.items || cart.items.length === 0) {
+      throw new BadRequestException('Cart is empty');
+    }
+
+    // 2. 🔒 Use cart's LOCKED currency for entire order
+    const orderCurrency = cart.currency;
+    const orderExchangeRate = new Decimal(cart.exchangeRate);
+
+    this.logger.log(
+      `📦 Creating order in ${orderCurrency} ` +
+      `(rate: ${orderExchangeRate.toFixed(6)}, locked at: ${cart.rateLockedAt})`
+    );
+
+    // 3. Verify shipping address exists and belongs to user
+    const shippingAddress = await this.prisma.address.findFirst({
+      where: { id: shippingAddressId, userId },
+    });
+
+    if (!shippingAddress) {
+      throw new BadRequestException('Invalid shipping address');
+    }
+
+    // 4. Calculate totals (already in locked currency from cart)
+    const cartTotals = await this.cartService.getCart(sessionId, userId);
+    const subtotal = new Decimal(cartTotals.subtotal);
+    const discount = new Decimal(cartTotals.discount);
+
+    // 5. Calculate shipping and tax in locked currency
+    const taxCalc = await this.shippingTaxService.calculateTax(
+      {
+        country: shippingAddress.country,
+        state: shippingAddress.province || undefined,
+        postalCode: shippingAddress.postalCode || undefined,
+      },
+      Number(subtotal)
+    );
+
+    const shippingOptions = await this.shippingTaxService.calculateShippingOptions(
+      {
+        country: shippingAddress.country,
+        state: shippingAddress.province || undefined,
+        postalCode: shippingAddress.postalCode || undefined,
+      },
+      cart.items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: Number(item.price),
+      })),
+      Number(subtotal)
+    );
+
+    const selectedShipping = shippingOptions[0];
+    const shipping = new Decimal(selectedShipping?.price || 15);
+    const tax = new Decimal(taxCalc.amount);
+    const total = subtotal.add(shipping).add(tax).sub(discount);
+
+    // 6. Generate order number
+    const orderNumber = `LUX-${Date.now()}`;
+
+    this.logger.log(
+      `💰 Order totals: subtotal=${subtotal} ${orderCurrency}, ` +
+      `shipping=${shipping}, tax=${tax}, total=${total}`
+    );
+
+    // 7. Create order with transaction
+    const order = await this.prisma.$transaction(async (prisma) => {
+      // Prepare order items from cart items
+      const orderItems = cart.items.map(item => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        name: item.name,
+        sku: item.sku,
+        quantity: item.quantity,
+        price: item.priceAtAdd || item.price, // 🔒 Use locked price
+        currency: item.currencyAtAdd || cart.currency, // 🔒 Use locked currency
+        total: new Decimal(item.priceAtAdd || item.price).mul(item.quantity),
+        image: item.image,
+      }));
+
+      // Create order with locked currency
+      const newOrder = await prisma.order.create({
+        data: {
+          orderNumber,
+          userId,
+          subtotal,
+          shipping,
+          tax,
+          discount,
+          total,
+
+          // 🔒 LOCKED CURRENCY FROM CART
+          currency: orderCurrency,
+          exchangeRate: orderExchangeRate,
+          baseCurrency: 'USD',
+
+          status: OrderStatus.PENDING,
+          paymentStatus: PaymentStatus.PENDING,
+          paymentMethod: 'STRIPE', // Default to Stripe
+          shippingAddressId,
+          billingAddressId: billingAddressId || shippingAddressId,
+          notes,
+
+          items: {
+            create: orderItems,
+          },
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+          shippingAddress: true,
+          billingAddress: true,
+        },
+      });
+
+      // Create initial timeline entry
+      await prisma.orderTimeline.create({
+        data: {
+          orderId: newOrder.id,
+          status: OrderStatus.PENDING,
+          title: 'Order Placed',
+          description: 'Your order has been received and is being processed.',
+          icon: 'shopping-bag',
+        },
+      });
+
+      return newOrder;
+    });
+
+    this.logger.log(
+      `✅ Order created: ${order.orderNumber} (${order.id}) - ` +
+      `${total} ${orderCurrency} (rate: ${orderExchangeRate.toFixed(6)})`
+    );
+
+    // 8. Record inventory transactions
+    for (const item of cart.items) {
+      try {
+        await this.inventoryService.recordTransaction({
+          productId: item.productId,
+          variantId: item.variantId || undefined,
+          type: InventoryTransactionType.SALE,
+          quantity: -item.quantity,
+          orderId: order.id,
+          userId,
+          reason: 'order_placed',
+          notes: `Order ${order.orderNumber}`,
+        });
+      } catch (invError) {
+        this.logger.error(
+          `Error recording inventory transaction for product ${item.productId}:`,
+          invError
+        );
+      }
+    }
+
+    // 9. Send order confirmation email
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, firstName: true, lastName: true },
+      });
+
+      if (user?.email) {
+        const customerName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
+
+        await this.emailService.sendOrderConfirmation(user.email, {
+          orderNumber: order.orderNumber,
+          customerName,
+          items: order.items.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: Number(item.price),
+            total: Number(item.total),
+          })),
+          subtotal: Number(subtotal),
+          shipping: Number(shipping),
+          tax: Number(tax),
+          total: Number(total),
+          currency: orderCurrency,
+          shippingAddress: {
+            street: order.shippingAddress.address1 || '',
+            city: order.shippingAddress.city || '',
+            state: order.shippingAddress.province || '',
+            zipCode: order.shippingAddress.postalCode || '',
+            country: order.shippingAddress.country || '',
+          },
+          orderId: order.id,
+        });
+      }
+    } catch (emailError) {
+      this.logger.error('Error sending order confirmation email:', emailError);
+    }
+
+    // 10. 💳 Create Stripe Payment Intent with locked currency
+    let clientSecret: string | null = null;
+
+    try {
+      this.logger.log(
+        `💳 Creating Stripe PaymentIntent: ${total.toNumber()} ${orderCurrency}`
+      );
+
+      const paymentIntent = await this.paymentService.createPaymentIntent(
+        {
+          amount: total.toNumber(),
+          currency: orderCurrency,
+          orderId: order.id,
+        },
+        userId
+      );
+
+      clientSecret = paymentIntent.clientSecret;
+
+      this.logger.log(
+        `✅ PaymentIntent created: ${paymentIntent.paymentIntentId} - ${total.toNumber()} ${orderCurrency} ` +
+        `(rate: ${orderExchangeRate.toFixed(6)}, locked at: ${cart.rateLockedAt})`
+      );
+    } catch (paymentError) {
+      this.logger.error('Error creating payment intent:', paymentError);
+      // Don't fail the order creation if payment intent fails
+      // Frontend can retry payment intent creation
+    }
+
+    // 11. 🔓 Clear cart after successful order creation (unlocks currency)
+    await this.cartService.clearCart(cart.id);
+
+    this.logger.log(`🔓 Cart ${cart.id} cleared after order creation`);
+
+    // Return both order and payment client secret
+    return {
+      order,
+      clientSecret,
+    };
+  }
+
+  /**
+   * Create new order from cart (LEGACY - kept for backwards compatibility)
    */
   async create(userId: string, createOrderDto: CreateOrderDto) {
     const { items, shippingAddressId, billingAddressId, paymentMethod, notes, currency: orderCurrency } =
