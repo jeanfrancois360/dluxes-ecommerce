@@ -217,10 +217,19 @@ export default function CartPage() {
 
                             {/* Price */}
                             <div className="text-right">
-                              <Price amount={Number(item.price) * item.quantity} className="text-2xl font-bold text-black block" />
+                              {/* 🔒 Use locked price (priceAtAdd) if available, otherwise convert USD price */}
+                              <Price
+                                amount={Number(item.priceAtAdd !== undefined ? item.priceAtAdd : item.price) * item.quantity}
+                                fromCurrency={item.currencyAtAdd || 'USD'}
+                                className="text-2xl font-bold text-black block"
+                              />
                               {item.quantity > 1 && (
                                 <p className="text-sm text-neutral-500">
-                                  <Price amount={Number(item.price)} className="inline" /> each
+                                  <Price
+                                    amount={Number(item.priceAtAdd !== undefined ? item.priceAtAdd : item.price)}
+                                    fromCurrency={item.currencyAtAdd || 'USD'}
+                                    className="inline"
+                                  /> each
                                 </p>
                               )}
                             </div>
