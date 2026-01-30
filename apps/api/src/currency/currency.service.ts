@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { UpdateCurrencyRateDto, CreateCurrencyRateDto } from './dto/currency.dto';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class CurrencyService {
@@ -198,6 +199,117 @@ export class CurrencyService {
     }
 
     return deleted;
+  }
+
+  /**
+   * 🔒 CURRENCY LOCKING: Get exchange rate for cart currency locking
+   * Returns fresh exchange rate from database cache (<24h old)
+   * Used when locking cart to a specific currency
+   *
+   * @param fromCurrency Base currency (usually 'USD')
+   * @param toCurrency Target currency (what cart is locked to)
+   * @returns Decimal exchange rate (1 fromCurrency = X toCurrency)
+   */
+  async getExchangeRate(
+    fromCurrency: string,
+    toCurrency: string,
+  ): Promise<Decimal> {
+    const fromCode = fromCurrency.toUpperCase();
+    const toCode = toCurrency.toUpperCase();
+
+    // Same currency - no conversion needed
+    if (fromCode === toCode) {
+      return new Decimal(1);
+    }
+
+    // USD is base currency (rate = 1)
+    if (fromCode === 'USD') {
+      // Get rate for target currency
+      const toRate = await this.prisma.currencyRate.findUnique({
+        where: { currencyCode: toCode, isActive: true },
+        select: { rate: true, lastUpdated: true },
+      });
+
+      if (!toRate) {
+        throw new NotFoundException(`Currency ${toCode} not found or inactive`);
+      }
+
+      // Check if rate is fresh (< 24 hours)
+      const isRateFresh = this.isRateFresh(toRate.lastUpdated);
+      if (!isRateFresh) {
+        this.logger.warn(
+          `Exchange rate for ${toCode} is stale (${toRate.lastUpdated}). ` +
+          `Consider running currency sync.`
+        );
+      }
+
+      return new Decimal(toRate.rate);
+    }
+
+    // For non-USD base currency, convert via USD
+    // Get both rates
+    const [fromRate, toRate] = await Promise.all([
+      this.prisma.currencyRate.findUnique({
+        where: { currencyCode: fromCode, isActive: true },
+        select: { rate: true, lastUpdated: true },
+      }),
+      this.prisma.currencyRate.findUnique({
+        where: { currencyCode: toCode, isActive: true },
+        select: { rate: true, lastUpdated: true },
+      }),
+    ]);
+
+    if (!fromRate) {
+      throw new NotFoundException(`Currency ${fromCode} not found or inactive`);
+    }
+    if (!toRate) {
+      throw new NotFoundException(`Currency ${toCode} not found or inactive`);
+    }
+
+    // Check if rates are fresh
+    if (!this.isRateFresh(fromRate.lastUpdated) || !this.isRateFresh(toRate.lastUpdated)) {
+      this.logger.warn(
+        `Exchange rates for ${fromCode}/${toCode} may be stale. ` +
+        `Consider running currency sync.`
+      );
+    }
+
+    // Calculate cross rate: (1 / fromRate) * toRate
+    // Example: EUR to GBP = (1 / EUR_to_USD) * GBP_to_USD
+    const crossRate = new Decimal(1)
+      .div(new Decimal(fromRate.rate))
+      .mul(new Decimal(toRate.rate));
+
+    return crossRate;
+  }
+
+  /**
+   * Check if exchange rate is fresh (< 24 hours old)
+   */
+  private isRateFresh(lastUpdated: Date): boolean {
+    const hoursSinceUpdate =
+      (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60);
+
+    return hoursSinceUpdate < 24; // Fresh if < 24 hours old
+  }
+
+  /**
+   * Get currency symbol by code
+   */
+  private getCurrencySymbol(code: string): string {
+    const symbols: Record<string, string> = {
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
+      JPY: '¥',
+      RWF: 'FRw',
+      CAD: 'C$',
+      AUD: 'A$',
+      CHF: 'CHF',
+      CNY: '¥',
+      INR: '₹',
+    };
+    return symbols[code] || code;
   }
 
   /**
