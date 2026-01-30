@@ -108,11 +108,11 @@ export class CartService {
   }
 
   /**
-   * Add item to cart with inventory validation
+   * Add item to cart with inventory and currency validation
    */
   async addItem(
     cartId: string,
-    data: { productId: string; variantId?: string; quantity: number }
+    data: { productId: string; variantId?: string; quantity: number; currency?: string }
   ) {
     const product = await this.prisma.product.findUnique({
       where: { id: data.productId },
@@ -137,6 +137,34 @@ export class CartService {
       throw new BadRequestException(
         'This product requires contacting the seller. It cannot be added to cart.'
       );
+    }
+
+    // Get current cart to check currency lock
+    const currentCart = await this.prisma.cart.findUnique({
+      where: { id: cartId },
+      include: { items: true },
+    });
+
+    if (!currentCart) {
+      throw new BadRequestException('Cart not found');
+    }
+
+    // Currency locking logic
+    const requestCurrency = data.currency?.toUpperCase() || 'USD';
+
+    if (currentCart.items.length === 0) {
+      // First item - lock cart to this currency
+      await this.prisma.cart.update({
+        where: { id: cartId },
+        data: { currency: requestCurrency },
+      });
+    } else {
+      // Subsequent items - validate currency matches
+      if (currentCart.currency !== requestCurrency) {
+        throw new BadRequestException(
+          `Cannot add item. Cart is locked to ${currentCart.currency}. Please clear your cart to change currency.`
+        );
+      }
     }
 
     // Check inventory availability
@@ -331,17 +359,97 @@ export class CartService {
       where: { cartId },
     });
 
-    // Reset cart totals
+    // Reset cart totals and currency to default
     await this.prisma.cart.update({
       where: { id: cartId },
       data: {
         subtotal: 0,
         discount: 0,
         total: 0,
+        currency: 'USD', // Reset to default currency
       },
     });
 
     return { success: true, message: 'Cart cleared successfully' };
+  }
+
+  /**
+   * Update cart currency (requires clearing cart)
+   * Returns information about whether cart needs to be cleared
+   */
+  async updateCurrency(cartId: string, newCurrency: string) {
+    const cart = await this.prisma.cart.findUnique({
+      where: { id: cartId },
+      include: { items: true },
+    });
+
+    if (!cart) {
+      throw new BadRequestException('Cart not found');
+    }
+
+    const upperCurrency = newCurrency.toUpperCase();
+
+    // If cart is empty, just update currency
+    if (cart.items.length === 0) {
+      await this.prisma.cart.update({
+        where: { id: cartId },
+        data: { currency: upperCurrency },
+      });
+
+      return {
+        success: true,
+        message: 'Currency updated successfully',
+        cartCleared: false,
+      };
+    }
+
+    // If cart has items and currency is different, we need user confirmation
+    if (cart.currency !== upperCurrency) {
+      return {
+        success: false,
+        message: `Cart contains items in ${cart.currency}. Changing to ${upperCurrency} will clear your cart.`,
+        requiresConfirmation: true,
+        currentCurrency: cart.currency,
+        newCurrency: upperCurrency,
+        itemCount: cart.items.length,
+      };
+    }
+
+    // Currency is same, no change needed
+    return {
+      success: true,
+      message: 'Currency is already set to ' + upperCurrency,
+      cartCleared: false,
+    };
+  }
+
+  /**
+   * Force update cart currency by clearing items
+   */
+  async forceUpdateCurrency(cartId: string, newCurrency: string) {
+    const upperCurrency = newCurrency.toUpperCase();
+
+    // Clear cart items
+    await this.prisma.cartItem.deleteMany({
+      where: { cartId },
+    });
+
+    // Update currency and reset totals
+    await this.prisma.cart.update({
+      where: { id: cartId },
+      data: {
+        currency: upperCurrency,
+        subtotal: 0,
+        discount: 0,
+        total: 0,
+      },
+    });
+
+    return {
+      success: true,
+      message: `Currency updated to ${upperCurrency}. Cart has been cleared.`,
+      cartCleared: true,
+    };
   }
 
   /**

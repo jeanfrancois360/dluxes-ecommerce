@@ -34,4 +34,18 @@ export class CartController {
     const cart = await this.cartService.getCart(sessionId, req.user?.userId);
     return this.cartService.clearCart(cart.id);
   }
+
+  @Patch('currency')
+  async updateCurrency(@Request() req, @Body() body: { currency: string }) {
+    const sessionId = req.headers['x-session-id'] || req.sessionID;
+    const cart = await this.cartService.getCart(sessionId, req.user?.userId);
+    return this.cartService.updateCurrency(cart.id, body.currency);
+  }
+
+  @Post('currency/force')
+  async forceUpdateCurrency(@Request() req, @Body() body: { currency: string }) {
+    const sessionId = req.headers['x-session-id'] || req.sessionID;
+    const cart = await this.cartService.getCart(sessionId, req.user?.userId);
+    return this.cartService.forceUpdateCurrency(cart.id, body.currency);
+  }
 }
