@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@nextpik/ui';
 import type { CartItem } from '@/contexts/cart-context';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import { useSelectedCurrency, useCurrencyConverter } from '@/hooks/use-currency';
 
 interface OrderSummaryProps {
   items: CartItem[];
@@ -39,6 +40,10 @@ export function OrderSummary({
   const [appliedPromo, setAppliedPromo] = useState(promoCode || '');
   const [promoError, setPromoError] = useState('');
 
+  // Use currency from the selected currency context
+  const { currency } = useSelectedCurrency();
+  const { formatPrice } = useCurrencyConverter();
+
   useEffect(() => {
     const handleScroll = () => {
       setIsSticky(window.scrollY > 100);
@@ -67,6 +72,17 @@ export function OrderSummary({
   };
 
   const finalTotal = total - discount;
+
+  // Helper function to format prices with selected currency
+  const formatWithCurrency = (amount: number) => {
+    if (!currency) return `$${formatCurrencyAmount(amount, 2)}`;
+
+    const formatted = formatCurrencyAmount(amount, currency.decimalDigits);
+    if (currency.position === 'before') {
+      return `${currency.symbol}${formatted}`;
+    }
+    return `${formatted} ${currency.symbol}`;
+  };
 
   return (
     <motion.div
@@ -123,7 +139,7 @@ export function OrderSummary({
               <div className="flex items-center justify-between mt-1">
                 <span className="text-xs text-neutral-500">Qty: {item.quantity}</span>
                 <span className="text-sm font-serif font-semibold text-gold">
-                  ${formatCurrencyAmount(item.price * item.quantity, 2)}
+                  {formatWithCurrency(item.price * item.quantity)}
                 </span>
               </div>
             </div>
@@ -229,7 +245,7 @@ export function OrderSummary({
         {/* Subtotal */}
         <div className="flex justify-between text-sm">
           <span className="text-neutral-600">Subtotal</span>
-          <span className="font-medium text-black">${formatCurrencyAmount(subtotal, 2)}</span>
+          <span className="font-medium text-black">{formatWithCurrency(subtotal)}</span>
         </div>
 
         {/* Shipping */}
@@ -244,7 +260,7 @@ export function OrderSummary({
             {shipping === 0 ? (
               <span className="text-green-600 font-semibold">Free</span>
             ) : (
-              `$${formatCurrencyAmount(shipping, 2)}`
+              formatWithCurrency(shipping)
             )}
           </span>
         </div>
@@ -252,7 +268,7 @@ export function OrderSummary({
         {/* Tax */}
         <div className="flex justify-between text-sm">
           <span className="text-neutral-600">Tax (estimated)</span>
-          <span className="font-medium text-black">${formatCurrencyAmount(tax, 2)}</span>
+          <span className="font-medium text-black">{formatWithCurrency(tax)}</span>
         </div>
 
         {/* Discount */}
@@ -263,7 +279,7 @@ export function OrderSummary({
             className="flex justify-between text-sm"
           >
             <span className="text-green-600">Discount</span>
-            <span className="font-medium text-green-600">-${formatCurrencyAmount(discount, 2)}</span>
+            <span className="font-medium text-green-600">-{formatWithCurrency(discount)}</span>
           </motion.div>
         )}
 
@@ -273,9 +289,9 @@ export function OrderSummary({
             <span className="text-lg font-serif font-bold text-black">Total</span>
             <div className="text-right">
               {discount > 0 && (
-                <p className="text-sm text-neutral-500 line-through">${formatCurrencyAmount(total, 2)}</p>
+                <p className="text-sm text-neutral-500 line-through">{formatWithCurrency(total)}</p>
               )}
-              <p className="text-2xl font-serif font-bold text-gold">${formatCurrencyAmount(finalTotal, 2)}</p>
+              <p className="text-2xl font-serif font-bold text-gold">{formatWithCurrency(finalTotal)}</p>
             </div>
           </div>
         </div>
@@ -288,7 +304,7 @@ export function OrderSummary({
             className="p-3 bg-blue-50 border border-blue-200 rounded-lg"
           >
             <p className="text-xs text-blue-900">
-              Add <strong className="font-semibold">${formatCurrencyAmount(200 - subtotal, 2)}</strong> more for{' '}
+              Add <strong className="font-semibold">{formatWithCurrency(200 - subtotal)}</strong> more for{' '}
               <strong className="font-semibold text-gold">free shipping</strong>
             </p>
           </motion.div>

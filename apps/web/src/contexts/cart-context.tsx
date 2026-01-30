@@ -34,6 +34,7 @@ interface CartContextType {
   freeShippingThreshold: number;
   taxCalculationMode: 'disabled' | 'simple' | 'by_state';
   taxRate: number;
+  cartCurrency: string; // Currency locked in cart
   addItem: (productId: string, quantity: number, variantId?: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
@@ -56,10 +57,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cartCurrency, setCartCurrency] = useState<string>('USD'); // Cart's locked currency
 
   // Currency conversion hooks
   const { convertPrice } = useCurrencyConverter();
-  const { selectedCurrency } = useSelectedCurrency();
+  const { selectedCurrency, setSelectedCurrency } = useSelectedCurrency();
 
   // Shipping settings from backend (stored in USD)
   const [freeShippingEnabled, setFreeShippingEnabled] = useState<boolean>(true);
@@ -193,6 +195,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
 
       const cart = response.data;
+
+      // Sync cart currency with selected currency
+      if (cart.currency && cart.currency !== selectedCurrency) {
+        console.log(`[Cart] Syncing currency from ${selectedCurrency} to cart's ${cart.currency}`);
+        setSelectedCurrency(cart.currency);
+        setCartCurrency(cart.currency);
+      } else if (cart.currency) {
+        setCartCurrency(cart.currency);
+      }
 
       // Transform items to include slug from product
       const transformedItems = (cart.items || []).map((item: any) => ({
@@ -410,6 +421,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     freeShippingThreshold: convertedThreshold,
     taxCalculationMode,
     taxRate,
+    cartCurrency,
     addItem,
     updateQuantity,
     removeItem,
