@@ -128,6 +128,75 @@ export class ProductsService {
   }
 
   /**
+   * Generate SKU for Product Variants - ALWAYS auto-generated, no custom SKUs allowed
+   * Format: {SKU_PREFIX}-V-{MM}-{DD}-{SEQUENCE_NUMBER}
+   * Example: NEXTPIK-V-01-29-000001, NEXTPIK-V-01-29-000002, etc.
+   * The "V" distinguishes variant SKUs from product SKUs.
+   * Sequence resets daily.
+   */
+  private async generateVariantSKU(): Promise<string> {
+    try {
+      // Get SKU prefix from settings
+      const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
+      const prefix = String(prefixSetting.value || 'NEXTPIK').toUpperCase();
+
+      // Get current date components
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
+      const day = String(now.getDate()).padStart(2, '0'); // 01-31
+
+      // Format: PREFIX-V-MM-DD- (V for Variant)
+      const datePrefix = `${prefix}-V-${month}-${day}-`;
+
+      // Find the highest existing SKU number for today's date with this prefix
+      const variants = await this.prisma.productVariant.findMany({
+        where: {
+          sku: {
+            startsWith: datePrefix,
+          },
+        },
+        orderBy: {
+          sku: 'desc',
+        },
+        take: 1,
+      });
+
+      let nextNumber = 1;
+      if (variants.length > 0) {
+        const lastSKU = variants[0].sku;
+        // Extract the sequence number from PREFIX-V-MM-DD-XXXXXX
+        const match = lastSKU.match(/-(\d+)$/);
+        if (match) {
+          nextNumber = parseInt(match[1], 10) + 1;
+        }
+      }
+
+      // Format with leading zeros (6 digits)
+      const formattedNumber = String(nextNumber).padStart(6, '0');
+      const generatedSKU = `${datePrefix}${formattedNumber}`;
+
+      // Double-check uniqueness (race condition protection)
+      const duplicate = await this.prisma.productVariant.findUnique({
+        where: { sku: generatedSKU },
+      });
+      if (duplicate) {
+        // Recursively try next number if collision occurs
+        return this.generateVariantSKU();
+      }
+
+      this.logger.log(`Auto-generated Variant SKU: ${generatedSKU}`);
+      return generatedSKU;
+    } catch (error) {
+      this.logger.error('Failed to generate Variant SKU:', error);
+      // Fallback to timestamp-based SKU if settings fail
+      const timestamp = Date.now();
+      const fallbackSKU = `VAR-${timestamp}`;
+      this.logger.warn(`Using fallback Variant SKU: ${fallbackSKU}`);
+      return fallbackSKU;
+    }
+  }
+
+  /**
    * Check if user can create a subscription-based product
    */
   private async checkSubscriptionRequirements(
@@ -1095,14 +1164,8 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    // Check SKU uniqueness
-    const existingSku = await this.prisma.productVariant.findUnique({
-      where: { sku: dto.sku },
-    });
-
-    if (existingSku) {
-      throw new BadRequestException(`SKU '${dto.sku}' already exists`);
-    }
+    // ALWAYS auto-generate SKU (custom SKUs not allowed)
+    const generatedSKU = await this.generateVariantSKU();
 
     // Determine display order
     const displayOrder = dto.displayOrder ?? (await this.getNextVariantDisplayOrder(productId));
@@ -1112,7 +1175,7 @@ export class ProductsService {
       data: {
         productId,
         name: dto.name,
-        sku: dto.sku,
+        sku: generatedSKU, // Always use auto-generated SKU
         price: dto.price ?? product.price, // Inherit if not set
         compareAtPrice: dto.compareAtPrice,
         inventory: dto.inventory,
@@ -1147,6 +1210,7 @@ export class ProductsService {
 
   /**
    * Create multiple variants in bulk
+   * SKUs are auto-generated for all variants
    */
   async bulkCreateVariants(productId: string, dtos: any[]) {
     // Verify product exists
@@ -1159,24 +1223,6 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    // Check SKU uniqueness across all DTOs
-    const skus = dtos.map((dto) => dto.sku);
-    const duplicateSkus = skus.filter((sku, index) => skus.indexOf(sku) !== index);
-    if (duplicateSkus.length > 0) {
-      throw new BadRequestException(`Duplicate SKUs in request: ${duplicateSkus.join(', ')}`);
-    }
-
-    // Check SKU uniqueness in database
-    const existingSkus = await this.prisma.productVariant.findMany({
-      where: { sku: { in: skus } },
-      select: { sku: true },
-    });
-
-    if (existingSkus.length > 0) {
-      const existing = existingSkus.map((v) => v.sku).join(', ');
-      throw new BadRequestException(`SKUs already exist: ${existing}`);
-    }
-
     // Get starting display order
     let displayOrder = await this.getNextVariantDisplayOrder(productId);
 
@@ -1185,11 +1231,14 @@ export class ProductsService {
       const created = [];
 
       for (const dto of dtos) {
+        // Auto-generate SKU for each variant
+        const generatedSKU = await this.generateVariantSKU();
+
         const variant = await prisma.productVariant.create({
           data: {
             productId,
             name: dto.name,
-            sku: dto.sku,
+            sku: generatedSKU, // Always use auto-generated SKU
             price: dto.price ?? product.price,
             compareAtPrice: dto.compareAtPrice,
             inventory: dto.inventory,
@@ -1230,6 +1279,7 @@ export class ProductsService {
 
   /**
    * Update a product variant
+   * Note: SKU cannot be updated as it's system-generated and read-only
    */
   async updateVariant(variantId: string, dto: any) {
     // Get existing variant
@@ -1242,15 +1292,9 @@ export class ProductsService {
       throw new NotFoundException('Variant not found');
     }
 
-    // Check SKU uniqueness if SKU is being updated
-    if (dto.sku && dto.sku !== existing.sku) {
-      const existingSku = await this.prisma.productVariant.findUnique({
-        where: { sku: dto.sku },
-      });
-
-      if (existingSku) {
-        throw new BadRequestException(`SKU '${dto.sku}' already exists`);
-      }
+    // SKU is read-only - ignore any provided SKU value
+    if (dto.sku !== undefined) {
+      this.logger.warn(`Attempt to update variant SKU ignored - SKU is system-generated and read-only`);
     }
 
     // Track inventory change
@@ -1259,10 +1303,11 @@ export class ProductsService {
     const newInventory = dto.inventory ?? existing.inventory;
 
     // Update variant - only include fields that are provided in DTO (undefined means skip)
+    // SKU is NEVER included in updates
     const updateData: any = {};
 
     if (dto.name !== undefined) updateData.name = dto.name;
-    if (dto.sku !== undefined) updateData.sku = dto.sku;
+    // SKU is read-only - never update it
     if (dto.price !== undefined) updateData.price = dto.price;
     if (dto.compareAtPrice !== undefined) updateData.compareAtPrice = dto.compareAtPrice;
     if (dto.inventory !== undefined) updateData.inventory = dto.inventory;
