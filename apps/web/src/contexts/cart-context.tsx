@@ -153,16 +153,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Calculate totals using backend settings with currency conversion
   const calculateTotals = useCallback((cartItems: CartItem[]): CartTotals => {
-    // 🔒 Use locked prices (priceAtAdd) if available, otherwise convert from USD
-    const subtotal = cartItems.reduce((sum, item) => {
-      // If priceAtAdd exists, use it directly (already in locked currency)
-      // Otherwise, convert from USD (backward compatibility)
-      const itemPrice = item.priceAtAdd !== undefined
-        ? item.priceAtAdd
-        : convertPrice(item.price, 'USD');
+    // 🔒 Try to use backend-calculated subtotal (uses locked prices correctly)
+    let subtotal = 0;
+    if (typeof window !== 'undefined') {
+      try {
+        const backendTotals = localStorage.getItem('cart_backend_totals');
+        if (backendTotals) {
+          const parsed = JSON.parse(backendTotals);
+          subtotal = Number(parsed.subtotal) || 0;
+        }
+      } catch (e) {
+        console.warn('Failed to parse backend totals:', e);
+      }
+    }
 
-      return sum + itemPrice * item.quantity;
-    }, 0);
+    // Fallback: Calculate manually if backend totals not available
+    if (subtotal === 0 && cartItems.length > 0) {
+      subtotal = cartItems.reduce((sum, item) => {
+        // If priceAtAdd exists, use it directly (already in locked currency)
+        // Otherwise, convert from USD (backward compatibility)
+        const itemPrice = item.priceAtAdd !== undefined
+          ? item.priceAtAdd
+          : convertPrice(item.price, 'USD');
+
+        return sum + itemPrice * item.quantity;
+      }, 0);
+    }
 
     // Convert threshold and shipping cost from USD to selected currency
     const convertedThreshold = convertPrice(freeShippingThreshold, 'USD');
@@ -224,6 +240,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsCurrencyLocked(cartLocked);
       setExchangeRate(Number(cart.exchangeRate) || 1);
       setRateLockedAt(cart.rateLockedAt || null);
+
+      // 🔒 Store backend-calculated totals (using locked prices)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cart_backend_totals', JSON.stringify({
+          subtotal: cart.subtotal || 0,
+          total: cart.total || 0,
+          discount: cart.discount || 0,
+        }));
+      }
 
       // Only sync cart currency to selector if cart has items (currency is locked)
       // If cart is empty, respect the user's selected currency
@@ -438,6 +463,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // Clear localStorage
       if (typeof window !== 'undefined') {
         localStorage.removeItem('cart_items');
+        localStorage.removeItem('cart_backend_totals'); // 🔒 Clear backend totals too
       }
     } catch (err: any) {
       console.error('Error clearing cart:', err);
