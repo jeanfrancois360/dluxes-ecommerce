@@ -142,7 +142,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Calculate totals using backend settings with currency conversion
   const calculateTotals = useCallback((cartItems: CartItem[]): CartTotals => {
-    const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    // Convert item prices from USD to selected currency first
+    // Cart items are stored with USD prices in the database
+    const subtotal = cartItems.reduce((sum, item) => {
+      const convertedPrice = convertPrice(item.price, 'USD');
+      return sum + convertedPrice * item.quantity;
+    }, 0);
 
     // Convert threshold and shipping cost from USD to selected currency
     const convertedThreshold = convertPrice(freeShippingThreshold, 'USD');

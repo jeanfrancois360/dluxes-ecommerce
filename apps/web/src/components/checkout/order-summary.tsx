@@ -42,7 +42,7 @@ export function OrderSummary({
 
   // Use currency from the selected currency context
   const { currency } = useSelectedCurrency();
-  const { formatPrice } = useCurrencyConverter();
+  const { convertPrice } = useCurrencyConverter();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -74,10 +74,14 @@ export function OrderSummary({
   const finalTotal = total - discount;
 
   // Helper function to format prices with selected currency
-  const formatWithCurrency = (amount: number) => {
+  // NOTE: Item prices from cart are in USD, totals are already converted
+  const formatWithCurrency = (amount: number, shouldConvert: boolean = false) => {
     if (!currency) return `$${formatCurrencyAmount(amount, 2)}`;
 
-    const formatted = formatCurrencyAmount(amount, currency.decimalDigits);
+    // Convert from USD if needed (for item prices)
+    const displayAmount = shouldConvert ? convertPrice(amount, 'USD') : amount;
+
+    const formatted = formatCurrencyAmount(displayAmount, currency.decimalDigits);
     if (currency.position === 'before') {
       return `${currency.symbol}${formatted}`;
     }
@@ -139,7 +143,7 @@ export function OrderSummary({
               <div className="flex items-center justify-between mt-1">
                 <span className="text-xs text-neutral-500">Qty: {item.quantity}</span>
                 <span className="text-sm font-serif font-semibold text-gold">
-                  {formatWithCurrency(item.price * item.quantity)}
+                  {formatWithCurrency(item.price * item.quantity, true)}
                 </span>
               </div>
             </div>
@@ -245,7 +249,7 @@ export function OrderSummary({
         {/* Subtotal */}
         <div className="flex justify-between text-sm">
           <span className="text-neutral-600">Subtotal</span>
-          <span className="font-medium text-black">{formatWithCurrency(subtotal)}</span>
+          <span className="font-medium text-black">{formatWithCurrency(subtotal, false)}</span>
         </div>
 
         {/* Shipping */}
@@ -260,7 +264,7 @@ export function OrderSummary({
             {shipping === 0 ? (
               <span className="text-green-600 font-semibold">Free</span>
             ) : (
-              formatWithCurrency(shipping)
+              formatWithCurrency(shipping, false)
             )}
           </span>
         </div>
@@ -268,7 +272,7 @@ export function OrderSummary({
         {/* Tax */}
         <div className="flex justify-between text-sm">
           <span className="text-neutral-600">Tax (estimated)</span>
-          <span className="font-medium text-black">{formatWithCurrency(tax)}</span>
+          <span className="font-medium text-black">{formatWithCurrency(tax, false)}</span>
         </div>
 
         {/* Discount */}
@@ -279,7 +283,7 @@ export function OrderSummary({
             className="flex justify-between text-sm"
           >
             <span className="text-green-600">Discount</span>
-            <span className="font-medium text-green-600">-{formatWithCurrency(discount)}</span>
+            <span className="font-medium text-green-600">-{formatWithCurrency(discount, false)}</span>
           </motion.div>
         )}
 
@@ -289,9 +293,9 @@ export function OrderSummary({
             <span className="text-lg font-serif font-bold text-black">Total</span>
             <div className="text-right">
               {discount > 0 && (
-                <p className="text-sm text-neutral-500 line-through">{formatWithCurrency(total)}</p>
+                <p className="text-sm text-neutral-500 line-through">{formatWithCurrency(total, false)}</p>
               )}
-              <p className="text-2xl font-serif font-bold text-gold">{formatWithCurrency(finalTotal)}</p>
+              <p className="text-2xl font-serif font-bold text-gold">{formatWithCurrency(finalTotal, false)}</p>
             </div>
           </div>
         </div>
