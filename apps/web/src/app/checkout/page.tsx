@@ -117,6 +117,34 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [shippingMethodConfirmed, setShippingMethodConfirmed] = useState(false);
 
+  // Calculate shipping and tax on checkout (not in cart)
+  const [calculatedShipping, setCalculatedShipping] = useState<number>(0);
+  const [calculatedTax, setCalculatedTax] = useState<number>(0);
+
+  // Calculate shipping cost when shipping method changes
+  useEffect(() => {
+    const methodConfig = getShippingMethodById(selectedShippingMethod);
+    if (methodConfig) {
+      // Convert shipping cost from USD to cart's locked currency
+      const shippingCostUSD = methodConfig.basePrice || 10;
+      const shippingInCartCurrency = convertPrice(shippingCostUSD, 'USD');
+      setCalculatedShipping(shippingInCartCurrency);
+    }
+  }, [selectedShippingMethod, convertPrice]);
+
+  // Calculate tax when shipping address changes or subtotal changes
+  useEffect(() => {
+    if (shippingAddress) {
+      // Calculate tax based on address (simplified - use 21% for now)
+      // In production, this would use proper tax calculation based on state/country
+      const taxRate = 0.21; // 21%
+      const taxAmount = totals.subtotal * taxRate;
+      setCalculatedTax(taxAmount);
+    } else {
+      setCalculatedTax(0);
+    }
+  }, [shippingAddress, totals.subtotal]);
+
   // Redirect if not authenticated
   useEffect(() => {
     // Wait for auth to initialize before making redirect decision
@@ -138,9 +166,16 @@ export default function CheckoutPage() {
   // Create order and payment intent when shipping method is confirmed
   useEffect(() => {
     if (step === 'payment' && shippingMethodConfirmed && !clientSecret && items.length > 0 && shippingAddress && user) {
+      // Create totals with calculated shipping and tax from checkout
+      const checkoutTotals = {
+        ...totals,
+        shipping: calculatedShipping,
+        tax: calculatedTax,
+        total: totals.subtotal + calculatedShipping + calculatedTax,
+      };
+
       // 🔒 Pass cart's locked currency to ensure payment uses same currency
-      // Cart totals are already in the locked currency
-      createOrderAndPaymentIntent(items, totals, cartCurrency).catch((err) => {
+      createOrderAndPaymentIntent(items, checkoutTotals, cartCurrency).catch((err) => {
         // Use longer duration for stock errors (they may contain multiple items)
         const duration = err.message?.includes('Insufficient stock') ? 8000 : 5000;
         toast.error(err.message || 'Failed to initialize checkout. Please try again.', { duration });
@@ -148,7 +183,7 @@ export default function CheckoutPage() {
         goToStep('shipping');
       });
     }
-  }, [step, shippingMethodConfirmed, clientSecret, items, selectedShippingMethod, totals, shippingAddress, createOrderAndPaymentIntent, goToStep, user, cartCurrency]);
+  }, [step, shippingMethodConfirmed, clientSecret, items, selectedShippingMethod, totals, calculatedShipping, calculatedTax, shippingAddress, createOrderAndPaymentIntent, goToStep, user, cartCurrency]);
 
   // Reset shipping method confirmation when leaving payment step
   useEffect(() => {
@@ -179,13 +214,12 @@ export default function CheckoutPage() {
   const handleShippingMethodContinue = () => {
     const methodConfig = getShippingMethodById(selectedShippingMethod);
 
-    // 🔒 Use cart's pre-calculated shipping to prevent rounding differences
-    // The cart context already calculated shipping in the locked currency
+    // Use calculated shipping from checkout (calculated after address entry)
     if (methodConfig) {
       saveShippingMethod({
         id: methodConfig.id,
         name: methodConfig.name,
-        price: totals.shipping, // Use cart's locked shipping
+        price: calculatedShipping, // Use checkout's calculated shipping
       });
       // Confirm shipping method to trigger payment intent creation
       setShippingMethodConfirmed(true);
@@ -224,14 +258,13 @@ export default function CheckoutPage() {
     }
   };
 
-  // 🔒 Use cart's locked shipping and total to prevent rounding differences
-  // The cart context already calculated shipping in the locked currency
+  // Calculate checkout totals (shipping and tax calculated here, not in cart)
   const methodConfig = getShippingMethodById(selectedShippingMethod);
 
-  // Use cart's pre-calculated shipping instead of converting from USD
-  // This prevents 0.01 cent rounding differences
-  const shippingCost = totals.shipping;
-  const totalWithShipping = totals.total; // Already includes shipping
+  // Use calculated shipping and tax from checkout (not cart)
+  const shippingCost = calculatedShipping;
+  const taxAmount = calculatedTax;
+  const totalWithShipping = totals.subtotal + shippingCost + taxAmount;
 
   if (items.length === 0) {
     return null; // Will redirect
@@ -425,7 +458,7 @@ export default function CheckoutPage() {
                 items={items}
                 subtotal={totals.subtotal}
                 shipping={shippingCost}
-                tax={totals.tax}
+                tax={taxAmount}
                 total={totalWithShipping}
                 cartCurrency={cartCurrency} // 🔒 Pass locked currency to prevent double conversion
                 shippingMethod={{
