@@ -10,13 +10,17 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ShippingService } from './shipping.service';
+import { DhlRatesService } from '../integrations/dhl/dhl-rates.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
-@Controller('api/v1/shipping')
+@Controller('shipping')
 export class ShippingController {
-  constructor(private readonly shippingService: ShippingService) {}
+  constructor(
+    private readonly shippingService: ShippingService,
+    private readonly dhlRatesService: DhlRatesService
+  ) {}
 
   /**
    * Get all shipping zones (Public - for checkout)
@@ -146,5 +150,56 @@ export class ShippingController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   async getStatistics() {
     return this.shippingService.getShippingStatistics();
+  }
+
+  /**
+   * Get DHL API health status (Admin only)
+   * Tests DHL Express API configuration and credentials
+   */
+  @Get('admin/dhl/health')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getDhlHealth() {
+    return this.dhlRatesService.getHealthStatus();
+  }
+
+  /**
+   * Test DHL API with a sample rate request (Admin only)
+   * Useful for testing credentials and API connectivity
+   */
+  @Post('admin/dhl/test-rates')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async testDhlRates(
+    @Body() body?: {
+      originCountry?: string;
+      originPostalCode?: string;
+      destinationCountry?: string;
+      destinationPostalCode?: string;
+      weight?: number;
+    }
+  ) {
+    try {
+      const rates = await this.dhlRatesService.getSimplifiedRates({
+        originCountryCode: body?.originCountry || 'US',
+        originPostalCode: body?.originPostalCode || '10001',
+        destinationCountryCode: body?.destinationCountry || 'GB',
+        destinationPostalCode: body?.destinationPostalCode || 'SW1A 1AA',
+        weight: body?.weight || 1,
+      });
+
+      return {
+        success: true,
+        message: 'DHL API is working correctly',
+        ratesCount: rates.length,
+        rates,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `DHL API test failed: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
   }
 }
