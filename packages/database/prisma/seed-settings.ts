@@ -501,6 +501,45 @@ const defaultSettings = [
     defaultValue: 15.00,
   },
 
+  // DHL SHIPPING CONFIGURATION (Non-sensitive settings only)
+  // SECURITY: API keys MUST be in .env, NEVER in database
+  {
+    key: 'dhl_api_environment',
+    category: 'shipping',
+    value: 'test',
+    valueType: SettingValueType.STRING,
+    label: 'DHL API Environment',
+    description: 'DHL API environment: test or production (API keys in .env)',
+    isPublic: false,
+    isEditable: true,
+    requiresRestart: true,
+    defaultValue: 'test',
+  },
+  {
+    key: 'origin_country',
+    category: 'shipping',
+    value: 'US',
+    valueType: SettingValueType.STRING,
+    label: 'Origin Country Code',
+    description: 'ISO 2-letter country code where shipments originate (e.g., US, GB, DE)',
+    isPublic: false,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: 'US',
+  },
+  {
+    key: 'origin_postal_code',
+    category: 'shipping',
+    value: '10001',
+    valueType: SettingValueType.STRING,
+    label: 'Origin Postal Code',
+    description: 'Postal code of your warehouse/shipping location',
+    isPublic: false,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: '10001',
+  },
+
   // DELIVERY SETTINGS
   {
     key: 'delivery_confirmation_required',

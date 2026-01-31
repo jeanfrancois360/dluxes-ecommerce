@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
+import { DhlRatesService } from '../integrations/dhl/dhl-rates.service';
+import { ShippingService } from '../shipping/shipping.service';
 
 export interface ShippingAddress {
   country: string;
@@ -43,13 +45,169 @@ export class ShippingTaxService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly settingsService: SettingsService
+    private readonly settingsService: SettingsService,
+    private readonly dhlRatesService: DhlRatesService,
+    private readonly shippingService: ShippingService
   ) {}
 
   /**
    * Calculate available shipping options based on address and cart
+   * CASCADE FALLBACK: DHL → Zones → Manual
    */
   async calculateShippingOptions(
+    address: ShippingAddress,
+    items: CartItem[],
+    subtotal: number
+  ): Promise<ShippingOption[]> {
+    // Calculate total weight for zone/DHL calculations
+    const totalWeightGrams = items.reduce((sum, item) => sum + (item.weight || 500) * item.quantity, 0);
+    const totalWeightKg = totalWeightGrams / 1000;
+
+    // Get shipping mode from settings
+    const shippingMode = await this.settingsService.getShippingMode();
+
+    // STEP 1: Try DHL API if mode is 'dhl_api' or 'hybrid'
+    if (shippingMode === 'dhl_api' || shippingMode === 'hybrid') {
+      try {
+        const dhlOptions = await this.calculateDhlShippingOptions(address, items, subtotal);
+
+        if (dhlOptions.length > 0) {
+          // DHL API succeeded
+          if (shippingMode === 'dhl_api') {
+            // DHL-only mode: return DHL rates only
+            this.logger.log(`[DHL API] Using DHL Express rates (${dhlOptions.length} options)`);
+            return dhlOptions;
+          } else {
+            // Hybrid mode: combine DHL with zones/manual fallback
+            const fallbackOptions = await this.getZonesOrManualRates(address, subtotal, totalWeightKg);
+            this.logger.log(`[Hybrid] ${dhlOptions.length} DHL + ${fallbackOptions.length} fallback options`);
+            return [...dhlOptions, ...fallbackOptions];
+          }
+        }
+      } catch (error) {
+        this.logger.warn(`[DHL API] Failed, falling back to zones/manual: ${error.message}`);
+        // Continue to fallback chain
+      }
+    }
+
+    // STEP 2: Try Shipping Zones or Manual Rates (fallback chain)
+    return this.getZonesOrManualRates(address, subtotal, totalWeightKg);
+  }
+
+  /**
+   * Get shipping rates from Zones, falling back to Manual if no zones match
+   * CASCADE: Zones → Manual
+   */
+  private async getZonesOrManualRates(
+    address: ShippingAddress,
+    subtotal: number,
+    weightKg?: number
+  ): Promise<ShippingOption[]> {
+    try {
+      // Try zone-based shipping
+      const zoneOptions = await this.shippingService.getShippingOptions(
+        {
+          country: address.country,
+          state: address.state,
+          city: address.city,
+          postalCode: address.postalCode,
+        },
+        subtotal,
+        weightKg
+      );
+
+      if (zoneOptions && zoneOptions.length > 0) {
+        this.logger.log(`[Zones] Using zone-based rates (${zoneOptions.length} options)`);
+        // Convert zone options to our ShippingOption format
+        return zoneOptions.map(zone => ({
+          id: zone.id,
+          name: zone.name,
+          description: typeof zone.estimatedDays === 'object'
+            ? `${zone.estimatedDays.min}-${zone.estimatedDays.max} business days`
+            : `${zone.estimatedDays} business days`,
+          price: zone.price,
+          estimatedDays: typeof zone.estimatedDays === 'object'
+            ? zone.estimatedDays.max
+            : zone.estimatedDays,
+          carrier: (zone as any).zone || 'Standard',
+        }));
+      }
+    } catch (error) {
+      this.logger.warn(`[Zones] Failed or no zones configured: ${error.message}`);
+    }
+
+    // STEP 3: Fall back to manual rates
+    this.logger.log('[Manual] Using manual/settings-based rates (final fallback)');
+    // Manual rates need items array for weight-based pricing
+    const items: CartItem[] = [{
+      productId: 'checkout',
+      quantity: 1,
+      price: subtotal,
+      weight: (weightKg || 1) * 1000 // Convert back to grams
+    }];
+    return this.calculateManualShippingOptions(address, items, subtotal);
+  }
+
+  /**
+   * Calculate shipping options using DHL Express API
+   * SECURITY: Uses environment variables only
+   */
+  private async calculateDhlShippingOptions(
+    address: ShippingAddress,
+    items: CartItem[],
+    subtotal: number
+  ): Promise<ShippingOption[]> {
+    // Check if DHL API is enabled (checks .env only)
+    const isEnabled = this.dhlRatesService.isApiEnabled();
+    if (!isEnabled) {
+      this.logger.debug('DHL API is not configured in .env');
+      return [];
+    }
+
+    // Get origin address from settings
+    let originCountry = 'US';
+    let originPostalCode = '10001';
+
+    try {
+      const countrySetting = await this.settingsService.getSetting('origin_country');
+      const postalSetting = await this.settingsService.getSetting('origin_postal_code');
+      originCountry = String(countrySetting.value) || 'US';
+      originPostalCode = String(postalSetting.value) || '10001';
+    } catch (error) {
+      // Fallback to env variables if settings not found
+      originCountry = this.configService.get<string>('ORIGIN_COUNTRY', 'US');
+      originPostalCode = this.configService.get<string>('ORIGIN_POSTAL_CODE', '10001');
+    }
+
+    // Calculate total weight in KG (items are in grams)
+    const totalWeightGrams = items.reduce((sum, item) => sum + (item.weight || 500) * item.quantity, 0);
+    const totalWeightKg = totalWeightGrams / 1000;
+
+    // Request DHL rates
+    const dhlRates = await this.dhlRatesService.getSimplifiedRates({
+      originCountryCode: originCountry,
+      originPostalCode: originPostalCode,
+      destinationCountryCode: address.country,
+      destinationPostalCode: address.postalCode || '',
+      destinationCityName: address.city,
+      weight: Math.max(0.5, totalWeightKg), // Minimum 0.5kg
+    });
+
+    // Convert DHL rates to our ShippingOption format
+    return dhlRates.map(rate => ({
+      id: rate.id,
+      name: rate.name,
+      description: rate.description,
+      price: rate.price,
+      estimatedDays: rate.estimatedDays,
+      carrier: 'DHL Express',
+    }));
+  }
+
+  /**
+   * Calculate manual shipping options (original logic)
+   */
+  private async calculateManualShippingOptions(
     address: ShippingAddress,
     items: CartItem[],
     subtotal: number
