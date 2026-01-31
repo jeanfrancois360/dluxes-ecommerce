@@ -51,6 +51,20 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   const { order, isLoading, error, refetch } = useOrder(id);
   const { cancelOrder, isLoading: isCancelling } = useCancelOrder();
   const { createReview, isLoading: isSubmittingReview } = useCreateReview();
+
+  // Get currency symbol dynamically based on order's currency
+  const currencySymbol = order?.currency ? (() => {
+    try {
+      return new Intl.NumberFormat('en', {
+        style: 'currency',
+        currency: order.currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(0).replace(/\d/g, '').trim();
+    } catch {
+      return '$'; // Fallback to USD symbol
+    }
+  })() : '$';
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
@@ -420,7 +434,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                         </p>
                       )}
                       <p className="text-sm text-gray-600 mt-1">
-                        Quantity: {item.quantity} × ${formatCurrencyAmount(item.price, 2)}
+                        Quantity: {item.quantity} × {currencySymbol}{formatCurrencyAmount(item.price, 2)}
                       </p>
                       {/* Write Review Button for Delivered Orders */}
                       {order.status?.toLowerCase() === 'delivered' && item.product?.id && (
@@ -446,7 +460,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     </div>
                     <div className="text-right">
                       <p className="font-serif text-xl font-bold">
-                        ${formatCurrencyAmount(Number(item.price) * item.quantity, 2)}
+                        {currencySymbol}{formatCurrencyAmount(Number(item.price) * item.quantity, 2)}
                       </p>
                     </div>
                   </motion.div>
@@ -574,22 +588,22 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               <div className="space-y-3 mb-6 pb-6 border-b border-neutral-200">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">${formatCurrencyAmount(order.subtotal, 2)}</span>
+                  <span className="font-medium">{currencySymbol}{formatCurrencyAmount(order.subtotal, 2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Shipping</span>
-                  <span className="font-medium">${formatCurrencyAmount(order.shipping, 2)}</span>
+                  <span className="font-medium">{currencySymbol}{formatCurrencyAmount(order.shipping, 2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Tax</span>
-                  <span className="font-medium">${formatCurrencyAmount(order.tax, 2)}</span>
+                  <span className="font-medium">{currencySymbol}{formatCurrencyAmount(order.tax, 2)}</span>
                 </div>
               </div>
 
               <div className="flex justify-between items-center mb-6">
                 <span className="text-lg font-semibold">Total</span>
                 <span className="text-2xl font-serif font-bold text-gold">
-                  ${formatCurrencyAmount(order.total, 2)}
+                  {currencySymbol}{formatCurrencyAmount(order.total, 2)}
                 </span>
               </div>
 
