@@ -14,12 +14,16 @@ import {
   Query,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
+import { PayPalService } from './paypal.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('payment')
 export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
+  constructor(
+    private readonly paymentService: PaymentService,
+    private readonly paypalService: PayPalService,
+  ) {}
 
   // ==========================================
   // PAYMENT METHODS MANAGEMENT
@@ -325,5 +329,93 @@ export class PaymentController {
   async getPaymentHealthMetrics(@Query('days') days?: string) {
     const daysNum = days ? parseInt(days) : 30;
     return this.paymentService.getPaymentHealthMetrics(daysNum);
+  }
+
+  // ==========================================
+  // PAYPAL PAYMENT INTEGRATION
+  // ==========================================
+
+  /**
+   * Create PayPal order
+   * POST /payment/paypal/create-order
+   */
+  @Post('paypal/create-order')
+  @UseGuards(JwtAuthGuard)
+  async createPayPalOrder(
+    @Body()
+    body: {
+      orderId: string;
+      amount: number;
+      currency: string;
+      items?: Array<{ name: string; quantity: number; price: number }>;
+      shippingAddress?: any;
+    },
+  ) {
+    try {
+      const data = await this.paypalService.createOrder(body);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to create PayPal order',
+      };
+    }
+  }
+
+  /**
+   * Capture PayPal order after user approval
+   * POST /payment/paypal/capture/:paypalOrderId
+   */
+  @Post('paypal/capture/:paypalOrderId')
+  @UseGuards(JwtAuthGuard)
+  async capturePayPalOrder(@Param('paypalOrderId') paypalOrderId: string) {
+    try {
+      const data = await this.paypalService.captureOrder(paypalOrderId);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to capture PayPal order',
+      };
+    }
+  }
+
+  /**
+   * Get PayPal order details
+   * GET /payment/paypal/order/:paypalOrderId
+   */
+  @Get('paypal/order/:paypalOrderId')
+  @UseGuards(JwtAuthGuard)
+  async getPayPalOrderDetails(@Param('paypalOrderId') paypalOrderId: string) {
+    try {
+      const data = await this.paypalService.getOrderDetails(paypalOrderId);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to get PayPal order details',
+      };
+    }
+  }
+
+  /**
+   * Refund a PayPal capture
+   * POST /payment/paypal/refund/:captureId
+   */
+  @Post('paypal/refund/:captureId')
+  @UseGuards(JwtAuthGuard)
+  async refundPayPalCapture(
+    @Param('captureId') captureId: string,
+    @Body() body: { amount?: number; currency?: string },
+  ) {
+    try {
+      const data = await this.paypalService.refundCapture(captureId, body.amount, body.currency);
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to refund PayPal capture',
+      };
+    }
   }
 }

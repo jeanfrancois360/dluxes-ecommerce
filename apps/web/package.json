@@ -15,6 +15,7 @@
     "@nextpik/design-system": "workspace:*",
     "@nextpik/shared": "workspace:*",
     "@nextpik/ui": "workspace:*",
+    "@paypal/react-paypal-js": "^8.9.2",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-dropdown-menu": "^2.1.2",

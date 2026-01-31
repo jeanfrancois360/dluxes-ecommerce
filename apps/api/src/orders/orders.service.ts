@@ -1415,43 +1415,77 @@ export class OrdersService {
         );
       }
 
-      // 7. Calculate final total
-      const shippingCost = selectedShipping.price;
-      const taxAmount = taxCalc.amount;
-      const total = subtotal + shippingCost + taxAmount - discount;
+      // 7. Get currency and exchange rate
+      const targetCurrency = dto.currency || 'USD';
+      let exchangeRate = 1;
 
-      // 8. Return detailed calculation
+      // Convert from USD to target currency if needed
+      if (targetCurrency !== 'USD') {
+        try {
+          const currencyRate = await this.currencyService.getRateByCode(targetCurrency);
+          exchangeRate = Number(currencyRate.rate);
+          this.logger.log(
+            `💱 Converting prices from USD to ${targetCurrency} (rate: ${exchangeRate})`
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to get exchange rate for ${targetCurrency}:`,
+            error
+          );
+          warnings.push(
+            `Could not get exchange rate for ${targetCurrency}. Using USD instead.`
+          );
+          // Fallback to USD if currency conversion fails
+        }
+      }
+
+      // 8. Convert all prices to target currency
+      const convertPrice = (usdPrice: number) => usdPrice * exchangeRate;
+
+      const subtotalInTargetCurrency = convertPrice(subtotal);
+      const shippingCost = selectedShipping.price;
+      const shippingCostInTargetCurrency = convertPrice(shippingCost);
+      const taxAmount = taxCalc.amount;
+      const taxAmountInTargetCurrency = convertPrice(taxAmount);
+      const discountInTargetCurrency = convertPrice(discount);
+      const total =
+        subtotalInTargetCurrency +
+        shippingCostInTargetCurrency +
+        taxAmountInTargetCurrency -
+        discountInTargetCurrency;
+
+      // 9. Return detailed calculation in target currency
       return {
-        subtotal: Math.round(subtotal * 100) / 100,
+        subtotal: Math.round(subtotalInTargetCurrency * 100) / 100,
         shipping: {
           method: selectedShipping.id,
           name: selectedShipping.name,
-          price: Math.round(shippingCost * 100) / 100,
+          price: Math.round(shippingCostInTargetCurrency * 100) / 100,
           estimatedDays: selectedShipping.estimatedDays,
           carrier: selectedShipping.carrier,
         },
         shippingOptions: shippingOptions.map(opt => ({
           id: opt.id,
           name: opt.name,
-          price: Math.round(opt.price * 100) / 100,
+          price: Math.round(convertPrice(opt.price) * 100) / 100,
           estimatedDays: opt.estimatedDays,
           carrier: opt.carrier,
         })),
         tax: {
-          amount: Math.round(taxAmount * 100) / 100,
+          amount: Math.round(taxAmountInTargetCurrency * 100) / 100,
           rate: taxCalc.rate,
           jurisdiction: taxCalc.jurisdiction || 'N/A',
           breakdown: taxCalc.breakdown,
         },
-        discount: Math.round(discount * 100) / 100,
+        discount: Math.round(discountInTargetCurrency * 100) / 100,
         coupon: couponDetails,
         total: Math.round(total * 100) / 100,
-        currency: dto.currency || 'USD',
+        currency: targetCurrency,
         breakdown: {
-          subtotal: Math.round(subtotal * 100) / 100,
-          shipping: Math.round(shippingCost * 100) / 100,
-          tax: Math.round(taxAmount * 100) / 100,
-          discount: Math.round(-discount * 100) / 100,
+          subtotal: Math.round(subtotalInTargetCurrency * 100) / 100,
+          shipping: Math.round(shippingCostInTargetCurrency * 100) / 100,
+          tax: Math.round(taxAmountInTargetCurrency * 100) / 100,
+          discount: Math.round(-discountInTargetCurrency * 100) / 100,
           total: Math.round(total * 100) / 100,
         },
         ...(warnings.length > 0 && { warnings }),
