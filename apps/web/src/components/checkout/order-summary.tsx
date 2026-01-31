@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@nextpik/ui';
 import type { CartItem } from '@/contexts/cart-context';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
-import { useSelectedCurrency, useCurrencyConverter } from '@/hooks/use-currency';
+import { useSelectedCurrency, useCurrencyConverter, useCurrencyRates } from '@/hooks/use-currency';
 
 interface OrderSummaryProps {
   items: CartItem[];
@@ -14,6 +14,7 @@ interface OrderSummaryProps {
   shipping: number;
   tax: number;
   total: number;
+  cartCurrency?: string; // 🔒 Cart's locked currency
   shippingMethod?: {
     name: string;
     price: number;
@@ -29,6 +30,7 @@ export function OrderSummary({
   shipping,
   tax,
   total,
+  cartCurrency = 'USD', // 🔒 Default to USD if not provided
   shippingMethod,
   promoCode,
   discount = 0,
@@ -43,6 +45,7 @@ export function OrderSummary({
   // Use currency from the selected currency context
   const { currency } = useSelectedCurrency();
   const { convertPrice } = useCurrencyConverter();
+  const { allCurrencies } = useCurrencyRates();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -73,20 +76,26 @@ export function OrderSummary({
 
   const finalTotal = total - discount;
 
-  // Helper function to format prices with selected currency
-  // 🔒 UPDATED: Respects locked prices (priceAtAdd) - no conversion needed
-  const formatWithCurrency = (amount: number, shouldConvert: boolean = false) => {
-    if (!currency) return `$${formatCurrencyAmount(amount, 2)}`;
+  // Helper function to format prices with cart's locked currency
+  // 🔒 UPDATED: Uses cartCurrency to prevent double conversion of locked totals
+  const formatWithCurrency = (amount: number, shouldConvert: boolean = false, fromCurrency?: string) => {
+    // Determine which currency to use for formatting
+    // For totals (subtotal, shipping, tax, total), use cartCurrency
+    // For item prices, use their currencyAtAdd
+    const currencyCode = fromCurrency || cartCurrency;
+    const currencyToUse = allCurrencies.find((c) => c.currencyCode === currencyCode) || currency;
+
+    if (!currencyToUse) return `$${formatCurrencyAmount(amount, 2)}`;
 
     // Convert from USD ONLY if shouldConvert is true and price is in USD
-    // For locked prices (priceAtAdd), shouldConvert will be false
+    // For locked prices (priceAtAdd) and locked totals, shouldConvert will be false
     const displayAmount = shouldConvert ? convertPrice(amount, 'USD') : amount;
 
-    const formatted = formatCurrencyAmount(displayAmount, currency.decimalDigits);
-    if (currency.position === 'before') {
-      return `${currency.symbol}${formatted}`;
+    const formatted = formatCurrencyAmount(displayAmount, currencyToUse.decimalDigits);
+    if (currencyToUse.position === 'before') {
+      return `${currencyToUse.symbol}${formatted}`;
     }
-    return `${formatted} ${currency.symbol}`;
+    return `${formatted} ${currencyToUse.symbol}`;
   };
 
   return (
@@ -147,7 +156,8 @@ export function OrderSummary({
                   {/* 🔒 Use locked price (priceAtAdd) if available, otherwise convert from USD */}
                   {formatWithCurrency(
                     (item.priceAtAdd !== undefined ? item.priceAtAdd : item.price) * item.quantity,
-                    item.priceAtAdd === undefined // Only convert if no locked price
+                    item.priceAtAdd === undefined, // Only convert if no locked price
+                    item.currencyAtAdd || 'USD' // Use item's locked currency
                   )}
                 </span>
               </div>

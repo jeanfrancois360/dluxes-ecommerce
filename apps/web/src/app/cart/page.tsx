@@ -19,6 +19,7 @@ export default function CartPage() {
     freeShippingThreshold = 200,
     taxCalculationMode = 'disabled',
     taxRate = 0,
+    cartCurrency = 'USD',
     updateQuantity,
     removeItem,
     isLoading
@@ -263,12 +264,13 @@ export default function CartPage() {
                   <div className="space-y-4 py-4 border-y border-neutral-200">
                     <div className="flex justify-between text-neutral-600">
                       <span>Subtotal ({totals.itemCount} items)</span>
-                      <Price amount={totals.subtotal} className="font-semibold text-black" />
+                      {/* 🔒 Totals are already in cart currency - no conversion needed */}
+                      <Price amount={totals.subtotal} fromCurrency={cartCurrency} className="font-semibold text-black" />
                     </div>
                     <div className="flex justify-between text-neutral-600">
                       <span>Shipping</span>
                       <span className="font-semibold text-black">
-                        {totals.shipping === 0 ? 'FREE' : <Price amount={totals.shipping} className="inline" />}
+                        {totals.shipping === 0 ? 'FREE' : <Price amount={totals.shipping} fromCurrency={cartCurrency} className="inline" />}
                       </span>
                     </div>
                     {taxCalculationMode !== 'disabled' && (
@@ -280,7 +282,7 @@ export default function CartPage() {
                             <span className="text-xs ml-1">(Calculated at checkout)</span>
                           )}
                         </span>
-                        <Price amount={totals.tax} className="font-semibold text-black" />
+                        <Price amount={totals.tax} fromCurrency={cartCurrency} className="font-semibold text-black" />
                       </div>
                     )}
                   </div>
@@ -288,7 +290,7 @@ export default function CartPage() {
                   {/* Total */}
                   <div className="flex justify-between items-center py-4">
                     <span className="text-lg font-semibold text-black">Total</span>
-                    <Price amount={totals.total} className="text-3xl font-bold text-black" />
+                    <Price amount={totals.total} fromCurrency={cartCurrency} className="text-3xl font-bold text-black" />
                   </div>
 
                   {/* Free Shipping Message */}
