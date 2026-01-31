@@ -180,28 +180,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }, 0);
     }
 
-    // Convert threshold and shipping cost from USD to selected currency
-    const convertedThreshold = convertPrice(freeShippingThreshold, 'USD');
-    const convertedShippingCost = convertPrice(standardShippingCost, 'USD');
-
-    // Apply free shipping logic based on backend settings (with currency conversion)
-    let shipping = convertedShippingCost;
-    if (freeShippingEnabled && subtotal >= convertedThreshold) {
-      shipping = 0;
-    }
-
-    // Apply tax based on tax_calculation_mode
-    let tax = 0;
-    if (taxCalculationMode === 'simple') {
-      // Simple mode: apply default tax rate
-      tax = subtotal * taxRate;
-    } else if (taxCalculationMode === 'by_state') {
-      // By-state mode: tax calculated at checkout (show 0 in cart)
-      tax = 0;
-    }
-    // else: disabled mode - tax remains 0
-
-    const total = subtotal + shipping + tax;
+    // 🎯 Cart-level totals: Show only subtotal
+    // Shipping and tax will be calculated at checkout after address entry
+    const shipping = 0; // Not calculated until checkout
+    const tax = 0; // Not calculated until checkout
+    const total = subtotal; // Cart total = subtotal only
     const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
     return {

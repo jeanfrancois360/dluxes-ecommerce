@@ -269,38 +269,62 @@ export default function CartPage() {
                     </div>
                     <div className="flex justify-between text-neutral-600">
                       <span>Shipping</span>
-                      <span className="font-semibold text-black">
-                        {totals.shipping === 0 ? 'FREE' : <Price amount={totals.shipping} fromCurrency={cartCurrency} className="inline" />}
+                      <span className="text-sm text-neutral-500 italic">
+                        Calculated at checkout
                       </span>
                     </div>
                     {taxCalculationMode !== 'disabled' && (
                       <div className="flex justify-between text-neutral-600">
-                        <span>
-                          Tax
-                          {taxCalculationMode === 'simple' && ` (${(taxRate * 100).toFixed(0)}%)`}
-                          {taxCalculationMode === 'by_state' && (
-                            <span className="text-xs ml-1">(Calculated at checkout)</span>
-                          )}
+                        <span>Tax</span>
+                        <span className="text-sm text-neutral-500 italic">
+                          Calculated at checkout
                         </span>
-                        <Price amount={totals.tax} fromCurrency={cartCurrency} className="font-semibold text-black" />
                       </div>
                     )}
                   </div>
 
                   {/* Total */}
                   <div className="flex justify-between items-center py-4">
-                    <span className="text-lg font-semibold text-black">Total</span>
-                    <Price amount={totals.total} fromCurrency={cartCurrency} className="text-3xl font-bold text-black" />
+                    <span className="text-lg font-semibold text-black">Subtotal</span>
+                    <div className="text-right">
+                      <Price amount={totals.subtotal} fromCurrency={cartCurrency} className="text-3xl font-bold text-black" />
+                      <p className="text-xs text-neutral-500 mt-1">Taxes and shipping at checkout</p>
+                    </div>
                   </div>
 
                   {/* Free Shipping Message */}
-                  {freeShippingEnabled && totals.shipping > 0 && (
+                  {freeShippingEnabled && totals.subtotal < freeShippingThreshold && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="mb-4 p-3 bg-accent-50 border border-accent-200 rounded-lg text-sm text-neutral-700"
+                      className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm"
                     >
-                      Add <Price amount={freeShippingThreshold - totals.subtotal} className="font-semibold text-gold inline" /> more to get free shipping!
+                      <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <p className="font-medium text-blue-900">Free shipping available!</p>
+                          <p className="text-blue-700 mt-1">
+                            Add <Price amount={freeShippingThreshold - totals.subtotal} className="font-semibold inline" /> more to qualify for free shipping.
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {freeShippingEnabled && totals.subtotal >= freeShippingThreshold && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <p className="font-medium text-green-900">You qualify for free shipping! 🎉</p>
+                      </div>
                     </motion.div>
                   )}
 
