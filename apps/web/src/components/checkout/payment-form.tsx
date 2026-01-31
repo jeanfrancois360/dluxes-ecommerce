@@ -16,6 +16,7 @@ import { CardBrandLogo } from '@/components/payment/card-brand-logo';
 
 interface PaymentFormProps {
   amount: number;
+  currency?: string; // Currency code (e.g., 'EUR', 'USD')
   clientSecret: string;
   onSuccess: (paymentIntentId: string) => void;
   onError: (error: string) => void;
@@ -50,6 +51,7 @@ const CARD_ELEMENT_OPTIONS: StripeCardElementOptions = {
 
 export function PaymentForm({
   amount,
+  currency = 'USD',
   clientSecret,
   onSuccess,
   onError,
@@ -66,6 +68,20 @@ export function PaymentForm({
   const [saveCard, setSaveCard] = useState(false);
   const [billingIsSame, setBillingIsSame] = useState(billingAddressSameAsShipping);
   const [cardBrand, setCardBrand] = useState<string>('unknown');
+
+  // Get currency symbol using Intl API
+  const currencySymbol = (() => {
+    try {
+      return new Intl.NumberFormat('en', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(0).replace(/\d/g, '').trim();
+    } catch {
+      return '$'; // Fallback to USD symbol
+    }
+  })();
 
   // Saved cards state
   const [savedCards, setSavedCards] = useState<SavedPaymentMethod[]>([]);
@@ -568,7 +584,7 @@ export function PaymentForm({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-neutral-600 mb-1">Total Amount</p>
-            <p className="text-3xl font-serif font-bold text-gold">${formatCurrencyAmount(amount, 2)}</p>
+            <p className="text-3xl font-serif font-bold text-gold">{currencySymbol}{formatCurrencyAmount(amount, 2)}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-neutral-500">You will be charged</p>
@@ -656,7 +672,7 @@ export function PaymentForm({
                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                   />
                 </svg>
-                <span className="text-lg">Pay ${formatCurrencyAmount(amount, 2)}</span>
+                <span className="text-lg">Pay {currencySymbol}{formatCurrencyAmount(amount, 2)}</span>
               </>
             )}
           </div>

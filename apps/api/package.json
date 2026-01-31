@@ -30,6 +30,7 @@
     "@nestjs/websockets": "^10.4.15",
     "@nextpik/database": "workspace:*",
     "@nextpik/shared": "workspace:*",
+    "@paypal/checkout-server-sdk": "^1.0.3",
     "@prisma/client": "^6.1.0",
     "@supabase/supabase-js": "^2.86.0",
     "@types/multer": "^2.0.0",

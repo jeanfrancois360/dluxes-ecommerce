@@ -15,10 +15,11 @@ import {
 export interface ShippingMethod {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   price: number;
-  estimatedDays: string;
-  icon: React.ReactNode;
+  estimatedDays: string | number;
+  icon?: React.ReactNode;
+  carrier?: string;
 }
 
 interface ShippingMethodProps {
@@ -28,6 +29,9 @@ interface ShippingMethodProps {
   onBack?: () => void;
   isLoading?: boolean;
   subtotal: number; // Add subtotal for free shipping calculation
+  shippingOptions?: ShippingMethod[]; // Dynamic shipping options from backend
+  isLoadingOptions?: boolean;
+  currency?: string; // Currency code (e.g., 'EUR', 'USD')
 }
 
 const SHIPPING_METHODS: ShippingMethod[] = [
@@ -91,16 +95,70 @@ export function ShippingMethodSelector({
   onBack,
   isLoading,
   subtotal,
+  shippingOptions, // Dynamic options from backend
+  isLoadingOptions,
+  currency = 'USD', // Default to USD if not provided
 }: ShippingMethodProps) {
   const [selected, setSelected] = useState(selectedMethod);
 
+  // Get currency symbol using Intl API
+  const currencySymbol = useMemo(() => {
+    try {
+      return new Intl.NumberFormat('en', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(0).replace(/\d/g, '').trim();
+    } catch {
+      return '$'; // Fallback to USD symbol
+    }
+  }, [currency]);
+
+  // Use dynamic options from backend if available, fallback to hardcoded
+  const methods = useMemo((): ShippingMethod[] => {
+    if (shippingOptions && shippingOptions.length > 0) {
+      // Backend provided options - transform to component format
+      return shippingOptions.map(opt => ({
+        id: opt.id,
+        name: opt.name,
+        description: opt.carrier ? `Delivered via ${opt.carrier}` : undefined,
+        price: opt.price,
+        estimatedDays: typeof opt.estimatedDays === 'number'
+          ? `${opt.estimatedDays} business days`
+          : String(opt.estimatedDays),
+        carrier: opt.carrier,
+        icon: undefined, // Backend options don't have icons
+      }));
+    }
+    // Fallback to hardcoded options
+    return SHIPPING_METHODS;
+  }, [shippingOptions]);
+
+  // Check if we're using backend options (they already have calculated prices)
+  const usingBackendOptions = shippingOptions && shippingOptions.length > 0;
+
   // Calculate shipping costs dynamically based on subtotal
+  // Only use calculateShippingCost for hardcoded options
   const shippingCalculations = useMemo(() => {
-    return SHIPPING_METHODS.reduce((acc, method) => {
-      acc[method.id] = calculateShippingCost(method.id, subtotal);
+    return methods.reduce((acc, method) => {
+      if (usingBackendOptions) {
+        // Backend already calculated prices, use them directly
+        acc[method.id] = {
+          methodId: method.id,
+          finalPrice: method.price,
+          originalPrice: method.price,
+          isFree: method.price === 0,
+          discount: 0,
+          qualifiesForFreeShipping: method.price === 0,
+        };
+      } else {
+        // Use frontend calculation for hardcoded options
+        acc[method.id] = calculateShippingCost(method.id, subtotal);
+      }
       return acc;
     }, {} as Record<string, ReturnType<typeof calculateShippingCost>>);
-  }, [subtotal]);
+  }, [methods, subtotal, usingBackendOptions]);
 
   // Check if qualifies for free shipping
   const amountNeededForFreeShipping = useMemo(() => {
@@ -131,13 +189,31 @@ export function ShippingMethodSelector({
       </div>
 
       <div className="space-y-4">
-        {SHIPPING_METHODS.map((method, index) => (
-          <motion.div
-            key={method.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
-          >
+        {isLoadingOptions ? (
+          // Loading skeleton
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-6 rounded-lg border-2 border-neutral-200 animate-pulse">
+                <div className="flex items-start gap-4">
+                  <div className="w-6 h-6 bg-neutral-200 rounded-full" />
+                  <div className="w-12 h-12 bg-neutral-200 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 bg-neutral-200 rounded w-1/3" />
+                    <div className="h-4 bg-neutral-200 rounded w-2/3" />
+                  </div>
+                  <div className="h-6 bg-neutral-200 rounded w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          methods.map((method, index) => (
+            <motion.div
+              key={method.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
             <label
               className={cn(
                 'block cursor-pointer group',
@@ -193,7 +269,17 @@ export function ShippingMethodSelector({
                       : 'bg-neutral-100 text-neutral-600 group-hover:bg-neutral-200'
                   )}
                 >
-                  {method.icon}
+                  {method.icon || (
+                    // Default shipping icon if none provided
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                      />
+                    </svg>
+                  )}
                 </div>
 
                 {/* Content */}
@@ -205,7 +291,7 @@ export function ShippingMethodSelector({
                         <div className="flex flex-col items-end">
                           <p className="text-lg font-serif font-bold text-green-600">Free</p>
                           <p className="text-xs text-neutral-400 line-through">
-                            ${formatCurrencyAmount(shippingCalculations[method.id].originalPrice, 2)}
+                            {currencySymbol}{formatCurrencyAmount(shippingCalculations[method.id].originalPrice, 2)}
                           </p>
                         </div>
                       ) : (
@@ -215,7 +301,7 @@ export function ShippingMethodSelector({
                             selected === method.id ? 'text-gold' : 'text-black'
                           )}
                         >
-                          ${formatCurrencyAmount(shippingCalculations[method.id]?.finalPrice || method.price, 2)}
+                          {currencySymbol}{formatCurrencyAmount(shippingCalculations[method.id]?.finalPrice || method.price, 2)}
                         </p>
                       )}
                     </div>
@@ -235,10 +321,14 @@ export function ShippingMethodSelector({
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    <span className="text-neutral-600">{method.estimatedDays} business days</span>
+                    <span className="text-neutral-600">
+                      {typeof method.estimatedDays === 'number'
+                        ? `${method.estimatedDays} business days`
+                        : method.estimatedDays}
+                    </span>
                     <span className="text-neutral-400">•</span>
                     <span className="text-neutral-500">
-                      Est. delivery: {getEstimatedDeliveryDate(method.estimatedDays)}
+                      Est. delivery: {getEstimatedDeliveryDate(String(method.estimatedDays))}
                     </span>
                   </div>
                 </div>
@@ -271,7 +361,8 @@ export function ShippingMethodSelector({
               </motion.div>
             </label>
           </motion.div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Info Banner - Dynamic based on subtotal */}
@@ -310,18 +401,18 @@ export function ShippingMethodSelector({
           {amountNeededForFreeShipping > 0 ? (
             <>
               <p className="text-amber-900 font-medium">
-                Add ${formatCurrencyAmount(amountNeededForFreeShipping, 2)} more to qualify for free
+                Add {currencySymbol}{formatCurrencyAmount(amountNeededForFreeShipping, 2)} more to qualify for free
                 shipping!
               </p>
               <p className="text-amber-700 mt-1">
-                Free shipping available on orders over ${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}
+                Free shipping available on orders over {currencySymbol}{formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}
               </p>
             </>
           ) : (
             <>
               <p className="text-green-900 font-medium">You qualify for free shipping!</p>
               <p className="text-green-700 mt-1">
-                Your order meets the ${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)} minimum for
+                Your order meets the {currencySymbol}{formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)} minimum for
                 complimentary delivery
               </p>
             </>
