@@ -179,16 +179,13 @@ export default function CheckoutPage() {
   const handleShippingMethodContinue = () => {
     const methodConfig = getShippingMethodById(selectedShippingMethod);
 
-    // Convert shipping cost from USD to selected currency
-    // methodConfig has base USD prices, we need to convert them
-    const shippingCostUSD = methodConfig?.basePrice || 10;
-    const convertedShipping = convertPrice(shippingCostUSD, 'USD');
-
+    // 🔒 Use cart's pre-calculated shipping to prevent rounding differences
+    // The cart context already calculated shipping in the locked currency
     if (methodConfig) {
       saveShippingMethod({
         id: methodConfig.id,
         name: methodConfig.name,
-        price: convertedShipping,
+        price: totals.shipping, // Use cart's locked shipping
       });
       // Confirm shipping method to trigger payment intent creation
       setShippingMethodConfirmed(true);
@@ -227,11 +224,14 @@ export default function CheckoutPage() {
     }
   };
 
-  // Get selected shipping method price and convert from USD to selected currency
+  // 🔒 Use cart's locked shipping and total to prevent rounding differences
+  // The cart context already calculated shipping in the locked currency
   const methodConfig = getShippingMethodById(selectedShippingMethod);
-  const shippingCostUSD = methodConfig?.basePrice || 10;
-  const convertedShippingCost = convertPrice(shippingCostUSD, 'USD');
-  const totalWithShipping = totals.total - totals.shipping + convertedShippingCost;
+
+  // Use cart's pre-calculated shipping instead of converting from USD
+  // This prevents 0.01 cent rounding differences
+  const shippingCost = totals.shipping;
+  const totalWithShipping = totals.total; // Already includes shipping
 
   if (items.length === 0) {
     return null; // Will redirect
@@ -370,7 +370,7 @@ export default function CheckoutPage() {
                           <ShippingSummaryCard
                             shippingMethod={{
                               name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
-                              price: convertedShippingCost,
+                              price: shippingCost,
                               estimatedDays: getShippingMethodById(selectedShippingMethod)?.estimatedDays || '5-7 business days',
                             }}
                             shippingAddress={shippingAddress ? {
@@ -424,12 +424,13 @@ export default function CheckoutPage() {
               <OrderSummary
                 items={items}
                 subtotal={totals.subtotal}
-                shipping={convertedShippingCost}
+                shipping={shippingCost}
                 tax={totals.tax}
                 total={totalWithShipping}
+                cartCurrency={cartCurrency} // 🔒 Pass locked currency to prevent double conversion
                 shippingMethod={{
                   name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
-                  price: convertedShippingCost,
+                  price: shippingCost,
                 }}
               />
             </div>
