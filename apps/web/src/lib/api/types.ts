@@ -350,6 +350,9 @@ export interface Order {
   shipping: number;
   discount: number;
   total: number;
+  currency: string; // ISO currency code (EUR, USD, GBP, etc.)
+  exchangeRate?: number; // Exchange rate at time of purchase
+  baseCurrency?: string; // Base currency prices were in
   notes?: string;
   timeline: OrderTimeline[];
   delivery?: Delivery;
