@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { useCurrencyConverter } from '@/hooks/use-currency';
+import { formatCurrency } from '@/lib/utils';
 import { sellerAPI, SellerOrderDetail } from '@/lib/api/seller';
 import { toast } from 'sonner';
 import useSWR from 'swr';
@@ -75,7 +75,6 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   const router = useRouter();
   const resolvedParams = use(params);
   const { user, isLoading: authLoading } = useAuth();
-  const { formatPrice } = useCurrencyConverter();
   const [updating, setUpdating] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [shippingCarrier, setShippingCarrier] = useState('');
@@ -288,12 +287,12 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-black truncate">{item.product.name}</h3>
                       <p className="text-sm text-neutral-500 mt-1">
-                        Quantity: {item.quantity} × {formatPrice(item.price, order.currency)}
+                        Quantity: {item.quantity} × {formatCurrency(item.price, order.currency)}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-black">
-                        {formatPrice(item.total, order.currency)}
+                        {formatCurrency(item.total, order.currency)}
                       </p>
                     </div>
                   </div>
@@ -303,29 +302,29 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-600">Your Items Subtotal</span>
-                    <span className="text-black">{formatPrice(sellerTotals.subtotal, order.currency)}</span>
+                    <span className="text-black">{formatCurrency(sellerTotals.subtotal, order.currency)}</span>
                   </div>
                   {sellerTotals.shipping > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-neutral-600">Shipping (Your Portion)</span>
-                      <span className="text-black">{formatPrice(sellerTotals.shipping, order.currency)}</span>
+                      <span className="text-black">{formatCurrency(sellerTotals.shipping, order.currency)}</span>
                     </div>
                   )}
                   {sellerTotals.tax > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-neutral-600">Tax (Your Portion)</span>
-                      <span className="text-black">{formatPrice(sellerTotals.tax, order.currency)}</span>
+                      <span className="text-black">{formatCurrency(sellerTotals.tax, order.currency)}</span>
                     </div>
                   )}
                   {sellerTotals.discount > 0 && (
                     <div className="flex justify-between text-sm text-green-600">
                       <span>Discount</span>
-                      <span>-{formatPrice(sellerTotals.discount, order.currency)}</span>
+                      <span>-{formatCurrency(sellerTotals.discount, order.currency)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-semibold border-t border-neutral-200 pt-2 mt-2">
                     <span>Your Order Total</span>
-                    <span>{formatPrice(sellerTotals.total, order.currency)}</span>
+                    <span>{formatCurrency(sellerTotals.total, order.currency)}</span>
                   </div>
                 </div>
               </div>
@@ -525,7 +524,7 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-600">Your Total Amount</span>
-                  <span className="font-semibold text-black">{formatPrice(sellerTotals.total, order.currency)}</span>
+                  <span className="font-semibold text-black">{formatCurrency(sellerTotals.total, order.currency)}</span>
                 </div>
               </div>
             </div>
