@@ -822,31 +822,64 @@ export class PaymentService {
     const currencyUpper = currency.toUpperCase();
 
     try {
-      // Get fee rates from system settings
+      // Get fee percentage from settings
       const feePercentageSetting = await this.settingsService.getSetting(
         paymentMethod === 'STRIPE' ? 'stripe_fee_percentage' : 'paypal_fee_percentage'
       );
-      const feeFixedSetting = await this.settingsService.getSetting(
-        paymentMethod === 'STRIPE'
-          ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
-          : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`
-      );
 
-      // Get values from settings or use defaults
       const feePercentValue = feePercentageSetting?.value
         ? Number(feePercentageSetting.value)
         : paymentMethod === 'STRIPE' ? 2.9 : 3.49;
 
-      const feeFixedValue = feeFixedSetting?.value
-        ? Number(feeFixedSetting.value)
-        : this.getDefaultFixedFee(currencyUpper, paymentMethod);
+      // Get fixed fee with smart fallback
+      let feeFixedValue: number;
+      let usedFallback = false;
+
+      // Try to get currency-specific fee setting
+      const currencyFeeKey = paymentMethod === 'STRIPE'
+        ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
+        : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`;
+
+      const feeFixedSetting = await this.settingsService.getSetting(currencyFeeKey);
+
+      if (feeFixedSetting?.value) {
+        // Currency-specific fee found
+        feeFixedValue = Number(feeFixedSetting.value);
+      } else {
+        // Smart fallback: Use USD fee and convert to target currency
+        const usdFeeKey = paymentMethod === 'STRIPE'
+          ? 'stripe_fee_fixed_usd'
+          : 'paypal_fee_fixed_usd';
+
+        const usdFeeSetting = await this.settingsService.getSetting(usdFeeKey);
+        const usdFeeValue = usdFeeSetting?.value ? Number(usdFeeSetting.value) : 0.30;
+
+        try {
+          // Convert USD fee to target currency
+          feeFixedValue = await this.currencyService.convertAmount(
+            usdFeeValue,
+            'USD',
+            currencyUpper
+          );
+          usedFallback = true;
+          this.logger.log(
+            `Smart fallback: Converted ${paymentMethod} fee from $${usdFeeValue} USD to ${feeFixedValue} ${currencyUpper}`
+          );
+        } catch (conversionError) {
+          // If conversion fails, use hardcoded default
+          this.logger.warn(
+            `Currency conversion failed for ${currencyUpper}, using hardcoded default: ${conversionError.message}`
+          );
+          feeFixedValue = this.getDefaultFixedFee(currencyUpper, paymentMethod);
+        }
+      }
 
       const feePercent = new Decimal(feePercentValue).div(100); // Convert 2.9 to 0.029
       const feeFixed = new Decimal(feeFixedValue);
       const feeAmount = amount.mul(feePercent).add(feeFixed);
 
       this.logger.log(
-        `Using ${paymentMethod} fee rates from settings: ${feePercentValue}% + ${feeFixedValue} ${currencyUpper}`
+        `Using ${paymentMethod} fee rates: ${feePercentValue}% + ${feeFixedValue} ${currencyUpper}${usedFallback ? ' (converted from USD)' : ''}`
       );
 
       return { feeAmount, feePercent, feeFixed };

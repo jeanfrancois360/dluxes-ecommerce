@@ -10,6 +10,7 @@ import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
 import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
 import { SettingsService } from '../settings/settings.service';
+import { CurrencyService } from '../currency/currency.service';
 import { ProductStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -23,6 +24,7 @@ export class SellerService {
     private creditsService: CreditsService,
     private dhlTrackingService: DhlTrackingService,
     private settingsService: SettingsService,
+    private currencyService: CurrencyService,
   ) {}
 
   /**
@@ -538,30 +540,63 @@ export class SellerService {
     const processor = paymentMethod === 'PAYPAL' ? 'PAYPAL' : 'STRIPE';
 
     try {
-      // Get fee rates from system settings
+      // Get fee percentage from system settings
       const feePercentageSetting = await this.settingsService.getSetting(
         processor === 'STRIPE' ? 'stripe_fee_percentage' : 'paypal_fee_percentage'
       );
-      const feeFixedSetting = await this.settingsService.getSetting(
-        processor === 'STRIPE'
-          ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
-          : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`
-      );
 
-      // Get values from settings or use defaults
       const feePercentValue = feePercentageSetting?.value
         ? Number(feePercentageSetting.value)
         : processor === 'STRIPE' ? 2.9 : 3.49;
 
-      const feeFixedValue = feeFixedSetting?.value
-        ? Number(feeFixedSetting.value)
-        : this.getDefaultFixedFee(currencyUpper, processor);
+      // Get fixed fee with smart fallback
+      let feeFixedValue: number;
+      let usedFallback = false;
+
+      // Try to get currency-specific fee setting
+      const currencyFeeKey = processor === 'STRIPE'
+        ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
+        : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`;
+
+      const feeFixedSetting = await this.settingsService.getSetting(currencyFeeKey);
+
+      if (feeFixedSetting?.value) {
+        // Currency-specific fee found
+        feeFixedValue = Number(feeFixedSetting.value);
+      } else {
+        // Smart fallback: Use USD fee and convert to target currency
+        const usdFeeKey = processor === 'STRIPE'
+          ? 'stripe_fee_fixed_usd'
+          : 'paypal_fee_fixed_usd';
+
+        const usdFeeSetting = await this.settingsService.getSetting(usdFeeKey);
+        const usdFeeValue = usdFeeSetting?.value ? Number(usdFeeSetting.value) : 0.30;
+
+        try {
+          // Convert USD fee to target currency
+          feeFixedValue = await this.currencyService.convertAmount(
+            usdFeeValue,
+            'USD',
+            currencyUpper
+          );
+          usedFallback = true;
+          this.logger.log(
+            `Smart fallback: Converted ${processor} fee from $${usdFeeValue} USD to ${feeFixedValue} ${currencyUpper}`
+          );
+        } catch (conversionError) {
+          // If conversion fails, use hardcoded default
+          this.logger.warn(
+            `Currency conversion failed for ${currencyUpper}, using hardcoded default: ${conversionError.message}`
+          );
+          feeFixedValue = this.getDefaultFixedFee(currencyUpper, processor);
+        }
+      }
 
       const percentFee = amount.mul(feePercentValue).div(100);
       const totalFee = percentFee.add(feeFixedValue);
 
       this.logger.log(
-        `Estimated ${processor} fee from settings: ${feePercentValue}% + ${feeFixedValue} ${currencyUpper} = ${totalFee.toFixed(2)}`
+        `Estimated ${processor} fee: ${feePercentValue}% + ${feeFixedValue} ${currencyUpper} = ${totalFee.toFixed(2)}${usedFallback ? ' (converted from USD)' : ''}`
       );
 
       return totalFee;

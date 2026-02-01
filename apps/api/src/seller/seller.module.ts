@@ -6,9 +6,10 @@ import { SubscriptionModule } from '../subscription/subscription.module';
 import { CreditsModule } from '../credits/credits.module';
 import { DhlModule } from '../integrations/dhl/dhl.module';
 import { SettingsModule } from '../settings/settings.module';
+import { CurrencyModule } from '../currency/currency.module';
 
 @Module({
-  imports: [DatabaseModule, SubscriptionModule, CreditsModule, DhlModule, SettingsModule],
+  imports: [DatabaseModule, SubscriptionModule, CreditsModule, DhlModule, SettingsModule, CurrencyModule],
   controllers: [SellerController],
   providers: [SellerService],
   exports: [SellerService],
