@@ -401,6 +401,48 @@ export class DeliveryService {
       },
     });
 
+    // Update order status to DELIVERED
+    await this.prisma.order.update({
+      where: { id: delivery.orderId },
+      data: { status: 'DELIVERED' as any },
+    });
+
+    // TRIGGER PAYMENT CAPTURE on delivery confirmation
+    try {
+      const { PaymentService } = await import('../payment/payment.service');
+      const { SettingsService } = await import('../settings/settings.service');
+      const { CurrencyService } = await import('../currency/currency.service');
+
+      const settingsService = new SettingsService(this.prisma);
+      const currencyService = new CurrencyService(this.prisma, settingsService);
+
+      // PaymentService needs ConfigService but we can pass null if not used for capture
+      const paymentService = new PaymentService(
+        null as any, // configService
+        this.prisma,
+        settingsService,
+        currencyService,
+        null as any, // stripeSubscriptionService
+      );
+
+      const result = await paymentService.capturePaymentWithStrategy(
+        delivery.orderId,
+        'DELIVERY_CONFIRMED',
+        data.confirmedBy,
+      );
+
+      this.logger.log(
+        `Payment captured on delivery confirmation: ${result.capturedAmount} for order ${delivery.order.orderNumber}`,
+      );
+    } catch (captureError) {
+      this.logger.error(
+        `Failed to capture payment on delivery for order ${delivery.order.orderNumber}:`,
+        captureError,
+      );
+      // Don't fail delivery confirmation if payment capture fails
+      // Payment monitor will auto-capture on Day 6 as fallback
+    }
+
     this.logger.log(`Confirmed delivery ${delivery.trackingNumber}`);
 
     return updated;

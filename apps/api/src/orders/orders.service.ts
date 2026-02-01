@@ -907,6 +907,9 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
+    // Validate status transition
+    this.validateStatusTransition(order.status, status);
+
     // Update order status
     const updatedOrder = await this.prisma.order.update({
       where: { id },
@@ -936,6 +939,40 @@ export class OrdersService {
     // TODO: Send status update email via queue
 
     return updatedOrder;
+  }
+
+  /**
+   * Validate order status transition
+   * Prevents invalid status changes and regressions
+   * @private
+   */
+  private validateStatusTransition(currentStatus: OrderStatus, newStatus: OrderStatus): void {
+    // Same status is allowed (idempotent)
+    if (currentStatus === newStatus) {
+      return;
+    }
+
+    // Define valid transitions for each status
+    const validTransitions: Record<OrderStatus, OrderStatus[]> = {
+      [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+      [OrderStatus.CONFIRMED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+      [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+      [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+      [OrderStatus.DELIVERED]: [OrderStatus.REFUNDED], // Can't cancel delivered orders
+      [OrderStatus.CANCELLED]: [], // Terminal state - no transitions allowed
+      [OrderStatus.REFUNDED]: [], // Terminal state - no transitions allowed
+    };
+
+    const allowedStatuses = validTransitions[currentStatus] || [];
+
+    if (!allowedStatuses.includes(newStatus)) {
+      throw new BadRequestException(
+        `Invalid status transition: cannot change from ${currentStatus} to ${newStatus}. ` +
+        `Allowed transitions: ${allowedStatuses.length > 0 ? allowedStatuses.join(', ') : 'none (terminal state)'}`,
+      );
+    }
+
+    this.logger.log(`Status transition validated: ${currentStatus} → ${newStatus}`);
   }
 
   /**
