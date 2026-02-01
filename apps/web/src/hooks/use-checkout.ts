@@ -237,14 +237,15 @@ export function useCheckout() {
           throw new Error(`Invalid order total: ${orderTotal}. Must be at least $0.50`);
         }
 
-        // 🔒 Use cart's locked currency for payment
-        const paymentCurrency = cartCurrency?.toLowerCase() || 'usd';
+        // 🔒 Use order's currency from backend (most reliable source)
+        // Priority: order.currency > cartCurrency > 'usd'
+        const paymentCurrency = (order.currency || cartCurrency || 'usd').toLowerCase();
 
         const paymentResponse = await axios.post(
           `${API_URL}/payment/create-intent`,
           {
             amount: orderTotal,
-            currency: paymentCurrency, // Use locked currency from cart
+            currency: paymentCurrency, // Use currency from order
             orderId: order.id,
           },
           {
