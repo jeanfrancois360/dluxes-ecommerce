@@ -563,7 +563,14 @@ export class SellerService {
       throw new NotFoundException('Order not found or does not belong to your store');
     }
 
-    return order;
+    // Apply seller-specific totals calculation
+    const sellerTotals = this.calculateSellerOrderTotals(order);
+
+    return {
+      ...order,
+      sellerTotals, // Seller-specific breakdown
+      originalTotal: Number(order.total), // Full order total for reference
+    };
   }
 
   /**
