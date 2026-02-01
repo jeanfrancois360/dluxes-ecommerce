@@ -214,6 +214,7 @@ export interface SellerOrderDetail {
   tax: number;
   shippingCost: number;
   total: number;
+  currency: string;
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
