@@ -212,8 +212,14 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   const canUpdateStatus = !['DELIVERED', 'CANCELLED', 'REFUNDED'].includes(order.status);
   const canShip = order.status === 'PROCESSING' && order.paymentStatus === 'PAID';
 
-  // Calculate seller's portion of the order
-  const sellerSubtotal = order.items.reduce((sum, item) => sum + Number(item.total), 0);
+  // Use seller-specific totals from backend (proportional allocation)
+  const sellerTotals = (order as any).sellerTotals || {
+    subtotal: order.items.reduce((sum, item) => sum + Number(item.total), 0),
+    shipping: 0,
+    tax: 0,
+    discount: 0,
+    total: order.items.reduce((sum, item) => sum + Number(item.total), 0),
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -296,23 +302,29 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-600">Your Items Subtotal</span>
-                    <span className="text-black">{formatCurrencyAmount(sellerSubtotal)}</span>
+                    <span className="text-black">{formatCurrencyAmount(sellerTotals.subtotal)}</span>
                   </div>
-                  {order.tax > 0 && (
+                  {sellerTotals.shipping > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-neutral-600">Tax (Order Total)</span>
-                      <span className="text-black">{formatCurrencyAmount(order.tax)}</span>
+                      <span className="text-neutral-600">Shipping (Your Portion)</span>
+                      <span className="text-black">{formatCurrencyAmount(sellerTotals.shipping)}</span>
                     </div>
                   )}
-                  {order.shippingCost > 0 && (
+                  {sellerTotals.tax > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-neutral-600">Shipping (Order Total)</span>
-                      <span className="text-black">{formatCurrencyAmount(order.shippingCost)}</span>
+                      <span className="text-neutral-600">Tax (Your Portion)</span>
+                      <span className="text-black">{formatCurrencyAmount(sellerTotals.tax)}</span>
+                    </div>
+                  )}
+                  {sellerTotals.discount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Discount</span>
+                      <span>-{formatCurrencyAmount(sellerTotals.discount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-semibold border-t border-neutral-200 pt-2 mt-2">
-                    <span>Order Total</span>
-                    <span>{formatCurrencyAmount(order.total)}</span>
+                    <span>Your Order Total</span>
+                    <span>{formatCurrencyAmount(sellerTotals.total)}</span>
                   </div>
                 </div>
               </div>
@@ -511,8 +523,8 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                   <StatusBadge status={order.paymentStatus} type="payment" />
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Total Amount</span>
-                  <span className="font-semibold text-black">{formatCurrencyAmount(order.total)}</span>
+                  <span className="text-neutral-600">Your Total Amount</span>
+                  <span className="font-semibold text-black">{formatCurrencyAmount(sellerTotals.total)}</span>
                 </div>
               </div>
             </div>
