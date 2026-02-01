@@ -9,6 +9,7 @@ import { PrismaService } from '../database/prisma.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
 import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
+import { SettingsService } from '../settings/settings.service';
 import { ProductStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -21,6 +22,7 @@ export class SellerService {
     private subscriptionService: SubscriptionService,
     private creditsService: CreditsService,
     private dhlTrackingService: DhlTrackingService,
+    private settingsService: SettingsService,
   ) {}
 
   /**
@@ -363,15 +365,17 @@ export class SellerService {
     ]);
 
     // Transform orders to include seller-specific totals
-    const ordersWithSellerTotals = orders.map(order => {
-      const sellerTotals = this.calculateSellerOrderTotals(order);
+    const ordersWithSellerTotals = await Promise.all(
+      orders.map(async (order) => {
+        const sellerTotals = await this.calculateSellerOrderTotals(order);
 
-      return {
-        ...order,
-        sellerTotals, // Add seller-specific breakdown
-        originalTotal: Number(order.total), // Keep original for reference
-      };
-    });
+        return {
+          ...order,
+          sellerTotals, // Add seller-specific breakdown
+          originalTotal: Number(order.total), // Keep original for reference
+        };
+      })
+    );
 
     return {
       data: ordersWithSellerTotals,
@@ -386,9 +390,10 @@ export class SellerService {
 
   /**
    * Calculate seller-specific totals with proportional cost allocation
+   * Including platform commission and net earnings
    * @private
    */
-  private calculateSellerOrderTotals(order: any) {
+  private async calculateSellerOrderTotals(order: any) {
     // Calculate subtotal from seller's items only
     const sellerSubtotal = order.items.reduce(
       (sum: Decimal, item: any) => sum.plus(new Decimal(item.total)),
@@ -411,18 +416,38 @@ export class SellerService {
     const sellerTax = orderTax.mul(proportion);
     const sellerDiscount = orderDiscount.mul(proportion);
 
-    // Calculate seller's total
+    // Calculate seller's gross total (before commission)
     const sellerTotal = sellerSubtotal
       .plus(sellerShipping)
       .plus(sellerTax)
       .minus(sellerDiscount);
+
+    // Get commission rate from settings (default 10%)
+    let commissionRate = new Decimal(10); // Default 10%
+    try {
+      const setting = await this.settingsService.getSetting('global_commission_rate');
+      if (setting && setting.value) {
+        commissionRate = new Decimal(Number(setting.value));
+      }
+    } catch (error) {
+      this.logger.warn('Commission rate not found, using default 10%');
+    }
+
+    // Calculate platform commission
+    const platformCommission = sellerTotal.mul(commissionRate).div(100);
+
+    // Calculate net earnings (what seller actually receives)
+    const netEarnings = sellerTotal.minus(platformCommission);
 
     return {
       subtotal: sellerSubtotal.toNumber(),
       shipping: sellerShipping.toNumber(),
       tax: sellerTax.toNumber(),
       discount: sellerDiscount.toNumber(),
-      total: sellerTotal.toNumber(),
+      total: sellerTotal.toNumber(), // Gross total
+      platformCommission: platformCommission.toNumber(),
+      commissionRate: commissionRate.toNumber(),
+      netEarnings: netEarnings.toNumber(), // Amount seller receives after commission
       itemCount: order.items.length,
       proportion: proportion.toNumber(), // Percentage of order value (0-1)
     };
@@ -564,7 +589,7 @@ export class SellerService {
     }
 
     // Apply seller-specific totals calculation
-    const sellerTotals = this.calculateSellerOrderTotals(order);
+    const sellerTotals = await this.calculateSellerOrderTotals(order);
 
     return {
       ...order,
