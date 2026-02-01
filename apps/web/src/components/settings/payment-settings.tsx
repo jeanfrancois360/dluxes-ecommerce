@@ -84,6 +84,16 @@ export function PaymentSettingsSection() {
       min_payout_amount: 50,
       payout_schedule: 'weekly',
       payment_methods: ['stripe', 'paypal'],
+      // Stripe fee defaults
+      stripe_fee_percentage: 2.9,
+      stripe_fee_fixed_eur: 0.30,
+      stripe_fee_fixed_usd: 0.30,
+      stripe_fee_fixed_gbp: 0.20,
+      // PayPal fee defaults
+      paypal_fee_percentage: 3.49,
+      paypal_fee_fixed_eur: 0.35,
+      paypal_fee_fixed_usd: 0.30,
+      paypal_fee_fixed_gbp: 0.30,
     },
   });
 
@@ -96,6 +106,16 @@ export function PaymentSettingsSection() {
         min_payout_amount: allFormData.min_payout_amount ?? 50,
         payout_schedule: allFormData.payout_schedule ?? 'weekly',
         payment_methods: allFormData.payment_methods ?? ['stripe', 'paypal'],
+        // Stripe fees
+        stripe_fee_percentage: allFormData.stripe_fee_percentage ?? 2.9,
+        stripe_fee_fixed_eur: allFormData.stripe_fee_fixed_eur ?? 0.30,
+        stripe_fee_fixed_usd: allFormData.stripe_fee_fixed_usd ?? 0.30,
+        stripe_fee_fixed_gbp: allFormData.stripe_fee_fixed_gbp ?? 0.20,
+        // PayPal fees
+        paypal_fee_percentage: allFormData.paypal_fee_percentage ?? 3.49,
+        paypal_fee_fixed_eur: allFormData.paypal_fee_fixed_eur ?? 0.35,
+        paypal_fee_fixed_usd: allFormData.paypal_fee_fixed_usd ?? 0.30,
+        paypal_fee_fixed_gbp: allFormData.paypal_fee_fixed_gbp ?? 0.30,
       };
       if (!form.formState.isDirty || justSavedRef.current) {
         form.reset(filteredData as PaymentSettings);
@@ -378,6 +398,232 @@ export function PaymentSettingsSection() {
           ]}
         />
       </PaymentGatewayCard>
+
+      {/* Payment & Escrow Settings */}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Payment Processor Fees */}
+        <SettingsCard
+          icon={DollarSign}
+          title="Payment Processor Transaction Fees"
+          description="Configure transaction fees charged by Stripe and PayPal. These fees are deducted from seller earnings."
+        >
+          {/* Stripe Fees Section */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <CreditCard className="h-4 w-4 text-blue-600" />
+              <h4 className="font-semibold text-sm">Stripe Transaction Fees</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SettingsField
+                label="Fee Percentage (%)"
+                id="stripe_fee_percentage"
+                required
+                error={form.formState.errors.stripe_fee_percentage?.message}
+                description="Stripe's percentage fee (e.g., 2.9 for 2.9%)"
+              >
+                <div className="relative">
+                  <Input
+                    id="stripe_fee_percentage"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="10"
+                    {...form.register('stripe_fee_percentage', { valueAsNumber: true })}
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    %
+                  </span>
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (EUR)"
+                id="stripe_fee_fixed_eur"
+                error={form.formState.errors.stripe_fee_fixed_eur?.message}
+                description="Fixed fee for EUR transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    €
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_eur"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_eur', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (USD)"
+                id="stripe_fee_fixed_usd"
+                error={form.formState.errors.stripe_fee_fixed_usd?.message}
+                description="Fixed fee for USD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_usd"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_usd', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (GBP)"
+                id="stripe_fee_fixed_gbp"
+                error={form.formState.errors.stripe_fee_fixed_gbp?.message}
+                description="Fixed fee for GBP transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    £
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_gbp"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_gbp', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+            </div>
+          </div>
+
+          {/* PayPal Fees Section */}
+          <div className="space-y-4 pt-6">
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <Wallet className="h-4 w-4 text-blue-500" />
+              <h4 className="font-semibold text-sm">PayPal Transaction Fees</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SettingsField
+                label="Fee Percentage (%)"
+                id="paypal_fee_percentage"
+                required
+                error={form.formState.errors.paypal_fee_percentage?.message}
+                description="PayPal's percentage fee (e.g., 3.49 for 3.49%)"
+              >
+                <div className="relative">
+                  <Input
+                    id="paypal_fee_percentage"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="10"
+                    {...form.register('paypal_fee_percentage', { valueAsNumber: true })}
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    %
+                  </span>
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (EUR)"
+                id="paypal_fee_fixed_eur"
+                error={form.formState.errors.paypal_fee_fixed_eur?.message}
+                description="Fixed fee for EUR transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    €
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_eur"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_eur', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (USD)"
+                id="paypal_fee_fixed_usd"
+                error={form.formState.errors.paypal_fee_fixed_usd?.message}
+                description="Fixed fee for USD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_usd"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_usd', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (GBP)"
+                id="paypal_fee_fixed_gbp"
+                error={form.formState.errors.paypal_fee_fixed_gbp?.message}
+                description="Fixed fee for GBP transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    £
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_gbp"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_gbp', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 mt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                <h5 className="text-sm font-medium text-blue-900">About Transaction Fees</h5>
+                <p className="text-sm text-blue-700">
+                  These fees are charged by payment processors and automatically deducted from seller earnings.
+                  Adjust these values if you've negotiated custom rates with Stripe or PayPal.
+                </p>
+                <p className="text-xs text-blue-600 mt-2">
+                  💡 <strong>Example:</strong> With Stripe's 2.9% + €0.30 fee, a €100 order costs €3.20 in fees.
+                  Sellers receive €96.80 (minus platform commission).
+                </p>
+              </div>
+            </div>
+          </div>
+        </SettingsCard>
+      </form>
 
       {/* Payment & Escrow Settings */}
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

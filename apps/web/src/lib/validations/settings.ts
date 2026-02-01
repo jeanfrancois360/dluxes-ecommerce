@@ -23,6 +23,16 @@ export const paymentSettingsSchema = z.object({
   min_payout_amount: z.number().min(0, 'Minimum payout must be positive'),
   payout_schedule: z.enum(['daily', 'weekly', 'biweekly', 'monthly']),
   payment_methods: z.array(z.string()).min(1, 'At least one payment method must be enabled'),
+  // Payment Processor Fees - Stripe
+  stripe_fee_percentage: z.number().min(0, 'Fee percentage cannot be negative').max(10, 'Fee percentage cannot exceed 10%').optional(),
+  stripe_fee_fixed_eur: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed €5').optional(),
+  stripe_fee_fixed_usd: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed $5').optional(),
+  stripe_fee_fixed_gbp: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed £5').optional(),
+  // Payment Processor Fees - PayPal
+  paypal_fee_percentage: z.number().min(0, 'Fee percentage cannot be negative').max(10, 'Fee percentage cannot exceed 10%').optional(),
+  paypal_fee_fixed_eur: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed €5').optional(),
+  paypal_fee_fixed_usd: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed $5').optional(),
+  paypal_fee_fixed_gbp: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed £5').optional(),
 });
 
 // ============================================================================
