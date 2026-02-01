@@ -10,6 +10,7 @@ import { CurrencyService } from '../currency/currency.service';
 import { EmailService } from '../email/email.service';
 import { CartService } from '../cart/cart.service';
 import { PaymentService } from '../payment/payment.service';
+import PDFDocument from 'pdfkit';
 
 /**
  * Orders Service
@@ -267,9 +268,42 @@ export class OrdersService {
     sessionId: string,
     shippingAddressId: string,
     billingAddressId?: string,
-    notes?: string
+    notes?: string,
+    idempotencyKey?: string
   ) {
-    // 1. Get cart with locked currency and totals
+    // 1. Check for duplicate order (idempotency)
+    if (idempotencyKey) {
+      const existingOrder = await this.prisma.order.findFirst({
+        where: {
+          userId,
+          metadata: {
+            path: ['idempotencyKey'],
+            equals: idempotencyKey,
+          },
+        },
+        include: {
+          items: true,
+          shippingAddress: true,
+        },
+      });
+
+      if (existingOrder) {
+        this.logger.warn(
+          `🔄 Duplicate order prevented for user ${userId} with idempotency key: ${idempotencyKey}`,
+        );
+
+        // Return existing order instead of creating duplicate
+        this.logger.log(`Returning existing order ${existingOrder.id} (idempotency key: ${idempotencyKey})`);
+
+        return {
+          order: existingOrder,
+          clientSecret: null, // Client secret not stored in DB, order already created
+          isDuplicate: true,
+        };
+      }
+    }
+
+    // 2. Get cart with locked currency and totals
     const cart = await this.cartService.getCart(sessionId, userId);
 
     if (!cart || !cart.items || cart.items.length === 0) {
@@ -373,6 +407,9 @@ export class OrdersService {
           shippingAddressId,
           billingAddressId: billingAddressId || shippingAddressId,
           notes,
+
+          // Store idempotency key to prevent duplicate orders
+          metadata: idempotencyKey ? { idempotencyKey } : null,
 
           items: {
             create: orderItems,
@@ -1494,5 +1531,263 @@ export class OrdersService {
       this.logger.error('Order total calculation failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Generate invoice PDF for an order using PDFKit
+   */
+  async generateInvoicePdf(orderId: string, userId: string): Promise<Buffer> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        user: true,
+        items: {
+          include: {
+            product: { include: { store: true } },
+            variant: true,
+          },
+        },
+        shippingAddress: true,
+        billingAddress: true,
+      },
+    });
+
+    if (!order || order.userId !== userId) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      const chunks: Buffer[] = [];
+
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      // === HEADER ===
+      doc
+        .fontSize(24)
+        .fillColor('#CBB57B')
+        .text('NEXTPIK', 50, 50)
+        .fontSize(10)
+        .fillColor('#666')
+        .text('Luxury E-commerce Platform', 50, 80);
+
+      doc
+        .fontSize(20)
+        .fillColor('#000')
+        .text('INVOICE', 400, 50, { align: 'right' })
+        .fontSize(10)
+        .fillColor('#666')
+        .text(`#${order.orderNumber}`, 400, 75, { align: 'right' })
+        .text(
+          new Date(order.createdAt).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          }),
+          400,
+          90,
+          { align: 'right' },
+        );
+
+      // === STATUS BADGE ===
+      const statusY = 110;
+      doc
+        .rect(400, statusY, 150, 25)
+        .fillAndStroke(this.getStatusColor(order.status), '#ddd')
+        .fillColor('#fff')
+        .fontSize(12)
+        .text(order.status, 400, statusY + 7, { align: 'center', width: 150 });
+
+      // === ADDRESSES ===
+      const addressY = 150;
+
+      // Shipping Address
+      doc
+        .fillColor('#000')
+        .fontSize(12)
+        .text('Ship To:', 50, addressY)
+        .fontSize(10)
+        .fillColor('#666')
+        .text(
+          `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`,
+          50,
+          addressY + 20,
+        )
+        .text(order.shippingAddress.address1, 50, addressY + 35);
+
+      if (order.shippingAddress.address2) {
+        doc.text(order.shippingAddress.address2, 50, addressY + 50);
+      }
+
+      doc
+        .text(
+          `${order.shippingAddress.city}, ${order.shippingAddress.province} ${order.shippingAddress.postalCode}`,
+          50,
+          addressY + 65,
+        )
+        .text(order.shippingAddress.country, 50, addressY + 80);
+
+      // Billing Address (if different)
+      if (order.billingAddress && order.billingAddressId !== order.shippingAddressId) {
+        doc
+          .fillColor('#000')
+          .fontSize(12)
+          .text('Bill To:', 300, addressY)
+          .fontSize(10)
+          .fillColor('#666')
+          .text(
+            `${order.billingAddress.firstName} ${order.billingAddress.lastName}`,
+            300,
+            addressY + 20,
+          )
+          .text(order.billingAddress.address1, 300, addressY + 35);
+      }
+
+      // === ITEMS TABLE ===
+      const tableTop = 280;
+      const itemCodeX = 50;
+      const descriptionX = 150;
+      const quantityX = 350;
+      const priceX = 420;
+      const amountX = 490;
+
+      // Table Header
+      doc
+        .fillColor('#CBB57B')
+        .fontSize(10)
+        .text('SKU', itemCodeX, tableTop)
+        .text('Description', descriptionX, tableTop)
+        .text('Qty', quantityX, tableTop)
+        .text('Price', priceX, tableTop)
+        .text('Amount', amountX, tableTop);
+
+      doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke('#ddd');
+
+      // Items
+      let itemY = tableTop + 25;
+      order.items.forEach((item) => {
+        const itemName = item.name || item.product?.name || 'Product';
+        const variantInfo = item.variant
+          ? ` (${Object.entries((item.variant as any).attributes || {})
+              .map(([k, v]) => v)
+              .join(', ')})`
+          : '';
+
+        doc
+          .fillColor('#000')
+          .fontSize(9)
+          .text(item.sku || 'N/A', itemCodeX, itemY, { width: 90 })
+          .text(itemName + variantInfo, descriptionX, itemY, { width: 190 })
+          .text(item.quantity.toString(), quantityX, itemY)
+          .text(this.formatCurrency(Number(item.price), order.currency), priceX, itemY)
+          .text(this.formatCurrency(Number(item.total), order.currency), amountX, itemY);
+
+        itemY += 30;
+      });
+
+      // === TOTALS ===
+      const totalsY = itemY + 20;
+      const totalsX = 400;
+
+      doc.moveTo(50, totalsY - 10).lineTo(550, totalsY - 10).stroke('#ddd');
+
+      doc
+        .fontSize(10)
+        .fillColor('#666')
+        .text('Subtotal:', totalsX, totalsY, { align: 'right', width: 100 })
+        .text(
+          this.formatCurrency(Number(order.subtotal), order.currency),
+          totalsX + 110,
+          totalsY,
+        );
+
+      doc
+        .text('Shipping:', totalsX, totalsY + 20, { align: 'right', width: 100 })
+        .text(
+          this.formatCurrency(Number(order.shipping), order.currency),
+          totalsX + 110,
+          totalsY + 20,
+        );
+
+      doc
+        .text('Tax:', totalsX, totalsY + 40, { align: 'right', width: 100 })
+        .text(
+          this.formatCurrency(Number(order.tax), order.currency),
+          totalsX + 110,
+          totalsY + 40,
+        );
+
+      if (Number(order.discount) > 0) {
+        doc
+          .text('Discount:', totalsX, totalsY + 60, { align: 'right', width: 100 })
+          .text(
+            `-${this.formatCurrency(Number(order.discount), order.currency)}`,
+            totalsX + 110,
+            totalsY + 60,
+          );
+      }
+
+      doc.moveTo(totalsX, totalsY + 70).lineTo(550, totalsY + 70).stroke('#CBB57B');
+
+      doc
+        .fontSize(14)
+        .fillColor('#CBB57B')
+        .text('TOTAL:', totalsX, totalsY + 80, { align: 'right', width: 100 })
+        .text(
+          this.formatCurrency(Number(order.total), order.currency),
+          totalsX + 110,
+          totalsY + 80,
+        );
+
+      // === FOOTER ===
+      doc
+        .fontSize(10)
+        .fillColor('#666')
+        .text('Thank you for your business!', 50, 700, {
+          align: 'center',
+          width: 500,
+        })
+        .fontSize(8)
+        .text('For support: support@nextpik.com', 50, 720, {
+          align: 'center',
+          width: 500,
+        });
+
+      doc.end();
+    });
+  }
+
+  /**
+   * Helper method to format currency
+   * @private
+   */
+  private formatCurrency(amount: number, currency: string): string {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || 'USD',
+      }).format(amount);
+    } catch {
+      return `$${amount.toFixed(2)}`;
+    }
+  }
+
+  /**
+   * Helper method to get status color for PDF
+   * @private
+   */
+  private getStatusColor(status: string): string {
+    const colors = {
+      PENDING: '#FFA500',
+      CONFIRMED: '#4CAF50',
+      PROCESSING: '#2196F3',
+      SHIPPED: '#9C27B0',
+      DELIVERED: '#4CAF50',
+      CANCELLED: '#F44336',
+      REFUNDED: '#FF9800',
+    };
+    return colors[status] || '#666';
   }
 }

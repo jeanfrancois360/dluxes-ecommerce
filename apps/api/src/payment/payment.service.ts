@@ -243,6 +243,115 @@ export class PaymentService {
   }
 
   /**
+   * Capture payment with strategy-based triggers
+   *
+   * Handles payment capture for different scenarios:
+   * - DELIVERY_CONFIRMED: Capture when order is delivered
+   * - AUTO_FALLBACK: Automatic capture before authorization expires (Day 6)
+   * - MANUAL: Admin manually triggers capture
+   */
+  async capturePaymentWithStrategy(
+    orderId: string,
+    trigger: 'DELIVERY_CONFIRMED' | 'AUTO_FALLBACK' | 'MANUAL',
+    userId?: string,
+  ): Promise<{ success: boolean; capturedAmount: number }> {
+    try {
+      // Find payment transaction for order
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: {
+          orderId,
+          status: { in: [PaymentTransactionStatus.SUCCEEDED, PaymentTransactionStatus.REQUIRES_ACTION] },
+        },
+      });
+
+      if (!transaction?.stripePaymentIntentId) {
+        throw new BadRequestException('No capturable payment found for order');
+      }
+
+      // Get Stripe payment intent with charges expanded
+      const stripe = await this.getStripeClient();
+      const paymentIntent: any = await stripe.paymentIntents.retrieve(
+        transaction.stripePaymentIntentId,
+        { expand: ['charges'] },
+      );
+
+      // Check if already captured
+      if (paymentIntent.status === 'succeeded') {
+        const charges = paymentIntent.charges?.data;
+        if (charges && charges.length > 0 && charges[0].captured) {
+          this.logger.log(`Payment already captured: ${paymentIntent.id}`);
+          return {
+            success: true,
+            capturedAmount: (paymentIntent.amount_received || paymentIntent.amount) / 100,
+          };
+        }
+      }
+
+      // Verify can be captured
+      if (paymentIntent.status !== 'requires_capture') {
+        throw new BadRequestException(
+          `Payment cannot be captured. Status: ${paymentIntent.status}`,
+        );
+      }
+
+      // Capture the payment
+      this.logger.log(
+        `Capturing payment ${paymentIntent.id} via ${trigger} for order ${orderId}`,
+      );
+
+      const capturedIntent = await stripe.paymentIntents.capture(paymentIntent.id);
+
+      // Update transaction status
+      const metadata = transaction.metadata as any || {};
+      await this.prisma.paymentTransaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: PaymentTransactionStatus.CAPTURED,
+          metadata: {
+            ...metadata,
+            capturedAt: new Date().toISOString(),
+            captureTrigger: trigger,
+            capturedBy: userId || 'SYSTEM',
+          },
+        },
+      });
+
+      // Create order timeline entry
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId,
+          status: 'CONFIRMED',
+          title: 'Payment Captured',
+          description: `Payment successfully captured via ${trigger}`,
+          icon: 'credit-card',
+        },
+      });
+
+      this.logger.log(
+        `Successfully captured ${capturedIntent.amount_received / 100} for order ${orderId}`,
+      );
+
+      return {
+        success: true,
+        capturedAmount: capturedIntent.amount_received / 100,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to capture payment for order ${orderId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Basic capture method (backwards compatible)
+   * Captures a Stripe payment intent by ID
+   */
+  async capturePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
+    const stripe = await this.getStripeClient();
+    const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId);
+    return paymentIntent;
+  }
+
+  /**
    * Create a Stripe Payment Intent with multi-currency support
    */
   async createPaymentIntent(dto: CreatePaymentIntentDto, userId: string) {
@@ -261,6 +370,54 @@ export class PaymentService {
 
       if (!order) {
         throw new BadRequestException('Order not found');
+      }
+
+      // Check if a payment intent already exists for this order
+      const existingTransaction = await this.prisma.paymentTransaction.findFirst({
+        where: {
+          orderId: dto.orderId,
+          status: { in: [PaymentTransactionStatus.PENDING, PaymentTransactionStatus.PROCESSING, PaymentTransactionStatus.SUCCEEDED] },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (existingTransaction?.stripePaymentIntentId) {
+        try {
+          // Retrieve existing payment intent from Stripe
+          const existingIntent = await stripe.paymentIntents.retrieve(
+            existingTransaction.stripePaymentIntentId
+          );
+
+          // Reuse existing intent if still valid (not canceled or succeeded without capture)
+          if (existingIntent.status !== 'canceled' && existingIntent.status !== 'succeeded') {
+            this.logger.log(
+              `Reusing existing payment intent ${existingIntent.id} for order ${dto.orderId} (status: ${existingIntent.status})`
+            );
+
+            // Get currency details for response
+            const currency = existingIntent.currency.toUpperCase();
+            const currencyDetails = await this.currencyService.getRateByCode(currency);
+
+            return {
+              clientSecret: existingIntent.client_secret,
+              paymentIntentId: existingIntent.id,
+              transactionId: existingTransaction.id,
+              currency,
+              amount: existingIntent.amount / 100, // Convert from smallest unit
+              currencyDetails: {
+                code: currency,
+                symbol: currencyDetails.symbol,
+                name: currencyDetails.currencyName,
+              },
+            };
+          }
+        } catch (retrieveError) {
+          this.logger.warn(
+            `Failed to retrieve existing payment intent ${existingTransaction.stripePaymentIntentId}, creating new one:`,
+            retrieveError
+          );
+          // Continue to create new intent if retrieval fails
+        }
       }
 
       // Get Stripe config for capture method and default currency
@@ -807,7 +964,60 @@ export class PaymentService {
         // This requires additional payout service integration
       }
 
-      // TODO: Send payment confirmation email via email service
+      // Generate and send invoice email with PDF attachment
+      try {
+        const order = await this.prisma.order.findUnique({
+          where: { id: orderId },
+          include: {
+            user: true,
+            items: {
+              include: {
+                product: { include: { store: true } },
+                variant: true,
+              },
+            },
+            shippingAddress: true,
+            billingAddress: true,
+          },
+        });
+
+        if (order && order.user) {
+          // Import services needed for email
+          const { EmailService } = await import('../email/email.service');
+          const emailService = new EmailService();
+
+          // Import OrdersService to generate invoice PDF
+          const { OrdersService } = await import('../orders/orders.service');
+          // Create a minimal instance just for PDF generation
+          // We'll pass null for services not needed for PDF generation
+          const ordersServiceModule = await import('../orders/orders.service');
+          const ordersService = new ordersServiceModule.OrdersService(
+            this.prisma,
+            this.currencyService,
+            null as any, // emailService not needed for PDF generation
+            null as any, // shippingTaxService not needed for PDF generation
+            null as any, // cartService not needed for PDF generation
+            this,
+          );
+
+          const invoicePdf = await ordersService.generateInvoicePdf(orderId, order.userId);
+
+          await emailService.sendPaymentConfirmationWithInvoice(order.user.email, {
+            orderNumber: order.orderNumber,
+            customerName: `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer',
+            total: Number(order.total),
+            currency: order.currency,
+            paidAt: new Date(),
+            invoicePdf,
+          });
+
+          this.logger.log(`Invoice email sent for order ${order.orderNumber} to ${order.user.email}`);
+        }
+      } catch (emailError) {
+        this.logger.error(`Failed to send invoice email for order ${orderId}:`, emailError);
+        // Don't fail the payment if invoice email fails
+      }
+
       // TODO: Trigger inventory reservation
     } catch (error) {
       this.logger.error(`Error processing payment success for order ${orderId}:`, error);

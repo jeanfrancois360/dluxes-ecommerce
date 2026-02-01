@@ -630,4 +630,178 @@ export class EmailService {
       return false;
     }
   }
+
+  /**
+   * Send payment confirmation email with invoice PDF attachment
+   */
+  async sendPaymentConfirmationWithInvoice(
+    email: string,
+    data: {
+      orderNumber: string;
+      customerName: string;
+      total: number;
+      currency: string;
+      paidAt: Date;
+      invoicePdf: Buffer;
+    },
+  ): Promise<boolean> {
+    const { orderNumber, customerName, total, currency, paidAt, invoicePdf } = data;
+
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping invoice email - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 INVOICE EMAIL FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Customer: ${customerName}`);
+        this.logger.log(`Order: #${orderNumber}`);
+        this.logger.log(`Amount: ${currency} ${total.toFixed(2)}`);
+        this.logger.log(`Date: ${paidAt.toLocaleDateString()}`);
+        this.logger.log(`Invoice PDF: ${invoicePdf.length} bytes`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const formattedTotal = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || 'USD',
+      }).format(total);
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              text-align: center;
+              padding: 30px 0;
+              background: linear-gradient(135deg, #CBB57B 0%, #A89560 100%);
+              color: white;
+              border-radius: 8px 8px 0 0;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 28px;
+            }
+            .content {
+              background: white;
+              padding: 30px;
+              border: 1px solid #e0e0e0;
+              border-top: none;
+            }
+            .info-box {
+              background: #f8f9fa;
+              padding: 20px;
+              border-radius: 8px;
+              margin: 20px 0;
+              border-left: 4px solid #CBB57B;
+            }
+            .info-box p {
+              margin: 8px 0;
+            }
+            .info-box strong {
+              color: #000;
+              display: inline-block;
+              min-width: 140px;
+            }
+            .total {
+              font-size: 20px;
+              color: #CBB57B;
+              font-weight: bold;
+            }
+            .footer {
+              text-align: center;
+              padding: 20px;
+              color: #666;
+              font-size: 14px;
+              border: 1px solid #e0e0e0;
+              border-top: none;
+              border-radius: 0 0 8px 8px;
+              background: #f8f9fa;
+            }
+            .button {
+              display: inline-block;
+              padding: 12px 24px;
+              background: #CBB57B;
+              color: white;
+              text-decoration: none;
+              border-radius: 6px;
+              margin: 20px 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>✓ Payment Confirmed</h1>
+          </div>
+
+          <div class="content">
+            <p>Dear ${customerName},</p>
+
+            <p>Thank you for your payment! Your order has been confirmed and is being processed.</p>
+
+            <div class="info-box">
+              <p><strong>Order Number:</strong> #${orderNumber}</p>
+              <p><strong>Payment Date:</strong> ${paidAt.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}</p>
+              <p class="total"><strong>Amount Paid:</strong> ${formattedTotal}</p>
+            </div>
+
+            <p>Your invoice is attached to this email for your records.</p>
+
+            <p>We'll send you another email with tracking information once your order ships.</p>
+
+            <center>
+              <a href="${this.frontendUrl}/orders" class="button">View Order Details</a>
+            </center>
+
+            <p>If you have any questions, please don't hesitate to contact our support team.</p>
+
+            <p>Best regards,<br>The NextPik Team</p>
+          </div>
+
+          <div class="footer">
+            <p>This is an automated email. Please do not reply directly to this message.</p>
+            <p>For support, contact us at support@nextpik.com</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `Payment Confirmed - Invoice #${orderNumber}`,
+        html,
+        attachments: [
+          {
+            filename: `invoice-${orderNumber}.pdf`,
+            content: invoicePdf,
+          },
+        ],
+      });
+
+      if (error) {
+        this.logger.error('Failed to send payment confirmation email with invoice', error);
+        return false;
+      }
+
+      this.logger.log(`Payment confirmation with invoice sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending payment confirmation email with invoice', error);
+      return false;
+    }
+  }
 }

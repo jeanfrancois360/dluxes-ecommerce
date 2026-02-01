@@ -15,14 +15,18 @@ import {
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { PayPalService } from './paypal.service';
+import { PaymentMonitorService } from './payment-monitor.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('payment')
 export class PaymentController {
   constructor(
     private readonly paymentService: PaymentService,
     private readonly paypalService: PayPalService,
+    private readonly paymentMonitorService: PaymentMonitorService,
   ) {}
 
   // ==========================================
@@ -415,6 +419,78 @@ export class PaymentController {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to refund PayPal capture',
+      };
+    }
+  }
+
+  // ==========================================
+  // PAYMENT CAPTURE MONITORING (ADMIN)
+  // ==========================================
+
+  /**
+   * Manually capture payment for an order
+   * POST /payment/orders/:orderId/capture
+   * Admin only
+   */
+  @Post('orders/:orderId/capture')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async captureOrderPayment(
+    @Param('orderId') orderId: string,
+    @Request() req: any,
+  ) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const data = await this.paymentService.capturePaymentWithStrategy(
+        orderId,
+        'MANUAL',
+        userId,
+      );
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to capture payment',
+      };
+    }
+  }
+
+  /**
+   * Get orders approaching payment authorization expiry
+   * GET /payment/monitoring/approaching-expiry
+   * Admin only - for dashboard monitoring
+   */
+  @Get('monitoring/approaching-expiry')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getOrdersApproachingExpiry() {
+    try {
+      const data = await this.paymentMonitorService.getOrdersApproachingExpiry();
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to get approaching expiry orders',
+      };
+    }
+  }
+
+  /**
+   * Get uncaptured payment statistics
+   * GET /payment/monitoring/stats
+   * Admin only - overview statistics
+   */
+  @Get('monitoring/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getUncapturedPaymentStats() {
+    try {
+      const data = await this.paymentMonitorService.getUncapturedPaymentStats();
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to get payment stats',
       };
     }
   }

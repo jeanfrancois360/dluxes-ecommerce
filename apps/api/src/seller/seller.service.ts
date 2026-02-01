@@ -10,6 +10,7 @@ import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
 import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
 import { ProductStatus } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class SellerService {
@@ -361,14 +362,69 @@ export class SellerService {
       this.prisma.order.count({ where }),
     ]);
 
+    // Transform orders to include seller-specific totals
+    const ordersWithSellerTotals = orders.map(order => {
+      const sellerTotals = this.calculateSellerOrderTotals(order);
+
+      return {
+        ...order,
+        sellerTotals, // Add seller-specific breakdown
+        originalTotal: Number(order.total), // Keep original for reference
+      };
+    });
+
     return {
-      data: orders,
+      data: ordersWithSellerTotals,
       meta: {
         total,
         page: Number(page),
         limit: Number(limit),
         totalPages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  /**
+   * Calculate seller-specific totals with proportional cost allocation
+   * @private
+   */
+  private calculateSellerOrderTotals(order: any) {
+    // Calculate subtotal from seller's items only
+    const sellerSubtotal = order.items.reduce(
+      (sum: Decimal, item: any) => sum.plus(new Decimal(item.total)),
+      new Decimal(0)
+    );
+
+    // Get order-level totals
+    const orderSubtotal = new Decimal(order.subtotal);
+    const orderShipping = new Decimal(order.shipping);
+    const orderTax = new Decimal(order.tax);
+    const orderDiscount = new Decimal(order.discount || 0);
+
+    // Calculate proportion (seller's items / total items)
+    const proportion = orderSubtotal.isZero()
+      ? new Decimal(0)
+      : sellerSubtotal.div(orderSubtotal);
+
+    // Allocate shipping, tax, and discount proportionally
+    const sellerShipping = orderShipping.mul(proportion);
+    const sellerTax = orderTax.mul(proportion);
+    const sellerDiscount = orderDiscount.mul(proportion);
+
+    // Calculate seller's total
+    const sellerTotal = sellerSubtotal
+      .plus(sellerShipping)
+      .plus(sellerTax)
+      .minus(sellerDiscount);
+
+    return {
+      subtotal: sellerSubtotal.toNumber(),
+      shipping: sellerShipping.toNumber(),
+      tax: sellerTax.toNumber(),
+      discount: sellerDiscount.toNumber(),
+      total: sellerTotal.toNumber(),
+      itemCount: order.items.length,
+      proportion: proportion.toNumber(), // Percentage of order value (0-1)
     };
   }
 
