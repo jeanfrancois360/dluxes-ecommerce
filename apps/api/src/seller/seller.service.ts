@@ -356,6 +356,16 @@ export class SellerService {
             },
           },
           shippingAddress: true,
+          paymentTransactions: {
+            select: {
+              id: true,
+              status: true,
+              paymentMethod: true,
+              processingFeeAmount: true,
+              processingFeePercent: true,
+              processingFeeFixed: true,
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -436,8 +446,54 @@ export class SellerService {
     // Calculate platform commission
     const platformCommission = sellerTotal.mul(commissionRate).div(100);
 
-    // Calculate net earnings (what seller actually receives)
-    const netEarnings = sellerTotal.minus(platformCommission);
+    // Get payment processing fees (Stripe/PayPal) if transaction exists
+    let paymentProcessingFee = new Decimal(0);
+    let processingFeeRate = 0;
+    let paymentProcessor = 'Unknown';
+
+    if (order.paymentTransactions && order.paymentTransactions.length > 0) {
+      // Find successful transaction
+      const transaction = order.paymentTransactions.find(
+        (t: any) => t.status === 'SUCCEEDED' || t.status === 'CAPTURED'
+      );
+
+      if (transaction?.processingFeeAmount) {
+        // Use actual fees from payment processor
+        const totalProcessingFee = new Decimal(transaction.processingFeeAmount);
+
+        // Allocate proportionally to this seller
+        // (Multi-vendor orders: split fees based on seller's percentage of order)
+        paymentProcessingFee = totalProcessingFee.mul(proportion);
+
+        // Get fee rate for display
+        if (transaction.processingFeePercent) {
+          processingFeeRate = Number(transaction.processingFeePercent) * 100; // Convert 0.029 to 2.9%
+        }
+
+        // Get payment processor name
+        paymentProcessor = transaction.paymentMethod || 'Unknown';
+
+        this.logger.log(
+          `Order ${order.id}: Using actual ${paymentProcessor} fee: ` +
+          `${totalProcessingFee.toFixed(2)} (seller portion: ${paymentProcessingFee.toFixed(2)})`
+        );
+      } else {
+        // Estimate if not yet retrieved (should be rare after webhook)
+        paymentProcessingFee = this.estimateProcessingFee(sellerTotal, order.currency);
+        processingFeeRate = 2.9; // Stripe standard rate
+        paymentProcessor = transaction?.paymentMethod || 'Stripe (estimated)';
+
+        this.logger.log(
+          `Order ${order.id}: Estimated processing fee: ${paymentProcessingFee.toFixed(2)} ` +
+          `(will update with actual after webhook)`
+        );
+      }
+    }
+
+    // Calculate net earnings (what seller actually receives after ALL fees)
+    const netEarnings = sellerTotal
+      .minus(platformCommission)
+      .minus(paymentProcessingFee);
 
     return {
       subtotal: sellerSubtotal.toNumber(),
@@ -447,10 +503,31 @@ export class SellerService {
       total: sellerTotal.toNumber(), // Gross total
       platformCommission: platformCommission.toNumber(),
       commissionRate: commissionRate.toNumber(),
-      netEarnings: netEarnings.toNumber(), // Amount seller receives after commission
+      paymentProcessingFee: paymentProcessingFee.toNumber(), // NEW!
+      processingFeeRate: processingFeeRate, // NEW! (e.g., 2.9 for 2.9%)
+      paymentProcessor: paymentProcessor, // NEW! (e.g., 'STRIPE', 'PAYPAL')
+      netEarnings: netEarnings.toNumber(), // Amount seller receives after ALL fees
       itemCount: order.items.length,
       proportion: proportion.toNumber(), // Percentage of order value (0-1)
     };
+  }
+
+  /**
+   * Estimate processing fee when actual not yet available
+   */
+  private estimateProcessingFee(amount: Decimal, currency: string): Decimal {
+    // Standard payment processor rates
+    const rates: Record<string, { percent: number; fixed: number }> = {
+      EUR: { percent: 2.9, fixed: 0.30 }, // Stripe standard
+      USD: { percent: 2.9, fixed: 0.30 },
+      GBP: { percent: 2.9, fixed: 0.20 },
+    };
+
+    const rate = rates[currency.toUpperCase()] || rates.USD;
+    const percentFee = amount.mul(rate.percent).div(100);
+    const totalFee = percentFee.add(rate.fixed);
+
+    return totalFee;
   }
 
   /**
@@ -562,6 +639,16 @@ export class SellerService {
           },
         },
         shippingAddress: true,
+        paymentTransactions: {
+          select: {
+            id: true,
+            status: true,
+            paymentMethod: true,
+            processingFeeAmount: true,
+            processingFeePercent: true,
+            processingFeeFixed: true,
+          },
+        },
         delivery: {
           include: {
             deliveryPartner: {

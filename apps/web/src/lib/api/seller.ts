@@ -204,16 +204,19 @@ export interface SellerOrder {
   createdAt: string;
 }
 
-// Seller-specific order totals (proportional allocation + commission)
+// Seller-specific order totals (proportional allocation + commission + processor fees)
 export interface SellerOrderTotals {
   subtotal: number;
   shipping: number;
   tax: number;
   discount: number;
-  total: number; // Gross total before commission
-  platformCommission?: number; // Platform fee
-  commissionRate?: number; // Commission percentage
-  netEarnings?: number; // Amount seller receives after commission
+  total: number; // Gross total before any fees
+  platformCommission?: number; // Platform fee (commission)
+  commissionRate?: number; // Commission percentage (e.g., 10 for 10%)
+  paymentProcessingFee?: number; // Payment processor fee (Stripe/PayPal)
+  processingFeeRate?: number; // Processor fee rate (e.g., 2.9 for 2.9%)
+  paymentProcessor?: string; // Payment processor name (e.g., 'STRIPE', 'PAYPAL')
+  netEarnings?: number; // Amount seller receives after ALL fees
   itemCount: number;
   proportion: number; // Seller's percentage of order (0-1)
 }
