@@ -515,17 +515,32 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-semibold text-black mb-4 flex items-center gap-2">
                 <CreditCard className="w-5 h-5" />
-                Payment
+                Earnings
               </h2>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Status</span>
+                  <span className="text-neutral-600">Payment Status</span>
                   <StatusBadge status={order.paymentStatus} type="payment" />
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-600">Your Total Amount</span>
-                  <span className="font-semibold text-black">{formatCurrency(sellerTotals.total, order.currency)}</span>
+                <div className="flex justify-between text-sm border-t pt-3 mt-3">
+                  <span className="text-neutral-600">Order Amount</span>
+                  <span className="text-black">{formatCurrency(sellerTotals.total, order.currency)}</span>
                 </div>
+                {sellerTotals.platformCommission !== undefined && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-neutral-600">Platform Fee ({sellerTotals.commissionRate || 10}%)</span>
+                    <span className="text-red-600">-{formatCurrency(sellerTotals.platformCommission, order.currency)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-lg font-bold border-t pt-3 mt-2">
+                  <span className="text-black">Your Earnings</span>
+                  <span className="text-green-600">
+                    {formatCurrency(sellerTotals.netEarnings !== undefined ? sellerTotals.netEarnings : sellerTotals.total, order.currency)}
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-500 mt-2">
+                  Amount you'll receive after platform commission
+                </p>
               </div>
             </div>
 

@@ -204,6 +204,20 @@ export interface SellerOrder {
   createdAt: string;
 }
 
+// Seller-specific order totals (proportional allocation + commission)
+export interface SellerOrderTotals {
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  discount: number;
+  total: number; // Gross total before commission
+  platformCommission?: number; // Platform fee
+  commissionRate?: number; // Commission percentage
+  netEarnings?: number; // Amount seller receives after commission
+  itemCount: number;
+  proportion: number; // Seller's percentage of order (0-1)
+}
+
 // Detailed order type for individual order view
 export interface SellerOrderDetail {
   id: string;
@@ -218,6 +232,8 @@ export interface SellerOrderDetail {
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
+  sellerTotals?: SellerOrderTotals; // Seller-specific breakdown
+  originalTotal?: number; // Full order total (all sellers)
   user: {
     id: string;
     email: string;
