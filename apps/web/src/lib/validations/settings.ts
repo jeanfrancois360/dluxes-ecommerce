@@ -28,11 +28,21 @@ export const paymentSettingsSchema = z.object({
   stripe_fee_fixed_eur: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed €5').optional(),
   stripe_fee_fixed_usd: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed $5').optional(),
   stripe_fee_fixed_gbp: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed £5').optional(),
+  stripe_fee_fixed_aud: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed A$5').optional(),
+  stripe_fee_fixed_cad: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed C$5').optional(),
+  stripe_fee_fixed_jpy: z.number().min(0, 'Fixed fee cannot be negative').max(500, 'Fixed fee cannot exceed ¥500').optional(),
+  stripe_fee_fixed_chf: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed CHF 5').optional(),
+  stripe_fee_fixed_rwf: z.number().min(0, 'Fixed fee cannot be negative').max(5000, 'Fixed fee cannot exceed FRw 5000').optional(),
   // Payment Processor Fees - PayPal
   paypal_fee_percentage: z.number().min(0, 'Fee percentage cannot be negative').max(10, 'Fee percentage cannot exceed 10%').optional(),
   paypal_fee_fixed_eur: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed €5').optional(),
   paypal_fee_fixed_usd: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed $5').optional(),
   paypal_fee_fixed_gbp: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed £5').optional(),
+  paypal_fee_fixed_aud: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed A$5').optional(),
+  paypal_fee_fixed_cad: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed C$5').optional(),
+  paypal_fee_fixed_jpy: z.number().min(0, 'Fixed fee cannot be negative').max(500, 'Fixed fee cannot exceed ¥500').optional(),
+  paypal_fee_fixed_chf: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed CHF 5').optional(),
+  paypal_fee_fixed_rwf: z.number().min(0, 'Fixed fee cannot be negative').max(5000, 'Fixed fee cannot exceed FRw 5000').optional(),
 });
 
 // ============================================================================

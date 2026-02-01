@@ -89,11 +89,21 @@ export function PaymentSettingsSection() {
       stripe_fee_fixed_eur: 0.30,
       stripe_fee_fixed_usd: 0.30,
       stripe_fee_fixed_gbp: 0.20,
+      stripe_fee_fixed_aud: 0.30,
+      stripe_fee_fixed_cad: 0.30,
+      stripe_fee_fixed_jpy: 50,
+      stripe_fee_fixed_chf: 0.30,
+      stripe_fee_fixed_rwf: 300,
       // PayPal fee defaults
       paypal_fee_percentage: 3.49,
       paypal_fee_fixed_eur: 0.35,
       paypal_fee_fixed_usd: 0.30,
       paypal_fee_fixed_gbp: 0.30,
+      paypal_fee_fixed_aud: 0.30,
+      paypal_fee_fixed_cad: 0.30,
+      paypal_fee_fixed_jpy: 50,
+      paypal_fee_fixed_chf: 0.30,
+      paypal_fee_fixed_rwf: 300,
     },
   });
 
@@ -111,11 +121,21 @@ export function PaymentSettingsSection() {
         stripe_fee_fixed_eur: allFormData.stripe_fee_fixed_eur ?? 0.30,
         stripe_fee_fixed_usd: allFormData.stripe_fee_fixed_usd ?? 0.30,
         stripe_fee_fixed_gbp: allFormData.stripe_fee_fixed_gbp ?? 0.20,
+        stripe_fee_fixed_aud: allFormData.stripe_fee_fixed_aud ?? 0.30,
+        stripe_fee_fixed_cad: allFormData.stripe_fee_fixed_cad ?? 0.30,
+        stripe_fee_fixed_jpy: allFormData.stripe_fee_fixed_jpy ?? 50,
+        stripe_fee_fixed_chf: allFormData.stripe_fee_fixed_chf ?? 0.30,
+        stripe_fee_fixed_rwf: allFormData.stripe_fee_fixed_rwf ?? 300,
         // PayPal fees
         paypal_fee_percentage: allFormData.paypal_fee_percentage ?? 3.49,
         paypal_fee_fixed_eur: allFormData.paypal_fee_fixed_eur ?? 0.35,
         paypal_fee_fixed_usd: allFormData.paypal_fee_fixed_usd ?? 0.30,
         paypal_fee_fixed_gbp: allFormData.paypal_fee_fixed_gbp ?? 0.30,
+        paypal_fee_fixed_aud: allFormData.paypal_fee_fixed_aud ?? 0.30,
+        paypal_fee_fixed_cad: allFormData.paypal_fee_fixed_cad ?? 0.30,
+        paypal_fee_fixed_jpy: allFormData.paypal_fee_fixed_jpy ?? 50,
+        paypal_fee_fixed_chf: allFormData.paypal_fee_fixed_chf ?? 0.30,
+        paypal_fee_fixed_rwf: allFormData.paypal_fee_fixed_rwf ?? 300,
       };
       if (!form.formState.isDirty || justSavedRef.current) {
         form.reset(filteredData as PaymentSettings);
@@ -503,6 +523,116 @@ export function PaymentSettingsSection() {
                   />
                 </div>
               </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (AUD)"
+                id="stripe_fee_fixed_aud"
+                error={form.formState.errors.stripe_fee_fixed_aud?.message}
+                description="Fixed fee for AUD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    A$
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_aud"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_aud', { valueAsNumber: true })}
+                    className="pl-9"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (CAD)"
+                id="stripe_fee_fixed_cad"
+                error={form.formState.errors.stripe_fee_fixed_cad?.message}
+                description="Fixed fee for CAD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    C$
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_cad"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_cad', { valueAsNumber: true })}
+                    className="pl-9"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (JPY)"
+                id="stripe_fee_fixed_jpy"
+                error={form.formState.errors.stripe_fee_fixed_jpy?.message}
+                description="Fixed fee for JPY transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    ¥
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_jpy"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="500"
+                    {...form.register('stripe_fee_fixed_jpy', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (CHF)"
+                id="stripe_fee_fixed_chf"
+                error={form.formState.errors.stripe_fee_fixed_chf?.message}
+                description="Fixed fee for CHF transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    CHF
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_chf"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_chf', { valueAsNumber: true })}
+                    className="pl-11"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (RWF)"
+                id="stripe_fee_fixed_rwf"
+                error={form.formState.errors.stripe_fee_fixed_rwf?.message}
+                description="Fixed fee for RWF transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    FRw
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_rwf"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="5000"
+                    {...form.register('stripe_fee_fixed_rwf', { valueAsNumber: true })}
+                    className="pl-11"
+                  />
+                </div>
+              </SettingsField>
             </div>
           </div>
 
@@ -599,6 +729,116 @@ export function PaymentSettingsSection() {
                     max="5"
                     {...form.register('paypal_fee_fixed_gbp', { valueAsNumber: true })}
                     className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (AUD)"
+                id="paypal_fee_fixed_aud"
+                error={form.formState.errors.paypal_fee_fixed_aud?.message}
+                description="Fixed fee for AUD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    A$
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_aud"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_aud', { valueAsNumber: true })}
+                    className="pl-9"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (CAD)"
+                id="paypal_fee_fixed_cad"
+                error={form.formState.errors.paypal_fee_fixed_cad?.message}
+                description="Fixed fee for CAD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    C$
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_cad"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_cad', { valueAsNumber: true })}
+                    className="pl-9"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (JPY)"
+                id="paypal_fee_fixed_jpy"
+                error={form.formState.errors.paypal_fee_fixed_jpy?.message}
+                description="Fixed fee for JPY transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    ¥
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_jpy"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="500"
+                    {...form.register('paypal_fee_fixed_jpy', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (CHF)"
+                id="paypal_fee_fixed_chf"
+                error={form.formState.errors.paypal_fee_fixed_chf?.message}
+                description="Fixed fee for CHF transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    CHF
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_chf"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_chf', { valueAsNumber: true })}
+                    className="pl-11"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (RWF)"
+                id="paypal_fee_fixed_rwf"
+                error={form.formState.errors.paypal_fee_fixed_rwf?.message}
+                description="Fixed fee for RWF transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    FRw
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_rwf"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="5000"
+                    {...form.register('paypal_fee_fixed_rwf', { valueAsNumber: true })}
+                    className="pl-11"
                   />
                 </div>
               </SettingsField>
