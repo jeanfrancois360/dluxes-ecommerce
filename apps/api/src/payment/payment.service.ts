@@ -732,6 +732,95 @@ export class PaymentService {
   }
 
   /**
+   * Retrieve Stripe processing fees from balance transaction
+   */
+  private async getStripeProcessingFees(
+    chargeId: string
+  ): Promise<{ feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal } | null> {
+    try {
+      const stripe = await this.getStripeClient();
+
+      // Get charge details with expanded balance_transaction
+      const charge = await stripe.charges.retrieve(chargeId, {
+        expand: ['balance_transaction'],
+      });
+
+      if (!charge.balance_transaction || typeof charge.balance_transaction === 'string') {
+        this.logger.warn(`No balance transaction found for charge ${chargeId}`);
+        return null;
+      }
+
+      const balanceTransaction = charge.balance_transaction as Stripe.BalanceTransaction;
+      const feeAmount = new Decimal(balanceTransaction.fee).div(100); // Convert cents to currency
+
+      // Calculate percentage and fixed fee (reverse engineer from total)
+      const chargeAmount = new Decimal(balanceTransaction.amount).div(100);
+
+      // Stripe fee structure: fee = (amount × percent) + fixed
+      // Standard rates: 2.9% + fixed fee
+      const estimatedPercent = new Decimal(0.029); // 2.9%
+
+      // Fixed fee varies by currency
+      const currency = charge.currency.toUpperCase();
+      const fixedFees: Record<string, number> = {
+        EUR: 0.30,
+        USD: 0.30,
+        GBP: 0.20,
+      };
+      const estimatedFixed = new Decimal(fixedFees[currency] || 0.30);
+
+      // Verify it matches (approximately)
+      const calculatedFee = chargeAmount.mul(estimatedPercent).add(estimatedFixed);
+
+      if (feeAmount.sub(calculatedFee).abs().lessThan(0.05)) {
+        // Match! Use standard rates
+        return {
+          feeAmount,
+          feePercent: estimatedPercent,
+          feeFixed: estimatedFixed,
+        };
+      }
+
+      // Different rate structure - calculate from actual
+      // fee = amount × percent + fixed, solve for percent
+      const feePercent = feeAmount.sub(estimatedFixed).div(chargeAmount);
+
+      return {
+        feeAmount,
+        feePercent: feePercent.isNegative() ? new Decimal(0) : feePercent,
+        feeFixed: estimatedFixed,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to retrieve Stripe fees for charge ${chargeId}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Get estimated processing fees when actual data unavailable
+   */
+  private getEstimatedFees(
+    amountInCents: number,
+    currency: string
+  ): { feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal } {
+    const amount = new Decimal(amountInCents).div(100);
+
+    // Standard Stripe rates by currency
+    const rates: Record<string, { percent: number; fixed: number }> = {
+      EUR: { percent: 0.029, fixed: 0.30 },
+      USD: { percent: 0.029, fixed: 0.30 },
+      GBP: { percent: 0.029, fixed: 0.20 },
+    };
+
+    const rate = rates[currency.toUpperCase()] || rates.USD;
+    const feePercent = new Decimal(rate.percent);
+    const feeFixed = new Decimal(rate.fixed);
+    const feeAmount = amount.mul(feePercent).add(feeFixed);
+
+    return { feeAmount, feePercent, feeFixed };
+  }
+
+  /**
    * Handle successful payment with commission calculation
    */
   private async handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, webhookEventId?: string) {
@@ -743,6 +832,45 @@ export class PaymentService {
     }
 
     try {
+      // Get processing fees from Stripe
+      let processingFees: { feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal } | null = null;
+
+      if (paymentIntent.latest_charge) {
+        try {
+          const chargeId = typeof paymentIntent.latest_charge === 'string'
+            ? paymentIntent.latest_charge
+            : paymentIntent.latest_charge.id;
+
+          processingFees = await this.getStripeProcessingFees(chargeId);
+
+          if (processingFees) {
+            this.logger.log(
+              `Retrieved Stripe fees for charge ${chargeId}: ` +
+              `${processingFees.feeAmount.toFixed(2)} ${paymentIntent.currency.toUpperCase()} ` +
+              `(${processingFees.feePercent.mul(100).toFixed(2)}% + ${processingFees.feeFixed.toFixed(2)})`
+            );
+          }
+        } catch (error) {
+          this.logger.warn('Could not retrieve exact Stripe fees, using estimates');
+        }
+      }
+
+      // Fall back to estimates if actual fees not available
+      if (!processingFees) {
+        processingFees = this.getEstimatedFees(
+          paymentIntent.amount,
+          paymentIntent.currency
+        );
+        this.logger.log(
+          `Using estimated Stripe fees: ${processingFees.feeAmount.toFixed(2)} ${paymentIntent.currency.toUpperCase()} ` +
+          `(will update with actual after charge completes)`
+        );
+      }
+
+      // Calculate net amount after processing fees
+      const grossAmount = new Decimal(paymentIntent.amount).div(100);
+      const netAmount = grossAmount.sub(processingFees.feeAmount);
+
       // Find or create payment transaction
       let transaction = await this.prisma.paymentTransaction.findUnique({
         where: { stripePaymentIntentId: paymentIntent.id },
@@ -758,10 +886,15 @@ export class PaymentService {
             userId: paymentIntent.metadata.userId || '',
             stripePaymentIntentId: paymentIntent.id,
             stripeChargeId: paymentIntent.latest_charge ? (paymentIntent.latest_charge as string) : null,
-            amount: new Decimal(paymentIntent.amount / 100),
+            amount: grossAmount,
             currency: paymentIntent.currency.toUpperCase(),
             status: PaymentTransactionStatus.SUCCEEDED,
             paymentMethod: PaymentMethod.STRIPE,
+            // Processing fees
+            processingFeeAmount: processingFees.feeAmount,
+            processingFeePercent: processingFees.feePercent,
+            processingFeeFixed: processingFees.feeFixed,
+            netAmount: netAmount,
             metadata: {
               captureMethod: paymentIntent.capture_method,
               paymentIntentStatus: paymentIntent.status,
@@ -775,6 +908,11 @@ export class PaymentService {
           data: {
             status: PaymentTransactionStatus.SUCCEEDED,
             stripeChargeId: paymentIntent.latest_charge ? (paymentIntent.latest_charge as string) : null,
+            // Update processing fees
+            processingFeeAmount: processingFees.feeAmount,
+            processingFeePercent: processingFees.feePercent,
+            processingFeeFixed: processingFees.feeFixed,
+            netAmount: netAmount,
             metadata: {
               ...(transaction.metadata as any),
               captureMethod: paymentIntent.capture_method,

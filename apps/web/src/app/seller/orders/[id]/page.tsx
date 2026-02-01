@@ -523,7 +523,7 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                   <StatusBadge status={order.paymentStatus} type="payment" />
                 </div>
                 <div className="flex justify-between text-sm border-t pt-3 mt-3">
-                  <span className="text-neutral-600">Order Amount</span>
+                  <span className="text-neutral-600">Order Amount (Your Portion)</span>
                   <span className="text-black">{formatCurrency(sellerTotals.total, order.currency)}</span>
                 </div>
                 {sellerTotals.platformCommission !== undefined && (
@@ -532,14 +532,25 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                     <span className="text-red-600">-{formatCurrency(sellerTotals.platformCommission, order.currency)}</span>
                   </div>
                 )}
+                {sellerTotals.paymentProcessingFee !== undefined && sellerTotals.paymentProcessingFee > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-neutral-600">
+                      Payment Processing Fee ({sellerTotals.paymentProcessor || 'Stripe'}: {sellerTotals.processingFeeRate || 2.9}%{' '}
+                      {order.currency === 'EUR' ? '+ €0.30' :
+                       order.currency === 'GBP' ? '+ £0.20' :
+                       '+ $0.30'})
+                    </span>
+                    <span className="text-red-600">-{formatCurrency(sellerTotals.paymentProcessingFee, order.currency)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-lg font-bold border-t pt-3 mt-2">
-                  <span className="text-black">Your Earnings</span>
+                  <span className="text-black">Net Earnings</span>
                   <span className="text-green-600">
                     {formatCurrency(sellerTotals.netEarnings !== undefined ? sellerTotals.netEarnings : sellerTotals.total, order.currency)}
                   </span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2">
-                  Amount you'll receive after platform commission
+                  Amount you'll receive after all fees
                 </p>
               </div>
             </div>
