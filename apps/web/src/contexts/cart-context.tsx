@@ -333,7 +333,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           productId,
           quantity,
           variantId,
-          currency: selectedCurrency // Send current selected currency
+          currency: selectedCurrency || cartCurrency || 'USD' // Ensure we always send a valid currency
         },
         {
           headers: {
