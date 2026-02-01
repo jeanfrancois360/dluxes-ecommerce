@@ -479,9 +479,22 @@ export class SellerService {
         );
       } else {
         // Estimate if not yet retrieved (should be rare after webhook)
-        paymentProcessingFee = this.estimateProcessingFee(sellerTotal, order.currency);
-        processingFeeRate = 2.9; // Stripe standard rate
-        paymentProcessor = transaction?.paymentMethod || 'Stripe (estimated)';
+        const method = transaction?.paymentMethod || 'STRIPE';
+        paymentProcessingFee = await this.estimateProcessingFee(sellerTotal, order.currency, method);
+
+        // Get fee rate from settings for display
+        try {
+          const feePercentageSetting = await this.settingsService.getSetting(
+            method === 'PAYPAL' ? 'paypal_fee_percentage' : 'stripe_fee_percentage'
+          );
+          processingFeeRate = feePercentageSetting?.value
+            ? Number(feePercentageSetting.value)
+            : method === 'PAYPAL' ? 3.49 : 2.9;
+        } catch {
+          processingFeeRate = method === 'PAYPAL' ? 3.49 : 2.9;
+        }
+
+        paymentProcessor = `${method} (estimated)`;
 
         this.logger.log(
           `Order ${order.id}: Estimated processing fee: ${paymentProcessingFee.toFixed(2)} ` +
@@ -514,20 +527,66 @@ export class SellerService {
 
   /**
    * Estimate processing fee when actual not yet available
+   * Fetches fee rates from system settings (configurable by admin)
    */
-  private estimateProcessingFee(amount: Decimal, currency: string): Decimal {
-    // Standard payment processor rates
-    const rates: Record<string, { percent: number; fixed: number }> = {
-      EUR: { percent: 2.9, fixed: 0.30 }, // Stripe standard
-      USD: { percent: 2.9, fixed: 0.30 },
-      GBP: { percent: 2.9, fixed: 0.20 },
-    };
+  private async estimateProcessingFee(
+    amount: Decimal,
+    currency: string,
+    paymentMethod: string = 'STRIPE'
+  ): Promise<Decimal> {
+    const currencyUpper = currency.toUpperCase();
+    const processor = paymentMethod === 'PAYPAL' ? 'PAYPAL' : 'STRIPE';
 
-    const rate = rates[currency.toUpperCase()] || rates.USD;
-    const percentFee = amount.mul(rate.percent).div(100);
-    const totalFee = percentFee.add(rate.fixed);
+    try {
+      // Get fee rates from system settings
+      const feePercentageSetting = await this.settingsService.getSetting(
+        processor === 'STRIPE' ? 'stripe_fee_percentage' : 'paypal_fee_percentage'
+      );
+      const feeFixedSetting = await this.settingsService.getSetting(
+        processor === 'STRIPE'
+          ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
+          : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`
+      );
 
-    return totalFee;
+      // Get values from settings or use defaults
+      const feePercentValue = feePercentageSetting?.value
+        ? Number(feePercentageSetting.value)
+        : processor === 'STRIPE' ? 2.9 : 3.49;
+
+      const feeFixedValue = feeFixedSetting?.value
+        ? Number(feeFixedSetting.value)
+        : this.getDefaultFixedFee(currencyUpper, processor);
+
+      const percentFee = amount.mul(feePercentValue).div(100);
+      const totalFee = percentFee.add(feeFixedValue);
+
+      this.logger.log(
+        `Estimated ${processor} fee from settings: ${feePercentValue}% + ${feeFixedValue} ${currencyUpper} = ${totalFee.toFixed(2)}`
+      );
+
+      return totalFee;
+    } catch (error) {
+      this.logger.warn(`Failed to get fee settings, using defaults: ${error.message}`);
+
+      // Fallback to hardcoded defaults
+      const percent = processor === 'STRIPE' ? 2.9 : 3.49;
+      const fixed = this.getDefaultFixedFee(currencyUpper, processor);
+      const percentFee = amount.mul(percent).div(100);
+      const totalFee = percentFee.add(fixed);
+
+      return totalFee;
+    }
+  }
+
+  /**
+   * Get default fixed fee for currency and payment processor
+   */
+  private getDefaultFixedFee(currency: string, processor: string): number {
+    if (processor === 'STRIPE') {
+      return currency === 'GBP' ? 0.20 : 0.30;
+    } else {
+      return currency === 'EUR' ? 0.35 : 0.30;
+    }
   }
 
   /**

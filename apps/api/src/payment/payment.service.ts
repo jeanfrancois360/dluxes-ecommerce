@@ -755,19 +755,32 @@ export class PaymentService {
 
       // Calculate percentage and fixed fee (reverse engineer from total)
       const chargeAmount = new Decimal(balanceTransaction.amount).div(100);
-
-      // Stripe fee structure: fee = (amount × percent) + fixed
-      // Standard rates: 2.9% + fixed fee
-      const estimatedPercent = new Decimal(0.029); // 2.9%
-
-      // Fixed fee varies by currency
       const currency = charge.currency.toUpperCase();
-      const fixedFees: Record<string, number> = {
-        EUR: 0.30,
-        USD: 0.30,
-        GBP: 0.20,
-      };
-      const estimatedFixed = new Decimal(fixedFees[currency] || 0.30);
+
+      // Get expected rates from system settings for comparison
+      let estimatedPercent: Decimal;
+      let estimatedFixed: Decimal;
+
+      try {
+        const feePercentageSetting = await this.settingsService.getSetting('stripe_fee_percentage');
+        const feeFixedSetting = await this.settingsService.getSetting(
+          `stripe_fee_fixed_${currency.toLowerCase()}`
+        );
+
+        const percentValue = feePercentageSetting?.value
+          ? Number(feePercentageSetting.value)
+          : 2.9;
+        const fixedValue = feeFixedSetting?.value
+          ? Number(feeFixedSetting.value)
+          : this.getDefaultFixedFee(currency, 'STRIPE');
+
+        estimatedPercent = new Decimal(percentValue).div(100);
+        estimatedFixed = new Decimal(fixedValue);
+      } catch (error) {
+        // Fallback to defaults if settings fail
+        estimatedPercent = new Decimal(0.029); // 2.9%
+        estimatedFixed = new Decimal(this.getDefaultFixedFee(currency, 'STRIPE'));
+      }
 
       // Verify it matches (approximately)
       const calculatedFee = chargeAmount.mul(estimatedPercent).add(estimatedFixed);
@@ -798,26 +811,79 @@ export class PaymentService {
 
   /**
    * Get estimated processing fees when actual data unavailable
+   * Fetches fee rates from system settings (configurable by admin)
    */
-  private getEstimatedFees(
+  private async getEstimatedFees(
     amountInCents: number,
-    currency: string
-  ): { feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal } {
+    currency: string,
+    paymentMethod: 'STRIPE' | 'PAYPAL' = 'STRIPE'
+  ): Promise<{ feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal }> {
     const amount = new Decimal(amountInCents).div(100);
+    const currencyUpper = currency.toUpperCase();
 
-    // Standard Stripe rates by currency
-    const rates: Record<string, { percent: number; fixed: number }> = {
-      EUR: { percent: 0.029, fixed: 0.30 },
-      USD: { percent: 0.029, fixed: 0.30 },
-      GBP: { percent: 0.029, fixed: 0.20 },
-    };
+    try {
+      // Get fee rates from system settings
+      const feePercentageSetting = await this.settingsService.getSetting(
+        paymentMethod === 'STRIPE' ? 'stripe_fee_percentage' : 'paypal_fee_percentage'
+      );
+      const feeFixedSetting = await this.settingsService.getSetting(
+        paymentMethod === 'STRIPE'
+          ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
+          : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`
+      );
 
-    const rate = rates[currency.toUpperCase()] || rates.USD;
-    const feePercent = new Decimal(rate.percent);
-    const feeFixed = new Decimal(rate.fixed);
-    const feeAmount = amount.mul(feePercent).add(feeFixed);
+      // Get values from settings or use defaults
+      const feePercentValue = feePercentageSetting?.value
+        ? Number(feePercentageSetting.value)
+        : paymentMethod === 'STRIPE' ? 2.9 : 3.49;
 
-    return { feeAmount, feePercent, feeFixed };
+      const feeFixedValue = feeFixedSetting?.value
+        ? Number(feeFixedSetting.value)
+        : this.getDefaultFixedFee(currencyUpper, paymentMethod);
+
+      const feePercent = new Decimal(feePercentValue).div(100); // Convert 2.9 to 0.029
+      const feeFixed = new Decimal(feeFixedValue);
+      const feeAmount = amount.mul(feePercent).add(feeFixed);
+
+      this.logger.log(
+        `Using ${paymentMethod} fee rates from settings: ${feePercentValue}% + ${feeFixedValue} ${currencyUpper}`
+      );
+
+      return { feeAmount, feePercent, feeFixed };
+    } catch (error) {
+      this.logger.warn(`Failed to get fee settings, using defaults: ${error.message}`);
+
+      // Fallback to hardcoded defaults if settings fail
+      const defaultRates = this.getDefaultFeeRates(currencyUpper, paymentMethod);
+      const feePercent = new Decimal(defaultRates.percent);
+      const feeFixed = new Decimal(defaultRates.fixed);
+      const feeAmount = amount.mul(feePercent).add(feeFixed);
+
+      return { feeAmount, feePercent, feeFixed };
+    }
+  }
+
+  /**
+   * Get default fixed fee for currency and payment method
+   */
+  private getDefaultFixedFee(currency: string, paymentMethod: 'STRIPE' | 'PAYPAL'): number {
+    if (paymentMethod === 'STRIPE') {
+      return currency === 'GBP' ? 0.20 : 0.30;
+    } else {
+      return currency === 'EUR' ? 0.35 : 0.30;
+    }
+  }
+
+  /**
+   * Get default fee rates (fallback when settings unavailable)
+   */
+  private getDefaultFeeRates(
+    currency: string,
+    paymentMethod: 'STRIPE' | 'PAYPAL'
+  ): { percent: number; fixed: number } {
+    const percent = paymentMethod === 'STRIPE' ? 0.029 : 0.0349; // 2.9% or 3.49%
+    const fixed = this.getDefaultFixedFee(currency, paymentMethod);
+    return { percent, fixed };
   }
 
   /**
@@ -857,9 +923,10 @@ export class PaymentService {
 
       // Fall back to estimates if actual fees not available
       if (!processingFees) {
-        processingFees = this.getEstimatedFees(
+        processingFees = await this.getEstimatedFees(
           paymentIntent.amount,
-          paymentIntent.currency
+          paymentIntent.currency,
+          'STRIPE'
         );
         this.logger.log(
           `Using estimated Stripe fees: ${processingFees.feeAmount.toFixed(2)} ${paymentIntent.currency.toUpperCase()} ` +
