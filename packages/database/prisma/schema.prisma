@@ -1550,12 +1550,19 @@ model PaymentTransaction {
   stripePaymentIntentId String? @unique
   stripeChargeId        String?
   stripeCustomerId      String?
+  stripeBalanceTransactionId String? // For retrieving fee information
 
   // Transaction Details
   amount        Decimal                  @db.Decimal(10, 2)
   currency      String                   @default("USD")
   status        PaymentTransactionStatus @default(PENDING)
   paymentMethod PaymentMethod
+
+  // Payment Processing Fees (Stripe/PayPal)
+  processingFeeAmount   Decimal? @db.Decimal(10, 2) // Total fee charged by processor
+  processingFeePercent  Decimal? @db.Decimal(5, 4)  // Percentage fee (e.g., 0.0290 for 2.9%)
+  processingFeeFixed    Decimal? @db.Decimal(10, 2) // Fixed fee (e.g., 0.30)
+  netAmount             Decimal? @db.Decimal(10, 2) // Amount after processing fees
 
   // Additional Payment Methods
   walletBalance Decimal? @db.Decimal(10, 2) // If paid with wallet
@@ -2025,10 +2032,11 @@ model EscrowTransaction {
   storeId              String
 
   // Amounts
-  totalAmount  Decimal @db.Decimal(10, 2) // Total order amount
-  platformFee  Decimal @db.Decimal(10, 2) // Commission amount
-  sellerAmount Decimal @db.Decimal(10, 2) // Amount to be paid to seller
-  currency     String  @default("USD")
+  totalAmount         Decimal @db.Decimal(10, 2) // Total order amount (seller's portion)
+  platformFee         Decimal @db.Decimal(10, 2) // Platform commission
+  paymentProcessingFee Decimal @default(0) @db.Decimal(10, 2) // Stripe/PayPal fees
+  sellerAmount        Decimal @db.Decimal(10, 2) // Net amount to be paid to seller (after all fees)
+  currency            String  @default("USD")
 
   // Escrow Status
   status EscrowStatus @default(HELD)
