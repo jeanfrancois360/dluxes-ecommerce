@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../database/prisma.service';
+import { CreateAddressDto, UpdateAddressDto } from './dto/address.dto';
 
 @Controller('addresses')
 @UseGuards(JwtAuthGuard)
@@ -44,18 +45,7 @@ export class AddressController {
   @Post()
   async createAddress(
     @Request() req: any,
-    @Body() body: {
-      firstName: string;
-      lastName: string;
-      address1: string;
-      address2?: string;
-      city: string;
-      province: string;
-      postalCode: string;
-      country: string;
-      phone?: string;
-      isDefault?: boolean;
-    },
+    @Body() body: CreateAddressDto,
   ) {
     const userId = req.user.userId || req.user.id;
 
@@ -80,8 +70,8 @@ export class AddressController {
         address1: body.address1,
         address2: body.address2 || '',
         city: body.city,
-        province: body.province,
-        postalCode: body.postalCode,
+        province: body.province || null, // Optional - null if not provided
+        postalCode: body.postalCode || null, // Optional - null if not provided
         country: body.country,
         phone: body.phone || '',
         isDefault: body.isDefault || existingCount === 0, // First address is default
@@ -96,18 +86,7 @@ export class AddressController {
   async updateAddress(
     @Request() req: any,
     @Param('id') id: string,
-    @Body() body: Partial<{
-      firstName: string;
-      lastName: string;
-      address1: string;
-      address2: string;
-      city: string;
-      province: string;
-      postalCode: string;
-      country: string;
-      phone: string;
-      isDefault: boolean;
-    }>,
+    @Body() body: UpdateAddressDto,
   ) {
     const userId = req.user.userId || req.user.id;
 

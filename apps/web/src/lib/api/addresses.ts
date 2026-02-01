@@ -9,9 +9,9 @@ export interface Address {
   address1: string;
   address2?: string;
   city: string;
-  province: string;
+  province?: string; // Optional - not all countries have states/provinces
   country: string;
-  postalCode: string;
+  postalCode?: string; // Optional - not all countries have postal codes
   phone?: string;
   isDefault: boolean;
 }
@@ -23,9 +23,9 @@ export interface CreateAddressData {
   address1: string;
   address2?: string;
   city: string;
-  province: string;
+  province?: string; // Optional - not all countries have states/provinces
   country: string;
-  postalCode: string;
+  postalCode?: string; // Optional - not all countries have postal codes
   phone?: string;
   isDefault?: boolean;
 }

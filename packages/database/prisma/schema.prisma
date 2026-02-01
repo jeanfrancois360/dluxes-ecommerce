@@ -165,9 +165,9 @@ model Address {
   address1   String
   address2   String?
   city       String
-  province   String
+  province   String? // Optional - not all countries have states/provinces
   country    String
-  postalCode String
+  postalCode String? // Optional - not all countries have postal codes
   phone      String?
   isDefault  Boolean @default(false)
 
@@ -989,12 +989,12 @@ model ProductInquiry {
 
 // Shopping Cart
 model Cart {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   userId    String?
   sessionId String
-  subtotal  Decimal  @default(0) @db.Decimal(10, 2)
-  discount  Decimal  @default(0) @db.Decimal(10, 2)
-  total     Decimal  @default(0) @db.Decimal(10, 2)
+  subtotal  Decimal @default(0) @db.Decimal(10, 2)
+  discount  Decimal @default(0) @db.Decimal(10, 2)
+  total     Decimal @default(0) @db.Decimal(10, 2)
 
   // 🔒 CURRENCY LOCKING FIELDS
   currency     String   @default("USD")
@@ -1673,7 +1673,7 @@ model SavedPaymentMethod {
 
   // Usage Tracking
   lastUsedAt DateTime?
-  usageCount Int      @default(0)
+  usageCount Int       @default(0)
 
   // Metadata
   cardholderName   String?
@@ -1768,11 +1768,11 @@ model Commission {
   currency         String  @default("USD") // Order currency (buyer's currency)
 
   // 💱 PAYOUT CURRENCY CONVERSION FIELDS (Seller Currency - what seller receives)
-  payoutAmount    Decimal? @db.Decimal(10, 2) // Commission amount in seller's payout currency
-  payoutCurrency  String? // Seller's preferred payout currency (from store.payoutCurrency)
-  conversionRate  Decimal? @db.Decimal(10, 6) // Rate used: orderCurrency → payoutCurrency
-  rateSource      String? // Where rate came from: 'STRIPE', 'ECB', 'MANUAL'
-  rateTimestamp   DateTime? // When conversion rate was captured
+  payoutAmount   Decimal?  @db.Decimal(10, 2) // Commission amount in seller's payout currency
+  payoutCurrency String? // Seller's preferred payout currency (from store.payoutCurrency)
+  conversionRate Decimal?  @db.Decimal(10, 6) // Rate used: orderCurrency → payoutCurrency
+  rateSource     String? // Where rate came from: 'STRIPE', 'ECB', 'MANUAL'
+  rateTimestamp  DateTime? // When conversion rate was captured
 
   // Status
   status CommissionStatus @default(PENDING)
@@ -2755,8 +2755,8 @@ model Delivery {
   currentStatus  DeliveryStatus @default(PENDING_PICKUP)
 
   // DHL API Integration Fields
-  dhlServiceType       String?   // EXPRESS, PARCEL, ECOMMERCE
-  dhlTrackingData      Json?     // Full DHL API response cache
+  dhlServiceType       String? // EXPRESS, PARCEL, ECOMMERCE
+  dhlTrackingData      Json? // Full DHL API response cache
   dhlLastSyncedAt      DateTime? // Last API sync timestamp
   dhlEstimatedDelivery DateTime? // From DHL API
 
@@ -2895,9 +2895,9 @@ model DeliveryTrackingEvent {
 
   // Event Data
   timestamp         DateTime
-  status            String   // DHL event code (e.g., "PU", "IT", "OK")
-  statusDescription String   // Human-readable description
-  location          Json?    // { city, country, facility }
+  status            String // DHL event code (e.g., "PU", "IT", "OK")
+  statusDescription String // Human-readable description
+  location          Json? // { city, country, facility }
 
   // Raw DHL event data
   rawEventData Json

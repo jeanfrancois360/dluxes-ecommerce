@@ -22,6 +22,7 @@ interface OrderSummaryProps {
   promoCode?: string;
   discount?: number;
   className?: string;
+  hasShippingAddress?: boolean; // Track if shipping address is entered
 }
 
 export function OrderSummary({
@@ -35,6 +36,7 @@ export function OrderSummary({
   promoCode,
   discount = 0,
   className,
+  hasShippingAddress = false, // Default to false if not provided
 }: OrderSummaryProps) {
   const [isSticky, setIsSticky] = useState(false);
   const [showPromo, setShowPromo] = useState(false);
@@ -276,7 +278,9 @@ export function OrderSummary({
             )}
           </div>
           <span className="font-medium text-black">
-            {shipping === 0 ? (
+            {!hasShippingAddress ? (
+              <span className="text-neutral-400 text-xs">Calculated at next step</span>
+            ) : shipping === 0 ? (
               <span className="text-green-600 font-semibold">Free</span>
             ) : (
               formatWithCurrency(shipping, false)
@@ -287,7 +291,13 @@ export function OrderSummary({
         {/* Tax */}
         <div className="flex justify-between text-sm">
           <span className="text-neutral-600">Tax (estimated)</span>
-          <span className="font-medium text-black">{formatWithCurrency(tax, false)}</span>
+          <span className="font-medium text-black">
+            {!hasShippingAddress ? (
+              <span className="text-neutral-400 text-xs">Calculated at next step</span>
+            ) : (
+              formatWithCurrency(tax, false)
+            )}
+          </span>
         </div>
 
         {/* Discount */}
