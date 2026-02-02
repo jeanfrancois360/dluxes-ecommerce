@@ -16,9 +16,6 @@ interface AuthLayoutProps {
 export default function AuthLayout({ children, title, subtitle, showLayout = true }: AuthLayoutProps) {
   const authContent = (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 via-white to-accent-50 px-4 py-12">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)] bg-[size:24px_24px]" />
-
       {/* Auth Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}

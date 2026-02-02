@@ -16,6 +16,8 @@ import { sellerAPI, SellerOrderDetail } from '@/lib/api/seller';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { PackingSlip } from '@/components/seller/packing-slip';
+import { MarkAsShippedModal } from '@/components/seller/mark-as-shipped-modal';
+import { ShipmentCard } from '@/components/seller/shipment-card';
 import {
   ArrowLeft,
   Package,
@@ -79,12 +81,39 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   const [trackingNumber, setTrackingNumber] = useState('');
   const [shippingCarrier, setShippingCarrier] = useState('');
   const [showPackingSlip, setShowPackingSlip] = useState(false);
+  const [showMarkAsShippedModal, setShowMarkAsShippedModal] = useState(false);
   const packingSlipRef = useRef<HTMLDivElement>(null);
 
   // Fetch order data
   const { data: order, error, isLoading, mutate } = useSWR<SellerOrderDetail>(
     user && user.role === 'SELLER' ? ['seller-order', resolvedParams.id] : null,
     () => sellerAPI.getOrder(resolvedParams.id),
+    {
+      revalidateOnFocus: false,
+    }
+  );
+
+  // Fetch seller's store to get storeId
+  const { data: storeData } = useSWR(
+    user && user.role === 'SELLER' ? 'seller-store' : null,
+    () => sellerAPI.getStore()
+  );
+
+  // Fetch shipments for this order
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  const { data: shipments, mutate: mutateShipments } = useSWR(
+    user && user.role === 'SELLER' && order ? ['order-shipments', order.id] : null,
+    async () => {
+      const token = localStorage.getItem('auth_token'); // Fixed: use 'auth_token' not 'token'
+      const response = await fetch(`${API_URL}/shipments/order/${order!.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch shipments');
+      const data = await response.json();
+      return data.data || [];
+    },
     {
       revalidateOnFocus: false,
     }
@@ -210,7 +239,8 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   }
 
   const canUpdateStatus = !['DELIVERED', 'CANCELLED', 'REFUNDED'].includes(order.status);
-  const canShip = order.status === 'PROCESSING' && order.paymentStatus === 'PAID';
+  // Allow shipping for PROCESSING orders with PAID or PENDING payment (PENDING needed for test mode)
+  const canShip = order.status === 'PROCESSING' && (order.paymentStatus === 'PAID' || order.paymentStatus === 'PENDING');
 
   // Use seller-specific totals from backend (proportional allocation)
   const sellerTotals = (order as any).sellerTotals || {
@@ -330,6 +360,34 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
               </div>
             </div>
 
+            {/* Shipments Section */}
+            {shipments && shipments.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm">
+                <div className="p-6 border-b border-neutral-200">
+                  <h2 className="text-lg font-semibold text-black flex items-center gap-2">
+                    <Truck className="w-5 h-5" />
+                    Shipments ({shipments.length})
+                  </h2>
+                  <p className="text-sm text-neutral-500 mt-1">
+                    Track all shipments for this order
+                  </p>
+                </div>
+                <div className="p-6 space-y-4">
+                  {shipments.map((shipment: any) => (
+                    <ShipmentCard
+                      key={shipment.id}
+                      shipment={shipment}
+                      currency={order.currency}
+                      onUpdate={() => {
+                        mutateShipments();
+                        mutate();
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Shipping Address */}
             {order.shippingAddress && (
               <div className="bg-white rounded-xl shadow-sm p-6">
@@ -433,12 +491,12 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-black mb-4 flex items-center gap-2">
                   <Clock className="w-5 h-5" />
-                  Update Status
+                  Order Workflow
                 </h2>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Order Status
+                      Current Status
                     </label>
                     <select
                       value={order.status}
@@ -449,65 +507,93 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                       <option value="PENDING">Pending</option>
                       <option value="CONFIRMED">Confirmed</option>
                       <option value="PROCESSING">Processing</option>
-                      <option value="SHIPPED">Shipped</option>
-                      <option value="DELIVERED">Delivered</option>
+                      {/* SHIPPED and DELIVERED are set automatically via shipment workflow */}
                     </select>
+                    <p className="mt-2 text-xs text-neutral-500 flex items-start gap-1.5">
+                      <span className="text-gold">ℹ️</span>
+                      <span>
+                        To ship this order, use the <strong>"Create Shipment"</strong> button below.
+                        This will generate tracking info and update the status automatically.
+                      </span>
+                    </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Shipping Actions */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-black mb-4 flex items-center gap-2">
-                <Truck className="w-5 h-5" />
-                Shipping
-              </h2>
+            {/* Shipment Actions */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-gold/20">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center flex-shrink-0">
+                  <Truck className="w-5 h-5 text-gold" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold text-black mb-1">
+                    Create Shipment
+                  </h2>
+                  <p className="text-sm text-neutral-600">
+                    Generate shipping labels and tracking via DHL API
+                  </p>
+                </div>
+              </div>
+
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Tracking Number
-                  </label>
-                  <input
-                    type="text"
-                    value={trackingNumber}
-                    onChange={(e) => setTrackingNumber(e.target.value)}
-                    placeholder="Enter tracking number"
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Carrier (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={shippingCarrier}
-                    onChange={(e) => setShippingCarrier(e.target.value)}
-                    placeholder="e.g., FedEx, UPS, USPS"
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <button
-                    onClick={handleUpdateShipping}
-                    disabled={updating || !trackingNumber.trim()}
-                    className="w-full px-4 py-2 bg-neutral-100 text-black font-medium rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    Update Tracking
-                  </button>
-                  {canShip && (
+                {/* Show shipments if any exist */}
+                {shipments && shipments.length > 0 ? (
+                  <div>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-green-800 font-medium">
+                        ✓ {shipments.length} shipment{shipments.length > 1 ? 's' : ''} created
+                      </p>
+                    </div>
+                    {/* Button to create additional shipment */}
                     <button
-                      onClick={handleMarkAsShipped}
+                      onClick={() => setShowMarkAsShippedModal(true)}
                       disabled={updating}
-                      className="w-full px-4 py-2 bg-gold text-black font-medium rounded-lg hover:bg-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="w-full px-4 py-2.5 bg-neutral-100 text-black font-medium rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                      Mark as Shipped
+                      <Package className="w-4 h-4" />
+                      Create Another Shipment
                     </button>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  /* No shipments yet - show create button */
+                  <>
+                    {canShip ? (
+                      <>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                          <p className="text-sm text-blue-800">
+                            📦 Ready to ship! Click below to create a shipment with DHL tracking.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setShowMarkAsShippedModal(true)}
+                          disabled={updating}
+                          className="w-full px-4 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          <Truck className="w-5 h-5" />
+                          Create Shipment with DHL
+                        </button>
+                      </>
+                    ) : (
+                      <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 text-center">
+                        <p className="text-sm text-neutral-600">
+                          Order must be in <strong>Processing</strong> status to create shipments
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Legacy delivery info for backward compatibility */}
+                {order.delivery?.trackingNumber && (
+                  <div className="mt-4 p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                    <p className="text-xs font-medium text-neutral-600 mb-1">Legacy Tracking</p>
+                    <p className="text-sm text-neutral-700 font-mono">
+                      {order.delivery.trackingNumber}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -591,6 +677,22 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
             <PackingSlip ref={packingSlipRef} order={order} />
           </div>
         </div>
+      )}
+
+      {/* Mark as Shipped Modal */}
+      {order && storeData?.id && (
+        <MarkAsShippedModal
+          isOpen={showMarkAsShippedModal}
+          onClose={() => setShowMarkAsShippedModal(false)}
+          orderId={order.id}
+          storeId={storeData.id}
+          items={order.items}
+          currency={order.currency}
+          onSuccess={() => {
+            mutateShipments();
+            mutate();
+          }}
+        />
       )}
     </div>
   );

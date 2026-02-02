@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useCurrencyConverter, useSelectedCurrency } from '@/hooks/use-currency';
 
@@ -196,7 +196,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [freeShippingEnabled, freeShippingThreshold, standardShippingCost, convertPrice, taxRate, taxCalculationMode]);
 
-  const totals = calculateTotals(items);
+  // Calculate totals reactively - updates whenever items change
+  const totals = useMemo(() => calculateTotals(items), [items, calculateTotals]);
 
   // Fetch cart from API
   const refreshCart = useCallback(async () => {
@@ -363,20 +364,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      // Optimistic update
+      // Optimistic update - update UI immediately
       setItems((prev) =>
         prev.map((item) => (item.id === itemId ? { ...item, quantity } : item))
       );
 
+      // Send update to backend
       await axios.patch(`${API_URL}/cart/items/${itemId}`, { quantity });
 
-      // Sync to localStorage
-      if (typeof window !== 'undefined') {
-        const updatedItems = items.map((item) =>
-          item.id === itemId ? { ...item, quantity } : item
-        );
-        localStorage.setItem('cart_items', JSON.stringify(updatedItems));
-      }
+      // Refresh cart to get updated backend totals (this updates cart_backend_totals in localStorage)
+      await refreshCart();
     } catch (err: any) {
       console.error('Error updating item quantity:', err);
       setError(err.response?.data?.message || err.message || 'Failed to update quantity');
@@ -386,7 +383,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [items, refreshCart]);
+  }, [refreshCart]);
 
   // Remove item from cart
   const removeItem = useCallback(async (itemId: string) => {

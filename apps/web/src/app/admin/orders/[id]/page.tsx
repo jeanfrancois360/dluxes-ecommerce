@@ -16,7 +16,53 @@ import { adminOrdersApi } from '@/lib/api/admin';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { format } from 'date-fns';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+import { currencyApi, CurrencyRate } from '@/lib/api/currency';
 import axios from 'axios';
+
+// Currency symbols map for common currencies (fallback if API fails)
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  RWF: 'FRw',
+  CAD: 'CA$',
+  AUD: 'A$',
+  CHF: 'CHF',
+  CNY: '¥',
+  SEK: 'kr',
+  NZD: 'NZ$',
+  KRW: '₩',
+  SGD: 'S$',
+  NOK: 'kr',
+  MXN: 'MX$',
+  INR: '₹',
+  BRL: 'R$',
+  ZAR: 'R',
+  HKD: 'HK$',
+  LUX: '€', // Luxembourg uses Euro
+};
+
+/**
+ * Format currency for admin views - shows amount in ORIGINAL order currency
+ * No conversion, just proper symbol formatting
+ */
+function formatOrderCurrency(amount: number, currencyCode: string, currencyData?: CurrencyRate | null): string {
+  if (currencyData) {
+    return currencyApi.formatPrice(amount, currencyData);
+  }
+
+  // Fallback: use currency symbols map
+  const symbol = CURRENCY_SYMBOLS[currencyCode] || currencyCode;
+  const formattedAmount = formatCurrencyAmount(amount, 2);
+
+  // Most currencies use symbol before amount
+  if (['JPY', 'KRW', 'SEK', 'NOK', 'RWF'].includes(currencyCode)) {
+    return `${formattedAmount} ${symbol}`;
+  }
+
+  return `${symbol}${formattedAmount}`;
+}
 
 interface DeliveryProvider {
   id: string;
@@ -43,6 +89,7 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [assigningDelivery, setAssigningDelivery] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState('');
+  const [orderCurrency, setOrderCurrency] = useState<CurrencyRate | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -50,8 +97,22 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
     if (order) {
       fetchDelivery();
       fetchProviders();
+      fetchOrderCurrency();
     }
   }, [order]);
+
+  const fetchOrderCurrency = async () => {
+    if (!order?.currency) return;
+
+    try {
+      const currencyData = await currencyApi.getRate(order.currency);
+      setOrderCurrency(currencyData);
+    } catch (error) {
+      console.error('Failed to fetch currency data:', error);
+      // Will use fallback formatting
+      setOrderCurrency(null);
+    }
+  };
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!order) return;
@@ -218,8 +279,12 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-gray-900">${formatCurrencyAmount(item.price * item.quantity, 2)}</p>
-                      <p className="text-sm text-gray-500">${formatCurrencyAmount(item.price, 2)} each</p>
+                      <p className="font-medium text-gray-900">
+                        {formatOrderCurrency(item.price * item.quantity, order.currency || 'USD', orderCurrency)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {formatOrderCurrency(item.price, order.currency || 'USD', orderCurrency)} each
+                      </p>
                     </div>
                   </div>
                 ))
@@ -305,7 +370,9 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Total</span>
-                <span className="font-medium">${formatCurrencyAmount(order.total || 0, 2)}</span>
+                <span className="font-medium">
+                  {formatOrderCurrency(order.total || 0, order.currency || 'USD', orderCurrency)}
+                </span>
               </div>
             </div>
           </div>
