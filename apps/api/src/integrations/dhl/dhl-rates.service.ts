@@ -136,7 +136,7 @@ export class DhlRatesService {
         : 'https://express.api.dhl.com/mydhlapi/test';
     } catch (error) {
       // Fallback to env variable if setting not found
-      const env = this.configService.get<string>('DHL_API_ENVIRONMENT', 'test');
+      const env = this.configService.get<string>('DHL_API_ENVIRONMENT', 'sandbox');
       return env === 'production'
         ? 'https://express.api.dhl.com/mydhlapi'
         : 'https://express.api.dhl.com/mydhlapi/test';
