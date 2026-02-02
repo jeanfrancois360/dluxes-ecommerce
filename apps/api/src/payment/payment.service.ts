@@ -649,11 +649,11 @@ export class PaymentService {
           await this.handleDisputeClosed(event.data.object as Stripe.Dispute, webhookEvent.id);
           break;
 
-        // Checkout Session Completed - Check if it's seller credits or subscription
+        // Checkout Session Completed - Check if it's seller credits, credit package, or subscription
         case 'checkout.session.completed':
           const session = event.data.object as Stripe.Checkout.Session;
 
-          // Check if this is a seller credit purchase
+          // Check if this is a seller credit purchase (monthly subscription)
           if (session.metadata?.type === 'seller_credits') {
             this.logger.log('Processing seller credit purchase from checkout session');
 
@@ -672,7 +672,32 @@ export class PaymentService {
               this.logger.error(`Failed to process seller credit purchase:`, error);
               throw error;
             }
-          } else {
+          }
+          // Check if this is a credit package purchase (pay-per-listing credits)
+          else if (session.metadata?.type === 'credit_package') {
+            this.logger.log('Processing credit package purchase from checkout session');
+
+            // Dynamically import CreditsService to avoid circular dependency
+            try {
+              const { CreditsService } = await import('../credits/credits.service');
+              const { SettingsService } = await import('../settings/settings.service');
+
+              const settingsService = new SettingsService(this.prisma);
+              const creditsService = new CreditsService(
+                this.prisma,
+                settingsService,
+                this, // Pass PaymentService itself
+                this.configService,
+              );
+
+              await creditsService.processSuccessfulPurchase(session.id);
+              this.logger.log(`✅ Credit package purchase processed: ${session.id}`);
+            } catch (error) {
+              this.logger.error(`Failed to process credit package purchase:`, error);
+              throw error;
+            }
+          }
+          else {
             // Route to StripeSubscriptionService for regular subscriptions
             if (this.stripeSubscriptionService) {
               this.logger.log(`Routing ${event.type} to StripeSubscriptionService`);

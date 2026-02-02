@@ -1,4 +1,14 @@
-import { Controller, Get, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { CreditsService } from './credits.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreditTransactionType } from '@prisma/client';
@@ -61,6 +71,20 @@ export class CreditsController {
       limit: limit ? parseInt(limit) : undefined,
       type: type as CreditTransactionType | undefined,
     });
+    return { success: true, data };
+  }
+
+  /**
+   * Purchase a credit package via Stripe Checkout
+   */
+  @Post('purchase/:packageId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async purchasePackage(@Req() req: any, @Param('packageId') packageId: string) {
+    const data = await this.creditsService.purchasePackage(
+      req.user.id,
+      packageId,
+    );
     return { success: true, data };
   }
 }

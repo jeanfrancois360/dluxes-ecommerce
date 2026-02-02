@@ -64,6 +64,11 @@ export interface CreditHistoryParams {
   type?: string;
 }
 
+export interface PurchaseResponse {
+  sessionId: string;
+  sessionUrl: string;
+}
+
 export const creditsApi = {
   /**
    * Get all available credit packages
@@ -102,6 +107,13 @@ export const creditsApi = {
     if (params?.limit) query.set('limit', params.limit.toString());
     if (params?.type) query.set('type', params.type);
     return api.get(`/credits/history?${query.toString()}`);
+  },
+
+  /**
+   * Purchase a credit package (returns Stripe Checkout URL)
+   */
+  async purchase(packageId: string): Promise<PurchaseResponse> {
+    return api.post(`/credits/purchase/${packageId}`, {});
   },
 };
 
