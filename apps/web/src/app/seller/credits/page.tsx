@@ -17,6 +17,7 @@ export default function SellerCreditsPage() {
   const [transactionsTotal, setTransactionsTotal] = useState(0);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'packages' | 'history'>('overview');
+  const [purchasing, setPurchasing] = useState(false);
 
   const isLoading = balanceLoading || packagesLoading;
 
@@ -43,8 +44,22 @@ export default function SellerCreditsPage() {
     }
   };
 
-  const handlePurchasePackage = (packageId: string) => {
-    toast.info('Payment integration coming soon. Credit package purchase will be available shortly.');
+  const handlePurchasePackage = async (packageId: string) => {
+    try {
+      setPurchasing(true);
+      const response = await creditsApi.purchase(packageId);
+
+      // Redirect to Stripe Checkout
+      if (response.sessionUrl) {
+        window.location.href = response.sessionUrl;
+      } else {
+        toast.error('Failed to create checkout session');
+      }
+    } catch (error: any) {
+      console.error('Purchase error:', error);
+      toast.error(error.message || 'Failed to initiate purchase. Please try again.');
+      setPurchasing(false);
+    }
   };
 
   const getTransactionIcon = (type: string) => {
