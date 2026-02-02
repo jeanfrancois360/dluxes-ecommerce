@@ -39,6 +39,16 @@ model User {
   // Stripe
   stripeCustomerId String?
 
+  // Seller Approval Tracking
+  sellerApprovedAt     DateTime?
+  sellerApprovedBy     String?
+  sellerRejectedAt     DateTime?
+  sellerRejectedBy     String?
+  sellerRejectionNote  String?   @db.Text
+  sellerSuspendedAt    DateTime?
+  sellerSuspendedBy    String?
+  sellerSuspensionNote String?   @db.Text
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -91,6 +101,9 @@ model User {
 
   // Saved Payment Methods
   savedPaymentMethods SavedPaymentMethod[]
+
+  // Seller Credit Transactions
+  sellerCreditTransactions SellerCreditTransaction[]
 
   @@index([email])
   @@index([lastLoginAt])
@@ -214,6 +227,12 @@ model Store {
   verified   Boolean     @default(false)
   verifiedAt DateTime?
 
+  // Monthly Credit System
+  creditsBalance      Int       @default(0)
+  creditsLastDeducted DateTime?
+  creditsExpiresAt    DateTime?
+  creditsGraceEndsAt  DateTime? // Grace period deadline
+
   // Store Policies
   returnPolicy    String? @db.Text
   shippingPolicy  String? @db.Text
@@ -278,8 +297,14 @@ model Store {
   // Product Inquiries
   inquiries ProductInquiry[]
 
+  // Multi-Vendor Shipments
+  shipments SellerShipment[]
+
   // Store Followers
   followers StoreFollow[]
+
+  // Seller Credit Transactions
+  sellerCreditTransactions SellerCreditTransaction[]
 
   @@index([slug])
   @@index([status])
@@ -311,6 +336,49 @@ model StoreFollow {
   @@index([userId])
   @@index([storeId])
   @@map("store_follows")
+}
+
+// Seller Credit Transactions (Monthly Subscription)
+model SellerCreditTransaction {
+  id              String                      @id @default(cuid())
+  userId          String
+  storeId         String
+  type            SellerCreditTransactionType
+  amount          Int                         // Months added/removed
+  balanceBefore   Int
+  balanceAfter    Int
+
+  // Payment tracking
+  amountPaid      Decimal?                    @db.Decimal(10, 2)
+  currency        String?                     @default("USD")
+  stripeSessionId String?                     @unique
+  stripePaymentId String?
+
+  // Metadata
+  description     String?                     @db.Text
+  performedBy     String?                     // Admin ID for manual adjustments
+  notes           String?                     @db.Text
+
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([storeId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("seller_credit_transactions")
+}
+
+enum SellerCreditTransactionType {
+  PURCHASE   // Seller bought credits
+  DEDUCTION  // Monthly auto-deduction
+  REFUND     // Admin refund
+  ADJUSTMENT // Admin manual adjustment
+  BONUS      // Admin bonus credits
 }
 
 // Product Catalog
@@ -1083,6 +1151,9 @@ model Order {
   deliveryConfirmation DeliveryConfirmation?
   delivery             Delivery?
 
+  // Multi-Vendor Shipments
+  sellerShipments SellerShipment[]
+
   // Returns
   returnRequests ReturnRequest[]
 
@@ -1097,6 +1168,7 @@ enum OrderStatus {
   PENDING
   CONFIRMED
   PROCESSING
+  PARTIALLY_SHIPPED // New: For multi-vendor orders with partial shipments
   SHIPPED
   DELIVERED
   CANCELLED
@@ -1163,6 +1235,9 @@ model OrderItem {
   product Product         @relation(fields: [productId], references: [id])
   variant ProductVariant? @relation(fields: [variantId], references: [id])
 
+  // Shipments
+  shipmentItems ShipmentItem[]
+
   // Returns
   returnRequests ReturnRequest[]
 
@@ -1189,6 +1264,106 @@ model OrderTimeline {
   @@index([orderId])
   @@index([createdAt])
   @@map("order_timeline")
+}
+
+// Multi-Vendor Shipment Tracking
+// Tracks each seller's shipment independently for multi-vendor orders
+model SellerShipment {
+  id             String @id @default(cuid())
+  orderId        String
+  storeId        String
+  shipmentNumber String @unique // Auto-generated: SH-{timestamp}-{random}
+
+  // Shipment Status & Tracking
+  status         ShipmentStatus @default(PENDING)
+  carrier        String? // DHL, FedEx, UPS, etc.
+  trackingNumber String?
+  trackingUrl    String?
+
+  // Shipping Details
+  estimatedDelivery DateTime?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+
+  // Shipment Costs (seller-specific portion)
+  shippingCost Decimal? @db.Decimal(10, 2)
+  weight       Decimal? @db.Decimal(10, 2)
+
+  // Notes & Metadata
+  notes    String? @db.Text
+  metadata Json? // Carrier-specific data, customs info, etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  order  Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  store  Store           @relation(fields: [storeId], references: [id])
+  items  ShipmentItem[] // Items in this shipment
+  events ShipmentEvent[] // Tracking timeline
+
+  @@index([orderId])
+  @@index([storeId])
+  @@index([status])
+  @@index([trackingNumber])
+  @@index([shippedAt])
+  @@map("seller_shipments")
+}
+
+// Enum for shipment status lifecycle
+enum ShipmentStatus {
+  PENDING // Seller hasn't shipped yet
+  PROCESSING // Seller is preparing shipment
+  LABEL_CREATED // Shipping label created
+  PICKED_UP // Carrier picked up package
+  IN_TRANSIT // Package in transit
+  OUT_FOR_DELIVERY // Out for delivery
+  DELIVERED // Successfully delivered
+  FAILED_DELIVERY // Delivery attempt failed
+  RETURNED // Returned to sender
+}
+
+// Join table linking order items to shipments
+model ShipmentItem {
+  id          String @id @default(cuid())
+  shipmentId  String
+  orderItemId String
+  quantity    Int // Quantity in this shipment (supports partial item shipment)
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  shipment  SellerShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  orderItem OrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@unique([shipmentId, orderItemId]) // Each item can only be added once per shipment
+  @@index([shipmentId])
+  @@index([orderItemId])
+  @@map("shipment_items")
+}
+
+// Shipment tracking events for detailed timeline
+model ShipmentEvent {
+  id         String @id @default(cuid())
+  shipmentId String
+
+  // Event Details
+  status      ShipmentStatus
+  title       String // "Package Picked Up", "In Transit", etc.
+  description String?        @db.Text
+  location    String? // City, State, Country
+
+  // Metadata
+  metadata Json? // Carrier-specific tracking data
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  shipment SellerShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@index([createdAt])
+  @@map("shipment_events")
 }
 
 // Return Request for handling returns and refunds
@@ -1547,9 +1722,9 @@ model PaymentTransaction {
   userId  String
 
   // Stripe Information
-  stripePaymentIntentId String? @unique
-  stripeChargeId        String?
-  stripeCustomerId      String?
+  stripePaymentIntentId      String? @unique
+  stripeChargeId             String?
+  stripeCustomerId           String?
   stripeBalanceTransactionId String? // For retrieving fee information
 
   // Transaction Details
@@ -1559,10 +1734,10 @@ model PaymentTransaction {
   paymentMethod PaymentMethod
 
   // Payment Processing Fees (Stripe/PayPal)
-  processingFeeAmount   Decimal? @db.Decimal(10, 2) // Total fee charged by processor
-  processingFeePercent  Decimal? @db.Decimal(5, 4)  // Percentage fee (e.g., 0.0290 for 2.9%)
-  processingFeeFixed    Decimal? @db.Decimal(10, 2) // Fixed fee (e.g., 0.30)
-  netAmount             Decimal? @db.Decimal(10, 2) // Amount after processing fees
+  processingFeeAmount  Decimal? @db.Decimal(10, 2) // Total fee charged by processor
+  processingFeePercent Decimal? @db.Decimal(5, 4) // Percentage fee (e.g., 0.0290 for 2.9%)
+  processingFeeFixed   Decimal? @db.Decimal(10, 2) // Fixed fee (e.g., 0.30)
+  netAmount            Decimal? @db.Decimal(10, 2) // Amount after processing fees
 
   // Additional Payment Methods
   walletBalance Decimal? @db.Decimal(10, 2) // If paid with wallet
@@ -2032,11 +2207,11 @@ model EscrowTransaction {
   storeId              String
 
   // Amounts
-  totalAmount         Decimal @db.Decimal(10, 2) // Total order amount (seller's portion)
-  platformFee         Decimal @db.Decimal(10, 2) // Platform commission
+  totalAmount          Decimal @db.Decimal(10, 2) // Total order amount (seller's portion)
+  platformFee          Decimal @db.Decimal(10, 2) // Platform commission
   paymentProcessingFee Decimal @default(0) @db.Decimal(10, 2) // Stripe/PayPal fees
-  sellerAmount        Decimal @db.Decimal(10, 2) // Net amount to be paid to seller (after all fees)
-  currency            String  @default("USD")
+  sellerAmount         Decimal @db.Decimal(10, 2) // Net amount to be paid to seller (after all fees)
+  currency             String  @default("USD")
 
   // Escrow Status
   status EscrowStatus @default(HELD)

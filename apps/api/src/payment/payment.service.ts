@@ -103,6 +103,13 @@ export class PaymentService {
   }
 
   /**
+   * Public method to get Stripe client for other services (e.g., seller credits)
+   */
+  async getStripe(): Promise<Stripe> {
+    return this.getStripeClient();
+  }
+
+  /**
    * Reload Stripe configuration without restarting the application
    * Useful when settings are updated via admin panel
    */
@@ -642,8 +649,41 @@ export class PaymentService {
           await this.handleDisputeClosed(event.data.object as Stripe.Dispute, webhookEvent.id);
           break;
 
-        // Subscription Events - Route to StripeSubscriptionService
+        // Checkout Session Completed - Check if it's seller credits or subscription
         case 'checkout.session.completed':
+          const session = event.data.object as Stripe.Checkout.Session;
+
+          // Check if this is a seller credit purchase
+          if (session.metadata?.type === 'seller_credits') {
+            this.logger.log('Processing seller credit purchase from checkout session');
+
+            // Dynamically import SellerCreditsService to avoid circular dependency
+            try {
+              const { SellerCreditsService } = await import('../seller/seller-credits.service');
+              const sellerCreditsService = new SellerCreditsService(
+                this.prisma,
+                this.configService,
+                this, // Pass PaymentService itself
+              );
+
+              await sellerCreditsService.processSuccessfulPurchase(session.id);
+              this.logger.log(`✅ Seller credit purchase processed: ${session.id}`);
+            } catch (error) {
+              this.logger.error(`Failed to process seller credit purchase:`, error);
+              throw error;
+            }
+          } else {
+            // Route to StripeSubscriptionService for regular subscriptions
+            if (this.stripeSubscriptionService) {
+              this.logger.log(`Routing ${event.type} to StripeSubscriptionService`);
+              await this.stripeSubscriptionService.handleWebhookEvent(event);
+            } else {
+              this.logger.warn(`StripeSubscriptionService not available to handle ${event.type}`);
+            }
+          }
+          break;
+
+        // Other Subscription Events - Route to StripeSubscriptionService
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
         case 'customer.subscription.deleted':
