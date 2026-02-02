@@ -11,6 +11,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { CollectionsModule } from './collections/collections.module';
 import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
+import { ShipmentsModule } from './shipments/shipments.module';
 import { PaymentModule } from './payment/payment.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { WishlistModule } from './wishlist/wishlist.module';
@@ -41,6 +42,7 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { DhlModule } from './integrations/dhl/dhl.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
+import { SellerCreditsCronService } from './cron/seller-credits.cron';
 // import { QueueModule } from './queue/queue.module'; // Commented out - requires Redis setup
 
 @Module({
@@ -66,6 +68,7 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
     CollectionsModule,
     CartModule,
     OrdersModule,
+    ShipmentsModule,
     PaymentModule,
     ReviewsModule,
     WishlistModule,
@@ -103,6 +106,7 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
       provide: APP_GUARD,
       useClass: Admin2FAGuard,
     },
+    SellerCreditsCronService,
   ],
 })
 export class AppModule {}

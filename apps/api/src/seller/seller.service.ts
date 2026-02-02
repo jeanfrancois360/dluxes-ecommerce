@@ -28,6 +28,39 @@ export class SellerService {
   ) {}
 
   /**
+   * Get seller's store information
+   */
+  async getMyStore(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        logo: true,
+        banner: true,
+        status: true,
+        verified: true,
+        rating: true,
+        totalSales: true,
+        totalOrders: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found. Please create a store first.');
+    }
+
+    return {
+      success: true,
+      data: store,
+    };
+  }
+
+  /**
    * Get seller's products
    */
   async getMyProducts(userId: string, query: any) {
@@ -945,6 +978,7 @@ export class SellerService {
           slug: true,
           status: true,
           verified: true,
+          verifiedAt: true,
           rating: true,
           totalSales: true,
           totalOrders: true,
