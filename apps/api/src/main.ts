@@ -11,8 +11,9 @@ async function bootstrap() {
   console.log('[BOOTSTRAP] Step 1: Creating Nest application...');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    rawBody: true, // Enable raw body for webhook signature verification
   });
-  console.log('[BOOTSTRAP] Step 2: Nest application created');
+  console.log('[BOOTSTRAP] Step 2: Nest application created with rawBody support');
 
   const configService = app.get(ConfigService);
   console.log('[BOOTSTRAP] Step 3: Got ConfigService');
@@ -58,10 +59,10 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-session-id'],
   });
-  console.log('[BOOTSTRAP] Step 10: CORS enabled');
+  console.log('[BOOTSTRAP] Step 11: CORS enabled');
 
   // Global validation pipe
-  console.log('[BOOTSTRAP] Step 11: Setting up global pipes...');
+  console.log('[BOOTSTRAP] Step 12: Setting up global pipes...');
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -69,17 +70,17 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     })
   );
-  console.log('[BOOTSTRAP] Step 12: Global pipes configured');
+  console.log('[BOOTSTRAP] Step 13: Global pipes configured');
 
   // Global exception filter for consistent error responses
-  console.log('[BOOTSTRAP] Step 13: Setting up global filters...');
+  console.log('[BOOTSTRAP] Step 14: Setting up global filters...');
   app.useGlobalFilters(new HttpExceptionFilter());
-  console.log('[BOOTSTRAP] Step 14: Global filters configured');
+  console.log('[BOOTSTRAP] Step 15: Global filters configured');
 
   const port = configService.get('PORT') || 3001;
-  console.log('[BOOTSTRAP] Step 15: Starting server on port:', port);
+  console.log('[BOOTSTRAP] Step 16: Starting server on port:', port);
   await app.listen(port);
-  console.log('[BOOTSTRAP] Step 16: Server is now listening!');
+  console.log('[BOOTSTRAP] Step 17: Server is now listening!');
 
   console.log(`🚀 NextPik E-commerce API running on: http://localhost:${port}/${apiPrefix}`);
 }
