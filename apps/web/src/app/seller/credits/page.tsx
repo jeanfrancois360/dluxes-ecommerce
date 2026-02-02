@@ -5,7 +5,7 @@ import { useCreditBalance, useCreditPackages } from '@/hooks/use-subscription';
 import { creditsApi } from '@/lib/api/credits';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { format } from 'date-fns';
-import { Coins, TrendingUp, TrendingDown, Clock, Star, Zap, Plus, History, Info } from 'lucide-react';
+import { Coins, TrendingUp, TrendingDown, Clock, Star, Zap, Plus, History, Info, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -28,9 +28,10 @@ export default function SellerCreditsPage() {
       const result = await creditsApi.getHistory({ page, limit: 10 });
       setTransactions(result.transactions || []);
       setTransactionsTotal(result.total || 0);
-    } catch (error) {
+      setTransactionsPage(page);
+    } catch (error: any) {
       console.error('Failed to fetch transactions:', error);
-      toast.error('Failed to load transaction history');
+      toast.error(error.message || 'Failed to load transaction history');
     } finally {
       setTransactionsLoading(false);
     }
@@ -299,14 +300,23 @@ export default function SellerCreditsPage() {
 
                 <button
                   onClick={() => handlePurchasePackage(pkg.id)}
+                  disabled={purchasing}
                   className={cn(
-                    'w-full py-3 rounded-lg font-semibold transition-colors',
+                    'w-full py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2',
                     pkg.isPopular
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400'
+                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200 disabled:bg-gray-300',
+                    'disabled:cursor-not-allowed'
                   )}
                 >
-                  Purchase Package
+                  {purchasing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Purchase Package'
+                  )}
                 </button>
               </div>
             ))}
