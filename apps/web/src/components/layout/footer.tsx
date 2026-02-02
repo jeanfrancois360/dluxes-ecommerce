@@ -23,38 +23,34 @@ export function Footer() {
     shop: [
       { label: 'All Products', href: '/products' },
       { label: 'All Stores', href: '/stores' },
-      { label: 'New Arrivals', href: '/products?filter=new' },
-      { label: 'Best Sellers', href: '/products?filter=bestsellers' },
-      { label: 'Sale', href: '/products?filter=sale' },
-      { label: 'Gift Cards', href: '/gift-cards' },
+      { label: 'Search Products', href: '/search' },
+      { label: 'Wishlist', href: '/wishlist' },
+      { label: 'Become a Seller', href: '/become-seller' },
     ],
-    collections: [
-      { label: 'Living Room', href: '/collections/living-room' },
-      { label: 'Bedroom', href: '/collections/bedroom' },
-      { label: 'Dining Room', href: '/collections/dining-room' },
-      { label: 'Office', href: '/collections/office' },
-      { label: 'Outdoor', href: '/collections/outdoor' },
+    account: [
+      { label: 'My Account', href: '/account' },
+      { label: 'My Orders', href: '/account/orders' },
+      { label: 'My Reviews', href: '/account/reviews' },
+      { label: 'Following', href: '/account/following' },
+      { label: 'Notifications', href: '/account/notifications' },
     ],
     customerService: [
       { label: 'Contact Us', href: '/contact' },
-      { label: 'Shipping & Returns', href: '/shipping' },
       { label: 'Track Order', href: '/track-order' },
-      { label: 'FAQ', href: '/faq' },
-      { label: 'Size Guide', href: '/size-guide' },
+      { label: 'Help Center', href: '/help' },
+      { label: 'Returns', href: '/account/returns' },
+      { label: 'Inquiries', href: '/account/inquiries' },
     ],
     company: [
       { label: 'About Us', href: '/about' },
-      { label: 'Careers', href: '/careers' },
-      { label: 'Press', href: '/press' },
-      { label: 'Sustainability', href: '/sustainability' },
-      { label: 'Blog', href: '/blog' },
+      { label: 'Seller Portal', href: '/seller/products' },
+      { label: 'Admin Portal', href: '/admin/dashboard' },
+      { label: 'Advertisement Plans', href: '/seller/advertisement-plans' },
     ],
     legal: [
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
       { label: 'Seller Agreement', href: '/seller-agreement' },
-      { label: 'Cookie Policy', href: '/cookies' },
-      { label: 'Accessibility', href: '/accessibility' },
     ],
   };
 
@@ -146,9 +142,9 @@ export function Footer() {
 
         {/* Links Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 py-12">
-          {/* Shop by Category */}
+          {/* Shop */}
           <div>
-            <h4 className="font-semibold text-lg mb-4">Shop by Category</h4>
+            <h4 className="font-semibold text-lg mb-4">Shop</h4>
             <ul className="space-y-3">
               {footerLinks.shop.map((link) => (
                 <li key={link.label}>
@@ -163,11 +159,11 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Collections */}
+          {/* My Account */}
           <div>
-            <h4 className="font-semibold text-lg mb-4">Collections</h4>
+            <h4 className="font-semibold text-lg mb-4">My Account</h4>
             <ul className="space-y-3">
-              {footerLinks.collections.map((link) => (
+              {footerLinks.account.map((link) => (
                 <li key={link.label}>
                   <Link
                     href={link.href}
@@ -197,9 +193,9 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* About Company */}
+          {/* Company */}
           <div>
-            <h4 className="font-semibold text-lg mb-4">About Company</h4>
+            <h4 className="font-semibold text-lg mb-4">Company</h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
