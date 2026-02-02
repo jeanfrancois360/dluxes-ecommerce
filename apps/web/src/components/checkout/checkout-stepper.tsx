@@ -1,7 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import React from 'react';
 import { cn } from '@nextpik/ui';
+import { Package, CreditCard, ShieldCheck, Check } from 'lucide-react';
 
 export type CheckoutStep = 'shipping' | 'payment' | 'review';
 
@@ -12,10 +13,30 @@ interface CheckoutStepperProps {
   className?: string;
 }
 
-const STEPS: Array<{ id: CheckoutStep; label: string; number: number }> = [
-  { id: 'shipping', label: 'Shipping', number: 1 },
-  { id: 'payment', label: 'Payment', number: 2 },
-  { id: 'review', label: 'Review', number: 3 },
+const STEPS: Array<{
+  id: CheckoutStep;
+  label: string;
+  number: number;
+  icon: any;
+}> = [
+  {
+    id: 'shipping',
+    label: 'Shipping Details',
+    number: 1,
+    icon: Package,
+  },
+  {
+    id: 'payment',
+    label: 'Payment Info',
+    number: 2,
+    icon: CreditCard,
+  },
+  {
+    id: 'review',
+    label: 'Review Order',
+    number: 3,
+    icon: ShieldCheck,
+  },
 ];
 
 export function CheckoutStepper({
@@ -35,188 +56,124 @@ export function CheckoutStepper({
   };
 
   const isStepClickable = (stepId: CheckoutStep, index: number) => {
-    // Can click on completed steps or the current step
     return isStepCompleted(stepId) || index <= currentStepIndex;
+  };
+
+  const getStepStatus = (stepId: CheckoutStep) => {
+    if (isStepCompleted(stepId)) return 'completed';
+    if (isStepActive(stepId)) return 'in-progress';
+    return 'pending';
   };
 
   return (
     <div className={cn('w-full', className)}>
-      {/* Mobile View - Horizontal Pills */}
-      <div className="lg:hidden">
-        <div className="flex items-center justify-between gap-2">
-          {STEPS.map((step, index) => (
-            <motion.button
-              key={step.id}
-              onClick={() => {
-                if (isStepClickable(step.id, index) && onStepClick) {
-                  onStepClick(step.id);
-                }
-              }}
-              disabled={!isStepClickable(step.id, index)}
-              whileHover={isStepClickable(step.id, index) ? { scale: 1.05 } : {}}
-              whileTap={isStepClickable(step.id, index) ? { scale: 0.95 } : {}}
-              className={cn(
-                'flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:cursor-not-allowed',
-                isStepActive(step.id) && 'bg-gold text-white shadow-lg shadow-gold/20',
-                isStepCompleted(step.id) && !isStepActive(step.id) && 'bg-green-100 text-green-800',
-                !isStepActive(step.id) && !isStepCompleted(step.id) && 'bg-neutral-100 text-neutral-500'
-              )}
-            >
-              {isStepCompleted(step.id) ? (
-                <span className="flex items-center justify-center gap-1">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                  {step.label}
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-1">
-                  {step.number}. {step.label}
-                </span>
-              )}
-            </motion.button>
-          ))}
-        </div>
-      </div>
-
-      {/* Desktop View - Horizontal Stepper */}
-      <div className="hidden lg:block">
-        <div className="relative">
-          {/* Progress Line */}
-          <div className="absolute left-0 top-6 w-full h-0.5 bg-neutral-200">
-            <motion.div
-              initial={{ width: '0%' }}
-              animate={{
-                width: `${(currentStepIndex / (STEPS.length - 1)) * 100}%`,
-              }}
-              transition={{ duration: 0.5, ease: 'easeInOut' }}
-              className="h-full bg-gold"
-            />
-          </div>
-
-          {/* Steps */}
-          <div className="relative flex justify-between">
-            {STEPS.map((step, index) => {
+      {/* Horizontal Stepper */}
+      <div className="relative">
+        {/* Connecting Lines */}
+        <div className="absolute top-6 left-0 right-0 flex items-center px-12">
+          <div className="flex-1 flex items-center gap-4">
+            {STEPS.slice(0, -1).map((step, index) => {
               const isCompleted = isStepCompleted(step.id);
-              const isActive = isStepActive(step.id);
-              const isClickable = isStepClickable(step.id, index);
+              const isBeforeCurrent = index < currentStepIndex;
 
               return (
-                <motion.button
-                  key={step.id}
-                  onClick={() => {
-                    if (isClickable && onStepClick) {
-                      onStepClick(step.id);
-                    }
-                  }}
-                  disabled={!isClickable}
-                  whileHover={isClickable ? { scale: 1.05 } : {}}
-                  whileTap={isClickable ? { scale: 0.95 } : {}}
-                  className={cn(
-                    'flex flex-col items-center gap-3 relative',
-                    'transition-all disabled:cursor-not-allowed',
-                    isClickable && 'cursor-pointer'
-                  )}
-                >
-                  {/* Step Circle */}
-                  <motion.div
-                    initial={false}
-                    animate={{
-                      scale: isActive ? 1.1 : 1,
-                    }}
+                <div key={step.id} className="flex-1 h-1 rounded-full bg-neutral-200">
+                  <div
                     className={cn(
-                      'w-12 h-12 rounded-full flex items-center justify-center font-semibold text-base transition-all relative z-10',
-                      isActive &&
-                        'bg-gold text-white shadow-lg shadow-gold/30 ring-4 ring-gold/20',
-                      isCompleted &&
-                        !isActive &&
-                        'bg-green-500 text-white shadow-md shadow-green-500/20',
-                      !isActive && !isCompleted && 'bg-white text-neutral-400 border-2 border-neutral-300'
+                      'h-full rounded-full transition-all duration-500',
+                      (isCompleted || isBeforeCurrent) && 'bg-green-500',
+                      isStepActive(step.id) && 'bg-gold w-1/2'
                     )}
-                  >
-                    {isCompleted ? (
-                      <motion.svg
-                        initial={{ scale: 0, rotate: -180 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                        className="w-6 h-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </motion.svg>
-                    ) : (
-                      <span>{step.number}</span>
-                    )}
-                  </motion.div>
-
-                  {/* Step Label */}
-                  <div className="text-center">
-                    <p
-                      className={cn(
-                        'text-sm font-semibold transition-colors',
-                        isActive && 'text-gold',
-                        isCompleted && !isActive && 'text-green-700',
-                        !isActive && !isCompleted && 'text-neutral-500'
-                      )}
-                    >
-                      {step.label}
-                    </p>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      {isCompleted && !isActive ? 'Completed' : isActive ? 'In Progress' : 'Pending'}
-                    </p>
-                  </div>
-
-                  {/* Active Indicator */}
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeIndicator"
-                      className="absolute -bottom-2 w-full h-1 bg-gold rounded-full"
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
+                    style={{
+                      width: (isCompleted || isBeforeCurrent) ? '100%' : isStepActive(step.id) ? '50%' : '0%'
+                    }}
+                  />
+                </div>
               );
             })}
           </div>
         </div>
-      </div>
 
-      {/* Step Description */}
-      <motion.div
-        key={currentStep}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="mt-6 p-4 bg-gradient-to-br from-neutral-50 to-white border border-neutral-200 rounded-lg"
-      >
-        <p className="text-sm text-neutral-600 text-center">
-          {currentStep === 'shipping' && (
-            <>
-              <span className="font-semibold text-black">Step 1:</span> Enter your shipping address
-              and contact information
-            </>
-          )}
-          {currentStep === 'payment' && (
-            <>
-              <span className="font-semibold text-black">Step 2:</span> Select your shipping method
-              and enter payment details
-            </>
-          )}
-          {currentStep === 'review' && (
-            <>
-              <span className="font-semibold text-black">Step 3:</span> Review your order and
-              complete your purchase
-            </>
-          )}
-        </p>
-      </motion.div>
+        {/* Steps */}
+        <div className="relative flex justify-between">
+          {STEPS.map((step, index) => {
+            const isCompleted = isStepCompleted(step.id);
+            const isActive = isStepActive(step.id);
+            const isClickable = isStepClickable(step.id, index);
+            const Icon = step.icon;
+            const status = getStepStatus(step.id);
+
+            return (
+              <button
+                key={step.id}
+                onClick={() => {
+                  if (isClickable && onStepClick) {
+                    onStepClick(step.id);
+                  }
+                }}
+                disabled={!isClickable}
+                className={cn(
+                  'flex flex-col items-center gap-3 relative z-10',
+                  'transition-all disabled:cursor-not-allowed',
+                  isClickable && 'cursor-pointer hover:scale-105'
+                )}
+              >
+                {/* Circle */}
+                <div
+                  className={cn(
+                    'w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300',
+                    'border-2',
+                    isCompleted && 'bg-green-500 border-green-500',
+                    isActive && 'bg-gold border-gold ring-4 ring-gold/20',
+                    !isActive && !isCompleted && 'bg-white border-neutral-300'
+                  )}
+                >
+                  {isCompleted ? (
+                    <Check className="w-6 h-6 text-white" strokeWidth={3} />
+                  ) : (
+                    <Icon
+                      className={cn(
+                        'w-5 h-5',
+                        isActive && 'text-white',
+                        !isActive && 'text-neutral-400'
+                      )}
+                    />
+                  )}
+                </div>
+
+                {/* Labels */}
+                <div className="flex flex-col items-center gap-1.5 min-w-[120px]">
+                  <p className="text-xs text-neutral-500 font-medium uppercase tracking-wide">
+                    Step {step.number}
+                  </p>
+                  <p
+                    className={cn(
+                      'text-sm font-semibold transition-colors',
+                      isActive && 'text-neutral-900',
+                      isCompleted && !isActive && 'text-neutral-700',
+                      !isActive && !isCompleted && 'text-neutral-400'
+                    )}
+                  >
+                    {step.label}
+                  </p>
+                  <span
+                    className={cn(
+                      'text-xs font-medium px-3 py-1 rounded-full transition-all',
+                      status === 'completed' && 'bg-green-100 text-green-700',
+                      status === 'in-progress' && 'bg-gold/10 text-gold',
+                      status === 'pending' && 'bg-neutral-100 text-neutral-500'
+                    )}
+                  >
+                    {status === 'completed' && 'Completed'}
+                    {status === 'in-progress' && 'In Progress'}
+                    {status === 'pending' && 'Pending'}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

@@ -210,6 +210,9 @@ export function useCheckout() {
           price: item.priceAtAdd !== undefined ? item.priceAtAdd : item.price, // Use locked price
         }));
 
+        // Generate idempotency key to prevent duplicate orders
+        const idempotencyKey = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
         const orderResponse = await axios.post(
           `${API_URL}/orders`,
           {
@@ -217,6 +220,7 @@ export function useCheckout() {
             shippingAddressId: state.shippingAddressId,
             paymentMethod: 'STRIPE',
             notes: '',
+            idempotencyKey, // Prevents duplicate orders if called twice
           },
           {
             headers: {

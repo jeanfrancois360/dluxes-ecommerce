@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export function Footer() {
   const [email, setEmail] = useState('');
@@ -23,7 +24,7 @@ export function Footer() {
     shop: [
       { label: 'All Products', href: '/products' },
       { label: 'All Stores', href: '/stores' },
-      { label: 'Search Products', href: '/search' },
+      { label: 'Search Products', href: '/products' },
       { label: 'Wishlist', href: '/wishlist' },
       { label: 'Become a Seller', href: '/become-seller' },
     ],
@@ -283,25 +284,14 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-12">
           {/* Logo and Copyright */}
           <div className="flex flex-col items-center md:items-start gap-4">
-            <Link href="/" className="flex items-center space-x-2 group">
-              <svg
-                className="w-8 h-8 text-gold"
-                viewBox="0 0 40 40"
-                fill="none"
-              >
-                <path
-                  d="M20 4L4 12V28L20 36L36 28V12L20 4Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M20 4V20M20 20L4 28M20 20L36 28"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-              </svg>
-              <span className="text-2xl font-semibold">NEXTPIK</span>
+            <Link href="/" className="group">
+              <Image
+                src="/logo.svg"
+                alt="NextPik"
+                width={140}
+                height={48}
+                className="h-auto w-auto max-h-12 transition-all duration-300 group-hover:brightness-110"
+              />
             </Link>
             <p className="text-neutral-400 text-sm text-center md:text-left max-w-md">
               A robust and scalable e-commerce platform built for performance, clarity, and usability.
