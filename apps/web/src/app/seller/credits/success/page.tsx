@@ -5,15 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle, ArrowRight, Loader2, Coins, Package } from 'lucide-react';
 import confetti from 'canvas-confetti';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+import { creditsApi, CreditBalance } from '@/lib/api/credits';
 
 export default function CreditPurchaseSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const [isLoading, setIsLoading] = useState(true);
-  const [balanceData, setBalanceData] = useState<any>(null);
+  const [balanceData, setBalanceData] = useState<CreditBalance | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionId) {
@@ -55,22 +55,11 @@ export default function CreditPurchaseSuccessPage() {
         // Wait a moment for webhook to process
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-
-        const res = await fetch(`${API_URL}/credits/balance`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` }),
-          },
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setBalanceData(data.data);
-        }
-      } catch (error) {
+        const balance = await creditsApi.getBalance();
+        setBalanceData(balance);
+      } catch (error: any) {
         console.error('Failed to fetch balance:', error);
+        setError(error.message || 'Failed to load balance');
       } finally {
         setIsLoading(false);
       }
@@ -87,6 +76,26 @@ export default function CreditPurchaseSuccessPage() {
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-[#CBB57B] mx-auto mb-4" />
           <p className="text-gray-600">Processing your purchase...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">⚠️</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Balance</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={() => router.push('/seller/credits')}
+            className="px-6 py-3 bg-[#CBB57B] text-white rounded-lg font-semibold hover:bg-[#A89968] transition-colors"
+          >
+            Go to Credits Dashboard
+          </button>
         </div>
       </div>
     );
