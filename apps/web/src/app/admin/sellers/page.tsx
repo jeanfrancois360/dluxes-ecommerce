@@ -28,6 +28,7 @@ import { Button } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 import { Label } from '@nextpik/ui';
 import { Textarea } from '@nextpik/ui';
+import { AdminLayout } from '@/components/admin/admin-layout';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -35,7 +36,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1
 const fetcher = async (url: string) => {
   const res = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`,
+      Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
     },
   });
 
@@ -145,7 +146,7 @@ export default function AdminSellersPage() {
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
             'Content-Type': 'application/json',
           },
         }
@@ -181,7 +182,7 @@ export default function AdminSellersPage() {
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ rejectionNote }),
@@ -219,7 +220,7 @@ export default function AdminSellersPage() {
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ suspensionNote }),
@@ -244,30 +245,25 @@ export default function AdminSellersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Seller Management</h1>
-              <p className="text-gray-300 mt-1">
-                Manage seller applications and accounts
-              </p>
-            </div>
-            <Button
-              onClick={refreshData}
-              variant="outline"
-              className="bg-white/10 hover:bg-white/20 border-white/20 text-white"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
+    <AdminLayout>
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Seller Management</h1>
+            <p className="text-gray-600 mt-1">
+              Manage seller applications and accounts
+            </p>
           </div>
+          <Button
+            onClick={refreshData}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -475,7 +471,7 @@ export default function AdminSellersPage() {
                                   {
                                     method: 'POST',
                                     headers: {
-                                      Authorization: `Bearer ${localStorage.getItem('token')}`,
+                                      Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
                                     },
                                   }
                                 );
@@ -646,6 +642,7 @@ export default function AdminSellersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }
