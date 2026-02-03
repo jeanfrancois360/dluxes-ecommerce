@@ -240,9 +240,9 @@ export default function SellingCreditsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Monthly Selling Credits</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Platform Subscription</h1>
           <p className="text-gray-600">
-            Manage your monthly subscription credits to keep your products active
+            Manage your monthly subscription to keep your products active
           </p>
         </motion.div>
 

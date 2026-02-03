@@ -228,9 +228,6 @@ export class ProductsService {
       if (!check.reasons.hasListingCapacity) {
         messages.push('You have reached your maximum listing limit');
       }
-      if (!check.reasons.hasCredits) {
-        messages.push('Insufficient credits for this listing');
-      }
 
       return { allowed: false, message: messages.join('. ') };
     }
