@@ -14,6 +14,7 @@ export default function PurchaseSuccessPage() {
   const sessionId = searchParams.get('session_id');
   const [isLoading, setIsLoading] = useState(true);
   const [purchaseData, setPurchaseData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionId) {
@@ -53,31 +54,71 @@ export default function PurchaseSuccessPage() {
       });
     }, 50);
 
-    // Fetch purchase confirmation (optional - you could get this from the session)
+    // Verify and process purchase using session_id
     const fetchPurchaseInfo = async () => {
-      try {
-        // Wait a moment for webhook to process
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
 
-        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      // Retry up to 5 times with exponential backoff
+      let attempts = 0;
+      const maxAttempts = 5;
 
-        const res = await fetch(`${API_URL}/seller/credits`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` }),
-          },
-        });
+      const verifyPurchase = async (): Promise<void> => {
+        try {
+          const res = await fetch(
+            `${API_URL}/seller/credits/verify-session?session_id=${sessionId}`,
+            {
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+              },
+            }
+          );
 
-        if (res.ok) {
           const data = await res.json();
-          setPurchaseData(data.data);
+
+          if (res.ok && data.success) {
+            // Successfully verified and processed
+            setPurchaseData(data.data);
+            setIsLoading(false);
+            return;
+          } else if (data.message?.includes('Payment not completed')) {
+            // Payment not completed yet, retry
+            if (attempts >= maxAttempts) {
+              setError('Payment verification timed out. Please check your credit history.');
+              setIsLoading(false);
+              return;
+            }
+
+            // Wait with exponential backoff (2s, 4s, 8s, 16s, 32s)
+            attempts++;
+            const delay = Math.min(2000 * Math.pow(2, attempts - 1), 32000);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return verifyPurchase();
+          } else {
+            // Other error
+            setError(data.message || 'Failed to verify purchase. Please check your credit history.');
+            setIsLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.error('Failed to verify purchase:', error);
+
+          if (attempts >= maxAttempts) {
+            setError('Unable to verify purchase. Please check your credit history or contact support.');
+            setIsLoading(false);
+            return;
+          }
+
+          // Retry with exponential backoff
+          attempts++;
+          const delay = Math.min(2000 * Math.pow(2, attempts - 1), 32000);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return verifyPurchase();
         }
-      } catch (error) {
-        console.error('Failed to fetch purchase info:', error);
-      } finally {
-        setIsLoading(false);
-      }
+      };
+
+      await verifyPurchase();
     };
 
     fetchPurchaseInfo();
@@ -85,12 +126,35 @@ export default function PurchaseSuccessPage() {
     return () => clearInterval(interval);
   }, [sessionId, router]);
 
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Connection Error</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-[#CBB57B] text-white rounded-lg font-semibold hover:bg-[#A89968] transition-colors"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-[#CBB57B] mx-auto mb-4" />
           <p className="text-gray-600">Processing your purchase...</p>
+          <p className="text-sm text-gray-500 mt-2">Waiting for payment confirmation...</p>
         </div>
       </div>
     );
@@ -140,7 +204,7 @@ export default function PurchaseSuccessPage() {
             transition={{ delay: 0.4 }}
             className="text-lg text-gray-600 mb-8"
           >
-            Your selling credits have been added to your account
+            Your subscription has been added to your account
           </motion.p>
 
           {/* Purchase Details */}
@@ -153,7 +217,7 @@ export default function PurchaseSuccessPage() {
             >
               <div className="flex items-center justify-center gap-3 mb-4">
                 <CreditCard className="w-6 h-6" />
-                <h2 className="text-xl font-semibold">New Credit Balance</h2>
+                <h2 className="text-xl font-semibold">New Subscription Balance</h2>
               </div>
               <div className="text-5xl font-bold mb-2">
                 {purchaseData.creditsBalance}

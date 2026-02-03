@@ -54,6 +54,9 @@ export class SellerCreditsService {
       store.status === StoreStatus.ACTIVE &&
       (store.creditsBalance > 0 || inGracePeriod);
 
+    // Can purchase if store is ACTIVE (approved)
+    const canPurchase = store.status === StoreStatus.ACTIVE;
+
     return {
       success: true,
       data: {
@@ -66,6 +69,7 @@ export class SellerCreditsService {
         graceEndsAt: store.creditsGraceEndsAt,
         inGracePeriod,
         canPublish,
+        canPurchase,
       },
     };
   }
@@ -251,6 +255,77 @@ export class SellerCreditsService {
         totalAmount,
       },
     };
+  }
+
+  /**
+   * Verify Stripe session and process if not already done
+   */
+  async verifyAndProcessSession(userId: string, stripeSessionId: string) {
+    try {
+      // Get Stripe client
+      const stripe = await this.paymentService.getStripe();
+
+      // Retrieve session from Stripe
+      const session = await stripe.checkout.sessions.retrieve(stripeSessionId, {
+        expand: ['payment_intent'],
+      });
+
+      // Verify this session belongs to this user
+      if (session.metadata.userId !== userId) {
+        throw new ForbiddenException('This session does not belong to you');
+      }
+
+      // Check payment status
+      if (session.payment_status !== 'paid') {
+        return {
+          success: false,
+          message: 'Payment not completed yet',
+          data: {
+            paymentStatus: session.payment_status,
+          },
+        };
+      }
+
+      // Check if already processed
+      const existingTransaction =
+        await this.prisma.sellerCreditTransaction.findUnique({
+          where: { stripeSessionId },
+        });
+
+      if (!existingTransaction) {
+        // Not processed yet, process it now
+        this.logger.log(
+          `Manually processing credit purchase: ${stripeSessionId}`,
+        );
+        await this.processSuccessfulPurchase(stripeSessionId);
+      }
+
+      // Get updated balance
+      const balance = await this.getCreditBalance(userId);
+
+      // Get purchase details from session
+      const monthsPurchased = parseInt(session.metadata.months, 10);
+
+      return {
+        success: true,
+        data: {
+          ...balance.data,
+          purchaseDetails: {
+            monthsPurchased,
+            pricePerMonth: parseFloat(session.metadata.pricePerMonth),
+            totalPaid: session.amount_total / 100, // Convert from cents
+            sessionId: stripeSessionId,
+            alreadyProcessed: !!existingTransaction,
+          },
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to verify session ${stripeSessionId}:`,
+        error.stack,
+      );
+      throw new BadRequestException('Failed to verify purchase session');
+    }
   }
 
   /**
