@@ -17,8 +17,8 @@ export class APIError extends Error {
 
 const ACCESS_TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
-const COOKIE_ACCESS_TOKEN_KEY = 'luxury_ecommerce_access_token';
-const COOKIE_REFRESH_TOKEN_KEY = 'luxury_ecommerce_refresh_token';
+const COOKIE_ACCESS_TOKEN_KEY = 'nextpik_ecommerce_access_token';
+const COOKIE_REFRESH_TOKEN_KEY = 'nextpik_ecommerce_refresh_token';
 
 // Cookie utility functions
 function setCookie(name: string, value: string, days: number = 7): void {
@@ -118,13 +118,29 @@ export const ToastNotifier = {
   },
 };
 
+// List of endpoints that can fail silently (non-critical features)
+const SILENT_FAIL_ENDPOINTS = [
+  '/search/trending',
+  '/search/autocomplete',
+  '/search/suggestions',
+  '/products/trending',
+  '/products/new-arrivals',
+  '/products/sale',
+  '/products/related',
+];
+
 async function handleResponse(response: Response) {
   const contentType = response.headers.get('content-type');
   const isJson = contentType?.includes('application/json');
   const data = isJson ? await response.json() : await response.text();
 
-  // Debug logging
-  if (!response.ok || (typeof window !== 'undefined' && window.location.pathname.includes('seller'))) {
+  // Check if this is a non-critical endpoint that can fail silently
+  const url = new URL(response.url);
+  const pathname = url.pathname;
+  const isSilentFailEndpoint = SILENT_FAIL_ENDPOINTS.some(endpoint => pathname.includes(endpoint));
+
+  // Debug logging (skip for silent fail endpoints)
+  if (!isSilentFailEndpoint && (!response.ok || (typeof window !== 'undefined' && window.location.pathname.includes('seller')))) {
     console.log('[API Debug] Response:', {
       url: response.url,
       status: response.status,
@@ -143,8 +159,13 @@ async function handleResponse(response: Response) {
       message: errorMessage,
       fullData: data,
     };
-    console.error('[API Error]', errorDetails);
-    console.error('[API Error Details]', JSON.stringify(errorDetails, null, 2));
+
+    // Only log errors for critical endpoints
+    if (!isSilentFailEndpoint) {
+      console.error('[API Error]', errorDetails);
+      console.error('[API Error Details]', JSON.stringify(errorDetails, null, 2));
+    }
+
     throw new APIError(
       errorMessage,
       response.status,
@@ -159,11 +180,16 @@ async function handleResponse(response: Response) {
     } else {
       // Handle error response from backend
       const errorMessage = data.message || 'An error occurred';
-      console.error('[API Error] Failed response:', {
-        url: response.url,
-        message: errorMessage,
-        fullData: data,
-      });
+
+      // Only log errors for critical endpoints
+      if (!isSilentFailEndpoint) {
+        console.error('[API Error] Failed response:', {
+          url: response.url,
+          message: errorMessage,
+          fullData: data,
+        });
+      }
+
       throw new APIError(
         errorMessage,
         response.status,
@@ -179,16 +205,21 @@ export async function apiClient<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const { headers, ...restOptions } = options;
+  const { headers, body, ...restOptions } = options;
 
   const token = typeof window !== 'undefined'
     ? localStorage.getItem('auth_token')
     : null;
 
+  // Check if body is FormData to handle file uploads correctly
+  const isFormData = body instanceof FormData;
+
   const config: RequestInit = {
     ...restOptions,
+    body,
     headers: {
-      'Content-Type': 'application/json',
+      // Don't set Content-Type for FormData - browser will set it with boundary
+      ...(!isFormData && { 'Content-Type': 'application/json' }),
       ...(token && { Authorization: `Bearer ${token}` }),
       ...headers,
     },
@@ -206,21 +237,21 @@ export const api = {
     apiClient<T>(url, {
       ...options,
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
   put: <T = any>(url: string, data?: any, options?: RequestInit) =>
     apiClient<T>(url, {
       ...options,
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
   patch: <T = any>(url: string, data?: any, options?: RequestInit) =>
     apiClient<T>(url, {
       ...options,
       method: 'PATCH',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
   delete: <T = any>(url: string, options?: RequestInit) =>

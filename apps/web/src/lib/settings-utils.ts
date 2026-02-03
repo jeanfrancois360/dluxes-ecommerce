@@ -15,11 +15,75 @@ export interface Setting {
 
 /**
  * Transform array of settings into key-value object for forms
+ * Properly parses values based on their valueType to match form validation schemas
  */
 export function transformSettingsToForm(settings: Setting[]): Record<string, any> {
   const form: Record<string, any> = {};
   settings.forEach((setting) => {
-    form[setting.key] = setting.value;
+    let parsedValue = setting.value;
+
+    // Parse value based on valueType to ensure correct type for form validation
+    switch (setting.valueType) {
+      case 'NUMBER':
+        parsedValue = typeof setting.value === 'string'
+          ? parseFloat(setting.value)
+          : Number(setting.value);
+        // Handle NaN
+        if (isNaN(parsedValue)) {
+          console.warn(`[transformSettingsToForm] Invalid NUMBER for ${setting.key}:`, setting.value);
+          parsedValue = 0;
+        }
+        break;
+
+      case 'BOOLEAN':
+        if (typeof setting.value === 'string') {
+          parsedValue = setting.value === 'true' || setting.value === '1';
+        } else {
+          parsedValue = Boolean(setting.value);
+        }
+        break;
+
+      case 'JSON':
+      case 'ARRAY':
+        if (typeof setting.value === 'string') {
+          try {
+            parsedValue = JSON.parse(setting.value);
+          } catch (error) {
+            console.error(`[transformSettingsToForm] Failed to parse JSON for ${setting.key}:`, error);
+            parsedValue = setting.valueType === 'ARRAY' ? [] : {};
+          }
+        }
+        // Ensure arrays are actually arrays
+        if (setting.valueType === 'ARRAY' && !Array.isArray(parsedValue)) {
+          console.warn(`[transformSettingsToForm] Expected ARRAY for ${setting.key}, got:`, parsedValue);
+          parsedValue = parsedValue ? [parsedValue] : [];
+        }
+        break;
+
+      case 'STRING':
+      default:
+        // For STRING type, check if it's a JSON string that needs parsing
+        if (typeof setting.value === 'string') {
+          // Try to detect if it's a JSON-encoded string (starts and ends with quotes)
+          const trimmed = setting.value.trim();
+          if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+            try {
+              // Parse to remove the JSON quotes
+              parsedValue = JSON.parse(setting.value);
+            } catch (error) {
+              // If parsing fails, just use the string as-is
+              parsedValue = String(setting.value ?? '');
+            }
+          } else {
+            parsedValue = String(setting.value ?? '');
+          }
+        } else {
+          parsedValue = String(setting.value ?? '');
+        }
+        break;
+    }
+
+    form[setting.key] = parsedValue;
   });
   return form;
 }

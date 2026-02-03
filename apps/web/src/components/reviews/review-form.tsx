@@ -2,8 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FloatingInput } from '@luxury/ui';
-import type { CreateReviewInput } from '@luxury/shared';
+import { FloatingInput } from '@nextpik/ui';
+import type { CreateReviewInput } from '@nextpik/shared';
 
 interface ReviewFormProps {
   isOpen: boolean;

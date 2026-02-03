@@ -1,28 +1,31 @@
 'use client';
 
-import { useState, useMemo, useCallback, Suspense, lazy } from 'react';
+import { useState, useMemo, useCallback, useEffect, Suspense, lazy } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { PageLayout } from '@/components/layout/page-layout';
 import { ProductCarousel } from '@/components/product-carousel';
-import { type QuickViewProduct, QuickViewModal } from '@luxury/ui';
+import { type QuickViewProduct, QuickViewModal } from '@nextpik/ui';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useFeaturedProducts, useNewArrivals, useTrendingProducts, useOnSaleProducts } from '@/hooks/use-products';
+import { useProduct } from '@/hooks/use-product';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 import { useCart } from '@/hooks/use-cart';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCurrencyProducts } from '@/hooks/use-currency-products';
 import { useSelectedCurrency } from '@/hooks/use-currency';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { navigateWithLoading } from '@/lib/navigation';
 
 // Lazy load heavy components
 const InlineAd = lazy(() => import('@/components/ads').then(m => ({ default: m.InlineAd })));
+const HeroBannerAd = lazy(() => import('@/components/ads').then(m => ({ default: m.HeroBannerAd })));
 
 export default function Home() {
   const router = useRouter();
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
+  const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const [addingToWishlist, setAddingToWishlist] = useState<string | null>(null);
 
@@ -52,10 +55,27 @@ export default function Home() {
   const trendingProducts = useCurrencyProducts(trendingTransformed);
   const onSaleProducts = useCurrencyProducts(onSaleTransformed);
 
+  // Fetch fresh product data for Quick View
+  const { product: quickViewFullProduct, isLoading: quickViewLoading } = useProduct(
+    quickViewSlug || '',
+    true
+  );
+
+  // Transform fresh product data for Quick View when it's loaded
+  useEffect(() => {
+    if (quickViewSlug && quickViewFullProduct && !quickViewLoading) {
+      const transformed = transformToQuickViewProducts([quickViewFullProduct])[0];
+      setQuickViewProduct(transformed || null);
+    }
+  }, [quickViewFullProduct, quickViewLoading, quickViewSlug]);
+
   const handleQuickView = useCallback((productId: string) => {
     const allProducts = [...featuredProducts, ...newArrivals, ...trendingProducts, ...onSaleProducts];
     const product = allProducts.find((p) => p.id === productId);
-    if (product) setQuickViewProduct(product);
+    if (product) {
+      // Trigger fresh data fetch by setting the slug
+      setQuickViewSlug(product.slug);
+    }
   }, [featuredProducts, newArrivals, trendingProducts, onSaleProducts]);
 
   const handleNavigate = useCallback((slug: string) => {
@@ -67,7 +87,7 @@ export default function Home() {
     setAddingToCart(productId);
     try {
       await addToCartApi(productId, 1);
-      toast.success('Added to Cart', 'Item has been added to your cart');
+      toast.success('Item has been added to your cart');
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
       toast.error('Error', error.message || 'Failed to add item to cart');
@@ -80,14 +100,14 @@ export default function Home() {
     if (addingToWishlist) return;
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
-      toast.error('Login Required', 'Please login to add items to wishlist');
+      toast.error('Please login to add items to wishlist');
       router.push('/auth/login');
       return;
     }
     setAddingToWishlist(productId);
     try {
       await addToWishlistApi(productId);
-      toast.success('Added to Wishlist', 'Item has been added to your wishlist');
+      toast.success('Item has been added to your wishlist');
     } catch (error: any) {
       console.error('Failed to add to wishlist:', error);
       toast.error('Error', error.message || 'Failed to add item to wishlist');
@@ -98,67 +118,78 @@ export default function Home() {
 
   return (
     <PageLayout>
-      {/* Hero Section */}
-      <section className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden text-white -mt-[168px] pt-[168px]">
-        {/* Background Image */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/images/default-hero-bg.jpg"
-            alt="Hero Background"
-            fill
-            className="object-cover"
-            priority
-            quality={90}
-          />
-          {/* Dark overlay for better text readability */}
-          <div className="absolute inset-0 bg-black/40" />
-        </div>
+      {/* Hero Section - Dynamic Ad or Static Fallback */}
+      <Suspense
+        fallback={
+          <div className="relative h-screen min-h-[600px] bg-gray-200 animate-pulse -mt-[168px] pt-[168px]" />
+        }
+      >
+        <HeroBannerAd
+          className="-mt-[168px] pt-[168px]"
+          fallback={
+            <section className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden text-white -mt-[168px] pt-[168px]">
+              {/* Background Image */}
+              <div className="absolute inset-0 z-0">
+                <Image
+                  src="/images/default-hero-bg.jpg"
+                  alt="Hero Background"
+                  fill
+                  className="object-cover"
+                  priority
+                  quality={90}
+                />
+                {/* Dark overlay for better text readability */}
+                <div className="absolute inset-0 bg-black/40" />
+              </div>
 
-        {/* Optional grid pattern overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px] z-[1]" />
+              {/* Optional grid pattern overlay */}
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px] z-[1]" />
 
-        <div className="relative z-10 max-w-5xl mx-auto px-4 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-          >
-            <span className="inline-block px-6 py-2 bg-[#CBB57B]/20 border border-[#CBB57B] text-[#CBB57B] text-sm font-semibold uppercase tracking-wider rounded-full mb-8">
-              Welcome to NextPik
-            </span>
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Your Modern
-              <br />
-              <span className="bg-gradient-to-r from-[#CBB57B] to-white bg-clip-text text-transparent">
-                Shopping Platform
-              </span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
-              Browse quality products from trusted sellers across multiple categories
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/products">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-10 py-4 bg-[#CBB57B] text-black font-bold text-lg rounded-xl hover:bg-[#A89968] transition-colors shadow-xl"
+              <div className="relative z-10 max-w-5xl mx-auto px-4 text-center">
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.7 }}
                 >
-                  Shop Now
-                </motion.button>
-              </Link>
-              <Link href="/collections">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-10 py-4 bg-white/10 backdrop-blur-sm border-2 border-white text-white font-bold text-lg rounded-xl hover:bg-white/20 transition-colors"
-                >
-                  Browse Collections
-                </motion.button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+                  <span className="inline-block px-6 py-2 bg-[#CBB57B]/20 border border-[#CBB57B] text-[#CBB57B] text-sm font-semibold uppercase tracking-wider rounded-full mb-8">
+                    Welcome to NextPik
+                  </span>
+                  <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+                    Your Modern
+                    <br />
+                    <span className="bg-gradient-to-r from-[#CBB57B] to-white bg-clip-text text-transparent">
+                      Shopping Platform
+                    </span>
+                  </h1>
+                  <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
+                    Browse quality products from trusted sellers across multiple categories
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-4">
+                    <Link href="/products">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="px-10 py-4 bg-[#CBB57B] text-black font-bold text-lg rounded-xl hover:bg-[#A89968] transition-colors shadow-xl"
+                      >
+                        Shop Now
+                      </motion.button>
+                    </Link>
+                    <Link href="/collections">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="px-10 py-4 bg-white/10 backdrop-blur-sm border-2 border-white text-white font-bold text-lg rounded-xl hover:bg-white/20 transition-colors"
+                      >
+                        Browse Collections
+                      </motion.button>
+                    </Link>
+                  </div>
+                </motion.div>
+              </div>
+            </section>
+          }
+        />
+      </Suspense>
 
       {/* Featured Products */}
       <section className="max-w-[1920px] mx-auto px-4 lg:px-8 pt-16 pb-16 bg-white">
@@ -278,8 +309,11 @@ export default function Home() {
       {/* Quick View Modal */}
       <Suspense fallback={null}>
         <QuickViewModal
-          isOpen={!!quickViewProduct}
-          onClose={() => setQuickViewProduct(null)}
+          isOpen={!!quickViewSlug}
+          onClose={() => {
+            setQuickViewSlug(null);
+            setQuickViewProduct(null);
+          }}
           product={quickViewProduct}
           onAddToCart={handleAddToCart}
           onViewDetails={handleNavigate}

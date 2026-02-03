@@ -6,7 +6,7 @@ export class CreatePaymentIntentDto {
   amount: number;
 
   @IsString()
-  currency: string = 'usd';
+  currency: string; // Currency must be provided (no default to prevent mismatches)
 
   @IsString()
   @IsOptional()

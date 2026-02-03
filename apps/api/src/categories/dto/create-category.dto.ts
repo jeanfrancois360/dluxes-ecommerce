@@ -42,4 +42,34 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsObject()
   typeSettings?: Record<string, any>; // Type-specific configuration
+
+  // Navigation & Display Settings
+  @IsOptional()
+  @IsBoolean()
+  showInNavbar?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  showInTopBar?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  showInSidebar?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  showInFooter?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  showOnHomepage?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  priority?: number;
 }

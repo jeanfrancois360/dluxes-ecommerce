@@ -1,8 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
+import { EmailOTPType } from '@prisma/client';
 import { magicLinkTemplate } from './templates/magic-link.template';
 import { passwordResetTemplate } from './templates/password-reset.template';
 import { welcomeTemplate } from './templates/welcome.template';
+import { getEmailOTPTemplate } from './templates/email-otp.template';
+import { orderConfirmationTemplate } from './templates/order-confirmation.template';
+import { sellerOrderNotificationTemplate } from './templates/seller-order-notification.template';
 
 @Injectable()
 export class EmailService {
@@ -19,7 +23,7 @@ export class EmailService {
     }
 
     this.resend = new Resend(apiKey || 'dummy-key');
-    this.fromEmail = process.env.EMAIL_FROM || 'noreply@luxury-ecommerce.com';
+    this.fromEmail = process.env.EMAIL_FROM || 'noreply@nextpik.com';
     this.frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   }
 
@@ -28,13 +32,21 @@ export class EmailService {
    */
   async sendMagicLink(email: string, name: string, token: string): Promise<boolean> {
     try {
+      const magicLink = `${this.frontendUrl}/auth/magic-link?token=${token}`;
+
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
-        this.logger.log(`Magic link token for ${email}: ${token}`);
-        return false;
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`🔗 MAGIC LINK FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Name: ${name}`);
+        this.logger.log(`Link: ${magicLink}`);
+        this.logger.log(`Token: ${token}`);
+        this.logger.warn('='.repeat(80));
+        // Return true to indicate the token was generated successfully
+        return true;
       }
 
-      const magicLink = `${this.frontendUrl}/auth/magic-link?token=${token}`;
       const html = magicLinkTemplate(name, magicLink);
 
       const { data, error } = await this.resend.emails.send({
@@ -62,19 +74,27 @@ export class EmailService {
    */
   async sendPasswordReset(email: string, name: string, token: string): Promise<boolean> {
     try {
+      const resetLink = `${this.frontendUrl}/auth/reset-password?token=${token}`;
+
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
-        this.logger.log(`Password reset token for ${email}: ${token}`);
-        return false;
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`🔑 PASSWORD RESET LINK FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Name: ${name}`);
+        this.logger.log(`Link: ${resetLink}`);
+        this.logger.log(`Token: ${token}`);
+        this.logger.warn('='.repeat(80));
+        // Return true to indicate the token was generated successfully
+        return true;
       }
 
-      const resetLink = `${this.frontendUrl}/auth/reset-password?token=${token}`;
       const html = passwordResetTemplate(name, resetLink);
 
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '🔑 Reset Your Password - Luxury E-commerce',
+        subject: '🔑 Reset Your Password - NextPik E-commerce',
         html,
       });
 
@@ -106,7 +126,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✨ Welcome to Luxury E-commerce, ${name}!`,
+        subject: `✨ Welcome to NextPik E-commerce, ${name}!`,
         html,
       });
 
@@ -148,7 +168,7 @@ export class EmailService {
             <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
               <div style="background: linear-gradient(135deg, #000000 0%, #1A1A1A 100%); padding: 40px; text-align: center; border-radius: 16px 16px 0 0;">
                 <h1 style="color: #FFFFFF; font-size: 28px; margin: 0; font-weight: 700;">Verify Your Email</h1>
-                <p style="color: #A3A3A3; font-size: 16px; margin: 12px 0 0;">Welcome to Luxury E-commerce</p>
+                <p style="color: #A3A3A3; font-size: 16px; margin: 12px 0 0;">Welcome to NextPik E-commerce</p>
               </div>
 
               <div style="background-color: #FFFFFF; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);">
@@ -186,7 +206,7 @@ export class EmailService {
 
               <div style="text-align: center; padding-top: 24px;">
                 <p style="color: #A3A3A3; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} Luxury E-commerce. All rights reserved.
+                  © ${new Date().getFullYear()} NextPik E-commerce. All rights reserved.
                 </p>
               </div>
             </div>
@@ -197,7 +217,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '✉️ Verify Your Email - Luxury E-commerce',
+        subject: '✉️ Verify Your Email - NextPik E-commerce',
         html,
       });
 
@@ -297,7 +317,9 @@ export class EmailService {
     try {
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
-        this.logger.log(`Product inquiry from ${inquiryData.customerEmail} for ${inquiryData.productName}`);
+        this.logger.log(
+          `Product inquiry from ${inquiryData.customerEmail} for ${inquiryData.productName}`
+        );
         return false;
       }
 
@@ -345,7 +367,9 @@ export class EmailService {
                       </a>
                     </td>
                   </tr>
-                  ${inquiryData.customerPhone ? `
+                  ${
+                    inquiryData.customerPhone
+                      ? `
                   <tr>
                     <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5;">
                       <strong style="color: #737373; font-size: 14px;">Phone:</strong>
@@ -356,7 +380,9 @@ export class EmailService {
                       </a>
                     </td>
                   </tr>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </table>
 
                 <h3 style="color: #000000; font-size: 18px; margin: 24px 0 12px 0; font-weight: 600;">Message</h3>
@@ -383,7 +409,7 @@ export class EmailService {
 
               <div style="text-align: center; padding-top: 24px;">
                 <p style="color: #A3A3A3; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} Luxury E-commerce. All rights reserved.
+                  © ${new Date().getFullYear()} NextPik E-commerce. All rights reserved.
                 </p>
               </div>
             </div>
@@ -408,6 +434,373 @@ export class EmailService {
       return true;
     } catch (error) {
       this.logger.error('Error sending product inquiry email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send email OTP code
+   */
+  async sendEmailOTP(
+    email: string,
+    firstName: string,
+    code: string,
+    type: EmailOTPType,
+    ipAddress?: string,
+  ): Promise<boolean> {
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.log(`Email OTP code for ${email}: ${code} (Type: ${type})`);
+        return false;
+      }
+
+      const { subject, html } = getEmailOTPTemplate({
+        firstName,
+        code,
+        expiresInMinutes: 10,
+        type,
+        ipAddress,
+        timestamp: new Date(),
+      });
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send email OTP', error);
+        return false;
+      }
+
+      this.logger.log(`Email OTP sent to ${email} (ID: ${data?.id}, Type: ${type})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending email OTP', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send order confirmation email
+   */
+  async sendOrderConfirmation(
+    email: string,
+    orderData: {
+      orderNumber: string;
+      customerName: string;
+      items: Array<{
+        name: string;
+        quantity: number;
+        price: number;
+        image?: string;
+      }>;
+      subtotal: number;
+      tax: number;
+      shipping: number;
+      total: number;
+      currency: string;
+      shippingAddress: {
+        street: string;
+        city: string;
+        state: string;
+        zipCode: string;
+        country: string;
+      };
+      orderId: string;
+      trackingUrl?: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const orderUrl = `${this.frontendUrl}/orders/${orderData.orderId}`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 ORDER CONFIRMATION FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Order: #${orderData.orderNumber}`);
+        this.logger.log(`Total: ${orderData.currency} ${orderData.total.toFixed(2)}`);
+        this.logger.log(`URL: ${orderUrl}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = orderConfirmationTemplate({
+        ...orderData,
+        orderUrl,
+      });
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `✅ Order Confirmation - #${orderData.orderNumber}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send order confirmation email', error);
+        return false;
+      }
+
+      this.logger.log(`Order confirmation email sent to ${email} (ID: ${data?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending order confirmation email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send seller order notification email
+   */
+  async sendSellerOrderNotification(
+    email: string,
+    notificationData: {
+      sellerName: string;
+      storeName: string;
+      orderNumber: string;
+      customerName: string;
+      items: Array<{
+        name: string;
+        quantity: number;
+        price: number;
+        image?: string;
+        sku?: string;
+      }>;
+      subtotal: number;
+      commission: number;
+      commissionRate: number;
+      netPayout: number;
+      currency: string;
+      shippingAddress: {
+        street: string;
+        city: string;
+        state: string;
+        zipCode: string;
+        country: string;
+      };
+      orderId: string;
+      sellerId: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const orderUrl = `${this.frontendUrl}/seller/orders/${notificationData.orderId}`;
+      const dashboardUrl = `${this.frontendUrl}/seller/dashboard`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 SELLER NOTIFICATION FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Seller: ${notificationData.sellerName}`);
+        this.logger.log(`Store: ${notificationData.storeName}`);
+        this.logger.log(`Order: #${notificationData.orderNumber}`);
+        this.logger.log(`Net Payout: ${notificationData.currency} ${notificationData.netPayout.toFixed(2)}`);
+        this.logger.log(`URL: ${orderUrl}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = sellerOrderNotificationTemplate({
+        ...notificationData,
+        orderUrl,
+        dashboardUrl,
+      });
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `🎉 New Order #${notificationData.orderNumber} - ${notificationData.storeName}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send seller notification email', error);
+        return false;
+      }
+
+      this.logger.log(`Seller notification email sent to ${email} (ID: ${data?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending seller notification email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send payment confirmation email with invoice PDF attachment
+   */
+  async sendPaymentConfirmationWithInvoice(
+    email: string,
+    data: {
+      orderNumber: string;
+      customerName: string;
+      total: number;
+      currency: string;
+      paidAt: Date;
+      invoicePdf: Buffer;
+    },
+  ): Promise<boolean> {
+    const { orderNumber, customerName, total, currency, paidAt, invoicePdf } = data;
+
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping invoice email - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 INVOICE EMAIL FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Customer: ${customerName}`);
+        this.logger.log(`Order: #${orderNumber}`);
+        this.logger.log(`Amount: ${currency} ${total.toFixed(2)}`);
+        this.logger.log(`Date: ${paidAt.toLocaleDateString()}`);
+        this.logger.log(`Invoice PDF: ${invoicePdf.length} bytes`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const formattedTotal = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || 'USD',
+      }).format(total);
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              text-align: center;
+              padding: 30px 0;
+              background: linear-gradient(135deg, #CBB57B 0%, #A89560 100%);
+              color: white;
+              border-radius: 8px 8px 0 0;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 28px;
+            }
+            .content {
+              background: white;
+              padding: 30px;
+              border: 1px solid #e0e0e0;
+              border-top: none;
+            }
+            .info-box {
+              background: #f8f9fa;
+              padding: 20px;
+              border-radius: 8px;
+              margin: 20px 0;
+              border-left: 4px solid #CBB57B;
+            }
+            .info-box p {
+              margin: 8px 0;
+            }
+            .info-box strong {
+              color: #000;
+              display: inline-block;
+              min-width: 140px;
+            }
+            .total {
+              font-size: 20px;
+              color: #CBB57B;
+              font-weight: bold;
+            }
+            .footer {
+              text-align: center;
+              padding: 20px;
+              color: #666;
+              font-size: 14px;
+              border: 1px solid #e0e0e0;
+              border-top: none;
+              border-radius: 0 0 8px 8px;
+              background: #f8f9fa;
+            }
+            .button {
+              display: inline-block;
+              padding: 12px 24px;
+              background: #CBB57B;
+              color: white;
+              text-decoration: none;
+              border-radius: 6px;
+              margin: 20px 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>✓ Payment Confirmed</h1>
+          </div>
+
+          <div class="content">
+            <p>Dear ${customerName},</p>
+
+            <p>Thank you for your payment! Your order has been confirmed and is being processed.</p>
+
+            <div class="info-box">
+              <p><strong>Order Number:</strong> #${orderNumber}</p>
+              <p><strong>Payment Date:</strong> ${paidAt.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}</p>
+              <p class="total"><strong>Amount Paid:</strong> ${formattedTotal}</p>
+            </div>
+
+            <p>Your invoice is attached to this email for your records.</p>
+
+            <p>We'll send you another email with tracking information once your order ships.</p>
+
+            <center>
+              <a href="${this.frontendUrl}/orders" class="button">View Order Details</a>
+            </center>
+
+            <p>If you have any questions, please don't hesitate to contact our support team.</p>
+
+            <p>Best regards,<br>The NextPik Team</p>
+          </div>
+
+          <div class="footer">
+            <p>This is an automated email. Please do not reply directly to this message.</p>
+            <p>For support, contact us at support@nextpik.com</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `Payment Confirmed - Invoice #${orderNumber}`,
+        html,
+        attachments: [
+          {
+            filename: `invoice-${orderNumber}.pdf`,
+            content: invoicePdf,
+          },
+        ],
+      });
+
+      if (error) {
+        this.logger.error('Failed to send payment confirmation email with invoice', error);
+        return false;
+      }
+
+      this.logger.log(`Payment confirmation with invoice sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending payment confirmation email with invoice', error);
       return false;
     }
   }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Review } from '@luxury/shared';
+import type { Review } from '@nextpik/shared';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ReviewCardProps {

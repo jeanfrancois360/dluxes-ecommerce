@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FloatingInput } from '@luxury/ui';
-import { FloatingSelect } from '@luxury/ui';
+import { FloatingInput } from '@nextpik/ui';
+import { FloatingSelect } from '@nextpik/ui';
 import { CountrySelector } from '@/components/forms/country-selector';
 import { SavedAddressSelector } from './saved-address-selector';
 import { useAuth } from '@/hooks/use-auth';

@@ -1,0 +1,34 @@
+{
+  "project": {
+    "name": "NextPik",
+    "version": "2.3.0",
+    "type": "monorepo",
+    "deadline": "2026-01-03"
+  },
+  "ports": {
+    "frontend": 3000,
+    "backend": 4000,
+    "postgresql": 5433,
+    "redis": 6379,
+    "meilisearch": 7700
+  },
+  "permissions": {
+    "allow_edit": [
+      "apps/web/src/components/**",
+      "apps/web/src/app/**",
+      "apps/web/src/styles/**",
+      "docs/**",
+      "*.md"
+    ],
+    "require_approval": [
+      "apps/api/src/payment/**",
+      "apps/api/src/escrow/**",
+      "apps/api/src/auth/**",
+      "packages/database/prisma/schema.prisma"
+    ],
+    "never_edit": [
+      "packages/database/prisma/migrations/**",
+      "node_modules/**"
+    ]
+  }
+}

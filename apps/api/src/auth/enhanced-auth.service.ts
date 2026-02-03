@@ -20,6 +20,8 @@ import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
+import { EmailOTPService } from './email-otp.service';
+import { EmailOTPType } from '@prisma/client';
 import {
   RegisterDto,
   LoginDto,
@@ -42,6 +44,7 @@ export class EnhancedAuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private emailOTPService: EmailOTPService,
   ) {}
 
   // ============================================================================
@@ -61,6 +64,9 @@ export class EnhancedAuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(data.password, 12);
 
+    // Determine user role (default to BUYER)
+    const userRole = data.role || 'BUYER';
+
     // Create user
     const user = await this.prisma.user.create({
       data: {
@@ -69,9 +75,38 @@ export class EnhancedAuthService {
         firstName: data.firstName,
         lastName: data.lastName,
         phone: data.phone,
+        role: userRole,
         lastLoginIp: ipAddress,
       },
     });
+
+    // Auto-create store for all sellers (v2.6.0 feature)
+    let store = null;
+    if (userRole === 'SELLER') {
+      const storeName = data.storeName || `${user.firstName}'s Store`;
+      const slug = storeName
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim() + `-${Date.now()}`;
+
+      store = await this.prisma.store.create({
+        data: {
+          userId: user.id,
+          name: storeName,
+          slug,
+          email: user.email,
+          description: data.storeDescription || '',
+          status: 'ACTIVE', // Auto-approved for immediate selling
+        },
+      });
+
+      // Send welcome seller email (non-blocking)
+      this.emailService.sendWelcomeEmail(user.email, user.firstName).catch((err) => {
+        console.error('Failed to send welcome seller email:', err);
+      });
+    }
 
     // Send email verification (non-blocking)
     this.sendEmailVerification(user.id, user.email, user.firstName).catch((err) => {
@@ -88,7 +123,10 @@ export class EnhancedAuthService {
       accessToken,
       sessionToken,
       user: this.sanitizeUser(user),
-      message: 'Registration successful',
+      store: store ? { id: store.id, name: store.name, status: store.status } : null,
+      message: store
+        ? 'Registration successful! Your store is ready. Start listing products now.'
+        : 'Registration successful',
     };
   }
 
@@ -119,8 +157,8 @@ export class EnhancedAuthService {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    // Check if email is verified (block unverified users)
-    if (!user.emailVerified) {
+    // Check if email is verified (skip in development mode)
+    if (!user.emailVerified && process.env.NODE_ENV !== 'development') {
       throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for the verification link.');
     }
 
@@ -498,8 +536,8 @@ export class EnhancedAuthService {
 
     // Generate secret
     const secret = speakeasy.generateSecret({
-      name: `Luxury E-commerce (${user.email})`,
-      issuer: 'Luxury E-commerce',
+      name: `NextPik E-commerce (${user.email})`,
+      issuer: 'NextPik E-commerce',
       length: 32,
     });
 
@@ -720,5 +758,152 @@ export class EnhancedAuthService {
     if (/firefox/i.test(userAgent)) return 'Firefox';
     if (/edge/i.test(userAgent)) return 'Edge';
     return 'Unknown';
+  }
+
+  // ============================================================================
+  // Email OTP Methods
+  // ============================================================================
+
+  /**
+   * Request an email OTP code
+   */
+  async requestEmailOTP(
+    userId: string,
+    type: EmailOTPType,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    // Get user details
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, firstName: true, emailOTPEnabled: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Invalidate any existing unused OTPs of this type
+    await this.emailOTPService.invalidateUserOTPs(userId, type);
+
+    // Create new OTP
+    const { code, expiresAt } = await this.emailOTPService.createEmailOTP(
+      userId,
+      type,
+      ipAddress,
+      userAgent,
+    );
+
+    // Send email with OTP
+    await this.emailService.sendEmailOTP(
+      user.email,
+      user.firstName || 'User',
+      code,
+      type,
+      ipAddress,
+    );
+
+    return {
+      success: true,
+      message: 'OTP sent to your email',
+      expiresAt,
+    };
+  }
+
+  /**
+   * Verify an email OTP code
+   */
+  async verifyEmailOTP(userId: string, code: string, type: EmailOTPType) {
+    const isValid = await this.emailOTPService.verifyEmailOTP(userId, code, type);
+
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid or expired OTP code');
+    }
+
+    return {
+      success: true,
+      message: 'OTP verified successfully',
+    };
+  }
+
+  /**
+   * Enable email OTP for a user
+   */
+  async enableEmailOTP(userId: string) {
+    await this.emailOTPService.enableEmailOTP(userId);
+
+    return {
+      success: true,
+      message: 'Email OTP enabled successfully',
+    };
+  }
+
+  /**
+   * Disable email OTP for a user
+   */
+  async disableEmailOTP(userId: string) {
+    await this.emailOTPService.disableEmailOTP(userId);
+
+    return {
+      success: true,
+      message: 'Email OTP disabled successfully',
+    };
+  }
+
+  /**
+   * Check if email OTP is enabled for a user
+   */
+  async isEmailOTPEnabled(userId: string): Promise<boolean> {
+    return this.emailOTPService.isEmailOTPEnabled(userId);
+  }
+
+  /**
+   * Login with email OTP (2FA via email)
+   */
+  async loginWithEmailOTP(
+    email: string,
+    password: string,
+    otpCode: string,
+    ipAddress: string,
+    userAgent: string,
+  ) {
+    // First verify password
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Verify OTP
+    await this.emailOTPService.verifyEmailOTP(
+      user.id,
+      otpCode,
+      EmailOTPType.TWO_FACTOR_BACKUP,
+    );
+
+    // Create session
+    const sessionToken = await this.createSession(
+      user.id,
+      ipAddress,
+      userAgent,
+      false,
+    );
+
+    // Generate JWT
+    const accessToken = this.generateJWT(user);
+
+    return {
+      accessToken,
+      sessionToken,
+      user: this.sanitizeUser(user),
+      message: 'Login successful',
+    };
   }
 }

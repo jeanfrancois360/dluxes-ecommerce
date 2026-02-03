@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ProductCard } from '@luxury/ui';
+import { ProductCard } from '@nextpik/ui';
 import { useSearch } from '@/hooks/use-search';
 import { FiltersSidebar } from '@/components/filters-sidebar';
 import { Product } from '@/lib/api/types';
+import { SearchResultsAd } from '@/components/ads';
 
 interface SearchResultsProps {
   initialQuery: string;
@@ -179,6 +180,13 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
             )}
           </div>
 
+          {/* Sponsored Search Result Ad */}
+          {data && data.products.length > 0 && (
+            <div className="mb-6">
+              <SearchResultsAd />
+            </div>
+          )}
+
           {/* Loading State */}
           {isLoading && !data && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -193,7 +201,7 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
           )}
 
           {/* Results Grid */}
-          {data && data.data.length > 0 && (
+          {data && data.products.length > 0 && (
             <>
               <AnimatePresence mode="wait">
                 <motion.div
@@ -204,7 +212,7 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
                   transition={{ duration: 0.3 }}
                   className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12"
                 >
-                  {data.data.map((product: Product, index: number) => (
+                  {data.products.map((product: Product, index: number) => (
                     <motion.div
                       key={product.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -280,7 +288,7 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
           )}
 
           {/* Empty State */}
-          {data && data.data.length === 0 && !isLoading && (
+          {data && data.products.length === 0 && !isLoading && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

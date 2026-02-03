@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
@@ -30,7 +31,14 @@ import { PayoutModule } from './payout/payout.module';
 import { DeliveryProviderModule } from './delivery-provider/delivery-provider.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { DeliveryPartnerModule } from './delivery-partner/delivery-partner.module';
+import { DeliveryPayoutsModule } from './delivery-payouts/delivery-payouts.module';
+import { InquiriesModule } from './inquiries/inquiries.module';
+import { DownloadsModule } from './downloads/downloads.module';
+import { ReturnsModule } from './returns/returns.module';
+import { SubscriptionModule } from './subscription/subscription.module';
+import { CreditsModule } from './credits/credits.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { DhlModule } from './integrations/dhl/dhl.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
 // import { QueueModule } from './queue/queue.module'; // Commented out - requires Redis setup
@@ -42,6 +50,7 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
       envFilePath: '.env',
     }),
     SupabaseModule,
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 60 seconds
@@ -49,6 +58,7 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
       },
     ]),
     DatabaseModule,
+    DhlModule,
     AuthModule,
     UsersModule,
     ProductsModule,
@@ -76,6 +86,12 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
     DeliveryProviderModule,
     DeliveryModule,
     DeliveryPartnerModule,
+    DeliveryPayoutsModule,
+    InquiriesModule,
+    DownloadsModule,
+    ReturnsModule,
+    SubscriptionModule,
+    CreditsModule,
     // QueueModule, // Commented out - requires Redis setup
   ],
   providers: [

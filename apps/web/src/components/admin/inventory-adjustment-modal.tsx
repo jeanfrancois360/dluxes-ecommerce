@@ -17,7 +17,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import { adminProductsApi } from '@/lib/api/admin';
 import { toast } from 'sonner';
 import { Loader2, Package, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
@@ -33,15 +33,14 @@ interface InventoryAdjustmentModalProps {
   onSuccess?: () => void;
 }
 
-type TransactionType = 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'RESTOCK';
+type TransactionType = 'SALE' | 'RETURN' | 'RESTOCK' | 'ADJUSTMENT' | 'DAMAGE';
 
 const transactionTypes: { value: TransactionType; label: string; icon: React.ReactNode }[] = [
-  { value: 'PURCHASE', label: 'Purchase/Receive', icon: <TrendingUp className="h-4 w-4" /> },
+  { value: 'RESTOCK', label: 'Purchase/Receive', icon: <TrendingUp className="h-4 w-4" /> },
   { value: 'SALE', label: 'Sale', icon: <TrendingDown className="h-4 w-4" /> },
   { value: 'ADJUSTMENT', label: 'Adjustment', icon: <RefreshCw className="h-4 w-4" /> },
   { value: 'RETURN', label: 'Return', icon: <TrendingUp className="h-4 w-4" /> },
   { value: 'DAMAGE', label: 'Damage/Loss', icon: <TrendingDown className="h-4 w-4" /> },
-  { value: 'RESTOCK', label: 'Restock', icon: <Package className="h-4 w-4" /> },
 ];
 
 export function InventoryAdjustmentModal({

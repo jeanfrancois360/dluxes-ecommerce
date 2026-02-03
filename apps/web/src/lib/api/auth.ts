@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { LoginCredentials, RegisterData, AuthResponse } from './types';
+import type { LoginCredentials, RegisterData, AuthResponse, ProfileUpdateData } from './types';
 
 export const authAPI = {
   login: (credentials: LoginCredentials) =>
@@ -18,7 +18,7 @@ export const authAPI = {
   getProfile: () =>
     api.get('/auth/me'),
 
-  updateProfile: (data: Partial<RegisterData>) =>
+  updateProfile: (data: ProfileUpdateData) =>
     api.patch('/users/me', data),
 
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
@@ -42,7 +42,7 @@ export const login = (credentials: LoginCredentials) => authAPI.login(credential
 export const register = (data: RegisterData) => authAPI.register(data);
 export const logout = () => authAPI.logout();
 export const getCurrentUser = () => authAPI.getProfile();
-export const updateProfile = (data: Partial<RegisterData>) => authAPI.updateProfile(data);
+export const updateProfile = (data: ProfileUpdateData) => authAPI.updateProfile(data);
 export const changePassword = (currentPassword: string, newPassword: string, confirmPassword: string) =>
   authAPI.changePassword({ currentPassword, newPassword });
 export const requestPasswordReset = (data: { email: string }) => authAPI.forgotPassword(data.email);
@@ -53,8 +53,8 @@ export const resendEmailVerification = () => api.post('/auth/resend-verification
 export const refreshToken = () => api.post('/auth/refresh');
 
 // Magic link functions
-export const requestMagicLink = (data: { email: string }) => api.post('/auth/magic-link', data);
-export const verifyMagicLink = (token: string) => api.post(`/auth/magic-link/verify/${token}`);
+export const requestMagicLink = (data: { email: string }) => api.post('/auth/magic-link/request', data);
+export const verifyMagicLink = (token: string) => api.post('/auth/magic-link/verify', { token });
 
 // 2FA functions
 export const setupTwoFactor = () => api.post('/auth/2fa/setup');
@@ -77,3 +77,25 @@ export const deleteAccount = (password: string) => api.post('/auth/delete-accoun
 export const getSessions = () => api.get('/auth/sessions');
 export const revokeSession = (sessionId: string) => api.delete(`/auth/sessions/${sessionId}`);
 export const revokeAllSessions = () => api.delete('/auth/sessions');
+
+// Email OTP functions
+export const requestEmailOTP = (type: 'TWO_FACTOR_BACKUP' | 'ACCOUNT_RECOVERY' | 'SENSITIVE_ACTION') =>
+  api.post('/auth/email-otp/request', { type });
+export const verifyEmailOTP = (code: string, type: 'TWO_FACTOR_BACKUP' | 'ACCOUNT_RECOVERY' | 'SENSITIVE_ACTION') =>
+  api.post('/auth/email-otp/verify', { code, type });
+export const enableEmailOTP = () => api.post('/auth/email-otp/enable');
+export const disableEmailOTP = () => api.post('/auth/email-otp/disable');
+export const getEmailOTPStatus = () => api.get('/auth/email-otp/status');
+export const loginWithEmailOTP = (email: string, password: string, otpCode: string) =>
+  api.post('/auth/login/email-otp', { email, password, otpCode });
+
+// Google OAuth functions
+export const initiateGoogleAuth = () => {
+  if (typeof window !== 'undefined') {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+    window.location.href = `${apiUrl}/auth/google`;
+  }
+};
+export const linkGoogleAccount = (googleToken: string) =>
+  api.post('/auth/google/link', { googleToken });
+export const unlinkGoogleAccount = () => api.post('/auth/google/unlink');

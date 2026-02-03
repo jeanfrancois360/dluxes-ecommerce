@@ -49,19 +49,19 @@ export default function ImageUpload({
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await api.post(`/upload/image?folder=${folder}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // Don't set Content-Type - let browser set it automatically with boundary
+      const response = await api.post(`/upload/image?folder=${folder}`, formData);
 
-      if (response.success && response.data?.url) {
-        // Construct full URL (assuming API serves uploads)
-        const imageUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}${response.data.url}`;
+      // API client unwraps { success, data } to just return data
+      if (response?.url) {
+        // Construct full URL if it's a relative path
+        const imageUrl = response.url.startsWith('http')
+          ? response.url
+          : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}${response.url}`;
         onChange(imageUrl);
         setUploadError(null);
       } else {
-        setUploadError(response.message || 'Failed to upload image');
+        setUploadError('Failed to upload image - no URL returned');
       }
     } catch (err: any) {
       console.error('Upload failed:', err);

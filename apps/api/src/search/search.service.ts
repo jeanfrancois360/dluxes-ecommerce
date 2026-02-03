@@ -78,6 +78,49 @@ export class SearchService implements OnModuleInit {
   }
 
   /**
+   * Fast autocomplete search for search bar
+   * Returns minimal data for quick results
+   */
+  async autocomplete(query: string, limit: number = 8) {
+    try {
+      const results = await this.client
+        .index(this.productsIndex)
+        .search(query, {
+          limit,
+          attributesToRetrieve: [
+            'id',
+            'name',
+            'slug',
+            'price',
+            'compareAtPrice',
+            'heroImage',
+            'category',
+            'categoryId',
+            'brand',
+          ],
+        });
+
+      return results.hits.map((hit: any) => ({
+        id: hit.id,
+        name: hit.name,
+        slug: hit.slug,
+        price: hit.price,
+        compareAtPrice: hit.compareAtPrice,
+        heroImage: hit.heroImage,
+        category: hit.category && hit.categoryId ? {
+          id: hit.categoryId,
+          name: hit.category,
+          slug: '', // Category slug not indexed in Meilisearch
+        } : undefined,
+        brand: hit.brand,
+      }));
+    } catch (error) {
+      console.error('Autocomplete error:', error instanceof Error ? error.message : String(error));
+      return [];
+    }
+  }
+
+  /**
    * Search products
    */
   async search(query: string, filters?: any) {

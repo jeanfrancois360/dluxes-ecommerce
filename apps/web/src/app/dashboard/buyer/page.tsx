@@ -410,6 +410,25 @@ export default function BuyerDashboard() {
 
                 <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
                   <Link
+                    href="/account/following"
+                    className="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-rose-50/50 hover:to-transparent transition-all group border border-transparent hover:border-rose-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-rose-50 to-rose-100/50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                        <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-neutral-700 group-hover:text-black transition-colors">Following Stores</span>
+                    </div>
+                    <svg className="w-5 h-5 text-neutral-400 group-hover:text-gold transition-all group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </motion.div>
+
+                <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                  <Link
                     href="/account/profile"
                     className="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-green-50/50 hover:to-transparent transition-all group border border-transparent hover:border-green-100"
                   >
@@ -440,6 +459,120 @@ export default function BuyerDashboard() {
                         </svg>
                       </div>
                       <span className="font-medium text-neutral-700 group-hover:text-black transition-colors">Addresses</span>
+                    </div>
+                    <svg className="w-5 h-5 text-neutral-400 group-hover:text-gold transition-all group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </motion.div>
+
+                <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                  <Link
+                    href="/account/inquiries"
+                    className="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-transparent transition-all group border border-transparent hover:border-teal-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-teal-50 to-teal-100/50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                        <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-neutral-700 group-hover:text-black transition-colors">My Inquiries</span>
+                    </div>
+                    <svg className="w-5 h-5 text-neutral-400 group-hover:text-gold transition-all group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </motion.div>
+
+                <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                  <Link
+                    href="/account/reviews"
+                    className="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-amber-50/50 hover:to-transparent transition-all group border border-transparent hover:border-amber-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                        <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-neutral-700 group-hover:text-black transition-colors">My Reviews</span>
+                    </div>
+                    <svg className="w-5 h-5 text-neutral-400 group-hover:text-gold transition-all group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </motion.div>
+
+                <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                  <Link
+                    href="/account/downloads"
+                    className="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-transparent transition-all group border border-transparent hover:border-indigo-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                        <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-neutral-700 group-hover:text-black transition-colors">My Downloads</span>
+                    </div>
+                    <svg className="w-5 h-5 text-neutral-400 group-hover:text-gold transition-all group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </motion.div>
+
+                <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                  <Link
+                    href="/account/payment-methods"
+                    className="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-transparent transition-all group border border-transparent hover:border-blue-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-neutral-700 group-hover:text-black transition-colors">Payment Methods</span>
+                    </div>
+                    <svg className="w-5 h-5 text-neutral-400 group-hover:text-gold transition-all group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </motion.div>
+
+                <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                  <Link
+                    href="/account/returns"
+                    className="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-transparent transition-all group border border-transparent hover:border-orange-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                        <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-neutral-700 group-hover:text-black transition-colors">My Returns</span>
+                    </div>
+                    <svg className="w-5 h-5 text-neutral-400 group-hover:text-gold transition-all group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </motion.div>
+
+                <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                  <Link
+                    href="/account/notifications"
+                    className="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-cyan-50/50 hover:to-transparent transition-all group border border-transparent hover:border-cyan-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-cyan-50 to-cyan-100/50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                        <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-neutral-700 group-hover:text-black transition-colors">Notifications</span>
                     </div>
                     <svg className="w-5 h-5 text-neutral-400 group-hover:text-gold transition-all group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

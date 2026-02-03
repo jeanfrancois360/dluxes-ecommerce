@@ -18,6 +18,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { StoresService } from './stores.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { UpdatePayoutSettingsDto } from './dto/update-payout-settings.dto';
+import { UpdateVacationModeDto } from './dto/update-vacation-mode.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -45,6 +47,80 @@ export class StoresController {
   @Get(':slug')
   getBySlug(@Param('slug') slug: string) {
     return this.storesService.getBySlug(slug);
+  }
+
+  /**
+   * Get store reviews (aggregated from product reviews)
+   */
+  @Get(':storeId/reviews')
+  getStoreReviews(
+    @Param('storeId') storeId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.storesService.getStoreReviews(
+      storeId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
+  /**
+   * Get store follower count (public)
+   */
+  @Get(':storeId/followers/count')
+  getFollowerCount(@Param('storeId') storeId: string) {
+    return this.storesService.getFollowerCount(storeId);
+  }
+
+  // ============================================================================
+  // Buyer Routes (Following Stores)
+  // ============================================================================
+
+  /**
+   * Get list of stores the current user is following
+   */
+  @Get('me/following')
+  @UseGuards(JwtAuthGuard)
+  getFollowingStores(
+    @Req() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.storesService.getFollowingStores(
+      req.user.id,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
+  /**
+   * Check if user is following a specific store
+   */
+  @Get(':storeId/is-following')
+  @UseGuards(JwtAuthGuard)
+  isFollowing(@Req() req: any, @Param('storeId') storeId: string) {
+    return this.storesService.isFollowing(req.user.id, storeId);
+  }
+
+  /**
+   * Follow a store
+   */
+  @Post(':storeId/follow')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  followStore(@Req() req: any, @Param('storeId') storeId: string) {
+    return this.storesService.followStore(req.user.id, storeId);
+  }
+
+  /**
+   * Unfollow a store
+   */
+  @Delete(':storeId/follow')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  unfollowStore(@Req() req: any, @Param('storeId') storeId: string) {
+    return this.storesService.unfollowStore(req.user.id, storeId);
   }
 
   // ============================================================================
@@ -123,6 +199,66 @@ export class StoresController {
   @HttpCode(HttpStatus.OK)
   uploadBanner(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
     return this.storesService.uploadBanner(req.user.id, file);
+  }
+
+  /**
+   * Get seller's payout settings
+   */
+  @Get('me/payout-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  getPayoutSettings(@Req() req: any) {
+    return this.storesService.getPayoutSettings(req.user.id);
+  }
+
+  /**
+   * Update seller's payout settings
+   */
+  @Patch('me/payout-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  updatePayoutSettings(@Req() req: any, @Body() dto: UpdatePayoutSettingsDto) {
+    return this.storesService.updatePayoutSettings(req.user.id, dto);
+  }
+
+  /**
+   * Get seller's payout history
+   */
+  @Get('me/payouts')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  getPayoutHistory(
+    @Req() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.storesService.getPayoutHistory(
+      req.user.id,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+      status,
+    );
+  }
+
+  /**
+   * Get seller's vacation mode status
+   */
+  @Get('me/vacation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  getVacationStatus(@Req() req: any) {
+    return this.storesService.getVacationStatus(req.user.id);
+  }
+
+  /**
+   * Update seller's vacation mode
+   */
+  @Patch('me/vacation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  updateVacationMode(@Req() req: any, @Body() dto: UpdateVacationModeDto) {
+    return this.storesService.updateVacationMode(req.user.id, dto);
   }
 
   // ============================================================================

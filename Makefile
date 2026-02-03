@@ -32,10 +32,10 @@ db-migrate: ## Run database migrations
 	pnpm prisma:migrate
 
 db-seed: ## Seed the database
-	pnpm --filter @luxury/database prisma:seed
+	pnpm --filter @nextpik/database prisma:seed
 
 db-studio: ## Open Prisma Studio
-	pnpm --filter @luxury/database prisma:studio
+	pnpm --filter @nextpik/database prisma:studio
 
 lint: ## Run linters
 	pnpm lint

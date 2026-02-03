@@ -1,20 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@luxury/ui';
-import { AlertCircle, Loader2, Lock, CreditCard, CheckCircle, XCircle, RefreshCw, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Card, CardContent } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Switch } from '@nextpik/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
+import { AlertCircle, Loader2, Lock, CreditCard, DollarSign, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { paymentSettingsSchema, type PaymentSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { api } from '@/lib/api/client';
+import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
+import { PaymentGatewayCard } from './payment/PaymentGatewayCard';
+import { GatewayBusinessConfig } from './payment/GatewayBusinessConfig';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 // Stripe configuration status interface
 interface StripeStatus {
@@ -28,37 +31,120 @@ interface StripeStatus {
   captureMethod: string;
 }
 
+// Currency options
+const CURRENCY_OPTIONS = [
+  { value: 'USD', label: 'USD - US Dollar' },
+  { value: 'EUR', label: 'EUR - Euro' },
+  { value: 'GBP', label: 'GBP - British Pound' },
+  { value: 'RWF', label: 'RWF - Rwandan Franc' },
+];
+
+// Capture method options
+const CAPTURE_METHOD_OPTIONS = [
+  { value: 'manual', label: 'Manual (Escrow Compatible)' },
+  { value: 'automatic', label: 'Automatic (Instant Capture)' },
+];
+
+// PayPal capture method options
+const PAYPAL_CAPTURE_OPTIONS = [
+  { value: 'authorize', label: 'Authorize (Manual Capture)' },
+  { value: 'capture', label: 'Capture (Immediate)' },
+];
+
+// Payout schedule options
+const PAYOUT_SCHEDULE_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-weekly' },
+  { value: 'monthly', label: 'Monthly' },
+];
+
+// Payment method options
+const PAYMENT_METHODS = [
+  { id: 'stripe', label: 'Stripe' },
+  { id: 'paypal', label: 'PayPal' },
+  { id: 'bank_transfer', label: 'Bank Transfer' },
+];
+
 export function PaymentSettingsSection() {
   const { settings, loading, refetch } = useSettings('payment');
+  const { settings: paymentSettingsUpper, refetch: refetchUpper } = useSettings('PAYMENT');
   const { updateSetting, updating } = useSettingsUpdate();
+  const justSavedRef = useRef(false);
 
   // Stripe-specific state
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
   const [loadingStripeStatus, setLoadingStripeStatus] = useState(true);
   const [reloadingStripe, setReloadingStripe] = useState(false);
-  const [showSecretKey, setShowSecretKey] = useState(false);
-  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
 
   const form = useForm<PaymentSettings>({
     resolver: zodResolver(paymentSettingsSchema),
     defaultValues: {
-      escrow_enabled: true,
       escrow_default_hold_days: 7,
-      escrow_auto_release_enabled: true,
       min_payout_amount: 50,
       payout_schedule: 'weekly',
       payment_methods: ['stripe', 'paypal'],
+      // Stripe fee defaults
+      stripe_fee_percentage: 2.9,
+      stripe_fee_fixed_eur: 0.30,
+      stripe_fee_fixed_usd: 0.30,
+      stripe_fee_fixed_gbp: 0.20,
+      stripe_fee_fixed_aud: 0.30,
+      stripe_fee_fixed_cad: 0.30,
+      stripe_fee_fixed_jpy: 50,
+      stripe_fee_fixed_chf: 0.30,
+      stripe_fee_fixed_rwf: 300,
+      // PayPal fee defaults
+      paypal_fee_percentage: 3.49,
+      paypal_fee_fixed_eur: 0.35,
+      paypal_fee_fixed_usd: 0.30,
+      paypal_fee_fixed_gbp: 0.30,
+      paypal_fee_fixed_aud: 0.30,
+      paypal_fee_fixed_cad: 0.30,
+      paypal_fee_fixed_jpy: 50,
+      paypal_fee_fixed_chf: 0.30,
+      paypal_fee_fixed_rwf: 300,
     },
   });
 
+  // Load settings into form
   useEffect(() => {
     if (settings.length > 0) {
-      const formData = transformSettingsToForm(settings);
-      form.reset(formData as PaymentSettings);
+      const allFormData = transformSettingsToForm(settings);
+      const filteredData: Partial<PaymentSettings> = {
+        escrow_default_hold_days: allFormData.escrow_default_hold_days ?? 7,
+        min_payout_amount: allFormData.min_payout_amount ?? 50,
+        payout_schedule: allFormData.payout_schedule ?? 'weekly',
+        payment_methods: allFormData.payment_methods ?? ['stripe', 'paypal'],
+        // Stripe fees
+        stripe_fee_percentage: allFormData.stripe_fee_percentage ?? 2.9,
+        stripe_fee_fixed_eur: allFormData.stripe_fee_fixed_eur ?? 0.30,
+        stripe_fee_fixed_usd: allFormData.stripe_fee_fixed_usd ?? 0.30,
+        stripe_fee_fixed_gbp: allFormData.stripe_fee_fixed_gbp ?? 0.20,
+        stripe_fee_fixed_aud: allFormData.stripe_fee_fixed_aud ?? 0.30,
+        stripe_fee_fixed_cad: allFormData.stripe_fee_fixed_cad ?? 0.30,
+        stripe_fee_fixed_jpy: allFormData.stripe_fee_fixed_jpy ?? 50,
+        stripe_fee_fixed_chf: allFormData.stripe_fee_fixed_chf ?? 0.30,
+        stripe_fee_fixed_rwf: allFormData.stripe_fee_fixed_rwf ?? 300,
+        // PayPal fees
+        paypal_fee_percentage: allFormData.paypal_fee_percentage ?? 3.49,
+        paypal_fee_fixed_eur: allFormData.paypal_fee_fixed_eur ?? 0.35,
+        paypal_fee_fixed_usd: allFormData.paypal_fee_fixed_usd ?? 0.30,
+        paypal_fee_fixed_gbp: allFormData.paypal_fee_fixed_gbp ?? 0.30,
+        paypal_fee_fixed_aud: allFormData.paypal_fee_fixed_aud ?? 0.30,
+        paypal_fee_fixed_cad: allFormData.paypal_fee_fixed_cad ?? 0.30,
+        paypal_fee_fixed_jpy: allFormData.paypal_fee_fixed_jpy ?? 50,
+        paypal_fee_fixed_chf: allFormData.paypal_fee_fixed_chf ?? 0.30,
+        paypal_fee_fixed_rwf: allFormData.paypal_fee_fixed_rwf ?? 300,
+      };
+      if (!form.formState.isDirty || justSavedRef.current) {
+        form.reset(filteredData as PaymentSettings);
+        justSavedRef.current = false;
+      }
     }
   }, [settings, form]);
 
-  // Fetch Stripe status on component mount
+  // Fetch Stripe status on mount
   useEffect(() => {
     fetchStripeStatus();
   }, []);
@@ -66,9 +152,10 @@ export function PaymentSettingsSection() {
   const fetchStripeStatus = async () => {
     try {
       setLoadingStripeStatus(true);
-      const response = await api.get('/settings/stripe/status');
-      if (response.data?.data) {
-        setStripeStatus(response.data.data);
+      // api.get already unwraps { success, data } - response IS the data
+      const response = await api.get<any>('/settings/stripe/status');
+      if (response) {
+        setStripeStatus(response);
       }
     } catch (error) {
       console.error('Failed to fetch Stripe status:', error);
@@ -80,23 +167,20 @@ export function PaymentSettingsSection() {
   const handleReloadStripe = async () => {
     try {
       setReloadingStripe(true);
-      const response = await api.post('/settings/stripe/reload');
-      if (response.data?.success) {
-        toast.success('Stripe configuration reloaded successfully');
-        await fetchStripeStatus();
-      }
+      // api.post already unwraps the response
+      await api.post('/settings/stripe/reload');
+      toast.success('Stripe configuration reloaded successfully');
+      await fetchStripeStatus();
     } catch (error: any) {
-      toast.error('Failed to reload Stripe', error.message || 'Please try again');
+      toast.error(error.message || 'Failed to reload Stripe');
     } finally {
       setReloadingStripe(false);
     }
   };
 
-  // Helper function to update Stripe setting and reload config
   const updateStripeSettingWithReload = async (key: string, value: any, reason: string) => {
     try {
       await updateSetting(key, value, reason);
-      // Automatically reload Stripe configuration after updating any Stripe setting
       await api.post('/settings/stripe/reload');
       await Promise.all([refetch(), fetchStripeStatus()]);
     } catch (error: any) {
@@ -105,17 +189,72 @@ export function PaymentSettingsSection() {
     }
   };
 
+  const updatePayPalSetting = async (key: string, value: any, reason: string) => {
+    try {
+      await updateSetting(key, value, reason);
+      await refetch();
+    } catch (error: any) {
+      console.error('Failed to update PayPal setting:', error);
+      toast.error('Failed to update setting');
+    }
+  };
+
   const onSubmit = async (data: PaymentSettings) => {
     try {
       const updates = Object.entries(data);
       for (const [key, value] of updates) {
+        if (key === 'escrow_enabled' || key === 'escrow_auto_release_enabled') continue;
         await updateSetting(key, value, 'Updated via settings panel');
       }
-      toast.success('Payment settings saved successfully');
+      justSavedRef.current = true;
       await refetch();
-    } catch (error) {
+      toast.success('Payment settings saved successfully');
+    } catch (error: any) {
       console.error('Failed to save settings:', error);
+      toast.error(error?.message || 'Failed to save settings. Please try again.');
+      justSavedRef.current = false;
     }
+  };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
+
+  // Helper to get setting value
+  const getSetting = (key: string) => {
+    // First try lowercase 'payment' category
+    let setting = settings.find(s => s.key === key);
+
+    // Fallback to uppercase 'PAYMENT' category
+    if (!setting) {
+      setting = paymentSettingsUpper.find(s => s.key === key);
+    }
+
+    if (!setting) return undefined;
+
+    // Handle boolean conversion
+    if (setting.valueType === 'BOOLEAN') {
+      if (typeof setting.value === 'string') {
+        return setting.value === 'true' || setting.value === '1';
+      }
+      return Boolean(setting.value);
+    }
+
+    return setting.value;
+  };
+
+  const getUpperPaymentSetting = (key: string) => {
+    const setting = paymentSettingsUpper.find(s => s.key === key);
+    if (!setting) return undefined;
+    if (setting.valueType === 'BOOLEAN') {
+      if (typeof setting.value === 'string') {
+        return setting.value === 'true' || setting.value === '1';
+      }
+      return Boolean(setting.value);
+    }
+    return setting.value;
   };
 
   if (loading) {
@@ -129,337 +268,645 @@ export function PaymentSettingsSection() {
   }
 
   const isProduction = process.env.NODE_ENV === 'production';
-
-  // Helper to get Stripe setting value
-  const getStripeSetting = (key: string) => {
-    const setting = settings.find(s => s.key === key);
-    return setting?.value;
-  };
+  const isDirty = form.formState.isDirty;
 
   return (
     <div className="space-y-6">
-      {/* Stripe Configuration Card */}
-      <Card className="border-[#CBB57B]/20">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-[#CBB57B]/10">
-                <CreditCard className="h-5 w-5 text-[#CBB57B]" />
-              </div>
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  Stripe Payment Gateway
-                  {loadingStripeStatus ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : stripeStatus ? (
-                    stripeStatus.configured && stripeStatus.enabled ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        <CheckCircle className="h-3 w-3" />
-                        Connected
-                      </span>
-                    ) : !stripeStatus.configured ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        <AlertTriangle className="h-3 w-3" />
-                        Not Configured
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        <XCircle className="h-3 w-3" />
-                        Disabled
-                      </span>
-                    )
-                  ) : null}
-                  {stripeStatus?.testMode && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                      Test Mode
-                    </span>
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  Configure Stripe integration for secure payment processing
-                </CardDescription>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleReloadStripe}
-              disabled={reloadingStripe || loadingStripeStatus}
-              className="gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${reloadingStripe ? 'animate-spin' : ''}`} />
-              Reload Config
-            </Button>
-          </div>
-        </CardHeader>
+      {/* Stripe Payment Gateway */}
+      <PaymentGatewayCard
+        name="Stripe Payment Gateway"
+        icon={CreditCard}
+        description="Configure Stripe integration for secure payment processing"
+        status={
+          stripeStatus
+            ? {
+                configured: stripeStatus.configured,
+                enabled: stripeStatus.enabled,
+                testMode: stripeStatus.testMode,
+                keys: {
+                  stripe_publishable_key: stripeStatus.hasPublishableKey,
+                  stripe_secret_key: stripeStatus.hasSecretKey,
+                  stripe_webhook_secret: stripeStatus.hasWebhookSecret,
+                },
+              }
+            : null
+        }
+        loading={loadingStripeStatus}
+        onReload={handleReloadStripe}
+        reloading={reloadingStripe}
+        envKeyPrefix="stripe"
+        setupInstructions={{
+          dashboardUrl: 'https://dashboard.stripe.com/apikeys',
+          steps: [
+            'Visit <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">Stripe Dashboard</a>',
+            'For <strong>testing</strong>: Use test keys (pk_test_... / sk_test_...)',
+            'For <strong>production</strong>: Use live keys (pk_live_... / sk_live_...)',
+            'Copy your Publishable Key and Secret Key',
+            'Get Webhook Secret from Webhooks section (whsec_...)',
+            'Add to <code class="px-1 py-0.5 bg-gray-100 rounded text-xs">apps/api/.env</code>:<pre class="mt-2 p-2 bg-gray-800 text-gray-100 rounded text-xs overflow-x-auto">STRIPE_PUBLISHABLE_KEY=pk_test_...\nSTRIPE_SECRET_KEY=sk_test_...\nSTRIPE_WEBHOOK_SECRET=whsec_...</pre>',
+            'Restart the API server - mode is auto-detected from key type',
+            'Configure business settings below',
+          ],
+        }}
+      >
+        <GatewayBusinessConfig
+          title="Stripe Business Configuration"
+          fields={[
+            {
+              key: 'stripe_currency',
+              label: 'Default Currency',
+              type: 'select',
+              description: 'Currency for Stripe transactions',
+              value: getSetting('stripe_currency') || 'USD',
+              options: CURRENCY_OPTIONS,
+              onChange: (value) =>
+                updateStripeSettingWithReload('stripe_currency', value, 'Updated Stripe currency'),
+              disabled: updating,
+            },
+            {
+              key: 'stripe_capture_method',
+              label: 'Capture Method',
+              type: 'select',
+              description: 'Payment capture timing',
+              value: getSetting('stripe_capture_method') || 'manual',
+              options: CAPTURE_METHOD_OPTIONS,
+              onChange: (value) =>
+                updateStripeSettingWithReload('stripe_capture_method', value, 'Updated Stripe capture method'),
+              disabled: updating,
+            },
+            {
+              key: 'stripe_statement_descriptor',
+              label: 'Statement Descriptor',
+              type: 'input',
+              description: 'Text shown on customer credit card statements (max 22 characters)',
+              value: getSetting('stripe_statement_descriptor') || 'LUXURY ECOM',
+              maxLength: 22,
+              placeholder: 'LUXURY ECOM',
+              onChange: (value) =>
+                updateStripeSettingWithReload('stripe_statement_descriptor', value, 'Updated statement descriptor'),
+              disabled: updating,
+            },
+          ]}
+        />
+      </PaymentGatewayCard>
 
-        <CardContent className="space-y-6">
-          {/* Enable Stripe + Test Mode */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="stripe_enabled">Enable Stripe</Label>
-                <p className="text-xs text-muted-foreground">
-                  Activate Stripe payment processing
+      {/* PayPal Payment Gateway */}
+      <PaymentGatewayCard
+        name="PayPal Payment Gateway"
+        icon={Wallet}
+        description="Configure PayPal integration for alternative payment processing"
+        status={{
+          configured: true, // Credentials configured in .env
+          enabled: getSetting('paypal_enabled') !== false,
+          // testMode will be auto-detected by backend from credentials in future update
+          keys: {
+            paypal_client_id: true,
+            paypal_client_secret: true,
+          },
+        }}
+        envKeyPrefix="paypal"
+        setupInstructions={{
+          dashboardUrl: 'https://developer.paypal.com/dashboard',
+          steps: [
+            'Visit <a href="https://developer.paypal.com/dashboard/applications/live" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">PayPal Developer Dashboard</a>',
+            'Create a new REST API app (or use existing)',
+            'For <strong>testing</strong>: Use Sandbox credentials',
+            'For <strong>production</strong>: Use Live credentials',
+            'Copy your Client ID and Client Secret',
+            'Add to <code class="px-1 py-0.5 bg-gray-100 rounded text-xs">apps/api/.env</code>:<pre class="mt-2 p-2 bg-gray-800 text-gray-100 rounded text-xs overflow-x-auto">PAYPAL_CLIENT_ID=your_client_id_here\nPAYPAL_CLIENT_SECRET=your_client_secret_here\nPAYPAL_MODE=sandbox  # or \'live\' for production</pre>',
+            'Restart the API server',
+            'Enable PayPal in configuration below to make it available to customers',
+          ],
+        }}
+      >
+        <GatewayBusinessConfig
+          title="PayPal Business Configuration"
+          fields={[
+            {
+              key: 'paypal_enabled',
+              label: 'Enable PayPal',
+              type: 'toggle',
+              description: 'Enable PayPal payment processing',
+              value: getSetting('paypal_enabled'),
+              onChange: (checked) =>
+                updatePayPalSetting('paypal_enabled', checked, 'Toggled PayPal integration'),
+              disabled: updating,
+            },
+            {
+              key: 'paypal_brand_name',
+              label: 'Brand Name',
+              type: 'input',
+              description: 'Your business name shown to customers during PayPal checkout',
+              value: getSetting('paypal_brand_name') || 'NextPik',
+              maxLength: 127,
+              placeholder: 'NextPik',
+              onChange: (value) =>
+                updatePayPalSetting('paypal_brand_name', value, 'Updated PayPal brand name'),
+              disabled: updating,
+            },
+            {
+              key: 'paypal_capture_method',
+              label: 'Capture Method',
+              type: 'select',
+              description: 'Payment capture timing',
+              value: getSetting('paypal_capture_method') || 'authorize',
+              options: PAYPAL_CAPTURE_OPTIONS,
+              onChange: (value) =>
+                updatePayPalSetting('paypal_capture_method', value, 'Updated PayPal capture method'),
+              disabled: updating,
+            },
+          ]}
+        />
+      </PaymentGatewayCard>
+
+      {/* Payment & Escrow Settings */}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Payment Processor Fees */}
+        <SettingsCard
+          icon={DollarSign}
+          title="Payment Processor Transaction Fees"
+          description="Configure transaction fees charged by Stripe and PayPal. These fees are deducted from seller earnings."
+        >
+          {/* Stripe Fees Section */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <CreditCard className="h-4 w-4 text-blue-600" />
+              <h4 className="font-semibold text-sm">Stripe Transaction Fees</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SettingsField
+                label="Fee Percentage (%)"
+                id="stripe_fee_percentage"
+                required
+                error={form.formState.errors.stripe_fee_percentage?.message}
+                description="Stripe's percentage fee (e.g., 2.9 for 2.9%)"
+              >
+                <div className="relative">
+                  <Input
+                    id="stripe_fee_percentage"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="10"
+                    {...form.register('stripe_fee_percentage', { valueAsNumber: true })}
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    %
+                  </span>
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (EUR)"
+                id="stripe_fee_fixed_eur"
+                error={form.formState.errors.stripe_fee_fixed_eur?.message}
+                description="Fixed fee for EUR transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    €
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_eur"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_eur', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (USD)"
+                id="stripe_fee_fixed_usd"
+                error={form.formState.errors.stripe_fee_fixed_usd?.message}
+                description="Fixed fee for USD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_usd"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_usd', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (GBP)"
+                id="stripe_fee_fixed_gbp"
+                error={form.formState.errors.stripe_fee_fixed_gbp?.message}
+                description="Fixed fee for GBP transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    £
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_gbp"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_gbp', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (AUD)"
+                id="stripe_fee_fixed_aud"
+                error={form.formState.errors.stripe_fee_fixed_aud?.message}
+                description="Fixed fee for AUD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    A$
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_aud"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_aud', { valueAsNumber: true })}
+                    className="pl-9"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (CAD)"
+                id="stripe_fee_fixed_cad"
+                error={form.formState.errors.stripe_fee_fixed_cad?.message}
+                description="Fixed fee for CAD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    C$
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_cad"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_cad', { valueAsNumber: true })}
+                    className="pl-9"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (JPY)"
+                id="stripe_fee_fixed_jpy"
+                error={form.formState.errors.stripe_fee_fixed_jpy?.message}
+                description="Fixed fee for JPY transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    ¥
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_jpy"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="500"
+                    {...form.register('stripe_fee_fixed_jpy', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (CHF)"
+                id="stripe_fee_fixed_chf"
+                error={form.formState.errors.stripe_fee_fixed_chf?.message}
+                description="Fixed fee for CHF transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    CHF
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_chf"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('stripe_fee_fixed_chf', { valueAsNumber: true })}
+                    className="pl-11"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (RWF)"
+                id="stripe_fee_fixed_rwf"
+                error={form.formState.errors.stripe_fee_fixed_rwf?.message}
+                description="Fixed fee for RWF transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    FRw
+                  </span>
+                  <Input
+                    id="stripe_fee_fixed_rwf"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="5000"
+                    {...form.register('stripe_fee_fixed_rwf', { valueAsNumber: true })}
+                    className="pl-11"
+                  />
+                </div>
+              </SettingsField>
+            </div>
+          </div>
+
+          {/* PayPal Fees Section */}
+          <div className="space-y-4 pt-6">
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <Wallet className="h-4 w-4 text-blue-500" />
+              <h4 className="font-semibold text-sm">PayPal Transaction Fees</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SettingsField
+                label="Fee Percentage (%)"
+                id="paypal_fee_percentage"
+                required
+                error={form.formState.errors.paypal_fee_percentage?.message}
+                description="PayPal's percentage fee (e.g., 3.49 for 3.49%)"
+              >
+                <div className="relative">
+                  <Input
+                    id="paypal_fee_percentage"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="10"
+                    {...form.register('paypal_fee_percentage', { valueAsNumber: true })}
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    %
+                  </span>
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (EUR)"
+                id="paypal_fee_fixed_eur"
+                error={form.formState.errors.paypal_fee_fixed_eur?.message}
+                description="Fixed fee for EUR transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    €
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_eur"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_eur', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (USD)"
+                id="paypal_fee_fixed_usd"
+                error={form.formState.errors.paypal_fee_fixed_usd?.message}
+                description="Fixed fee for USD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_usd"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_usd', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (GBP)"
+                id="paypal_fee_fixed_gbp"
+                error={form.formState.errors.paypal_fee_fixed_gbp?.message}
+                description="Fixed fee for GBP transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    £
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_gbp"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_gbp', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (AUD)"
+                id="paypal_fee_fixed_aud"
+                error={form.formState.errors.paypal_fee_fixed_aud?.message}
+                description="Fixed fee for AUD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    A$
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_aud"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_aud', { valueAsNumber: true })}
+                    className="pl-9"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (CAD)"
+                id="paypal_fee_fixed_cad"
+                error={form.formState.errors.paypal_fee_fixed_cad?.message}
+                description="Fixed fee for CAD transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    C$
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_cad"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_cad', { valueAsNumber: true })}
+                    className="pl-9"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (JPY)"
+                id="paypal_fee_fixed_jpy"
+                error={form.formState.errors.paypal_fee_fixed_jpy?.message}
+                description="Fixed fee for JPY transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    ¥
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_jpy"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="500"
+                    {...form.register('paypal_fee_fixed_jpy', { valueAsNumber: true })}
+                    className="pl-7"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (CHF)"
+                id="paypal_fee_fixed_chf"
+                error={form.formState.errors.paypal_fee_fixed_chf?.message}
+                description="Fixed fee for CHF transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    CHF
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_chf"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    {...form.register('paypal_fee_fixed_chf', { valueAsNumber: true })}
+                    className="pl-11"
+                  />
+                </div>
+              </SettingsField>
+
+              <SettingsField
+                label="Fixed Fee (RWF)"
+                id="paypal_fee_fixed_rwf"
+                error={form.formState.errors.paypal_fee_fixed_rwf?.message}
+                description="Fixed fee for RWF transactions"
+              >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    FRw
+                  </span>
+                  <Input
+                    id="paypal_fee_fixed_rwf"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="5000"
+                    {...form.register('paypal_fee_fixed_rwf', { valueAsNumber: true })}
+                    className="pl-11"
+                  />
+                </div>
+              </SettingsField>
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 mt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                <h5 className="text-sm font-medium text-blue-900">About Transaction Fees</h5>
+                <p className="text-sm text-blue-700">
+                  These fees are charged by payment processors and automatically deducted from seller earnings.
+                  Adjust these values if you've negotiated custom rates with Stripe or PayPal.
+                </p>
+                <p className="text-xs text-blue-600 mt-2">
+                  💡 <strong>Example:</strong> With Stripe's 2.9% + €0.30 fee, a €100 order costs €3.20 in fees.
+                  Sellers receive €96.80 (minus platform commission).
                 </p>
               </div>
-              <Switch
-                id="stripe_enabled"
-                checked={getStripeSetting('stripe_enabled') ?? false}
-                onCheckedChange={async (checked) => {
-                  await updateStripeSettingWithReload('stripe_enabled', checked, 'Toggled Stripe enabled status');
-                }}
-                disabled={updating}
-              />
             </div>
+          </div>
+        </SettingsCard>
+      </form>
 
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="stripe_test_mode">Test Mode</Label>
-                <p className="text-xs text-muted-foreground">
-                  Use test API keys (sandbox)
-                </p>
+      {/* Payment & Escrow Settings */}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <SettingsCard
+          icon={Lock}
+          title="Escrow & Payment Settings"
+          description="Manage payment processing and escrow configuration"
+        >
+          {Object.keys(form.formState.errors).length > 0 && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <h4 className="text-sm font-medium text-red-900">Form Validation Errors</h4>
               </div>
-              <Switch
-                id="stripe_test_mode"
-                checked={getStripeSetting('stripe_test_mode') ?? true}
-                onCheckedChange={async (checked) => {
-                  await updateStripeSettingWithReload('stripe_test_mode', checked, 'Toggled Stripe test mode');
-                }}
-                disabled={updating}
-              />
-            </div>
-          </div>
-
-          {/* Publishable Key */}
-          <div className="space-y-2">
-            <Label htmlFor="stripe_publishable_key">Publishable Key</Label>
-            <Input
-              id="stripe_publishable_key"
-              type="text"
-              placeholder="pk_test_... or pk_live_..."
-              defaultValue={getStripeSetting('stripe_publishable_key') || ''}
-              onBlur={async (e) => {
-                if (e.target.value !== getStripeSetting('stripe_publishable_key')) {
-                  await updateStripeSettingWithReload('stripe_publishable_key', e.target.value, 'Updated Stripe publishable key');
-                }
-              }}
-              disabled={updating}
-            />
-            <p className="text-xs text-muted-foreground">
-              Safe to expose to frontend (starts with pk_)
-            </p>
-          </div>
-
-          {/* Secret Key */}
-          <div className="space-y-2">
-            <Label htmlFor="stripe_secret_key" className="flex items-center gap-2">
-              Secret Key
-              <Lock className="h-3 w-3 text-muted-foreground" />
-            </Label>
-            <div className="relative">
-              <Input
-                id="stripe_secret_key"
-                type={showSecretKey ? 'text' : 'password'}
-                placeholder="sk_test_... or sk_live_..."
-                defaultValue={getStripeSetting('stripe_secret_key') || ''}
-                onBlur={async (e) => {
-                  if (e.target.value !== getStripeSetting('stripe_secret_key')) {
-                    await updateStripeSettingWithReload('stripe_secret_key', e.target.value, 'Updated Stripe secret key');
-                  }
-                }}
-                disabled={updating}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowSecretKey(!showSecretKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-destructive flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
-              Never expose this key to frontend (starts with sk_)
-            </p>
-          </div>
-
-          {/* Webhook Secret */}
-          <div className="space-y-2">
-            <Label htmlFor="stripe_webhook_secret" className="flex items-center gap-2">
-              Webhook Signing Secret
-              <Lock className="h-3 w-3 text-muted-foreground" />
-            </Label>
-            <div className="relative">
-              <Input
-                id="stripe_webhook_secret"
-                type={showWebhookSecret ? 'text' : 'password'}
-                placeholder="whsec_..."
-                defaultValue={getStripeSetting('stripe_webhook_secret') || ''}
-                onBlur={async (e) => {
-                  if (e.target.value !== getStripeSetting('stripe_webhook_secret')) {
-                    await updateStripeSettingWithReload('stripe_webhook_secret', e.target.value, 'Updated Stripe webhook secret');
-                  }
-                }}
-                disabled={updating}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowWebhookSecret(!showWebhookSecret)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Used for webhook signature verification (starts with whsec_)
-            </p>
-          </div>
-
-          {/* Currency and Capture Method */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="stripe_currency">Default Currency</Label>
-              <Select
-                value={getStripeSetting('stripe_currency') || 'USD'}
-                onValueChange={async (value) => {
-                  await updateStripeSettingWithReload('stripe_currency', value, 'Updated Stripe currency');
-                }}
-                disabled={updating}
-              >
-                <SelectTrigger id="stripe_currency">
-                  <SelectValue placeholder="Select currency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">USD - US Dollar</SelectItem>
-                  <SelectItem value="EUR">EUR - Euro</SelectItem>
-                  <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                  <SelectItem value="RWF">RWF - Rwandan Franc</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="stripe_capture_method">Capture Method</Label>
-              <Select
-                value={getStripeSetting('stripe_capture_method') || 'manual'}
-                onValueChange={async (value) => {
-                  await updateStripeSettingWithReload('stripe_capture_method', value, 'Updated Stripe capture method');
-                }}
-                disabled={updating}
-              >
-                <SelectTrigger id="stripe_capture_method">
-                  <SelectValue placeholder="Select method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Manual (Escrow Compatible)</SelectItem>
-                  <SelectItem value="automatic">Automatic (Instant Capture)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Statement Descriptor */}
-          <div className="space-y-2">
-            <Label htmlFor="stripe_statement_descriptor">Statement Descriptor</Label>
-            <Input
-              id="stripe_statement_descriptor"
-              type="text"
-              maxLength={22}
-              placeholder="LUXURY ECOM"
-              defaultValue={getStripeSetting('stripe_statement_descriptor') || 'LUXURY ECOM'}
-              onBlur={async (e) => {
-                if (e.target.value !== getStripeSetting('stripe_statement_descriptor')) {
-                  await updateStripeSettingWithReload('stripe_statement_descriptor', e.target.value, 'Updated statement descriptor');
-                }
-              }}
-              disabled={updating}
-            />
-            <p className="text-xs text-muted-foreground">
-              Text shown on customer credit card statements (max 22 characters)
-            </p>
-          </div>
-
-          {/* Connection Status Summary */}
-          {stripeStatus && !loadingStripeStatus && (
-            <div className="rounded-lg border bg-muted/50 p-4">
-              <h4 className="text-sm font-medium mb-3">Configuration Status</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2">
-                  {stripeStatus.hasPublishableKey ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <span>Publishable Key</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {stripeStatus.hasSecretKey ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <span>Secret Key</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {stripeStatus.hasWebhookSecret ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  )}
-                  <span>Webhook Secret</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {stripeStatus.enabled ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <span>Integration {stripeStatus.enabled ? 'Enabled' : 'Disabled'}</span>
-                </div>
-              </div>
+              <ul className="text-sm text-red-700 space-y-1 ml-7">
+                {Object.entries(form.formState.errors).map(([field, error]: any) => (
+                  <li key={field}>
+                    <strong>{field}:</strong> {error.message}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Existing Payment & Escrow Settings Card */}
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment & Escrow Settings</CardTitle>
-            <CardDescription>
-              Manage payment processing and escrow configuration
-            </CardDescription>
-          </CardHeader>
+          <SettingsToggle
+            label="Escrow System"
+            description={`Enable secure payment holding until delivery confirmation${isProduction ? ' (Required in production)' : ''}`}
+            checked={getUpperPaymentSetting('escrow_enabled') ?? true}
+            onCheckedChange={async (checked) => {
+              await updateSetting('escrow_enabled', checked, 'Toggled escrow system');
+              await Promise.all([refetch(), refetchUpper()]);
+            }}
+            disabled={isProduction || updating}
+          />
 
-        <CardContent className="space-y-6">
-          {/* Escrow Enabled */}
-          <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
-            <div className="space-y-0.5 flex-1">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="escrow_enabled">Escrow System</Label>
-                {isProduction && <Lock className="h-3 w-3 text-muted-foreground" />}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Enable secure payment holding until delivery confirmation
-                {isProduction && ' (Required in production)'}
-              </p>
-            </div>
-            <Switch
-              id="escrow_enabled"
-              checked={form.watch('escrow_enabled')}
-              onCheckedChange={(checked) => form.setValue('escrow_enabled', checked)}
-              disabled={isProduction || updating}
-            />
-          </div>
-
-          {/* Escrow Hold Days */}
-          <div className="space-y-2">
-            <Label htmlFor="escrow_default_hold_days">Escrow Hold Period (Days) *</Label>
+          <SettingsField
+            label="Escrow Hold Period (Days)"
+            id="escrow_default_hold_days"
+            required
+            tooltip="Number of days to hold payment after delivery before releasing to seller"
+            error={form.formState.errors.escrow_default_hold_days?.message}
+            helperText="Default days to hold payment after delivery (1-90 days)"
+          >
             <Input
               id="escrow_default_hold_days"
               type="number"
@@ -467,108 +914,150 @@ export function PaymentSettingsSection() {
               max={90}
               {...form.register('escrow_default_hold_days', { valueAsNumber: true })}
               placeholder="7"
+              className="max-w-xs"
             />
-            {form.formState.errors.escrow_default_hold_days && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.escrow_default_hold_days.message}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Default days to hold payment after delivery (1-90 days)
-            </p>
-          </div>
+          </SettingsField>
 
-          {/* Auto Release */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="escrow_auto_release_enabled">Auto-Release Escrow</Label>
-              <p className="text-sm text-muted-foreground">
-                Automatically release payment after hold period expires
-              </p>
-            </div>
-            <Switch
-              id="escrow_auto_release_enabled"
-              checked={form.watch('escrow_auto_release_enabled')}
-              onCheckedChange={(checked) => form.setValue('escrow_auto_release_enabled', checked)}
-            />
-          </div>
+          <SettingsToggle
+            label="Auto-Release Escrow"
+            description="Automatically release payment after hold period expires"
+            checked={getUpperPaymentSetting('escrow_auto_release_enabled') ?? true}
+            onCheckedChange={async (checked) => {
+              await updateSetting('escrow_auto_release_enabled', checked, 'Toggled auto-release escrow');
+              await Promise.all([refetch(), refetchUpper()]);
+            }}
+            disabled={updating}
+          />
+        </SettingsCard>
 
-          {/* Minimum Payout */}
-          <div className="space-y-2">
-            <Label htmlFor="min_payout_amount">Minimum Payout Amount (USD) *</Label>
-            <Input
+        <SettingsCard
+          icon={DollarSign}
+          title="Payout Configuration"
+          description="Configure seller payout settings"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <SettingsField
+              label="Minimum Payout Amount (USD)"
               id="min_payout_amount"
-              type="number"
-              min={0}
-              step="0.01"
-              {...form.register('min_payout_amount', { valueAsNumber: true })}
-              placeholder="50.00"
-            />
-            {form.formState.errors.min_payout_amount && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.min_payout_amount.message}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Sellers must reach this amount to request payout
-            </p>
-          </div>
-
-          {/* Payout Schedule */}
-          <div className="space-y-2">
-            <Label htmlFor="payout_schedule">Payout Schedule *</Label>
-            <Select
-              value={form.watch('payout_schedule')}
-              onValueChange={(value) => form.setValue('payout_schedule', value as any)}
+              required
+              tooltip="Minimum balance required before sellers can request a payout"
+              error={form.formState.errors.min_payout_amount?.message}
+              helperText="Sellers must reach this amount to request payout"
             >
-              <SelectTrigger id="payout_schedule">
-                <SelectValue placeholder="Select schedule" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="biweekly">Bi-weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select>
-            {form.formState.errors.payout_schedule && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.payout_schedule.message}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              How often payouts are processed
-            </p>
+              <Input
+                id="min_payout_amount"
+                type="number"
+                min={0}
+                step="0.01"
+                {...form.register('min_payout_amount', { valueAsNumber: true })}
+                placeholder="50.00"
+              />
+            </SettingsField>
+
+            <SettingsField
+              label="Payout Schedule"
+              id="payout_schedule"
+              required
+              tooltip="How often payouts are processed automatically"
+              error={form.formState.errors.payout_schedule?.message}
+              helperText="How often payouts are processed"
+            >
+              <Select
+                value={form.watch('payout_schedule')}
+                onValueChange={(value) => form.setValue('payout_schedule', value as any, { shouldDirty: true })}
+              >
+                <SelectTrigger id="payout_schedule">
+                  <SelectValue placeholder="Select schedule" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYOUT_SCHEDULE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingsField>
+          </div>
+        </SettingsCard>
+
+        <SettingsCard
+          icon={CreditCard}
+          title="Payment Methods"
+          description="Enable/disable payment methods available to customers"
+        >
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 mb-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-medium text-amber-900 mb-1">
+                  Single Source of Truth
+                </h4>
+                <p className="text-sm text-amber-700">
+                  This section controls which payment methods are available to customers during checkout.
+                  Gateway configuration above sets up API credentials and business logic, while these toggles
+                  control customer-facing availability.
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Payment Methods */}
-          <div className="space-y-2">
-            <Label>Enabled Payment Methods</Label>
-            <div className="space-y-2">
-              {['stripe', 'paypal', 'bank_transfer'].map((method) => {
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">Available Payment Methods *</Label>
+            <div className="space-y-3">
+              {PAYMENT_METHODS.map((method) => {
                 const currentMethods = form.watch('payment_methods') || [];
-                const isChecked = Array.isArray(currentMethods) && currentMethods.includes(method);
+                const isChecked = Array.isArray(currentMethods) && currentMethods.includes(method.id);
+
+                // Determine if gateway is configured
+                let isConfigured = true;
+                let configWarning = '';
+
+                if (method.id === 'stripe') {
+                  isConfigured = stripeStatus?.configured ?? false;
+                  configWarning = !isConfigured ? 'Configure Stripe API keys above first' : '';
+                } else if (method.id === 'paypal') {
+                  // PayPal is configured via .env, assume available
+                  isConfigured = true;
+                }
 
                 return (
-                  <div key={method} className="flex items-center space-x-3">
+                  <div key={method.id} className="flex items-start justify-between rounded-lg border p-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`payment_method_${method.id}`} className="cursor-pointer text-sm font-medium">
+                          {method.label}
+                        </Label>
+                        {!isConfigured && (
+                          <span className="text-xs text-red-600 font-medium">Not Configured</span>
+                        )}
+                      </div>
+                      {configWarning && (
+                        <p className="text-xs text-muted-foreground text-red-600">
+                          {configWarning}
+                        </p>
+                      )}
+                      {isConfigured && (
+                        <p className="text-xs text-muted-foreground">
+                          {method.id === 'stripe' && 'Credit/Debit cards via Stripe'}
+                          {method.id === 'paypal' && 'PayPal and PayPal Credit'}
+                          {method.id === 'bank_transfer' && 'Direct bank transfers'}
+                        </p>
+                      )}
+                    </div>
                     <Switch
-                      id={`payment_method_${method}`}
+                      id={`payment_method_${method.id}`}
                       checked={isChecked}
+                      disabled={!isConfigured}
                       onCheckedChange={(checked) => {
                         const current = form.watch('payment_methods') || [];
                         if (checked) {
-                          form.setValue('payment_methods', [...current, method], { shouldDirty: true });
+                          form.setValue('payment_methods', [...current, method.id], { shouldDirty: true });
                         } else {
-                          form.setValue('payment_methods', current.filter(m => m !== method), { shouldDirty: true });
+                          form.setValue('payment_methods', current.filter(m => m !== method.id), { shouldDirty: true });
                         }
                       }}
                     />
-                    <Label htmlFor={`payment_method_${method}`} className="capitalize cursor-pointer text-sm font-medium">
-                      {method.replace('_', ' ')}
-                    </Label>
                   </div>
                 );
               })}
@@ -580,23 +1069,14 @@ export function PaymentSettingsSection() {
               </p>
             )}
           </div>
-        </CardContent>
+        </SettingsCard>
 
-        <CardFooter className="flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => form.reset()}
-            disabled={updating}
-          >
-            Reset
-          </Button>
-          <Button type="submit" disabled={updating}>
-            {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </CardFooter>
-        </Card>
+        <SettingsFooter
+          onReset={() => form.reset()}
+          onSave={() => form.handleSubmit(onSubmit)()}
+          isLoading={updating}
+          isDirty={isDirty}
+        />
       </form>
     </div>
   );

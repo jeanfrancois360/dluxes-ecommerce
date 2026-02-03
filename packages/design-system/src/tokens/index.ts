@@ -1,5 +1,5 @@
 /**
- * Luxury E-commerce Design System
+ * NextPik E-commerce Design System
  * Main token exports
  */
 

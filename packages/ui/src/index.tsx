@@ -1,5 +1,5 @@
 /**
- * @luxury/ui
+ * @nextpik/ui
  * Elegant component library for luxury e-commerce
  */
 
@@ -16,6 +16,10 @@ export * from './components/select';
 export * from './components/switch';
 export * from './components/tabs';
 export * from './components/textarea';
+export * from './components/tooltip';
+export * from './components/checkbox';
+export * from './components/popover';
+export * from './components/command';
 
 // Auth Components
 export * from './components/floating-input';

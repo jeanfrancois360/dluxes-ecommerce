@@ -210,12 +210,12 @@ export class ProductsController {
   }
 
   /**
-   * Create new product (Admin only)
+   * Create new product (Admin, Seller)
    * @route POST /products
    */
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createProductDto: CreateProductDto) {
     const data = await this.productsService.create(createProductDto);
@@ -227,12 +227,12 @@ export class ProductsController {
   }
 
   /**
-   * Update product (Admin only)
+   * Update product (Admin, Seller)
    * @route PATCH /products/:id
    */
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   async update(
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto
@@ -246,12 +246,12 @@ export class ProductsController {
   }
 
   /**
-   * Add images to product (Admin only)
+   * Add images to product (Admin, Seller)
    * @route POST /products/:id/images
    */
   @Post(':id/images')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   async addImages(
     @Param('id') id: string,
     @Body() body: { images: string[] }
@@ -265,12 +265,12 @@ export class ProductsController {
   }
 
   /**
-   * Remove product image (Admin only)
+   * Remove product image (Admin, Seller)
    * @route DELETE /products/:id/images/:imageId
    */
   @Delete(':id/images/:imageId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   async removeImage(
     @Param('id') id: string,
     @Param('imageId') imageId: string
@@ -284,12 +284,12 @@ export class ProductsController {
   }
 
   /**
-   * Reorder product images (Admin only)
+   * Reorder product images (Admin, Seller)
    * @route PATCH /products/:id/images/reorder
    */
   @Patch(':id/images/reorder')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   async reorderImages(
     @Param('id') id: string,
     @Body() body: { imageOrders: Array<{ id: string; order: number }> }
@@ -303,12 +303,12 @@ export class ProductsController {
   }
 
   /**
-   * Delete product (Admin only)
+   * Delete product (Admin, Seller)
    * @route DELETE /products/:id
    */
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string) {
     try {
@@ -378,12 +378,12 @@ export class ProductsController {
   }
 
   /**
-   * Upload product image (Admin only)
+   * Upload product image (Admin, Seller)
    * @route POST /products/upload-image
    */
   @Post('upload-image')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   @UseInterceptors(FileInterceptor('image'))
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     try {
@@ -435,18 +435,11 @@ export class ProductsController {
    */
   @Get(':productId/variants')
   async getProductVariants(@Param('productId') productId: string) {
-    try {
-      const data = await this.productsService.getProductVariants(productId);
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.getProductVariants(productId);
+    return {
+      success: true,
+      data,
+    };
   }
 
   /**
@@ -455,18 +448,11 @@ export class ProductsController {
    */
   @Get('variants/:variantId')
   async getVariantById(@Param('variantId') variantId: string) {
-    try {
-      const data = await this.productsService.getVariantById(variantId);
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.getVariantById(variantId);
+    return {
+      success: true,
+      data,
+    };
   }
 
   /**
@@ -480,19 +466,12 @@ export class ProductsController {
     @Param('productId') productId: string,
     @Body() dto: CreateProductVariantDto,
   ) {
-    try {
-      const data = await this.productsService.createVariant(productId, dto);
-      return {
-        success: true,
-        data,
-        message: 'Variant created successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.createVariant(productId, dto);
+    return {
+      success: true,
+      data,
+      message: 'Variant created successfully',
+    };
   }
 
   /**
@@ -506,19 +485,12 @@ export class ProductsController {
     @Param('productId') productId: string,
     @Body() dto: BulkCreateVariantsDto,
   ) {
-    try {
-      const data = await this.productsService.bulkCreateVariants(productId, dto.variants);
-      return {
-        success: true,
-        data,
-        message: `${data.length} variants created successfully`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.bulkCreateVariants(productId, dto.variants);
+    return {
+      success: true,
+      data,
+      message: `${data.length} variants created successfully`,
+    };
   }
 
   /**
@@ -532,19 +504,12 @@ export class ProductsController {
     @Param('variantId') variantId: string,
     @Body() dto: UpdateProductVariantDto,
   ) {
-    try {
-      const data = await this.productsService.updateVariant(variantId, dto);
-      return {
-        success: true,
-        data,
-        message: 'Variant updated successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.updateVariant(variantId, dto);
+    return {
+      success: true,
+      data,
+      message: 'Variant updated successfully',
+    };
   }
 
   /**
@@ -556,19 +521,12 @@ export class ProductsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   @HttpCode(HttpStatus.OK)
   async deleteVariant(@Param('variantId') variantId: string) {
-    try {
-      const data = await this.productsService.deleteVariant(variantId);
-      return {
-        success: true,
-        data,
-        message: 'Variant deleted successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.deleteVariant(variantId);
+    return {
+      success: true,
+      data,
+      message: 'Variant deleted successfully',
+    };
   }
 
   /**
@@ -582,19 +540,12 @@ export class ProductsController {
     @Param('productId') productId: string,
     @Body() body: { variantOrders: Array<{ id: string; order: number }> },
   ) {
-    try {
-      const data = await this.productsService.reorderVariants(productId, body.variantOrders);
-      return {
-        success: true,
-        data,
-        message: 'Variants reordered successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
-      };
-    }
+    const data = await this.productsService.reorderVariants(productId, body.variantOrders);
+    return {
+      success: true,
+      data,
+      message: 'Variants reordered successfully',
+    };
   }
 
   // ============================================================================

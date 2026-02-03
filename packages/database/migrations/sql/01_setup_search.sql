@@ -1,4 +1,4 @@
--- Full-Text Search Setup for Luxury E-commerce
+-- Full-Text Search Setup for NextPik E-commerce
 -- This file sets up PostgreSQL full-text search with tsvector
 
 -- ============================================================================

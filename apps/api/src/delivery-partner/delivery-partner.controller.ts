@@ -523,6 +523,7 @@ export class DeliveryPartnerController {
       FAILED_DELIVERY: 'PROCESSING',
       RETURNED: 'CANCELLED',
       CANCELLED: 'CANCELLED',
+      EXCEPTION: 'PROCESSING',
     };
 
     return statusMap[deliveryStatus] || 'PROCESSING';
@@ -539,6 +540,7 @@ export class DeliveryPartnerController {
       FAILED_DELIVERY: 'Delivery Failed',
       RETURNED: 'Returned',
       CANCELLED: 'Cancelled',
+      EXCEPTION: 'Exception',
     };
 
     return titles[status] || status;
@@ -555,6 +557,7 @@ export class DeliveryPartnerController {
       FAILED_DELIVERY: 'x-circle',
       RETURNED: 'arrow-left',
       CANCELLED: 'x',
+      EXCEPTION: 'alert-triangle',
     };
 
     return icons[status] || 'circle';

@@ -1,23 +1,24 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
-import { Textarea } from '@luxury/ui';
-import { AlertCircle, Loader2, Search } from 'lucide-react';
+import { Card, CardContent } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Textarea } from '@nextpik/ui';
+import { Loader2, Search, BarChart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { seoSettingsSchema, type SeoSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
+import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 export function SeoSettingsSection() {
   const { settings, loading, refetch } = useSettings('seo');
   const { updateSetting, updating } = useSettingsUpdate();
+  const justSavedRef = useRef(false);
 
   const form = useForm<SeoSettings>({
     resolver: zodResolver(seoSettingsSchema),
@@ -32,9 +33,13 @@ export function SeoSettingsSection() {
   useEffect(() => {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
-      form.reset(formData as SeoSettings);
+      if (!form.formState.isDirty || justSavedRef.current) {
+        form.reset(formData as SeoSettings);
+        justSavedRef.current = false;
+      }
     }
-  }, [settings, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
 
   const onSubmit = async (data: SeoSettings) => {
     try {
@@ -42,12 +47,20 @@ export function SeoSettingsSection() {
       for (const [key, value] of updates) {
         await updateSetting(key, value, 'Updated via settings panel');
       }
+      justSavedRef.current = true;
       toast.success('SEO settings saved successfully');
       await refetch();
     } catch (error) {
       console.error('Failed to save settings:', error);
+      justSavedRef.current = false;
     }
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
 
   if (loading) {
     return (
@@ -61,25 +74,25 @@ export function SeoSettingsSection() {
 
   const titleLength = form.watch('seo_meta_title')?.length || 0;
   const descriptionLength = form.watch('seo_meta_description')?.length || 0;
+  const isDirty = form.formState.isDirty;
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            SEO Settings
-          </CardTitle>
-          <CardDescription>
-            Configure search engine optimization and analytics
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-6">
-          {/* Meta Title */}
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <SettingsCard
+        icon={Search}
+        title="Search Engine Optimization"
+        description="Configure meta tags and SEO settings"
+      >
+        <SettingsField
+          label="Meta Title"
+          id="seo_meta_title"
+          required
+          tooltip="Page title shown in search results"
+          error={form.formState.errors.seo_meta_title?.message}
+          helperText="Page title shown in search results (recommended: 50-60 characters)"
+        >
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="seo_meta_title">Meta Title *</Label>
               <span className={`text-xs ${titleLength > 60 ? 'text-destructive' : 'text-muted-foreground'}`}>
                 {titleLength}/60
               </span>
@@ -87,24 +100,22 @@ export function SeoSettingsSection() {
             <Input
               id="seo_meta_title"
               {...form.register('seo_meta_title')}
-              placeholder="Luxury E-commerce - Premium Products & Exclusive Deals"
+              placeholder="NextPik E-commerce - Premium Products & Exclusive Deals"
               maxLength={60}
             />
-            {form.formState.errors.seo_meta_title && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.seo_meta_title.message}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Page title shown in search results (recommended: 50-60 characters)
-            </p>
           </div>
+        </SettingsField>
 
-          {/* Meta Description */}
+        <SettingsField
+          label="Meta Description"
+          id="seo_meta_description"
+          required
+          tooltip="Description shown in search results"
+          error={form.formState.errors.seo_meta_description?.message}
+          helperText="Description shown in search results (recommended: 150-160 characters)"
+        >
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="seo_meta_description">Meta Description *</Label>
               <span className={`text-xs ${descriptionLength > 160 ? 'text-destructive' : 'text-muted-foreground'}`}>
                 {descriptionLength}/160
               </span>
@@ -116,100 +127,75 @@ export function SeoSettingsSection() {
               maxLength={160}
               rows={3}
             />
-            {form.formState.errors.seo_meta_description && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.seo_meta_description.message}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Description shown in search results (recommended: 150-160 characters)
-            </p>
           </div>
+        </SettingsField>
 
-          {/* Keywords */}
+        <SettingsField
+          label="Meta Keywords"
+          id="seo_keywords"
+          tooltip="Comma-separated keywords for search engines"
+          error={form.formState.errors.seo_keywords?.message}
+          helperText="Comma-separated keywords for search engines (optional, modern SEO relies less on this)"
+        >
+          <Textarea
+            id="seo_keywords"
+            {...form.register('seo_keywords')}
+            placeholder="luxury, e-commerce, watches, jewelry, fashion, premium, escrow, secure payment"
+            rows={2}
+          />
+        </SettingsField>
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ">
+          <p className="text-sm font-medium mb-3">Search Result Preview</p>
           <div className="space-y-2">
-            <Label htmlFor="seo_keywords">Meta Keywords</Label>
-            <Textarea
-              id="seo_keywords"
-              {...form.register('seo_keywords')}
-              placeholder="luxury, e-commerce, watches, jewelry, fashion, premium, escrow, secure payment"
-              rows={2}
-            />
-            {form.formState.errors.seo_keywords && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {form.formState.errors.seo_keywords.message}
+            <div>
+              <p className="text-lg text-blue-600 font-medium line-clamp-1">
+                {form.watch('seo_meta_title') || 'Your page title will appear here'}
               </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Comma-separated keywords for search engines (optional, modern SEO relies less on this)
-            </p>
-          </div>
-
-          {/* Analytics Enabled */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="analytics_enabled">Analytics Tracking</Label>
-              <p className="text-sm text-muted-foreground">
-                Enable Google Analytics or similar tracking scripts
+              <p className="text-xs text-green-700 ">
+                https://yourdomain.com
               </p>
             </div>
-            <Switch
-              id="analytics_enabled"
-              checked={form.watch('analytics_enabled')}
-              onCheckedChange={(checked) => form.setValue('analytics_enabled', checked)}
-            />
-          </div>
-
-          {/* Preview Card */}
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-            <p className="text-sm font-medium mb-3">Search Result Preview</p>
-            <div className="space-y-2">
-              <div>
-                <p className="text-lg text-blue-600 dark:text-blue-400 font-medium line-clamp-1">
-                  {form.watch('seo_meta_title') || 'Your page title will appear here'}
-                </p>
-                <p className="text-xs text-green-700 dark:text-green-500">
-                  https://yourdomain.com
-                </p>
-              </div>
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {form.watch('seo_meta_description') || 'Your meta description will appear here. This helps users understand what your page is about before clicking.'}
-              </p>
-            </div>
-          </div>
-
-          {/* SEO Tips */}
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-            <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-              SEO Best Practices
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {form.watch('seo_meta_description') || 'Your meta description will appear here. This helps users understand what your page is about before clicking.'}
             </p>
-            <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
-              <li>Keep titles under 60 characters to avoid truncation</li>
-              <li>Write compelling descriptions (150-160 characters)</li>
-              <li>Include primary keywords naturally</li>
-              <li>Make each page's title and description unique</li>
-              <li>Focus on user intent, not just keywords</li>
-            </ul>
           </div>
-        </CardContent>
+        </div>
 
-        <CardFooter className="flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => form.reset()}
-            disabled={updating}
-          >
-            Reset
-          </Button>
-          <Button type="submit" disabled={updating}>
-            {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </CardFooter>
-      </Card>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 ">
+          <p className="text-sm font-medium text-blue-900 mb-2">
+            SEO Best Practices
+          </p>
+          <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+            <li>Keep titles under 60 characters to avoid truncation</li>
+            <li>Write compelling descriptions (150-160 characters)</li>
+            <li>Include primary keywords naturally</li>
+            <li>Make each page's title and description unique</li>
+            <li>Focus on user intent, not just keywords</li>
+          </ul>
+        </div>
+      </SettingsCard>
+
+      <SettingsCard
+        icon={BarChart}
+        title="Analytics"
+        description="Configure tracking and analytics"
+      >
+        <SettingsToggle
+          label="Analytics Tracking"
+          description="Enable Google Analytics or similar tracking scripts"
+          checked={form.watch('analytics_enabled')}
+          onCheckedChange={(checked) => form.setValue('analytics_enabled', checked, { shouldDirty: true })}
+          tooltip="When enabled, analytics tracking scripts will be loaded on all pages"
+        />
+      </SettingsCard>
+
+      <SettingsFooter
+        onReset={() => form.reset()}
+        onSave={() => form.handleSubmit(onSubmit)()}
+        isLoading={updating}
+        isDirty={isDirty}
+      />
     </form>
   );
 }

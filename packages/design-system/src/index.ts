@@ -1,5 +1,5 @@
 /**
- * @luxury/design-system
+ * @nextpik/design-system
  * Complete design system for luxury e-commerce platform
  */
 

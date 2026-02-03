@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Badge } from '@luxury/ui';
-import { Input } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Badge } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
 import {
   Table,
   TableBody,
@@ -12,11 +12,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {  DollarSign, TrendingUp, Package, Calendar as CalendarIcon, Download } from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 interface EarningsSummary {
@@ -99,11 +99,11 @@ export default function DeliveryPartnerEarningsPage() {
     a.click();
     window.URL.revokeObjectURL(url);
 
-    toast.success('Success', 'Earnings exported successfully');
+    toast.success('Earnings exported successfully');
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 ">
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>

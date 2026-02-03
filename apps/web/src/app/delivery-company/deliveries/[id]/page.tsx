@@ -16,6 +16,8 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
 interface DeliveryDetails {
   id: string;
   trackingNumber: string;
@@ -88,7 +90,7 @@ export default function DeliveryDetailsPage() {
   const fetchDeliveryDetails = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/v1/delivery-company/deliveries/${deliveryId}`, {
+      const response = await fetch(`${API_URL}/delivery-company/deliveries/${deliveryId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -107,7 +109,7 @@ export default function DeliveryDetailsPage() {
   const fetchDrivers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/v1/delivery-company/drivers', {
+      const response = await fetch(`${API_URL}/delivery-company/drivers`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -127,7 +129,7 @@ export default function DeliveryDetailsPage() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `/api/v1/delivery-company/deliveries/${deliveryId}/assign-driver`,
+        `${API_URL}/delivery-company/deliveries/${deliveryId}/assign-driver`,
         {
           method: 'POST',
           headers: {
@@ -156,7 +158,7 @@ export default function DeliveryDetailsPage() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `/api/v1/delivery-company/deliveries/${deliveryId}/status`,
+        `${API_URL}/delivery-company/deliveries/${deliveryId}/status`,
         {
           method: 'PUT',
           headers: {
@@ -184,7 +186,7 @@ export default function DeliveryDetailsPage() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `/api/v1/delivery-company/deliveries/${deliveryId}/proof`,
+        `${API_URL}/delivery-company/deliveries/${deliveryId}/proof`,
         {
           method: 'POST',
           headers: {
@@ -212,7 +214,7 @@ export default function DeliveryDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-white">
+      <div className="min-h-screen bg-white flex items-center justify-center text-white">
         Loading delivery details...
       </div>
     );
@@ -220,16 +222,16 @@ export default function DeliveryDetailsPage() {
 
   if (!delivery) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-white">
+      <div className="min-h-screen bg-white flex items-center justify-center text-white">
         Delivery not found
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-black/50 backdrop-blur-sm">
+      <div className="border-b border-gray-200 bg-gray-50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <button
             onClick={() => router.back()}
@@ -259,7 +261,7 @@ export default function DeliveryDetailsPage() {
           {/* Left Column - Details */}
           <div className="lg:col-span-2 space-y-6">
             {/* Addresses */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+            <div className="bg-white/5 border border-gray-200 rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Addresses</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -297,14 +299,14 @@ export default function DeliveryDetailsPage() {
             </div>
 
             {/* Order Items */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+            <div className="bg-white/5 border border-gray-200 rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Package className="w-5 h-5" />
                 Order Items
               </h2>
               <div className="space-y-3">
                 {delivery.order.items.map((item, index) => (
-                  <div key={index} className="flex items-center gap-4 pb-3 border-b border-white/10 last:border-0">
+                  <div key={index} className="flex items-center gap-4 pb-3 border-b border-gray-200 last:border-0">
                     {item.product.heroImage && (
                       <img
                         src={item.product.heroImage}
@@ -322,7 +324,7 @@ export default function DeliveryDetailsPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 pt-4 border-t border-white/10">
+              <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Order Total:</span>
                   <span>${Number(delivery.order.total).toFixed(2)}</span>
@@ -334,7 +336,7 @@ export default function DeliveryDetailsPage() {
           {/* Right Column - Actions */}
           <div className="space-y-6">
             {/* Current Driver */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+            <div className="bg-white/5 border border-gray-200 rounded-lg p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <User className="w-5 h-5" />
                 Assigned Driver
@@ -358,7 +360,7 @@ export default function DeliveryDetailsPage() {
                 <select
                   value={selectedDriver}
                   onChange={(e) => setSelectedDriver(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 mb-3"
+                  className="w-full bg-white/5 border border-gray-200 rounded-lg px-4 py-2 mb-3"
                 >
                   <option value="">Select a driver</option>
                   {drivers.map((driver) => (
@@ -378,7 +380,7 @@ export default function DeliveryDetailsPage() {
             </div>
 
             {/* Update Status */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+            <div className="bg-white/5 border border-gray-200 rounded-lg p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Truck className="w-5 h-5" />
                 Update Status
@@ -386,7 +388,7 @@ export default function DeliveryDetailsPage() {
               <select
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 mb-3"
+                className="w-full bg-white/5 border border-gray-200 rounded-lg px-4 py-2 mb-3"
               >
                 <option value="PENDING_PICKUP">Pending Pickup</option>
                 <option value="PICKUP_SCHEDULED">Pickup Scheduled</option>
@@ -399,7 +401,7 @@ export default function DeliveryDetailsPage() {
                 placeholder="Add notes (optional)"
                 value={statusNotes}
                 onChange={(e) => setStatusNotes(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 mb-3 resize-none"
+                className="w-full bg-white/5 border border-gray-200 rounded-lg px-4 py-2 mb-3 resize-none"
                 rows={3}
               />
               <button
@@ -412,7 +414,7 @@ export default function DeliveryDetailsPage() {
             </div>
 
             {/* Upload Proof */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+            <div className="bg-white/5 border border-gray-200 rounded-lg p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5" />
                 Proof of Delivery
@@ -427,7 +429,7 @@ export default function DeliveryDetailsPage() {
                 placeholder="Add delivery notes..."
                 value={proofNotes}
                 onChange={(e) => setProofNotes(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 mb-3 resize-none"
+                className="w-full bg-white/5 border border-gray-200 rounded-lg px-4 py-2 mb-3 resize-none"
                 rows={3}
               />
               <button
@@ -440,7 +442,7 @@ export default function DeliveryDetailsPage() {
             </div>
 
             {/* Financial Info */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+            <div className="bg-white/5 border border-gray-200 rounded-lg p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <DollarSign className="w-5 h-5" />
                 Financial Details

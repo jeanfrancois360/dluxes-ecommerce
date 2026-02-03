@@ -4,24 +4,29 @@ import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import { ProductCarousel } from '@/components/product-carousel';
-import { QuickViewModal, type QuickViewProduct } from '@luxury/ui';
+import { QuickViewModal, type QuickViewProduct } from '@nextpik/ui';
 import { ReviewSummaryComponent } from '@/components/reviews/review-summary';
 import { ReviewsList } from '@/components/reviews/reviews-list';
 import { ReviewForm } from '@/components/reviews/review-form';
 import { WishlistButton } from '@/components/wishlist/wishlist-button';
 import { ProductInquiryForm } from '@/components/product-inquiry-form';
+import { InquiryForm } from '@/components/inquiry/InquiryForm';
 import { useReviews, useCreateReview, useMarkHelpful, useReportReview } from '@/hooks/use-reviews';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCart } from '@/hooks/use-cart';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import Link from 'next/link';
 import { useParams, useRouter, notFound } from 'next/navigation';
 import { useProduct, useRelatedProducts } from '@/hooks/use-product';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 import { getColorHex } from '@/lib/utils/color-mapping';
 import { Price } from '@/components/price';
-import { isLightColor, calculateDiscountPercentage } from '@luxury/ui/lib/utils/color-utils';
-import { framerMotion } from '@luxury/design-system/animations';
+import { isLightColor, calculateDiscountPercentage } from '@nextpik/ui/lib/utils/color-utils';
+import { framerMotion } from '@nextpik/design-system/animations';
+import { RealEstateDetails, VehicleDetails, DigitalDetails, ServiceDetails, RentalDetails } from '@/components/products/type-details';
+import { RealEstateInquiryForm } from '@/components/products/RealEstateInquiryForm';
+import { VehicleInquiryForm } from '@/components/products/VehicleInquiryForm';
+import { ProductDetailAd } from '@/components/ads';
 
 // Reviews Section Component
 function ReviewsSection({ productId }: { productId: string }) {
@@ -94,6 +99,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>('description');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
+  const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
   const [showInquiryForm, setShowInquiryForm] = useState(false);
 
   // Wishlist
@@ -126,7 +132,7 @@ export default function ProductDetailPage() {
       .map(v => ({
         name: v.attributes.size,
         value: v.attributes.size.toLowerCase(),
-        inStock: v.isAvailable && v.stock > 0,
+        inStock: v.isAvailable && v.inventory > 0,
       }));
     return Array.from(new Map(sizes.map(s => [s.value, s])).values());
   }, [product]);
@@ -144,8 +150,8 @@ export default function ProductDetailPage() {
 
     if (selectedVar) {
       return {
-        inStock: selectedVar.isAvailable && selectedVar.stock > 0,
-        quantity: selectedVar.stock,
+        inStock: selectedVar.isAvailable && selectedVar.inventory > 0,
+        quantity: selectedVar.inventory,
         showQuantity: true
       };
     }
@@ -218,10 +224,24 @@ export default function ProductDetailPage() {
   }, [product, selectedVariant]);
 
   // Check if this is an inquiry product
+  // Inquiry products require contacting the seller instead of adding to cart
   const isInquiryProduct = useMemo(() => {
     if (!product) return false;
+
+    // Check if purchaseType is INQUIRY
+    if (product.purchaseType === 'INQUIRY') return true;
+
+    // Real estate, vehicles, services, and rentals always require inquiry
+    if (product.productType === 'REAL_ESTATE') return true;
+    if (product.productType === 'VEHICLE') return true;
+    if (product.productType === 'SERVICE') return true;
+    if (product.productType === 'RENTAL') return true;
+
+    // Fallback: also check for zero/null price (legacy behavior)
     const price = currentPrice?.price || product.price;
-    return price === null || price === undefined || price === 0;
+    if (price === null || price === undefined || price === 0) return true;
+
+    return false;
   }, [product, currentPrice]);
 
   const renderStars = (rating: number) => {
@@ -253,10 +273,10 @@ export default function ProductDetailPage() {
       }
 
       await addToCart(product.id, quantity, variantId);
-      toast.success('Added to Cart', `${product.name} has been added to your cart`);
+      toast.success(`${product.name} has been added to your cart`);
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
-      toast.error('Error', error.message || 'Failed to add item to cart');
+      toast.error(error.message || 'Failed to add item to cart');
     }
   };
 
@@ -275,9 +295,26 @@ export default function ProductDetailPage() {
     }
   };
 
+  // Fetch fresh product data for Quick View
+  const { product: quickViewFullProduct, isLoading: quickViewLoading } = useProduct(
+    quickViewSlug || '',
+    true
+  );
+
+  // Transform fresh product data for Quick View when it's loaded
+  useEffect(() => {
+    if (quickViewSlug && quickViewFullProduct && !quickViewLoading) {
+      const transformed = transformToQuickViewProducts([quickViewFullProduct])[0];
+      setQuickViewProduct(transformed || null);
+    }
+  }, [quickViewFullProduct, quickViewLoading, quickViewSlug]);
+
   const handleQuickView = (productId: string) => {
     const prod = relatedProducts.find(p => p.id === productId);
-    if (prod) setQuickViewProduct(prod);
+    if (prod) {
+      // Trigger fresh data fetch by setting the slug
+      setQuickViewSlug(prod.slug);
+    }
   };
 
   const handleNavigate = (slug: string) => {
@@ -356,7 +393,7 @@ export default function ProductDetailPage() {
 
         {/* Product Section */}
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-12">
-          <div className="grid lg:grid-cols-2 gap-12 mb-16">
+          <div className="grid lg:grid-cols-[1fr,1fr,300px] xl:grid-cols-[1fr,1fr,350px] gap-8 lg:gap-12 mb-16">
             {/* Image Gallery */}
             <div>
               {/* Main Image */}
@@ -467,6 +504,68 @@ export default function ProductDetailPage() {
                 <p className="text-sm text-neutral-600 mb-6">SKU: {product.sku}</p>
               </div>
 
+              {/* Store Info */}
+              {product.store && (
+                <Link
+                  href={`/store/${product.store.slug}`}
+                  className="flex items-center gap-4 p-4 bg-neutral-50 rounded-xl mb-8 hover:bg-neutral-100 transition-colors group"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-white border border-neutral-200 overflow-hidden flex-shrink-0">
+                    {product.store.logo ? (
+                      <img
+                        src={product.store.logo}
+                        alt={product.store.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gold to-amber-600 flex items-center justify-center">
+                        <span className="text-xl font-bold text-white">
+                          {product.store.name[0]}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-black group-hover:text-gold transition-colors">
+                        {product.store.name}
+                      </h4>
+                      {product.store.verified && (
+                        <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-neutral-500 mt-1">
+                      {product.store.rating && product.store.rating > 0 && (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4 text-gold" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                          {Number(product.store.rating).toFixed(1)}
+                        </span>
+                      )}
+                      <span>{product.store.totalProducts} products</span>
+                      {(product.store.city || product.store.country) && (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          {[product.store.city, product.store.country].filter(Boolean).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center text-gold group-hover:translate-x-1 transition-transform">
+                    <span className="text-sm font-medium mr-1">Visit Store</span>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </Link>
+              )}
+
               {/* Description */}
               <p className="text-neutral-700 mb-8 leading-relaxed">{product.description}</p>
 
@@ -476,19 +575,71 @@ export default function ProductDetailPage() {
                   {!showInquiryForm ? (
                     <button
                       onClick={() => setShowInquiryForm(true)}
-                      className="w-full py-4 px-8 bg-gradient-to-r from-gold to-accent-700 text-black font-bold text-lg rounded-xl hover:from-black hover:to-neutral-800 hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
+                      className={`w-full py-4 px-8 font-bold text-lg rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 ${
+                        product.productType === 'REAL_ESTATE'
+                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                          : product.productType === 'VEHICLE'
+                          ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
+                          : 'bg-gradient-to-r from-gold to-accent-700 text-black hover:from-black hover:to-neutral-800 hover:text-white'
+                      }`}
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      Contact About This Product
+                      {product.productType === 'REAL_ESTATE'
+                        ? 'Schedule a Viewing'
+                        : product.productType === 'VEHICLE'
+                        ? 'Schedule a Test Drive'
+                        : product.productType === 'SERVICE'
+                        ? 'Request Service Quote'
+                        : product.productType === 'RENTAL'
+                        ? 'Request Rental Information'
+                        : 'Contact About This Product'}
                     </button>
+                  ) : product.productType === 'REAL_ESTATE' ? (
+                    <RealEstateInquiryForm
+                      productId={product.id}
+                      productName={product.name}
+                      productType={product.propertyType || 'property'}
+                      onSuccess={() => {
+                        toast.success('Our agent will contact you soon!');
+                        setShowInquiryForm(false);
+                      }}
+                      onCancel={() => setShowInquiryForm(false)}
+                    />
+                  ) : product.productType === 'VEHICLE' ? (
+                    <VehicleInquiryForm
+                      productId={product.id}
+                      productName={product.name}
+                      vehicleInfo={product.vehicleYear && product.vehicleMake && product.vehicleModel
+                        ? `${product.vehicleYear} ${product.vehicleMake} ${product.vehicleModel}`
+                        : undefined}
+                      onSuccess={() => {
+                        toast.success('Our sales team will contact you soon!');
+                        setShowInquiryForm(false);
+                      }}
+                      onCancel={() => setShowInquiryForm(false)}
+                    />
+                  ) : product.productType === 'SERVICE' || product.productType === 'RENTAL' ? (
+                    <div>
+                      <InquiryForm
+                        productId={product.id}
+                        productName={product.name}
+                        sellerName={product.store?.name}
+                      />
+                      <button
+                        onClick={() => setShowInquiryForm(false)}
+                        className="mt-4 text-gray-600 hover:text-gray-800 text-sm font-medium"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   ) : (
                     <ProductInquiryForm
                       productId={product.id}
                       productName={product.name}
                       onSuccess={() => {
-                        toast.success('Inquiry Submitted', 'We will contact you soon!');
+                        toast.success('We will contact you soon!');
                         setShowInquiryForm(false);
                       }}
                       onCancel={() => setShowInquiryForm(false)}
@@ -514,7 +665,7 @@ export default function ProductDetailPage() {
 
                       return (
                         <motion.button
-                          key={color.value}
+                          key={`detail-color-${color.value}`}
                           onClick={() => setSelectedVariant({ ...selectedVariant, color: color.value })}
                           whileHover={framerMotion.interactions.swatchHover}
                           whileTap={framerMotion.interactions.swatchTap}
@@ -548,7 +699,7 @@ export default function ProductDetailPage() {
                   <div className="flex gap-3 flex-wrap">
                     {availableSizes.map((size) => (
                       <motion.button
-                        key={size.value}
+                        key={`detail-size-${size.value}`}
                         onClick={() => size.inStock && setSelectedVariant({ ...selectedVariant, size: size.value })}
                         disabled={!size.inStock}
                         whileHover={size.inStock ? framerMotion.interactions.sizeHover : {}}
@@ -654,7 +805,50 @@ export default function ProductDetailPage() {
                 </>
               )}
             </div>
+
+            {/* Product Detail Ad Sidebar - Hidden on mobile */}
+            <div className="hidden lg:block">
+              <ProductDetailAd
+                categoryId={product.categoryId}
+                className="sticky top-24"
+              />
+            </div>
           </div>
+
+          {/* Real Estate Details - Only shown for REAL_ESTATE products */}
+          {product.productType === 'REAL_ESTATE' && (
+            <div className="mb-12">
+              <RealEstateDetails product={product} />
+            </div>
+          )}
+
+          {/* Vehicle Details - Only shown for VEHICLE products */}
+          {product.productType === 'VEHICLE' && (
+            <div className="mb-12">
+              <VehicleDetails product={product} />
+            </div>
+          )}
+
+          {/* Digital Details - Only shown for DIGITAL products */}
+          {product.productType === 'DIGITAL' && (
+            <div className="mb-12">
+              <DigitalDetails product={product} />
+            </div>
+          )}
+
+          {/* Service Details - Only shown for SERVICE products */}
+          {product.productType === 'SERVICE' && (
+            <div className="mb-12">
+              <ServiceDetails product={product} />
+            </div>
+          )}
+
+          {/* Rental Details - Only shown for RENTAL products */}
+          {product.productType === 'RENTAL' && (
+            <div className="mb-12">
+              <RentalDetails product={product} />
+            </div>
+          )}
 
           {/* Tabs Section */}
           <div className="border-t border-neutral-200 pt-12 mb-16">
@@ -785,8 +979,11 @@ export default function ProductDetailPage() {
 
       {/* Quick View Modal */}
       <QuickViewModal
-        isOpen={!!quickViewProduct}
-        onClose={() => setQuickViewProduct(null)}
+        isOpen={!!quickViewSlug}
+        onClose={() => {
+          setQuickViewSlug(null);
+          setQuickViewProduct(null);
+        }}
         product={quickViewProduct}
         onAddToCart={(id) => console.log('Add to cart:', id)}
         onViewDetails={handleNavigate}

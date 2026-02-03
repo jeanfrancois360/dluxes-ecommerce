@@ -12,6 +12,8 @@ interface PriceProps {
 export function Price({ amount, className = '', showCode = false, fromCurrency = 'USD' }: PriceProps) {
   const { formatPrice, formatPriceWithCode } = useCurrencyConverter();
 
+  // formatPrice will convert from fromCurrency to selected currency
+  // If they match, no conversion happens (price returned as-is)
   const formatted = showCode ? formatPriceWithCode(amount, fromCurrency) : formatPrice(amount, fromCurrency);
 
   return <span className={className}>{formatted}</span>;

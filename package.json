@@ -1,5 +1,5 @@
 {
-  "name": "luxury-ecommerce",
+  "name": "nextpik",
   "version": "1.0.0",
   "private": true,
   "description": "Modern elegant enterprise e-commerce platform",
@@ -10,6 +10,13 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "turbo run dev",
+    "dev:web": "pnpm --filter=@nextpik/web dev",
+    "dev:api": "pnpm --filter=@nextpik/api dev",
+    "dev:fast": "turbo run dev --filter=@nextpik/web --parallel",
+    "dev:backend": "turbo run dev --filter=@nextpik/api --parallel",
+    "dev:light": "NODE_OPTIONS='--max-old-space-size=1536' pnpm --filter=@nextpik/web dev",
+    "dev:ultra-light": "NODE_OPTIONS='--max-old-space-size=1024' NEXT_SKIP_TYPECHECK=true pnpm --filter=@nextpik/web dev",
+    "kill:all": "lsof -ti:3000,4000,5555 | xargs kill -9 || true",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
@@ -18,9 +25,10 @@
     "clean": "turbo run clean && rm -rf node_modules",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "storybook": "pnpm --filter @luxury/ui storybook",
-    "prisma:generate": "pnpm --filter @luxury/database prisma:generate",
-    "prisma:migrate": "pnpm --filter @luxury/database prisma:migrate"
+    "docker:minimal": "docker start nextpik-postgres nextpik-redis",
+    "storybook": "pnpm --filter @nextpik/ui storybook",
+    "prisma:generate": "pnpm --filter @nextpik/database prisma:generate",
+    "prisma:migrate": "pnpm --filter @nextpik/database prisma:migrate"
   },
   "devDependencies": {
     "@turbo/gen": "^2.3.3",

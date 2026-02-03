@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
 import { Package, Truck, Search, MapPin, CheckCircle } from 'lucide-react';
 
 export default function TrackPage() {
@@ -19,7 +19,7 @@ export default function TrackPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white ">
       <div className="container mx-auto px-4 py-16 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-12">
@@ -65,8 +65,8 @@ export default function TrackPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900 mb-2">
-                  <MapPin className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-blue-100 mb-2">
+                  <MapPin className="h-7 w-7 text-blue-600 " />
                 </div>
                 <h3 className="font-semibold text-lg">Real-Time Updates</h3>
                 <p className="text-sm text-muted-foreground">
@@ -79,8 +79,8 @@ export default function TrackPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-900 mb-2">
-                  <CheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 mb-2">
+                  <CheckCircle className="h-7 w-7 text-green-600 " />
                 </div>
                 <h3 className="font-semibold text-lg">Delivery Confirmation</h3>
                 <p className="text-sm text-muted-foreground">
@@ -93,8 +93,8 @@ export default function TrackPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-purple-100 dark:bg-purple-900 mb-2">
-                  <Truck className="h-7 w-7 text-purple-600 dark:text-purple-400" />
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-purple-100 mb-2">
+                  <Truck className="h-7 w-7 text-purple-600 " />
                 </div>
                 <h3 className="font-semibold text-lg">Multiple Carriers</h3>
                 <p className="text-sm text-muted-foreground">

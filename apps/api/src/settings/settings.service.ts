@@ -380,7 +380,7 @@ export class SettingsService {
   async getSiteInfo() {
     try {
       const [siteName, siteTagline, contactEmail, timezone] = await Promise.all([
-        this.getSetting('site_name').catch(() => ({ key: 'site_name', value: 'Luxury E-commerce' })),
+        this.getSetting('site_name').catch(() => ({ key: 'site_name', value: 'NextPik E-commerce' })),
         this.getSetting('site_tagline').catch(() => ({ key: 'site_tagline', value: 'Where Elegance Meets Excellence' })),
         this.getSetting('contact_email').catch(() => ({ key: 'contact_email', value: 'support@luxury.com' })),
         this.getSetting('timezone').catch(() => ({ key: 'timezone', value: 'UTC' })),
@@ -395,7 +395,7 @@ export class SettingsService {
     } catch (error) {
       this.logger.error('Failed to get site info:', error);
       return {
-        siteName: 'Luxury E-commerce',
+        siteName: 'NextPik E-commerce',
         siteTagline: 'Where Elegance Meets Excellence',
         contactEmail: 'support@luxury.com',
         timezone: 'UTC',
@@ -409,9 +409,9 @@ export class SettingsService {
   async getSiteName(): Promise<string> {
     try {
       const setting = await this.getSetting('site_name');
-      return String(setting.value) || 'Luxury E-commerce';
+      return String(setting.value) || 'NextPik E-commerce';
     } catch (error) {
-      return 'Luxury E-commerce';
+      return 'NextPik E-commerce';
     }
   }
 
@@ -586,15 +586,14 @@ export class SettingsService {
 
   /**
    * Get Stripe configuration (for dynamic Stripe client initialization)
+   * NOTE: API keys are read from environment variables (.env), not database
+   * Business configuration (enabled, currency, etc.) comes from database
    */
   async getStripeConfig() {
     try {
       const [
         enabled,
         testMode,
-        publishableKey,
-        secretKey,
-        webhookSecret,
         currency,
         captureMethod,
         statementDescriptor,
@@ -602,21 +601,23 @@ export class SettingsService {
       ] = await Promise.all([
         this.getSetting('stripe_enabled').catch(() => ({ value: false })),
         this.getSetting('stripe_test_mode').catch(() => ({ value: true })),
-        this.getSetting('stripe_publishable_key').catch(() => ({ value: '' })),
-        this.getSetting('stripe_secret_key').catch(() => ({ value: '' })),
-        this.getSetting('stripe_webhook_secret').catch(() => ({ value: '' })),
         this.getSetting('stripe_currency').catch(() => ({ value: 'USD' })),
         this.getSetting('stripe_capture_method').catch(() => ({ value: 'manual' })),
         this.getSetting('stripe_statement_descriptor').catch(() => ({ value: 'LUXURY ECOM' })),
         this.getSetting('stripe_auto_payout_enabled').catch(() => ({ value: false })),
       ]);
 
+      // Read API keys from environment variables
+      const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || '';
+      const secretKey = process.env.STRIPE_SECRET_KEY || '';
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+
       return {
         enabled: Boolean(enabled.value),
         testMode: Boolean(testMode.value),
-        publishableKey: String(publishableKey.value || ''),
-        secretKey: String(secretKey.value || ''),
-        webhookSecret: String(webhookSecret.value || ''),
+        publishableKey,
+        secretKey,
+        webhookSecret,
         currency: String(currency.value || 'USD'),
         captureMethod: String(captureMethod.value || 'manual') as 'automatic' | 'manual',
         statementDescriptor: String(statementDescriptor.value || 'LUXURY ECOM'),
@@ -624,12 +625,13 @@ export class SettingsService {
       };
     } catch (error) {
       this.logger.error('Failed to get Stripe config:', error);
+      // Fallback to environment variables even on error
       return {
         enabled: false,
         testMode: true,
-        publishableKey: '',
-        secretKey: '',
-        webhookSecret: '',
+        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+        secretKey: process.env.STRIPE_SECRET_KEY || '',
+        webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
         currency: 'USD',
         captureMethod: 'manual' as 'automatic' | 'manual',
         statementDescriptor: 'LUXURY ECOM',
@@ -639,12 +641,14 @@ export class SettingsService {
   }
 
   /**
-   * Check if Stripe is properly configured and enabled
+   * Check if Stripe is properly configured (has required API keys)
+   * NOTE: This checks if keys exist in environment, not if integration is enabled
    */
   async isStripeConfigured(): Promise<boolean> {
     try {
       const config = await this.getStripeConfig();
-      return config.enabled && !!config.secretKey && !!config.publishableKey;
+      // Check if required keys are present (from environment variables)
+      return !!config.secretKey && !!config.publishableKey;
     } catch (error) {
       return false;
     }
@@ -652,38 +656,26 @@ export class SettingsService {
 
   /**
    * Get Stripe publishable key (safe for frontend)
+   * Reads from environment variables, not database
    */
   async getStripePublishableKey(): Promise<string> {
-    try {
-      const setting = await this.getSetting('stripe_publishable_key');
-      return String(setting.value || '');
-    } catch (error) {
-      return '';
-    }
+    return process.env.STRIPE_PUBLISHABLE_KEY || '';
   }
 
   /**
    * Get Stripe secret key (backend only)
+   * Reads from environment variables, not database
    */
   async getStripeSecretKey(): Promise<string> {
-    try {
-      const setting = await this.getSetting('stripe_secret_key');
-      return String(setting.value || '');
-    } catch (error) {
-      return '';
-    }
+    return process.env.STRIPE_SECRET_KEY || '';
   }
 
   /**
    * Get Stripe webhook secret (backend only)
+   * Reads from environment variables, not database
    */
   async getStripeWebhookSecret(): Promise<string> {
-    try {
-      const setting = await this.getSetting('stripe_webhook_secret');
-      return String(setting.value || '');
-    } catch (error) {
-      return '';
-    }
+    return process.env.STRIPE_WEBHOOK_SECRET || '';
   }
 
   /**
@@ -695,6 +687,106 @@ export class SettingsService {
       return Boolean(setting.value ?? true);
     } catch (error) {
       return true; // Default to test mode for safety
+    }
+  }
+
+  // ============================================================================
+  // TAX SETTINGS
+  // ============================================================================
+
+  /**
+   * Get tax calculation mode
+   */
+  async getTaxCalculationMode(): Promise<'disabled' | 'simple' | 'by_state'> {
+    try {
+      const setting = await this.getSetting('tax_calculation_mode');
+      const mode = String(setting.value);
+      if (mode === 'disabled' || mode === 'simple' || mode === 'by_state') {
+        return mode as 'disabled' | 'simple' | 'by_state';
+      }
+      return 'disabled';
+    } catch (error) {
+      return 'disabled'; // Default to no tax
+    }
+  }
+
+  /**
+   * Get tax default rate (for simple mode)
+   */
+  async getTaxDefaultRate(): Promise<number> {
+    try {
+      const setting = await this.getSetting('tax_default_rate');
+      const rate = Number(setting.value);
+      return isNaN(rate) ? 0.10 : rate;
+    } catch (error) {
+      return 0.10; // Default 10%
+    }
+  }
+
+  /**
+   * Check if tax calculation is enabled
+   * Now uses tax_calculation_mode instead of legacy tax_calculation_enabled
+   */
+  async isTaxCalculationEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.getSetting('tax_calculation_mode');
+      return setting.value !== 'disabled';
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // ============================================================================
+  // SHIPPING SETTINGS
+  // ============================================================================
+
+  /**
+   * Get shipping mode
+   */
+  async getShippingMode(): Promise<'manual' | 'dhl_api' | 'hybrid'> {
+    try {
+      const setting = await this.getSetting('shipping_mode');
+      const mode = String(setting.value);
+      if (mode === 'manual' || mode === 'dhl_api' || mode === 'hybrid') {
+        return mode as 'manual' | 'dhl_api' | 'hybrid';
+      }
+      return 'manual';
+    } catch (error) {
+      return 'manual'; // Default to manual mode
+    }
+  }
+
+  /**
+   * Get manual shipping rates (all methods)
+   */
+  async getShippingRates(): Promise<{
+    standard: number;
+    express: number;
+    overnight: number;
+    internationalSurcharge: number;
+  }> {
+    try {
+      const [standard, express, overnight, intlSurcharge] = await Promise.all([
+        this.getSetting('shipping_standard_rate').catch(() => ({ value: 9.99 })),
+        this.getSetting('shipping_express_rate').catch(() => ({ value: 19.99 })),
+        this.getSetting('shipping_overnight_rate').catch(() => ({ value: 29.99 })),
+        this.getSetting('shipping_international_surcharge').catch(() => ({ value: 15.00 })),
+      ]);
+
+      return {
+        standard: Number(standard.value) || 9.99,
+        express: Number(express.value) || 19.99,
+        overnight: Number(overnight.value) || 29.99,
+        internationalSurcharge: Number(intlSurcharge.value) || 15.00,
+      };
+    } catch (error) {
+      // Fallback to hardcoded defaults
+      return {
+        standard: 9.99,
+        express: 19.99,
+        overnight: 29.99,
+        internationalSurcharge: 15.00,
+      };
     }
   }
 }

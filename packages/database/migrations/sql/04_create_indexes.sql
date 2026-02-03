@@ -1,4 +1,4 @@
--- Performance Indexes for Luxury E-commerce
+-- Performance Indexes for NextPik E-commerce
 -- Use CONCURRENTLY to avoid locking tables during creation
 
 -- ============================================================================

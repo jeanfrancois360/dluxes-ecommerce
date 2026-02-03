@@ -422,7 +422,7 @@ export default function TrackOrderPage() {
 
                 {/* Order Timeline */}
                 {trackingData.timeline && trackingData.timeline.length > 0 && (
-                  <OrderTimeline timeline={trackingData.timeline} />
+                  <OrderTimeline timeline={trackingData.timeline} status={trackingData.status} />
                 )}
 
                 {/* Action Buttons */}

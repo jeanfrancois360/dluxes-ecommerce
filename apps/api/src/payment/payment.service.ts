@@ -1,9 +1,10 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, Inject, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { CurrencyService } from '../currency/currency.service';
+import { StripeSubscriptionService } from '../subscription/stripe-subscription.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { PaymentStatus, PaymentTransactionStatus, PaymentMethod, WebhookStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -30,6 +31,7 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
     private readonly currencyService: CurrencyService,
+    @Optional() private readonly stripeSubscriptionService?: StripeSubscriptionService,
   ) {
     // Initialize Stripe on first use (lazy loading)
     this.logger.log('PaymentService initialized - Stripe will be configured on first use');
@@ -41,18 +43,16 @@ export class PaymentService {
    */
   async initializeStripe(): Promise<void> {
     try {
-      // Try to get Stripe config from database settings first
+      // Get Stripe config (API keys from env, business config from database)
       const config = await this.settingsService.getStripeConfig();
 
-      let secretKey = config.secretKey;
-      let enabled = config.enabled;
+      const secretKey = config.secretKey; // From environment variables
+      const enabled = config.enabled; // From database settings
 
-      // Fallback to environment variables if settings not configured
       if (!secretKey) {
-        secretKey = this.configService.get<string>('STRIPE_SECRET_KEY') || '';
-        this.logger.log('Using Stripe secret key from environment variables');
+        this.logger.warn('Stripe secret key not found in environment variables');
       } else {
-        this.logger.log('Using Stripe secret key from database settings');
+        this.logger.log('Stripe configured: API keys from environment, business settings from database');
       }
 
       if (!secretKey || secretKey === 'your-stripe-key') {
@@ -233,13 +233,122 @@ export class PaymentService {
   private async getEscrowHoldPeriodDays(): Promise<number> {
     try {
       const setting = await this.prisma.systemSetting.findUnique({
-        where: { key: 'escrow_default_hold_days' },
+        where: { key: 'escrow_hold_period_days' },
       });
       return typeof setting?.value === 'number' ? setting.value : 7;
     } catch (error) {
       this.logger.warn('Failed to get hold period setting, defaulting to 7 days', error);
       return 7; // Default to 7 days
     }
+  }
+
+  /**
+   * Capture payment with strategy-based triggers
+   *
+   * Handles payment capture for different scenarios:
+   * - DELIVERY_CONFIRMED: Capture when order is delivered
+   * - AUTO_FALLBACK: Automatic capture before authorization expires (Day 6)
+   * - MANUAL: Admin manually triggers capture
+   */
+  async capturePaymentWithStrategy(
+    orderId: string,
+    trigger: 'DELIVERY_CONFIRMED' | 'AUTO_FALLBACK' | 'MANUAL',
+    userId?: string,
+  ): Promise<{ success: boolean; capturedAmount: number }> {
+    try {
+      // Find payment transaction for order
+      const transaction = await this.prisma.paymentTransaction.findFirst({
+        where: {
+          orderId,
+          status: { in: [PaymentTransactionStatus.SUCCEEDED, PaymentTransactionStatus.REQUIRES_ACTION] },
+        },
+      });
+
+      if (!transaction?.stripePaymentIntentId) {
+        throw new BadRequestException('No capturable payment found for order');
+      }
+
+      // Get Stripe payment intent with charges expanded
+      const stripe = await this.getStripeClient();
+      const paymentIntent: any = await stripe.paymentIntents.retrieve(
+        transaction.stripePaymentIntentId,
+        { expand: ['charges'] },
+      );
+
+      // Check if already captured
+      if (paymentIntent.status === 'succeeded') {
+        const charges = paymentIntent.charges?.data;
+        if (charges && charges.length > 0 && charges[0].captured) {
+          this.logger.log(`Payment already captured: ${paymentIntent.id}`);
+          return {
+            success: true,
+            capturedAmount: (paymentIntent.amount_received || paymentIntent.amount) / 100,
+          };
+        }
+      }
+
+      // Verify can be captured
+      if (paymentIntent.status !== 'requires_capture') {
+        throw new BadRequestException(
+          `Payment cannot be captured. Status: ${paymentIntent.status}`,
+        );
+      }
+
+      // Capture the payment
+      this.logger.log(
+        `Capturing payment ${paymentIntent.id} via ${trigger} for order ${orderId}`,
+      );
+
+      const capturedIntent = await stripe.paymentIntents.capture(paymentIntent.id);
+
+      // Update transaction status
+      const metadata = transaction.metadata as any || {};
+      await this.prisma.paymentTransaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: PaymentTransactionStatus.CAPTURED,
+          metadata: {
+            ...metadata,
+            capturedAt: new Date().toISOString(),
+            captureTrigger: trigger,
+            capturedBy: userId || 'SYSTEM',
+          },
+        },
+      });
+
+      // Create order timeline entry
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId,
+          status: 'CONFIRMED',
+          title: 'Payment Captured',
+          description: `Payment successfully captured via ${trigger}`,
+          icon: 'credit-card',
+        },
+      });
+
+      this.logger.log(
+        `Successfully captured ${capturedIntent.amount_received / 100} for order ${orderId}`,
+      );
+
+      return {
+        success: true,
+        capturedAmount: capturedIntent.amount_received / 100,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to capture payment for order ${orderId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Basic capture method (backwards compatible)
+   * Captures a Stripe payment intent by ID
+   */
+  async capturePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
+    const stripe = await this.getStripeClient();
+    const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId);
+    return paymentIntent;
   }
 
   /**
@@ -261,6 +370,54 @@ export class PaymentService {
 
       if (!order) {
         throw new BadRequestException('Order not found');
+      }
+
+      // Check if a payment intent already exists for this order
+      const existingTransaction = await this.prisma.paymentTransaction.findFirst({
+        where: {
+          orderId: dto.orderId,
+          status: { in: [PaymentTransactionStatus.PENDING, PaymentTransactionStatus.PROCESSING, PaymentTransactionStatus.SUCCEEDED] },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (existingTransaction?.stripePaymentIntentId) {
+        try {
+          // Retrieve existing payment intent from Stripe
+          const existingIntent = await stripe.paymentIntents.retrieve(
+            existingTransaction.stripePaymentIntentId
+          );
+
+          // Reuse existing intent if still valid (not canceled or succeeded without capture)
+          if (existingIntent.status !== 'canceled' && existingIntent.status !== 'succeeded') {
+            this.logger.log(
+              `Reusing existing payment intent ${existingIntent.id} for order ${dto.orderId} (status: ${existingIntent.status})`
+            );
+
+            // Get currency details for response
+            const currency = existingIntent.currency.toUpperCase();
+            const currencyDetails = await this.currencyService.getRateByCode(currency);
+
+            return {
+              clientSecret: existingIntent.client_secret,
+              paymentIntentId: existingIntent.id,
+              transactionId: existingTransaction.id,
+              currency,
+              amount: existingIntent.amount / 100, // Convert from smallest unit
+              currencyDetails: {
+                code: currency,
+                symbol: currencyDetails.symbol,
+                name: currencyDetails.currencyName,
+              },
+            };
+          }
+        } catch (retrieveError) {
+          this.logger.warn(
+            `Failed to retrieve existing payment intent ${existingTransaction.stripePaymentIntentId}, creating new one:`,
+            retrieveError
+          );
+          // Continue to create new intent if retrieval fails
+        }
       }
 
       // Get Stripe config for capture method and default currency
@@ -485,6 +642,21 @@ export class PaymentService {
           await this.handleDisputeClosed(event.data.object as Stripe.Dispute, webhookEvent.id);
           break;
 
+        // Subscription Events - Route to StripeSubscriptionService
+        case 'checkout.session.completed':
+        case 'customer.subscription.created':
+        case 'customer.subscription.updated':
+        case 'customer.subscription.deleted':
+        case 'invoice.paid':
+        case 'invoice.payment_failed':
+          if (this.stripeSubscriptionService) {
+            this.logger.log(`Routing ${event.type} to StripeSubscriptionService`);
+            await this.stripeSubscriptionService.handleWebhookEvent(event);
+          } else {
+            this.logger.warn(`StripeSubscriptionService not available to handle ${event.type}`);
+          }
+          break;
+
         default:
           this.logger.log(`Unhandled event type: ${event.type}`);
           await this.prisma.webhookEvent.update({
@@ -560,6 +732,194 @@ export class PaymentService {
   }
 
   /**
+   * Retrieve Stripe processing fees from balance transaction
+   */
+  private async getStripeProcessingFees(
+    chargeId: string
+  ): Promise<{ feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal } | null> {
+    try {
+      const stripe = await this.getStripeClient();
+
+      // Get charge details with expanded balance_transaction
+      const charge = await stripe.charges.retrieve(chargeId, {
+        expand: ['balance_transaction'],
+      });
+
+      if (!charge.balance_transaction || typeof charge.balance_transaction === 'string') {
+        this.logger.warn(`No balance transaction found for charge ${chargeId}`);
+        return null;
+      }
+
+      const balanceTransaction = charge.balance_transaction as Stripe.BalanceTransaction;
+      const feeAmount = new Decimal(balanceTransaction.fee).div(100); // Convert cents to currency
+
+      // Calculate percentage and fixed fee (reverse engineer from total)
+      const chargeAmount = new Decimal(balanceTransaction.amount).div(100);
+      const currency = charge.currency.toUpperCase();
+
+      // Get expected rates from system settings for comparison
+      let estimatedPercent: Decimal;
+      let estimatedFixed: Decimal;
+
+      try {
+        const feePercentageSetting = await this.settingsService.getSetting('stripe_fee_percentage');
+        const feeFixedSetting = await this.settingsService.getSetting(
+          `stripe_fee_fixed_${currency.toLowerCase()}`
+        );
+
+        const percentValue = feePercentageSetting?.value
+          ? Number(feePercentageSetting.value)
+          : 2.9;
+        const fixedValue = feeFixedSetting?.value
+          ? Number(feeFixedSetting.value)
+          : this.getDefaultFixedFee(currency, 'STRIPE');
+
+        estimatedPercent = new Decimal(percentValue).div(100);
+        estimatedFixed = new Decimal(fixedValue);
+      } catch (error) {
+        // Fallback to defaults if settings fail
+        estimatedPercent = new Decimal(0.029); // 2.9%
+        estimatedFixed = new Decimal(this.getDefaultFixedFee(currency, 'STRIPE'));
+      }
+
+      // Verify it matches (approximately)
+      const calculatedFee = chargeAmount.mul(estimatedPercent).add(estimatedFixed);
+
+      if (feeAmount.sub(calculatedFee).abs().lessThan(0.05)) {
+        // Match! Use standard rates
+        return {
+          feeAmount,
+          feePercent: estimatedPercent,
+          feeFixed: estimatedFixed,
+        };
+      }
+
+      // Different rate structure - calculate from actual
+      // fee = amount × percent + fixed, solve for percent
+      const feePercent = feeAmount.sub(estimatedFixed).div(chargeAmount);
+
+      return {
+        feeAmount,
+        feePercent: feePercent.isNegative() ? new Decimal(0) : feePercent,
+        feeFixed: estimatedFixed,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to retrieve Stripe fees for charge ${chargeId}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Get estimated processing fees when actual data unavailable
+   * Fetches fee rates from system settings (configurable by admin)
+   */
+  private async getEstimatedFees(
+    amountInCents: number,
+    currency: string,
+    paymentMethod: 'STRIPE' | 'PAYPAL' = 'STRIPE'
+  ): Promise<{ feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal }> {
+    const amount = new Decimal(amountInCents).div(100);
+    const currencyUpper = currency.toUpperCase();
+
+    try {
+      // Get fee percentage from settings
+      const feePercentageSetting = await this.settingsService.getSetting(
+        paymentMethod === 'STRIPE' ? 'stripe_fee_percentage' : 'paypal_fee_percentage'
+      );
+
+      const feePercentValue = feePercentageSetting?.value
+        ? Number(feePercentageSetting.value)
+        : paymentMethod === 'STRIPE' ? 2.9 : 3.49;
+
+      // Get fixed fee with smart fallback
+      let feeFixedValue: number;
+      let usedFallback = false;
+
+      // Try to get currency-specific fee setting
+      const currencyFeeKey = paymentMethod === 'STRIPE'
+        ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
+        : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`;
+
+      const feeFixedSetting = await this.settingsService.getSetting(currencyFeeKey);
+
+      if (feeFixedSetting?.value) {
+        // Currency-specific fee found
+        feeFixedValue = Number(feeFixedSetting.value);
+      } else {
+        // Smart fallback: Use USD fee and convert to target currency
+        const usdFeeKey = paymentMethod === 'STRIPE'
+          ? 'stripe_fee_fixed_usd'
+          : 'paypal_fee_fixed_usd';
+
+        const usdFeeSetting = await this.settingsService.getSetting(usdFeeKey);
+        const usdFeeValue = usdFeeSetting?.value ? Number(usdFeeSetting.value) : 0.30;
+
+        try {
+          // Convert USD fee to target currency
+          feeFixedValue = await this.currencyService.convertAmount(
+            usdFeeValue,
+            'USD',
+            currencyUpper
+          );
+          usedFallback = true;
+          this.logger.log(
+            `Smart fallback: Converted ${paymentMethod} fee from $${usdFeeValue} USD to ${feeFixedValue} ${currencyUpper}`
+          );
+        } catch (conversionError) {
+          // If conversion fails, use hardcoded default
+          this.logger.warn(
+            `Currency conversion failed for ${currencyUpper}, using hardcoded default: ${conversionError.message}`
+          );
+          feeFixedValue = this.getDefaultFixedFee(currencyUpper, paymentMethod);
+        }
+      }
+
+      const feePercent = new Decimal(feePercentValue).div(100); // Convert 2.9 to 0.029
+      const feeFixed = new Decimal(feeFixedValue);
+      const feeAmount = amount.mul(feePercent).add(feeFixed);
+
+      this.logger.log(
+        `Using ${paymentMethod} fee rates: ${feePercentValue}% + ${feeFixedValue} ${currencyUpper}${usedFallback ? ' (converted from USD)' : ''}`
+      );
+
+      return { feeAmount, feePercent, feeFixed };
+    } catch (error) {
+      this.logger.warn(`Failed to get fee settings, using defaults: ${error.message}`);
+
+      // Fallback to hardcoded defaults if settings fail
+      const defaultRates = this.getDefaultFeeRates(currencyUpper, paymentMethod);
+      const feePercent = new Decimal(defaultRates.percent);
+      const feeFixed = new Decimal(defaultRates.fixed);
+      const feeAmount = amount.mul(feePercent).add(feeFixed);
+
+      return { feeAmount, feePercent, feeFixed };
+    }
+  }
+
+  /**
+   * Get default fixed fee for currency and payment method
+   */
+  private getDefaultFixedFee(currency: string, paymentMethod: 'STRIPE' | 'PAYPAL'): number {
+    if (paymentMethod === 'STRIPE') {
+      return currency === 'GBP' ? 0.20 : 0.30;
+    } else {
+      return currency === 'EUR' ? 0.35 : 0.30;
+    }
+  }
+
+  /**
+   * Get default fee rates (fallback when settings unavailable)
+   */
+  private getDefaultFeeRates(
+    currency: string,
+    paymentMethod: 'STRIPE' | 'PAYPAL'
+  ): { percent: number; fixed: number } {
+    const percent = paymentMethod === 'STRIPE' ? 0.029 : 0.0349; // 2.9% or 3.49%
+    const fixed = this.getDefaultFixedFee(currency, paymentMethod);
+    return { percent, fixed };
+  }
+
+  /**
    * Handle successful payment with commission calculation
    */
   private async handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, webhookEventId?: string) {
@@ -571,6 +931,46 @@ export class PaymentService {
     }
 
     try {
+      // Get processing fees from Stripe
+      let processingFees: { feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal } | null = null;
+
+      if (paymentIntent.latest_charge) {
+        try {
+          const chargeId = typeof paymentIntent.latest_charge === 'string'
+            ? paymentIntent.latest_charge
+            : paymentIntent.latest_charge.id;
+
+          processingFees = await this.getStripeProcessingFees(chargeId);
+
+          if (processingFees) {
+            this.logger.log(
+              `Retrieved Stripe fees for charge ${chargeId}: ` +
+              `${processingFees.feeAmount.toFixed(2)} ${paymentIntent.currency.toUpperCase()} ` +
+              `(${processingFees.feePercent.mul(100).toFixed(2)}% + ${processingFees.feeFixed.toFixed(2)})`
+            );
+          }
+        } catch (error) {
+          this.logger.warn('Could not retrieve exact Stripe fees, using estimates');
+        }
+      }
+
+      // Fall back to estimates if actual fees not available
+      if (!processingFees) {
+        processingFees = await this.getEstimatedFees(
+          paymentIntent.amount,
+          paymentIntent.currency,
+          'STRIPE'
+        );
+        this.logger.log(
+          `Using estimated Stripe fees: ${processingFees.feeAmount.toFixed(2)} ${paymentIntent.currency.toUpperCase()} ` +
+          `(will update with actual after charge completes)`
+        );
+      }
+
+      // Calculate net amount after processing fees
+      const grossAmount = new Decimal(paymentIntent.amount).div(100);
+      const netAmount = grossAmount.sub(processingFees.feeAmount);
+
       // Find or create payment transaction
       let transaction = await this.prisma.paymentTransaction.findUnique({
         where: { stripePaymentIntentId: paymentIntent.id },
@@ -586,10 +986,15 @@ export class PaymentService {
             userId: paymentIntent.metadata.userId || '',
             stripePaymentIntentId: paymentIntent.id,
             stripeChargeId: paymentIntent.latest_charge ? (paymentIntent.latest_charge as string) : null,
-            amount: new Decimal(paymentIntent.amount / 100),
+            amount: grossAmount,
             currency: paymentIntent.currency.toUpperCase(),
             status: PaymentTransactionStatus.SUCCEEDED,
             paymentMethod: PaymentMethod.STRIPE,
+            // Processing fees
+            processingFeeAmount: processingFees.feeAmount,
+            processingFeePercent: processingFees.feePercent,
+            processingFeeFixed: processingFees.feeFixed,
+            netAmount: netAmount,
             metadata: {
               captureMethod: paymentIntent.capture_method,
               paymentIntentStatus: paymentIntent.status,
@@ -603,6 +1008,11 @@ export class PaymentService {
           data: {
             status: PaymentTransactionStatus.SUCCEEDED,
             stripeChargeId: paymentIntent.latest_charge ? (paymentIntent.latest_charge as string) : null,
+            // Update processing fees
+            processingFeeAmount: processingFees.feeAmount,
+            processingFeePercent: processingFees.feePercent,
+            processingFeeFixed: processingFees.feeFixed,
+            netAmount: netAmount,
             metadata: {
               ...(transaction.metadata as any),
               captureMethod: paymentIntent.capture_method,
@@ -740,8 +1150,44 @@ export class PaymentService {
               );
             } else {
               // Multi-vendor order - create escrow with split allocations
-              // TODO: Implement multi-vendor escrow split
-              this.logger.warn(`Multi-vendor escrow not yet implemented for order ${orderId}`);
+              const { EscrowService } = await import('../escrow/escrow.service');
+              const escrowService = new EscrowService(this.prisma, this.settingsService);
+
+              // Build split items with commission data
+              const splitItems = [];
+
+              for (const item of order.items) {
+                if (item.product.store) {
+                  // Find commission for this specific item
+                  const itemCommission = commissions.find(
+                    c => c.orderItemId === item.id
+                  );
+
+                  splitItems.push({
+                    orderItemId: item.id,
+                    sellerId: item.product.store.userId,
+                    storeId: item.product.storeId!,
+                    amount: Number(item.total),
+                    platformFee: itemCommission ? Number(itemCommission.commissionAmount) : 0,
+                  });
+                }
+              }
+
+              if (splitItems.length > 0) {
+                await escrowService.createEscrowWithSplits({
+                  orderId,
+                  paymentTransactionId: transaction.id,
+                  currency: transaction.currency,
+                  holdPeriodDays,
+                  items: splitItems,
+                });
+
+                this.logger.log(
+                  `Multi-vendor escrow created for order ${orderId}: ${splitItems.length} sellers, ${sellerOrders.size} stores (hold period: ${holdPeriodDays} days)`
+                );
+              } else {
+                this.logger.warn(`No split items found for multi-vendor order ${orderId}`);
+              }
             }
           }
         } catch (escrowError) {
@@ -756,7 +1202,60 @@ export class PaymentService {
         // This requires additional payout service integration
       }
 
-      // TODO: Send payment confirmation email via email service
+      // Generate and send invoice email with PDF attachment
+      try {
+        const order = await this.prisma.order.findUnique({
+          where: { id: orderId },
+          include: {
+            user: true,
+            items: {
+              include: {
+                product: { include: { store: true } },
+                variant: true,
+              },
+            },
+            shippingAddress: true,
+            billingAddress: true,
+          },
+        });
+
+        if (order && order.user) {
+          // Import services needed for email
+          const { EmailService } = await import('../email/email.service');
+          const emailService = new EmailService();
+
+          // Import OrdersService to generate invoice PDF
+          const { OrdersService } = await import('../orders/orders.service');
+          // Create a minimal instance just for PDF generation
+          // We'll pass null for services not needed for PDF generation
+          const ordersServiceModule = await import('../orders/orders.service');
+          const ordersService = new ordersServiceModule.OrdersService(
+            this.prisma,
+            this.currencyService,
+            null as any, // emailService not needed for PDF generation
+            null as any, // shippingTaxService not needed for PDF generation
+            null as any, // cartService not needed for PDF generation
+            this,
+          );
+
+          const invoicePdf = await ordersService.generateInvoicePdf(orderId, order.userId);
+
+          await emailService.sendPaymentConfirmationWithInvoice(order.user.email, {
+            orderNumber: order.orderNumber,
+            customerName: `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer',
+            total: Number(order.total),
+            currency: order.currency,
+            paidAt: new Date(),
+            invoicePdf,
+          });
+
+          this.logger.log(`Invoice email sent for order ${order.orderNumber} to ${order.user.email}`);
+        }
+      } catch (emailError) {
+        this.logger.error(`Failed to send invoice email for order ${orderId}:`, emailError);
+        // Don't fail the payment if invoice email fails
+      }
+
       // TODO: Trigger inventory reservation
     } catch (error) {
       this.logger.error(`Error processing payment success for order ${orderId}:`, error);
@@ -1828,6 +2327,523 @@ export class PaymentService {
 
     // Filter out nulls and return
     return currencyDetails.filter((c): c is NonNullable<typeof c> => c !== null);
+  }
+
+  // ==========================================
+  // PAYMENT METHODS MANAGEMENT
+  // ==========================================
+
+  /**
+   * Get or create a Stripe customer for a user
+   */
+  async getOrCreateStripeCustomer(userId: string): Promise<string> {
+    const stripe = await this.getStripeClient();
+
+    // Get user from database
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        stripeCustomerId: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // If user already has a Stripe customer ID, verify it exists
+    if (user.stripeCustomerId) {
+      try {
+        const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+        if (!customer.deleted) {
+          return user.stripeCustomerId;
+        }
+      } catch (error) {
+        this.logger.warn(`Stripe customer ${user.stripeCustomerId} not found, creating new one`);
+      }
+    }
+
+    // Create new Stripe customer
+    const customer = await stripe.customers.create({
+      email: user.email,
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined,
+      metadata: {
+        userId: user.id,
+      },
+    });
+
+    // Save customer ID to user
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { stripeCustomerId: customer.id },
+    });
+
+    this.logger.log(`Created Stripe customer ${customer.id} for user ${userId}`);
+
+    return customer.id;
+  }
+
+  /**
+   * Create a SetupIntent for adding a new payment method
+   */
+  async createSetupIntent(userId: string) {
+    const stripe = await this.getStripeClient();
+    const customerId = await this.getOrCreateStripeCustomer(userId);
+
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      metadata: {
+        userId,
+      },
+    });
+
+    // Get publishable key for frontend
+    const config = await this.settingsService.getStripeConfig();
+    const publishableKey = config.publishableKey || this.configService.get<string>('STRIPE_PUBLISHABLE_KEY') || '';
+
+    this.logger.log(`Created SetupIntent ${setupIntent.id} for user ${userId}`);
+
+    return {
+      clientSecret: setupIntent.client_secret,
+      setupIntentId: setupIntent.id,
+      publishableKey,
+    };
+  }
+
+  /**
+   * List saved payment methods for a user with enhanced data
+   */
+  async listPaymentMethods(userId: string) {
+    const stripe = await this.getStripeClient();
+
+    // Get user with stripe customer ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true },
+    });
+
+    if (!user?.stripeCustomerId) {
+      return { paymentMethods: [], defaultPaymentMethodId: null };
+    }
+
+    // Get customer to find default payment method
+    let defaultPaymentMethodId: string | null = null;
+    try {
+      const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+      // Type guard: check if customer is not deleted
+      if (!('deleted' in customer && customer.deleted)) {
+        const activeCustomer = customer as Stripe.Customer;
+        if (activeCustomer.invoice_settings?.default_payment_method) {
+          defaultPaymentMethodId = activeCustomer.invoice_settings.default_payment_method as string;
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to get customer ${user.stripeCustomerId}:`, error);
+    }
+
+    // List payment methods from Stripe
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: user.stripeCustomerId,
+      type: 'card',
+    });
+
+    // Get saved payment method details from our database for enhanced info
+    const savedMethods = await this.prisma.savedPaymentMethod.findMany({
+      where: { userId },
+    });
+
+    return {
+      paymentMethods: paymentMethods.data.map((pm) => {
+        const savedMethod = savedMethods.find(sm => sm.stripePaymentMethodId === pm.id);
+        return {
+          id: pm.id,
+          brand: pm.card?.brand || 'unknown',
+          last4: pm.card?.last4 || '****',
+          expMonth: pm.card?.exp_month,
+          expYear: pm.card?.exp_year,
+          isDefault: pm.id === defaultPaymentMethodId,
+          funding: pm.card?.funding,
+          country: pm.card?.country,
+          // Enhanced data from our database
+          nickname: savedMethod?.nickname,
+          lastUsedAt: savedMethod?.lastUsedAt,
+          usageCount: savedMethod?.usageCount || 0,
+        };
+      }),
+      defaultPaymentMethodId,
+    };
+  }
+
+  /**
+   * Save payment method after successful payment
+   * Called when user checks "Save card for future purchases"
+   */
+  async savePaymentMethodAfterPayment(
+    paymentIntentId: string,
+    userId: string,
+    nickname?: string,
+  ) {
+    try {
+      const stripe = await this.getStripeClient();
+
+      // Get the payment intent to extract the payment method
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (!paymentIntent.payment_method) {
+        throw new BadRequestException('No payment method found on payment intent');
+      }
+
+      const paymentMethodId = typeof paymentIntent.payment_method === 'string'
+        ? paymentIntent.payment_method
+        : paymentIntent.payment_method.id;
+
+      // Get or create customer
+      const customerId = await this.getOrCreateStripeCustomer(userId);
+
+      // Attach payment method to customer (if not already attached)
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+
+      if (paymentMethod.customer !== customerId) {
+        await stripe.paymentMethods.attach(paymentMethodId, {
+          customer: customerId,
+        });
+        this.logger.log(`Attached payment method ${paymentMethodId} to customer ${customerId}`);
+      }
+
+      // Check if we already have this payment method saved in our database
+      const existing = await this.prisma.savedPaymentMethod.findUnique({
+        where: { stripePaymentMethodId: paymentMethodId },
+      });
+
+      if (existing) {
+        // Update usage stats
+        await this.prisma.savedPaymentMethod.update({
+          where: { id: existing.id },
+          data: {
+            lastUsedAt: new Date(),
+            usageCount: { increment: 1 },
+            nickname: nickname || existing.nickname,
+          },
+        });
+        this.logger.log(`Updated existing saved payment method ${paymentMethodId}`);
+        return { success: true, message: 'Card already saved', paymentMethodId };
+      }
+
+      // Create new saved payment method record
+      await this.prisma.savedPaymentMethod.create({
+        data: {
+          userId,
+          stripePaymentMethodId: paymentMethodId,
+          brand: paymentMethod.card?.brand || 'unknown',
+          last4: paymentMethod.card?.last4 || '****',
+          expMonth: paymentMethod.card?.exp_month || 12,
+          expYear: paymentMethod.card?.exp_year || new Date().getFullYear(),
+          funding: paymentMethod.card?.funding,
+          country: paymentMethod.card?.country,
+          nickname,
+          lastUsedAt: new Date(),
+          usageCount: 1,
+          isDefault: false, // User can set as default later
+        },
+      });
+
+      this.logger.log(`Saved new payment method ${paymentMethodId} for user ${userId}`);
+
+      return {
+        success: true,
+        message: 'Card saved successfully',
+        paymentMethodId,
+      };
+    } catch (error) {
+      this.logger.error('Error saving payment method after payment:', error);
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to save payment method'
+      );
+    }
+  }
+
+  /**
+   * Update card nickname
+   */
+  async updateCardNickname(userId: string, paymentMethodId: string, nickname: string) {
+    try {
+      // Verify the payment method belongs to this user
+      const savedMethod = await this.prisma.savedPaymentMethod.findFirst({
+        where: {
+          userId,
+          stripePaymentMethodId: paymentMethodId,
+        },
+      });
+
+      if (!savedMethod) {
+        throw new BadRequestException('Payment method not found');
+      }
+
+      // Update nickname
+      await this.prisma.savedPaymentMethod.update({
+        where: { id: savedMethod.id },
+        data: { nickname },
+      });
+
+      this.logger.log(`Updated nickname for payment method ${paymentMethodId} to "${nickname}"`);
+
+      return {
+        success: true,
+        message: 'Card nickname updated successfully',
+      };
+    } catch (error) {
+      this.logger.error('Error updating card nickname:', error);
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to update card nickname'
+      );
+    }
+  }
+
+  /**
+   * Update card usage statistics (internal method)
+   * Called automatically when a saved card is used for payment
+   */
+  async updateCardUsageStats(paymentMethodId: string) {
+    try {
+      const savedMethod = await this.prisma.savedPaymentMethod.findUnique({
+        where: { stripePaymentMethodId: paymentMethodId },
+      });
+
+      if (savedMethod) {
+        await this.prisma.savedPaymentMethod.update({
+          where: { id: savedMethod.id },
+          data: {
+            lastUsedAt: new Date(),
+            usageCount: { increment: 1 },
+          },
+        });
+        this.logger.log(`Updated usage stats for payment method ${paymentMethodId}`);
+      }
+    } catch (error) {
+      // Don't fail the payment if usage tracking fails
+      this.logger.warn('Failed to update card usage stats:', error);
+    }
+  }
+
+  /**
+   * Get detailed saved payment method information
+   */
+  async getSavedPaymentMethodDetails(userId: string, paymentMethodId: string) {
+    try {
+      const stripe = await this.getStripeClient();
+
+      // Get from our database
+      const savedMethod = await this.prisma.savedPaymentMethod.findFirst({
+        where: {
+          userId,
+          stripePaymentMethodId: paymentMethodId,
+        },
+      });
+
+      if (!savedMethod) {
+        throw new BadRequestException('Payment method not found');
+      }
+
+      // Get fresh data from Stripe
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+
+      // Get user's customer info for default status
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { stripeCustomerId: true },
+      });
+
+      let isDefault = false;
+      if (user?.stripeCustomerId) {
+        const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+        if (!('deleted' in customer && customer.deleted)) {
+          const activeCustomer = customer as Stripe.Customer;
+          isDefault = activeCustomer.invoice_settings?.default_payment_method === paymentMethodId;
+        }
+      }
+
+      return {
+        id: savedMethod.id,
+        stripePaymentMethodId: savedMethod.stripePaymentMethodId,
+        brand: paymentMethod.card?.brand || savedMethod.brand,
+        last4: paymentMethod.card?.last4 || savedMethod.last4,
+        expMonth: paymentMethod.card?.exp_month || savedMethod.expMonth,
+        expYear: paymentMethod.card?.exp_year || savedMethod.expYear,
+        funding: paymentMethod.card?.funding || savedMethod.funding,
+        country: paymentMethod.card?.country || savedMethod.country,
+        nickname: savedMethod.nickname,
+        isDefault,
+        lastUsedAt: savedMethod.lastUsedAt,
+        usageCount: savedMethod.usageCount,
+        createdAt: savedMethod.createdAt,
+      };
+    } catch (error) {
+      this.logger.error('Error getting saved payment method details:', error);
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to get payment method details'
+      );
+    }
+  }
+
+  /**
+   * Set a payment method as default
+   */
+  async setDefaultPaymentMethod(userId: string, paymentMethodId: string) {
+    const stripe = await this.getStripeClient();
+
+    // Get user with stripe customer ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true },
+    });
+
+    if (!user?.stripeCustomerId) {
+      throw new BadRequestException('No Stripe customer found for this user');
+    }
+
+    // Verify payment method belongs to customer
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    if (paymentMethod.customer !== user.stripeCustomerId) {
+      throw new BadRequestException('Payment method does not belong to this user');
+    }
+
+    // Update customer's default payment method
+    await stripe.customers.update(user.stripeCustomerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
+
+    this.logger.log(`Set default payment method ${paymentMethodId} for user ${userId}`);
+
+    return { success: true, message: 'Default payment method updated' };
+  }
+
+  /**
+   * Remove a saved payment method
+   */
+  async removePaymentMethod(userId: string, paymentMethodId: string) {
+    const stripe = await this.getStripeClient();
+
+    // Get user with stripe customer ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true },
+    });
+
+    if (!user?.stripeCustomerId) {
+      throw new BadRequestException('No Stripe customer found for this user');
+    }
+
+    // Verify payment method belongs to customer
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    if (paymentMethod.customer !== user.stripeCustomerId) {
+      throw new BadRequestException('Payment method does not belong to this user');
+    }
+
+    // Detach payment method
+    await stripe.paymentMethods.detach(paymentMethodId);
+
+    this.logger.log(`Removed payment method ${paymentMethodId} for user ${userId}`);
+
+    return { success: true, message: 'Payment method removed' };
+  }
+
+  /**
+   * Create payment intent with saved payment method
+   */
+  async createPaymentIntentWithSavedMethod(
+    dto: CreatePaymentIntentDto,
+    userId: string,
+    paymentMethodId: string,
+  ) {
+    const stripe = await this.getStripeClient();
+
+    // Get user with stripe customer ID
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true, email: true },
+    });
+
+    if (!user?.stripeCustomerId) {
+      throw new BadRequestException('No Stripe customer found for this user');
+    }
+
+    // Verify payment method belongs to customer
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    if (paymentMethod.customer !== user.stripeCustomerId) {
+      throw new BadRequestException('Payment method does not belong to this user');
+    }
+
+    // Get config and currency
+    const config = this.stripeConfig || await this.settingsService.getStripeConfig();
+    let paymentCurrency = dto.currency?.toUpperCase() || await this.getDefaultPaymentCurrency();
+    await this.validateCurrency(paymentCurrency);
+
+    const currencyDetails = await this.currencyService.getRateByCode(paymentCurrency);
+    const amountInSmallestUnit = this.convertToSmallestUnit(dto.amount, paymentCurrency);
+
+    // Create payment intent with saved payment method
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInSmallestUnit,
+      currency: paymentCurrency.toLowerCase(),
+      customer: user.stripeCustomerId,
+      payment_method: paymentMethodId,
+      off_session: false,
+      confirm: false, // Don't confirm yet - let frontend handle 3DS if needed
+      capture_method: config.captureMethod,
+      statement_descriptor_suffix: config.statementDescriptor?.substring(0, 22),
+      metadata: {
+        orderId: dto.orderId,
+        userId,
+        customerEmail: dto.customerEmail || user.email,
+        testMode: config.testMode.toString(),
+        originalCurrency: paymentCurrency,
+        usedSavedCard: 'true',
+      },
+    });
+
+    // Create payment transaction record
+    const transaction = await this.prisma.paymentTransaction.create({
+      data: {
+        orderId: dto.orderId,
+        userId,
+        stripePaymentIntentId: paymentIntent.id,
+        amount: new Decimal(dto.amount),
+        currency: paymentCurrency,
+        status: PaymentTransactionStatus.PENDING,
+        paymentMethod: PaymentMethod.STRIPE,
+        receiptEmail: dto.customerEmail || user.email,
+        metadata: {
+          currencySymbol: currencyDetails.symbol,
+          currencyName: currencyDetails.currencyName,
+          savedPaymentMethodId: paymentMethodId,
+        } as any,
+      },
+    });
+
+    this.logger.log(
+      `Payment intent created with saved method: ${paymentIntent.id} for order ${dto.orderId}`
+    );
+
+    // Update usage stats for this card (async, don't wait)
+    this.updateCardUsageStats(paymentMethodId).catch(err =>
+      this.logger.warn('Failed to update card usage stats:', err)
+    );
+
+    return {
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+      transactionId: transaction.id,
+      currency: paymentCurrency,
+      amount: dto.amount,
+      paymentMethodId,
+    };
   }
 
   /**

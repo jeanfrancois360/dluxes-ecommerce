@@ -89,11 +89,23 @@ export default function BecomeSellerPage() {
 
     try {
       setIsSubmitting(true);
-      // TODO: Implement API call
-      // await api.post('/seller/apply', formData);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      alert('Application submitted successfully! We will review your application and get back to you soon.');
-      router.push('/dashboard/buyer');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/seller/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(data.message || 'Application submitted successfully! We will review your application and get back to you soon.');
+        router.push('/dashboard/buyer');
+      } else {
+        alert(data.message || 'Failed to submit application. Please try again.');
+      }
     } catch (error) {
       console.error('Failed to submit application:', error);
       alert('Failed to submit application. Please try again.');
@@ -335,6 +347,25 @@ export default function BecomeSellerPage() {
                   <option value="10000-50000">$10,000 - $50,000</option>
                   <option value="over-50000">Over $50,000</option>
                 </select>
+              </div>
+
+              {/* Legal Agreement */}
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-neutral-700">
+                  By submitting this application, you agree to our{' '}
+                  <Link href="/terms" className="text-gold hover:text-accent-700 font-medium transition-colors">
+                    Terms of Service
+                  </Link>
+                  ,{' '}
+                  <Link href="/privacy" className="text-gold hover:text-accent-700 font-medium transition-colors">
+                    Privacy Policy
+                  </Link>
+                  , and{' '}
+                  <Link href="/seller-agreement" className="text-gold hover:text-accent-700 font-medium transition-colors">
+                    Seller Agreement
+                  </Link>
+                  . You understand that NextPik will review your application and may request additional information.
+                </p>
               </div>
 
               {/* Submit */}

@@ -1,5 +1,5 @@
 /**
- * @luxury/shared
+ * @nextpik/shared
  * Shared types, utilities, and constants
  */
 

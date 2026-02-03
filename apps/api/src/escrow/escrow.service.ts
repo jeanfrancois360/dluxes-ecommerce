@@ -14,8 +14,126 @@ export class EscrowService {
   ) {}
 
   /**
+   * Create escrow transaction with multi-vendor splits
+   * Handles both single-seller and multi-vendor orders
+   */
+  async createEscrowWithSplits(data: {
+    orderId: string;
+    paymentTransactionId: string;
+    currency: string;
+    holdPeriodDays?: number;
+    items: Array<{
+      orderItemId: string;
+      sellerId: string;
+      storeId: string;
+      amount: number;
+      platformFee: number;
+    }>;
+  }) {
+    // Check if escrow system is enabled
+    const escrowEnabled = await this.isEscrowEnabled();
+    if (!escrowEnabled) {
+      throw new BadRequestException('Escrow system is currently disabled. Please contact support.');
+    }
+
+    // Calculate totals
+    const totalAmount = data.items.reduce((sum, item) => sum + item.amount, 0);
+    const totalPlatformFee = data.items.reduce((sum, item) => sum + item.platformFee, 0);
+    const totalSellerAmount = totalAmount - totalPlatformFee;
+
+    // Get hold period from settings
+    let holdPeriodDays = data.holdPeriodDays;
+    if (!holdPeriodDays) {
+      try {
+        const setting = await this.settingsService.getSetting('escrow_hold_period_days');
+        holdPeriodDays = Number(setting.value) || 7;
+      } catch (error) {
+        this.logger.warn('Escrow hold period setting not found, using default');
+        holdPeriodDays = parseInt(process.env.ESCROW_DEFAULT_HOLD_DAYS || '7');
+      }
+    }
+
+    const autoReleaseDate = new Date(Date.now() + holdPeriodDays * 24 * 60 * 60 * 1000);
+
+    // Determine primary seller (first seller or seller with highest amount)
+    const primarySeller = data.items.reduce((max, item) =>
+      item.amount > max.amount ? item : max
+    , data.items[0]);
+
+    // Create escrow transaction in a transaction
+    const escrow = await this.prisma.$transaction(async (prisma) => {
+      // Create main escrow record
+      const escrowRecord = await prisma.escrowTransaction.create({
+        data: {
+          orderId: data.orderId,
+          paymentTransactionId: data.paymentTransactionId,
+          sellerId: primarySeller.sellerId,
+          storeId: primarySeller.storeId,
+          totalAmount: new Decimal(totalAmount),
+          platformFee: new Decimal(totalPlatformFee),
+          sellerAmount: new Decimal(totalSellerAmount),
+          currency: data.currency,
+          status: EscrowStatus.HELD,
+          holdPeriodDays,
+          autoReleaseAt: autoReleaseDate,
+        },
+      });
+
+      // Create split allocations for each seller
+      for (const item of data.items) {
+        const sellerAmount = item.amount - item.platformFee;
+
+        await prisma.escrowSplitAllocation.create({
+          data: {
+            escrowTransactionId: escrowRecord.id,
+            sellerId: item.sellerId,
+            storeId: item.storeId,
+            amount: new Decimal(item.amount),
+            platformFee: new Decimal(item.platformFee),
+            sellerAmount: new Decimal(sellerAmount),
+            orderItemId: item.orderItemId,
+            status: EscrowStatus.HELD,
+          },
+        });
+
+        this.logger.log(
+          `Split allocation created for seller ${item.sellerId}: ${sellerAmount} ${data.currency} (item: ${item.orderItemId})`
+        );
+      }
+
+      return escrowRecord;
+    });
+
+    this.logger.log(
+      `Multi-vendor escrow created for order ${data.orderId}: ${data.items.length} sellers, total ${totalSellerAmount} ${data.currency}`
+    );
+
+    // Audit log
+    await this.logEscrowAction('CREATE_WITH_SPLITS', escrow.id, {
+      orderId: data.orderId,
+      sellerCount: data.items.length,
+      totalAmount,
+      totalPlatformFee,
+      totalSellerAmount,
+      currency: data.currency,
+      holdPeriodDays,
+      autoReleaseAt: autoReleaseDate.toISOString(),
+      sellers: data.items.map(item => ({
+        sellerId: item.sellerId,
+        storeId: item.storeId,
+        amount: item.amount,
+        platformFee: item.platformFee,
+        sellerAmount: item.amount - item.platformFee,
+      })),
+    });
+
+    return escrow;
+  }
+
+  /**
    * Create escrow transaction after successful payment
    * This wraps the existing payment flow without modifying it
+   * @deprecated Use createEscrowWithSplits for multi-vendor support
    */
   async createEscrowTransaction(data: {
     orderId: string;
@@ -49,7 +167,7 @@ export class EscrowService {
     let holdPeriodDays = data.holdPeriodDays;
     if (!holdPeriodDays) {
       try {
-        const setting = await this.settingsService.getSetting('escrow_default_hold_days');
+        const setting = await this.settingsService.getSetting('escrow_hold_period_days');
         holdPeriodDays = Number(setting.value) || 7;
       } catch (error) {
         // Fallback to env var if setting not found
@@ -177,6 +295,130 @@ export class EscrowService {
     );
 
     return updatedEscrow;
+  }
+
+  /**
+   * Release escrow splits for multi-vendor orders
+   * Releases funds to individual sellers based on their split allocations
+   */
+  async releaseEscrowSplits(escrowId: string, releasedBy: string) {
+    const escrow = await this.prisma.escrowTransaction.findUnique({
+      where: { id: escrowId },
+      include: {
+        splitAllocations: {
+          include: {
+            seller: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            store: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        order: true,
+      },
+    });
+
+    if (!escrow) {
+      throw new NotFoundException('Escrow transaction not found');
+    }
+
+    if (escrow.status !== EscrowStatus.HELD && escrow.status !== EscrowStatus.PENDING_RELEASE) {
+      throw new BadRequestException(`Cannot release escrow with status ${escrow.status}`);
+    }
+
+    // Check if delivery confirmation is required
+    const confirmationRequired = await this.isDeliveryConfirmationRequired();
+    if (confirmationRequired && !escrow.deliveryConfirmed) {
+      throw new BadRequestException(
+        'Delivery confirmation is required before releasing escrow. Please confirm delivery first.'
+      );
+    }
+
+    // If no split allocations, fall back to simple release
+    if (!escrow.splitAllocations || escrow.splitAllocations.length === 0) {
+      this.logger.warn(`No split allocations found for escrow ${escrowId}, using simple release`);
+      return this.releaseEscrow(escrowId, releasedBy);
+    }
+
+    // Release all split allocations
+    await this.prisma.$transaction(async (prisma) => {
+      // Update all split allocations to RELEASED
+      await prisma.escrowSplitAllocation.updateMany({
+        where: { escrowTransactionId: escrowId },
+        data: {
+          status: EscrowStatus.RELEASED,
+          releasedAt: new Date(),
+        },
+      });
+
+      // Update main escrow record
+      await prisma.escrowTransaction.update({
+        where: { id: escrowId },
+        data: {
+          status: EscrowStatus.RELEASED,
+          releasedAt: new Date(),
+          releasedBy,
+        },
+      });
+
+      // Update order status
+      await prisma.order.update({
+        where: { id: escrow.orderId },
+        data: {
+          status: 'COMPLETED' as any,
+        },
+      });
+
+      // Create order timeline entry
+      await prisma.orderTimeline.create({
+        data: {
+          orderId: escrow.orderId,
+          status: 'COMPLETED' as any,
+          title: 'Payment Released to Sellers',
+          description: `Escrow funds released to ${escrow.splitAllocations.length} seller(s)`,
+          icon: 'check-circle',
+        },
+      });
+    });
+
+    this.logger.log(
+      `Escrow released with ${escrow.splitAllocations.length} splits for order ${escrow.orderId}`
+    );
+
+    // Log individual seller releases
+    for (const split of escrow.splitAllocations) {
+      this.logger.log(
+        `Released ${split.sellerAmount} ${escrow.currency} to seller ${split.sellerId} (${split.seller.email})`
+      );
+    }
+
+    // Audit log
+    await this.logEscrowAction('RELEASE_SPLITS', escrow.id, {
+      orderId: escrow.orderId,
+      sellerCount: escrow.splitAllocations.length,
+      totalReleased: escrow.sellerAmount.toString(),
+      currency: escrow.currency,
+      releasedBy,
+      releasedAt: new Date().toISOString(),
+      splits: escrow.splitAllocations.map(split => ({
+        sellerId: split.sellerId,
+        storeId: split.storeId,
+        storeName: split.store.name,
+        sellerAmount: split.sellerAmount.toString(),
+        sellerEmail: split.seller.email,
+      })),
+    }, releasedBy);
+
+    return escrow;
   }
 
   /**
@@ -353,7 +595,23 @@ export class EscrowService {
 
     for (const escrow of expiredEscrows) {
       try {
-        await this.releaseEscrow(escrow.id, 'SYSTEM_AUTO_RELEASE');
+        // Check if escrow has split allocations for multi-vendor support
+        const escrowWithSplits = await this.prisma.escrowTransaction.findUnique({
+          where: { id: escrow.id },
+          include: {
+            splitAllocations: {
+              select: { id: true },
+            },
+          },
+        });
+
+        if (escrowWithSplits && escrowWithSplits.splitAllocations.length > 0) {
+          // Use split release for multi-vendor orders
+          await this.releaseEscrowSplits(escrow.id, 'SYSTEM_AUTO_RELEASE');
+        } else {
+          // Use simple release for single-seller orders
+          await this.releaseEscrow(escrow.id, 'SYSTEM_AUTO_RELEASE');
+        }
         successCount++;
       } catch (error) {
         this.logger.error(`Failed to auto-release escrow ${escrow.id}:`, error);

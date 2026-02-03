@@ -1,5 +1,5 @@
 /**
- * @luxury/database
+ * @nextpik/database
  * Database client and utilities
  */
 

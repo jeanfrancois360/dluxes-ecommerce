@@ -28,7 +28,7 @@ export interface CreateProductVariantDto {
   compareAtPrice?: number;
   inventory: number;
   attributes: Record<string, string>; // { size: 'M', color: 'Black' }
-  image?: string;
+  image?: string | null;
   colorHex?: string;
   colorName?: string;
   sizeChart?: any;
@@ -44,7 +44,7 @@ export interface UpdateProductVariantDto {
   compareAtPrice?: number;
   inventory?: number;
   attributes?: Record<string, string>;
-  image?: string;
+  image?: string | null;
   colorHex?: string;
   colorName?: string;
   sizeChart?: any;
@@ -58,48 +58,45 @@ export const variantsApi = {
    * Get all variants for a product
    */
   async getProductVariants(productId: string): Promise<ProductVariant[]> {
-    const response = await api.get(`/products/${productId}/variants`);
-    return response.data || [];
+    const variants = await api.get(`/products/${productId}/variants`);
+    return variants || [];
   },
 
   /**
    * Get a specific variant by ID
    */
   async getVariantById(variantId: string): Promise<ProductVariant> {
-    const response = await api.get(`/products/variants/${variantId}`);
-    return response.data;
+    return api.get(`/products/variants/${variantId}`);
   },
 
   /**
    * Create a new variant
    */
   async createVariant(productId: string, data: CreateProductVariantDto): Promise<ProductVariant> {
-    const response = await api.post(`/products/${productId}/variants`, data);
-    return response.data;
+    // api.post already unwraps { success, data } to just return data
+    const variant = await api.post(`/products/${productId}/variants`, data);
+    return variant;
   },
 
   /**
    * Create multiple variants in bulk
    */
   async bulkCreateVariants(productId: string, variants: CreateProductVariantDto[]): Promise<ProductVariant[]> {
-    const response = await api.post(`/products/${productId}/variants/bulk`, { variants });
-    return response.data;
+    return api.post(`/products/${productId}/variants/bulk`, { variants });
   },
 
   /**
    * Update a variant
    */
   async updateVariant(variantId: string, data: UpdateProductVariantDto): Promise<ProductVariant> {
-    const response = await api.patch(`/products/variants/${variantId}`, data);
-    return response.data;
+    return api.patch(`/products/variants/${variantId}`, data);
   },
 
   /**
    * Delete a variant
    */
   async deleteVariant(variantId: string): Promise<{ success: boolean; message: string }> {
-    const response = await api.delete(`/products/variants/${variantId}`);
-    return response.data;
+    return api.delete(`/products/variants/${variantId}`);
   },
 
   /**
@@ -109,7 +106,6 @@ export const variantsApi = {
     productId: string,
     variantOrders: Array<{ id: string; order: number }>
   ): Promise<{ success: boolean; message: string }> {
-    const response = await api.patch(`/products/${productId}/variants/reorder`, { variantOrders });
-    return response.data;
+    return api.patch(`/products/${productId}/variants/reorder`, { variantOrders });
   },
 };
