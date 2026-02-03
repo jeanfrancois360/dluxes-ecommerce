@@ -95,7 +95,7 @@ export default function SellingCreditsPage() {
   );
 
   // Fetch credit price
-  const { data: priceData, error: priceError } = useSWR<{ data: { price: number } }>(
+  const { data: priceData, error: priceError } = useSWR<{ data: { pricePerMonth: number } }>(
     `${API_URL}/seller/credits/price`,
     fetcher,
     {
@@ -113,7 +113,7 @@ export default function SellingCreditsPage() {
   });
 
   const balance = balanceData?.data;
-  const price = priceData?.data?.price || 29.99;
+  const price = priceData?.data?.pricePerMonth || 29.99;
   const history = historyData?.data;
 
   // Handle canceled purchase
@@ -171,12 +171,14 @@ export default function SellingCreditsPage() {
         throw new Error(error.message || 'Failed to create checkout session');
       }
 
-      const data = await res.json();
+      const response = await res.json();
+      const sessionUrl = response.data?.sessionUrl || response.sessionUrl;
 
-      if (data.sessionUrl) {
+      if (sessionUrl) {
         // Redirect to Stripe Checkout
-        window.location.href = data.sessionUrl;
+        window.location.href = sessionUrl;
       } else {
+        console.error('Invalid response structure:', response);
         throw new Error('No checkout URL received');
       }
     } catch (error: any) {
@@ -219,7 +221,15 @@ export default function SellingCreditsPage() {
   const totalPrice = selectedMonths * price;
   const expiryDays = getDaysRemaining(balance.creditsExpiresAt);
   const graceDays = getDaysRemaining(balance.creditsGraceEndsAt);
-  const progressPercent = balance.creditsBalance > 0 ? (balance.creditsBalance / 12) * 100 : 0;
+
+  // Calculate dynamic max months (round up to nearest 12)
+  const getMaxMonths = (currentBalance: number) => {
+    if (currentBalance <= 12) return 12;
+    return Math.ceil(currentBalance / 12) * 12;
+  };
+
+  const maxMonths = getMaxMonths(balance.creditsBalance);
+  const progressPercent = balance.creditsBalance > 0 ? (balance.creditsBalance / maxMonths) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
@@ -302,8 +312,8 @@ export default function SellingCreditsPage() {
           {/* Progress Bar */}
           <div className="mb-6">
             <div className="flex justify-between text-sm mb-2 opacity-90">
-              <span>Usage</span>
-              <span>{progressPercent.toFixed(0)}% remaining</span>
+              <span>Available Credits</span>
+              <span>{balance.creditsBalance} of {maxMonths} months ({progressPercent.toFixed(0)}%)</span>
             </div>
             <div className="h-3 bg-white/20 rounded-full overflow-hidden">
               <motion.div
@@ -516,7 +526,7 @@ export default function SellingCreditsPage() {
                             </div>
                             {transaction.amountPaid && (
                               <div className="text-xs text-gray-500 mt-1">
-                                ${transaction.amountPaid.toFixed(2)} {transaction.currency}
+                                ${Number(transaction.amountPaid).toFixed(2)} {transaction.currency}
                               </div>
                             )}
                           </div>

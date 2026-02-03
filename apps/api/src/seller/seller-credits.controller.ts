@@ -120,4 +120,26 @@ export class SellerCreditsController {
       months,
     );
   }
+
+  /**
+   * Verify Stripe session and get purchase details
+   * GET /seller/credits/verify-session?session_id=xxx
+   */
+  @Get('verify-session')
+  async verifySession(
+    @Req() req: any,
+    @Query('session_id') sessionId: string,
+  ) {
+    if (!sessionId) {
+      return {
+        success: false,
+        message: 'Session ID is required',
+      };
+    }
+
+    return this.sellerCreditsService.verifyAndProcessSession(
+      req.user.id,
+      sessionId,
+    );
+  }
 }
