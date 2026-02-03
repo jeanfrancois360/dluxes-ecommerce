@@ -1095,9 +1095,6 @@ export class SellerService {
         if (!check.reasons.hasListingCapacity) {
           messages.push('You have reached your maximum listing limit');
         }
-        if (!check.reasons.hasCredits) {
-          messages.push('Insufficient credits for this listing');
-        }
 
         throw new BadRequestException(messages.join('. '));
       }

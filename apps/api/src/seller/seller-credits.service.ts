@@ -503,8 +503,11 @@ export class SellerCreditsService {
     let graceEndsAt: Date | null = null;
     if (balanceAfter === 0) {
       const graceDays = await this.getGracePeriodDays();
-      graceEndsAt = new Date(now);
-      graceEndsAt.setDate(graceEndsAt.getDate() + graceDays);
+      if (graceDays > 0) {
+        graceEndsAt = new Date(now);
+        graceEndsAt.setDate(graceEndsAt.getDate() + graceDays);
+      }
+      // If graceDays = 0, graceEndsAt remains null (no grace period)
     }
 
     // Transaction: Update store + create deduction record
