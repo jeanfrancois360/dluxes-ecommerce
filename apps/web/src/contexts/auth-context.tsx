@@ -8,9 +8,10 @@
 
 import React, { createContext, useCallback, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import type { User, LoginRequest, RegisterRequest } from '@/lib/api/types';
+import type { User, LoginRequest, RegisterRequest, ProfileUpdateData } from '@/lib/api/types';
 import * as authApi from '@/lib/api/auth';
-import { TokenManager, ToastNotifier } from '@/lib/api/client';
+import { TokenManager } from '@/lib/api/client';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import {
   getStoredUser,
   storeUser,
@@ -37,7 +38,7 @@ export interface AuthContextValue {
   error: string | null;
 
   // Authentication Methods
-  login: (credentials: LoginRequest) => Promise<void>;
+  login: (credentials: LoginRequest) => Promise<{ requires2FA?: boolean; userId?: string; success?: boolean } | void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -63,7 +64,7 @@ export interface AuthContextValue {
   regenerateBackupCodes: () => Promise<{ backupCodes: string[] }>;
 
   // Profile Methods
-  updateProfile: (data: Partial<RegisterRequest>) => Promise<void>;
+  updateProfile: (data: ProfileUpdateData) => Promise<void>;
   uploadAvatar: (file: File, onProgress?: (progress: number) => void) => Promise<void>;
   deleteAvatar: () => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
@@ -113,10 +114,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // ============================================================================
 
   const handleSessionTimeout = useCallback(async () => {
-    ToastNotifier.warning(
-      'Session Expired',
-      'Your session has expired due to inactivity. Please login again.'
-    );
+    standardToasts.auth.sessionExpired();
     await logout();
   }, []);
 
@@ -256,17 +254,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const response = await authApi.login(credentials);
 
+        // Check if 2FA is required
+        if (response && (response as any).requires2FA) {
+          // Return the 2FA response to the caller
+          return {
+            requires2FA: true,
+            userId: (response as any).userId,
+          };
+        }
+
+        // Validate response structure for normal login
+        if (!response || !response.user) {
+          throw new Error('Invalid response from server. Please try again.');
+        }
+
         // Handle different response formats
         const userData = response.user;
-        const token = response.token || response.access_token;
+        const token = response.accessToken || response.token || response.access_token;
         const refreshToken = response.refreshToken;
 
-        // Store tokens if present
-        if (token) {
-          TokenManager.setAccessToken(token);
-          if (refreshToken) {
-            TokenManager.setRefreshToken(refreshToken);
-          }
+        // Validate essential data
+        if (!userData || !token) {
+          throw new Error('Invalid authentication response. Please try again.');
+        }
+
+        // Store tokens
+        TokenManager.setAccessToken(token);
+        if (refreshToken) {
+          TokenManager.setRefreshToken(refreshToken);
         }
 
         setUser(userData);
@@ -279,13 +294,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Start session timer
         startSessionTimer(handleSessionTimeout);
 
-        ToastNotifier.success('Welcome back!', `Logged in as ${userData.email}`);
+        // Show success toast with user's name
+        standardToasts.auth.loginSuccess(userData.firstName || 'User');
 
         // Redirect based on user role
         const redirectUrl = getAuthRedirectUrl(userData);
         router.push(redirectUrl);
+
+        return { success: true };
       } catch (error: any) {
-        const errorMessage = error.response?.data?.message || 'Login failed. Please try again.';
+        const errorMessage = error.response?.data?.message || error.message || 'Login failed. Please try again.';
         setError(errorMessage);
         throw error;
       } finally {
@@ -303,17 +321,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const response = await authApi.register(data);
 
+        // Validate response structure
+        if (!response || !response.user) {
+          throw new Error('Invalid response from server. Please try again.');
+        }
+
         // Handle different response formats
         const userData = response.user;
-        const token = response.token || response.access_token;
+        const token = response.accessToken || response.token || response.access_token;
         const refreshToken = response.refreshToken;
 
-        // Store tokens if present
-        if (token) {
-          TokenManager.setAccessToken(token);
-          if (refreshToken) {
-            TokenManager.setRefreshToken(refreshToken);
-          }
+        // Validate essential data
+        if (!userData || !token) {
+          throw new Error('Invalid registration response. Please try again.');
+        }
+
+        // Store tokens
+        TokenManager.setAccessToken(token);
+        if (refreshToken) {
+          TokenManager.setRefreshToken(refreshToken);
         }
 
         setUser(userData);
@@ -326,16 +352,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Start session timer
         startSessionTimer(handleSessionTimeout);
 
-        ToastNotifier.success(
-          'Account Created',
-          'Your account has been created successfully!'
-        );
+        standardToasts.auth.registerSuccess();
 
         // Redirect to account page
         router.push('/account');
       } catch (error: any) {
         const errorMessage =
-          error.response?.data?.message || 'Registration failed. Please try again.';
+          error.response?.data?.message || error.message || 'Registration failed. Please try again.';
         setError(errorMessage);
         throw error;
       } finally {
@@ -356,7 +379,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null);
       clearAllAuthData();
 
-      ToastNotifier.success('Logged out', 'You have been logged out successfully');
+      standardToasts.auth.logoutSuccess();
 
       // Redirect to home page
       router.push('/');
@@ -397,10 +420,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       await authApi.requestPasswordReset({ email });
-      ToastNotifier.success(
-        'Email Sent',
-        'Password reset instructions have been sent to your email'
-      );
+      standardToasts.auth.passwordResetSent();
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.message || 'Failed to send password reset email';
@@ -418,10 +438,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setError(null);
 
         await authApi.confirmPasswordReset({ token, password, confirmPassword });
-        ToastNotifier.success(
-          'Password Reset',
-          'Your password has been reset successfully'
-        );
+        standardToasts.auth.passwordResetSuccess();
 
         router.push('/auth/login');
       } catch (error: any) {
@@ -442,10 +459,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setError(null);
 
         await authApi.changePassword(currentPassword, newPassword, confirmPassword);
-        ToastNotifier.success(
-          'Password Changed',
-          'Your password has been changed successfully'
-        );
+        toast.success('Password changed successfully');
       } catch (error: any) {
         const errorMessage = error.response?.data?.message || 'Failed to change password';
         setError(errorMessage);
@@ -467,7 +481,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       await authApi.requestMagicLink({ email });
-      ToastNotifier.success('Email Sent', 'Magic link has been sent to your email');
+      toast.success('Magic link sent to your email');
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to send magic link';
       setError(errorMessage);
@@ -492,7 +506,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Start session timer
         startSessionTimer(handleSessionTimeout);
 
-        ToastNotifier.success('Welcome!', 'Logged in successfully');
+        standardToasts.auth.loginSuccess();
 
         // Redirect based on user role
         const redirectUrl = getAuthRedirectUrl(userData);
@@ -519,7 +533,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       await authApi.verifyEmail(token);
-      ToastNotifier.success('Email Verified', 'Your email has been verified successfully');
+      standardToasts.auth.emailVerified();
 
       // Refresh user data
       await refreshUser();
@@ -538,10 +552,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       await authApi.resendEmailVerification();
-      ToastNotifier.success(
-        'Email Sent',
-        'Verification email has been sent to your email address'
-      );
+      toast.success('Verification email sent to your email address');
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.message || 'Failed to send verification email';
@@ -577,7 +588,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       const data = await authApi.enableTwoFactor({ code });
-      ToastNotifier.success('2FA Enabled', 'Two-factor authentication has been enabled');
+      standardToasts.otp.enabled();
 
       // Refresh user data
       await refreshUser();
@@ -598,7 +609,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       await authApi.disableTwoFactor({ code });
-      ToastNotifier.success('2FA Disabled', 'Two-factor authentication has been disabled');
+      standardToasts.otp.disabled();
 
       // Refresh user data
       await refreshUser();
@@ -626,7 +637,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Start session timer
         startSessionTimer(handleSessionTimeout);
 
-        ToastNotifier.success('Welcome back!', 'Logged in successfully');
+        standardToasts.auth.loginSuccess();
 
         // Redirect based on user role
         const redirectUrl = getAuthRedirectUrl(userData);
@@ -648,10 +659,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       const data = await authApi.regenerateBackupCodes();
-      ToastNotifier.success(
-        'Backup Codes Regenerated',
-        'New backup codes have been generated'
-      );
+      toast.success('New backup codes have been generated');
 
       return data;
     } catch (error: any) {
@@ -668,7 +676,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Profile Methods
   // ============================================================================
 
-  const updateProfile = useCallback(async (data: Partial<RegisterRequest>) => {
+  const updateProfile = useCallback(async (data: ProfileUpdateData) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -678,7 +686,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(updatedUser);
       storeUser(updatedUser);
 
-      ToastNotifier.success('Profile Updated', 'Your profile has been updated successfully');
+      toast.success('Profile updated successfully');
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to update profile';
       setError(errorMessage);
@@ -699,7 +707,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(updatedUser);
         storeUser(updatedUser);
 
-        ToastNotifier.success('Avatar Uploaded', 'Your avatar has been updated');
+        toast.success('Avatar updated successfully');
       } catch (error: any) {
         const errorMessage = error.response?.data?.message || 'Failed to upload avatar';
         setError(errorMessage);
@@ -721,7 +729,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(updatedUser);
       storeUser(updatedUser);
 
-      ToastNotifier.success('Avatar Deleted', 'Your avatar has been removed');
+      toast.success('Avatar removed');
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to delete avatar';
       setError(errorMessage);
@@ -743,10 +751,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(null);
         clearAllAuthData();
 
-        ToastNotifier.success(
-          'Account Deleted',
-          'Your account has been deleted successfully'
-        );
+        toast.success('Account deleted successfully');
 
         router.push('/');
       } catch (error: any) {
@@ -785,7 +790,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       await authApi.revokeSession(sessionId);
-      ToastNotifier.success('Session Revoked', 'The session has been revoked');
+      toast.success('Session revoked');
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to revoke session';
       setError(errorMessage);
@@ -801,7 +806,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
 
       await authApi.revokeAllSessions();
-      ToastNotifier.success('Sessions Revoked', 'All other sessions have been revoked');
+      toast.success('All sessions revoked');
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to revoke sessions';
       setError(errorMessage);

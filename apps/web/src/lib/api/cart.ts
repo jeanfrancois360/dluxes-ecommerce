@@ -24,8 +24,8 @@ export const cartAPI = {
   get: () =>
     api.get<Cart>('/cart'),
 
-  addItem: (productId: string, quantity: number = 1) =>
-    api.post<Cart>('/cart/items', { productId, quantity }),
+  addItem: (productId: string, quantity: number = 1, currency?: string) =>
+    api.post<Cart>('/cart/items', { productId, quantity, currency }),
 
   updateItem: (itemId: string, quantity: number) =>
     api.patch<Cart>(`/cart/items/${itemId}`, { quantity }),

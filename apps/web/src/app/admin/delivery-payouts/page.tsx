@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Badge } from '@luxury/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Badge } from '@nextpik/ui';
 import {
   Table,
   TableBody,
@@ -13,7 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {
   Dialog,
   DialogContent,
@@ -21,21 +21,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Textarea } from '@luxury/ui';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
+} from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Textarea } from '@nextpik/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
 import { Search, DollarSign, Clock, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 interface DeliveryPayout {
   id: string;
@@ -104,7 +104,7 @@ function DeliveryPayoutsContent() {
       setPayouts(data);
       calculateStats(data);
     } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to fetch payouts');
+      toast.error(error.response?.data?.message || 'Failed to fetch payouts');
     } finally {
       setLoading(false);
     }
@@ -133,7 +133,7 @@ function DeliveryPayoutsContent() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      toast.success('Success', 'Payout processed successfully');
+      toast.success('Payout processed successfully');
       setIsProcessDialogOpen(false);
       setSelectedPayout(null);
       setProcessData({
@@ -143,7 +143,7 @@ function DeliveryPayoutsContent() {
       });
       fetchPayouts();
     } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to process payout');
+      toast.error(error.response?.data?.message || 'Failed to process payout');
     }
   };
 
@@ -159,10 +159,10 @@ function DeliveryPayoutsContent() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      toast.success('Success', 'Payout marked as completed');
+      toast.success('Payout marked as completed');
       fetchPayouts();
     } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to complete payout');
+      toast.error(error.response?.data?.message || 'Failed to complete payout');
     }
   };
 
@@ -178,10 +178,10 @@ function DeliveryPayoutsContent() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      toast.success('Success', 'Payout cancelled');
+      toast.success('Payout cancelled');
       fetchPayouts();
     } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to cancel payout');
+      toast.error(error.response?.data?.message || 'Failed to cancel payout');
     }
   };
 

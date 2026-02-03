@@ -17,25 +17,33 @@ export const generalSettingsSchema = z.object({
 // PAYMENT & ESCROW SETTINGS
 // ============================================================================
 export const paymentSettingsSchema = z.object({
-  escrow_enabled: z.boolean(),
+  escrow_enabled: z.boolean().optional(), // Optional - handled separately via toggle in uppercase PAYMENT category
   escrow_default_hold_days: z.number().int().min(1, 'Hold days must be at least 1').max(90, 'Hold days cannot exceed 90'),
-  escrow_auto_release_enabled: z.boolean(),
+  escrow_auto_release_enabled: z.boolean().optional(), // Optional - handled separately via immediate-save toggle
   min_payout_amount: z.number().min(0, 'Minimum payout must be positive'),
   payout_schedule: z.enum(['daily', 'weekly', 'biweekly', 'monthly']),
   payment_methods: z.array(z.string()).min(1, 'At least one payment method must be enabled'),
-}).refine(
-  (data) => {
-    // Escrow must be enabled in production
-    if (process.env.NODE_ENV === 'production' && !data.escrow_enabled) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: 'Escrow cannot be disabled in production',
-    path: ['escrow_enabled'],
-  }
-);
+  // Payment Processor Fees - Stripe
+  stripe_fee_percentage: z.number().min(0, 'Fee percentage cannot be negative').max(10, 'Fee percentage cannot exceed 10%').optional(),
+  stripe_fee_fixed_eur: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed €5').optional(),
+  stripe_fee_fixed_usd: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed $5').optional(),
+  stripe_fee_fixed_gbp: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed £5').optional(),
+  stripe_fee_fixed_aud: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed A$5').optional(),
+  stripe_fee_fixed_cad: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed C$5').optional(),
+  stripe_fee_fixed_jpy: z.number().min(0, 'Fixed fee cannot be negative').max(500, 'Fixed fee cannot exceed ¥500').optional(),
+  stripe_fee_fixed_chf: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed CHF 5').optional(),
+  stripe_fee_fixed_rwf: z.number().min(0, 'Fixed fee cannot be negative').max(5000, 'Fixed fee cannot exceed FRw 5000').optional(),
+  // Payment Processor Fees - PayPal
+  paypal_fee_percentage: z.number().min(0, 'Fee percentage cannot be negative').max(10, 'Fee percentage cannot exceed 10%').optional(),
+  paypal_fee_fixed_eur: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed €5').optional(),
+  paypal_fee_fixed_usd: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed $5').optional(),
+  paypal_fee_fixed_gbp: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed £5').optional(),
+  paypal_fee_fixed_aud: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed A$5').optional(),
+  paypal_fee_fixed_cad: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed C$5').optional(),
+  paypal_fee_fixed_jpy: z.number().min(0, 'Fixed fee cannot be negative').max(500, 'Fixed fee cannot exceed ¥500').optional(),
+  paypal_fee_fixed_chf: z.number().min(0, 'Fixed fee cannot be negative').max(5, 'Fixed fee cannot exceed CHF 5').optional(),
+  paypal_fee_fixed_rwf: z.number().min(0, 'Fixed fee cannot be negative').max(5000, 'Fixed fee cannot exceed FRw 5000').optional(),
+});
 
 // ============================================================================
 // COMMISSION SETTINGS
@@ -44,7 +52,22 @@ export const commissionSettingsSchema = z.object({
   global_commission_rate: z.number().min(0, 'Commission rate cannot be negative').max(100, 'Commission rate cannot exceed 100%'),
   commission_type: z.enum(['percentage', 'fixed', 'tiered']),
   commission_applies_to_shipping: z.boolean(),
-});
+  commission_min_amount: z.number().min(0, 'Minimum amount cannot be negative').max(100, 'Minimum amount cannot exceed $100'),
+  commission_max_amount: z.number().min(0, 'Maximum amount cannot be negative'),
+  commission_fixed_fee: z.number().min(0, 'Fixed fee cannot be negative').max(50, 'Fixed fee cannot exceed $50'),
+}).refine(
+  (data) => {
+    // If max is set (not 0), it must be greater than min
+    if (data.commission_max_amount > 0 && data.commission_min_amount > data.commission_max_amount) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Maximum commission must be greater than minimum commission',
+    path: ['commission_max_amount'],
+  }
+);
 
 // ============================================================================
 // CURRENCY SETTINGS
@@ -66,12 +89,50 @@ export const currencySettingsSchema = z.object({
 );
 
 // ============================================================================
-// DELIVERY SETTINGS
+// DELIVERY/FULFILLMENT SETTINGS
 // ============================================================================
 export const deliverySettingsSchema = z.object({
   delivery_confirmation_required: z.boolean(),
   delivery_auto_assign: z.boolean(),
   delivery_partner_commission: z.number().min(0).max(100),
+});
+
+// ============================================================================
+// TAX SETTINGS
+// ============================================================================
+export const taxSettingsSchema = z.object({
+  tax_calculation_mode: z.enum(['disabled', 'simple', 'by_state'], {
+    errorMap: () => ({ message: 'Tax mode must be disabled, simple, or by_state' }),
+  }),
+  tax_default_rate: z.number()
+    .min(0, 'Tax rate cannot be negative')
+    .max(1, 'Tax rate cannot exceed 100%'),
+}).refine(
+  (data) => {
+    // If mode is 'simple', tax_default_rate must be > 0
+    if (data.tax_calculation_mode === 'simple' && data.tax_default_rate <= 0) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Default tax rate must be greater than 0 when using simple mode',
+    path: ['tax_default_rate'],
+  }
+);
+
+// ============================================================================
+// SHIPPING RATES SETTINGS
+// ============================================================================
+export const shippingSettingsSchema = z.object({
+  shipping_mode: z.enum(['manual', 'dhl_api', 'hybrid'], {
+    errorMap: () => ({ message: 'Shipping mode must be manual, dhl_api, or hybrid' }),
+  }),
+  shipping_standard_rate: z.number().min(0, 'Rate cannot be negative'),
+  shipping_express_rate: z.number().min(0, 'Rate cannot be negative'),
+  shipping_overnight_rate: z.number().min(0, 'Rate cannot be negative'),
+  shipping_international_surcharge: z.number().min(0, 'Surcharge cannot be negative'),
+  free_shipping_enabled: z.boolean(),
   free_shipping_threshold: z.number().min(0, 'Threshold must be positive'),
 });
 
@@ -125,6 +186,8 @@ export const allSettingsSchema = z.object({
   commission: commissionSettingsSchema,
   currency: currencySettingsSchema,
   delivery: deliverySettingsSchema,
+  tax: taxSettingsSchema,
+  shipping: shippingSettingsSchema,
   advertisement: advertisementSettingsSchema,
   security: securitySettingsSchema,
   notifications: notificationSettingsSchema,
@@ -137,6 +200,8 @@ export type PaymentSettings = z.infer<typeof paymentSettingsSchema>;
 export type CommissionSettings = z.infer<typeof commissionSettingsSchema>;
 export type CurrencySettings = z.infer<typeof currencySettingsSchema>;
 export type DeliverySettings = z.infer<typeof deliverySettingsSchema>;
+export type TaxSettings = z.infer<typeof taxSettingsSchema>;
+export type ShippingSettings = z.infer<typeof shippingSettingsSchema>;
 export type AdvertisementSettings = z.infer<typeof advertisementSettingsSchema>;
 export type SecuritySettings = z.infer<typeof securitySettingsSchema>;
 export type NotificationSettings = z.infer<typeof notificationSettingsSchema>;

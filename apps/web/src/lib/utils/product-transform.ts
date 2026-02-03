@@ -1,5 +1,5 @@
 import { Product } from '@/lib/api/types';
-import { QuickViewProduct } from '@luxury/ui';
+import { QuickViewProduct } from '@nextpik/ui';
 import { getColorHex } from './color-mapping';
 
 /**
@@ -42,21 +42,45 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
   // Transform variants - handle both formats
   let variants = undefined;
   if (product.variants?.length > 0) {
+    // Extract unique sizes and colors from variants to avoid duplicates
+    const sizeMap = new Map<string, { name: string; value: string; inStock: boolean }>();
+    const colorMap = new Map<string, { name: string; value: string; hex: string }>();
+
+    product.variants.forEach((v: any) => {
+      // Process sizes - deduplicate by value
+      if (v.attributes?.size) {
+        const sizeValue = v.attributes.size.toLowerCase();
+        if (!sizeMap.has(sizeValue)) {
+          sizeMap.set(sizeValue, {
+            name: v.attributes.size,
+            value: sizeValue,
+            inStock: v.isAvailable && v.inventory > 0,
+          });
+        } else {
+          // Update inStock if any variant of this size is in stock
+          const existing = sizeMap.get(sizeValue)!;
+          if (v.isAvailable && v.inventory > 0) {
+            existing.inStock = true;
+          }
+        }
+      }
+
+      // Process colors - deduplicate by value
+      if (v.attributes?.color) {
+        const colorValue = v.attributes.color.toLowerCase();
+        if (!colorMap.has(colorValue)) {
+          colorMap.set(colorValue, {
+            name: v.attributes.color,
+            value: colorValue,
+            hex: v.attributes.colorHex || getColorHex(v.attributes.color),
+          });
+        }
+      }
+    });
+
     variants = {
-      sizes: product.variants
-        .filter((v: any) => v.attributes?.size)
-        .map((v: any) => ({
-          name: v.attributes.size,
-          value: v.attributes.size.toLowerCase(),
-          inStock: v.isAvailable && v.stock > 0,
-        })),
-      colors: product.variants
-        .filter((v: any) => v.attributes?.color)
-        .map((v: any) => ({
-          name: v.attributes.color,
-          value: v.attributes.color.toLowerCase(),
-          hex: v.attributes.colorHex || getColorHex(v.attributes.color),
-        })),
+      sizes: Array.from(sizeMap.values()),
+      colors: Array.from(colorMap.values()),
     };
   } else if (product.colors || product.sizes) {
     // Handle sizes and colors arrays from API
@@ -109,8 +133,9 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
     console.warn('Failed to parse compareAtPrice for product:', product.id, product.name, e);
   }
 
-  // Ensure heroImage has a fallback
-  const heroImage = product.heroImage || images[0] || '/images/placeholder-product.jpg';
+  // Ensure heroImage has a fallback - use a simple gray placeholder SVG data URL
+  const placeholderImage = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23f5f5f5"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="24" fill="%23999"%3ENo Image%3C/text%3E%3C/svg%3E';
+  const heroImage = product.heroImage || images[0] || placeholderImage;
 
   return {
     id: product.id,

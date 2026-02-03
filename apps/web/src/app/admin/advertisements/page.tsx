@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { adminAdvertisementsApi, type Advertisement } from '@/lib/api/admin';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 function AdvertisementsContent() {
   const [ads, setAds] = useState<Advertisement[]>([]);
@@ -25,7 +25,7 @@ function AdvertisementsContent() {
       }
       setAds(data || []);
     } catch (error) {
-      toast.error('Error', 'Failed to fetch advertisements');
+      toast.error('Failed to fetch advertisements');
     } finally {
       setLoading(false);
     }
@@ -38,20 +38,20 @@ function AdvertisementsContent() {
   const handleApprove = async (id: string, approved: boolean) => {
     try {
       await adminAdvertisementsApi.approve(id, approved);
-      toast.success('Success', approved ? 'Advertisement approved' : 'Advertisement rejected');
+      toast.success(approved ? 'Advertisement approved' : 'Advertisement rejected');
       fetchAds();
     } catch (error) {
-      toast.error('Error', 'Failed to update advertisement');
+      toast.error('Failed to update advertisement');
     }
   };
 
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
       await adminAdvertisementsApi.toggle(id, isActive);
-      toast.success('Success', `Advertisement ${isActive ? 'activated' : 'deactivated'}`);
+      toast.success(`Advertisement ${isActive ? 'activated' : 'deactivated'}`);
       fetchAds();
     } catch (error) {
-      toast.error('Error', 'Failed to toggle advertisement');
+      toast.error('Failed to toggle advertisement');
     }
   };
 
@@ -59,10 +59,10 @@ function AdvertisementsContent() {
     if (!confirm('Are you sure you want to delete this advertisement?')) return;
     try {
       await adminAdvertisementsApi.delete(id);
-      toast.success('Success', 'Advertisement deleted');
+      toast.success('Advertisement deleted');
       fetchAds();
     } catch (error) {
-      toast.error('Error', 'Failed to delete advertisement');
+      toast.error('Failed to delete advertisement');
     }
   };
 
@@ -72,7 +72,7 @@ function AdvertisementsContent() {
       setSelectedAd({ ...ad, ...analytics });
       setShowModal(true);
     } catch (error) {
-      toast.error('Error', 'Failed to load analytics');
+      toast.error('Failed to load analytics');
     }
   };
 

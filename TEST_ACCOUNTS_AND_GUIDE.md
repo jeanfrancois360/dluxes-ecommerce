@@ -6,7 +6,7 @@
 
 ```bash
 # Terminal 1 - Clean and setup database
-cd /Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce
+cd /Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik
 
 # Clean API build
 cd apps/api
@@ -25,7 +25,7 @@ pnpm dev
 
 ```bash
 # Terminal 2 - Start Web App
-cd /Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web
+cd /Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web
 pnpm dev
 ```
 
@@ -648,7 +648,7 @@ If you see "Can't reach database server":
 lsof -i :5433
 
 # Start Docker container (if using Docker)
-docker start luxury-ecommerce-db
+docker start nextpik-db
 
 # Or check DATABASE_URL in packages/database/.env
 ```

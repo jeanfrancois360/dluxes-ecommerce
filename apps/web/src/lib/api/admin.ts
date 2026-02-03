@@ -77,7 +77,8 @@ export interface AdminProduct {
   compareAtPrice?: number;
   category: string;
   images: string[];
-  stock: number;
+  stock?: number; // Legacy field name
+  inventory?: number; // Database field name
   status: 'active' | 'inactive' | 'draft';
   tags: string[];
   createdAt: string;
@@ -95,15 +96,26 @@ export interface AdminOrder {
   items: Array<{
     id: string;
     productId: string;
+    variantId?: string;
     name: string;
     quantity: number;
     price: number;
     image?: string;
+    product?: {
+      id: string;
+      name: string;
+      store?: {
+        id: string;
+        name: string;
+        slug: string;
+      };
+    };
   }>;
   subtotal: number;
   tax: number;
   shipping: number;
   total: number;
+  currency?: string;
   status: string;
   paymentStatus: string;
   shippingAddress: {
@@ -113,6 +125,20 @@ export interface AdminOrder {
     zipCode: string;
     country: string;
   };
+  commissions?: Array<{
+    id: string;
+    storeId: string;
+    sellerId: string;
+    orderAmount: number;
+    commissionAmount: number;
+    currency: string;
+    status: string;
+    store: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -138,6 +164,8 @@ export interface Category {
   featured: boolean;
   image?: string;
   showInNavbar?: boolean;
+  showInTopBar?: boolean;
+  showInSidebar?: boolean;
   showInFooter?: boolean;
   showOnHomepage?: boolean;
   isFeatured?: boolean;
@@ -376,7 +404,7 @@ export const adminProductsApi = {
     productId: string,
     data: {
       quantity: number;
-      type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'RESTOCK';
+      type: 'SALE' | 'RETURN' | 'RESTOCK' | 'ADJUSTMENT' | 'DAMAGE';
       reason?: string;
       notes?: string;
     }
@@ -390,7 +418,7 @@ export const adminProductsApi = {
     variantId: string,
     data: {
       quantity: number;
-      type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'RESTOCK';
+      type: 'SALE' | 'RETURN' | 'RESTOCK' | 'ADJUSTMENT' | 'DAMAGE';
       reason?: string;
       notes?: string;
     }
@@ -477,19 +505,30 @@ export const adminOrdersApi = {
   },
 
   async getById(id: string): Promise<AdminOrder> {
-    const response = await api.get(`/admin/orders/${id}`);
+    // Backend route is /orders/:id, not /admin/orders/:id
+    const response = await api.get(`/orders/${id}`);
     return response;
   },
 
   async updateStatus(id: string, status: string): Promise<AdminOrder> {
-    const response = await api.patch(`/admin/orders/${id}/status`, { status });
+    // Backend route is /orders/:id/status, not /admin/orders/:id/status
+    const response = await api.patch(`/orders/${id}/status`, { status });
     return response;
   },
 
   async refund(id: string, amount?: number): Promise<void> {
-    await api.post(`/admin/orders/${id}/refund`, { amount });
+    // Backend route is /payment/refund/:orderId
+    await api.post(`/payment/refund/${id}`, { amount });
   },
 };
+
+export interface CustomerStats {
+  total: number;
+  newThisMonth: number;
+  growthPercent: number;
+  vipCount: number;
+  totalRevenue: number;
+}
 
 // Customers APIs
 export const adminCustomersApi = {
@@ -498,23 +537,145 @@ export const adminCustomersApi = {
     limit?: number;
     search?: string;
     status?: string;
+    role?: string;
+    segment?: string;
+    sortBy?: string;
   }): Promise<{ customers: AdminCustomer[]; total: number; pages: number }> {
-    const response = await api.get(`/admin/customers${buildQueryString(params)}`);
+    const queryParams: any = {};
+    if (params?.page) queryParams.page = params.page;
+    if (params?.limit) queryParams.pageSize = params.limit; // Backend uses pageSize, not limit
+    if (params?.search) queryParams.search = params.search;
+    if (params?.status) queryParams.status = params.status;
+    if (params?.role) queryParams.role = params.role;
+
+    const response = await api.get(`/admin/users${buildQueryString(queryParams)}`);
+    const data = response.data || response;
+
+    // Map response to expected format
+    let customers = (data.users || []).map((user: any) => ({
+      id: user.id,
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      totalOrders: user._count?.orders || 0,
+      totalSpent: user.totalSpent || 0,
+      status: user.isActive ? 'active' : user.isSuspended ? 'suspended' : 'inactive',
+      createdAt: user.createdAt,
+      lastLoginAt: user.lastLoginAt,
+    }));
+
+    // Apply segment filter on frontend (backend doesn't support this)
+    if (params?.segment) {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+      customers = customers.filter((c: any) => {
+        switch (params.segment) {
+          case 'vip':
+            return c.totalSpent >= 1000;
+          case 'regular':
+            return c.totalSpent < 1000 && c.totalSpent > 0;
+          case 'new':
+            return new Date(c.createdAt) >= thirtyDaysAgo;
+          case 'at-risk':
+            return !c.lastLoginAt || new Date(c.lastLoginAt) < ninetyDaysAgo;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply sorting on frontend
+    if (params?.sortBy) {
+      const [field, order] = params.sortBy.split('-');
+      customers.sort((a: any, b: any) => {
+        let aVal = a[field];
+        let bVal = b[field];
+
+        // Handle date fields
+        if (field === 'createdAt' || field === 'lastLoginAt') {
+          aVal = aVal ? new Date(aVal).getTime() : 0;
+          bVal = bVal ? new Date(bVal).getTime() : 0;
+        }
+
+        // Handle name sorting
+        if (field === 'name') {
+          aVal = (aVal || '').toLowerCase();
+          bVal = (bVal || '').toLowerCase();
+        }
+
+        // Handle orderCount
+        if (field === 'orderCount') {
+          aVal = a.totalOrders || 0;
+          bVal = b.totalOrders || 0;
+        }
+
+        if (order === 'desc') {
+          return bVal > aVal ? 1 : bVal < aVal ? -1 : 0;
+        }
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      });
+    }
+
+    return {
+      customers,
+      total: params?.segment ? customers.length : (data.total || 0),
+      pages: params?.segment ? Math.ceil(customers.length / (params?.limit || 25)) : (data.pages || 0),
+    };
+  },
+
+  async getStats(): Promise<CustomerStats> {
+    const response = await api.get('/admin/customers/stats');
     return response;
   },
 
-  async getById(id: string): Promise<AdminCustomer & { orders: AdminOrder[] }> {
-    const response = await api.get(`/admin/customers/${id}`);
-    return response;
+  async getById(id: string): Promise<any> {
+    const response = await api.get(`/admin/users/${id}`);
+    const data = response.data || response;
+    return data;
   },
 
-  async update(id: string, data: Partial<AdminCustomer>): Promise<AdminCustomer> {
-    const response = await api.put(`/admin/customers/${id}`, data);
-    return response;
+  async update(id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    role?: string;
+    isActive?: boolean;
+  }): Promise<any> {
+    const response = await api.patch(`/admin/users/${id}`, data);
+    return response.data || response;
+  },
+
+  async suspend(id: string): Promise<any> {
+    const response = await api.patch(`/admin/users/${id}/suspend`, {});
+    return response.data || response;
+  },
+
+  async activate(id: string): Promise<any> {
+    const response = await api.patch(`/admin/users/${id}/activate`, {});
+    return response.data || response;
   },
 
   async delete(id: string): Promise<void> {
-    await api.delete(`/admin/customers/${id}`);
+    await api.delete(`/admin/users/${id}`);
+  },
+
+  // Admin Notes
+  async getNotes(customerId: string): Promise<any[]> {
+    const response = await api.get(`/admin/customers/${customerId}/notes`);
+    return response.data || response;
+  },
+
+  async addNote(customerId: string, content: string): Promise<any> {
+    const response = await api.post(`/admin/customers/${customerId}/notes`, { content });
+    return response.data || response;
+  },
+
+  async deleteNote(customerId: string, noteId: string): Promise<void> {
+    await api.delete(`/admin/customers/${customerId}/notes/${noteId}`);
   },
 };
 
@@ -527,16 +688,34 @@ export const adminCategoriesApi = {
 
   async create(data: Partial<Category>): Promise<Category> {
     const response = await api.post('/categories', data);
+
+    // Check if backend returned success: false
+    if (response.success === false) {
+      throw new Error(response.message || 'Failed to create category');
+    }
+
     return response.data || response;
   },
 
   async update(id: string, data: Partial<Category>): Promise<Category> {
     const response = await api.patch(`/categories/${id}`, data);
+
+    // Check if backend returned success: false
+    if (response.success === false) {
+      throw new Error(response.message || 'Failed to update category');
+    }
+
     return response.data || response;
   },
 
   async updateVisibility(id: string, data: { showInNavbar?: boolean; showInFooter?: boolean; showOnHomepage?: boolean; isFeatured?: boolean }): Promise<Category> {
     const response = await api.patch(`/categories/${id}/visibility`, data);
+
+    // Check if backend returned success: false
+    if (response.success === false) {
+      throw new Error(response.message || 'Failed to update visibility');
+    }
+
     return response.data || response;
   },
 

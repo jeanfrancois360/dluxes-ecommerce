@@ -46,7 +46,6 @@ export function useSettingsUpdate() {
     try {
       setUpdating(true);
       const data = await settingsApi.updateSetting(key, value, reason);
-      toast.success('Setting updated successfully');
       return data;
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to update setting';

@@ -5,78 +5,78 @@ Complete list of files created for the authentication system.
 ## Core Files Created
 
 ### 1. Utilities
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/lib/auth-utils.ts`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/lib/auth-utils.ts`
   - Helper functions for authentication, authorization, token management
   - Role-based access control utilities
   - Session management utilities
   - JWT token utilities
 
 ### 2. Contexts
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/contexts/auth-context.tsx`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/contexts/auth-context.tsx`
   - React Context for authentication state management
   - All authentication methods and operations
   - Session timeout handling
   - Auto-refresh token logic
 
 ### 3. Hooks
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/hooks/use-auth.ts`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/hooks/use-auth.ts`
   - Main authentication hook
   - Access to all auth methods
 
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/hooks/use-user.ts`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/hooks/use-user.ts`
   - User data and profile operations
   - Role checks
   - Preference management
 
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/hooks/use-session.ts`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/hooks/use-session.ts`
   - Session management and monitoring
   - Session revocation
   - Activity tracking
 
 ### 4. Providers
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/providers/auth-provider.tsx`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/providers/auth-provider.tsx`
   - Wrapper component for AuthContext
   - Used in root layout
 
 ### 5. Components
 
 #### Route Protection
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/components/protected-route.tsx`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/components/protected-route.tsx`
   - Protects routes requiring authentication
   - Email verification check
   - Custom fallback support
 
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/components/admin-route.tsx`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/components/admin-route.tsx`
   - Protects admin-only routes
   - SuperAdmin check option
   - Access denied component
 
 #### UI Components
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/components/toast-listener.tsx`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/components/toast-listener.tsx`
   - Listens to toast events from API client
   - Displays notifications
   - Auto-dismiss functionality
 
 ### 6. Middleware
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/middleware.ts`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/middleware.ts`
   - Next.js edge middleware
   - Route protection at edge level
   - Token validation
   - Role-based routing
 
 ### 7. Barrel Exports
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/lib/auth/index.ts`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/lib/auth/index.ts`
   - Central export point for all auth modules
   - Easy imports: `import { useAuth, ProtectedRoute } from '@/lib/auth'`
 
 ### 8. Documentation
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/src/lib/AUTH_SYSTEM_README.md`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/src/lib/AUTH_SYSTEM_README.md`
   - Comprehensive documentation
   - Usage examples
   - API reference
   - Best practices
 
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/AUTHENTICATION_SETUP_GUIDE.md`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/AUTHENTICATION_SETUP_GUIDE.md`
   - Step-by-step setup guide
   - Example implementations
   - Testing instructions
@@ -86,17 +86,17 @@ Complete list of files created for the authentication system.
 
 The following files were already in the project and are used by the auth system:
 
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/apps/web/src/lib/api/client.ts`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/apps/web/src/lib/api/client.ts`
   - API client with interceptors
   - Token management
   - Automatic token refresh
 
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/apps/web/src/lib/api/auth.ts`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/apps/web/src/lib/api/auth.ts`
   - Auth API endpoints
   - User profile endpoints
   - Session management endpoints
 
-- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/apps/web/src/lib/api/types.ts`
+- `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/apps/web/src/lib/api/types.ts`
   - TypeScript types for all API responses
   - User, Auth, and Session types
 
@@ -176,10 +176,10 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 ## Browser Storage
 
 The auth system uses `localStorage` for:
-- `luxury_ecommerce_access_token` - JWT access token
-- `luxury_ecommerce_refresh_token` - JWT refresh token
-- `luxury_ecommerce_user` - Serialized user object
-- `luxury_ecommerce_token_expiry` - Token expiry timestamp
+- `nextpik_ecommerce_access_token` - JWT access token
+- `nextpik_ecommerce_refresh_token` - JWT refresh token
+- `nextpik_ecommerce_user` - Serialized user object
+- `nextpik_ecommerce_token_expiry` - Token expiry timestamp
 
 ## Key Features
 
@@ -283,4 +283,4 @@ For questions or issues:
 
 ## License
 
-Part of the Luxury E-commerce Platform
+Part of the NextPik E-commerce Platform

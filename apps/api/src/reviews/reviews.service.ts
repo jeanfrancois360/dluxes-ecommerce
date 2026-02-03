@@ -285,6 +285,78 @@ export class ReviewsService {
   }
 
   /**
+   * Get all reviews by a specific user
+   */
+  async findByUser(userId: string) {
+    return this.prisma.review.findMany({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            images: {
+              take: 1,
+              select: {
+                url: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Check if user can review a product (must have purchased it in a delivered order)
+   */
+  async canReviewProduct(userId: string, productId: string) {
+    // Check if user already reviewed this product
+    const existingReview = await this.prisma.review.findFirst({
+      where: {
+        userId,
+        productId,
+      },
+    });
+
+    if (existingReview) {
+      return { canReview: false, reason: 'already_reviewed', reviewId: existingReview.id };
+    }
+
+    // Check if user has a delivered order with this product
+    const deliveredOrder = await this.prisma.order.findFirst({
+      where: {
+        userId,
+        status: 'DELIVERED',
+        items: {
+          some: {
+            productId,
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!deliveredOrder) {
+      return { canReview: false, reason: 'not_purchased' };
+    }
+
+    return { canReview: true, orderId: deliveredOrder.id };
+  }
+
+  /**
    * Update product rating based on all reviews
    */
   private async updateProductRating(productId: string) {

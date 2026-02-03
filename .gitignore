@@ -18,6 +18,9 @@ build
 # Production
 dist
 
+# TypeScript build cache
+*.tsbuildinfo
+
 # Misc
 .DS_Store
 *.pem
@@ -45,3 +48,10 @@ prisma/migrations
 # Storybook
 storybook-static
 .storybook-build
+.env.local
+# Secrets
+*.pem
+*.key
+*secrets*
+.env*
+!.env.example

@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ProductGrid, QuickViewModal, type QuickViewProduct } from '@luxury/ui';
+import { ProductGrid, QuickViewModal, type QuickViewProduct } from '@nextpik/ui';
 import { PageLayout } from '@/components/layout/page-layout';
 import Link from 'next/link';
 import { useProducts } from '@/hooks/use-products';
@@ -12,10 +12,11 @@ import { useCart } from '@/hooks/use-cart';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCurrencyProducts } from '@/hooks/use-currency-products';
 import { useSelectedCurrency } from '@/hooks/use-currency';
-import { toast } from '@/lib/toast';
+import { useProduct } from '@/hooks/use-product';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 import { SearchFilters } from '@/lib/api/types';
-import { SidebarAd, CategoryBannerAd } from '@/components/ads';
+import { CategoryBannerAd, InlineAd } from '@/components/ads';
 import { ProductGridSkeleton } from '@/components/loading/skeleton';
 import { ScrollToTop } from '@/components/scroll-to-top';
 import { navigateWithLoading } from '@/lib/navigation';
@@ -25,6 +26,7 @@ export default function ProductsPage() {
   const searchParams = useSearchParams();
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
+  const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const [addingToWishlist, setAddingToWishlist] = useState<string | null>(null);
@@ -71,6 +73,20 @@ export default function ProductsPage() {
 
   // Convert prices to selected currency
   const products = useCurrencyProducts(transformedProducts);
+
+  // Fetch fresh product data for Quick View
+  const { product: quickViewFullProduct, isLoading: quickViewLoading } = useProduct(
+    quickViewSlug || '',
+    true
+  );
+
+  // Transform fresh product data for Quick View when it's loaded
+  useEffect(() => {
+    if (quickViewSlug && quickViewFullProduct && !quickViewLoading) {
+      const transformed = transformToQuickViewProducts([quickViewFullProduct])[0];
+      setQuickViewProduct(transformed || null);
+    }
+  }, [quickViewFullProduct, quickViewLoading, quickViewSlug]);
 
   // Extract unique brands from products
   // Note: Brand field not implemented in database yet
@@ -148,7 +164,10 @@ export default function ProductsPage() {
   // Handlers - memoized for performance
   const handleQuickView = useCallback((id: string) => {
     const product = products.find(p => p.id === id);
-    if (product) setQuickViewProduct(product);
+    if (product) {
+      // Trigger fresh data fetch by setting the slug
+      setQuickViewSlug(product.slug);
+    }
   }, [products]);
 
   const handleNavigate = useCallback((slug: string) => {
@@ -161,7 +180,7 @@ export default function ProductsPage() {
     setAddingToCart(productId);
     try {
       await addToCartApi(productId, 1);
-      toast.success('Added to Cart', 'Item has been added to your cart');
+      toast.success('Item has been added to your cart');
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
       toast.error('Error', error.message || 'Failed to add item to cart');
@@ -176,7 +195,7 @@ export default function ProductsPage() {
     // Check if user is logged in
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
-      toast.error('Login Required', 'Please login to add items to wishlist');
+      toast.error('Please login to add items to wishlist');
       router.push('/auth/login');
       return;
     }
@@ -184,7 +203,7 @@ export default function ProductsPage() {
     setAddingToWishlist(id);
     try {
       await addToWishlistApi(id);
-      toast.success('Added to Wishlist', 'Item has been added to your wishlist');
+      toast.success('Item has been added to your wishlist');
     } catch (error: any) {
       console.error('Failed to add to wishlist:', error);
       toast.error('Error', error.message || 'Failed to add item to wishlist');
@@ -312,6 +331,23 @@ export default function ProductsPage() {
           </div>
         </div>
       </div>
+
+      {/* Products Banner Ad - Always Visible */}
+      <div className="max-w-[1920px] mx-auto px-4 lg:px-8 pt-8">
+        <InlineAd
+          placement="PRODUCTS_BANNER"
+          className="mb-0"
+        />
+      </div>
+
+      {/* Category Banner Ad */}
+      {selectedCategories.length === 1 && categories && categories.length > 0 && (
+        <div className="max-w-[1920px] mx-auto px-4 lg:px-8 pt-8">
+          <CategoryBannerAd
+            categoryId={categories.find(c => c.slug === selectedCategories[0])?.id}
+          />
+        </div>
+      )}
 
       {/* Filters & Content */}
       <div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-12">
@@ -836,23 +872,16 @@ export default function ProductsPage() {
               </div>
             ) : (
               <>
-                <div className="flex gap-8">
-                  <div className="flex-1">
-                    <ProductGrid
-                      products={products}
-                      layout={layout}
-                      onQuickView={handleQuickView}
-                      onAddToWishlist={handleAddToWishlist}
-                      onQuickAdd={handleAddToCart}
-                      onNavigate={handleNavigate}
-                      loading={false}
-                      currencySymbol={currencySymbol}
-                    />
-                  </div>
-                  {/* <div className="hidden xl:block w-64 flex-shrink-0">
-                    <SidebarAd className="sticky top-40" />
-                  </div> */}
-                </div>
+                <ProductGrid
+                  products={products}
+                  layout={layout}
+                  onQuickView={handleQuickView}
+                  onAddToWishlist={handleAddToWishlist}
+                  onQuickAdd={handleAddToCart}
+                  onNavigate={handleNavigate}
+                  loading={false}
+                  currencySymbol={currencySymbol}
+                />
 
                 {/* Pagination */}
                 {totalPages > 1 && !isLoading && (
@@ -1099,8 +1128,11 @@ export default function ProductsPage() {
 
       {/* Quick View Modal */}
       <QuickViewModal
-        isOpen={!!quickViewProduct}
-        onClose={() => setQuickViewProduct(null)}
+        isOpen={!!quickViewSlug}
+        onClose={() => {
+          setQuickViewSlug(null);
+          setQuickViewProduct(null);
+        }}
         product={quickViewProduct}
         onAddToCart={handleAddToCart}
         onViewDetails={handleNavigate}

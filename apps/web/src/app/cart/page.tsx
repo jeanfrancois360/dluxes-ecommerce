@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import Link from 'next/link';
 import { useCart } from '@/hooks/use-cart';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { useRouter } from 'next/navigation';
 import { Price } from '@/components/price';
 import { CartPageSkeleton } from '@/components/loading/skeleton';
@@ -12,7 +12,18 @@ import { useEffect, useState } from 'react';
 
 export default function CartPage() {
   const router = useRouter();
-  const { items = [], totals, updateQuantity, removeItem, isLoading } = useCart() || {};
+  const {
+    items = [],
+    totals,
+    freeShippingEnabled = false,
+    freeShippingThreshold = 200,
+    taxCalculationMode = 'disabled',
+    taxRate = 0,
+    cartCurrency = 'USD',
+    updateQuantity,
+    removeItem,
+    isLoading
+  } = useCart() || {};
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
@@ -27,16 +38,16 @@ export default function CartPage() {
     try {
       await updateQuantity(id, newQuantity);
     } catch (error) {
-      toast.error('Error', 'Failed to update quantity');
+      toast.error('Failed to update quantity');
     }
   };
 
   const handleRemoveItem = async (id: string) => {
     try {
       await removeItem(id);
-      toast.success('Removed', 'Item removed from cart');
+      toast.success('Item removed from cart');
     } catch (error) {
-      toast.error('Error', 'Failed to remove item');
+      toast.error('Failed to remove item');
     }
   };
 
@@ -207,10 +218,19 @@ export default function CartPage() {
 
                             {/* Price */}
                             <div className="text-right">
-                              <Price amount={Number(item.price) * item.quantity} className="text-2xl font-bold text-black block" />
+                              {/* 🔒 Use locked price (priceAtAdd) if available, otherwise convert USD price */}
+                              <Price
+                                amount={Number(item.priceAtAdd !== undefined ? item.priceAtAdd : item.price) * item.quantity}
+                                fromCurrency={item.currencyAtAdd || 'USD'}
+                                className="text-2xl font-bold text-black block"
+                              />
                               {item.quantity > 1 && (
                                 <p className="text-sm text-neutral-500">
-                                  <Price amount={Number(item.price)} className="inline" /> each
+                                  <Price
+                                    amount={Number(item.priceAtAdd !== undefined ? item.priceAtAdd : item.price)}
+                                    fromCurrency={item.currencyAtAdd || 'USD'}
+                                    className="inline"
+                                  /> each
                                 </p>
                               )}
                             </div>
@@ -244,34 +264,67 @@ export default function CartPage() {
                   <div className="space-y-4 py-4 border-y border-neutral-200">
                     <div className="flex justify-between text-neutral-600">
                       <span>Subtotal ({totals.itemCount} items)</span>
-                      <Price amount={totals.subtotal} className="font-semibold text-black" />
+                      {/* 🔒 Totals are already in cart currency - no conversion needed */}
+                      <Price amount={totals.subtotal} fromCurrency={cartCurrency} className="font-semibold text-black" />
                     </div>
                     <div className="flex justify-between text-neutral-600">
                       <span>Shipping</span>
-                      <span className="font-semibold text-black">
-                        {totals.shipping === 0 ? 'FREE' : <Price amount={totals.shipping} className="inline" />}
+                      <span className="text-sm text-neutral-500 italic">
+                        Calculated at checkout
                       </span>
                     </div>
-                    <div className="flex justify-between text-neutral-600">
-                      <span>Tax (10%)</span>
-                      <Price amount={totals.tax} className="font-semibold text-black" />
-                    </div>
+                    {taxCalculationMode !== 'disabled' && (
+                      <div className="flex justify-between text-neutral-600">
+                        <span>Tax</span>
+                        <span className="text-sm text-neutral-500 italic">
+                          Calculated at checkout
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Total */}
                   <div className="flex justify-between items-center py-4">
-                    <span className="text-lg font-semibold text-black">Total</span>
-                    <Price amount={totals.total} className="text-3xl font-bold text-black" />
+                    <span className="text-lg font-semibold text-black">Subtotal</span>
+                    <div className="text-right">
+                      <Price amount={totals.subtotal} fromCurrency={cartCurrency} className="text-3xl font-bold text-black" />
+                      <p className="text-xs text-neutral-500 mt-1">Taxes and shipping at checkout</p>
+                    </div>
                   </div>
 
                   {/* Free Shipping Message */}
-                  {totals.shipping > 0 && (
+                  {freeShippingEnabled && totals.subtotal < freeShippingThreshold && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="mb-4 p-3 bg-accent-50 border border-accent-200 rounded-lg text-sm text-neutral-700"
+                      className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm"
                     >
-                      Add <Price amount={200 - totals.subtotal} className="font-semibold text-gold inline" /> more to get free shipping!
+                      <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <p className="font-medium text-blue-900">Free shipping available!</p>
+                          <p className="text-blue-700 mt-1">
+                            Add <Price amount={freeShippingThreshold - totals.subtotal} className="font-semibold inline" /> more to qualify for free shipping.
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {freeShippingEnabled && totals.subtotal >= freeShippingThreshold && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <p className="font-medium text-green-900">You qualify for free shipping! 🎉</p>
+                      </div>
                     </motion.div>
                   )}
 

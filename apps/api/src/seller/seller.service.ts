@@ -1,10 +1,31 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { CreditsService } from '../credits/credits.service';
+import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
+import { SettingsService } from '../settings/settings.service';
+import { CurrencyService } from '../currency/currency.service';
 import { ProductStatus } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class SellerService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(SellerService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private subscriptionService: SubscriptionService,
+    private creditsService: CreditsService,
+    private dhlTrackingService: DhlTrackingService,
+    private settingsService: SettingsService,
+    private currencyService: CurrencyService,
+  ) {}
 
   /**
    * Get seller's products
@@ -117,6 +138,160 @@ export class SellerService {
   }
 
   /**
+   * Get products with low stock (inventory <= threshold)
+   */
+  async getLowStockProducts(userId: string, threshold: number = 10, limit: number = 10) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const products = await this.prisma.product.findMany({
+      where: {
+        storeId: store.id,
+        inventory: {
+          gt: 0,
+          lte: threshold,
+        },
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        heroImage: true,
+        inventory: true,
+        price: true,
+      },
+      orderBy: {
+        inventory: 'asc',
+      },
+      take: limit,
+    });
+
+    return products;
+  }
+
+  /**
+   * Get reviews for seller's products
+   */
+  async getMyReviews(userId: string, query: any) {
+    const { page = 1, limit = 20, rating, productId } = query;
+    const skip = (page - 1) * Number(limit);
+
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const where: any = {
+      product: {
+        storeId: store.id,
+      },
+    };
+
+    if (rating) {
+      where.rating = Number(rating);
+    }
+
+    if (productId) {
+      where.productId = productId;
+    }
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            },
+          },
+          product: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              heroImage: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.review.count({ where }),
+    ]);
+
+    return {
+      data: reviews,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / Number(limit)),
+    };
+  }
+
+  /**
+   * Get review statistics for seller's products
+   */
+  async getReviewStats(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const reviews = await this.prisma.review.findMany({
+      where: {
+        product: {
+          storeId: store.id,
+        },
+      },
+      select: {
+        rating: true,
+        isApproved: true,
+      },
+    });
+
+    const total = reviews.length;
+    const approved = reviews.filter((r) => r.isApproved).length;
+    const pending = reviews.filter((r) => !r.isApproved).length;
+
+    // Rating distribution
+    const ratingDistribution = {
+      1: reviews.filter((r) => r.rating === 1).length,
+      2: reviews.filter((r) => r.rating === 2).length,
+      3: reviews.filter((r) => r.rating === 3).length,
+      4: reviews.filter((r) => r.rating === 4).length,
+      5: reviews.filter((r) => r.rating === 5).length,
+    };
+
+    // Average rating
+    const averageRating =
+      total > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / total : 0;
+
+    return {
+      total,
+      approved,
+      pending,
+      averageRating: Math.round(averageRating * 10) / 10,
+      ratingDistribution,
+    };
+  }
+
+  /**
    * Get seller's orders
    */
   async getMyOrders(userId: string, query: any) {
@@ -183,6 +358,16 @@ export class SellerService {
             },
           },
           shippingAddress: true,
+          paymentTransactions: {
+            select: {
+              id: true,
+              status: true,
+              paymentMethod: true,
+              processingFeeAmount: true,
+              processingFeePercent: true,
+              processingFeeFixed: true,
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -191,8 +376,21 @@ export class SellerService {
       this.prisma.order.count({ where }),
     ]);
 
+    // Transform orders to include seller-specific totals
+    const ordersWithSellerTotals = await Promise.all(
+      orders.map(async (order) => {
+        const sellerTotals = await this.calculateSellerOrderTotals(order);
+
+        return {
+          ...order,
+          sellerTotals, // Add seller-specific breakdown
+          originalTotal: Number(order.total), // Keep original for reference
+        };
+      })
+    );
+
     return {
-      data: orders,
+      data: ordersWithSellerTotals,
       meta: {
         total,
         page: Number(page),
@@ -200,6 +398,230 @@ export class SellerService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Calculate seller-specific totals with proportional cost allocation
+   * Including platform commission and net earnings
+   * @private
+   */
+  private async calculateSellerOrderTotals(order: any) {
+    // Calculate subtotal from seller's items only
+    const sellerSubtotal = order.items.reduce(
+      (sum: Decimal, item: any) => sum.plus(new Decimal(item.total)),
+      new Decimal(0)
+    );
+
+    // Get order-level totals
+    const orderSubtotal = new Decimal(order.subtotal);
+    const orderShipping = new Decimal(order.shipping);
+    const orderTax = new Decimal(order.tax);
+    const orderDiscount = new Decimal(order.discount || 0);
+
+    // Calculate proportion (seller's items / total items)
+    const proportion = orderSubtotal.isZero()
+      ? new Decimal(0)
+      : sellerSubtotal.div(orderSubtotal);
+
+    // Allocate shipping, tax, and discount proportionally
+    const sellerShipping = orderShipping.mul(proportion);
+    const sellerTax = orderTax.mul(proportion);
+    const sellerDiscount = orderDiscount.mul(proportion);
+
+    // Calculate seller's gross total (before commission)
+    const sellerTotal = sellerSubtotal
+      .plus(sellerShipping)
+      .plus(sellerTax)
+      .minus(sellerDiscount);
+
+    // Get commission rate from settings (default 10%)
+    let commissionRate = new Decimal(10); // Default 10%
+    try {
+      const setting = await this.settingsService.getSetting('global_commission_rate');
+      if (setting && setting.value) {
+        commissionRate = new Decimal(Number(setting.value));
+      }
+    } catch (error) {
+      this.logger.warn('Commission rate not found, using default 10%');
+    }
+
+    // Calculate platform commission
+    const platformCommission = sellerTotal.mul(commissionRate).div(100);
+
+    // Get payment processing fees (Stripe/PayPal) if transaction exists
+    let paymentProcessingFee = new Decimal(0);
+    let processingFeeRate = 0;
+    let paymentProcessor = 'Unknown';
+
+    if (order.paymentTransactions && order.paymentTransactions.length > 0) {
+      // Find successful transaction
+      const transaction = order.paymentTransactions.find(
+        (t: any) => t.status === 'SUCCEEDED' || t.status === 'CAPTURED'
+      );
+
+      if (transaction?.processingFeeAmount) {
+        // Use actual fees from payment processor
+        const totalProcessingFee = new Decimal(transaction.processingFeeAmount);
+
+        // Allocate proportionally to this seller
+        // (Multi-vendor orders: split fees based on seller's percentage of order)
+        paymentProcessingFee = totalProcessingFee.mul(proportion);
+
+        // Get fee rate for display
+        if (transaction.processingFeePercent) {
+          processingFeeRate = Number(transaction.processingFeePercent) * 100; // Convert 0.029 to 2.9%
+        }
+
+        // Get payment processor name
+        paymentProcessor = transaction.paymentMethod || 'Unknown';
+
+        this.logger.log(
+          `Order ${order.id}: Using actual ${paymentProcessor} fee: ` +
+          `${totalProcessingFee.toFixed(2)} (seller portion: ${paymentProcessingFee.toFixed(2)})`
+        );
+      } else {
+        // Estimate if not yet retrieved (should be rare after webhook)
+        const method = transaction?.paymentMethod || 'STRIPE';
+        paymentProcessingFee = await this.estimateProcessingFee(sellerTotal, order.currency, method);
+
+        // Get fee rate from settings for display
+        try {
+          const feePercentageSetting = await this.settingsService.getSetting(
+            method === 'PAYPAL' ? 'paypal_fee_percentage' : 'stripe_fee_percentage'
+          );
+          processingFeeRate = feePercentageSetting?.value
+            ? Number(feePercentageSetting.value)
+            : method === 'PAYPAL' ? 3.49 : 2.9;
+        } catch {
+          processingFeeRate = method === 'PAYPAL' ? 3.49 : 2.9;
+        }
+
+        paymentProcessor = `${method} (estimated)`;
+
+        this.logger.log(
+          `Order ${order.id}: Estimated processing fee: ${paymentProcessingFee.toFixed(2)} ` +
+          `(will update with actual after webhook)`
+        );
+      }
+    }
+
+    // Calculate net earnings (what seller actually receives after ALL fees)
+    const netEarnings = sellerTotal
+      .minus(platformCommission)
+      .minus(paymentProcessingFee);
+
+    return {
+      subtotal: sellerSubtotal.toNumber(),
+      shipping: sellerShipping.toNumber(),
+      tax: sellerTax.toNumber(),
+      discount: sellerDiscount.toNumber(),
+      total: sellerTotal.toNumber(), // Gross total
+      platformCommission: platformCommission.toNumber(),
+      commissionRate: commissionRate.toNumber(),
+      paymentProcessingFee: paymentProcessingFee.toNumber(), // NEW!
+      processingFeeRate: processingFeeRate, // NEW! (e.g., 2.9 for 2.9%)
+      paymentProcessor: paymentProcessor, // NEW! (e.g., 'STRIPE', 'PAYPAL')
+      netEarnings: netEarnings.toNumber(), // Amount seller receives after ALL fees
+      itemCount: order.items.length,
+      proportion: proportion.toNumber(), // Percentage of order value (0-1)
+    };
+  }
+
+  /**
+   * Estimate processing fee when actual not yet available
+   * Fetches fee rates from system settings (configurable by admin)
+   */
+  private async estimateProcessingFee(
+    amount: Decimal,
+    currency: string,
+    paymentMethod: string = 'STRIPE'
+  ): Promise<Decimal> {
+    const currencyUpper = currency.toUpperCase();
+    const processor = paymentMethod === 'PAYPAL' ? 'PAYPAL' : 'STRIPE';
+
+    try {
+      // Get fee percentage from system settings
+      const feePercentageSetting = await this.settingsService.getSetting(
+        processor === 'STRIPE' ? 'stripe_fee_percentage' : 'paypal_fee_percentage'
+      );
+
+      const feePercentValue = feePercentageSetting?.value
+        ? Number(feePercentageSetting.value)
+        : processor === 'STRIPE' ? 2.9 : 3.49;
+
+      // Get fixed fee with smart fallback
+      let feeFixedValue: number;
+      let usedFallback = false;
+
+      // Try to get currency-specific fee setting
+      const currencyFeeKey = processor === 'STRIPE'
+        ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
+        : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`;
+
+      const feeFixedSetting = await this.settingsService.getSetting(currencyFeeKey);
+
+      if (feeFixedSetting?.value) {
+        // Currency-specific fee found
+        feeFixedValue = Number(feeFixedSetting.value);
+      } else {
+        // Smart fallback: Use USD fee and convert to target currency
+        const usdFeeKey = processor === 'STRIPE'
+          ? 'stripe_fee_fixed_usd'
+          : 'paypal_fee_fixed_usd';
+
+        const usdFeeSetting = await this.settingsService.getSetting(usdFeeKey);
+        const usdFeeValue = usdFeeSetting?.value ? Number(usdFeeSetting.value) : 0.30;
+
+        try {
+          // Convert USD fee to target currency
+          feeFixedValue = await this.currencyService.convertAmount(
+            usdFeeValue,
+            'USD',
+            currencyUpper
+          );
+          usedFallback = true;
+          this.logger.log(
+            `Smart fallback: Converted ${processor} fee from $${usdFeeValue} USD to ${feeFixedValue} ${currencyUpper}`
+          );
+        } catch (conversionError) {
+          // If conversion fails, use hardcoded default
+          this.logger.warn(
+            `Currency conversion failed for ${currencyUpper}, using hardcoded default: ${conversionError.message}`
+          );
+          feeFixedValue = this.getDefaultFixedFee(currencyUpper, processor);
+        }
+      }
+
+      const percentFee = amount.mul(feePercentValue).div(100);
+      const totalFee = percentFee.add(feeFixedValue);
+
+      this.logger.log(
+        `Estimated ${processor} fee: ${feePercentValue}% + ${feeFixedValue} ${currencyUpper} = ${totalFee.toFixed(2)}${usedFallback ? ' (converted from USD)' : ''}`
+      );
+
+      return totalFee;
+    } catch (error) {
+      this.logger.warn(`Failed to get fee settings, using defaults: ${error.message}`);
+
+      // Fallback to hardcoded defaults
+      const percent = processor === 'STRIPE' ? 2.9 : 3.49;
+      const fixed = this.getDefaultFixedFee(currencyUpper, processor);
+      const percentFee = amount.mul(percent).div(100);
+      const totalFee = percentFee.add(fixed);
+
+      return totalFee;
+    }
+  }
+
+  /**
+   * Get default fixed fee for currency and payment processor
+   */
+  private getDefaultFixedFee(currency: string, processor: string): number {
+    if (processor === 'STRIPE') {
+      return currency === 'GBP' ? 0.20 : 0.30;
+    } else {
+      return currency === 'EUR' ? 0.35 : 0.30;
+    }
   }
 
   /**
@@ -311,6 +733,16 @@ export class SellerService {
           },
         },
         shippingAddress: true,
+        paymentTransactions: {
+          select: {
+            id: true,
+            status: true,
+            paymentMethod: true,
+            processingFeeAmount: true,
+            processingFeePercent: true,
+            processingFeeFixed: true,
+          },
+        },
         delivery: {
           include: {
             deliveryPartner: {
@@ -337,7 +769,14 @@ export class SellerService {
       throw new NotFoundException('Order not found or does not belong to your store');
     }
 
-    return order;
+    // Apply seller-specific totals calculation
+    const sellerTotals = await this.calculateSellerOrderTotals(order);
+
+    return {
+      ...order,
+      sellerTotals, // Seller-specific breakdown
+      originalTotal: Number(order.total), // Full order total for reference
+    };
   }
 
   /**
@@ -599,6 +1038,37 @@ export class SellerService {
       throw new ForbiddenException('Your store must be approved before you can add products.');
     }
 
+    // Check subscription requirements for subscription-based product types
+    const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
+    const productType = data.productType;
+
+    if (productType && subscriptionTypes.includes(productType)) {
+      const check = await this.subscriptionService.canListProductType(
+        userId,
+        productType,
+      );
+
+      if (!check.canList) {
+        const messages: string[] = [];
+        if (!check.reasons.productTypeAllowed) {
+          messages.push(`Your plan does not allow ${productType} listings`);
+        }
+        if (!check.reasons.meetsTierRequirement) {
+          messages.push(
+            `Upgrade your subscription to list ${productType} products`,
+          );
+        }
+        if (!check.reasons.hasListingCapacity) {
+          messages.push('You have reached your maximum listing limit');
+        }
+        if (!check.reasons.hasCredits) {
+          messages.push('Insufficient credits for this listing');
+        }
+
+        throw new BadRequestException(messages.join('. '));
+      }
+    }
+
     // Create product with seller's store ID
     const product = await this.prisma.product.create({
       data: {
@@ -611,6 +1081,24 @@ export class SellerService {
         images: true,
       },
     });
+
+    // Deduct credits for subscription-based product types
+    if (productType && subscriptionTypes.includes(productType)) {
+      try {
+        const action = `list_${productType.toLowerCase()}`;
+        await this.creditsService.debitCredits(
+          userId,
+          action,
+          `Listed ${productType} product`,
+          product.id,
+        );
+      } catch (error) {
+        // Log but don't fail - product is already created
+        this.logger.warn(
+          `Failed to deduct credits for product ${product.id}: ${error.message}`,
+        );
+      }
+    }
 
     // Update store product count
     await this.prisma.store.update({
@@ -1202,5 +1690,370 @@ export class SellerService {
       value: Math.abs(Math.round(percentChange * 10) / 10),
       isPositive: percentChange >= 0,
     };
+  }
+
+  // ============================================================================
+  // Seller Application
+  // ============================================================================
+
+  /**
+   * Apply to become a seller
+   */
+  async applyToBecomeSeller(userId: string, data: {
+    storeName: string;
+    storeDescription?: string;
+    businessType: string;
+    businessName?: string;
+    taxId?: string;
+    phone: string;
+    website?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+    productCategories?: string[];
+    monthlyVolume?: string;
+  }) {
+    // Check if user already has a store
+    const existingStore = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (existingStore) {
+      if (existingStore.status === 'ACTIVE') {
+        throw new ForbiddenException('You are already a seller');
+      }
+      if (existingStore.status === 'PENDING') {
+        throw new ForbiddenException('Your seller application is already pending review');
+      }
+      if (existingStore.status === 'REJECTED') {
+        // Allow re-application by updating the existing store
+        const updatedStore = await this.prisma.store.update({
+          where: { userId },
+          data: {
+            name: data.storeName,
+            slug: this.generateSlug(data.storeName),
+            description: data.storeDescription,
+            phone: data.phone,
+            website: data.website,
+            taxId: data.taxId,
+            address1: data.address,
+            city: data.city,
+            province: data.state,
+            postalCode: data.zipCode,
+            country: data.country,
+            status: 'PENDING',
+          },
+        });
+
+        return {
+          success: true,
+          message: 'Seller application resubmitted successfully. We will review your application and get back to you soon.',
+          store: {
+            id: updatedStore.id,
+            name: updatedStore.name,
+            status: updatedStore.status,
+          },
+        };
+      }
+    }
+
+    // Check if user is a buyer or customer
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.role !== 'BUYER' && user.role !== 'CUSTOMER') {
+      throw new ForbiddenException('Only buyers can apply to become sellers');
+    }
+
+    // Create the store with PENDING status
+    const store = await this.prisma.store.create({
+      data: {
+        userId,
+        name: data.storeName,
+        slug: this.generateSlug(data.storeName),
+        description: data.storeDescription,
+        email: user.email,
+        phone: data.phone,
+        website: data.website,
+        taxId: data.taxId,
+        address1: data.address,
+        city: data.city,
+        province: data.state,
+        postalCode: data.zipCode,
+        country: data.country,
+        status: 'PENDING',
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Seller application submitted successfully. We will review your application and get back to you soon.',
+      store: {
+        id: store.id,
+        name: store.name,
+        status: store.status,
+      },
+    };
+  }
+
+  /**
+   * Get seller application status
+   */
+  async getApplicationStatus(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        createdAt: true,
+        verifiedAt: true,
+      },
+    });
+
+    if (!store) {
+      return {
+        success: true,
+        data: {
+          hasApplication: false,
+          status: null,
+        },
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        hasApplication: true,
+        store: {
+          id: store.id,
+          name: store.name,
+          status: store.status,
+          appliedAt: store.createdAt,
+          approvedAt: store.verifiedAt,
+        },
+      },
+    };
+  }
+
+  /**
+   * Confirm shipment with DHL tracking number
+   * DHL API Integration - Day 1-2 Implementation
+   */
+  async confirmShipment(
+    userId: string,
+    orderId: string,
+    data: {
+      trackingNumber: string;
+      dhlServiceType?: string;
+      packageWeight?: string;
+      packageDimensions?: string;
+      recipientPostalCode?: string;
+      originCountryCode?: string;
+      language?: string;
+    },
+  ) {
+    // Get seller's store
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Find order and verify seller owns it
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                storeId: true,
+              },
+            },
+          },
+        },
+        delivery: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Verify seller owns at least one item in the order
+    const sellerOwnsOrder = order.items.some(
+      (item) => item.product.storeId === store.id,
+    );
+
+    if (!sellerOwnsOrder) {
+      throw new ForbiddenException('You do not have permission to ship this order');
+    }
+
+    // Validate order status
+    if (order.status === 'CANCELLED' || order.status === 'REFUNDED') {
+      throw new BadRequestException('Cannot ship a cancelled or refunded order');
+    }
+
+    if (order.status === 'SHIPPED' || order.status === 'DELIVERED') {
+      throw new BadRequestException('Order has already been shipped');
+    }
+
+    try {
+      // Update order status to SHIPPED
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'SHIPPED',
+        },
+      });
+
+      // Create or update delivery record
+      let delivery;
+      if (order.delivery) {
+        // Update existing delivery
+        delivery = await this.prisma.delivery.update({
+          where: { id: order.delivery.id },
+          data: {
+            trackingNumber: data.trackingNumber,
+            carrier: 'DHL',
+            currentStatus: 'PICKED_UP',
+            dhlServiceType: data.dhlServiceType || null,
+            packageWeight: data.packageWeight || null,
+            packageDimensions: data.packageDimensions || null,
+            shippedAt: new Date(),
+          },
+        });
+      } else {
+        // Create new delivery (requires pickup and delivery addresses)
+        // Get order with shipping address
+        const orderWithAddress = await this.prisma.order.findUnique({
+          where: { id: orderId },
+          include: {
+            shippingAddress: true,
+          },
+        });
+
+        if (!orderWithAddress?.shippingAddress) {
+          throw new BadRequestException('Order must have a shipping address to create delivery');
+        }
+
+        delivery = await this.prisma.delivery.create({
+          data: {
+            order: {
+              connect: { id: orderId },
+            },
+            trackingNumber: data.trackingNumber,
+            carrier: 'DHL',
+            currentStatus: 'PICKED_UP',
+            dhlServiceType: data.dhlServiceType || null,
+            packageWeight: data.packageWeight || null,
+            packageDimensions: data.packageDimensions || null,
+            shippedAt: new Date(),
+            pickupAddress: {}, // TODO: Get seller/warehouse address
+            deliveryAddress: {
+              address1: orderWithAddress.shippingAddress.address1,
+              address2: orderWithAddress.shippingAddress.address2 || '',
+              city: orderWithAddress.shippingAddress.city,
+              province: orderWithAddress.shippingAddress.province,
+              postalCode: orderWithAddress.shippingAddress.postalCode,
+              country: orderWithAddress.shippingAddress.country,
+            },
+          },
+        });
+      }
+
+      // Fetch initial DHL tracking data (async, non-blocking)
+      this.fetchInitialDhlTracking(delivery.id, data).catch((error) => {
+        this.logger.error(
+          `Failed to fetch initial DHL tracking for delivery ${delivery.id}`,
+          error.message,
+        );
+      });
+
+      // Generate tracking URL
+      const trackingUrl = this.dhlTrackingService.generateTrackingUrl(
+        data.trackingNumber,
+      );
+
+      this.logger.log(
+        `Order ${orderId} shipped successfully with DHL tracking ${data.trackingNumber}`,
+      );
+
+      return {
+        success: true,
+        message: 'Shipment confirmed successfully',
+        data: {
+          orderId: order.id,
+          deliveryId: delivery.id,
+          trackingNumber: data.trackingNumber,
+          trackingUrl,
+          status: delivery.currentStatus,
+          shippedAt: delivery.shippedAt,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to confirm shipment for order ${orderId}`, error.message);
+      throw new BadRequestException('Failed to confirm shipment');
+    }
+  }
+
+  /**
+   * Fetch initial DHL tracking data (private helper method)
+   * Runs asynchronously to avoid blocking the confirmation response
+   */
+  private async fetchInitialDhlTracking(
+    deliveryId: string,
+    data: {
+      dhlServiceType?: string;
+      recipientPostalCode?: string;
+      originCountryCode?: string;
+      language?: string;
+    },
+  ): Promise<void> {
+    try {
+      // ✅ Pass optional parameters to DHL API for better tracking accuracy
+      const trackingOptions = {
+        service: data.dhlServiceType,
+        recipientPostalCode: data.recipientPostalCode,
+        originCountryCode: data.originCountryCode || 'RW', // Default to Rwanda
+        language: data.language || 'en',
+      };
+
+      await this.dhlTrackingService.updateDeliveryFromDhl(
+        deliveryId,
+        trackingOptions,
+      );
+
+      this.logger.log(`Initial DHL tracking data fetched for delivery ${deliveryId}`);
+    } catch (error) {
+      this.logger.warn(
+        `Could not fetch initial DHL tracking for delivery ${deliveryId}: ${error.message}`,
+      );
+      // Non-critical error, don't throw
+    }
+  }
+
+  /**
+   * Generate unique slug from store name
+   */
+  private generateSlug(name: string): string {
+    const baseSlug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    const uniqueSuffix = Date.now().toString(36).slice(-6);
+    return `${baseSlug}-${uniqueSuffix}`;
   }
 }

@@ -86,6 +86,66 @@ export interface TopProduct {
   views: number;
 }
 
+export interface LowStockProduct {
+  id: string;
+  name: string;
+  slug: string;
+  heroImage: string | null;
+  inventory: number;
+  price: number;
+}
+
+export interface SellerReview {
+  id: string;
+  productId: string;
+  userId: string;
+  rating: number;
+  title: string | null;
+  comment: string;
+  images: string[];
+  videos: string[];
+  isVerified: boolean;
+  isApproved: boolean;
+  isPinned: boolean;
+  helpfulCount: number;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatar: string | null;
+  };
+  product: {
+    id: string;
+    name: string;
+    slug: string;
+    heroImage: string | null;
+  };
+}
+
+export interface SellerReviewStats {
+  total: number;
+  approved: number;
+  pending: number;
+  averageRating: number;
+  ratingDistribution: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
+}
+
+export interface SellerReviewsResponse {
+  data: SellerReview[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface Commission {
   id: string;
   orderId: string;
@@ -144,6 +204,146 @@ export interface SellerOrder {
   createdAt: string;
 }
 
+// Seller-specific order totals (proportional allocation + commission + processor fees)
+export interface SellerOrderTotals {
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  discount: number;
+  total: number; // Gross total before any fees
+  platformCommission?: number; // Platform fee (commission)
+  commissionRate?: number; // Commission percentage (e.g., 10 for 10%)
+  paymentProcessingFee?: number; // Payment processor fee (Stripe/PayPal)
+  processingFeeRate?: number; // Processor fee rate (e.g., 2.9 for 2.9%)
+  paymentProcessor?: string; // Payment processor name (e.g., 'STRIPE', 'PAYPAL')
+  netEarnings?: number; // Amount seller receives after ALL fees
+  itemCount: number;
+  proportion: number; // Seller's percentage of order (0-1)
+}
+
+// Detailed order type for individual order view
+export interface SellerOrderDetail {
+  id: string;
+  orderNumber: string;
+  status: string;
+  paymentStatus: string;
+  subtotal: number;
+  tax: number;
+  shippingCost: number;
+  total: number;
+  currency: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sellerTotals?: SellerOrderTotals; // Seller-specific breakdown
+  originalTotal?: number; // Full order total (all sellers)
+  user: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
+  items: Array<{
+    id: string;
+    quantity: number;
+    price: number;
+    total: number;
+    product: {
+      id: string;
+      name: string;
+      slug: string;
+      heroImage: string | null;
+    };
+  }>;
+  shippingAddress: {
+    id: string;
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    phone?: string | null;
+  } | null;
+  delivery: {
+    id: string;
+    status: string;
+    trackingNumber: string | null;
+    estimatedDelivery: string | null;
+    deliveredAt: string | null;
+    deliveryPartner?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      phone: string | null;
+    } | null;
+    provider?: {
+      id: string;
+      name: string;
+      contactPhone: string | null;
+    } | null;
+  } | null;
+}
+
+// Inquiry Types
+export type InquiryStatus =
+  | 'NEW'
+  | 'CONTACTED'
+  | 'VIEWING_SCHEDULED'
+  | 'TEST_DRIVE_SCHEDULED'
+  | 'NEGOTIATING'
+  | 'CONVERTED'
+  | 'CLOSED'
+  | 'SPAM';
+
+export interface Inquiry {
+  id: string;
+  productId: string;
+  sellerId: string;
+  storeId?: string;
+  userId?: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string;
+  message: string;
+  preferredContact?: string;
+  preferredTime?: string;
+  scheduledViewing?: string;
+  preApproved: boolean;
+  scheduledTestDrive?: string;
+  tradeInInterest: boolean;
+  status: InquiryStatus;
+  sellerNotes?: string;
+  respondedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  product?: {
+    id: string;
+    name: string;
+    slug: string;
+    productType: string;
+    heroImage?: string;
+    images?: Array<{ url: string }>;
+  };
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email: string;
+  };
+  store?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface InquiryStats {
+  total: number;
+  new: number;
+  contacted: number;
+  scheduled: number;
+  converted: number;
+}
+
 // ============================================================================
 // Seller API
 // ============================================================================
@@ -166,10 +366,21 @@ export const sellerAPI = {
       params: { limit },
     } as any),
 
+  getLowStockProducts: (threshold: number = 10, limit: number = 10) =>
+    api.get<LowStockProduct[]>('/seller/products/low-stock', {
+      params: { threshold, limit },
+    } as any),
+
   getRecentActivity: (limit: number = 10) =>
     api.get<Activity[]>('/seller/analytics/recent-activity', {
       params: { limit },
     } as any),
+
+  // Reviews
+  getReviews: (params?: { page?: number; limit?: number; rating?: number; productId?: string }) =>
+    api.get<SellerReviewsResponse>('/seller/reviews', { params } as any),
+
+  getReviewStats: () => api.get<SellerReviewStats>('/seller/reviews/stats'),
 
   // Products
   getProducts: (params?: {
@@ -204,7 +415,7 @@ export const sellerAPI = {
     params,
   } as any),
 
-  getOrder: (id: string) => api.get<SellerOrder>(`/seller/orders/${id}`),
+  getOrder: (id: string) => api.get<SellerOrderDetail>(`/seller/orders/${id}`),
 
   updateOrderStatus: (id: string, data: { status: string; notes?: string }) =>
     api.patch(`/seller/orders/${id}/status`, data),
@@ -284,6 +495,23 @@ export const sellerAPI = {
     api.patch(`/seller/notifications/${id}/read`),
 
   markAllNotificationsAsRead: () => api.patch('/seller/notifications/read-all'),
+
+  // Inquiries
+  getInquiries: (params?: {
+    page?: number;
+    limit?: number;
+    status?: InquiryStatus;
+  }) => api.get<{
+    inquiries: Inquiry[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  }>('/inquiries/seller', { params } as any),
+
+  getInquiryStats: () => api.get<InquiryStats>('/inquiries/seller/stats'),
+
+  getInquiry: (id: string) => api.get<Inquiry>(`/inquiries/${id}`),
+
+  updateInquiryStatus: (id: string, data: { status: InquiryStatus; sellerNotes?: string }) =>
+    api.patch<Inquiry>(`/inquiries/${id}/status`, data),
 };
 
 // Export lowercase alias for consistency
@@ -295,4 +523,9 @@ export const getRevenueAnalytics = (period?: 'daily' | 'weekly' | 'monthly') =>
   sellerAPI.getRevenueAnalytics(period);
 export const getOrderStatusBreakdown = () => sellerAPI.getOrderStatusBreakdown();
 export const getTopProducts = (limit?: number) => sellerAPI.getTopProducts(limit);
+export const getLowStockProducts = (threshold?: number, limit?: number) =>
+  sellerAPI.getLowStockProducts(threshold, limit);
 export const getRecentActivity = (limit?: number) => sellerAPI.getRecentActivity(limit);
+export const getReviews = (params?: { page?: number; limit?: number; rating?: number; productId?: string }) =>
+  sellerAPI.getReviews(params);
+export const getReviewStats = () => sellerAPI.getReviewStats();

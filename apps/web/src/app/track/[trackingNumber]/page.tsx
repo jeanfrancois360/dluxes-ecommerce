@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Badge } from '@luxury/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Badge } from '@nextpik/ui';
 import {
   Package,
   Truck,
@@ -19,7 +19,7 @@ import {
 import axios from 'axios';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 
 interface TrackingInfo {
   trackingNumber: string;
@@ -90,7 +90,7 @@ export default function TrackDeliveryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white ">
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
@@ -204,7 +204,7 @@ export default function TrackDeliveryPage() {
                               className={`rounded-full p-2 ${
                                 isCompleted
                                   ? 'bg-primary text-primary-foreground'
-                                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
+                                  : 'bg-gray-200 text-gray-400'
                               }`}
                             >
                               <Icon className="h-5 w-5" />
@@ -214,7 +214,7 @@ export default function TrackDeliveryPage() {
                                 className={`w-0.5 h-12 mt-2 ${
                                   isCompleted
                                     ? 'bg-primary'
-                                    : 'bg-gray-200 dark:bg-gray-700'
+                                    : 'bg-gray-200 '
                                 }`}
                               />
                             )}

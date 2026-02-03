@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useState } from 'react';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import axios from 'axios';
 
 interface DeliveryProvider {
@@ -145,7 +145,7 @@ export function DeliveryTrackingSection({ delivery }: DeliveryTrackingSectionPro
       );
 
       if (response.data.success) {
-        toast.success('Delivery Confirmed', 'Thank you for confirming receipt of your order');
+        toast.success('Thank you for confirming receipt of your order');
         setLocalDelivery({
           ...localDelivery,
           buyerConfirmed: true,

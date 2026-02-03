@@ -351,8 +351,8 @@ function DashboardContent() {
                       <div className="text-sm font-medium text-gray-900">{order.orderNumber}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{order.customer.name}</div>
-                      <div className="text-sm text-gray-500">{order.customer.email}</div>
+                      <div className="text-sm text-gray-900">{order.customer?.name || 'Guest Customer'}</div>
+                      <div className="text-sm text-gray-500">{order.customer?.email || 'No email provided'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">${formatCurrencyAmount(order.total, 2)}</div>
@@ -361,7 +361,7 @@ function DashboardContent() {
                       <StatusBadge status={order.status} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {format(new Date(order.createdAt), 'MMM d, yyyy')}
+                      {order.createdAt ? format(new Date(order.createdAt), 'MMM d, yyyy') : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <a

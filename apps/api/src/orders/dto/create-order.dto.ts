@@ -45,4 +45,8 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   currency?: string; // Currency code for the order (e.g., USD, EUR, RWF)
+
+  @IsOptional()
+  @IsString()
+  idempotencyKey?: string; // Client-generated unique key (e.g., cart_<cartId>_<timestamp>) to prevent duplicate orders
 }

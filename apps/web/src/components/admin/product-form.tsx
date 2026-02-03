@@ -11,12 +11,21 @@
  * - Excellent UX/UI
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import type { AdminProduct } from '@/lib/api/admin';
 import { adminCategoriesApi, type Category } from '@/lib/api/admin';
 import { VariantManager } from './variant-manager';
 import { StockLevelIndicator } from './stock-status-badge';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
+import { useInventorySettings } from '@/hooks/use-inventory-settings';
+import { RealEstateFields, VehicleFields, DigitalFields, ServiceFields, RentalFields } from './product-type-fields';
+
+// Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
+const EnhancedImageUpload = dynamic(() => import('../products/EnhancedImageUpload'), {
+  ssr: false,
+  loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-lg" />,
+});
 
 interface ProductFormProps {
   product?: AdminProduct;
@@ -25,6 +34,9 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
+  // Inventory settings for auto-SKU generation
+  const { settings: inventorySettings, loading: loadingInventorySettings } = useInventorySettings();
+
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -57,14 +69,99 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     // Additional fields
     featured: (product as any)?.featured || false,
     weight: (product as any)?.weight || undefined,
+    // Real Estate Fields
+    propertyType: (product as any)?.propertyType || '',
+    bedrooms: (product as any)?.bedrooms || undefined,
+    bathrooms: (product as any)?.bathrooms || undefined,
+    squareFeet: (product as any)?.squareFeet || undefined,
+    lotSize: (product as any)?.lotSize || undefined,
+    yearBuilt: (product as any)?.yearBuilt || undefined,
+    parkingSpaces: (product as any)?.parkingSpaces || undefined,
+    amenities: (product as any)?.amenities || [],
+    propertyAddress: (product as any)?.propertyAddress || '',
+    propertyCity: (product as any)?.propertyCity || '',
+    propertyState: (product as any)?.propertyState || '',
+    propertyCountry: (product as any)?.propertyCountry || '',
+    propertyZipCode: (product as any)?.propertyZipCode || '',
+    propertyLatitude: (product as any)?.propertyLatitude || undefined,
+    propertyLongitude: (product as any)?.propertyLongitude || undefined,
+    virtualTourUrl: (product as any)?.virtualTourUrl || '',
+    // Vehicle Fields
+    vehicleMake: (product as any)?.vehicleMake || '',
+    vehicleModel: (product as any)?.vehicleModel || '',
+    vehicleYear: (product as any)?.vehicleYear || undefined,
+    vehicleMileage: (product as any)?.vehicleMileage || undefined,
+    vehicleVIN: (product as any)?.vehicleVIN || '',
+    vehicleCondition: (product as any)?.vehicleCondition || '',
+    vehicleTransmission: (product as any)?.vehicleTransmission || '',
+    vehicleFuelType: (product as any)?.vehicleFuelType || '',
+    vehicleBodyType: (product as any)?.vehicleBodyType || '',
+    vehicleExteriorColor: (product as any)?.vehicleExteriorColor || '',
+    vehicleInteriorColor: (product as any)?.vehicleInteriorColor || '',
+    vehicleDrivetrain: (product as any)?.vehicleDrivetrain || '',
+    vehicleEngine: (product as any)?.vehicleEngine || '',
+    vehicleFeatures: (product as any)?.vehicleFeatures || [],
+    vehicleHistory: (product as any)?.vehicleHistory || '',
+    vehicleWarranty: (product as any)?.vehicleWarranty || '',
+    vehicleTestDriveAvailable: (product as any)?.vehicleTestDriveAvailable ?? true,
+    // Digital Fields
+    digitalFileUrl: (product as any)?.digitalFileUrl || '',
+    digitalFileSize: (product as any)?.digitalFileSize || undefined,
+    digitalFileFormat: (product as any)?.digitalFileFormat || '',
+    digitalFileName: (product as any)?.digitalFileName || '',
+    digitalVersion: (product as any)?.digitalVersion || '',
+    digitalLicenseType: (product as any)?.digitalLicenseType || '',
+    digitalDownloadLimit: (product as any)?.digitalDownloadLimit || undefined,
+    digitalPreviewUrl: (product as any)?.digitalPreviewUrl || '',
+    digitalRequirements: (product as any)?.digitalRequirements || '',
+    digitalInstructions: (product as any)?.digitalInstructions || '',
+    digitalUpdatePolicy: (product as any)?.digitalUpdatePolicy || '',
+    digitalSupportEmail: (product as any)?.digitalSupportEmail || '',
+    // Service Fields
+    serviceType: (product as any)?.serviceType || '',
+    serviceDuration: (product as any)?.serviceDuration || undefined,
+    serviceDurationUnit: (product as any)?.serviceDurationUnit || '',
+    serviceLocation: (product as any)?.serviceLocation || '',
+    serviceArea: (product as any)?.serviceArea || '',
+    serviceAvailability: (product as any)?.serviceAvailability || '',
+    serviceBookingRequired: (product as any)?.serviceBookingRequired ?? true,
+    serviceBookingLeadTime: (product as any)?.serviceBookingLeadTime || undefined,
+    serviceProviderName: (product as any)?.serviceProviderName || '',
+    serviceProviderBio: (product as any)?.serviceProviderBio || '',
+    serviceProviderImage: (product as any)?.serviceProviderImage || '',
+    serviceProviderCredentials: (product as any)?.serviceProviderCredentials || [],
+    serviceMaxClients: (product as any)?.serviceMaxClients || undefined,
+    serviceCancellationPolicy: (product as any)?.serviceCancellationPolicy || '',
+    serviceIncludes: (product as any)?.serviceIncludes || [],
+    serviceExcludes: (product as any)?.serviceExcludes || [],
+    serviceRequirements: (product as any)?.serviceRequirements || '',
+    // Rental Fields
+    rentalPeriodType: (product as any)?.rentalPeriodType || '',
+    rentalMinPeriod: (product as any)?.rentalMinPeriod || undefined,
+    rentalMaxPeriod: (product as any)?.rentalMaxPeriod || undefined,
+    rentalPriceHourly: (product as any)?.rentalPriceHourly || undefined,
+    rentalPriceDaily: (product as any)?.rentalPriceDaily || undefined,
+    rentalPriceWeekly: (product as any)?.rentalPriceWeekly || undefined,
+    rentalPriceMonthly: (product as any)?.rentalPriceMonthly || undefined,
+    rentalSecurityDeposit: (product as any)?.rentalSecurityDeposit || undefined,
+    rentalPickupLocation: (product as any)?.rentalPickupLocation || '',
+    rentalDeliveryAvailable: (product as any)?.rentalDeliveryAvailable ?? false,
+    rentalDeliveryFee: (product as any)?.rentalDeliveryFee || undefined,
+    rentalLateReturnFee: (product as any)?.rentalLateReturnFee || undefined,
+    rentalConditions: (product as any)?.rentalConditions || '',
+    rentalAvailability: (product as any)?.rentalAvailability || '',
+    rentalInsuranceRequired: (product as any)?.rentalInsuranceRequired ?? false,
+    rentalInsuranceOptions: (product as any)?.rentalInsuranceOptions || '',
+    rentalAgeRequirement: (product as any)?.rentalAgeRequirement || undefined,
+    rentalIdRequired: (product as any)?.rentalIdRequired ?? true,
+    rentalIncludes: (product as any)?.rentalIncludes || [],
+    rentalExcludes: (product as any)?.rentalExcludes || [],
+    rentalNotes: (product as any)?.rentalNotes || '',
   });
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [newTag, setNewTag] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [uploadingImages, setUploadingImages] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
 
   // Fetch categories on mount
   useEffect(() => {
@@ -97,7 +194,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         compareAtPrice: product.compareAtPrice || undefined,
         category: product.category || '',
         images: imageArray,
-        stock: product.stock || undefined,
+        stock: product.inventory || product.stock || undefined,
         status: product.status || 'DRAFT',
         tags: product.tags || [],
         productType: (product as any)?.productType || 'PHYSICAL',
@@ -111,6 +208,94 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         materials: (product as any)?.materials || [],
         featured: (product as any)?.featured || false,
         weight: (product as any)?.weight || undefined,
+        // Real Estate Fields
+        propertyType: (product as any)?.propertyType || '',
+        bedrooms: (product as any)?.bedrooms || undefined,
+        bathrooms: (product as any)?.bathrooms || undefined,
+        squareFeet: (product as any)?.squareFeet || undefined,
+        lotSize: (product as any)?.lotSize || undefined,
+        yearBuilt: (product as any)?.yearBuilt || undefined,
+        parkingSpaces: (product as any)?.parkingSpaces || undefined,
+        amenities: (product as any)?.amenities || [],
+        propertyAddress: (product as any)?.propertyAddress || '',
+        propertyCity: (product as any)?.propertyCity || '',
+        propertyState: (product as any)?.propertyState || '',
+        propertyCountry: (product as any)?.propertyCountry || '',
+        propertyZipCode: (product as any)?.propertyZipCode || '',
+        propertyLatitude: (product as any)?.propertyLatitude || undefined,
+        propertyLongitude: (product as any)?.propertyLongitude || undefined,
+        virtualTourUrl: (product as any)?.virtualTourUrl || '',
+        // Vehicle Fields
+        vehicleMake: (product as any)?.vehicleMake || '',
+        vehicleModel: (product as any)?.vehicleModel || '',
+        vehicleYear: (product as any)?.vehicleYear || undefined,
+        vehicleMileage: (product as any)?.vehicleMileage || undefined,
+        vehicleVIN: (product as any)?.vehicleVIN || '',
+        vehicleCondition: (product as any)?.vehicleCondition || '',
+        vehicleTransmission: (product as any)?.vehicleTransmission || '',
+        vehicleFuelType: (product as any)?.vehicleFuelType || '',
+        vehicleBodyType: (product as any)?.vehicleBodyType || '',
+        vehicleExteriorColor: (product as any)?.vehicleExteriorColor || '',
+        vehicleInteriorColor: (product as any)?.vehicleInteriorColor || '',
+        vehicleDrivetrain: (product as any)?.vehicleDrivetrain || '',
+        vehicleEngine: (product as any)?.vehicleEngine || '',
+        vehicleFeatures: (product as any)?.vehicleFeatures || [],
+        vehicleHistory: (product as any)?.vehicleHistory || '',
+        vehicleWarranty: (product as any)?.vehicleWarranty || '',
+        vehicleTestDriveAvailable: (product as any)?.vehicleTestDriveAvailable ?? true,
+        // Digital Fields
+        digitalFileUrl: (product as any)?.digitalFileUrl || '',
+        digitalFileSize: (product as any)?.digitalFileSize || undefined,
+        digitalFileFormat: (product as any)?.digitalFileFormat || '',
+        digitalFileName: (product as any)?.digitalFileName || '',
+        digitalVersion: (product as any)?.digitalVersion || '',
+        digitalLicenseType: (product as any)?.digitalLicenseType || '',
+        digitalDownloadLimit: (product as any)?.digitalDownloadLimit || undefined,
+        digitalPreviewUrl: (product as any)?.digitalPreviewUrl || '',
+        digitalRequirements: (product as any)?.digitalRequirements || '',
+        digitalInstructions: (product as any)?.digitalInstructions || '',
+        digitalUpdatePolicy: (product as any)?.digitalUpdatePolicy || '',
+        digitalSupportEmail: (product as any)?.digitalSupportEmail || '',
+        // Service Fields
+        serviceType: (product as any)?.serviceType || '',
+        serviceDuration: (product as any)?.serviceDuration || undefined,
+        serviceDurationUnit: (product as any)?.serviceDurationUnit || '',
+        serviceLocation: (product as any)?.serviceLocation || '',
+        serviceArea: (product as any)?.serviceArea || '',
+        serviceAvailability: (product as any)?.serviceAvailability || '',
+        serviceBookingRequired: (product as any)?.serviceBookingRequired ?? true,
+        serviceBookingLeadTime: (product as any)?.serviceBookingLeadTime || undefined,
+        serviceProviderName: (product as any)?.serviceProviderName || '',
+        serviceProviderBio: (product as any)?.serviceProviderBio || '',
+        serviceProviderImage: (product as any)?.serviceProviderImage || '',
+        serviceProviderCredentials: (product as any)?.serviceProviderCredentials || [],
+        serviceMaxClients: (product as any)?.serviceMaxClients || undefined,
+        serviceCancellationPolicy: (product as any)?.serviceCancellationPolicy || '',
+        serviceIncludes: (product as any)?.serviceIncludes || [],
+        serviceExcludes: (product as any)?.serviceExcludes || [],
+        serviceRequirements: (product as any)?.serviceRequirements || '',
+        // Rental Fields
+        rentalPeriodType: (product as any)?.rentalPeriodType || '',
+        rentalMinPeriod: (product as any)?.rentalMinPeriod || undefined,
+        rentalMaxPeriod: (product as any)?.rentalMaxPeriod || undefined,
+        rentalPriceHourly: (product as any)?.rentalPriceHourly || undefined,
+        rentalPriceDaily: (product as any)?.rentalPriceDaily || undefined,
+        rentalPriceWeekly: (product as any)?.rentalPriceWeekly || undefined,
+        rentalPriceMonthly: (product as any)?.rentalPriceMonthly || undefined,
+        rentalSecurityDeposit: (product as any)?.rentalSecurityDeposit || undefined,
+        rentalPickupLocation: (product as any)?.rentalPickupLocation || '',
+        rentalDeliveryAvailable: (product as any)?.rentalDeliveryAvailable ?? false,
+        rentalDeliveryFee: (product as any)?.rentalDeliveryFee || undefined,
+        rentalLateReturnFee: (product as any)?.rentalLateReturnFee || undefined,
+        rentalConditions: (product as any)?.rentalConditions || '',
+        rentalAvailability: (product as any)?.rentalAvailability || '',
+        rentalInsuranceRequired: (product as any)?.rentalInsuranceRequired ?? false,
+        rentalInsuranceOptions: (product as any)?.rentalInsuranceOptions || '',
+        rentalAgeRequirement: (product as any)?.rentalAgeRequirement || undefined,
+        rentalIdRequired: (product as any)?.rentalIdRequired ?? true,
+        rentalIncludes: (product as any)?.rentalIncludes || [],
+        rentalExcludes: (product as any)?.rentalExcludes || [],
+        rentalNotes: (product as any)?.rentalNotes || '',
       });
     }
   }, [product]);
@@ -154,9 +339,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       newErrors.slug = 'Slug must be lowercase letters, numbers, and hyphens only';
     }
 
-    if (!formData.sku?.trim()) {
-      newErrors.sku = 'SKU is required';
-    }
+    // SKU is ALWAYS auto-generated - no validation needed
 
     // Purchase type specific validation
     if (formData.purchaseType === 'INSTANT') {
@@ -217,7 +400,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       const submitData: any = {
         name: formData.name,
         slug: formData.slug,
-        sku: formData.sku?.trim() || undefined, // Send trimmed SKU or undefined if empty
+        // SKU is always auto-generated - never send it from frontend
         description: formData.description,
         shortDescription: formData.shortDescription || undefined,
         categoryId: formData.category || undefined,
@@ -240,6 +423,119 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         sizes: formData.sizes || [],
         materials: formData.materials || [],
       };
+
+      // Add real estate fields if product type is REAL_ESTATE
+      if (formData.productType === 'REAL_ESTATE') {
+        Object.assign(submitData, {
+          propertyType: formData.propertyType || undefined,
+          bedrooms: formData.bedrooms !== undefined && formData.bedrooms !== '' ? Number(formData.bedrooms) : undefined,
+          bathrooms: formData.bathrooms !== undefined && formData.bathrooms !== '' ? Number(formData.bathrooms) : undefined,
+          squareFeet: formData.squareFeet !== undefined && formData.squareFeet !== '' ? Number(formData.squareFeet) : undefined,
+          lotSize: formData.lotSize !== undefined && formData.lotSize !== '' ? Number(formData.lotSize) : undefined,
+          yearBuilt: formData.yearBuilt !== undefined && formData.yearBuilt !== '' ? Number(formData.yearBuilt) : undefined,
+          parkingSpaces: formData.parkingSpaces !== undefined && formData.parkingSpaces !== '' ? Number(formData.parkingSpaces) : undefined,
+          amenities: formData.amenities || [],
+          propertyAddress: formData.propertyAddress || undefined,
+          propertyCity: formData.propertyCity || undefined,
+          propertyState: formData.propertyState || undefined,
+          propertyCountry: formData.propertyCountry || undefined,
+          propertyZipCode: formData.propertyZipCode || undefined,
+          propertyLatitude: formData.propertyLatitude !== undefined && formData.propertyLatitude !== '' ? Number(formData.propertyLatitude) : undefined,
+          propertyLongitude: formData.propertyLongitude !== undefined && formData.propertyLongitude !== '' ? Number(formData.propertyLongitude) : undefined,
+          virtualTourUrl: formData.virtualTourUrl || undefined,
+        });
+      }
+
+      // Add vehicle fields if product type is VEHICLE
+      if (formData.productType === 'VEHICLE') {
+        Object.assign(submitData, {
+          vehicleMake: formData.vehicleMake || undefined,
+          vehicleModel: formData.vehicleModel || undefined,
+          vehicleYear: formData.vehicleYear !== undefined && formData.vehicleYear !== '' ? Number(formData.vehicleYear) : undefined,
+          vehicleMileage: formData.vehicleMileage !== undefined && formData.vehicleMileage !== '' ? Number(formData.vehicleMileage) : undefined,
+          vehicleVIN: formData.vehicleVIN || undefined,
+          vehicleCondition: formData.vehicleCondition || undefined,
+          vehicleTransmission: formData.vehicleTransmission || undefined,
+          vehicleFuelType: formData.vehicleFuelType || undefined,
+          vehicleBodyType: formData.vehicleBodyType || undefined,
+          vehicleExteriorColor: formData.vehicleExteriorColor || undefined,
+          vehicleInteriorColor: formData.vehicleInteriorColor || undefined,
+          vehicleDrivetrain: formData.vehicleDrivetrain || undefined,
+          vehicleEngine: formData.vehicleEngine || undefined,
+          vehicleFeatures: formData.vehicleFeatures || [],
+          vehicleHistory: formData.vehicleHistory || undefined,
+          vehicleWarranty: formData.vehicleWarranty || undefined,
+          vehicleTestDriveAvailable: formData.vehicleTestDriveAvailable,
+        });
+      }
+
+      // Add digital fields if product type is DIGITAL
+      if (formData.productType === 'DIGITAL') {
+        Object.assign(submitData, {
+          digitalFileUrl: formData.digitalFileUrl || undefined,
+          digitalFileSize: formData.digitalFileSize !== undefined && formData.digitalFileSize !== '' ? Number(formData.digitalFileSize) : undefined,
+          digitalFileFormat: formData.digitalFileFormat || undefined,
+          digitalFileName: formData.digitalFileName || undefined,
+          digitalVersion: formData.digitalVersion || undefined,
+          digitalLicenseType: formData.digitalLicenseType || undefined,
+          digitalDownloadLimit: formData.digitalDownloadLimit !== undefined && formData.digitalDownloadLimit !== '' ? Number(formData.digitalDownloadLimit) : undefined,
+          digitalPreviewUrl: formData.digitalPreviewUrl || undefined,
+          digitalRequirements: formData.digitalRequirements || undefined,
+          digitalInstructions: formData.digitalInstructions || undefined,
+          digitalUpdatePolicy: formData.digitalUpdatePolicy || undefined,
+          digitalSupportEmail: formData.digitalSupportEmail || undefined,
+        });
+      }
+
+      // Add service fields if product type is SERVICE
+      if (formData.productType === 'SERVICE') {
+        Object.assign(submitData, {
+          serviceType: formData.serviceType || undefined,
+          serviceDuration: formData.serviceDuration !== undefined && formData.serviceDuration !== '' ? Number(formData.serviceDuration) : undefined,
+          serviceDurationUnit: formData.serviceDurationUnit || undefined,
+          serviceLocation: formData.serviceLocation || undefined,
+          serviceArea: formData.serviceArea || undefined,
+          serviceAvailability: formData.serviceAvailability || undefined,
+          serviceBookingRequired: formData.serviceBookingRequired,
+          serviceBookingLeadTime: formData.serviceBookingLeadTime !== undefined && formData.serviceBookingLeadTime !== '' ? Number(formData.serviceBookingLeadTime) : undefined,
+          serviceProviderName: formData.serviceProviderName || undefined,
+          serviceProviderBio: formData.serviceProviderBio || undefined,
+          serviceProviderImage: formData.serviceProviderImage || undefined,
+          serviceProviderCredentials: formData.serviceProviderCredentials || [],
+          serviceMaxClients: formData.serviceMaxClients !== undefined && formData.serviceMaxClients !== '' ? Number(formData.serviceMaxClients) : undefined,
+          serviceCancellationPolicy: formData.serviceCancellationPolicy || undefined,
+          serviceIncludes: formData.serviceIncludes || [],
+          serviceExcludes: formData.serviceExcludes || [],
+          serviceRequirements: formData.serviceRequirements || undefined,
+        });
+      }
+
+      // Add rental fields if product type is RENTAL
+      if (formData.productType === 'RENTAL') {
+        Object.assign(submitData, {
+          rentalPeriodType: formData.rentalPeriodType || undefined,
+          rentalMinPeriod: formData.rentalMinPeriod !== undefined && formData.rentalMinPeriod !== '' ? Number(formData.rentalMinPeriod) : undefined,
+          rentalMaxPeriod: formData.rentalMaxPeriod !== undefined && formData.rentalMaxPeriod !== '' ? Number(formData.rentalMaxPeriod) : undefined,
+          rentalPriceHourly: formData.rentalPriceHourly !== undefined && formData.rentalPriceHourly !== '' ? Number(formData.rentalPriceHourly) : undefined,
+          rentalPriceDaily: formData.rentalPriceDaily !== undefined && formData.rentalPriceDaily !== '' ? Number(formData.rentalPriceDaily) : undefined,
+          rentalPriceWeekly: formData.rentalPriceWeekly !== undefined && formData.rentalPriceWeekly !== '' ? Number(formData.rentalPriceWeekly) : undefined,
+          rentalPriceMonthly: formData.rentalPriceMonthly !== undefined && formData.rentalPriceMonthly !== '' ? Number(formData.rentalPriceMonthly) : undefined,
+          rentalSecurityDeposit: formData.rentalSecurityDeposit !== undefined && formData.rentalSecurityDeposit !== '' ? Number(formData.rentalSecurityDeposit) : undefined,
+          rentalPickupLocation: formData.rentalPickupLocation || undefined,
+          rentalDeliveryAvailable: formData.rentalDeliveryAvailable,
+          rentalDeliveryFee: formData.rentalDeliveryFee !== undefined && formData.rentalDeliveryFee !== '' ? Number(formData.rentalDeliveryFee) : undefined,
+          rentalLateReturnFee: formData.rentalLateReturnFee !== undefined && formData.rentalLateReturnFee !== '' ? Number(formData.rentalLateReturnFee) : undefined,
+          rentalConditions: formData.rentalConditions || undefined,
+          rentalAvailability: formData.rentalAvailability || undefined,
+          rentalInsuranceRequired: formData.rentalInsuranceRequired,
+          rentalInsuranceOptions: formData.rentalInsuranceOptions || undefined,
+          rentalAgeRequirement: formData.rentalAgeRequirement !== undefined && formData.rentalAgeRequirement !== '' ? Number(formData.rentalAgeRequirement) : undefined,
+          rentalIdRequired: formData.rentalIdRequired,
+          rentalIncludes: formData.rentalIncludes || [],
+          rentalExcludes: formData.rentalExcludes || [],
+          rentalNotes: formData.rentalNotes || undefined,
+        });
+      }
 
       // Only include heroImage if we have images
       if (formData.images && formData.images.length > 0) {
@@ -270,6 +566,36 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
   };
 
+  // Memoized callback to prevent infinite loop in EnhancedImageUpload
+  const handleImagesChange = useCallback((urls: string[]) => {
+    setFormData((prev: any) => ({ ...prev, images: urls }));
+    // Clear error for images field
+    if (errors.images) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.images;
+        return newErrors;
+      });
+    }
+  }, [errors.images]);
+
+  // Handle array field changes (colors, sizes, materials, badges)
+  const handleArrayFieldAdd = (field: string, value: string) => {
+    if (value.trim() && !formData[field].includes(value.trim())) {
+      setFormData((prev: any) => ({
+        ...prev,
+        [field]: [...prev[field], value.trim()]
+      }));
+    }
+  };
+
+  const handleArrayFieldRemove = (field: string, value: string) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      [field]: prev[field].filter((item: string) => item !== value)
+    }));
+  };
+
   const handleAddTag = () => {
     if (newTag && !formData.tags?.includes(newTag)) {
       handleChange('tags', [...(formData.tags || []), newTag]);
@@ -281,117 +607,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     handleChange('tags', formData.tags?.filter((t: string) => t !== tag));
   };
 
-  const handleAddImage = () => {
-    if (imageUrl && !formData.images?.includes(imageUrl)) {
-      handleChange('images', [...(formData.images || []), imageUrl]);
-      setImageUrl('');
-    }
-  };
 
-  const handleRemoveImage = (url: string) => {
-    handleChange('images', formData.images?.filter((img: string) => img !== url));
-  };
-
-  const handleSetPrimaryImage = (img: string) => {
-    // Move the selected image to the first position (primary position)
-    const currentImages = [...(formData.images || [])];
-    const imageIndex = currentImages.indexOf(img);
-
-    if (imageIndex > 0) {
-      // Remove from current position and add to beginning
-      currentImages.splice(imageIndex, 1);
-      currentImages.unshift(img);
-      handleChange('images', currentImages);
-    }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    // Validate files before upload
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-    const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-    const validationErrors: string[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.size > MAX_FILE_SIZE) {
-        validationErrors.push(`${file.name} is too large (max 5MB)`);
-      }
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        validationErrors.push(`${file.name} has unsupported format`);
-      }
-    }
-
-    if (validationErrors.length > 0) {
-      alert(`Upload errors:\n${validationErrors.join('\n')}`);
-      e.target.value = '';
-      return;
-    }
-
-    setUploadingImages(true);
-    const uploadedUrls: string[] = [];
-    const failedUploads: string[] = [];
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileKey = `${file.name}-${Date.now()}`;
-
-        try {
-          setUploadProgress(prev => ({ ...prev, [fileKey]: 0 }));
-
-          const formData = new FormData();
-          formData.append('image', file);
-
-          const token = localStorage.getItem('auth_token');
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/upload/optimized?entityType=products`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-              body: formData,
-            }
-          );
-
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success && result.data?.url) {
-              uploadedUrls.push(result.data.url);
-              setUploadProgress(prev => ({ ...prev, [fileKey]: 100 }));
-            } else {
-              failedUploads.push(file.name);
-            }
-          } else {
-            failedUploads.push(file.name);
-          }
-
-          await new Promise(resolve => setTimeout(resolve, 200));
-        } catch (fileError) {
-          failedUploads.push(file.name);
-        }
-      }
-
-      if (uploadedUrls.length > 0) {
-        handleChange('images', [...(formData.images || []), ...uploadedUrls]);
-      }
-
-      if (failedUploads.length > 0) {
-        alert(`Upload completed:\n✓ ${uploadedUrls.length} image(s) uploaded successfully\n✗ ${failedUploads.length} image(s) failed:\n${failedUploads.join('\n')}`);
-      }
-
-      setTimeout(() => setUploadProgress({}), 1000);
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Failed to upload images. Please try again.');
-    } finally {
-      setUploadingImages(false);
-      e.target.value = '';
-    }
-  };
 
   // Helper component for error display
   const ErrorMessage = ({ field }: { field: string }) => (
@@ -437,20 +653,34 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <p className="text-xs text-gray-500 mt-1">Auto-generated from name, or customize it</p>
               <ErrorMessage field="slug" />
             </div>
-            <div id="sku">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                SKU <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.sku}
-                onChange={(e) => handleChange('sku', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.sku ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="SKU-001"
-              />
-              <ErrorMessage field="sku" />
-            </div>
+            {/* SKU Field - Only visible when editing (read-only) */}
+            {product?.sku && (
+              <div id="sku">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  SKU <span className="text-xs font-normal text-gray-500 ml-2">(Auto-generated - Read only)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.sku}
+                  readOnly
+                  disabled
+                  className="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed border-gray-300"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  SKU is automatically generated by the system and cannot be modified
+                </p>
+              </div>
+            )}
+            {/* Hidden note for new products */}
+            {!product && (
+              <div className="col-span-2">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>ℹ️ SKU Generation:</strong> A unique SKU will be automatically generated after you create the product. Format: <strong>{inventorySettings.skuPrefix}-MM-DD-XXXXXX</strong>
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div id="description">
@@ -521,6 +751,56 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           </div>
         </div>
       </div>
+
+      {/* Real Estate Fields - Conditional based on Product Type */}
+      {formData.productType === 'REAL_ESTATE' && (
+        <RealEstateFields
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={loading}
+        />
+      )}
+
+      {/* Vehicle Fields - Conditional based on Product Type */}
+      {formData.productType === 'VEHICLE' && (
+        <VehicleFields
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={loading}
+        />
+      )}
+
+      {/* Digital Fields - Conditional based on Product Type */}
+      {formData.productType === 'DIGITAL' && (
+        <DigitalFields
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={loading}
+        />
+      )}
+
+      {/* Service Fields - Conditional based on Product Type */}
+      {formData.productType === 'SERVICE' && (
+        <ServiceFields
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={loading}
+        />
+      )}
+
+      {/* Rental Fields - Conditional based on Product Type */}
+      {formData.productType === 'RENTAL' && (
+        <RentalFields
+          formData={formData}
+          onChange={handleChange}
+          errors={errors}
+          disabled={loading}
+        />
+      )}
 
       {/* Pricing & Inventory */}
       <div className="bg-white rounded-lg shadow p-6">
@@ -703,224 +983,245 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
       {/* Images */}
       <div className="bg-white rounded-lg shadow p-6" id="images">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Product Images {!product && <span className="text-red-500">*</span>}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {formData.images && formData.images.length > 0
-                ? `${formData.images.length} image${formData.images.length > 1 ? 's' : ''} uploaded`
-                : product
-                ? 'No images yet. Upload high-quality images to showcase your product'
-                : 'Upload at least one high-quality image to showcase your product'}
-            </p>
-          </div>
-          {formData.images && formData.images.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-medium text-green-600">Ready</span>
-            </div>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Product Images {!product && <span className="text-red-500">*</span>}
+        </h2>
 
-        {/* Image Grid - Show First */}
-        {formData.images && formData.images.length > 0 && (
-          <div className="mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {formData.images.map((img: string, index: number) => (
-                <div
-                  key={`${img}-${index}`}
-                  className="relative group aspect-square bg-gray-50 rounded-xl overflow-hidden border-2 border-gray-200 hover:border-[#CBB57B] transition-all duration-200"
+        <EnhancedImageUpload
+          onImagesChange={handleImagesChange}
+          initialImages={formData.images || []}
+          maxImages={10}
+          folder="products"
+        />
+
+        {errors.images && (
+          <p className="mt-2 text-sm text-red-600">{errors.images}</p>
+        )}
+      </div>
+
+      {/* Product Attributes */}
+      {formData.productType === 'PHYSICAL' && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Product Attributes</h2>
+
+          <div className="space-y-6">
+            {/* Available Colors */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Available Colors
+              </label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  id="colorInput"
+                  placeholder="Enter color name"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      handleArrayFieldAdd('colors', input.value);
+                      input.value = '';
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('colorInput') as HTMLInputElement;
+                    if (input) {
+                      handleArrayFieldAdd('colors', input.value);
+                      input.value = '';
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
                 >
-                  <img
-                    src={img}
-                    alt={`Product ${index + 1}`}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6"/%3E%3Ctext x="50%25" y="50%25" font-family="Arial" font-size="14" fill="%239ca3af" text-anchor="middle" dy=".3em"%3EImage Error%3C/text%3E%3C/svg%3E';
-                    }}
-                  />
-
-                  {/* Primary Badge */}
-                  {index === 0 && (
-                    <div className="absolute top-2 left-2 px-3 py-1.5 bg-gradient-to-r from-[#CBB57B] to-[#a89158] text-white text-xs font-bold rounded-lg shadow-lg flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                      PRIMARY
-                    </div>
-                  )}
-
-                  {/* Image Number */}
-                  <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/70 backdrop-blur-sm text-white text-xs font-medium rounded-md">
-                    #{index + 1}
-                  </div>
-
-                  {/* Hover Overlay - Must come BEFORE buttons in DOM */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-200 pointer-events-none" />
-
-                  {/* Action Buttons */}
-                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
-                    {/* Set as Primary Button - Only show for non-primary images */}
-                    {index > 0 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleSetPrimaryImage(img);
-                        }}
-                        className="p-2 bg-[#CBB57B] text-white rounded-lg hover:bg-[#a89158] hover:scale-110 shadow-lg transition-all duration-200 cursor-pointer"
-                        title="Set as primary image"
-                      >
-                        <svg className="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      </button>
-                    )}
-
-                    {/* Remove Button */}
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.colors.map((color: string, index: number) => (
+                  <span
+                    key={`color-${index}-${color}`}
+                    className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
+                  >
+                    {color}
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleRemoveImage(img);
-                      }}
-                      className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 hover:scale-110 shadow-lg transition-all duration-200 cursor-pointer"
-                      title="Remove image"
+                      onClick={() => handleArrayFieldRemove('colors', color)}
+                      className="hover:text-red-600 font-bold"
                     >
-                      <svg className="w-4 h-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                      ×
                     </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="text-xs text-blue-800">
-                  <p className="font-semibold mb-1">About Primary Image:</p>
-                  <ul className="space-y-1">
-                    <li>• The <strong>PRIMARY</strong> image is used as the hero/main product image</li>
-                    <li>• Click the <strong>star icon</strong> on any image to set it as primary</li>
-                    <li>• The primary image appears first in product listings and detail pages</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {/* File Upload */}
-          <div>
-            <label className="block">
-              <div className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
-                errors.images
-                  ? 'border-red-300 bg-red-50 hover:border-red-400'
-                  : 'border-gray-300 hover:border-[#CBB57B] hover:bg-gray-50'
-              }`}>
-                {uploadingImages ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 border-4 border-[#CBB57B] border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-sm font-medium text-gray-700">Uploading images...</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex justify-center mb-3">
-                      <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    </div>
-                    <div className="mb-2">
-                      <span className="text-sm font-semibold text-gray-700">Click to upload</span>
-                      <span className="text-sm text-gray-500"> or drag and drop</span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG, WebP or GIF (max. 5MB per file)
-                    </p>
-                  </>
-                )}
-              </div>
-              <input
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                multiple
-                onChange={handleFileUpload}
-                disabled={uploadingImages}
-                className="hidden"
-              />
-            </label>
-
-            <ErrorMessage field="images" />
-
-            {/* Upload Progress */}
-            {Object.keys(uploadProgress).length > 0 && (
-              <div className="mt-4 space-y-3">
-                {Object.entries(uploadProgress).map(([key, progress]) => (
-                  <div key={key} className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700 truncate">{key}</span>
-                      <span className="text-sm font-semibold text-[#CBB57B]">{progress}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#CBB57B] to-[#a89158] transition-all duration-300 ease-out"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
+                  </span>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+            {/* Available Sizes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Available Sizes
+              </label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  id="sizeInput"
+                  placeholder="Enter size (e.g., S, M, L)"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      handleArrayFieldAdd('sizes', input.value);
+                      input.value = '';
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('sizeInput') as HTMLInputElement;
+                    if (input) {
+                      handleArrayFieldAdd('sizes', input.value);
+                      input.value = '';
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.sizes.map((size: string, index: number) => (
+                  <span
+                    key={`size-${index}-${size}`}
+                    className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
+                  >
+                    {size}
+                    <button
+                      type="button"
+                      onClick={() => handleArrayFieldRemove('sizes', size)}
+                      className="hover:text-red-600 font-bold"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
-            <div className="relative flex justify-center">
-              <span className="px-3 py-1 bg-white text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Or add from URL
-              </span>
-            </div>
-          </div>
 
-          {/* URL Input */}
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddImage())}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
-                placeholder="https://example.com/image.jpg"
-              />
+            {/* Materials */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Materials
+              </label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  id="materialInput"
+                  placeholder="Enter material"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      handleArrayFieldAdd('materials', input.value);
+                      input.value = '';
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('materialInput') as HTMLInputElement;
+                    if (input) {
+                      handleArrayFieldAdd('materials', input.value);
+                      input.value = '';
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.materials.map((material: string, index: number) => (
+                  <span
+                    key={`material-${index}-${material}`}
+                    className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
+                  >
+                    {material}
+                    <button
+                      type="button"
+                      onClick={() => handleArrayFieldRemove('materials', material)}
+                      className="hover:text-red-600 font-bold"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={handleAddImage}
-              disabled={!imageUrl.trim()}
-              className="px-6 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            >
-              Add URL
-            </button>
+
+            {/* Product Badges */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Product Badges
+              </label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  id="badgeInput"
+                  placeholder="Enter badge (e.g., New, Sale)"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      handleArrayFieldAdd('badges', input.value);
+                      input.value = '';
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('badgeInput') as HTMLInputElement;
+                    if (input) {
+                      handleArrayFieldAdd('badges', input.value);
+                      input.value = '';
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.badges.map((badge: any, index: number) => {
+                  const badgeValue = typeof badge === 'string' ? badge : badge?.name || String(badge);
+                  return (
+                    <span
+                      key={`badge-${index}-${badgeValue}`}
+                      className="px-3 py-1 bg-[#CBB57B] text-black rounded-full text-sm flex items-center gap-2"
+                    >
+                      {badgeValue}
+                      <button
+                        type="button"
+                        onClick={() => handleArrayFieldRemove('badges', badge)}
+                        className="hover:text-red-600 font-bold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Product Variants */}
       <VariantManager

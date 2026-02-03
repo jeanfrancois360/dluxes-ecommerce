@@ -5,31 +5,29 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
-import { FloatingInput, Button } from '@luxury/ui';
+import { FloatingInput, Button } from '@nextpik/ui';
+import { toast, getUserFriendlyError } from '@/lib/utils/toast';
 
 export default function ForgotPasswordPage() {
-  const { requestPasswordReset, isLoading: authLoading, error: authError, clearError } = useAuth();
+  const { requestPasswordReset, isLoading: authLoading, clearError } = useAuth();
 
   const [email, setEmail] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
-  const [localError, setLocalError] = useState('');
 
   const isLoading = authLoading;
-  const error = authError || localError;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError('');
     clearError();
 
     // Validate email
     if (!email) {
-      setLocalError('Please enter your email address');
+      toast.error('Please enter your email address');
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      setLocalError('Please enter a valid email address');
+      toast.error('Please enter a valid email address');
       return;
     }
 
@@ -37,8 +35,12 @@ export default function ForgotPasswordPage() {
       await requestPasswordReset(email);
       setIsSuccess(true);
     } catch (err: any) {
-      // Error is already set in auth context
-      console.error('Password reset error:', err);
+      const friendlyMessage = getUserFriendlyError(
+        err,
+        'Unable to send password reset link. Please try again.',
+        'Forgot Password'
+      );
+      toast.error(friendlyMessage);
     }
   };
 
@@ -125,23 +127,12 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
 
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 bg-error-light border border-error-DEFAULT rounded-lg text-error-dark text-sm"
-          >
-            {error}
-          </motion.div>
-        )}
-
         {/* Email Input */}
         <FloatingInput
           label="Email Address"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          error={error}
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path

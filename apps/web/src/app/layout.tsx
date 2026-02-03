@@ -4,8 +4,8 @@ import { AuthProvider } from '@/contexts/auth-context';
 import { CartProvider } from '@/contexts/cart-context';
 import { WishlistProvider } from '@/contexts/wishlist-context';
 import { LocaleProvider } from '@/contexts/locale-context';
-import { ToastListener } from '@/components/toast-listener';
 import { RouteLoadingProvider } from '@/components/providers/route-loading-provider';
+import { ToastListener } from '@/components/toast-listener';
 import { WhatsAppChat } from '@/components/whatsapp-chat';
 import { Toaster } from 'sonner';
 import { siteConfig } from '@/lib/seo';
@@ -94,10 +94,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#000000' },
-  ],
+  themeColor: '#ffffff',
 };
 
 export default function RootLayout({
@@ -131,8 +128,14 @@ export default function RootLayout({
               <CartProvider>
                 <WishlistProvider>
                   {children}
-                  <ToastListener />
-                  <Toaster position="top-right" richColors />
+                  <Toaster
+                    position="top-right"
+                    theme="dark"
+                    closeButton
+                    toastOptions={{
+                      duration: 4000,
+                    }}
+                  />
                   <WhatsAppChat
                     phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890'}
                     businessName={process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'Luxury Marketplace'}

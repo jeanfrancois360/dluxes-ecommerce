@@ -16,6 +16,7 @@ export function PreloadResources({ images = [], fonts = [], scripts = [] }: Prel
           rel="preload"
           as="image"
           href={src}
+          crossOrigin="anonymous"
           // @ts-ignore - Next.js supports imageSrcSet
           imageSrcSet={`${src}?w=640 640w, ${src}?w=1280 1280w, ${src}?w=1920 1920w`}
           imageSizes="100vw"

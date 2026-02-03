@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
-import { Button } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Badge } from '@luxury/ui';
+import { Button } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Badge } from '@nextpik/ui';
 import {
   Table,
   TableBody,
@@ -13,7 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {
   Dialog,
   DialogContent,
@@ -21,19 +21,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Textarea } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
+} from '@nextpik/ui';
+import { Label } from '@nextpik/ui';
+import { Textarea } from '@nextpik/ui';
+import { Switch } from '@nextpik/ui';
 import { Plus, Search, Edit, Trash2, CheckCircle, XCircle, Clock, Package } from 'lucide-react';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import axios from 'axios';
 
 interface DeliveryProvider {
@@ -128,7 +128,7 @@ function DeliveryProvidersContent() {
       await axios.post(`${API_URL}/delivery-providers`, formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success('Success', 'Delivery provider created successfully');
+      toast.success('Delivery provider created successfully');
       setIsCreateDialogOpen(false);
       resetForm();
       fetchProviders();
@@ -145,7 +145,7 @@ function DeliveryProvidersContent() {
       await axios.put(`${API_URL}/delivery-providers/${selectedProvider.id}`, formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success('Success', 'Delivery provider updated successfully');
+      toast.success('Delivery provider updated successfully');
       setIsEditDialogOpen(false);
       setSelectedProvider(null);
       resetForm();
@@ -161,7 +161,7 @@ function DeliveryProvidersContent() {
       await axios.post(`${API_URL}/delivery-providers/${providerId}/verify`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success('Success', 'Provider verified successfully');
+      toast.success('Provider verified successfully');
       fetchProviders();
     } catch (error: any) {
       toast.error('Error', error.response?.data?.message || 'Failed to verify provider');
@@ -176,7 +176,7 @@ function DeliveryProvidersContent() {
       await axios.delete(`${API_URL}/delivery-providers/${providerId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success('Success', 'Provider deleted successfully');
+      toast.success('Provider deleted successfully');
       fetchProviders();
     } catch (error: any) {
       toast.error('Error', error.response?.data?.message || 'Failed to delete provider');

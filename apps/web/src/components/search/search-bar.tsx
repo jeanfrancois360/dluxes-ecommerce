@@ -27,7 +27,8 @@ export function SearchBar({
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { results, isLoading } = useAutocomplete(searchQuery, 300);
+  const { results: rawResults, isLoading } = useAutocomplete(searchQuery, 300);
+  const results = rawResults || []; // Ensure results is always an array
 
   // Auto focus on mount if requested
   useEffect(() => {

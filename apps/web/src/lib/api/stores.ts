@@ -9,11 +9,132 @@ import { api } from './client';
 // Types
 // ============================================================================
 
+export interface PayoutSettings {
+  id: string;
+  name: string;
+  payoutMethod: 'bank_transfer' | 'paypal' | 'stripe_connect' | null;
+  payoutEmail: string | null;
+  payoutCurrency: string;
+  payoutMinAmount: number;
+  payoutFrequency: 'weekly' | 'biweekly' | 'monthly';
+  payoutDayOfWeek: number | null;
+  payoutDayOfMonth: number | null;
+  payoutAutomatic: boolean;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null; // Masked
+  bankRoutingNumber: string | null; // Masked
+  bankName: string | null;
+  bankBranchName: string | null;
+  bankSwiftCode: string | null;
+  bankIban: string | null; // Masked
+  bankCountry: string | null;
+  verified: boolean;
+  status: string;
+}
+
+export interface PayoutSettingsResponse {
+  settings: PayoutSettings;
+  balances: {
+    pending: number;
+    available: number;
+    currency: string;
+  };
+  nextPayoutDate: string;
+}
+
+export interface UpdatePayoutSettingsDto {
+  payoutMethod?: 'bank_transfer' | 'paypal' | 'stripe_connect';
+  payoutEmail?: string;
+  payoutCurrency?: string;
+  payoutMinAmount?: number;
+  payoutFrequency?: 'weekly' | 'biweekly' | 'monthly';
+  payoutDayOfWeek?: number;
+  payoutDayOfMonth?: number;
+  payoutAutomatic?: boolean;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankRoutingNumber?: string;
+  bankName?: string;
+  bankBranchName?: string;
+  bankSwiftCode?: string;
+  bankIban?: string;
+  bankCountry?: string;
+}
+
+export interface Payout {
+  id: string;
+  amount: number;
+  currency: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  paymentMethod: string;
+  paymentReference: string | null;
+  processedAt: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface PayoutHistoryResponse {
+  data: Payout[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  stats: {
+    totalPaid: number;
+    totalPending: number;
+    totalFailed: number;
+  };
+}
+
+// Vacation Mode Types
+export interface VacationStatusResponse {
+  vacationMode: boolean;
+  vacationMessage: string | null;
+  vacationStartDate: string | null;
+  vacationEndDate: string | null;
+  vacationAutoReply: string | null;
+  vacationHideProducts: boolean;
+  daysOnVacation: number;
+  daysUntilEnd: number | null;
+  autoEndTriggered: boolean;
+  storeStatus: string;
+  storeActive: boolean;
+}
+
+export interface UpdateVacationModeDto {
+  vacationMode: boolean;
+  vacationMessage?: string;
+  vacationEndDate?: string;
+  vacationAutoReply?: string;
+  vacationHideProducts?: boolean;
+}
+
+export interface VacationUpdateResponse {
+  message: string;
+  vacation: {
+    id: string;
+    name: string;
+    vacationMode: boolean;
+    vacationMessage: string | null;
+    vacationStartDate: string | null;
+    vacationEndDate: string | null;
+    vacationAutoReply: string | null;
+    vacationHideProducts: boolean;
+  };
+}
+
 export interface Store {
   id: string;
   userId: string;
   name: string;
   slug: string;
+  // Vacation mode fields
+  vacationMode?: boolean;
+  vacationMessage?: string | null;
+  vacationStartDate?: string | null;
+  vacationEndDate?: string | null;
   description: string | null;
   logo: string | null;
   banner: string | null;
@@ -111,12 +232,48 @@ export const storesAPI = {
     page?: number;
     limit?: number;
     status?: string;
-    verified?: boolean;
-  }) => api.get<{ data: Store[]; total: number }>('/stores', {
-    params,
-  } as any),
+    verified?: string;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.status) searchParams.append('status', params.status);
+    if (params?.verified) searchParams.append('verified', params.verified);
+    const query = searchParams.toString();
+    return api.get<{
+      data: Store[];
+      meta: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      };
+    }>(`/stores${query ? `?${query}` : ''}`);
+  },
 
   getStoreBySlug: (slug: string) => api.get<Store>(`/stores/${slug}`),
+
+  // Get store products (uses products API with storeId filter)
+  getStoreProducts: (storeId: string, params?: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }) => api.get('/products', {
+    params: {
+      storeId,
+      status: 'ACTIVE',
+      ...params,
+    },
+  } as any),
+
+  // Get store reviews (aggregated from product reviews)
+  getStoreReviews: (storeId: string, params?: {
+    page?: number;
+    limit?: number;
+  }) => api.get(`/stores/${storeId}/reviews`, {
+    params,
+  } as any),
 
   // File Upload
   uploadLogo: (file: File) => {
@@ -134,6 +291,56 @@ export const storesAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     } as any);
   },
+
+  // Payout Settings
+  getPayoutSettings: () => api.get<PayoutSettingsResponse>('/stores/me/payout-settings'),
+
+  updatePayoutSettings: (data: UpdatePayoutSettingsDto) =>
+    api.patch<{ message: string; settings: PayoutSettings }>('/stores/me/payout-settings', data),
+
+  getPayoutHistory: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }) => api.get<PayoutHistoryResponse>('/stores/me/payouts', {
+    params,
+  } as any),
+
+  // Vacation Mode
+  getVacationStatus: () => api.get<VacationStatusResponse>('/stores/me/vacation'),
+
+  updateVacationMode: (data: UpdateVacationModeDto) =>
+    api.patch<VacationUpdateResponse>('/stores/me/vacation', data),
+
+  // Store Following
+  getFollowingStores: (params?: {
+    page?: number;
+    limit?: number;
+  }) => api.get<{
+    data: (Store & { followedAt: string })[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }>('/stores/me/following', { params } as any),
+
+  getFollowerCount: (storeId: string) =>
+    api.get<{ count: number }>(`/stores/${storeId}/followers/count`),
+
+  isFollowing: (storeId: string) =>
+    api.get<{ isFollowing: boolean }>(`/stores/${storeId}/is-following`),
+
+  followStore: (storeId: string) =>
+    api.post<{ message: string; isFollowing: boolean; followerCount: number }>(
+      `/stores/${storeId}/follow`
+    ),
+
+  unfollowStore: (storeId: string) =>
+    api.delete<{ message: string; isFollowing: boolean; followerCount: number }>(
+      `/stores/${storeId}/follow`
+    ),
 };
 
 // Export lowercase alias for consistency

@@ -4,16 +4,18 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Settings, DollarSign, Percent, Globe, Truck, Shield, Bell, Search, History, Save, ChevronRight, Sparkles, Package } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
+import { Settings, DollarSign, Percent, Globe, Truck, Shield, Bell, Search, History, Save, ChevronRight, Sparkles, Package, Receipt, Calculator, PackageCheck } from 'lucide-react';
 import { GeneralSettingsSection } from '@/components/settings/general-settings';
 import { PaymentSettingsSection } from '@/components/settings/payment-settings';
 import { CommissionSettingsSection } from '@/components/settings/commission-settings';
 import { CurrencySettingsSection } from '@/components/settings/currency-settings';
 import { DeliverySettingsSection } from '@/components/settings/delivery-settings';
+import { TaxSettingsSection } from '@/components/settings/tax-settings';
+import { ShippingSettingsSection } from '@/components/settings/shipping-settings';
 import { SecuritySettingsSection } from '@/components/settings/security-settings';
 import { NotificationSettingsSection } from '@/components/settings/notification-settings';
 import { SeoSettingsSection } from '@/components/settings/seo-settings';
@@ -29,7 +31,9 @@ const tabsConfig = [
   { value: 'commission', label: 'Commission', icon: Percent, description: 'Commission rates & structure' },
   { value: 'currency', label: 'Currency', icon: Globe, description: 'Multi-currency support' },
   { value: 'inventory', label: 'Inventory', icon: Package, description: 'Stock & inventory management' },
-  { value: 'delivery', label: 'Delivery', icon: Truck, description: 'Shipping & delivery options' },
+  { value: 'tax', label: 'Tax', icon: Receipt, description: 'Tax calculation & rates' },
+  { value: 'shipping', label: 'Shipping Rates', icon: Calculator, description: 'Shipping cost calculator & pricing' },
+  { value: 'delivery', label: 'Fulfillment', icon: PackageCheck, description: 'Order fulfillment & delivery partners' },
   { value: 'security', label: 'Security', icon: Shield, description: 'Authentication & security' },
   { value: 'notifications', label: 'Notifications', icon: Bell, description: 'Email & SMS notifications' },
   { value: 'seo', label: 'SEO', icon: Search, description: 'Search engine optimization' },
@@ -170,6 +174,14 @@ function SettingsPageContent() {
 
             <TabsContent value="inventory" className="mt-0">
               <InventorySettingsSection />
+            </TabsContent>
+
+            <TabsContent value="tax" className="mt-0">
+              <TaxSettingsSection />
+            </TabsContent>
+
+            <TabsContent value="shipping" className="mt-0">
+              <ShippingSettingsSection />
             </TabsContent>
 
             <TabsContent value="delivery" className="mt-0">

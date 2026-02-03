@@ -45,8 +45,8 @@ interface LocaleContextType {
 
 const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 
-const LANGUAGE_KEY = 'luxury_ecommerce_language';
-const CURRENCY_KEY = 'luxury_ecommerce_currency';
+const LANGUAGE_KEY = 'nextpik_ecommerce_language';
+const CURRENCY_KEY = 'nextpik_ecommerce_currency';
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('en');

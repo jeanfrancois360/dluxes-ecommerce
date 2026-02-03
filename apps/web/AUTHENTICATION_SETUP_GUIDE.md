@@ -18,7 +18,7 @@ import { ToastListener } from '@/components/toast-listener';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Luxury E-commerce',
+  title: 'NextPik E-commerce',
   description: 'Premium luxury goods marketplace',
 };
 
@@ -71,7 +71,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 
 ### Step 4: Update Middleware (Optional)
 
-The middleware is already set up at `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/luxury-ecommerce/apps/web/middleware.ts`.
+The middleware is already set up at `/Users/jeanfrancoismunyaneza/all-orbitunix-projects/nextpik/apps/web/middleware.ts`.
 
 If you need to customize routes, edit the constants:
 
@@ -365,7 +365,7 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="text-xl font-bold">
-            Luxury E-commerce
+            NextPik E-commerce
           </Link>
 
           <nav className="flex items-center gap-6">

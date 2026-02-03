@@ -163,6 +163,7 @@ export function useCompleteDashboard() {
     recentActivity: recentActivity.activities,
     isLoading,
     hasError,
+    dashboardError: dashboard.error, // Expose dashboard error for specific error handling
     refetch: () => {
       dashboard.refetch();
       revenue.refetch();

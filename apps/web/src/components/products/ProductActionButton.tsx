@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { ShoppingCart, MessageSquare, Package, Building, Car, Briefcase, Calendar, Download } from 'lucide-react';
-import { Button } from '@luxury/ui';
-import { Badge } from '@luxury/ui';
+import { Button } from '@nextpik/ui';
+import { Badge } from '@nextpik/ui';
 import ProductInquiryForm from './ProductInquiryForm';
 
 export type ProductType = 'PHYSICAL' | 'REAL_ESTATE' | 'VEHICLE' | 'SERVICE' | 'RENTAL' | 'DIGITAL';

@@ -1,6 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { CreditsService } from '../credits/credits.service';
+import { SearchService } from '../search/search.service';
+import { SettingsService } from '../settings/settings.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -15,24 +24,241 @@ import * as path from 'path';
  */
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly subscriptionService: SubscriptionService,
+    private readonly creditsService: CreditsService,
+    private readonly searchService: SearchService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   /**
    * Transform Decimal values to numbers for JSON serialization
    */
   private transformProduct(product: any) {
+    // Transform variants to include 'attributes' field for frontend compatibility
+    const variants = product.variants?.map((variant: any) => ({
+      ...variant,
+      price: variant.price ? Number(variant.price) : null,
+      compareAtPrice: variant.compareAtPrice ? Number(variant.compareAtPrice) : null,
+      attributes: variant.options || {}, // Map 'options' to 'attributes' for frontend
+    }));
+
     return {
       ...product,
       price: Number(product.price),
       compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
+      variants: variants || product.variants,
     };
   }
 
   private transformProducts(products: any[]) {
-    return products.map(p => this.transformProduct(p));
+    return products.map((p) => this.transformProduct(p));
+  }
+
+  /**
+   * Generate SKU automatically - ALWAYS auto-generated, no custom SKUs allowed
+   * Format: {SKU_PREFIX}-{MM}-{DD}-{SEQUENCE_NUMBER}
+   * Example: PROD-01-29-000001, PROD-01-29-000002, etc.
+   * Sequence resets daily.
+   */
+  private async generateSKU(): Promise<string> {
+    try {
+      // Get SKU prefix from settings
+      const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
+      const prefix = String(prefixSetting.value || 'NEXTPIK').toUpperCase();
+
+      // Get current date components
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
+      const day = String(now.getDate()).padStart(2, '0'); // 01-31
+
+      // Format: PREFIX-MM-DD-
+      const datePrefix = `${prefix}-${month}-${day}-`;
+
+      // Find the highest existing SKU number for today's date with this prefix
+      const products = await this.prisma.product.findMany({
+        where: {
+          sku: {
+            startsWith: datePrefix,
+          },
+        },
+        orderBy: {
+          sku: 'desc',
+        },
+        take: 1,
+      });
+
+      let nextNumber = 1;
+      if (products.length > 0) {
+        const lastSKU = products[0].sku;
+        // Extract the sequence number from PREFIX-MM-DD-XXXXXX
+        const match = lastSKU.match(/-(\d+)$/);
+        if (match) {
+          nextNumber = parseInt(match[1], 10) + 1;
+        }
+      }
+
+      // Format with leading zeros (6 digits)
+      const formattedNumber = String(nextNumber).padStart(6, '0');
+      const generatedSKU = `${datePrefix}${formattedNumber}`;
+
+      // Double-check uniqueness (race condition protection)
+      const duplicate = await this.prisma.product.findUnique({
+        where: { sku: generatedSKU },
+      });
+      if (duplicate) {
+        // Recursively try next number if collision occurs
+        return this.generateSKU();
+      }
+
+      this.logger.log(`Auto-generated SKU: ${generatedSKU}`);
+      return generatedSKU;
+    } catch (error) {
+      this.logger.error('Failed to generate SKU:', error);
+      // Fallback to timestamp-based SKU if settings fail
+      const timestamp = Date.now();
+      const fallbackSKU = `PROD-${timestamp}`;
+      this.logger.warn(`Using fallback SKU: ${fallbackSKU}`);
+      return fallbackSKU;
+    }
+  }
+
+  /**
+   * Generate SKU for Product Variants - ALWAYS auto-generated, no custom SKUs allowed
+   * Format: {SKU_PREFIX}-V-{MM}-{DD}-{SEQUENCE_NUMBER}
+   * Example: NEXTPIK-V-01-29-000001, NEXTPIK-V-01-29-000002, etc.
+   * The "V" distinguishes variant SKUs from product SKUs.
+   * Sequence resets daily.
+   */
+  private async generateVariantSKU(): Promise<string> {
+    try {
+      // Get SKU prefix from settings
+      const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
+      const prefix = String(prefixSetting.value || 'NEXTPIK').toUpperCase();
+
+      // Get current date components
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
+      const day = String(now.getDate()).padStart(2, '0'); // 01-31
+
+      // Format: PREFIX-V-MM-DD- (V for Variant)
+      const datePrefix = `${prefix}-V-${month}-${day}-`;
+
+      // Find the highest existing SKU number for today's date with this prefix
+      const variants = await this.prisma.productVariant.findMany({
+        where: {
+          sku: {
+            startsWith: datePrefix,
+          },
+        },
+        orderBy: {
+          sku: 'desc',
+        },
+        take: 1,
+      });
+
+      let nextNumber = 1;
+      if (variants.length > 0) {
+        const lastSKU = variants[0].sku;
+        // Extract the sequence number from PREFIX-V-MM-DD-XXXXXX
+        const match = lastSKU.match(/-(\d+)$/);
+        if (match) {
+          nextNumber = parseInt(match[1], 10) + 1;
+        }
+      }
+
+      // Format with leading zeros (6 digits)
+      const formattedNumber = String(nextNumber).padStart(6, '0');
+      const generatedSKU = `${datePrefix}${formattedNumber}`;
+
+      // Double-check uniqueness (race condition protection)
+      const duplicate = await this.prisma.productVariant.findUnique({
+        where: { sku: generatedSKU },
+      });
+      if (duplicate) {
+        // Recursively try next number if collision occurs
+        return this.generateVariantSKU();
+      }
+
+      this.logger.log(`Auto-generated Variant SKU: ${generatedSKU}`);
+      return generatedSKU;
+    } catch (error) {
+      this.logger.error('Failed to generate Variant SKU:', error);
+      // Fallback to timestamp-based SKU if settings fail
+      const timestamp = Date.now();
+      const fallbackSKU = `VAR-${timestamp}`;
+      this.logger.warn(`Using fallback Variant SKU: ${fallbackSKU}`);
+      return fallbackSKU;
+    }
+  }
+
+  /**
+   * Check if user can create a subscription-based product
+   */
+  private async checkSubscriptionRequirements(
+    userId: string,
+    productType: string,
+  ): Promise<{ allowed: boolean; message?: string }> {
+    const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
+
+    // Skip check for commission-based products
+    if (!subscriptionTypes.includes(productType)) {
+      return { allowed: true };
+    }
+
+    const check = await this.subscriptionService.canListProductType(
+      userId,
+      productType,
+    );
+
+    if (!check.canList) {
+      const messages: string[] = [];
+      if (!check.reasons.productTypeAllowed) {
+        messages.push(`Your plan does not allow ${productType} listings`);
+      }
+      if (!check.reasons.meetsTierRequirement) {
+        messages.push(
+          `Upgrade your subscription to list ${productType} products`,
+        );
+      }
+      if (!check.reasons.hasListingCapacity) {
+        messages.push('You have reached your maximum listing limit');
+      }
+      if (!check.reasons.hasCredits) {
+        messages.push('Insufficient credits for this listing');
+      }
+
+      return { allowed: false, message: messages.join('. ') };
+    }
+
+    return { allowed: true };
+  }
+
+  /**
+   * Deduct credits for subscription-based product
+   */
+  private async deductListingCredits(
+    userId: string,
+    productType: string,
+    productId: string,
+  ): Promise<void> {
+    const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
+
+    if (!subscriptionTypes.includes(productType)) {
+      return; // No credits for commission-based products
+    }
+
+    const action = `list_${productType.toLowerCase()}`;
+    await this.creditsService.debitCredits(
+      userId,
+      action,
+      `Listed ${productType} product`,
+      productId,
+    );
   }
 
   /**
@@ -141,6 +367,11 @@ export class ProductsService {
       where.purchaseType = purchaseType;
     }
 
+    // Store ID filter (for public store pages)
+    if (query.storeId) {
+      where.storeId = query.storeId;
+    }
+
     // Tags filter
     if (tags) {
       const tagArray = tags.split(',');
@@ -201,6 +432,21 @@ export class ProductsService {
           materials: true,
           inventory: true,
           status: true,
+          storeId: true,
+          store: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              logo: true,
+              verified: true,
+              rating: true,
+              reviewCount: true,
+              totalProducts: true,
+              city: true,
+              country: true,
+            },
+          },
           category: {
             select: {
               id: true,
@@ -464,6 +710,20 @@ export class ProductsService {
           orderBy: { createdAt: 'desc' },
           take: 10,
         },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logo: true,
+            verified: true,
+            rating: true,
+            reviewCount: true,
+            totalProducts: true,
+            city: true,
+            country: true,
+          },
+        },
       },
     });
 
@@ -552,19 +812,36 @@ export class ProductsService {
    * Create new product
    */
   async create(createProductDto: CreateProductDto) {
-    const { badges, seoKeywords, colors, sizes, materials, categoryId, purchaseType, price, inventory, ...productData } =
-      createProductDto;
+    const {
+      badges,
+      seoKeywords,
+      colors,
+      sizes,
+      materials,
+      categoryId,
+      purchaseType,
+      price,
+      inventory,
+      sku, // Ignore any provided SKU - always auto-generate
+      ...productData
+    } = createProductDto;
+
+    // ALWAYS auto-generate SKU (custom SKUs not allowed)
+    const finalSKU = await this.generateSKU();
 
     // Set defaults based on purchaseType
     const finalPurchaseType = purchaseType || PurchaseType.INSTANT;
 
     // For INSTANT products, ensure price and inventory have defaults if not provided
-    const finalPrice = price !== undefined ? price : (finalPurchaseType === PurchaseType.INSTANT ? 0 : null);
-    const finalInventory = inventory !== undefined ? inventory : (finalPurchaseType === PurchaseType.INSTANT ? 0 : null);
+    const finalPrice =
+      price !== undefined ? price : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
+    const finalInventory =
+      inventory !== undefined ? inventory : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
 
-    return this.prisma.product.create({
+    const product = await this.prisma.product.create({
       data: {
         ...productData,
+        sku: finalSKU,
         purchaseType: finalPurchaseType,
         price: finalPrice,
         inventory: finalInventory,
@@ -587,6 +864,11 @@ export class ProductsService {
         tags: true,
       },
     });
+
+    // Auto-index in Meilisearch (async, non-blocking)
+    this.indexProductAsync(product.id);
+
+    return product;
   }
 
   /**
@@ -620,7 +902,7 @@ export class ProductsService {
       }
     }
 
-    return this.prisma.product.update({
+    const product = await this.prisma.product.update({
       where: { id },
       data: updateData,
       include: {
@@ -630,6 +912,11 @@ export class ProductsService {
         tags: true,
       },
     });
+
+    // Auto-re-index in Meilisearch (async, non-blocking)
+    this.indexProductAsync(id);
+
+    return product;
   }
 
   /**
@@ -715,8 +1002,8 @@ export class ProductsService {
         this.prisma.productImage.update({
           where: { id: item.id },
           data: { displayOrder: item.order },
-        }),
-      ),
+        })
+      )
     );
 
     return this.findById(productId);
@@ -728,9 +1015,14 @@ export class ProductsService {
   async delete(id: string) {
     await this.findById(id); // Check if exists
 
-    return this.prisma.product.delete({
+    const product = await this.prisma.product.delete({
       where: { id },
     });
+
+    // Auto-remove from Meilisearch index (async, non-blocking)
+    this.deleteProductFromIndexAsync(id);
+
+    return product;
   }
 
   /**
@@ -793,7 +1085,7 @@ export class ProductsService {
     // }
 
     // Get admin email from environment or use default
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@luxury-ecommerce.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@nextpik.com';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
     // Send email notification
@@ -830,7 +1122,7 @@ export class ProductsService {
   }
 
   private transformVariants(variants: any[]) {
-    return variants.map(v => this.transformVariant(v));
+    return variants.map((v) => this.transformVariant(v));
   }
 
   /**
@@ -872,14 +1164,8 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    // Check SKU uniqueness
-    const existingSku = await this.prisma.productVariant.findUnique({
-      where: { sku: dto.sku },
-    });
-
-    if (existingSku) {
-      throw new BadRequestException(`SKU '${dto.sku}' already exists`);
-    }
+    // ALWAYS auto-generate SKU (custom SKUs not allowed)
+    const generatedSKU = await this.generateVariantSKU();
 
     // Determine display order
     const displayOrder = dto.displayOrder ?? (await this.getNextVariantDisplayOrder(productId));
@@ -889,7 +1175,7 @@ export class ProductsService {
       data: {
         productId,
         name: dto.name,
-        sku: dto.sku,
+        sku: generatedSKU, // Always use auto-generated SKU
         price: dto.price ?? product.price, // Inherit if not set
         compareAtPrice: dto.compareAtPrice,
         inventory: dto.inventory,
@@ -924,6 +1210,7 @@ export class ProductsService {
 
   /**
    * Create multiple variants in bulk
+   * SKUs are auto-generated for all variants
    */
   async bulkCreateVariants(productId: string, dtos: any[]) {
     // Verify product exists
@@ -936,24 +1223,6 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    // Check SKU uniqueness across all DTOs
-    const skus = dtos.map(dto => dto.sku);
-    const duplicateSkus = skus.filter((sku, index) => skus.indexOf(sku) !== index);
-    if (duplicateSkus.length > 0) {
-      throw new BadRequestException(`Duplicate SKUs in request: ${duplicateSkus.join(', ')}`);
-    }
-
-    // Check SKU uniqueness in database
-    const existingSkus = await this.prisma.productVariant.findMany({
-      where: { sku: { in: skus } },
-      select: { sku: true },
-    });
-
-    if (existingSkus.length > 0) {
-      const existing = existingSkus.map(v => v.sku).join(', ');
-      throw new BadRequestException(`SKUs already exist: ${existing}`);
-    }
-
     // Get starting display order
     let displayOrder = await this.getNextVariantDisplayOrder(productId);
 
@@ -962,11 +1231,14 @@ export class ProductsService {
       const created = [];
 
       for (const dto of dtos) {
+        // Auto-generate SKU for each variant
+        const generatedSKU = await this.generateVariantSKU();
+
         const variant = await prisma.productVariant.create({
           data: {
             productId,
             name: dto.name,
-            sku: dto.sku,
+            sku: generatedSKU, // Always use auto-generated SKU
             price: dto.price ?? product.price,
             compareAtPrice: dto.compareAtPrice,
             inventory: dto.inventory,
@@ -1007,6 +1279,7 @@ export class ProductsService {
 
   /**
    * Update a product variant
+   * Note: SKU cannot be updated as it's system-generated and read-only
    */
   async updateVariant(variantId: string, dto: any) {
     // Get existing variant
@@ -1019,15 +1292,9 @@ export class ProductsService {
       throw new NotFoundException('Variant not found');
     }
 
-    // Check SKU uniqueness if SKU is being updated
-    if (dto.sku && dto.sku !== existing.sku) {
-      const existingSku = await this.prisma.productVariant.findUnique({
-        where: { sku: dto.sku },
-      });
-
-      if (existingSku) {
-        throw new BadRequestException(`SKU '${dto.sku}' already exists`);
-      }
+    // SKU is read-only - ignore any provided SKU value
+    if (dto.sku !== undefined) {
+      this.logger.warn(`Attempt to update variant SKU ignored - SKU is system-generated and read-only`);
     }
 
     // Track inventory change
@@ -1035,25 +1302,29 @@ export class ProductsService {
     const previousInventory = existing.inventory;
     const newInventory = dto.inventory ?? existing.inventory;
 
-    // Update variant
+    // Update variant - only include fields that are provided in DTO (undefined means skip)
+    // SKU is NEVER included in updates
+    const updateData: any = {};
+
+    if (dto.name !== undefined) updateData.name = dto.name;
+    // SKU is read-only - never update it
+    if (dto.price !== undefined) updateData.price = dto.price;
+    if (dto.compareAtPrice !== undefined) updateData.compareAtPrice = dto.compareAtPrice;
+    if (dto.inventory !== undefined) updateData.inventory = dto.inventory;
+    if (inventoryChanged) updateData.previousStock = previousInventory;
+    if (dto.attributes !== undefined) updateData.options = dto.attributes;
+    // Image: undefined = skip, null = clear, string = set
+    if (dto.image !== undefined) updateData.image = dto.image;
+    if (dto.colorHex !== undefined) updateData.colorHex = dto.colorHex;
+    if (dto.colorName !== undefined) updateData.colorName = dto.colorName;
+    if (dto.sizeChart !== undefined) updateData.sizeChart = dto.sizeChart;
+    if (dto.isAvailable !== undefined) updateData.isAvailable = dto.isAvailable;
+    if (dto.lowStockThreshold !== undefined) updateData.lowStockThreshold = dto.lowStockThreshold;
+    if (dto.displayOrder !== undefined) updateData.displayOrder = dto.displayOrder;
+
     const updated = await this.prisma.productVariant.update({
       where: { id: variantId },
-      data: {
-        name: dto.name,
-        sku: dto.sku,
-        price: dto.price,
-        compareAtPrice: dto.compareAtPrice,
-        inventory: dto.inventory,
-        previousStock: inventoryChanged ? previousInventory : existing.previousStock,
-        options: dto.attributes,
-        image: dto.image,
-        colorHex: dto.colorHex,
-        colorName: dto.colorName ?? dto.attributes?.color,
-        sizeChart: dto.sizeChart,
-        isAvailable: dto.isAvailable,
-        lowStockThreshold: dto.lowStockThreshold,
-        displayOrder: dto.displayOrder,
-      },
+      data: updateData,
     });
 
     // Create inventory transaction if inventory changed
@@ -1089,8 +1360,8 @@ export class ProductsService {
           select: {
             cartItems: true,
             orderItems: true,
-          }
-        }
+          },
+        },
       },
     });
 
@@ -1177,7 +1448,9 @@ export class ProductsService {
    * Bulk delete products (Admin only)
    * @param ids - Array of product IDs to delete
    */
-  async bulkDeleteProducts(ids: string[]): Promise<{ success: boolean; deleted: number; failed: string[] }> {
+  async bulkDeleteProducts(
+    ids: string[]
+  ): Promise<{ success: boolean; deleted: number; failed: string[] }> {
     const failed: string[] = [];
     let deleted = 0;
 
@@ -1203,7 +1476,10 @@ export class ProductsService {
    * @param ids - Array of product IDs to update
    * @param status - New status to apply
    */
-  async bulkUpdateStatus(ids: string[], status: ProductStatus): Promise<{ success: boolean; updated: number; failed: string[] }> {
+  async bulkUpdateStatus(
+    ids: string[],
+    status: ProductStatus
+  ): Promise<{ success: boolean; updated: number; failed: string[] }> {
     const failed: string[] = [];
     let updated = 0;
 
@@ -1222,5 +1498,31 @@ export class ProductsService {
       updated,
       failed,
     };
+  }
+
+  // ==================== MEILISEARCH AUTO-INDEXING ====================
+
+  /**
+   * Index product in Meilisearch (async, non-blocking)
+   * Called after product creation or update to keep search index in sync
+   */
+  private indexProductAsync(productId: string): void {
+    this.searchService.indexProduct(productId).catch((error) => {
+      this.logger.error(
+        `Failed to index product ${productId} in Meilisearch: ${error.message}`,
+      );
+    });
+  }
+
+  /**
+   * Remove product from Meilisearch index (async, non-blocking)
+   * Called after product deletion to keep search index in sync
+   */
+  private deleteProductFromIndexAsync(productId: string): void {
+    this.searchService.deleteProduct(productId).catch((error) => {
+      this.logger.error(
+        `Failed to delete product ${productId} from Meilisearch: ${error.message}`,
+      );
+    });
   }
 }

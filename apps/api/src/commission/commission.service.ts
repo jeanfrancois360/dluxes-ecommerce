@@ -57,6 +57,14 @@ export class CommissionService {
       return;
     }
 
+    // Check if commission should include shipping
+    const applyToShipping = await this.shouldApplyCommissionToShipping();
+    const orderShipping = new Decimal(transaction.order.shipping);
+    const orderSubtotal = transaction.order.items.reduce(
+      (sum, item) => sum.add(new Decimal(item.total)),
+      new Decimal(0)
+    );
+
     // Calculate commission per order item
     for (const item of transaction.order.items) {
       if (!item.product.store) {
@@ -64,14 +72,26 @@ export class CommissionService {
         continue;
       }
 
-      const itemTotal = new Decimal(item.total);
+      let commissionBase = new Decimal(item.total);
+
+      // If commission applies to shipping, distribute shipping proportionally
+      if (applyToShipping && orderShipping.greaterThan(0) && orderSubtotal.greaterThan(0)) {
+        const itemProportion = new Decimal(item.total).dividedBy(orderSubtotal);
+        const itemShippingShare = orderShipping.times(itemProportion);
+        commissionBase = commissionBase.add(itemShippingShare);
+
+        this.logger.log(
+          `Item ${item.id}: proportional shipping share = ${itemShippingShare.toFixed(2)} (${itemProportion.times(100).toFixed(2)}% of ${orderShipping.toFixed(2)})`
+        );
+      }
+
       const rule = await this.findApplicableRule(
         item.product.store.userId,
         item.product.categoryId,
-        itemTotal
+        commissionBase
       );
 
-      const commissionAmount = await this.calculateAmount(itemTotal, rule);
+      const commissionAmount = await this.calculateAmount(commissionBase, rule);
 
       // Get default commission rate if no rule found
       let ruleValue = rule?.value;
@@ -90,7 +110,7 @@ export class CommissionService {
           ruleId: rule?.id,
           ruleType: rule?.type || CommissionRuleType.PERCENTAGE,
           ruleValue,
-          orderAmount: itemTotal,
+          orderAmount: commissionBase,
           commissionAmount,
           currency: transaction.currency,
           status: CommissionStatus.CONFIRMED,
@@ -98,7 +118,7 @@ export class CommissionService {
       });
 
       this.logger.log(
-        `Commission created: ${commissionAmount} ${transaction.currency} for seller ${item.product.store.userId}`
+        `Commission created: ${commissionAmount} ${transaction.currency} for seller ${item.product.store.userId} (base: ${commissionBase.toFixed(2)})`
       );
     }
   }
@@ -194,21 +214,68 @@ export class CommissionService {
   }
 
   /**
-   * Calculate commission amount based on rule
+   * Calculate commission amount based on rule and apply settings (min/max/fixed fee)
    */
   private async calculateAmount(orderAmount: Decimal, rule: any | null): Promise<Decimal> {
+    // Step 1: Calculate base percentage commission
+    let percentageCommission: Decimal;
+
     if (!rule) {
       // Get default commission rate from settings
       const defaultRate = await this.getDefaultCommissionRate();
-      return orderAmount.mul(defaultRate.toNumber() / 100);
+      percentageCommission = orderAmount.mul(defaultRate.toNumber() / 100);
+    } else if (rule.type === CommissionRuleType.PERCENTAGE) {
+      percentageCommission = orderAmount.mul(rule.value.toNumber() / 100);
+    } else {
+      // Fixed amount rule
+      percentageCommission = new Decimal(rule.value);
     }
 
-    if (rule.type === CommissionRuleType.PERCENTAGE) {
-      return orderAmount.mul(rule.value.toNumber() / 100);
-    } else {
-      // Fixed amount
-      return new Decimal(rule.value);
+    // Step 2: Apply min/max caps from settings
+    try {
+      const [minSetting, maxSetting, fixedFeeSetting] = await Promise.all([
+        this.settingsService.getSetting('commission_min_amount').catch(() => null),
+        this.settingsService.getSetting('commission_max_amount').catch(() => null),
+        this.settingsService.getSetting('commission_fixed_fee').catch(() => null),
+      ]);
+
+      // Apply minimum cap
+      if (minSetting && minSetting.value) {
+        const minAmount = new Decimal(Number(minSetting.value));
+        if (percentageCommission.lessThan(minAmount)) {
+          this.logger.log(
+            `Applying minimum commission cap: ${percentageCommission.toFixed(2)} -> ${minAmount.toFixed(2)}`
+          );
+          percentageCommission = minAmount;
+        }
+      }
+
+      // Apply maximum cap (if set and > 0)
+      if (maxSetting && maxSetting.value) {
+        const maxAmount = new Decimal(Number(maxSetting.value));
+        if (maxAmount.greaterThan(0) && percentageCommission.greaterThan(maxAmount)) {
+          this.logger.log(
+            `Applying maximum commission cap: ${percentageCommission.toFixed(2)} -> ${maxAmount.toFixed(2)}`
+          );
+          percentageCommission = maxAmount;
+        }
+      }
+
+      // Step 3: Add fixed transaction fee
+      if (fixedFeeSetting && fixedFeeSetting.value) {
+        const fixedFee = new Decimal(Number(fixedFeeSetting.value));
+        if (fixedFee.greaterThan(0)) {
+          this.logger.log(
+            `Adding fixed transaction fee: ${percentageCommission.toFixed(2)} + ${fixedFee.toFixed(2)} = ${percentageCommission.add(fixedFee).toFixed(2)}`
+          );
+          percentageCommission = percentageCommission.add(fixedFee);
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Error applying commission settings, using base calculation', error);
     }
+
+    return percentageCommission;
   }
 
   /**
@@ -217,13 +284,13 @@ export class CommissionService {
    */
   private async getDefaultCommissionRate(): Promise<Decimal> {
     try {
-      const setting = await this.settingsService.getSetting('commission.default_rate');
+      const setting = await this.settingsService.getSetting('global_commission_rate');
       const rate = Number(setting.value);
       if (rate && !isNaN(rate)) {
         return new Decimal(rate);
       }
     } catch (error) {
-      this.logger.warn('Commission default rate setting not found, using fallback');
+      this.logger.warn('global_commission_rate setting not found, using fallback');
     }
 
     // Fallback to env variable or hardcoded 10%
@@ -233,6 +300,19 @@ export class CommissionService {
     }
 
     return new Decimal(10);
+  }
+
+  /**
+   * Check if commission should be applied to shipping fees
+   */
+  private async shouldApplyCommissionToShipping(): Promise<boolean> {
+    try {
+      const setting = await this.settingsService.getSetting('commission_applies_to_shipping');
+      return Boolean(setting.value);
+    } catch (error) {
+      this.logger.warn('commission_applies_to_shipping setting not found, defaulting to false');
+      return false;
+    }
   }
 
   /**

@@ -11,7 +11,7 @@ import type { NextRequest } from 'next/server';
 // Configuration
 // ============================================================================
 
-const TOKEN_KEY = 'luxury_ecommerce_access_token';
+const TOKEN_KEY = 'nextpik_ecommerce_access_token';
 
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -44,6 +44,7 @@ const PROTECTED_ROUTES = [
   '/settings',
   '/dashboard',
   '/profile',
+  '/checkout',
 ];
 
 // Buyer-specific routes
@@ -54,6 +55,9 @@ const SELLER_ROUTES = ['/dashboard/seller', '/seller'];
 
 // Admin routes that require admin role
 const ADMIN_ROUTES = ['/admin'];
+
+// Delivery Partner routes
+const DELIVERY_PARTNER_ROUTES = ['/delivery-partner'];
 
 // Routes that should always be accessible
 const ALWAYS_ACCESSIBLE = [
@@ -177,6 +181,14 @@ function isBuyer(token: string): boolean {
 }
 
 /**
+ * Check if user is delivery partner
+ */
+function isDeliveryPartner(token: string): boolean {
+  const role = getUserRoleFromToken(token);
+  return role === 'DELIVERY_PARTNER';
+}
+
+/**
  * Check if route is seller route
  */
 function isSellerRoute(pathname: string): boolean {
@@ -191,6 +203,13 @@ function isBuyerRoute(pathname: string): boolean {
 }
 
 /**
+ * Check if route is delivery partner route
+ */
+function isDeliveryPartnerRoute(pathname: string): boolean {
+  return DELIVERY_PARTNER_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+/**
  * Get dashboard redirect based on user role
  */
 function getDashboardForRole(token: string): string {
@@ -202,6 +221,8 @@ function getDashboardForRole(token: string): string {
       return '/admin/dashboard';
     case 'SELLER':
       return '/dashboard/seller';
+    case 'DELIVERY_PARTNER':
+      return '/delivery-partner/dashboard';
     case 'BUYER':
     case 'CUSTOMER':
       return '/dashboard/buyer';
@@ -335,6 +356,28 @@ export function middleware(request: NextRequest) {
     }
 
     // Admin - allow access
+    return NextResponse.next();
+  }
+
+  // ============================================================================
+  // Handle Delivery Partner Routes
+  // ============================================================================
+
+  if (isDeliveryPartnerRoute(pathname)) {
+    // Not authenticated - redirect to login
+    if (!isAuthenticated) {
+      const loginUrl = new URL('/auth/login', request.url);
+      loginUrl.searchParams.set('returnUrl', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Authenticated but not delivery partner or admin - redirect to role-specific dashboard
+    if (token && !isDeliveryPartner(token) && !isAdmin(token)) {
+      const dashboardUrl = getDashboardForRole(token);
+      return NextResponse.redirect(new URL(dashboardUrl, request.url));
+    }
+
+    // Delivery Partner or Admin - allow access
     return NextResponse.next();
   }
 

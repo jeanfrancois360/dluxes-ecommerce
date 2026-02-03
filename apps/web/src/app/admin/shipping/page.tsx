@@ -25,10 +25,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@luxury/ui';
+} from '@nextpik/ui';
 import { toast } from 'sonner';
 import { Truck, MapPin, DollarSign, Plus, Edit, Trash2 } from 'lucide-react';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
 interface ShippingZone {
   id: string;
   name: string;
@@ -81,7 +84,7 @@ function ShippingZonesContent() {
 
   const fetchZones = async () => {
     try {
-      const response = await fetch('/api/v1/shipping/zones', {
+      const response = await fetch(`${API_URL}/shipping/zones`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -118,8 +121,8 @@ function ShippingZonesContent() {
       };
 
       const url = editingZone
-        ? `/api/v1/shipping/zones/${editingZone.code}`
-        : '/api/v1/shipping/zones';
+        ? `${API_URL}/shipping/zones/${editingZone.code}`
+        : `${API_URL}/shipping/zones`;
 
       const response = await fetch(url, {
         method: editingZone ? 'PUT' : 'POST',
@@ -153,7 +156,7 @@ function ShippingZonesContent() {
     if (!confirm('Are you sure you want to delete this shipping zone?')) return;
 
     try {
-      const response = await fetch(`/api/v1/shipping/zones/${code}`, {
+      const response = await fetch(`${API_URL}/shipping/zones/${code}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,

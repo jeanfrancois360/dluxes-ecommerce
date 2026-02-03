@@ -1,4 +1,4 @@
-# Quick Start Guide - Luxury E-commerce Database
+# Quick Start Guide - NextPik E-commerce Database
 
 ## What You Have
 
@@ -52,7 +52,7 @@ cat packages/database/prisma/schema.prisma
 ### Step 2: Create Prisma Migration
 ```bash
 cd packages/database
-npx prisma migrate dev --name luxury_ecommerce_schema
+npx prisma migrate dev --name nextpik_ecommerce_schema
 ```
 
 This creates the tables defined in `schema.prisma`.

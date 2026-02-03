@@ -1,357 +1,215 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@luxury/ui';
-import { Input } from '@luxury/ui';
-import { Button } from '@luxury/ui';
-import { Label } from '@luxury/ui';
-import { Switch } from '@luxury/ui';
-import { api } from '@/lib/api/client';
+import { useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Card, CardContent } from '@nextpik/ui';
+import { Input } from '@nextpik/ui';
+import { Loader2, Package, Settings as SettingsIcon, Bell } from 'lucide-react';
 import { toast } from 'sonner';
-import { Loader2, Package, AlertCircle, Save, CheckCircle2 } from 'lucide-react';
+import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
+import { transformSettingsToForm } from '@/lib/settings-utils';
+import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
-interface InventorySettings {
-  'inventory.low_stock_threshold': {
-    value: number;
-    label: string;
-    description: string;
-  };
-  'inventory.auto_sku_generation': {
-    value: boolean;
-    label: string;
-    description: string;
-  };
-  'inventory.sku_prefix': {
-    value: string;
-    label: string;
-    description: string;
-  };
-  'inventory.enable_stock_notifications': {
-    value: boolean;
-    label: string;
-    description: string;
-  };
-  'inventory.allow_negative_stock': {
-    value: boolean;
-    label: string;
-    description: string;
-  };
-  'inventory.transaction_history_page_size': {
-    value: number;
-    label: string;
-    description: string;
-  };
-}
+// Validation schema
+const inventorySettingsSchema = z.object({
+  low_stock_threshold: z.number().min(0).max(1000),
+  sku_prefix: z.string().min(1).max(10),
+  enable_stock_notifications: z.boolean(),
+  allow_negative_stock: z.boolean(),
+  transaction_history_page_size: z.number().min(10).max(100),
+});
+
+type InventorySettings = z.infer<typeof inventorySettingsSchema>;
 
 export function InventorySettingsSection() {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
-  const [settings, setSettings] = useState<InventorySettings | null>(null);
+  const { settings, loading, refetch } = useSettings('inventory');
+  const { updateSetting, updating } = useSettingsUpdate();
+  const justSavedRef = useRef(false);
+
+  const form = useForm<InventorySettings>({
+    resolver: zodResolver(inventorySettingsSchema),
+    defaultValues: {
+      low_stock_threshold: 10,
+      sku_prefix: 'NEXTPIK',
+      enable_stock_notifications: true,
+      allow_negative_stock: false,
+      transaction_history_page_size: 20,
+    },
+  });
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
+    if (settings.length > 0) {
+      const formData = transformSettingsToForm(settings);
 
-  const fetchSettings = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/settings/category/inventory');
+      // Inventory settings have "inventory." prefix in DB, strip it for form
+      const inventoryData: Partial<InventorySettings> = {};
+      Object.entries(formData).forEach(([key, value]) => {
+        const cleanKey = key.replace('inventory.', '');
+        inventoryData[cleanKey as keyof InventorySettings] = value;
+      });
 
-      if (response.success && response.data) {
-        const settingsMap: any = {};
-        response.data.forEach((setting: any) => {
-          settingsMap[setting.key] = {
-            value: setting.value,
-            label: setting.label,
-            description: setting.description,
-          };
-        });
-        setSettings(settingsMap);
+      if (!form.formState.isDirty || justSavedRef.current) {
+        form.reset(inventoryData as InventorySettings);
+        justSavedRef.current = false;
       }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
+
+  const onSubmit = async (data: InventorySettings) => {
+    try {
+      const updates = Object.entries(data);
+      for (const [key, value] of updates) {
+        // Inventory settings in DB have "inventory." prefix
+        const fullKey = `inventory.${key}`;
+        await updateSetting(fullKey, value, 'Updated via settings panel');
+      }
+      justSavedRef.current = true;
+      toast.success('Inventory settings saved successfully');
+      await refetch();
     } catch (error) {
-      console.error('Failed to fetch inventory settings:', error);
-      toast.error('Failed to load inventory settings');
-    } finally {
-      setLoading(false);
+      console.error('Failed to save settings:', error);
+      toast.error('Failed to save inventory settings');
+      justSavedRef.current = false;
     }
   };
 
-  const updateSetting = async (key: string, value: any) => {
-    try {
-      setSaving(key);
-      const response = await api.patch(`/settings/${key}`, { value });
-
-      if (response.success) {
-        toast.success('Setting updated successfully');
-        // Update local state
-        if (settings) {
-          setSettings({
-            ...settings,
-            [key]: {
-              ...settings[key as keyof InventorySettings],
-              value,
-            },
-          });
-        }
-      }
-    } catch (error: any) {
-      console.error('Failed to update setting:', error);
-      toast.error(error.response?.data?.message || 'Failed to update setting');
-    } finally {
-      setSaving(null);
-    }
-  };
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSave: () => form.handleSubmit(onSubmit)(),
+    onReset: () => form.reset(),
+  });
 
   if (loading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
+        <CardContent className="py-12 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </CardContent>
       </Card>
     );
   }
 
-  if (!settings) {
-    return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-          <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Failed to load inventory settings</p>
-          <Button onClick={fetchSettings} className="mt-4">
-            Retry
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  const isDirty = form.formState.isDirty;
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Stock Thresholds
-          </CardTitle>
-          <CardDescription>
-            Configure stock level alerts and notifications
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Low Stock Threshold */}
-          <div className="space-y-2">
-            <Label htmlFor="low-stock-threshold">
-              {settings['inventory.low_stock_threshold']?.label}
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              {settings['inventory.low_stock_threshold']?.description}
-            </p>
-            <div className="flex items-center gap-4">
-              <Input
-                id="low-stock-threshold"
-                type="number"
-                min="0"
-                value={settings['inventory.low_stock_threshold']?.value || 10}
-                onChange={(e) => {
-                  const newValue = parseInt(e.target.value);
-                  if (!isNaN(newValue)) {
-                    setSettings({
-                      ...settings,
-                      'inventory.low_stock_threshold': {
-                        ...settings['inventory.low_stock_threshold'],
-                        value: newValue,
-                      },
-                    });
-                  }
-                }}
-                className="max-w-xs"
-              />
-              <Button
-                onClick={() =>
-                  updateSetting(
-                    'inventory.low_stock_threshold',
-                    settings['inventory.low_stock_threshold']?.value
-                  )
-                }
-                disabled={saving === 'inventory.low_stock_threshold'}
-                size="sm"
-              >
-                {saving === 'inventory.low_stock_threshold' ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Transaction History Page Size */}
-          <div className="space-y-2">
-            <Label htmlFor="transaction-page-size">
-              {settings['inventory.transaction_history_page_size']?.label}
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              {settings['inventory.transaction_history_page_size']?.description}
-            </p>
-            <div className="flex items-center gap-4">
-              <Input
-                id="transaction-page-size"
-                type="number"
-                min="10"
-                max="100"
-                value={settings['inventory.transaction_history_page_size']?.value || 20}
-                onChange={(e) => {
-                  const newValue = parseInt(e.target.value);
-                  if (!isNaN(newValue)) {
-                    setSettings({
-                      ...settings,
-                      'inventory.transaction_history_page_size': {
-                        ...settings['inventory.transaction_history_page_size'],
-                        value: newValue,
-                      },
-                    });
-                  }
-                }}
-                className="max-w-xs"
-              />
-              <Button
-                onClick={() =>
-                  updateSetting(
-                    'inventory.transaction_history_page_size',
-                    settings['inventory.transaction_history_page_size']?.value
-                  )
-                }
-                disabled={saving === 'inventory.transaction_history_page_size'}
-                size="sm"
-              >
-                {saving === 'inventory.transaction_history_page_size' ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>SKU Generation</CardTitle>
-          <CardDescription>
-            Configure automatic SKU generation for products
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Auto SKU Generation */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5 flex-1">
-              <Label>{settings['inventory.auto_sku_generation']?.label}</Label>
-              <p className="text-sm text-muted-foreground">
-                {settings['inventory.auto_sku_generation']?.description}
-              </p>
-            </div>
-            <Switch
-              checked={settings['inventory.auto_sku_generation']?.value || false}
-              onCheckedChange={(checked) =>
-                updateSetting('inventory.auto_sku_generation', checked)
-              }
-              disabled={saving === 'inventory.auto_sku_generation'}
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      {/* Stock Thresholds */}
+      <SettingsCard
+        icon={Package}
+        title="Stock Thresholds"
+        description="Configure stock level alerts and notifications"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <SettingsField
+            label="Low Stock Threshold"
+            id="low_stock_threshold"
+            required
+            tooltip="Products with inventory below this number will be marked as low stock"
+            error={form.formState.errors.low_stock_threshold?.message}
+            helperText="Set minimum stock level before alerts are triggered"
+          >
+            <Input
+              id="low_stock_threshold"
+              type="number"
+              min={0}
+              max={1000}
+              {...form.register('low_stock_threshold', { valueAsNumber: true })}
+              placeholder="10"
             />
-          </div>
+          </SettingsField>
 
-          {/* SKU Prefix */}
-          <div className="space-y-2">
-            <Label htmlFor="sku-prefix">{settings['inventory.sku_prefix']?.label}</Label>
-            <p className="text-sm text-muted-foreground">
-              {settings['inventory.sku_prefix']?.description}
-            </p>
-            <div className="flex items-center gap-4">
-              <Input
-                id="sku-prefix"
-                value={settings['inventory.sku_prefix']?.value || 'PROD'}
-                onChange={(e) => {
-                  setSettings({
-                    ...settings,
-                    'inventory.sku_prefix': {
-                      ...settings['inventory.sku_prefix'],
-                      value: e.target.value.toUpperCase(),
-                    },
-                  });
-                }}
-                className="max-w-xs"
-              />
-              <Button
-                onClick={() =>
-                  updateSetting('inventory.sku_prefix', settings['inventory.sku_prefix']?.value)
-                }
-                disabled={saving === 'inventory.sku_prefix'}
-                size="sm"
-              >
-                {saving === 'inventory.sku_prefix' ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Notifications & Policies</CardTitle>
-          <CardDescription>
-            Configure stock notifications and inventory policies
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Stock Notifications */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5 flex-1">
-              <Label>{settings['inventory.enable_stock_notifications']?.label}</Label>
-              <p className="text-sm text-muted-foreground">
-                {settings['inventory.enable_stock_notifications']?.description}
-              </p>
-            </div>
-            <Switch
-              checked={settings['inventory.enable_stock_notifications']?.value || false}
-              onCheckedChange={(checked) =>
-                updateSetting('inventory.enable_stock_notifications', checked)
-              }
-              disabled={saving === 'inventory.enable_stock_notifications'}
+          <SettingsField
+            label="Transaction History Page Size"
+            id="transaction_history_page_size"
+            required
+            tooltip="Number of inventory transactions to display per page"
+            error={form.formState.errors.transaction_history_page_size?.message}
+            helperText="Items per page (10-100)"
+          >
+            <Input
+              id="transaction_history_page_size"
+              type="number"
+              min={10}
+              max={100}
+              {...form.register('transaction_history_page_size', { valueAsNumber: true })}
+              placeholder="20"
             />
-          </div>
+          </SettingsField>
+        </div>
+      </SettingsCard>
 
-          {/* Allow Negative Stock */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5 flex-1">
-              <Label>{settings['inventory.allow_negative_stock']?.label}</Label>
-              <p className="text-sm text-muted-foreground">
-                {settings['inventory.allow_negative_stock']?.description}
-              </p>
-            </div>
-            <Switch
-              checked={settings['inventory.allow_negative_stock']?.value || false}
-              onCheckedChange={(checked) =>
-                updateSetting('inventory.allow_negative_stock', checked)
-              }
-              disabled={saving === 'inventory.allow_negative_stock'}
-            />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      {/* SKU Generation */}
+      <SettingsCard
+        icon={SettingsIcon}
+        title="SKU Generation"
+        description="SKUs are automatically generated by the system"
+      >
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <p className="text-sm text-blue-800">
+            <strong>ℹ️ Automatic SKU Generation:</strong> All product SKUs are automatically generated by the system using the pattern: <strong>{`{PREFIX}-{MM}-{DD}-{SEQUENCE}`}</strong>
+          </p>
+          <p className="text-sm text-blue-700 mt-2">
+            Example: <strong>NEXTPIK-01-29-000001</strong> (created on January 29th, sequence 1)
+          </p>
+        </div>
+
+        <SettingsField
+          label="SKU Prefix"
+          id="sku_prefix"
+          required
+          tooltip="Prefix used for auto-generated SKU codes"
+          error={form.formState.errors.sku_prefix?.message}
+          helperText="1-10 uppercase characters (e.g., NEXTPIK, PROD, ITEM)"
+        >
+          <Input
+            id="sku_prefix"
+            {...form.register('sku_prefix')}
+            placeholder="NEXTPIK"
+            className="max-w-xs uppercase"
+            onChange={(e) => {
+              const value = e.target.value.toUpperCase();
+              form.setValue('sku_prefix', value, { shouldDirty: true });
+            }}
+          />
+        </SettingsField>
+      </SettingsCard>
+
+      {/* Notifications & Policies */}
+      <SettingsCard
+        icon={Bell}
+        title="Notifications & Policies"
+        description="Configure stock notifications and inventory policies"
+      >
+        <div className="space-y-4">
+          <SettingsToggle
+            label="Enable Stock Notifications"
+            description="Send alerts when products reach low stock threshold"
+            checked={form.watch('enable_stock_notifications')}
+            onCheckedChange={(checked) => form.setValue('enable_stock_notifications', checked, { shouldDirty: true })}
+            tooltip="Admins and sellers will receive notifications when inventory runs low"
+          />
+
+          <SettingsToggle
+            label="Allow Negative Stock"
+            description="Allow orders even when stock reaches zero"
+            checked={form.watch('allow_negative_stock')}
+            onCheckedChange={(checked) => form.setValue('allow_negative_stock', checked, { shouldDirty: true })}
+            tooltip="When enabled, customers can place orders for out-of-stock items (backorders)"
+          />
+        </div>
+      </SettingsCard>
+
+      {/* Footer */}
+      <SettingsFooter
+        onReset={() => form.reset()}
+        onSave={() => form.handleSubmit(onSubmit)()}
+        isLoading={updating}
+        isDirty={isDirty}
+      />
+    </form>
   );
 }

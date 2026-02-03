@@ -13,7 +13,7 @@ import {
 } from '@/hooks/use-addresses';
 import type { Address, CreateAddressData } from '@/lib/api/addresses';
 import { validateAddressForm, type AddressFormData, type AddressValidationErrors } from '@/lib/validation/address-validation';
-import { toast } from '@/lib/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
 import { CountrySelector } from '@/components/forms/country-selector';
 
 export default function AddressesPage() {
@@ -102,7 +102,7 @@ export default function AddressesPage() {
     const validation = validateAddressForm(formData);
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
-      toast.error('Validation Error', 'Please fix the errors before submitting');
+      standardToasts.generic.validationError('Please fix the errors before submitting');
       return;
     }
 
@@ -110,19 +110,19 @@ export default function AddressesPage() {
       if (editingAddress) {
         // Update existing address
         await updateAddress(editingAddress.id, formData);
-        toast.success('Success', 'Address updated successfully');
+        toast.success('Address updated successfully');
         setEditingAddress(null);
       } else {
         // Create new address
         await createAddress(formData);
-        toast.success('Success', 'Address added successfully');
+        toast.success('Address added successfully');
         setShowAddModal(false);
       }
 
       // Refresh addresses list
       await refetch();
     } catch (error: any) {
-      toast.error('Error', error.message || 'Failed to save address');
+      toast.error(error.message || 'Failed to save address');
     }
   };
 
@@ -134,10 +134,10 @@ export default function AddressesPage() {
     setDeletingId(id);
     try {
       await deleteAddress(id);
-      toast.success('Success', 'Address deleted successfully');
+      toast.success('Address deleted successfully');
       await refetch();
     } catch (error: any) {
-      toast.error('Error', error.message || 'Failed to delete address');
+      toast.error(error.message || 'Failed to delete address');
     } finally {
       setDeletingId(null);
     }
@@ -147,10 +147,10 @@ export default function AddressesPage() {
     setSettingDefaultId(id);
     try {
       await setDefault(id);
-      toast.success('Success', 'Default address updated');
+      toast.success('Default address updated');
       await refetch();
     } catch (error: any) {
-      toast.error('Error', error.message || 'Failed to set default address');
+      toast.error(error.message || 'Failed to set default address');
     } finally {
       setSettingDefaultId(null);
     }

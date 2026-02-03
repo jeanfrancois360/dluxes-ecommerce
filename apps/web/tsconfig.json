@@ -41,13 +41,13 @@
       "@/styles/*": [
         "./src/styles/*"
       ],
-      "@luxury/ui": [
+      "@nextpik/ui": [
         "../../packages/ui/src"
       ],
-      "@luxury/design-system": [
+      "@nextpik/design-system": [
         "../../packages/design-system/src"
       ],
-      "@luxury/shared": [
+      "@nextpik/shared": [
         "../../packages/shared/src"
       ]
     }

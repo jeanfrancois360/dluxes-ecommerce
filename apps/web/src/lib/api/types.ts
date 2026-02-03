@@ -5,11 +5,20 @@ export interface User {
   firstName?: string;
   lastName?: string;
   phone?: string;
-  role: 'BUYER' | 'SELLER' | 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN';
+  avatar?: string;
+  role: 'BUYER' | 'SELLER' | 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN' | 'DELIVERY_PARTNER';
   emailVerified: boolean;
   twoFactorEnabled: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// Profile update data (subset of user fields that can be updated)
+export interface ProfileUpdateData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
 }
 
 export interface UserPreferences {
@@ -34,6 +43,9 @@ export interface RegisterData {
   firstName?: string;
   lastName?: string;
   role?: UserRole;
+  // Seller-specific fields
+  storeName?: string;
+  storeDescription?: string;
 }
 
 // Type aliases for compatibility
@@ -43,7 +55,8 @@ export type RegisterRequest = RegisterData;
 export interface AuthResponse {
   user: User;
   token?: string;
-  access_token?: string; // Support both naming conventions
+  accessToken?: string; // Support camelCase naming
+  access_token?: string; // Support snake_case naming
   refreshToken?: string;
   expiresIn?: number; // Token expiry time in milliseconds
 }
@@ -59,6 +72,25 @@ export interface PasswordResetRequest {
 export interface PasswordResetConfirm {
   token: string;
   newPassword: string;
+}
+
+// Product Type Enums
+export type ProductType = 'PHYSICAL' | 'REAL_ESTATE' | 'VEHICLE' | 'SERVICE' | 'RENTAL' | 'DIGITAL';
+export type PurchaseType = 'INSTANT' | 'INQUIRY';
+export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+
+// Store info for products
+export interface ProductStore {
+  id: string;
+  name: string;
+  slug: string;
+  logo?: string | null;
+  verified: boolean;
+  rating?: number | null;
+  reviewCount: number;
+  totalProducts: number;
+  city?: string | null;
+  country?: string | null;
 }
 
 // Product Types
@@ -84,6 +116,7 @@ export interface Product {
   category?: Category;
   tags: ProductTag[];
   variants: ProductVariant[];
+  store?: ProductStore;
   badges?: string[];
   isFeatured: boolean;
   isActive: boolean;
@@ -91,6 +124,100 @@ export interface Product {
   metaTitle?: string;
   metaDescription?: string;
   canonicalUrl?: string;
+  // Product type properties
+  productType?: ProductType;
+  purchaseType?: PurchaseType;
+  status?: ProductStatus;
+  contactRequired?: boolean;
+  isPreOrder?: boolean;
+  // Real Estate Fields
+  propertyType?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  squareFeet?: number;
+  lotSize?: number;
+  yearBuilt?: number;
+  parkingSpaces?: number;
+  amenities?: string[];
+  propertyAddress?: string;
+  propertyCity?: string;
+  propertyState?: string;
+  propertyCountry?: string;
+  propertyZipCode?: string;
+  propertyLatitude?: number;
+  propertyLongitude?: number;
+  virtualTourUrl?: string;
+  // Vehicle Fields
+  vehicleMake?: string;
+  vehicleModel?: string;
+  vehicleYear?: number;
+  vehicleMileage?: number;
+  vehicleVIN?: string;
+  vehicleCondition?: string;
+  vehicleTransmission?: string;
+  vehicleFuelType?: string;
+  vehicleBodyType?: string;
+  vehicleExteriorColor?: string;
+  vehicleInteriorColor?: string;
+  vehicleDrivetrain?: string;
+  vehicleEngine?: string;
+  vehicleFeatures?: string[];
+  vehicleHistory?: string;
+  vehicleWarranty?: string;
+  vehicleTestDriveAvailable?: boolean;
+  // Digital Fields
+  digitalFileUrl?: string;
+  digitalFileSize?: number;
+  digitalFileFormat?: string;
+  digitalFileName?: string;
+  digitalVersion?: string;
+  digitalLicenseType?: string;
+  digitalDownloadLimit?: number;
+  digitalPreviewUrl?: string;
+  digitalRequirements?: string;
+  digitalInstructions?: string;
+  digitalUpdatePolicy?: string;
+  digitalSupportEmail?: string;
+  // Service Fields
+  serviceType?: string;
+  serviceDuration?: number;
+  serviceDurationUnit?: string;
+  serviceLocation?: string;
+  serviceArea?: string;
+  serviceAvailability?: string;
+  serviceBookingRequired?: boolean;
+  serviceBookingLeadTime?: number;
+  serviceProviderName?: string;
+  serviceProviderBio?: string;
+  serviceProviderImage?: string;
+  serviceProviderCredentials?: string[];
+  serviceMaxClients?: number;
+  serviceCancellationPolicy?: string;
+  serviceIncludes?: string[];
+  serviceExcludes?: string[];
+  serviceRequirements?: string;
+  // Rental Fields
+  rentalPeriodType?: string;
+  rentalMinPeriod?: number;
+  rentalMaxPeriod?: number;
+  rentalPriceHourly?: number;
+  rentalPriceDaily?: number;
+  rentalPriceWeekly?: number;
+  rentalPriceMonthly?: number;
+  rentalSecurityDeposit?: number;
+  rentalPickupLocation?: string;
+  rentalDeliveryAvailable?: boolean;
+  rentalDeliveryFee?: number;
+  rentalLateReturnFee?: number;
+  rentalConditions?: string;
+  rentalAvailability?: string;
+  rentalInsuranceRequired?: boolean;
+  rentalInsuranceOptions?: string;
+  rentalAgeRequirement?: number;
+  rentalIdRequired?: boolean;
+  rentalIncludes?: string[];
+  rentalExcludes?: string[];
+  rentalNotes?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -109,12 +236,14 @@ export interface ProductVariant {
   sku: string;
   price?: number;
   compareAtPrice?: number;
-  stock: number;
-  size?: string;
-  color?: string;
+  inventory: number; // Database field name (was 'stock')
   image?: string;
-  attributes: Record<string, string>; // e.g., { size: 'M', color: 'Blue' }
+  options?: Record<string, any>; // Database field - variant attributes from Prisma
+  attributes: Record<string, string>; // Helper field for easier access (mapped from options)
   isAvailable: boolean;
+  colorHex?: string; // From database - color swatch hex code
+  colorName?: string; // From database - color display name
+  displayOrder?: number; // From database
 }
 
 export interface ProductTag {
@@ -221,6 +350,9 @@ export interface Order {
   shipping: number;
   discount: number;
   total: number;
+  currency: string; // ISO currency code (EUR, USD, GBP, etc.)
+  exchangeRate?: number; // Exchange rate at time of purchase
+  baseCurrency?: string; // Base currency prices were in
   notes?: string;
   timeline: OrderTimeline[];
   delivery?: Delivery;
@@ -350,6 +482,7 @@ export interface SearchFilters {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+  storeId?: string;
 }
 
 export interface SearchResult<T> {

@@ -24,8 +24,8 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "paths": {
-      "@luxury/database": ["../../packages/database/src"],
-      "@luxury/shared": ["../../packages/shared/src"]
+      "@nextpik/database": ["../../packages/database/src"],
+      "@nextpik/shared": ["../../packages/shared/src"]
     }
   },
   "include": ["src/**/*"],

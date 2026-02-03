@@ -3,7 +3,7 @@
 import { PageLayout } from '@/components/layout/page-layout';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { FloatingInput, FloatingSelect, FloatingTextarea, Button } from '@luxury/ui';
+import { FloatingInput, FloatingSelect, FloatingTextarea, Button } from '@nextpik/ui';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({

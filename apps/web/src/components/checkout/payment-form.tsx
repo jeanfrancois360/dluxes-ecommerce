@@ -1,14 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { cn } from '@luxury/ui';
+import { cn } from '@nextpik/ui';
 import type { StripeCardElementOptions } from '@stripe/stripe-js';
+import Link from 'next/link';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import {
+  paymentMethodsApi,
+  type SavedPaymentMethod,
+  CARD_BRAND_LABELS,
+} from '@/lib/api/payment-methods';
+import { CardBrandLogo } from '@/components/payment/card-brand-logo';
 
 interface PaymentFormProps {
   amount: number;
+  currency?: string; // Currency code (e.g., 'EUR', 'USD')
   clientSecret: string;
   onSuccess: (paymentIntentId: string) => void;
   onError: (error: string) => void;
@@ -43,6 +51,7 @@ const CARD_ELEMENT_OPTIONS: StripeCardElementOptions = {
 
 export function PaymentForm({
   amount,
+  currency = 'USD',
   clientSecret,
   onSuccess,
   onError,
@@ -60,6 +69,55 @@ export function PaymentForm({
   const [billingIsSame, setBillingIsSame] = useState(billingAddressSameAsShipping);
   const [cardBrand, setCardBrand] = useState<string>('unknown');
 
+  // Get currency symbol using Intl API
+  const currencySymbol = (() => {
+    try {
+      return new Intl.NumberFormat('en', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(0).replace(/\d/g, '').trim();
+    } catch {
+      return '$'; // Fallback to USD symbol
+    }
+  })();
+
+  // Saved cards state
+  const [savedCards, setSavedCards] = useState<SavedPaymentMethod[]>([]);
+  const [loadingSavedCards, setLoadingSavedCards] = useState(true);
+  const [selectedSavedCard, setSelectedSavedCard] = useState<string | null>(null);
+  const [useNewCard, setUseNewCard] = useState(false);
+
+  // Fetch saved cards on mount
+  useEffect(() => {
+    const fetchSavedCards = async () => {
+      try {
+        const response = await paymentMethodsApi.getPaymentMethods();
+        if (response?.data?.paymentMethods) {
+          setSavedCards(response.data.paymentMethods);
+          // Auto-select default card if exists
+          const defaultCard = response.data.paymentMethods.find(c => c.isDefault);
+          if (defaultCard) {
+            setSelectedSavedCard(defaultCard.id);
+          } else if (response.data.paymentMethods.length > 0) {
+            setSelectedSavedCard(response.data.paymentMethods[0].id);
+          } else {
+            setUseNewCard(true);
+          }
+        } else {
+          setUseNewCard(true);
+        }
+      } catch (error) {
+        console.error('Failed to fetch saved cards:', error);
+        setUseNewCard(true);
+      } finally {
+        setLoadingSavedCards(false);
+      }
+    };
+    fetchSavedCards();
+  }, []);
+
   const handleCardChange = (event: any) => {
     setCardComplete(event.complete);
     setCardError(event.error ? event.error.message : null);
@@ -76,19 +134,30 @@ export function PaymentForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!stripe || !elements) {
+    if (!stripe) {
       onError('Stripe has not loaded yet. Please try again.');
       return;
     }
 
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      onError('Card element not found. Please refresh the page.');
-      return;
-    }
+    // For new cards, check if elements is available and card is complete
+    if (useNewCard) {
+      if (!elements) {
+        onError('Payment form not ready. Please try again.');
+        return;
+      }
 
-    if (!cardComplete) {
-      setCardError('Please complete your card details');
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        onError('Card element not found. Please refresh the page.');
+        return;
+      }
+
+      if (!cardComplete) {
+        setCardError('Please complete your card details');
+        return;
+      }
+    } else if (!selectedSavedCard) {
+      setCardError('Please select a payment method');
       return;
     }
 
@@ -113,21 +182,43 @@ export function PaymentForm({
         }
       }
 
-      // Proceed with payment confirmation
-      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardElement,
-        },
-      });
+      let result;
 
-      if (error) {
-        throw new Error(error.message || 'Payment failed');
+      if (useNewCard) {
+        // Pay with new card
+        const cardElement = elements!.getElement(CardElement)!;
+        result = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardElement,
+          },
+        });
+      } else {
+        // Pay with saved card
+        result = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: selectedSavedCard!,
+        });
       }
 
-      if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'requires_capture')) {
+      if (result.error) {
+        throw new Error(result.error.message || 'Payment failed');
+      }
+
+      if (result.paymentIntent && (result.paymentIntent.status === 'succeeded' || result.paymentIntent.status === 'requires_capture')) {
         // Both 'succeeded' and 'requires_capture' mean payment was authorized successfully
         // 'requires_capture' is used for manual capture (escrow system)
-        onSuccess(paymentIntent.id);
+
+        // CRITICAL FIX: Save the card if user checked the "Save card" checkbox
+        if (useNewCard && saveCard && result.paymentIntent.id) {
+          try {
+            await paymentMethodsApi.saveAfterPayment(result.paymentIntent.id);
+            console.log('Card saved successfully for future use');
+          } catch (saveError) {
+            // Don't fail the payment if card saving fails
+            console.error('Failed to save card for future use:', saveError);
+          }
+        }
+
+        onSuccess(result.paymentIntent.id);
       } else {
         throw new Error('Payment was not successful');
       }
@@ -170,41 +261,160 @@ export function PaymentForm({
       {/* Payment Details Header */}
       <div>
         <h3 className="text-lg font-serif font-semibold mb-2">Payment Details</h3>
-        <p className="text-sm text-neutral-600">Enter your card information to complete your order</p>
+        <p className="text-sm text-neutral-600">
+          {savedCards.length > 0 ? 'Choose a saved card or add a new one' : 'Enter your card information to complete your order'}
+        </p>
       </div>
 
-      {/* Card Element */}
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-3">Card Information</label>
+      {/* Saved Cards Section */}
+      {!loadingSavedCards && savedCards.length > 0 && (
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-neutral-700">Saved Cards</label>
 
-        {/* Accepted Cards Banner */}
-        <div className="mb-3 flex items-center gap-2 text-xs text-neutral-500">
-          <span>We accept:</span>
-          <div className="flex items-center gap-1.5">
-            <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
-              <span className="font-semibold text-neutral-700">VISA</span>
-            </div>
-            <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
-              <span className="font-semibold text-neutral-700">MC</span>
-            </div>
-            <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
-              <span className="font-semibold text-neutral-700">AMEX</span>
-            </div>
-            <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
-              <span className="font-semibold text-neutral-700">DISC</span>
-            </div>
+          {/* Saved Card Options */}
+          <div className="space-y-2">
+            {savedCards.map((card) => (
+              <motion.button
+                key={card.id}
+                type="button"
+                onClick={() => {
+                  setSelectedSavedCard(card.id);
+                  setUseNewCard(false);
+                  setCardError(null);
+                }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                className={cn(
+                  'w-full p-4 flex items-center justify-between rounded-lg border-2 transition-all',
+                  selectedSavedCard === card.id && !useNewCard
+                    ? 'border-gold bg-gold/5 ring-2 ring-gold/20'
+                    : 'border-neutral-200 hover:border-neutral-300'
+                )}
+                disabled={isProcessing}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Radio indicator */}
+                  <div className={cn(
+                    'w-5 h-5 rounded-full border-2 flex items-center justify-center',
+                    selectedSavedCard === card.id && !useNewCard
+                      ? 'border-gold bg-gold'
+                      : 'border-neutral-300'
+                  )}>
+                    {selectedSavedCard === card.id && !useNewCard && (
+                      <div className="w-2 h-2 bg-white rounded-full" />
+                    )}
+                  </div>
+
+                  {/* Card Brand Logo */}
+                  <CardBrandLogo brand={card.brand} size="sm" />
+
+                  {/* Card Details */}
+                  <div className="text-left">
+                    <p className="font-medium text-neutral-900">
+                      {CARD_BRAND_LABELS[card.brand.toLowerCase()] || card.brand} •••• {card.last4}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      Expires {card.expMonth.toString().padStart(2, '0')}/{card.expYear}
+                    </p>
+                  </div>
+                </div>
+
+                {card.isDefault && (
+                  <span className="px-2 py-0.5 bg-gold/20 text-gold text-xs font-medium rounded">
+                    Default
+                  </span>
+                )}
+              </motion.button>
+            ))}
+
+            {/* Use New Card Option */}
+            <motion.button
+              type="button"
+              onClick={() => {
+                setUseNewCard(true);
+                setSelectedSavedCard(null);
+                setCardError(null);
+              }}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              className={cn(
+                'w-full p-4 flex items-center gap-3 rounded-lg border-2 transition-all',
+                useNewCard
+                  ? 'border-gold bg-gold/5 ring-2 ring-gold/20'
+                  : 'border-neutral-200 hover:border-neutral-300 border-dashed'
+              )}
+              disabled={isProcessing}
+            >
+              {/* Radio indicator */}
+              <div className={cn(
+                'w-5 h-5 rounded-full border-2 flex items-center justify-center',
+                useNewCard ? 'border-gold bg-gold' : 'border-neutral-300'
+              )}>
+                {useNewCard && (
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                )}
+              </div>
+
+              <svg className="w-5 h-5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+
+              <span className="font-medium text-neutral-700">Use a new card</span>
+            </motion.button>
           </div>
         </div>
+      )}
 
-        <div
-          className={cn(
-            'relative p-4 bg-white border-2 rounded-lg transition-all duration-300',
-            cardError ? 'border-red-500 shake' : 'border-neutral-200 hover:border-neutral-300',
-            'focus-within:border-gold focus-within:ring-4 focus-within:ring-gold/10',
-            cardComplete && !cardError && 'border-green-500 bg-green-50/20'
-          )}
-        >
-          <CardElement options={CARD_ELEMENT_OPTIONS} onChange={handleCardChange} />
+      {/* Loading Saved Cards */}
+      {loadingSavedCards && (
+        <div className="flex items-center gap-2 text-neutral-500 text-sm">
+          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <span>Loading saved cards...</span>
+        </div>
+      )}
+
+      {/* Card Element - Only show for new card */}
+      <AnimatePresence>
+        {(useNewCard || savedCards.length === 0) && !loadingSavedCards && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <label className="block text-sm font-medium text-neutral-700 mb-3">Card Information</label>
+
+            {/* Accepted Cards Banner */}
+            <div className="mb-3 flex items-center gap-2 text-xs text-neutral-500">
+              <span>We accept:</span>
+              <div className="flex items-center gap-1.5">
+                <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
+                  <span className="font-semibold text-neutral-700">VISA</span>
+                </div>
+                <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
+                  <span className="font-semibold text-neutral-700">MC</span>
+                </div>
+                <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
+                  <span className="font-semibold text-neutral-700">AMEX</span>
+                </div>
+                <div className="px-2 py-1 bg-neutral-100 rounded border border-neutral-200">
+                  <span className="font-semibold text-neutral-700">DISC</span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className={cn(
+                'relative p-4 bg-white border-2 rounded-lg transition-all duration-300',
+                cardError ? 'border-red-500 shake' : 'border-neutral-200 hover:border-neutral-300',
+                'focus-within:border-gold focus-within:ring-4 focus-within:ring-gold/10',
+                cardComplete && !cardError && 'border-green-500 bg-green-50/20'
+              )}
+            >
+              <CardElement options={CARD_ELEMENT_OPTIONS} onChange={handleCardChange} />
 
           {/* Success Checkmark - Only show when card is complete */}
           <AnimatePresence>
@@ -248,15 +458,18 @@ export function PaymentForm({
         )}
 
         {/* Card Tips */}
-        <div className="mt-2 text-xs text-neutral-500 flex items-start gap-1.5">
-          <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>Your payment info is encrypted end-to-end. We never see or store your full card details.</span>
-        </div>
-      </div>
+            <div className="mt-2 text-xs text-neutral-500 flex items-start gap-1.5">
+              <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Your payment info is encrypted end-to-end. We never see or store your full card details.</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Save Card Checkbox */}
+      {/* Save Card Checkbox - Only show for new cards */}
+      {(useNewCard || savedCards.length === 0) && !loadingSavedCards && (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -280,6 +493,7 @@ export function PaymentForm({
           </p>
         </div>
       </motion.div>
+      )}
 
       {/* Billing Address */}
       <motion.div
@@ -370,7 +584,7 @@ export function PaymentForm({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-neutral-600 mb-1">Total Amount</p>
-            <p className="text-3xl font-serif font-bold text-gold">${formatCurrencyAmount(amount, 2)}</p>
+            <p className="text-3xl font-serif font-bold text-gold">{currencySymbol}{formatCurrencyAmount(amount, 2)}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-neutral-500">You will be charged</p>
@@ -395,18 +609,18 @@ export function PaymentForm({
         )}
         <motion.button
           type="submit"
-          disabled={isProcessing || !stripe || !cardComplete}
+          disabled={isProcessing || !stripe || loadingSavedCards || (useNewCard ? !cardComplete : !selectedSavedCard)}
           whileHover={{ scale: isProcessing ? 1 : 1.02 }}
           whileTap={{ scale: isProcessing ? 1 : 0.98 }}
           className={cn(
             "flex-1 px-6 py-5 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 relative overflow-hidden",
-            isProcessing || !stripe || !cardComplete
+            isProcessing || !stripe || loadingSavedCards || (useNewCard ? !cardComplete : !selectedSavedCard)
               ? "bg-neutral-300 text-neutral-500 cursor-not-allowed"
               : "bg-gradient-to-r from-gold via-amber-500 to-gold bg-size-200 animate-gradient text-white shadow-lg shadow-gold/30 hover:shadow-xl hover:shadow-gold/40"
           )}
         >
           {/* Shimmer Effect */}
-          {!isProcessing && stripe && cardComplete && (
+          {!isProcessing && stripe && !loadingSavedCards && (useNewCard ? cardComplete : !!selectedSavedCard) && (
             <motion.div
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
               animate={{
@@ -458,7 +672,7 @@ export function PaymentForm({
                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                   />
                 </svg>
-                <span className="text-lg">Pay ${formatCurrencyAmount(amount, 2)}</span>
+                <span className="text-lg">Pay {currencySymbol}{formatCurrencyAmount(amount, 2)}</span>
               </>
             )}
           </div>
@@ -467,14 +681,26 @@ export function PaymentForm({
       </div>
 
       {/* Privacy Notice */}
-      <motion.p
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="text-xs text-center text-neutral-500"
+        className="space-y-2"
       >
-        Your payment information is encrypted and secure. We never store your full card details.
-      </motion.p>
+        <p className="text-xs text-center text-neutral-500">
+          Your payment information is encrypted and secure. We never store your full card details.
+        </p>
+        <p className="text-xs text-center text-neutral-500">
+          By completing your purchase, you agree to our{' '}
+          <Link href="/terms" className="text-gold hover:text-accent-700 transition-colors">
+            Terms of Service
+          </Link>
+          {' '}and{' '}
+          <Link href="/privacy" className="text-gold hover:text-accent-700 transition-colors">
+            Privacy Policy
+          </Link>
+        </p>
+      </motion.div>
 
       {/* Animations */}
       <style jsx global>{`

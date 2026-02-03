@@ -253,9 +253,10 @@ export class ShippingService {
       }
     }
 
-    // Check for free shipping threshold
+    // Check for free shipping threshold (only if free shipping is enabled)
+    const isFreeShippingEnabled = await this.isFreeShippingEnabled();
     const threshold = bestMatch.freeShippingThreshold?.toNumber();
-    if (threshold && orderTotal >= threshold) {
+    if (isFreeShippingEnabled && threshold && orderTotal >= threshold) {
       return {
         fee: 0,
         zone: bestMatch,
@@ -339,11 +340,16 @@ export class ShippingService {
    * Default shipping options (fallback when no zones configured)
    */
   private async getDefaultShippingOptions(orderTotal: number) {
-    const freeShippingThreshold = await this.getFreeShippingThreshold();
-    const isFreeShipping = orderTotal >= freeShippingThreshold;
+    const isFreeShippingEnabled = await this.isFreeShippingEnabled();
+    let isFreeShipping = false;
 
-    if (isFreeShipping) {
-      this.logger.log(`Free shipping applied (order: ${orderTotal} >= threshold: ${freeShippingThreshold})`);
+    if (isFreeShippingEnabled) {
+      const freeShippingThreshold = await this.getFreeShippingThreshold();
+      isFreeShipping = orderTotal >= freeShippingThreshold;
+
+      if (isFreeShipping) {
+        this.logger.log(`Free shipping applied (order: ${orderTotal} >= threshold: ${freeShippingThreshold})`);
+      }
     }
 
     return [
@@ -369,6 +375,19 @@ export class ShippingService {
   }
 
   /**
+   * Check if free shipping is enabled
+   */
+  async isFreeShippingEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.settingsService.getSetting('free_shipping_enabled');
+      return setting.value === 'true' || setting.value === true;
+    } catch (error) {
+      this.logger.warn('Free shipping enabled setting not found, defaulting to true');
+      return true;
+    }
+  }
+
+  /**
    * Get free shipping threshold from settings
    */
   async getFreeShippingThreshold(): Promise<number> {
@@ -385,6 +404,13 @@ export class ShippingService {
    * Calculate shipping cost based on order total
    */
   async calculateShipping(orderTotal: Decimal, baseShippingCost: Decimal): Promise<Decimal> {
+    const isFreeShippingEnabled = await this.isFreeShippingEnabled();
+
+    if (!isFreeShippingEnabled) {
+      this.logger.log('Free shipping is disabled');
+      return baseShippingCost;
+    }
+
     const threshold = await this.getFreeShippingThreshold();
 
     if (orderTotal.greaterThanOrEqualTo(threshold)) {

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, X, Image as ImageIcon, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { Card, CardContent } from '@luxury/ui';
-import { Button } from '@luxury/ui';
+import { Upload, X, Image as ImageIcon, Loader2, CheckCircle, AlertCircle, Star } from 'lucide-react';
+import { Card, CardContent } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
 import { createClient } from '@supabase/supabase-js';
 import { api } from '@/lib/api/client';
 
@@ -20,6 +20,7 @@ interface UploadedImage {
   id: string;
   uploading: boolean;
   error?: string;
+  isPrimary?: boolean;
 }
 
 export default function EnhancedImageUpload({
@@ -33,6 +34,7 @@ export default function EnhancedImageUpload({
       url,
       id: `initial-${index}`,
       uploading: false,
+      isPrimary: index === 0, // First image is primary by default
     }))
   );
   const [isDragging, setIsDragging] = useState(false);
@@ -51,7 +53,13 @@ export default function EnhancedImageUpload({
 
   const updateParent = useCallback(
     (updatedImages: UploadedImage[]) => {
-      const urls = updatedImages.filter((img) => !img.uploading && !img.error).map((img) => img.url);
+      // Sort so primary image is first
+      const sortedImages = [...updatedImages].sort((a, b) => {
+        if (a.isPrimary) return -1;
+        if (b.isPrimary) return 1;
+        return 0;
+      });
+      const urls = sortedImages.filter((img) => !img.uploading && !img.error).map((img) => img.url);
       onImagesChange(urls);
     },
     [onImagesChange]
@@ -86,17 +94,24 @@ export default function EnhancedImageUpload({
 
   const uploadViaAPI = async (file: File): Promise<string> => {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('folder', folder);
+    formData.append('image', file); // Backend expects 'image' field name
 
-    const response = await api.post('/upload/image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Don't set Content-Type - let browser set it automatically with boundary
+    // Pass folder as query parameter
+    const response = await api.post(`/upload/image?folder=${folder}`, formData);
+
+    // API client unwraps { success, data } to just return data
+    if (!response?.url) {
+      throw new Error('Upload failed - no URL returned from server');
+    }
+
+    // Return full URL - handle both absolute and relative paths
+    if (response.url.startsWith('http')) {
+      return response.url;
+    }
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-    return `${apiUrl}${response.data.url}`;
+    return `${apiUrl.replace('/api/v1', '')}${response.url}`;
   };
 
   const uploadFile = async (file: File): Promise<string> => {
@@ -113,7 +128,7 @@ export default function EnhancedImageUpload({
     return await uploadViaAPI(file);
   };
 
-  const handleFileSelect = async (files: FileList | null) => {
+  const handleFileSelect = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     const fileArray = Array.from(files);
@@ -143,11 +158,15 @@ export default function EnhancedImageUpload({
       return;
     }
 
+    // Check if we need to set a primary image
+    const hasPrimary = images.some((img) => img.isPrimary);
+
     // Create temporary image entries
-    const tempImages: UploadedImage[] = validFiles.map((file) => ({
+    const tempImages: UploadedImage[] = validFiles.map((file, index) => ({
       url: URL.createObjectURL(file),
       id: `temp-${Date.now()}-${Math.random()}`,
       uploading: true,
+      isPrimary: !hasPrimary && images.length === 0 && index === 0, // First image is primary if none exist
     }));
 
     setImages((prev) => [...prev, ...tempImages]);
@@ -163,7 +182,7 @@ export default function EnhancedImageUpload({
         setImages((prev) =>
           prev.map((img) =>
             img.id === tempImage.id
-              ? { ...img, url, uploading: false }
+              ? { ...img, url, uploading: false, isPrimary: img.isPrimary } // Preserve isPrimary
               : img
           )
         );
@@ -181,15 +200,20 @@ export default function EnhancedImageUpload({
         );
       }
     }
-  };
+  }, [images, maxImages, uploadFile]);
 
-  const removeImage = (id: string) => {
-    setImages((prev) => {
-      const updated = prev.filter((img) => img.id !== id);
-      updateParent(updated);
-      return updated;
-    });
-  };
+  const removeImage = useCallback((id: string) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+  }, []);
+
+  const setPrimaryImage = useCallback((id: string) => {
+    setImages((prev) =>
+      prev.map((img) => ({
+        ...img,
+        isPrimary: img.id === id,
+      }))
+    );
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -205,12 +229,12 @@ export default function EnhancedImageUpload({
     e.preventDefault();
     setIsDragging(false);
     handleFileSelect(e.dataTransfer.files);
-  }, []);
+  }, [handleFileSelect]);
 
   // Update parent when images change
-  useState(() => {
+  useEffect(() => {
     updateParent(images);
-  });
+  }, [images, updateParent]);
 
   const canAddMore = images.length < maxImages;
 
@@ -302,6 +326,14 @@ export default function EnhancedImageUpload({
                       className="w-full h-full object-cover"
                     />
 
+                    {/* Primary Badge */}
+                    {image.isPrimary && (
+                      <div className="absolute top-2 left-2 bg-[#CBB57B] text-black px-2 py-1 rounded-md flex items-center gap-1 font-bold text-xs shadow-lg z-10">
+                        <Star className="h-3 w-3 fill-black" />
+                        Primary
+                      </div>
+                    )}
+
                     {/* Overlay */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
                       {image.uploading && (
@@ -319,21 +351,33 @@ export default function EnhancedImageUpload({
                       )}
 
                       {!image.uploading && !image.error && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => removeImage(image.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-4 w-4 mr-1" />
-                          Remove
-                        </Button>
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
+                          {!image.isPrimary && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => setPrimaryImage(image.id)}
+                              className="bg-[#CBB57B] hover:bg-[#a89158] text-black font-bold border-0"
+                            >
+                              <Star className="h-4 w-4 mr-1" />
+                              Set as Primary
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => removeImage(image.id)}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Remove
+                          </Button>
+                        </div>
                       )}
                     </div>
 
                     {/* Success Indicator */}
-                    {!image.uploading && !image.error && (
+                    {!image.uploading && !image.error && !image.isPrimary && (
                       <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
                         <CheckCircle className="h-4 w-4" />
                       </div>

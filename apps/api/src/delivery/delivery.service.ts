@@ -5,6 +5,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { DeliveryAssignmentService } from './delivery-assignment.service';
 import { DeliveryAuditService } from './delivery-audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
 
 @Injectable()
 export class DeliveryService {
@@ -15,6 +16,7 @@ export class DeliveryService {
     private readonly assignmentService: DeliveryAssignmentService,
     private readonly auditService: DeliveryAuditService,
     private readonly notificationsService: NotificationsService,
+    private readonly dhlTrackingService: DhlTrackingService,
   ) {}
 
   /**
@@ -399,6 +401,48 @@ export class DeliveryService {
       },
     });
 
+    // Update order status to DELIVERED
+    await this.prisma.order.update({
+      where: { id: delivery.orderId },
+      data: { status: 'DELIVERED' as any },
+    });
+
+    // TRIGGER PAYMENT CAPTURE on delivery confirmation
+    try {
+      const { PaymentService } = await import('../payment/payment.service');
+      const { SettingsService } = await import('../settings/settings.service');
+      const { CurrencyService } = await import('../currency/currency.service');
+
+      const settingsService = new SettingsService(this.prisma);
+      const currencyService = new CurrencyService(this.prisma, settingsService);
+
+      // PaymentService needs ConfigService but we can pass null if not used for capture
+      const paymentService = new PaymentService(
+        null as any, // configService
+        this.prisma,
+        settingsService,
+        currencyService,
+        null as any, // stripeSubscriptionService
+      );
+
+      const result = await paymentService.capturePaymentWithStrategy(
+        delivery.orderId,
+        'DELIVERY_CONFIRMED',
+        data.confirmedBy,
+      );
+
+      this.logger.log(
+        `Payment captured on delivery confirmation: ${result.capturedAmount} for order ${delivery.order.orderNumber}`,
+      );
+    } catch (captureError) {
+      this.logger.error(
+        `Failed to capture payment on delivery for order ${delivery.order.orderNumber}:`,
+        captureError,
+      );
+      // Don't fail delivery confirmation if payment capture fails
+      // Payment monitor will auto-capture on Day 6 as fallback
+    }
+
     this.logger.log(`Confirmed delivery ${delivery.trackingNumber}`);
 
     return updated;
@@ -438,6 +482,7 @@ export class DeliveryService {
 
   /**
    * Track delivery by tracking number (public endpoint)
+   * DHL API Integration - Enhanced with DHL tracking events
    */
   async trackByTrackingNumber(trackingNumber: string) {
     const delivery = await this.prisma.delivery.findUnique({
@@ -456,6 +501,11 @@ export class DeliveryService {
             logo: true,
           },
         },
+        trackingEvents: {
+          orderBy: {
+            timestamp: 'desc',
+          },
+        },
       },
     });
 
@@ -463,19 +513,51 @@ export class DeliveryService {
       throw new NotFoundException('Tracking number not found');
     }
 
-    return {
-      trackingNumber: delivery.trackingNumber,
-      currentStatus: delivery.currentStatus,
-      expectedDeliveryDate: delivery.expectedDeliveryDate,
-      provider: delivery.provider,
-      timeline: [
+    // Build timeline from DHL tracking events if available
+    let timeline;
+    if (delivery.carrier === 'DHL' && delivery.trackingEvents.length > 0) {
+      // Use DHL tracking events for timeline
+      timeline = delivery.trackingEvents.map((event) => ({
+        status: event.status,
+        statusDescription: event.statusDescription,
+        timestamp: event.timestamp,
+        location: event.location,
+        completed: true,
+      }));
+    } else {
+      // Fallback to basic timeline from timestamp fields
+      timeline = [
         { status: 'PENDING_PICKUP', timestamp: delivery.createdAt, completed: true },
         delivery.pickupScheduledAt && { status: 'PICKUP_SCHEDULED', timestamp: delivery.pickupScheduledAt, completed: true },
         delivery.pickedUpAt && { status: 'PICKED_UP', timestamp: delivery.pickedUpAt, completed: true },
         delivery.inTransitAt && { status: 'IN_TRANSIT', timestamp: delivery.inTransitAt, completed: true },
         delivery.outForDeliveryAt && { status: 'OUT_FOR_DELIVERY', timestamp: delivery.outForDeliveryAt, completed: true },
         delivery.deliveredAt && { status: 'DELIVERED', timestamp: delivery.deliveredAt, completed: true },
-      ].filter(Boolean),
+      ].filter(Boolean);
+    }
+
+    // Generate DHL tracking URL if carrier is DHL
+    const trackingUrl = delivery.carrier === 'DHL'
+      ? this.dhlTrackingService.generateTrackingUrl(trackingNumber)
+      : null;
+
+    return {
+      trackingNumber: delivery.trackingNumber,
+      carrier: delivery.carrier,
+      currentStatus: delivery.currentStatus,
+      currentLocation: delivery.currentLocation,
+      expectedDeliveryDate: delivery.expectedDeliveryDate || delivery.dhlEstimatedDelivery,
+      shippedAt: delivery.shippedAt,
+      provider: delivery.provider,
+      dhlServiceType: delivery.dhlServiceType,
+      dhlLastSyncedAt: delivery.dhlLastSyncedAt,
+      trackingUrl,
+      timeline,
+      order: {
+        orderNumber: delivery.order.orderNumber,
+        status: delivery.order.status,
+        createdAt: delivery.order.createdAt,
+      },
     };
   }
 
@@ -553,6 +635,7 @@ export class DeliveryService {
       FAILED_DELIVERY: 'PROCESSING',
       RETURNED: 'CANCELLED',
       CANCELLED: 'CANCELLED',
+      EXCEPTION: 'PROCESSING',
     };
 
     return statusMap[deliveryStatus] || 'PROCESSING';
@@ -569,6 +652,7 @@ export class DeliveryService {
       FAILED_DELIVERY: 'Delivery Failed',
       RETURNED: 'Returned',
       CANCELLED: 'Cancelled',
+      EXCEPTION: 'Exception',
     };
 
     return titles[status] || status;
@@ -585,6 +669,7 @@ export class DeliveryService {
       FAILED_DELIVERY: 'x-circle',
       RETURNED: 'arrow-left',
       CANCELLED: 'x',
+      EXCEPTION: 'alert-triangle',
     };
 
     return icons[status] || 'circle';

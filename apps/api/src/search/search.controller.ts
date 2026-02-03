@@ -64,6 +64,33 @@ export class SearchController {
   }
 
   /**
+   * Autocomplete search
+   * @route GET /search/autocomplete
+   */
+  @Get('autocomplete')
+  async autocomplete(
+    @Query('q') query: string,
+    @Query('limit') limit?: string
+  ) {
+    try {
+      const limitNum = limit ? parseInt(limit) : 8;
+      const data = await this.searchService.autocomplete(query || '', limitNum);
+      return {
+        success: true,
+        data,
+        total: data.length,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+        data: [],
+        total: 0,
+      };
+    }
+  }
+
+  /**
    * Index all products (Admin only)
    * @route POST /search/index
    */

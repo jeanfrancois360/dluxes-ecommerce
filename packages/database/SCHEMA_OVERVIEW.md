@@ -1,4 +1,4 @@
-# Database Schema Overview - Luxury E-commerce Platform
+# Database Schema Overview - NextPik E-commerce Platform
 
 ## Architecture
 

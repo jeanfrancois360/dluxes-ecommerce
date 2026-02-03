@@ -18,6 +18,20 @@ export function OrderCard({ order }: OrderCardProps) {
   const productImage = firstItem?.product?.heroImage || firstItem?.image;
   const productName = firstItem?.product?.name || firstItem?.name || 'Product';
 
+  // Get currency symbol dynamically based on order's currency
+  const currencySymbol = (() => {
+    try {
+      return new Intl.NumberFormat('en', {
+        style: 'currency',
+        currency: order.currency || 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(0).replace(/\d/g, '').trim();
+    } catch {
+      return '$'; // Fallback to USD symbol
+    }
+  })();
+
   return (
     <Link href={`/account/orders/${order.id}`}>
       <motion.div
@@ -78,7 +92,7 @@ export function OrderCard({ order }: OrderCardProps) {
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-500 mb-1">Total</p>
-            <p className="font-serif text-xl font-bold">${formatCurrencyAmount(order.total, 2)}</p>
+            <p className="font-serif text-xl font-bold">{currencySymbol}{formatCurrencyAmount(order.total, 2)}</p>
           </div>
         </div>
 

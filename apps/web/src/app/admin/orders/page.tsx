@@ -3,35 +3,48 @@
 /**
  * Admin Orders Management Page
  *
- * List and manage all orders with filtering and search
+ * Standardized to match Customer Management Module pattern
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { useAdminOrders } from '@/hooks/use-admin';
+import { useDebounce } from '@/hooks/use-debounce';
+import { adminOrdersApi } from '@/lib/api/admin';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+
+interface OrderStats {
+  total: number;
+  pending: number;
+  processing: number;
+  completed: number;
+  totalRevenue: number;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-    processing: 'bg-blue-100 text-blue-800 border border-blue-200',
-    shipped: 'bg-purple-100 text-purple-800 border border-purple-200',
-    delivered: 'bg-green-100 text-green-800 border border-green-200',
-    cancelled: 'bg-red-100 text-red-800 border border-red-200',
+    pending: 'bg-amber-50 text-amber-700 border border-amber-200',
+    processing: 'bg-blue-50 text-blue-700 border border-blue-200',
+    shipped: 'bg-purple-50 text-purple-700 border border-purple-200',
+    delivered: 'bg-green-50 text-green-700 border border-green-200',
+    cancelled: 'bg-red-50 text-red-700 border border-red-200',
+    confirmed: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
   };
 
   const dotColors: Record<string, string> = {
-    pending: 'bg-yellow-600',
+    pending: 'bg-amber-600',
     processing: 'bg-blue-600',
     shipped: 'bg-purple-600',
     delivered: 'bg-green-600',
     cancelled: 'bg-red-600',
+    confirmed: 'bg-cyan-600',
   };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${colors[status] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${colors[status] || 'bg-gray-50 text-gray-700 border border-gray-200'}`}>
       <div className={`w-1.5 h-1.5 rounded-full ${dotColors[status] || 'bg-gray-600'}`}></div>
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
@@ -40,21 +53,21 @@ function StatusBadge({ status }: { status: string }) {
 
 function PaymentBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    paid: 'bg-green-100 text-green-800 border border-green-200',
-    pending: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-    failed: 'bg-red-100 text-red-800 border border-red-200',
-    refunded: 'bg-gray-100 text-gray-800 border border-gray-200',
+    paid: 'bg-green-50 text-green-700 border border-green-200',
+    pending: 'bg-amber-50 text-amber-700 border border-amber-200',
+    failed: 'bg-red-50 text-red-700 border border-red-200',
+    refunded: 'bg-gray-50 text-gray-700 border border-gray-200',
   };
 
   const dotColors: Record<string, string> = {
     paid: 'bg-green-600',
-    pending: 'bg-yellow-600',
+    pending: 'bg-amber-600',
     failed: 'bg-red-600',
     refunded: 'bg-gray-600',
   };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${colors[status] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${colors[status] || 'bg-gray-50 text-gray-700 border border-gray-200'}`}>
       <div className={`w-1.5 h-1.5 rounded-full ${dotColors[status] || 'bg-gray-600'}`}></div>
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
@@ -64,13 +77,47 @@ function PaymentBadge({ status }: { status: string }) {
 function OrdersContent() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [status, setStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [dateRange, setDateRange] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt-desc');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [stats, setStats] = useState<OrderStats>({ total: 0, pending: 0, processing: 0, completed: 0, totalRevenue: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
 
-  const { orders, total, pages, loading } = useAdminOrders({
+  // Debounce search
+  const search = useDebounce(searchInput, 500);
+
+  // Calculate date range
+  const getDateRange = (range: string) => {
+    const now = new Date();
+    let startDate = '';
+    let endDate = '';
+
+    switch (range) {
+      case 'today':
+        startDate = format(now, 'yyyy-MM-dd');
+        endDate = format(now, 'yyyy-MM-dd');
+        break;
+      case '7days':
+        startDate = format(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+        endDate = format(now, 'yyyy-MM-dd');
+        break;
+      case '30days':
+        startDate = format(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+        endDate = format(now, 'yyyy-MM-dd');
+        break;
+      default:
+        break;
+    }
+
+    return { startDate, endDate };
+  };
+
+  const { startDate, endDate } = getDateRange(dateRange);
+
+  const { orders, total, pages, loading, refetch } = useAdminOrders({
     page,
     limit,
     search,
@@ -80,21 +127,107 @@ function OrdersContent() {
     endDate,
   });
 
+  // Calculate stats
+  useEffect(() => {
+    const calculateStats = async () => {
+      try {
+        setStatsLoading(true);
+        // Fetch all orders for stats (or use a dedicated stats endpoint if available)
+        const allOrders = await adminOrdersApi.getAll({ limit: 1000 });
+        const orderList = allOrders.orders;
+
+        const pendingCount = orderList.filter(o => o.status === 'pending').length;
+        const processingCount = orderList.filter(o => o.status === 'processing').length;
+        const completedCount = orderList.filter(o => o.status === 'delivered' || o.status === 'completed').length;
+        const totalRevenue = orderList.reduce((sum, o) => {
+          if (o.paymentStatus === 'paid') {
+            return sum + Number(o.total);
+          }
+          return sum;
+        }, 0);
+
+        setStats({
+          total: allOrders.total,
+          pending: pendingCount,
+          processing: processingCount,
+          completed: completedCount,
+          totalRevenue,
+        });
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    calculateStats();
+  }, []);
+
+  // Active filters
+  const activeFilters = useMemo(() => {
+    const filters: Array<{ key: string; label: string; value: string }> = [];
+    if (searchInput) filters.push({ key: 'search', label: 'Search', value: `"${searchInput}"` });
+    if (status) filters.push({ key: 'status', label: 'Status', value: status });
+    if (paymentStatus) filters.push({ key: 'payment', label: 'Payment', value: paymentStatus });
+    if (dateRange) filters.push({ key: 'date', label: 'Date', value: dateRange === 'today' ? 'Today' : dateRange === '7days' ? 'Last 7 Days' : 'Last 30 Days' });
+    if (sortBy !== 'createdAt-desc') filters.push({ key: 'sort', label: 'Sort', value: sortBy.split('-')[0] });
+    return filters;
+  }, [searchInput, status, paymentStatus, dateRange, sortBy]);
+
+  const hasActiveFilters = activeFilters.length > 0;
+  const activeFilterCount = activeFilters.length;
+
+  const clearFilters = () => {
+    setSearchInput('');
+    setStatus('');
+    setPaymentStatus('');
+    setDateRange('');
+    setSortBy('createdAt-desc');
+    setPage(1);
+  };
+
+  const clearFilter = (key: string) => {
+    switch (key) {
+      case 'search': setSearchInput(''); break;
+      case 'status': setStatus(''); break;
+      case 'payment': setPaymentStatus(''); break;
+      case 'date': setDateRange(''); break;
+      case 'sort': setSortBy('createdAt-desc'); break;
+    }
+    setPage(1);
+  };
+
+  // Selection
+  const allSelected = orders.length > 0 && selectedIds.length === orders.length;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(orders.map(o => o.id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  // Export
   const handleExport = () => {
     const csv = [
-      ['Order Number', 'Customer', 'Email', 'Total', 'Status', 'Payment Status', 'Date'],
-      ...orders.map((o) => [
+      ['Order Number', 'Customer', 'Email', 'Items', 'Total', 'Status', 'Payment', 'Date'],
+      ...orders.map(o => [
         o.orderNumber,
-        o.customer.name,
-        o.customer.email,
+        o.customer?.name || 'Guest Customer',
+        o.customer?.email || 'N/A',
+        o.items?.length || 0,
         o.total,
         o.status,
         o.paymentStatus,
-        format(new Date(o.createdAt), 'yyyy-MM-dd'),
+        o.createdAt ? format(new Date(o.createdAt), 'yyyy-MM-dd') : 'N/A',
       ]),
-    ]
-      .map((row) => row.join(','))
-      .join('\n');
+    ].map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -104,88 +237,267 @@ function OrdersContent() {
     a.click();
   };
 
+  const handleBulkExport = () => {
+    const selectedOrders = orders.filter(o => selectedIds.includes(o.id));
+    const csv = [
+      ['Order Number', 'Customer', 'Email', 'Items', 'Total', 'Status', 'Payment', 'Date'],
+      ...selectedOrders.map(o => [
+        o.orderNumber,
+        o.customer?.name || 'Guest Customer',
+        o.customer?.email || 'N/A',
+        o.items?.length || 0,
+        o.total,
+        o.status,
+        o.paymentStatus,
+        o.createdAt ? format(new Date(o.createdAt), 'yyyy-MM-dd') : 'N/A',
+      ]),
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orders-selected-${selectedIds.length}.csv`;
+    a.click();
+  };
+
+  // Sort orders on frontend
+  const sortedOrders = useMemo(() => {
+    const [field, order] = sortBy.split('-');
+    return [...orders].sort((a, b) => {
+      let aVal: any;
+      let bVal: any;
+
+      switch (field) {
+        case 'createdAt':
+          aVal = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          bVal = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          break;
+        case 'total':
+          aVal = Number(a.total);
+          bVal = Number(b.total);
+          break;
+        default:
+          return 0;
+      }
+
+      if (order === 'desc') {
+        return bVal - aVal;
+      }
+      return aVal - bVal;
+    });
+  }, [orders, sortBy]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-black">Orders</h1>
-          <p className="text-neutral-600 mt-1">Manage customer orders</p>
-        </div>
+        <p className="text-neutral-600">Manage customer orders</p>
         <button
           onClick={handleExport}
           className="px-4 py-2.5 bg-white border border-neutral-300 text-black rounded-lg hover:border-[#CBB57B] hover:text-[#CBB57B] transition-all flex items-center gap-2 shadow-sm font-medium"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           Export
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div>
-            <input
-              type="text"
-              placeholder="Search orders..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-4 py-2 bg-white border border-neutral-300 text-black placeholder-neutral-400 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-            />
-          </div>
-          <div>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-            >
-              <option value="">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-          <div>
-            <select
-              value={paymentStatus}
-              onChange={(e) => setPaymentStatus(e.target.value)}
-              className="w-full px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-            >
-              <option value="">All Payments</option>
-              <option value="paid">Paid</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-              <option value="refunded">Refunded</option>
-            </select>
-          </div>
-          <div>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-              placeholder="Start Date"
-            />
-          </div>
-          <div>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-              placeholder="End Date"
-            />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm text-neutral-600 mb-1">Total Orders</p>
+              <p className="text-2xl font-bold text-black">
+                {statsLoading ? '...' : formatNumber(stats.total)}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </div>
           </div>
         </div>
+
+        <div className={`bg-white rounded-xl shadow-sm border p-6 ${stats.pending > 0 ? 'border-amber-200 bg-amber-50/30' : 'border-neutral-200'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm text-neutral-600 mb-1">Pending</p>
+              <p className={`text-2xl font-bold ${stats.pending > 0 ? 'text-amber-600' : 'text-black'}`}>
+                {statsLoading ? '...' : formatNumber(stats.pending)}
+              </p>
+              {!statsLoading && stats.pending > 0 && (
+                <p className="text-xs text-amber-600 mt-1">Awaiting action</p>
+              )}
+            </div>
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stats.pending > 0 ? 'bg-amber-100' : 'bg-neutral-100'}`}>
+              <svg className={`w-6 h-6 ${stats.pending > 0 ? 'text-amber-600' : 'text-neutral-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm text-neutral-600 mb-1">Processing</p>
+              <p className="text-2xl font-bold text-black">
+                {statsLoading ? '...' : formatNumber(stats.processing)}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm text-neutral-600 mb-1">Completed</p>
+              <p className="text-2xl font-bold text-black">
+                {statsLoading ? '...' : formatNumber(stats.completed)}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm text-neutral-600 mb-1">Total Revenue</p>
+              <p className="text-2xl font-bold text-black">
+                {statsLoading ? '...' : `$${formatCurrencyAmount(stats.totalRevenue, 0)}`}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Search */}
+          <div className="flex-1 min-w-[250px] relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search by order #, customer name, or email..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full pl-10 pr-10 py-2 bg-white border border-neutral-300 text-black placeholder-neutral-400 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+            />
+            {searchInput && (
+              <button
+                onClick={() => setSearchInput('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Status Filter */}
+          <select
+            value={status}
+            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+            className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+          >
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+
+          {/* Payment Filter */}
+          <select
+            value={paymentStatus}
+            onChange={(e) => { setPaymentStatus(e.target.value); setPage(1); }}
+            className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+          >
+            <option value="">All Payments</option>
+            <option value="paid">Paid</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+            <option value="refunded">Refunded</option>
+          </select>
+
+          {/* Date Range Filter */}
+          <select
+            value={dateRange}
+            onChange={(e) => { setDateRange(e.target.value); setPage(1); }}
+            className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+          >
+            <option value="">All Time</option>
+            <option value="today">Today</option>
+            <option value="7days">Last 7 Days</option>
+            <option value="30days">Last 30 Days</option>
+          </select>
+
+          {/* Sort By */}
+          <select
+            value={sortBy}
+            onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
+            className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+          >
+            <option value="createdAt-desc">Newest First</option>
+            <option value="createdAt-asc">Oldest First</option>
+            <option value="total-desc">Amount: High to Low</option>
+            <option value="total-asc">Amount: Low to High</option>
+          </select>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Clear ({activeFilterCount})
+            </button>
+          )}
+        </div>
+
+        {/* Active Filter Pills */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-neutral-200">
+            {activeFilters.map(filter => (
+              <span key={filter.key} className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
+                {filter.label}: {filter.value}
+                <button onClick={() => clearFilter(filter.key)} className="hover:text-neutral-900">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Orders Table */}
@@ -199,67 +511,79 @@ function OrdersContent() {
               </div>
               <p className="mt-4 text-neutral-600 font-medium">Loading orders...</p>
             </div>
-          ) : orders.length === 0 ? (
+          ) : sortedOrders.length === 0 ? (
             <div className="p-16 text-center">
               <svg className="w-16 h-16 mx-auto text-neutral-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
               <p className="text-neutral-600 font-medium">No orders found</p>
+              <p className="text-neutral-500 text-sm mt-1">Try adjusting your filters</p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-neutral-200 bg-neutral-50">
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Order
+                  <th className="px-4 py-4 w-[40px]">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-neutral-300 text-[#CBB57B] focus:ring-[#CBB57B]"
+                    />
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Customer
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Items
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Total
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Payment
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Date
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Actions
-                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Order</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Customer</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Items</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Total</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Payment</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Date</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
-                {orders.map((order) => (
+                {sortedOrders.map(order => (
                   <tr key={order.id} className="group transition-all duration-200 hover:bg-neutral-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">{order.orderNumber}</div>
+                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(order.id)}
+                        onChange={() => toggleSelect(order.id)}
+                        className="w-4 h-4 rounded border-neutral-300 text-[#CBB57B] focus:ring-[#CBB57B]"
+                      />
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-black font-bold">{order.customer.name}</div>
-                      <div className="text-xs text-neutral-600 mt-0.5">{order.customer.email}</div>
+                      <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">
+                        {order.orderNumber}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 min-w-[40px] min-h-[40px] bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-full overflow-hidden flex items-center justify-center ring-2 ring-[#CBB57B]/30">
+                          <span className="text-white font-semibold text-sm">
+                            {order.customer?.name?.charAt(0).toUpperCase() || 'G'}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-black">{order.customer?.name || 'Guest Customer'}</div>
+                          <div className="text-xs text-neutral-600">{order.customer?.email || 'No email provided'}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-700">
-                      {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
+                      {order.items?.length || 0} {(order.items?.length || 0) === 1 ? 'item' : 'items'}
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-bold text-black">${formatCurrencyAmount(order.total, 2)}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={order.status} />
-                    </td>
-                    <td className="px-6 py-4">
                       <PaymentBadge status={order.paymentStatus} />
                     </td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={order.status} />
+                    </td>
                     <td className="px-6 py-4 text-sm text-neutral-700">
-                      {format(new Date(order.createdAt), 'MMM d, yyyy')}
+                      {order.createdAt ? format(new Date(order.createdAt), 'MMM d, yyyy') : 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <Link
@@ -281,7 +605,7 @@ function OrdersContent() {
         </div>
 
         {/* Pagination */}
-        {!loading && orders.length > 0 && (
+        {!loading && sortedOrders.length > 0 && (
           <div className="px-6 py-4 border-t border-neutral-200 bg-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -322,6 +646,52 @@ function OrdersContent() {
           </div>
         )}
       </div>
+
+      {/* Bulk Actions Bar (Fixed at Bottom) */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-slate-900 text-white rounded-lg px-6 py-3 flex items-center gap-4 shadow-xl">
+            <span className="font-medium text-sm">
+              {selectedIds.length} order{selectedIds.length > 1 ? 's' : ''} selected
+            </span>
+
+            <div className="h-4 w-px bg-slate-600" />
+
+            <button
+              onClick={handleBulkExport}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Export
+            </button>
+
+            <button
+              onClick={() => {
+                // Would implement print invoices functionality
+                alert('Print invoices feature coming soon');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Print Invoices
+            </button>
+
+            <button
+              onClick={() => setSelectedIds([])}
+              className="flex items-center gap-1.5 px-2 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
+              title="Clear selection"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

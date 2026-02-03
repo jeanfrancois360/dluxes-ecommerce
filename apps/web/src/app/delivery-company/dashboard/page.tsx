@@ -13,6 +13,8 @@ import {
   Calendar
 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
 interface CompanyStats {
   provider: {
     id: string;
@@ -49,7 +51,7 @@ export default function DeliveryCompanyDashboard() {
         return;
       }
 
-      const response = await fetch('/api/v1/delivery-company/statistics', {
+      const response = await fetch(`${API_URL}/delivery-company/statistics`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -70,7 +72,7 @@ export default function DeliveryCompanyDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-white">Loading dashboard...</div>
       </div>
     );
@@ -78,7 +80,7 @@ export default function DeliveryCompanyDashboard() {
 
   if (error || !stats) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-red-500">{error || 'Failed to load data'}</div>
       </div>
     );
@@ -146,9 +148,9 @@ export default function DeliveryCompanyDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-black/50 backdrop-blur-sm">
+      <div className="border-b border-gray-200 bg-gray-50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -171,7 +173,7 @@ export default function DeliveryCompanyDashboard() {
       </div>
 
       {/* Navigation */}
-      <div className="border-b border-white/10">
+      <div className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8 py-4">
             <button
@@ -205,7 +207,7 @@ export default function DeliveryCompanyDashboard() {
             return (
               <div
                 key={index}
-                className="bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/10 transition"
+                className="bg-white/5 border border-gray-200 rounded-lg p-6 hover:bg-white/10 transition"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className={`p-3 rounded-lg ${stat.bgColor}`}>
@@ -229,7 +231,7 @@ export default function DeliveryCompanyDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+        <div className="bg-white/5 border border-gray-200 rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button

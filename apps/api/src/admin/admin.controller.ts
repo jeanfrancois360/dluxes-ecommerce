@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Delete,
   Param,
@@ -9,8 +10,10 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { PrismaService } from '../database/prisma.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -24,7 +27,10 @@ import { UserRole } from '@prisma/client';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   /**
    * Get dashboard statistics
@@ -104,17 +110,131 @@ export class AdminController {
   async getAllUsers(
     @Query('role') role?: UserRole,
     @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
   ) {
     try {
       const data = await this.adminService.getAllUsers({
         role,
         page: page ? parseInt(page) : undefined,
         pageSize: pageSize ? parseInt(pageSize) : undefined,
+        search,
+        status,
       });
       return {
         success: true,
         data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Get customer stats
+   * @route GET /admin/customers/stats
+   */
+  @Get('customers/stats')
+  async getCustomerStats() {
+    try {
+      const data = await this.adminService.getCustomerStats();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Get single user by ID
+   * @route GET /admin/users/:id
+   */
+  @Get('users/:id')
+  async getUserById(@Param('id') id: string) {
+    try {
+      const data = await this.adminService.getUserById(id);
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Update user details
+   * @route PATCH /admin/users/:id
+   */
+  @Patch('users/:id')
+  async updateUser(
+    @Param('id') id: string,
+    @Body() body: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      role?: UserRole;
+      isActive?: boolean;
+    }
+  ) {
+    try {
+      const data = await this.adminService.updateUser(id, body);
+      return {
+        success: true,
+        data,
+        message: 'User updated successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Suspend user
+   * @route PATCH /admin/users/:id/suspend
+   */
+  @Patch('users/:id/suspend')
+  async suspendUser(@Param('id') id: string) {
+    try {
+      const data = await this.adminService.suspendUser(id);
+      return {
+        success: true,
+        data,
+        message: 'User suspended successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Activate user
+   * @route PATCH /admin/users/:id/activate
+   */
+  @Patch('users/:id/activate')
+  async activateUser(@Param('id') id: string) {
+    try {
+      const data = await this.adminService.activateUser(id);
+      return {
+        success: true,
+        data,
+        message: 'User activated successfully',
       };
     } catch (error) {
       return {
@@ -225,6 +345,244 @@ export class AdminController {
         message: error instanceof Error ? error.message : "An error occurred",
       };
     }
+  }
+
+  // ============================================================================
+  // Dashboard Routes (Frontend Compatibility)
+  // ============================================================================
+
+  /**
+   * Get dashboard statistics
+   * @route GET /admin/dashboard/stats
+   */
+  @Get('dashboard/stats')
+  async getDashboardStats() {
+    try {
+      const stats = await this.adminService.getStats();
+      return {
+        totalRevenue: stats.revenue,
+        totalOrders: stats.orders,
+        totalCustomers: stats.customers,
+        totalProducts: stats.products,
+        // Mock change percentages - can be calculated from historical data
+        revenueChange: 0,
+        ordersChange: 0,
+        customersChange: 0,
+        productsChange: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Get revenue data for chart
+   * @route GET /admin/dashboard/revenue
+   */
+  @Get('dashboard/revenue')
+  async getDashboardRevenue(@Query('days') days?: string) {
+    try {
+      const analytics = await this.adminService.getAnalytics(
+        days ? parseInt(days) : 30
+      );
+
+      // Transform revenue data to expected format
+      const revenueData = analytics.revenueData.map((item: any) => ({
+        date: item.createdAt.toISOString().split('T')[0],
+        revenue: Number(item._sum.total || 0),
+      }));
+
+      return revenueData;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Get orders by status for donut chart
+   * @route GET /admin/dashboard/orders-by-status
+   */
+  @Get('dashboard/orders-by-status')
+  async getDashboardOrdersByStatus() {
+    try {
+      const analytics = await this.adminService.getAnalytics(30);
+
+      // Transform to expected format
+      const ordersByStatus = analytics.ordersByStatus.map((item: any) => ({
+        status: item.status,
+        count: item._count._all,
+        value: item._count._all, // Simplified - can be actual value if needed
+      }));
+
+      return ordersByStatus;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Get top products for dashboard
+   * @route GET /admin/dashboard/top-products
+   */
+  @Get('dashboard/top-products')
+  async getDashboardTopProducts(@Query('limit') limit?: string) {
+    try {
+      const analytics = await this.adminService.getAnalytics(30);
+
+      const limitNum = limit ? parseInt(limit) : 5;
+      const topProducts = analytics.topProducts.slice(0, limitNum).map((item: any) => ({
+        id: item.product?.id || item.productId,
+        name: item.product?.name || 'Unknown Product',
+        revenue: Number(item._sum.total || 0),
+        orders: item._sum.quantity || 0,
+        image: item.product?.heroImage,
+      }));
+
+      return topProducts;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Get customer growth data
+   * @route GET /admin/dashboard/customer-growth
+   */
+  @Get('dashboard/customer-growth')
+  async getDashboardCustomerGrowth(@Query('days') days?: string) {
+    try {
+      const daysNum = days ? parseInt(days) : 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysNum);
+
+      // Get customer registration data
+      const customerData = await this.prisma.user.groupBy({
+        by: ['createdAt'],
+        where: {
+          createdAt: {
+            gte: startDate,
+          },
+          role: 'BUYER',
+        },
+        _count: {
+          _all: true,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      });
+
+      const growthData = customerData.map((item: any) => ({
+        date: item.createdAt.toISOString().split('T')[0],
+        customers: item._count._all,
+      }));
+
+      return growthData;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  /**
+   * Get recent orders for dashboard
+   * @route GET /admin/dashboard/recent-orders
+   */
+  @Get('dashboard/recent-orders')
+  async getDashboardRecentOrders(@Query('limit') limit?: string) {
+    try {
+      const limitNum = limit ? parseInt(limit) : 10;
+
+      const orders = await this.prisma.order.findMany({
+        take: limitNum,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      const recentOrders = orders.map((order: any) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        customer: {
+          name: `${order.user.firstName} ${order.user.lastName}`,
+          email: order.user.email,
+        },
+        total: Number(order.total),
+        status: order.status,
+        createdAt: order.createdAt.toISOString(),
+      }));
+
+      return recentOrders;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An error occurred",
+      };
+    }
+  }
+
+  // === ADMIN NOTES ===
+
+  /**
+   * Get all notes for a customer
+   */
+  @Get('customers/:id/notes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getCustomerNotes(@Param('id') id: string) {
+    return this.adminService.getCustomerNotes(id);
+  }
+
+  /**
+   * Add a new note for a customer
+   */
+  @Post('customers/:id/notes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async addCustomerNote(
+    @Param('id') id: string,
+    @Body() body: { content: string },
+    @Req() req,
+  ) {
+    return this.adminService.addCustomerNote(id, body.content, req.user.id);
+  }
+
+  /**
+   * Delete a customer note
+   */
+  @Delete('customers/:id/notes/:noteId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async deleteCustomerNote(
+    @Param('id') customerId: string,
+    @Param('noteId') noteId: string,
+    @Req() req,
+  ) {
+    return this.adminService.deleteCustomerNote(noteId, req.user.id);
   }
 }
 

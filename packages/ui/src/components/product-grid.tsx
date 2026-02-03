@@ -135,7 +135,7 @@ const ListView: React.FC<{
   onAddToWishlist?: (id: string) => void;
   onQuickAdd?: (id: string) => void;
   onNavigate?: (slug: string) => void;
-}> = ({ products, gap, className, currencySymbol = '$', onQuickView, onAddToWishlist, onQuickAdd, onNavigate }) => {
+}> = ({ products, gap, className, currencySymbol = '$', onQuickView, onAddToWishlist, onQuickAdd: _onQuickAdd, onNavigate }) => {
   const gapClass = {
     sm: 'gap-4',
     md: 'gap-6',

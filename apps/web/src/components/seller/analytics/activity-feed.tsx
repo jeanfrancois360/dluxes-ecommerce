@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader } from '@luxury/ui';
+import { Card, CardContent, CardHeader } from '@nextpik/ui';
 import {
   Package,
   ShoppingCart,
