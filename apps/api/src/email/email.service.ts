@@ -47,7 +47,7 @@ export class EmailService {
         return true;
       }
 
-      const html = magicLinkTemplate(name, magicLink);
+      const html = magicLinkTemplate(name, magicLink, this.frontendUrl);
 
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
@@ -89,7 +89,7 @@ export class EmailService {
         return true;
       }
 
-      const html = passwordResetTemplate(name, resetLink);
+      const html = passwordResetTemplate(name, resetLink, this.frontendUrl);
 
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
@@ -121,7 +121,7 @@ export class EmailService {
         return false;
       }
 
-      const html = welcomeTemplate(name);
+      const html = welcomeTemplate(name, this.frontendUrl);
 
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
@@ -462,6 +462,7 @@ export class EmailService {
         type,
         ipAddress,
         timestamp: new Date(),
+        frontendUrl: this.frontendUrl,
       });
 
       const { data, error } = await this.resend.emails.send({

@@ -71,7 +71,7 @@ function SubscriptionPlansContent() {
   // Show error toast if data fetch fails
   React.useEffect(() => {
     if (error) {
-      toast.error('Failed to fetch subscription plans');
+      toast.error('Failed to fetch feature plans');
     }
   }, [error]);
 
@@ -254,8 +254,8 @@ function SubscriptionPlansContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Subscription Plans</h1>
-          <p className="text-gray-500 mt-1">Manage pricing tiers and features</p>
+          <h1 className="text-2xl font-bold text-gray-900">Feature Plans</h1>
+          <p className="text-gray-500 mt-1">Manage plans that unlock premium product types (SERVICE, INQUIRY, REAL_ESTATE)</p>
         </div>
         <button
           onClick={handleCreate}
@@ -269,16 +269,16 @@ function SubscriptionPlansContent() {
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
-          title="Total Plans"
+          title="Total Feature Plans"
           value={(plans?.length || 0).toString()}
           icon={
             <svg className="w-6 h-6 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
           }
         />
         <StatCard
-          title="Total Subscribers"
+          title="Active Subscribers"
           value={totalSubscribers.toString()}
           icon={
             <svg className="w-6 h-6 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">

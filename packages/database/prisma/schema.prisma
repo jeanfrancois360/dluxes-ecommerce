@@ -24,6 +24,7 @@ model User {
   // 2FA
   twoFactorEnabled Boolean @default(false)
   twoFactorSecret  String?
+  backupCodes      Json?    // Hashed 2FA backup codes (array of strings)
 
   // OAuth & Email OTP
   googleId        String?      @unique
@@ -1564,12 +1565,13 @@ model UserSession {
   token  String @unique
 
   // Device Information
-  deviceName String?
-  deviceType String? // "desktop", "mobile", "tablet"
-  browser    String?
-  os         String?
-  ipAddress  String?
-  location   String? // City, Country
+  deviceName  String?
+  deviceType  String? // "desktop", "mobile", "tablet"
+  browser     String?
+  os          String?
+  ipAddress   String?
+  location    String? // City, Country
+  fingerprint String? // Hash of IP + User-Agent for security
 
   // Session Status
   isActive     Boolean  @default(true)
@@ -1584,6 +1586,7 @@ model UserSession {
   @@index([token])
   @@index([expiresAt])
   @@index([isActive])
+  @@index([fingerprint])
   @@map("user_sessions")
 }
 

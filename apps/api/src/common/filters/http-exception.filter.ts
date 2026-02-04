@@ -24,6 +24,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
     let errors: any = undefined;
+    let extra: Record<string, any> = {};
 
     // Handle NestJS HTTP exceptions
     if (exception instanceof HttpException) {
@@ -31,8 +32,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const exceptionResponse = exception.getResponse();
 
       if (typeof exceptionResponse === 'object') {
-        message = (exceptionResponse as any).message || exception.message;
-        errors = (exceptionResponse as any).errors;
+        const resp = exceptionResponse as Record<string, any>;
+        message = resp.message || exception.message;
+        errors = resp.errors;
+        // Pass through any extra fields (e.g. canResend, resendEmail)
+        const { message: _m, statusCode: _s, error: _e, errors: _er, ...rest } = resp;
+        extra = rest;
       } else {
         message = exceptionResponse as string;
       }
@@ -94,6 +99,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: status,
       message,
       ...(errors && { errors }),
+      ...extra,
       timestamp: new Date().toISOString(),
       path: request.url,
     });

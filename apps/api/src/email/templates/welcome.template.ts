@@ -1,6 +1,9 @@
 import { baseEmailTemplate } from './base.template';
 
-export const welcomeTemplate = (name: string) => {
+export const welcomeTemplate = (name: string, frontendUrl?: string) => {
+  const siteUrl = frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const supportUrl = `${siteUrl}/support`;
+
   const content = `
     <div style="text-align: center;">
       <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #10B981 0%, #047857 100%); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-center;">
@@ -72,7 +75,7 @@ export const welcomeTemplate = (name: string) => {
     </div>
 
     <div style="text-align: center; margin: 40px 0;">
-      <a href="{{SITE_URL}}"
+      <a href="${siteUrl}"
          style="display: inline-block; background: linear-gradient(135deg, #000000 0%, #262626 100%); color: #FFFFFF; padding: 16px 48px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); margin-right: 12px;">
         Start Shopping
       </a>
@@ -88,9 +91,12 @@ export const welcomeTemplate = (name: string) => {
 
     <p style="color: #737373; font-size: 14px; text-align: center; margin-top: 32px; line-height: 1.6;">
       Need help getting started?<br/>
-      <a href="{{SUPPORT_URL}}" style="color: #CBB57B; text-decoration: none; font-weight: 500;">Contact our support team</a>
+      <a href="${supportUrl}" style="color: #CBB57B; text-decoration: none; font-weight: 500;">Contact our support team</a>
     </p>
   `;
 
-  return baseEmailTemplate(content);
+  return baseEmailTemplate(content, {
+    frontendUrl: siteUrl,
+    showUnsubscribe: true, // Welcome emails can have unsubscribe
+  });
 };

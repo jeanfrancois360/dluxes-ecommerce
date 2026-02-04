@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
+import { envValidationSchema } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -40,6 +41,8 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { CreditsModule } from './credits/credits.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { DhlModule } from './integrations/dhl/dhl.module';
+import { LoggerModule } from './logger/logger.module';
+import { HealthModule } from './health/health.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
 import { SellerCreditsCronService } from './cron/seller-credits.cron';
@@ -50,6 +53,11 @@ import { SellerCreditsCronService } from './cron/seller-credits.cron';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validationSchema: envValidationSchema,
+      validationOptions: {
+        abortEarly: false, // Show all validation errors, not just the first one
+        allowUnknown: true, // Allow extra env vars not defined in schema
+      },
     }),
     SupabaseModule,
     ScheduleModule.forRoot(),
@@ -60,6 +68,8 @@ import { SellerCreditsCronService } from './cron/seller-credits.cron';
       },
     ]),
     DatabaseModule,
+    LoggerModule,
+    HealthModule,
     DhlModule,
     AuthModule,
     UsersModule,

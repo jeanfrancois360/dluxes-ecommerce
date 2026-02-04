@@ -1,10 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import compression from 'compression';
+import helmet from 'helmet';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
@@ -17,6 +19,31 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   console.log('[BOOTSTRAP] Step 3: Got ConfigService');
+
+  // Security headers with Helmet
+  console.log('[BOOTSTRAP] Step 3.5: Configuring security headers...');
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          scriptSrc: ["'self'"],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+          imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+          connectSrc: ["'self'", 'https://api.stripe.com'],
+          frameSrc: ["'self'", 'https://js.stripe.com', 'https://hooks.stripe.com'],
+        },
+      },
+      crossOriginEmbedderPolicy: false, // Allow embedding for Stripe, etc.
+      hsts: {
+        maxAge: 31536000, // 1 year
+        includeSubDomains: true,
+        preload: true,
+      },
+    }),
+  );
+  console.log('[BOOTSTRAP] Step 3.6: Security headers configured with Helmet');
 
   // Enable compression for responses
   app.use(compression());
@@ -36,6 +63,19 @@ async function bootstrap() {
   app.setGlobalPrefix(apiPrefix);
   console.log('[BOOTSTRAP] Step 8: Global prefix set');
 
+  // Swagger API documentation (development only)
+  if (process.env.NODE_ENV !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('NextPik E-commerce API')
+      .setDescription('NextPik multi-vendor e-commerce platform API')
+      .setVersion('2.6.0')
+      .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('docs', app, document);
+    console.log('[BOOTSTRAP] Step 8.5: Swagger docs available at /docs');
+  }
+
   // CORS - Parse comma-separated origins from environment variable
   console.log('[BOOTSTRAP] Step 9: Configuring CORS...');
   const corsOrigin = configService.get('CORS_ORIGIN');
@@ -46,8 +86,14 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, Postman)
-      if (!origin) return callback(null, true);
+      // In production, reject requests without Origin to prevent server-side
+      // tools from bypassing CORS entirely. In dev, allow (curl, Postman, etc.)
+      if (!origin) {
+        if (process.env.NODE_ENV === 'production') {
+          return callback(new Error('Origin header is required'));
+        }
+        return callback(null, true);
+      }
 
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -85,10 +131,12 @@ async function bootstrap() {
   console.log(`🚀 NextPik E-commerce API running on: http://localhost:${port}/${apiPrefix}`);
 }
 
-process.stderr.write('=== MAIN.TS EXECUTING ===\n');
-process.stderr.write(`Node version: ${process.version}\n`);
-process.stderr.write(`CWD: ${process.cwd()}\n`);
-process.stderr.write('About to call bootstrap()...\n');
+if (process.env.NODE_ENV !== 'production') {
+  process.stderr.write('=== MAIN.TS EXECUTING ===\n');
+  process.stderr.write(`Node version: ${process.version}\n`);
+  process.stderr.write(`CWD: ${process.cwd()}\n`);
+  process.stderr.write('About to call bootstrap()...\n');
+}
 
 bootstrap().catch((error) => {
   process.stderr.write('=== BOOTSTRAP FAILED ===\n');

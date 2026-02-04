@@ -1,6 +1,6 @@
 import { baseEmailTemplate } from './base.template';
 
-export const magicLinkTemplate = (name: string, magicLink: string) => {
+export const magicLinkTemplate = (name: string, magicLink: string, frontendUrl?: string) => {
   const content = `
     <div style="text-align: center;">
       <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #CBB57B 0%, #D4AF37 100%); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-center;">
@@ -42,5 +42,8 @@ export const magicLinkTemplate = (name: string, magicLink: string) => {
     </p>
   `;
 
-  return baseEmailTemplate(content);
+  return baseEmailTemplate(content, {
+    frontendUrl,
+    showUnsubscribe: false // Don't show unsubscribe for security emails
+  });
 };
