@@ -69,12 +69,12 @@ export default function NewProductPage() {
   // Show upgrade message if can't create
   if (canCreate && !canCreate.allowed) {
     const { reasons } = canCreate;
-    const reason = !reasons.hasListingCapacity
+    const reason = !reasons.hasMonthlyCredits
+      ? 'You need a platform subscription to create products'
+      : !reasons.hasListingCapacity
       ? 'You have reached your listing limit'
       : !reasons.productTypeAllowed
       ? `Your plan doesn't support ${selectedProductType} listings`
-      : !reasons.hasCredits
-      ? 'Insufficient credits to create listing'
       : !reasons.meetsTierRequirement
       ? 'Your plan tier is too low for this product type'
       : 'Cannot create listing';
@@ -154,14 +154,14 @@ export default function NewProductPage() {
                     <div className="text-sm text-blue-900">
                       <p className="font-semibold mb-2">Why can't I create a listing?</p>
                       <ul className="space-y-1 list-disc list-inside">
+                        {!reasons.hasMonthlyCredits && (
+                          <li>You need an active platform subscription to list products</li>
+                        )}
                         {!reasons.hasListingCapacity && (
                           <li>You've reached your maximum active listings limit</li>
                         )}
                         {!reasons.productTypeAllowed && (
                           <li>Your plan doesn't include {selectedProductType} product listings</li>
-                        )}
-                        {!reasons.hasCredits && (
-                          <li>You don't have enough credits for this listing</li>
                         )}
                         {!reasons.meetsTierRequirement && (
                           <li>This product type requires a higher subscription tier</li>
@@ -180,10 +180,10 @@ export default function NewProductPage() {
                     Back to Products
                   </Link>
                   <Link
-                    href="/seller/plans"
+                    href={!reasons.hasMonthlyCredits ? "/seller/selling-credits" : "/seller/plans"}
                     className="px-6 py-3 bg-[#CBB57B] text-black rounded-xl font-semibold hover:bg-[#b9a369] transition-colors shadow-md"
                   >
-                    Upgrade Plan
+                    {!reasons.hasMonthlyCredits ? 'Purchase Credits' : 'Upgrade Plan'}
                   </Link>
                 </div>
               </div>

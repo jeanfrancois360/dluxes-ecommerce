@@ -2,9 +2,12 @@ import {
   Injectable,
   Logger,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { PaymentService } from '../payment/payment.service';
 import { CreditTransactionType } from '@prisma/client';
 
 @Injectable()
@@ -14,6 +17,8 @@ export class CreditsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
+    private readonly paymentService: PaymentService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -271,6 +276,155 @@ export class CreditsService {
       total,
       page,
       pages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Purchase a credit package via Stripe Checkout
+   */
+  async purchasePackage(userId: string, packageId: string) {
+    // Get the package
+    const creditPackage = await this.prisma.creditPackage.findUnique({
+      where: { id: packageId },
+    });
+
+    if (!creditPackage) {
+      throw new NotFoundException('Credit package not found');
+    }
+
+    if (!creditPackage.isActive) {
+      throw new BadRequestException('This package is no longer available');
+    }
+
+    // Get Stripe client
+    const stripe = await this.paymentService.getStripe();
+
+    // Get frontend URL
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') ||
+      'http://localhost:3000';
+
+    // Get user for customer info
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, firstName: true, lastName: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Create Stripe Checkout session
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: user.email,
+      line_items: [
+        {
+          price_data: {
+            currency: creditPackage.currency.toLowerCase(),
+            product_data: {
+              name: creditPackage.name,
+              description:
+                creditPackage.description ||
+                `${creditPackage.credits} credits for listing products`,
+            },
+            unit_amount: Math.round(Number(creditPackage.price) * 100), // Convert to cents
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        type: 'credit_package',
+        userId,
+        packageId,
+        credits: creditPackage.credits.toString(),
+        packageName: creditPackage.name,
+      },
+      success_url: `${frontendUrl}/seller/credits/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl}/seller/credits?canceled=true`,
+    });
+
+    this.logger.log(
+      `Created Stripe Checkout session for user ${userId}, package ${packageId}`,
+    );
+
+    return {
+      sessionId: session.id,
+      sessionUrl: session.url,
+    };
+  }
+
+  /**
+   * Process successful credit package purchase from Stripe webhook
+   */
+  async processSuccessfulPurchase(stripeSessionId: string) {
+    // Get Stripe client
+    const stripe = await this.paymentService.getStripe();
+
+    // Retrieve session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(stripeSessionId, {
+      expand: ['payment_intent'],
+    });
+
+    // Verify metadata
+    if (session.metadata?.type !== 'credit_package') {
+      this.logger.warn(
+        `Skipping non-credit-package session: ${stripeSessionId}`,
+      );
+      return;
+    }
+
+    const { userId, packageId, credits, packageName } = session.metadata;
+
+    if (!userId || !packageId || !credits) {
+      throw new BadRequestException('Invalid session metadata');
+    }
+
+    // Check if already processed
+    const existingTransaction = await this.prisma.creditTransaction.findFirst({
+      where: {
+        action: 'purchase_package',
+        packageId,
+        description: { contains: stripeSessionId },
+      },
+    });
+
+    if (existingTransaction) {
+      this.logger.warn(
+        `Credit package purchase already processed: ${stripeSessionId}`,
+      );
+      return;
+    }
+
+    // Get package details
+    const creditPackage = await this.prisma.creditPackage.findUnique({
+      where: { id: packageId },
+    });
+
+    if (!creditPackage) {
+      throw new NotFoundException('Credit package not found');
+    }
+
+    // Add credits to user
+    const creditsAmount = parseInt(credits, 10);
+    await this.addCredits(
+      userId,
+      creditsAmount,
+      'PURCHASE',
+      'purchase_package',
+      `Purchased ${packageName} (${creditsAmount} credits) - Stripe Session: ${stripeSessionId}`,
+      packageId,
+    );
+
+    this.logger.log(
+      `Successfully processed credit package purchase for user ${userId}: ${creditsAmount} credits`,
+    );
+
+    return {
+      success: true,
+      userId,
+      creditsAdded: creditsAmount,
+      packageName,
     };
   }
 }

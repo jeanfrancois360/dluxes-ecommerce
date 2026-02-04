@@ -1,7 +1,52 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import { currencyApi, CurrencyRate } from '@/lib/api/currency';
+
+// Currency symbols map for common currencies (fallback if API fails)
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  RWF: 'FRw',
+  CAD: 'CA$',
+  AUD: 'A$',
+  CHF: 'CHF',
+  CNY: '¥',
+  SEK: 'kr',
+  NZD: 'NZ$',
+  KRW: '₩',
+  SGD: 'S$',
+  NOK: 'kr',
+  MXN: 'MX$',
+  INR: '₹',
+  BRL: 'R$',
+  ZAR: 'R',
+  HKD: 'HK$',
+  LUX: '€', // Luxembourg uses Euro
+};
+
+/**
+ * Format currency for admin views - shows amount in ORIGINAL currency
+ */
+function formatAdminCurrency(amount: number, currencyCode: string, currencyData?: CurrencyRate | null): string {
+  if (currencyData) {
+    return currencyApi.formatPrice(amount, currencyData);
+  }
+
+  // Fallback: use currency symbols map
+  const symbol = CURRENCY_SYMBOLS[currencyCode] || currencyCode;
+  const formattedAmount = formatCurrencyAmount(amount, 2);
+
+  // Some currencies use symbol after amount
+  if (['JPY', 'KRW', 'SEK', 'NOK', 'RWF'].includes(currencyCode)) {
+    return `${formattedAmount} ${symbol}`;
+  }
+
+  return `${symbol}${formattedAmount}`;
+}
 
 interface OrderItem {
   id: string;
@@ -65,6 +110,25 @@ export function OrderBreakdown({
   total,
   currency = 'USD',
 }: OrderBreakdownProps) {
+  const [currencyData, setCurrencyData] = useState<CurrencyRate | null>(null);
+
+  // Fetch currency data on mount or when currency changes
+  useEffect(() => {
+    const fetchCurrency = async () => {
+      try {
+        const data = await currencyApi.getRate(currency);
+        setCurrencyData(data);
+      } catch (error) {
+        console.error('Failed to fetch currency data:', error);
+        setCurrencyData(null); // Will use fallback
+      }
+    };
+
+    if (currency) {
+      fetchCurrency();
+    }
+  }, [currency]);
+
   // Group items by store
   const storeBreakdowns: Record<string, StoreBreakdown> = {};
 
@@ -144,7 +208,7 @@ export function OrderBreakdown({
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold text-gray-900">
-                      ${formatCurrencyAmount(store.subtotal, 2)}
+                      {formatAdminCurrency(store.subtotal, currency, currencyData)}
                     </div>
                   </div>
                 </div>
@@ -160,7 +224,7 @@ export function OrderBreakdown({
                         {item.name} × {item.quantity}
                       </span>
                       <span className="text-gray-900 font-medium">
-                        ${formatCurrencyAmount(item.price * item.quantity, 2)}
+                        {formatAdminCurrency(item.price * item.quantity, currency, currencyData)}
                       </span>
                     </div>
                   ))}
@@ -172,7 +236,7 @@ export function OrderBreakdown({
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Order Amount</span>
                       <span className="text-gray-900">
-                        ${formatCurrencyAmount(store.commission.orderAmount, 2)}
+                        {formatAdminCurrency(store.commission.orderAmount, currency, currencyData)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
@@ -188,7 +252,7 @@ export function OrderBreakdown({
                         % )
                       </span>
                       <span className="text-red-600 font-medium">
-                        -${formatCurrencyAmount(store.commission.commissionAmount, 2)}
+                        -{formatAdminCurrency(store.commission.commissionAmount, currency, currencyData)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm font-semibold border-t pt-2">
@@ -196,7 +260,7 @@ export function OrderBreakdown({
                         Seller Net Payout
                       </span>
                       <span className="text-green-600">
-                        ${formatCurrencyAmount(store.netPayout || 0, 2)}
+                        {formatAdminCurrency(store.netPayout || 0, currency, currencyData)}
                       </span>
                     </div>
                   </div>
@@ -213,7 +277,7 @@ export function OrderBreakdown({
                   Total Platform Commission
                 </span>
                 <span className="text-lg font-bold text-blue-600">
-                  ${formatCurrencyAmount(totalCommission, 2)}
+                  {formatAdminCurrency(totalCommission, currency, currencyData)}
                 </span>
               </div>
             </div>
@@ -230,33 +294,33 @@ export function OrderBreakdown({
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Subtotal</span>
             <span className="text-gray-900">
-              ${formatCurrencyAmount(subtotal, 2)}
+              {formatAdminCurrency(subtotal, currency, currencyData)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Tax</span>
             <span className="text-gray-900">
-              ${formatCurrencyAmount(tax, 2)}
+              {formatAdminCurrency(tax, currency, currencyData)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Shipping</span>
             <span className="text-gray-900">
-              ${formatCurrencyAmount(shipping, 2)}
+              {formatAdminCurrency(shipping, currency, currencyData)}
             </span>
           </div>
           {totalCommission > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Platform Commission</span>
               <span className="text-blue-600 font-medium">
-                ${formatCurrencyAmount(totalCommission, 2)}
+                {formatAdminCurrency(totalCommission, currency, currencyData)}
               </span>
             </div>
           )}
           <div className="flex justify-between text-lg font-bold border-t pt-3">
             <span className="text-gray-900">Total</span>
             <span className="text-gray-900">
-              ${formatCurrencyAmount(total, 2)}
+              {formatAdminCurrency(total, currency, currencyData)}
             </span>
           </div>
         </div>

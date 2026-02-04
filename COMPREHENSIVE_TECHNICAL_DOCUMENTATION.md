@@ -288,17 +288,23 @@ The backend consists of 32 modules organized by domain:
 
 #### Authentication (`/auth`)
 - `POST /register` - User registration
-- `POST /login` - Login with email/password
+- `POST /login` - Login with email/password (supports `twoFactorCode` or `backupCode`)
 - `POST /magic-link/request` - Request passwordless login
 - `POST /magic-link/verify` - Verify magic link
 - `POST /password/reset-request` - Request password reset
 - `POST /password/reset` - Reset password
-- `POST /email/verify` - Verify email
+- `POST /password/change` - Change password (authenticated)
+- `POST /email/verify` - Verify email (returns `canResend` flag on expiry)
+- `POST /email/resend-verification` - Resend verification email
 - `GET /me` - Get current user
 - `POST /2fa/setup` - Setup 2FA
-- `POST /2fa/enable` - Enable 2FA
-- `GET /sessions` - Get active sessions
+- `POST /2fa/enable` - Enable 2FA (returns backup codes)
+- `POST /2fa/disable` - Disable 2FA (clears backup codes)
+- `POST /2fa/regenerate-backup-codes` - Regenerate backup codes (authenticated, 2FA must be enabled)
+- `POST /google/auth` - Google OAuth login/signup
+- `GET /sessions` - Get active sessions (marks current session with `isCurrent: true`)
 - `DELETE /sessions/:id` - Revoke session
+- `DELETE /sessions/revoke-all-other` - Revoke all sessions except current
 
 #### Products (`/products`)
 - `GET /products` - List products with filters
@@ -450,9 +456,17 @@ The backend consists of 32 modules organized by domain:
 - **Session Timeout:** 30-minute inactivity timeout on frontend
 - **Token Refresh:** Automatic token refresh mechanism
 - **2FA Enforcement:** Can be enforced for admins via settings
-- **Password Hashing:** bcrypt with configurable rounds
-- **CORS Protection:** Configurable allowed origins
+- **2FA Backup Codes:** 10 single-use codes generated on 2FA enable; hashed with SHA-256 before storage; spliced on use
+- **Password Hashing:** bcrypt with 12 rounds
+- **Password Policy:** 12+ characters, must contain uppercase, lowercase, digit, and special character
+- **Session Fingerprinting:** SHA-256 of `ip:userAgent`; mismatch invalidates the session row immediately
+- **User Enumeration Prevention:** Login returns identical error for unknown email and wrong password
+- **CORS Protection:** Configurable allowed origins; no-origin requests rejected in production
+- **Helmet Security Headers:** CSP, HSTS (1-year preload), and standard hardening headers
+- **Response Compression:** gzip via `compression` middleware
+- **Structured Error Responses:** Expiry errors carry actionable metadata (`canResend`, `resendEmail`)
 - **Maintenance Mode:** Global guard to block requests during maintenance
+- **Google OAuth Auto-Link Guards:** Suspended accounts and 2FA-enabled accounts cannot be silently linked
 
 **Guards & Middleware:**
 - `JwtAuthGuard` - Validates JWT tokens
@@ -4438,7 +4452,7 @@ pnpm --filter @nextpik/api add passport-google-oauth20 @types/passport-google-oa
 1. TOTP (Time-based One-Time Password) with authenticator apps
 2. SMS OTP integration
 3. Hardware security key support (WebAuthn)
-4. Backup codes generation
+4. ~~Backup codes generation~~ — **Done in Feb 2026 hardening (see Section 19)**
 
 **Phase 4 - Store Management:**
 1. Store verification badges
@@ -7257,6 +7271,198 @@ Shipping:          2,500.00
 
 ---
 
+## 19. Auth Security Hardening (February 2026)
+
+### 19.1 Overview
+
+This section documents the security audit remediation and bug fixes applied to the authentication system in February 2026. The work followed a structured 7-phase plan covering security hardening, service refactoring, UX improvements, configuration, testing, bug fixes, and documentation. Phases 1–6 were completed and type-checked clean. Phase 7 (documentation and Swagger) is this section and the API docs at `/docs`.
+
+**Release Date:** February 4, 2026
+**Breaking Changes:** None for authenticated clients. The removed `POST /google/link` endpoint was non-functional (never verified the incoming token).
+**Migration Required:** Yes — a `backupCodes` column was added to the `users` table (nullable Json; no data migration needed).
+
+---
+
+### 19.2 Security Fixes Applied (Phase 5.4 Audit)
+
+#### 19.2.1 User Enumeration Prevention (CRITICAL)
+**File:** `apps/api/src/auth/services/auth-core.service.ts`
+
+Login previously returned two distinguishable error messages: one when the email was not found and another when the password was wrong. Both paths now return the same string:
+
+> "Invalid email or password. Please check your credentials and try again."
+
+This prevents an attacker from enumerating valid email addresses by probing the login endpoint.
+
+#### 19.2.2 Session Fingerprint Hijack (CRITICAL)
+**File:** `apps/api/src/auth/services/session.service.ts`
+
+When a session's fingerprint (SHA-256 of `ip:userAgent`, truncated to 32 hex chars) did not match the current request, the service previously returned `{ valid: true, suspicious: true }` — the session remained usable. Now it:
+1. Sets `isActive: false` on the session row in the database.
+2. Logs via `LoggerService.logSuspiciousActivity`.
+3. Returns `{ valid: false }`.
+
+This closes the window where a stolen session token could be used from a different device/IP.
+
+#### 19.2.3 Inline Body Types Bypassed Validation (CRITICAL)
+**Files:** `apps/api/src/auth/dto/auth.dto.ts`, `apps/api/src/auth/enhanced-auth.controller.ts`
+
+Two controller routes used inline object types (`{ token: string }`, `{ email: string }`) as `@Body()` parameters. NestJS's global `ValidationPipe` only decorates and validates class-based DTOs; inline objects pass through unvalidated. Three new DTOs were created:
+- `VerifyEmailDto` — `token: string` with `@IsString()`
+- `ResendVerificationDto` — `email: string` with `@IsEmail()` and `@Transform` for sanitization
+- `ChangePasswordDto` — `currentPassword: string`, `newPassword: string` with strength rules
+
+#### 19.2.4 Dead Session Route (HIGH)
+**File:** `apps/api/src/auth/enhanced-auth.controller.ts`
+
+A duplicate `@Get('sessions')` route (simple list, no `isCurrent` marking) appeared before the real one. NestJS binds the first matching route, so the version that marks the current session was unreachable dead code. The duplicate was removed.
+
+#### 19.2.5 Account-Takeover Vector: Broken `POST /google/link` (HIGH)
+**File:** `apps/api/src/auth/enhanced-auth.controller.ts`
+
+This endpoint accepted a `googleToken` field but never verified it against Google's token endpoint. It passed `req.user` (the authenticated JWT user) directly as the "Google identity", meaning any authenticated user could link any `googleId` string to their account. The endpoint was removed entirely. Google account linking now happens only through the standard OAuth callback flow (`POST /google/auth`).
+
+#### 19.2.6 CORS: No-Origin Bypass in Production (HIGH)
+**File:** `apps/api/src/main.ts`
+
+The CORS callback previously allowed requests with no `Origin` header unconditionally. Server-side tools (curl, Postman, internal scripts) send no Origin. In production, this was gated:
+```typescript
+if (!origin && process.env.NODE_ENV === 'production') {
+  return callback(new Error('Origin header is required'));
+}
+```
+Development remains permissive for local tooling.
+
+#### 19.2.7 Google OAuth: Missing Auto-Link Guards (HIGH)
+**File:** `apps/api/src/auth/google-oauth.service.ts`
+
+Before auto-linking a Google identity to an existing email-based account, the service now checks:
+1. **Account not suspended** — throws `BadRequestException` directing user to support.
+2. **2FA not enabled** — a 2FA-protected account implies the user has taken explicit security steps; auto-linking bypasses that intent. The error directs the user to link manually from account settings.
+
+#### 19.2.8 Google OAuth: Session Bypass (HIGH)
+**File:** `apps/api/src/auth/google-oauth.service.ts`
+
+The service had its own private `createSession`, `getDeviceType`, and `getBrowser` methods that duplicated logic from `SessionService` — but without fingerprinting. All three calls were replaced with `sessionService.createSession(...)`. The dead private methods were deleted.
+
+#### 19.2.9 Google-Only Users: Empty-String Password (MEDIUM)
+**File:** `apps/api/src/auth/google-oauth.service.ts`
+
+Users created via Google OAuth had `password: ''` (empty string). While bcrypt would reject a compare against this, an empty string is truthy and could bypass `if (!user.password)` guards elsewhere. Changed to `password: null`.
+
+#### 19.2.10 Debug Info Leak in Production (MEDIUM)
+**File:** `apps/api/src/main.ts`
+
+`process.stderr.write` calls at module scope (Node version, CWD, bootstrap status) ran unconditionally. Gated behind `NODE_ENV !== 'production'`.
+
+---
+
+### 19.3 Bug Fixes (Phase 6)
+
+#### 19.3.1 2FA Backup Codes (Phase 6.5)
+**Files:** `schema.prisma`, `apps/api/src/auth/services/two-factor.service.ts`, `apps/api/src/auth/dto/auth.dto.ts`, `apps/api/src/auth/enhanced-auth.controller.ts`, `apps/api/src/auth/services/auth-core.service.ts`, `apps/api/src/logger/logger.service.ts`
+
+Full lifecycle implementation:
+- **Schema:** Added `backupCodes Json?` to the User model. Migration applied via `ALTER TABLE` (migration drift in dev; no Prisma migration file needed for this column).
+- **Generation:** On `POST /2fa/enable`, 10 codes are generated (`crypto.randomBytes(4).toString('hex')` → 8-char hex strings). Each code is hashed with SHA-256 before storage. The plaintext codes are returned once — the only time they are visible.
+- **Verification:** `POST /login` now accepts `backupCode` as an alternative to `twoFactorCode`. The incoming code is hashed; the hash is looked up in the stored array. If found, the used code is spliced out of the array (atomic update). The event is logged as `backup_code_used`.
+- **Regeneration:** `POST /2fa/regenerate-backup-codes` (authenticated, 2FA must be enabled) replaces all codes with a fresh set.
+- **Cleanup:** `POST /2fa/disable` sets `backupCodes: null`.
+
+#### 19.3.2 Token Expiry Structured Response (Phase 6.1)
+**Files:** `apps/api/src/auth/services/email-verification.service.ts`, `apps/api/src/common/filters/http-exception.filter.ts`
+
+Expired email verification links previously threw a plain string error. Now the exception carries structured metadata:
+```json
+{
+  "statusCode": 401,
+  "message": "This verification link has expired. ...",
+  "canResend": true,
+  "resendEmail": "user@example.com"
+}
+```
+The `HttpExceptionFilter` was updated to spread any extra keys from the exception response into the JSON body, so the frontend can act on `canResend` without parsing the message string.
+
+#### 19.3.3 Concurrent Registration Race Condition (Phase 6.2)
+**File:** `apps/api/src/auth/services/auth-core.service.ts`
+
+A `findUnique` + `create` pattern for user registration had a TOCTOU window: two simultaneous registrations for the same email could both pass the `findUnique` check and then one would fail at the database unique constraint. The `prisma.user.create` call is now wrapped in a try/catch that catches Prisma error code `P2002` (unique constraint violation) and throws the same `ConflictException` as the pre-check.
+
+---
+
+### 19.4 Service Architecture (Phase 2 — completed prior)
+
+The original monolithic `enhanced-auth.service.ts` (909 lines) was split into focused services:
+
+| Service | File | Responsibility |
+|---------|------|----------------|
+| AuthCoreService | `services/auth-core.service.ts` | Register, login, rate limiting |
+| PasswordService | `services/password.service.ts` | Reset request, reset, change |
+| EmailVerificationService | `services/email-verification.service.ts` | Verify, resend |
+| MagicLinkService | `services/magic-link.service.ts` | Request, verify |
+| TwoFactorService | `services/two-factor.service.ts` | Setup, enable, disable, backup codes |
+| SessionService | `services/session.service.ts` | Create, validate, revoke, fingerprint |
+| GoogleOAuthService | `google-oauth.service.ts` | OAuth login/signup, auto-link |
+
+All services are under 200 lines. The controller (`enhanced-auth.controller.ts`) remains the single entry point and delegates to the appropriate service.
+
+---
+
+### 19.5 Swagger / OpenAPI Documentation (Phase 7.1)
+
+All auth routes are decorated with `@nestjs/swagger` decorators:
+- `@ApiTags('Authentication')` on the controller class
+- `@ApiOperation({ summary })` on each method
+- `@ApiResponse` for 200, 201, 400, 401, 409, 429 status codes
+- `@ApiBearerAuth()` on all authenticated routes
+
+Swagger UI is served at `GET /docs` in non-production environments. The `DocumentBuilder` is configured with:
+- Title: "NextPik E-commerce API"
+- Version: 2.6.0
+- Bearer auth scheme (JWT)
+
+---
+
+### 19.6 Logging
+
+A Winston-based `LoggerService` (`apps/api/src/logger/logger.service.ts`) provides structured logging:
+- **Console transport:** Colorized human-readable format in development; JSON in production.
+- **File transports:** `combined.log` and `error.log` (10 MB max, 5 rotations) in production only.
+- **Auth-specific helpers:**
+  - `logAuthEvent(event, userId, meta)` — events: `login`, `logout`, `register`, `password_reset`, `2fa_enable`, `2fa_disable`, `session_revoke`, `backup_code_used`
+  - `logSuspiciousActivity(activity, userId, ipAddress, meta)` — used for session fingerprint mismatches and failed login attempts
+  - `logApiRequest(method, path, statusCode, userId, duration)` — audit trail
+
+---
+
+### 19.7 Files Modified
+
+| File | Changes |
+|------|---------|
+| `apps/api/src/main.ts` | Helmet CSP/HSTS, compression, CORS production guard, Swagger setup, debug stderr gate |
+| `apps/api/src/auth/enhanced-auth.controller.ts` | Removed dead route + broken google/link; added password/change, 2fa/regenerate-backup-codes; replaced inline body types; Swagger decorators |
+| `apps/api/src/auth/services/auth-core.service.ts` | Unified login error messages; P2002 race condition guard; backup code login path |
+| `apps/api/src/auth/services/session.service.ts` | Fingerprint mismatch now invalidates session row |
+| `apps/api/src/auth/services/two-factor.service.ts` | Backup code generate/verify/regenerate lifecycle; disable clears codes |
+| `apps/api/src/auth/services/email-verification.service.ts` | Structured expiry error with `canResend` |
+| `apps/api/src/auth/google-oauth.service.ts` | SessionService injection; auto-link guards; password null; deleted dead methods |
+| `apps/api/src/auth/dto/auth.dto.ts` | VerifyEmailDto, ResendVerificationDto, ChangePasswordDto; backupCode on LoginDto |
+| `apps/api/src/common/filters/http-exception.filter.ts` | Spread extra keys from exception response |
+| `apps/api/src/logger/logger.service.ts` | Added `backup_code_used` to logAuthEvent union |
+| `packages/database/prisma/schema.prisma` | Added `backupCodes Json?` to User model |
+
+---
+
+### 19.8 Testing
+
+All changes compile clean (`tsc --noEmit` exit 0) after each phase. Manual verification performed via curl against the running API for:
+- Login with backup code
+- Session invalidation on fingerprint change
+- Google OAuth auto-link guards
+- Structured expiry error response
+
+---
+
 ## Conclusion
 
 This comprehensive technical documentation provides a complete overview of the NextPik E-commerce Platform as it exists today. The platform is production-ready with robust features for multi-vendor commerce, but has clear opportunities for enhancement in testing, monitoring, and advanced features.
@@ -7290,8 +7496,8 @@ This comprehensive technical documentation provides a complete overview of the N
 
 ---
 
-**Document Version:** 1.0.0
-**Last Updated:** December 12, 2025
+**Document Version:** 2.0.0
+**Last Updated:** February 4, 2026
 **Maintained By:** Development Team
 **Contact:** [Your contact information]
 

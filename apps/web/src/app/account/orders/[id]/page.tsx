@@ -6,6 +6,7 @@ import { PageLayout } from '@/components/layout/page-layout';
 import { OrderStatusBadge } from '@/components/orders/order-status-badge';
 import { OrderTimeline } from '@/components/orders/order-timeline';
 import { DeliveryTrackingSection } from '@/components/orders/delivery-tracking-section';
+import { ShipmentCard } from '@/components/seller/shipment-card';
 import { ReviewForm } from '@/components/reviews/review-form';
 import { useOrder, useCancelOrder } from '@/hooks/use-orders';
 import { useCreateReview } from '@/hooks/use-reviews';
@@ -88,6 +89,10 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
     reason: 'CHANGED_MIND',
     description: '',
   });
+
+  // Shipment tracking state
+  const [shipments, setShipments] = useState<any[]>([]);
+  const [shipmentsLoading, setShipmentsLoading] = useState(false);
 
   const handleReorder = async () => {
     if (!order) return;
@@ -192,6 +197,38 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
     };
     fetchDigitalDownloads();
   }, [order?.id, order?.status]);
+
+  // Fetch shipments for this order
+  useEffect(() => {
+    const fetchShipments = async () => {
+      if (!order?.id) return;
+
+      try {
+        setShipmentsLoading(true);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+
+        const response = await fetch(`${apiUrl}/shipments/order/${order.id}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setShipments(data.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch shipments:', error);
+      } finally {
+        setShipmentsLoading(false);
+      }
+    };
+
+    fetchShipments();
+  }, [order?.id]);
 
   const handleDigitalDownload = async (download: DigitalPurchase) => {
     if (!download.canDownload) {
@@ -380,8 +417,44 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content - Order Details */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Delivery Tracking (if available) */}
-            {order.delivery && (
+            {/* Shipment Tracking (if available) */}
+            {shipments.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-xl border-2 border-neutral-100"
+              >
+                <div className="p-6 border-b border-neutral-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold font-['Poppins']">
+                        Shipment Tracking
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        {shipments.length} {shipments.length === 1 ? 'shipment' : 'shipments'} for this order
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6 space-y-4">
+                  {shipments.map((shipment: any) => (
+                    <ShipmentCard
+                      key={shipment.id}
+                      shipment={shipment}
+                      currency={order.currency}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Legacy Delivery Tracking (if available and no shipments) */}
+            {order.delivery && shipments.length === 0 && (
               <DeliveryTrackingSection delivery={order.delivery} />
             )}
 

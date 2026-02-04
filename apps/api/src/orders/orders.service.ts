@@ -109,6 +109,26 @@ export class OrdersService {
         timeline: {
           orderBy: { createdAt: 'asc' },
         },
+        sellerShipments: {
+          include: {
+            store: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+            events: {
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 3,
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -163,6 +183,26 @@ export class OrdersService {
         billingAddress: true,
         timeline: {
           orderBy: { createdAt: 'asc' },
+        },
+        sellerShipments: {
+          include: {
+            store: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+            events: {
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 3,
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
         },
       },
       orderBy: { [sortBy]: sortOrder },
@@ -236,6 +276,41 @@ export class OrdersService {
                 website: true,
               },
             },
+          },
+        },
+        sellerShipments: {
+          include: {
+            store: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+            items: {
+              include: {
+                orderItem: {
+                  include: {
+                    product: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            events: {
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 5,
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
           },
         },
         commissions: {
@@ -363,7 +438,7 @@ export class OrdersService {
     const total = subtotal.add(shipping).add(tax).sub(discount);
 
     // 6. Generate order number
-    const orderNumber = `LUX-${Date.now()}`;
+    const orderNumber = `ORD-${Date.now()}`;
 
     this.logger.log(
       `💰 Order totals: subtotal=${subtotal} ${orderCurrency}, ` +
@@ -549,10 +624,46 @@ export class OrdersService {
    * Create new order from cart (LEGACY - kept for backwards compatibility)
    */
   async create(userId: string, createOrderDto: CreateOrderDto) {
-    const { items, shippingAddressId, billingAddressId, paymentMethod, notes, currency: orderCurrency } =
+    const { items, shippingAddressId, billingAddressId, paymentMethod, notes, currency: orderCurrency, idempotencyKey } =
       createOrderDto;
 
-    // Verify shipping address exists and belongs to user
+    // 1. Check for duplicate order (idempotency protection)
+    if (idempotencyKey) {
+      const existingOrder = await this.prisma.order.findFirst({
+        where: {
+          userId,
+          metadata: {
+            path: ['idempotencyKey'],
+            equals: idempotencyKey,
+          },
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+          shippingAddress: true,
+          billingAddress: true,
+        },
+      });
+
+      if (existingOrder) {
+        this.logger.warn(
+          `🔄 Duplicate order prevented for user ${userId} with idempotency key: ${idempotencyKey}`,
+        );
+        this.logger.log(`Returning existing order ${existingOrder.id}`);
+
+        return {
+          success: true,
+          data: existingOrder,
+          message: 'Order already exists (duplicate prevented)',
+          isDuplicate: true,
+        };
+      }
+    }
+
+    // 2. Verify shipping address exists and belongs to user
     const shippingAddress = await this.prisma.address.findFirst({
       where: {
         id: shippingAddressId,
@@ -643,7 +754,7 @@ export class OrdersService {
     const total = subtotal.add(shipping).add(tax);
 
     // Generate order number
-    const orderNumber = `LUX-${Date.now()}`;
+    const orderNumber = `ORD-${Date.now()}`;
 
     // Get currency and exchange rate for order
     const currency = orderCurrency || 'USD';
@@ -681,6 +792,8 @@ export class OrdersService {
           shippingAddressId,
           billingAddressId: billingAddressId || shippingAddressId,
           notes,
+          // Store idempotency key to prevent duplicate orders
+          metadata: idempotencyKey ? { idempotencyKey } : null,
           items: {
             create: orderItems,
           },
@@ -956,7 +1069,8 @@ export class OrdersService {
     const validTransitions: Record<OrderStatus, OrderStatus[]> = {
       [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
-      [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+      [OrderStatus.PROCESSING]: [OrderStatus.PARTIALLY_SHIPPED, OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+      [OrderStatus.PARTIALLY_SHIPPED]: [OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
       [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
       [OrderStatus.DELIVERED]: [OrderStatus.REFUNDED], // Can't cancel delivered orders
       [OrderStatus.CANCELLED]: [], // Terminal state - no transitions allowed

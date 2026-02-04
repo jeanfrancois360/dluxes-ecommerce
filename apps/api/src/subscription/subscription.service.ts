@@ -91,18 +91,31 @@ export class SubscriptionService {
       productTypeAllowed: boolean;
       meetsTierRequirement: boolean;
       hasListingCapacity: boolean;
-      hasCredits: boolean;
+      hasMonthlyCredits: boolean;
     };
   }> {
-    // PHYSICAL products don't require any subscription - always allowed
+    // Check monthly selling credits (required for ALL product types)
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    const now = new Date();
+    const hasMonthlyCredits = store
+      ? store.creditsBalance > 0 ||
+        (store.creditsBalance === 0 &&
+          store.creditsGraceEndsAt &&
+          new Date(store.creditsGraceEndsAt) > now)
+      : false;
+
+    // PHYSICAL products only require monthly selling credits
     if (productType === 'PHYSICAL') {
       return {
-        canList: true,
+        canList: hasMonthlyCredits,
         reasons: {
           productTypeAllowed: true,
           meetsTierRequirement: true,
           hasListingCapacity: true,
-          hasCredits: true,
+          hasMonthlyCredits,
         },
       };
     }
@@ -133,32 +146,17 @@ export class SubscriptionService {
       plan.maxActiveListings === -1 ||
       subscription.activeListingsCount < plan.maxActiveListings;
 
-    // Check credits
-    const creditCostKey = `credit_cost_list_${productType.toLowerCase()}`;
-    let creditCost = 1;
-    try {
-      const setting = await this.settingsService.getSetting(creditCostKey);
-      creditCost = Number(setting.value);
-    } catch {
-      // Use default
-    }
-
-    const creditBalance = await this.prisma.creditBalance.findUnique({
-      where: { userId },
-    });
-    const hasCredits = (creditBalance?.availableCredits ?? 0) >= creditCost;
-
     return {
       canList:
         productTypeAllowed &&
         meetsTierRequirement &&
         hasListingCapacity &&
-        hasCredits,
+        hasMonthlyCredits,
       reasons: {
         productTypeAllowed,
         meetsTierRequirement,
         hasListingCapacity,
-        hasCredits,
+        hasMonthlyCredits,
       },
     };
   }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { cn } from '@nextpik/ui';
 import { SearchBar } from '@/components/search/search-bar';
 import { SearchModal } from '@/components/search/search-modal';
@@ -32,8 +33,7 @@ export function Navbar({ className }: NavbarProps) {
     { label: 'Home', href: '/' },
     { label: 'Shop', href: '/products', hasMegaMenu: true, megaMenuType: 'shop' },
     { label: 'Stores', href: '/stores' },
-    { label: 'Collections', href: '/collections', hasMegaMenu: true, megaMenuType: 'collections' },
-    { label: 'Journal', href: '/about' },
+    { label: 'Hot Deals', href: '/' },
     { label: 'Contact', href: '/contact' },
   ];
 
@@ -67,41 +67,18 @@ export function Navbar({ className }: NavbarProps) {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                  className="relative flex items-center gap-3"
+                  className="relative"
                 >
-                  {/* Geometric Icon */}
-                  <div className="relative">
-                    <svg
-                      className="w-10 h-10 text-black group-hover:text-[#CBB57B] transition-colors duration-500"
-                      viewBox="0 0 40 40"
-                      fill="none"
-                    >
-                      <path
-                        d="M20 4L4 12V28L20 36L36 28V12L20 4Z"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinejoin="round"
-                      />
-                      <path d="M20 4V20M20 20L4 28M20 20L36 28" stroke="currentColor" strokeWidth="1.5" />
-                    </svg>
-                    {/* Glow on hover */}
-                    <div className="absolute inset-0 bg-[#CBB57B] blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500 rounded-full" />
-                  </div>
-
-                  {/* Brand Text */}
-                  <div className="relative">
-                    <span className="text-2xl font-semibold text-black group-hover:text-[#CBB57B] transition-colors duration-500 tracking-wide">
-                      NEXTPIK
-                    </span>
-                    {/* Animated underline */}
-                    <motion.div
-                      className="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-[#CBB57B] via-[#CBB57B] to-transparent"
-                      initial={{ scaleX: 0 }}
-                      whileHover={{ scaleX: 1 }}
-                      transition={{ duration: 0.4 }}
-                      style={{ transformOrigin: 'left' }}
-                    />
-                  </div>
+                  <Image
+                    src="/logo-dark.svg"
+                    alt="NextPik"
+                    width={160}
+                    height={55}
+                    priority
+                    className="h-auto w-auto max-h-12 transition-all duration-500 group-hover:brightness-110"
+                  />
+                  {/* Glow effect on hover */}
+                  <div className="absolute inset-0 bg-[#CBB57B] blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-500" />
                 </motion.div>
               </Link>
 

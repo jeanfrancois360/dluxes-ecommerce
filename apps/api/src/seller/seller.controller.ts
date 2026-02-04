@@ -82,6 +82,16 @@ export class SellerController {
     return this.sellerService.getDashboardSummary(req.user.userId);
   }
 
+  /**
+   * Get seller's store information
+   */
+  @Get('store')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  getMyStore(@Req() req: any) {
+    return this.sellerService.getMyStore(req.user.userId);
+  }
+
   // ============================================================================
   // Products Management
   // ============================================================================

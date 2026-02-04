@@ -28,6 +28,13 @@ interface UserSession {
   location: string | null;
   lastActiveAt: string;
   createdAt: string;
+  isCurrent: boolean;
+  deviceInfo?: {
+    device: string;
+    os: string;
+    browser: string;
+    description: string;
+  };
 }
 
 interface PasswordFormData {
@@ -65,21 +72,24 @@ export default function SecurityPage() {
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [isRevokingAll, setIsRevokingAll] = useState(false);
 
-  // Fetch active sessions
-  const { data: sessionsData, mutate: mutateSessions } = useSWR<{ success: boolean; data: UserSession[] }>(
-    isAuthenticated ? '/users/sessions' : null,
+  // Fetch active sessions with device trust information
+  const { data: sessionsData, mutate: mutateSessions } = useSWR<UserSession[]>(
+    isAuthenticated ? '/auth/sessions' : null,
     async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/sessions`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/sessions`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
+      if (!response.ok) {
+        throw new Error('Failed to fetch sessions');
+      }
       return response.json();
     },
     { revalidateOnFocus: false }
   );
 
-  const sessions = sessionsData?.data || [];
+  const sessions = sessionsData || [];
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -222,7 +232,7 @@ export default function SecurityPage() {
     setRevokingSessionId(sessionId);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/sessions/${sessionId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -231,8 +241,8 @@ export default function SecurityPage() {
 
       const data = await response.json();
 
-      if (data.success) {
-        toast.success('The session has been logged out');
+      if (response.ok) {
+        toast.success('Device logged out successfully');
         mutateSessions();
       } else {
         toast.error(data.message || 'Failed to revoke session');
@@ -248,7 +258,7 @@ export default function SecurityPage() {
     setIsRevokingAll(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/sessions/revoke-all`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/sessions/revoke-all-other`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -259,8 +269,8 @@ export default function SecurityPage() {
 
       const data = await response.json();
 
-      if (data.success) {
-        toast.success('All other sessions have been logged out');
+      if (response.ok) {
+        toast.success(`All other devices logged out successfully (${data.revokedCount} sessions)`);
         mutateSessions();
       } else {
         toast.error(data.message || 'Failed to revoke sessions');
@@ -963,11 +973,11 @@ export default function SecurityPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {sessions.map((session, index) => (
+                    {sessions.map((session) => (
                       <div
                         key={session.id}
                         className={`flex items-center justify-between p-4 rounded-xl border ${
-                          index === 0
+                          session.isCurrent
                             ? 'bg-green-50 border-green-200'
                             : 'bg-neutral-50 border-neutral-200'
                         }`}
@@ -975,22 +985,22 @@ export default function SecurityPage() {
                         <div className="flex items-center gap-4">
                           <div
                             className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                              index === 0
+                              session.isCurrent
                                 ? 'bg-green-100 text-green-600'
                                 : 'bg-neutral-200 text-neutral-600'
                             }`}
                           >
-                            {getDeviceIcon(session.deviceType)}
+                            {getDeviceIcon(session.deviceInfo?.device || session.deviceType)}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-black">
-                                {session.browser || 'Unknown Browser'}
-                                {session.os && ` on ${session.os}`}
+                                {session.deviceInfo?.description ||
+                                 `${session.browser || 'Unknown Browser'}${session.os ? ` on ${session.os}` : ''}`}
                               </p>
-                              {index === 0 && (
+                              {session.isCurrent && (
                                 <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
-                                  Current
+                                  Current Device
                                 </span>
                               )}
                             </div>
@@ -1030,7 +1040,7 @@ export default function SecurityPage() {
                             </div>
                           </div>
                         </div>
-                        {index !== 0 && (
+                        {!session.isCurrent && (
                           <button
                             onClick={() => handleRevokeSession(session.id)}
                             disabled={revokingSessionId === session.id}

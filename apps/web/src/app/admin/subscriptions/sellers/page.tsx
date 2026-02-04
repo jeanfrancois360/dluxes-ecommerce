@@ -114,29 +114,29 @@ function SellerSubscriptionsContent() {
   // Show error toast if data fetch fails
   React.useEffect(() => {
     if (error) {
-      toast.error('Failed to fetch seller subscriptions');
+      toast.error('Failed to fetch seller feature plans');
     }
   }, [error]);
 
   const handleCancelSubscription = async (id: string) => {
     try {
       await subscriptionApi.adminCancelSubscription(id);
-      toast.success('Subscription cancelled successfully');
+      toast.success('Feature plan cancelled successfully');
       mutate(); // Refresh data after update
     } catch (error) {
       console.error('Error cancelling subscription:', error);
-      toast.error('Failed to cancel subscription');
+      toast.error('Failed to cancel feature plan');
     }
   };
 
   const handleReactivateSubscription = async (id: string) => {
     try {
       await subscriptionApi.adminReactivateSubscription(id);
-      toast.success('Subscription reactivated successfully');
+      toast.success('Feature plan reactivated successfully');
       mutate(); // Refresh data after update
     } catch (error) {
       console.error('Error reactivating subscription:', error);
-      toast.error('Failed to reactivate subscription');
+      toast.error('Failed to reactivate feature plan');
     }
   };
 
@@ -193,9 +193,9 @@ function SellerSubscriptionsContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
-          <h1 className="text-4xl font-bold text-black">Seller Subscriptions</h1>
+          <h1 className="text-4xl font-bold text-white">Seller Feature Plans</h1>
         </div>
-        <p className="text-gray-400 text-lg ml-14">Manage seller accounts and subscription plans</p>
+        <p className="text-gray-300 text-lg ml-14">View and manage sellers subscribed to feature plans (unlock premium product types)</p>
       </div>
 
       {/* Stats Grid */}
@@ -210,7 +210,7 @@ function SellerSubscriptionsContent() {
           }
         />
         <StatCard
-          title="Active Subscriptions"
+          title="Active Feature Plans"
           value={stats.active.toString()}
           icon={
             <svg className="w-6 h-6 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">

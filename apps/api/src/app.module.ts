@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
+import { envValidationSchema } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -11,6 +12,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { CollectionsModule } from './collections/collections.module';
 import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
+import { ShipmentsModule } from './shipments/shipments.module';
 import { PaymentModule } from './payment/payment.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { WishlistModule } from './wishlist/wishlist.module';
@@ -39,15 +41,22 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { CreditsModule } from './credits/credits.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { DhlModule } from './integrations/dhl/dhl.module';
+import { LoggerModule } from './logger/logger.module';
+import { HealthModule } from './health/health.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
-// import { QueueModule } from './queue/queue.module'; // Commented out - requires Redis setup
+import { SellerCreditsCronService } from './cron/seller-credits.cron';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validationSchema: envValidationSchema,
+      validationOptions: {
+        abortEarly: false, // Show all validation errors, not just the first one
+        allowUnknown: true, // Allow extra env vars not defined in schema
+      },
     }),
     SupabaseModule,
     ScheduleModule.forRoot(),
@@ -58,6 +67,8 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
       },
     ]),
     DatabaseModule,
+    LoggerModule,
+    HealthModule,
     DhlModule,
     AuthModule,
     UsersModule,
@@ -66,6 +77,7 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
     CollectionsModule,
     CartModule,
     OrdersModule,
+    ShipmentsModule,
     PaymentModule,
     ReviewsModule,
     WishlistModule,
@@ -92,7 +104,6 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
     ReturnsModule,
     SubscriptionModule,
     CreditsModule,
-    // QueueModule, // Commented out - requires Redis setup
   ],
   providers: [
     {
@@ -103,6 +114,7 @@ import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
       provide: APP_GUARD,
       useClass: Admin2FAGuard,
     },
+    SellerCreditsCronService,
   ],
 })
 export class AppModule {}

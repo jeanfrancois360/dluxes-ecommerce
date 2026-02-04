@@ -28,6 +28,39 @@ export class SellerService {
   ) {}
 
   /**
+   * Get seller's store information
+   */
+  async getMyStore(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        logo: true,
+        banner: true,
+        status: true,
+        verified: true,
+        rating: true,
+        totalSales: true,
+        totalOrders: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found. Please create a store first.');
+    }
+
+    return {
+      success: true,
+      data: store,
+    };
+  }
+
+  /**
    * Get seller's products
    */
   async getMyProducts(userId: string, query: any) {
@@ -945,6 +978,7 @@ export class SellerService {
           slug: true,
           status: true,
           verified: true,
+          verifiedAt: true,
           rating: true,
           totalSales: true,
           totalOrders: true,
@@ -1050,19 +1084,23 @@ export class SellerService {
 
       if (!check.canList) {
         const messages: string[] = [];
+        if (!check.reasons.hasMonthlyCredits) {
+          messages.push(
+            'You need an active platform subscription to list products',
+          );
+        }
         if (!check.reasons.productTypeAllowed) {
-          messages.push(`Your plan does not allow ${productType} listings`);
+          messages.push(
+            `Your feature plan does not include ${productType} listings. Upgrade to a plan that supports this product type`,
+          );
         }
         if (!check.reasons.meetsTierRequirement) {
           messages.push(
-            `Upgrade your subscription to list ${productType} products`,
+            `Your current feature plan tier doesn't support ${productType} products. Upgrade to a higher tier`,
           );
         }
         if (!check.reasons.hasListingCapacity) {
           messages.push('You have reached your maximum listing limit');
-        }
-        if (!check.reasons.hasCredits) {
-          messages.push('Insufficient credits for this listing');
         }
 
         throw new BadRequestException(messages.join('. '));

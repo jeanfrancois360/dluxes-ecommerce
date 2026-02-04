@@ -15,10 +15,7 @@ interface AuthLayoutProps {
 
 export default function AuthLayout({ children, title, subtitle, showLayout = true }: AuthLayoutProps) {
   const authContent = (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 via-white to-accent-50 px-4 py-12">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)] bg-[size:24px_24px]" />
-
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 via-white to-accent-50 px-4 sm:px-6 py-12">
       {/* Auth Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -26,23 +23,23 @@ export default function AuthLayout({ children, title, subtitle, showLayout = tru
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="relative w-full max-w-md"
       >
-        {/* Decorative Elements */}
-        <div className="absolute -top-12 -left-12 w-24 h-24 bg-gold/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-accent-500/10 rounded-full blur-3xl" />
+        {/* Decorative Elements - Hidden on mobile to prevent overlap */}
+        <div className="hidden sm:block absolute -top-12 -left-12 w-24 h-24 bg-gold/10 rounded-full blur-3xl" />
+        <div className="hidden sm:block absolute -bottom-12 -right-12 w-32 h-32 bg-accent-500/10 rounded-full blur-3xl" />
 
-        {/* Card */}
-        <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-neutral-200/50 p-8 md:p-10">
+        {/* Card - Responsive padding optimized for mobile */}
+        <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-neutral-200/50 px-4 py-6 sm:px-6 sm:py-8 md:px-10 md:py-10">
           {/* Header */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-6 sm:mb-8">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="inline-block mb-4"
+              className="inline-block mb-3 sm:mb-4"
             >
-              <div className="w-16 h-16 bg-gradient-to-br from-black to-neutral-800 rounded-2xl flex items-center justify-center">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-black to-neutral-800 rounded-2xl flex items-center justify-center">
                 <svg
-                  className="w-10 h-10 text-gold"
+                  className="w-8 h-8 sm:w-10 sm:h-10 text-gold"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -61,7 +58,7 @@ export default function AuthLayout({ children, title, subtitle, showLayout = tru
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="text-3xl font-bold text-black mb-2"
+              className="text-2xl sm:text-3xl font-bold text-black mb-2"
             >
               {title}
             </motion.h1>
@@ -71,7 +68,7 @@ export default function AuthLayout({ children, title, subtitle, showLayout = tru
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="text-neutral-600 text-sm"
+                className="text-neutral-600 text-sm sm:text-base"
               >
                 {subtitle}
               </motion.p>
