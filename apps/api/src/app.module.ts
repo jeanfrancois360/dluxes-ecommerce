@@ -46,7 +46,6 @@ import { HealthModule } from './health/health.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
 import { SellerCreditsCronService } from './cron/seller-credits.cron';
-// import { QueueModule } from './queue/queue.module'; // Commented out - requires Redis setup
 
 @Module({
   imports: [
@@ -105,7 +104,6 @@ import { SellerCreditsCronService } from './cron/seller-credits.cron';
     ReturnsModule,
     SubscriptionModule,
     CreditsModule,
-    // QueueModule, // Commented out - requires Redis setup
   ],
   providers: [
     {
