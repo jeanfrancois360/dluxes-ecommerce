@@ -248,6 +248,24 @@ export class SubscriptionController {
   }
 
   /**
+   * Verify checkout session and activate subscription (fallback for delayed webhooks)
+   * This endpoint can be called by the success page to ensure subscription is activated
+   */
+  @Post('verify-checkout')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async verifyCheckout(
+    @Req() req: any,
+    @Body() body: { sessionId: string },
+  ) {
+    const data = await this.stripeSubscriptionService.verifyAndActivateCheckout(
+      req.user.id,
+      body.sessionId,
+    );
+    return { success: true, data };
+  }
+
+  /**
    * Create Stripe billing portal session
    */
   @Post('create-portal')
