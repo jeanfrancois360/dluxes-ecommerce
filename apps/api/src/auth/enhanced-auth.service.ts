@@ -575,6 +575,9 @@ export class EnhancedAuthService {
       console.error('Failed to send 2FA notification email:', err);
     });
 
+    // Note: Sessions are NOT rotated here because 2FA is an additional layer
+    // Existing sessions remain valid, but future logins will require 2FA
+
     return { message: '2FA enabled successfully' };
   }
 
@@ -593,7 +596,11 @@ export class EnhancedAuthService {
       },
     });
 
-    return { message: '2FA disabled successfully' };
+    // Revoke all sessions when disabling 2FA for security
+    // User will need to log in again without 2FA
+    await this.revokeAllSessions(userId);
+
+    return { message: '2FA disabled successfully. Please log in again.' };
   }
 
   private async verify2FA(userId: string, code: string): Promise<boolean> {
@@ -618,6 +625,75 @@ export class EnhancedAuthService {
   // Session Management
   // ============================================================================
 
+  /**
+   * Generate session fingerprint hash from IP and User-Agent
+   * Used for detecting suspicious session activity
+   */
+  private generateFingerprint(ipAddress: string, userAgent: string): string {
+    return createHash('sha256')
+      .update(`${ipAddress}:${userAgent}`)
+      .digest('hex')
+      .substring(0, 32); // Truncate to 32 chars for storage
+  }
+
+  /**
+   * Detect suspicious activity by comparing current login with recent sessions
+   * Returns array of suspicious indicators
+   */
+  private async detectSuspiciousActivity(
+    userId: string,
+    currentIp: string,
+    currentUserAgent: string,
+  ): Promise<string[]> {
+    const suspiciousFlags: string[] = [];
+
+    // Get user's recent sessions (last 7 days)
+    const recentSessions = await this.prisma.userSession.findMany({
+      where: {
+        userId,
+        isActive: true,
+        createdAt: {
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    if (recentSessions.length === 0) {
+      // First login, no baseline to compare
+      return suspiciousFlags;
+    }
+
+    // Check for IP address change
+    const previousIPs = recentSessions
+      .map((s) => s.ipAddress)
+      .filter((ip) => ip !== null && ip !== currentIp);
+    if (previousIPs.length > 0 && !previousIPs.includes(currentIp)) {
+      suspiciousFlags.push('new_ip_address');
+    }
+
+    // Check for device type change
+    const currentDeviceType = this.getDeviceType(currentUserAgent);
+    const previousDeviceTypes = recentSessions
+      .map((s) => s.deviceType)
+      .filter((dt) => dt !== null && dt !== currentDeviceType);
+    if (previousDeviceTypes.length > 0 && !previousDeviceTypes.includes(currentDeviceType)) {
+      suspiciousFlags.push('new_device_type');
+    }
+
+    // Check for browser change
+    const currentBrowser = this.getBrowser(currentUserAgent);
+    const previousBrowsers = recentSessions
+      .map((s) => s.browser)
+      .filter((b) => b !== null && b !== currentBrowser);
+    if (previousBrowsers.length > 0 && !previousBrowsers.includes(currentBrowser)) {
+      suspiciousFlags.push('new_browser');
+    }
+
+    return suspiciousFlags;
+  }
+
   private async createSession(
     userId: string,
     ipAddress: string,
@@ -627,6 +703,22 @@ export class EnhancedAuthService {
     const token = randomBytes(32).toString('hex');
     const expiryDuration = rememberMe ? this.SESSION_EXPIRY_REMEMBER : this.SESSION_EXPIRY_DEFAULT;
 
+    // Generate session fingerprint for security
+    const fingerprint = this.generateFingerprint(ipAddress, userAgent);
+
+    // Detect suspicious activity (non-blocking)
+    const suspiciousFlags = await this.detectSuspiciousActivity(userId, ipAddress, userAgent);
+    if (suspiciousFlags.length > 0) {
+      // Log suspicious activity (in production, this would trigger alerts/notifications)
+      console.warn(
+        `[SECURITY] Suspicious activity detected for user ${userId}: ${suspiciousFlags.join(', ')}`,
+      );
+      // In production, you could:
+      // - Send email notification to user
+      // - Require additional verification (2FA)
+      // - Temporarily lock account
+    }
+
     await this.prisma.userSession.create({
       data: {
         userId,
@@ -634,11 +726,60 @@ export class EnhancedAuthService {
         ipAddress,
         deviceType: this.getDeviceType(userAgent),
         browser: this.getBrowser(userAgent),
+        fingerprint,
         expiresAt: new Date(Date.now() + expiryDuration),
       },
     });
 
     return token;
+  }
+
+  /**
+   * Validate session with fingerprint checking
+   * Returns true if session is valid and not suspicious
+   */
+  async validateSession(
+    sessionToken: string,
+    currentIp: string,
+    currentUserAgent: string,
+  ): Promise<{ valid: boolean; suspicious?: boolean; session?: any }> {
+    const session = await this.prisma.userSession.findUnique({
+      where: { token: sessionToken },
+      include: { user: true },
+    });
+
+    if (!session) {
+      return { valid: false };
+    }
+
+    // Check if session is active and not expired
+    if (!session.isActive || new Date() > session.expiresAt) {
+      return { valid: false };
+    }
+
+    // Check fingerprint if available
+    if (session.fingerprint) {
+      const currentFingerprint = this.generateFingerprint(currentIp, currentUserAgent);
+      if (session.fingerprint !== currentFingerprint) {
+        // Fingerprint mismatch - potential session hijacking
+        console.warn(
+          `[SECURITY] Session fingerprint mismatch for user ${session.userId}. Potential session hijacking attempt.`,
+        );
+        // In production, you might want to:
+        // - Invalidate the session
+        // - Send security alert to user
+        // - Require re-authentication
+        return { valid: true, suspicious: true, session };
+      }
+    }
+
+    // Update last active timestamp
+    await this.prisma.userSession.update({
+      where: { id: session.id },
+      data: { lastActiveAt: new Date() },
+    });
+
+    return { valid: true, suspicious: false, session };
   }
 
   async getUserSessions(userId: string) {
@@ -674,6 +815,20 @@ export class EnhancedAuthService {
     });
 
     return { message: 'All sessions revoked successfully' };
+  }
+
+  /**
+   * Rotate all sessions for a user (invalidate old, create new)
+   * Used after critical security actions like password change, 2FA enable, etc.
+   */
+  async rotateSessions(userId: string, ipAddress: string, userAgent: string): Promise<string> {
+    // Invalidate all existing sessions
+    await this.revokeAllSessions(userId);
+
+    // Create new session
+    const newSessionToken = await this.createSession(userId, ipAddress, userAgent, false);
+
+    return newSessionToken;
   }
 
   // ============================================================================
@@ -741,8 +896,21 @@ export class EnhancedAuthService {
   }
 
   private sanitizeUser(user: any) {
-    const { password, twoFactorSecret, ...sanitized } = user;
-    return sanitized;
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      avatar: user.avatar,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      twoFactorEnabled: user.twoFactorEnabled,
+      googleId: user.googleId,
+      authProvider: user.authProvider,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 
   private getDeviceType(userAgent: string): string {

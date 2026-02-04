@@ -7,9 +7,11 @@ interface EmailOTPData {
   type: EmailOTPType;
   ipAddress?: string;
   timestamp: Date;
+  frontendUrl?: string;
 }
 
 export function getEmailOTPTemplate(data: EmailOTPData): { subject: string; html: string } {
+  const siteUrl = data.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
   const typeLabels = {
     TWO_FACTOR_BACKUP: {
       title: 'Two-Factor Authentication Code',
@@ -269,9 +271,9 @@ export function getEmailOTPTemplate(data: EmailOTPData): { subject: string; html
       <p>© ${new Date().getFullYear()} NextPik. All rights reserved.</p>
       <p>Luxury E-Commerce Platform</p>
       <div class="footer-links">
-        <a href="https://nextpik.com/help" class="footer-link">Help Center</a>
-        <a href="https://nextpik.com/security" class="footer-link">Security</a>
-        <a href="https://nextpik.com/contact" class="footer-link">Contact Us</a>
+        <a href="${siteUrl}/help" class="footer-link">Help Center</a>
+        <a href="${siteUrl}/security" class="footer-link">Security</a>
+        <a href="${siteUrl}/contact" class="footer-link">Contact Us</a>
       </div>
       <p style="margin-top: 20px; font-size: 12px;">
         This is an automated security message. Please do not reply to this email.

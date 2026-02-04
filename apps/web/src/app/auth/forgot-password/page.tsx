@@ -3,12 +3,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
-import { toast, getUserFriendlyError } from '@/lib/utils/toast';
+import { toast } from '@/lib/utils/toast';
+import { showAuthError } from '@/lib/utils/auth-errors';
+import { SuccessCheckmark } from '@/components/auth/success-animation';
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const { requestPasswordReset, isLoading: authLoading, clearError } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -35,12 +39,8 @@ export default function ForgotPasswordPage() {
       await requestPasswordReset(email);
       setIsSuccess(true);
     } catch (err: any) {
-      const friendlyMessage = getUserFriendlyError(
-        err,
-        'Unable to send password reset link. Please try again.',
-        'Forgot Password'
-      );
-      toast.error(friendlyMessage);
+      // Use enhanced auth error handler with actionable links
+      showAuthError(err, router);
     }
   };
 
@@ -55,9 +55,14 @@ export default function ForgotPasswordPage() {
           animate={{ scale: 1, opacity: 1 }}
           className="text-center space-y-6"
         >
-          {/* Success Icon */}
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-success-light rounded-full">
-            <svg className="w-10 h-10 text-success-DEFAULT" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Success Checkmark */}
+          <div className="flex justify-center mb-4">
+            <SuccessCheckmark size="lg" />
+          </div>
+
+          {/* Email Icon */}
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-accent-50 rounded-full">
+            <svg className="w-10 h-10 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
@@ -133,6 +138,7 @@ export default function ForgotPasswordPage() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          disabled={isLoading}
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -149,27 +155,19 @@ export default function ForgotPasswordPage() {
         {/* Submit Button */}
         <Button
           type="submit"
-          className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isLoading || !email}
+          className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg"
+          loading={isLoading}
+          loadingText="Sending reset link..."
+          disabled={!email}
         >
-          {isLoading ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Sending reset link...
-            </span>
-          ) : (
-            'Send Reset Link'
-          )}
+          Send Reset Link
         </Button>
 
-        {/* Back to Login */}
+        {/* Back to Login - Mobile-friendly touch target */}
         <div className="text-center pt-4 border-t border-neutral-200">
           <Link
             href="/auth/login"
-            className="text-sm text-neutral-600 hover:text-gold transition-colors inline-flex items-center gap-2"
+            className="text-sm text-neutral-600 hover:text-gold transition-colors inline-flex items-center gap-2 py-2 px-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

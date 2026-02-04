@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, ConflictException } from '@nestjs/comm
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
+import { SessionService } from './services/session.service';
 import { AuthProvider } from '@prisma/client';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class GoogleOAuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private sessionService: SessionService,
   ) {}
 
   /**
@@ -33,8 +35,26 @@ export class GoogleOAuthService {
         },
       });
 
+      // Ensure SELLER users have a store (handles users created before auto-store or via OAuth)
+      if (user.role === 'SELLER') {
+        const existingStore = await this.prisma.store.findUnique({ where: { userId: user.id } });
+        if (!existingStore) {
+          const storeName = `${user.firstName || 'Seller'}'s Store`;
+          const slug = storeName.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim() + `-${Date.now()}`;
+          await this.prisma.store.create({
+            data: {
+              userId: user.id,
+              name: storeName,
+              slug,
+              email: user.email,
+              status: 'ACTIVE',
+            },
+          });
+        }
+      }
+
       // Create session
-      const sessionToken = await this.createSession(user.id, ipAddress, userAgent);
+      const sessionToken = await this.sessionService.createSession(user.id, ipAddress, userAgent, false);
 
       // Generate JWT
       const accessToken = this.generateJWT(user);
@@ -54,8 +74,21 @@ export class GoogleOAuthService {
     });
 
     if (existingEmailUser) {
-      // Email exists but not linked to Google
-      // Link Google account to existing user
+      // Guard: do not auto-link if account is suspended
+      if (existingEmailUser.isSuspended) {
+        throw new BadRequestException(
+          'This account has been suspended. Please contact support for assistance.',
+        );
+      }
+
+      // Guard: do not auto-link if 2FA is enabled — user must explicitly link via settings
+      if (existingEmailUser.twoFactorEnabled) {
+        throw new BadRequestException(
+          'An account with this email already exists and has 2FA enabled. Please log in with your password and link Google from your account settings.',
+        );
+      }
+
+      // Email exists but not linked to Google — link Google account to existing user
       user = await this.prisma.user.update({
         where: { id: existingEmailUser.id },
         data: {
@@ -79,7 +112,7 @@ export class GoogleOAuthService {
       });
 
       // Create session
-      const sessionToken = await this.createSession(user.id, ipAddress, userAgent);
+      const sessionToken = await this.sessionService.createSession(user.id, ipAddress, userAgent, false);
 
       // Generate JWT
       const accessToken = this.generateJWT(user);
@@ -105,7 +138,7 @@ export class GoogleOAuthService {
         emailVerified: true, // Google accounts are pre-verified
         lastLoginAt: new Date(),
         lastLoginIp: ipAddress,
-        password: '', // No password for Google OAuth users
+        password: null, // No password for Google OAuth users
       },
     });
 
@@ -115,7 +148,7 @@ export class GoogleOAuthService {
     });
 
     // Create session
-    const sessionToken = await this.createSession(user.id, ipAddress, userAgent);
+    const sessionToken = await this.sessionService.createSession(user.id, ipAddress, userAgent, false);
 
     // Generate JWT
     const accessToken = this.generateJWT(user);
@@ -208,33 +241,6 @@ export class GoogleOAuthService {
   }
 
   /**
-   * Create a user session
-   */
-  private async createSession(userId: string, ipAddress: string, userAgent: string) {
-    const randomBytes = (size: number) => {
-      const bytes = new Uint8Array(size);
-      crypto.getRandomValues(bytes);
-      return Buffer.from(bytes).toString('hex');
-    };
-
-    const token = randomBytes(32);
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-    await this.prisma.userSession.create({
-      data: {
-        userId,
-        token,
-        ipAddress,
-        deviceType: this.getDeviceType(userAgent),
-        browser: this.getBrowser(userAgent),
-        expiresAt,
-      },
-    });
-
-    return token;
-  }
-
-  /**
    * Generate JWT token
    */
   private generateJWT(user: any) {
@@ -253,27 +259,21 @@ export class GoogleOAuthService {
    * Sanitize user object (remove sensitive fields)
    */
   private sanitizeUser(user: any) {
-    const { password, twoFactorSecret, ...sanitized } = user;
-    return sanitized;
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      avatar: user.avatar,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      twoFactorEnabled: user.twoFactorEnabled,
+      googleId: user.googleId,
+      authProvider: user.authProvider,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 
-  /**
-   * Get device type from user agent
-   */
-  private getDeviceType(userAgent: string): string {
-    if (/mobile/i.test(userAgent)) return 'mobile';
-    if (/tablet/i.test(userAgent)) return 'tablet';
-    return 'desktop';
-  }
-
-  /**
-   * Get browser from user agent
-   */
-  private getBrowser(userAgent: string): string {
-    if (/chrome/i.test(userAgent)) return 'Chrome';
-    if (/safari/i.test(userAgent)) return 'Safari';
-    if (/firefox/i.test(userAgent)) return 'Firefox';
-    if (/edge/i.test(userAgent)) return 'Edge';
-    return 'Unknown';
-  }
 }

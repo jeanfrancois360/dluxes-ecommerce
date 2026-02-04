@@ -217,12 +217,19 @@ export class ProductsService {
 
     if (!check.canList) {
       const messages: string[] = [];
+      if (!check.reasons.hasMonthlyCredits) {
+        messages.push(
+          'You need an active platform subscription to list products',
+        );
+      }
       if (!check.reasons.productTypeAllowed) {
-        messages.push(`Your plan does not allow ${productType} listings`);
+        messages.push(
+          `Your feature plan does not include ${productType} listings. Upgrade to a plan that supports this product type`,
+        );
       }
       if (!check.reasons.meetsTierRequirement) {
         messages.push(
-          `Upgrade your subscription to list ${productType} products`,
+          `Your current feature plan tier doesn't support ${productType} products. Upgrade to a higher tier`,
         );
       }
       if (!check.reasons.hasListingCapacity) {

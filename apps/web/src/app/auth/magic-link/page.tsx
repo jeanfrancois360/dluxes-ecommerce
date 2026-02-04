@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -21,6 +21,7 @@ export default function MagicLinkPage() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const isLoading = authLoading;
+  const hasVerified = useRef(false);
 
   const handleVerifyMagicLink = useCallback(async (magicToken: string) => {
     setIsVerifying(true);
@@ -41,11 +42,12 @@ export default function MagicLinkPage() {
     } finally {
       setIsVerifying(false);
     }
-  }, [verifyMagicLink, clearError, authError]);
+  }, [verifyMagicLink, clearError]);
 
-  // Auto-verify if token is present in URL
+  // Auto-verify if token is present in URL (ref guards against HMR / StrictMode double-fire)
   useEffect(() => {
-    if (token) {
+    if (token && !hasVerified.current) {
+      hasVerified.current = true;
       handleVerifyMagicLink(token);
     }
   }, [token, handleVerifyMagicLink]);

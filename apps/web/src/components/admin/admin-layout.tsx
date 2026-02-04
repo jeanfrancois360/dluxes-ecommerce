@@ -10,6 +10,7 @@
 import React, { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useUser } from '@/hooks/use-user';
 import { AdminHeader } from './admin-header';
 
@@ -206,12 +207,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-lg flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-lg">L</span>
+          <Link href="/admin/dashboard" className="flex items-center group">
+            <div className="relative h-10 w-auto flex-shrink-0">
+              <Image
+                src="/logo.svg"
+                alt="NextPik"
+                width={120}
+                height={40}
+                className="object-contain group-hover:opacity-80 transition-opacity"
+                priority
+              />
             </div>
-            <span className="text-xl font-semibold text-white">Luxury Admin</span>
-          </div>
+          </Link>
           <button
             onClick={() => setMobileMenuOpen(false)}
             className="lg:hidden text-gray-400 hover:text-white"

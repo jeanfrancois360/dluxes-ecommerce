@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, OTPInput, Button } from '@nextpik/ui';
 import { initiateGoogleAuth } from '@/lib/api/auth';
-import { toast, standardToasts, getUserFriendlyError } from '@/lib/utils/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
+import { showAuthError } from '@/lib/utils/auth-errors';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isLoading: authLoading, error: authError, clearError } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -19,6 +23,15 @@ export default function LoginPage() {
   const [show2FA, setShow2FA] = useState(false);
   const [otpValue, setOtpValue] = useState('');
   const [localError, setLocalError] = useState('');
+
+  // Show error from OAuth redirect (e.g. ?error=Account+suspended)
+  useEffect(() => {
+    const oauthError = searchParams.get('error');
+    if (oauthError) {
+      setLocalError(oauthError);
+      toast.error(oauthError);
+    }
+  }, [searchParams]);
 
   const error = authError || localError;
   const isLoading = authLoading;
@@ -51,16 +64,14 @@ export default function LoginPage() {
 
       // Show success toast only if not 2FA (2FA will show success after code verification)
       if (!show2FA) {
-        standardToasts.auth.loginSuccess();
+        toast.success('Welcome back! Redirecting to your dashboard...', {
+          duration: 2000,
+        });
       }
       // Auth context handles redirect
     } catch (err: any) {
-      const friendlyMessage = getUserFriendlyError(
-        err,
-        'Unable to sign in. Please check your credentials and try again.',
-        'Login'
-      );
-      toast.error(friendlyMessage);
+      // Use enhanced auth error handler with actionable links
+      showAuthError(err, router);
     }
   };
 
@@ -86,6 +97,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
               icon={
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -105,6 +117,7 @@ export default function LoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
                 error={error}
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,14 +149,14 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center cursor-pointer group">
+            {/* Remember Me & Forgot Password - Mobile-friendly touch targets */}
+            <div className="flex items-center justify-between gap-2">
+              <label className="flex items-center cursor-pointer group py-2 pr-2">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-gold bg-white border-2 border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 transition-colors"
+                  className="w-5 h-5 text-gold bg-white border-2 border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 transition-colors flex-shrink-0"
                 />
                 <span className="ml-2 text-sm text-neutral-600 group-hover:text-black transition-colors">
                   Remember me
@@ -152,7 +165,7 @@ export default function LoginPage() {
 
               <Link
                 href="/auth/forgot-password"
-                className="text-sm text-gold hover:text-accent-700 transition-colors font-medium"
+                className="text-sm text-gold hover:text-accent-700 transition-colors font-medium py-2 px-1"
               >
                 Forgot password?
               </Link>
@@ -161,20 +174,11 @@ export default function LoginPage() {
             {/* Login Button */}
             <Button
               type="submit"
-              className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
+              className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg"
+              loading={isLoading}
+              loadingText="Signing in..."
             >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Signing in...
-                </span>
-              ) : (
-                'Sign In'
-              )}
+              Sign In
             </Button>
 
             {/* Divider */}
@@ -193,7 +197,8 @@ export default function LoginPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => handleSocialLogin('google')}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white border-2 border-neutral-200 rounded-lg hover:border-gold hover:shadow-md transition-all duration-300"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white border-2 border-neutral-200 rounded-lg hover:border-gold hover:shadow-md transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -268,28 +273,28 @@ export default function LoginPage() {
           </motion.div>
         )}
 
-        {/* Sign Up Link */}
+        {/* Sign Up Link - Mobile-friendly touch target */}
         <div className="text-center pt-4 border-t border-neutral-200">
           <p className="text-sm text-neutral-600">
             Don't have an account?{' '}
             <Link
               href="/auth/register"
-              className="text-gold hover:text-accent-700 font-semibold transition-colors"
+              className="text-gold hover:text-accent-700 font-semibold transition-colors inline-block py-1 px-1"
             >
               Create one
             </Link>
           </p>
         </div>
 
-        {/* Legal Links */}
+        {/* Legal Links - Mobile-friendly touch targets */}
         <div className="text-center pt-4 border-t border-neutral-200">
           <p className="text-xs text-neutral-500">
             By signing in, you agree to our{' '}
-            <Link href="/terms" className="text-gold hover:text-accent-700 transition-colors">
+            <Link href="/terms" className="text-gold hover:text-accent-700 transition-colors inline-block py-1 px-1">
               Terms of Service
             </Link>
             {' '}and{' '}
-            <Link href="/privacy" className="text-gold hover:text-accent-700 transition-colors">
+            <Link href="/privacy" className="text-gold hover:text-accent-700 transition-colors inline-block py-1 px-1">
               Privacy Policy
             </Link>
           </p>

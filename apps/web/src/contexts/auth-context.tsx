@@ -497,11 +497,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsLoading(true);
         setError(null);
 
-        const { user: userData, tokens } = await authApi.verifyMagicLink(token);
+        const response = await authApi.verifyMagicLink(token);
 
-        setUser(userData);
-        storeUser(userData);
-        setTokenExpiry(tokens.expiresIn);
+        if (response.accessToken) {
+          TokenManager.setAccessToken(response.accessToken);
+        }
+        if (response.sessionToken) {
+          localStorage.setItem('nextpik_session_token', response.sessionToken);
+        }
+
+        setUser(response.user);
+        storeUser(response.user);
+        setTokenExpiry(response.expiresIn || 7 * 24 * 60 * 60);
 
         // Start session timer
         startSessionTimer(handleSessionTimeout);
@@ -509,7 +516,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         standardToasts.auth.loginSuccess();
 
         // Redirect based on user role
-        const redirectUrl = getAuthRedirectUrl(userData);
+        const redirectUrl = getAuthRedirectUrl(response.user);
         router.push(redirectUrl);
       } catch (error: any) {
         const errorMessage =
@@ -628,11 +635,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsLoading(true);
         setError(null);
 
-        const { user: userData, tokens } = await authApi.verifyTwoFactor(code, loginToken);
+        const response = await authApi.verifyTwoFactor(code, loginToken);
 
-        setUser(userData);
-        storeUser(userData);
-        setTokenExpiry(tokens.expiresIn);
+        if (response.accessToken) {
+          TokenManager.setAccessToken(response.accessToken);
+        }
+        if (response.sessionToken) {
+          localStorage.setItem('nextpik_session_token', response.sessionToken);
+        }
+
+        setUser(response.user);
+        storeUser(response.user);
+        setTokenExpiry(response.expiresIn || 7 * 24 * 60 * 60);
 
         // Start session timer
         startSessionTimer(handleSessionTimeout);
@@ -640,7 +654,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         standardToasts.auth.loginSuccess();
 
         // Redirect based on user role
-        const redirectUrl = getAuthRedirectUrl(userData);
+        const redirectUrl = getAuthRedirectUrl(response.user);
         router.push(redirectUrl);
       } catch (error: any) {
         const errorMessage = error.response?.data?.message || 'Failed to verify 2FA code';
