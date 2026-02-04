@@ -54,9 +54,9 @@ export default function SellerSubscriptionPage() {
             <div className="p-2.5 bg-[#CBB57B]/20 rounded-xl">
               <Crown className="w-7 h-7 text-[#CBB57B]" />
             </div>
-            <h1 className="text-4xl font-bold text-white tracking-tight">Subscription Management</h1>
+            <h1 className="text-4xl font-bold text-white tracking-tight">Feature Plans</h1>
           </div>
-          <p className="text-gray-300 text-lg ml-14">Choose the perfect plan for your business growth</p>
+          <p className="text-gray-300 text-lg ml-14">Unlock advanced product types and premium features</p>
         </div>
       </div>
 

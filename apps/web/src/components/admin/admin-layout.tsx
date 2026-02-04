@@ -10,6 +10,7 @@
 import React, { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useUser } from '@/hooks/use-user';
 import { AdminHeader } from './admin-header';
 
@@ -134,11 +135,18 @@ const CreditCardIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const StoreIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+  </svg>
+);
+
 const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
   { name: 'Products', href: '/admin/products', icon: PackageIcon },
   { name: 'Orders', href: '/admin/orders', icon: ShoppingBagIcon },
   { name: 'Customers', href: '/admin/customers', icon: UsersIcon },
+  { name: 'Seller Management', href: '/admin/sellers', icon: StoreIcon },
   { name: 'Categories', href: '/admin/categories', icon: FolderIcon },
   { name: 'Currencies', href: '/admin/currencies', icon: CurrencyIcon },
   { name: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCardIcon },
@@ -199,12 +207,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-lg flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-lg">L</span>
+          <Link href="/admin/dashboard" className="flex items-center group">
+            <div className="relative h-10 w-auto flex-shrink-0">
+              <Image
+                src="/logo.svg"
+                alt="NextPik"
+                width={120}
+                height={40}
+                className="object-contain group-hover:opacity-80 transition-opacity"
+                priority
+              />
             </div>
-            <span className="text-xl font-semibold text-white">Luxury Admin</span>
-          </div>
+          </Link>
           <button
             onClick={() => setMobileMenuOpen(false)}
             className="lg:hidden text-gray-400 hover:text-white"

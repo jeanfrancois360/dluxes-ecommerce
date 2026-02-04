@@ -1,13 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
 import type { UserRole } from '@/lib/api/types';
-import { toast, standardToasts, getUserFriendlyError } from '@/lib/utils/toast';
+import { toast, standardToasts } from '@/lib/utils/toast';
+import { showAuthError } from '@/lib/utils/auth-errors';
+import { PasswordStrengthIndicator, validatePassword } from '@/components/auth/password-strength-indicator';
+import { SuccessAnimation } from '@/components/auth/success-animation';
 
 type AccountType = 'BUYER' | 'SELLER';
 
@@ -47,6 +51,7 @@ const accountTypes: AccountTypeOption[] = [
 ];
 
 export default function RegisterPage() {
+  const router = useRouter();
   const { register, isLoading: authLoading, error: authError, clearError } = useAuth();
 
   const [accountType, setAccountType] = useState<AccountType>('BUYER');
@@ -63,8 +68,24 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [step, setStep] = useState<'type' | 'details'>('type');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(3);
 
   const isLoading = authLoading;
+
+  // Countdown timer for redirect after success
+  useEffect(() => {
+    if (isSuccess && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (isSuccess && countdown === 0) {
+      // Redirect handled by auth context, but we can add a fallback
+      router.push('/');
+    }
+    return undefined;
+  }, [isSuccess, countdown, router]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -84,7 +105,11 @@ export default function RegisterPage() {
     if (!formData.lastName) newErrors.lastName = 'Last name is required';
     if (!formData.email) newErrors.email = 'Email is required';
     if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Invalid email format';
-    if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
+
+    // Enhanced password validation (matches backend requirements)
+    const passwordError = validatePassword(formData.password);
+    if (passwordError) newErrors.password = passwordError;
+
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
@@ -117,22 +142,36 @@ export default function RegisterPage() {
         }),
       });
 
-      // Show appropriate success message
-      if (accountType === 'SELLER') {
-        standardToasts.store.created();
-      } else {
-        standardToasts.auth.registerSuccess();
-      }
-      // Auth context handles redirect
+      // Show success animation
+      setIsSuccess(true);
+
+      // Start countdown and redirect
+      setCountdown(3);
     } catch (err: any) {
-      const friendlyMessage = getUserFriendlyError(
-        err,
-        'Unable to create your account. Please try again.',
-        'Registration'
-      );
-      toast.error(friendlyMessage);
+      // Use enhanced auth error handler with actionable links
+      showAuthError(err, router);
     }
   };
+
+  // Show success screen
+  if (isSuccess) {
+    return (
+      <AuthLayout
+        title="Welcome to NextPik!"
+        subtitle="Your account has been created successfully"
+      >
+        <SuccessAnimation
+          title={accountType === 'SELLER' ? 'Store Created!' : 'Account Created!'}
+          message={
+            accountType === 'SELLER'
+              ? 'Your store is ready! You can now start listing your luxury products.'
+              : 'Welcome to NextPik! Start exploring exclusive luxury collections.'
+          }
+          countdown={countdown}
+        />
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout
@@ -253,19 +292,21 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setStep('type')}
-                className="text-sm text-gold hover:text-accent-700 transition-colors font-medium"
+                disabled={isLoading}
+                className="text-sm text-gold hover:text-accent-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Change
               </button>
             </div>
 
-            {/* Name Fields */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Name Fields - Responsive grid stacks on mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FloatingInput
                 label="First Name"
                 value={formData.firstName}
                 onChange={(e) => handleChange('firstName', e.target.value)}
                 error={errors.firstName}
+                disabled={isLoading}
                 required
               />
 
@@ -274,6 +315,7 @@ export default function RegisterPage() {
                 value={formData.lastName}
                 onChange={(e) => handleChange('lastName', e.target.value)}
                 error={errors.lastName}
+                disabled={isLoading}
                 required
               />
             </div>
@@ -285,6 +327,7 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={(e) => handleChange('email', e.target.value)}
               error={errors.email}
+              disabled={isLoading}
               icon={
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -306,6 +349,7 @@ export default function RegisterPage() {
                 value={formData.password}
                 onChange={(e) => handleChange('password', e.target.value)}
                 error={errors.password}
+                disabled={isLoading}
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -328,30 +372,10 @@ export default function RegisterPage() {
             </div>
 
             {/* Password Strength Indicator */}
-            <div className="space-y-2">
-              <div className="flex gap-1">
-                {[1, 2, 3, 4].map((level) => (
-                  <motion.div
-                    key={level}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: level * 0.05 }}
-                    className={`h-1 flex-1 rounded-full transition-colors ${
-                      formData.password.length >= level * 2
-                        ? level <= 2
-                          ? 'bg-error-DEFAULT'
-                          : level === 3
-                            ? 'bg-warning-DEFAULT'
-                            : 'bg-success-DEFAULT'
-                        : 'bg-neutral-200'
-                    }`}
-                  />
-                ))}
-              </div>
-              <p className="text-xs text-neutral-500">
-                Use 8+ characters with a mix of letters, numbers & symbols
-              </p>
-            </div>
+            <PasswordStrengthIndicator
+              password={formData.password}
+              showRequirements={true}
+            />
 
             {/* Confirm Password */}
             <FloatingInput
@@ -360,6 +384,7 @@ export default function RegisterPage() {
               value={formData.confirmPassword}
               onChange={(e) => handleChange('confirmPassword', e.target.value)}
               error={errors.confirmPassword}
+              disabled={isLoading}
               icon={
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -407,6 +432,7 @@ export default function RegisterPage() {
                   label="Store Name (Optional)"
                   value={formData.storeName}
                   onChange={(e) => handleChange('storeName', e.target.value)}
+                  disabled={isLoading}
                   icon={
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -422,8 +448,9 @@ export default function RegisterPage() {
                   <textarea
                     value={formData.storeDescription}
                     onChange={(e) => handleChange('storeDescription', e.target.value)}
+                    disabled={isLoading}
                     rows={3}
-                    className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:border-gold focus:ring-2 focus:ring-gold/20 transition-all resize-none"
+                    className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:border-gold focus:ring-2 focus:ring-gold/20 transition-all resize-none disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Tell us about your store and the products you plan to sell..."
                   />
                   <p className="text-xs text-neutral-500 mt-1">
@@ -439,7 +466,8 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={acceptTerms}
                 onChange={(e) => setAcceptTerms(e.target.checked)}
-                className="w-4 h-4 mt-1 text-gold bg-white border-2 border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 transition-colors"
+                disabled={isLoading}
+                className="w-4 h-4 mt-1 text-gold bg-white border-2 border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <span className="ml-3 text-sm text-neutral-600 group-hover:text-black transition-colors">
                 I agree to the{' '}
@@ -467,20 +495,11 @@ export default function RegisterPage() {
             {/* Register Button */}
             <Button
               type="submit"
-              className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
+              className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg"
+              loading={isLoading}
+              loadingText="Creating account..."
             >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Creating account...
-                </span>
-              ) : (
-                `Create ${accountType === 'BUYER' ? 'Buyer' : 'Seller'} Account`
-              )}
+              {`Create ${accountType === 'BUYER' ? 'Buyer' : 'Seller'} Account`}
             </Button>
 
             {/* Back Button */}

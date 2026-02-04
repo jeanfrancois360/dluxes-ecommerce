@@ -158,21 +158,21 @@ function SubscriptionsDashboardContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-black">Subscriptions Dashboard</h1>
+          <h1 className="text-3xl font-bold text-white">Feature Plans Dashboard</h1>
         </div>
-        <p className="text-gray-300 text-base ml-14">Monitor and manage all subscription plans and revenue streams</p>
+        <p className="text-gray-300 text-base ml-14">Manage seller feature plans that unlock premium product types (SERVICE, INQUIRY, REAL_ESTATE)</p>
       </div>
 
       {/* Primary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Active Subscriptions"
+          title="Active Feature Plans"
           value={formatNumber(stats.totalActiveSubscriptions)}
           change={stats.growthRate}
           trend="up"
           icon={
             <svg className="w-6 h-6 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           }
         />
@@ -188,7 +188,7 @@ function SubscriptionsDashboardContent() {
           }
         />
         <StatCard
-          title="Total Plans"
+          title="Total Feature Plans"
           value={formatNumber(stats.totalPlans)}
           change={0}
           trend="up"
@@ -213,27 +213,27 @@ function SubscriptionsDashboardContent() {
 
       {/* Subscription Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Seller Subscriptions */}
+        {/* Seller Feature Plan Subscriptions */}
         <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-[#CBB57B]/10 rounded-lg">
               <svg className="w-5 h-5 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
               </svg>
             </div>
-            <h3 className="text-lg font-bold text-gray-900">Seller Subscriptions</h3>
+            <h3 className="text-lg font-bold text-gray-900">Seller Feature Plans</h3>
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-5 bg-gray-50 rounded-lg border border-gray-200">
               <div className="flex items-center gap-4">
                 <div className="p-3.5 bg-white rounded-lg shadow-sm">
                   <svg className="w-7 h-7 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-gray-900 font-bold text-base">Active Seller Accounts</p>
-                  <p className="text-gray-600 text-sm font-medium">Platform subscriptions</p>
+                  <p className="text-gray-900 font-bold text-base">Active Subscribers</p>
+                  <p className="text-gray-600 text-sm font-medium">Sellers with feature plans</p>
                 </div>
               </div>
               <div className="text-right">
@@ -294,8 +294,8 @@ function SubscriptionsDashboardContent() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-gray-900 mb-1">Manage Plans</h3>
-              <p className="text-sm text-gray-600">Edit pricing and features</p>
+              <h3 className="text-base font-bold text-gray-900 mb-1">Manage Feature Plans</h3>
+              <p className="text-sm text-gray-600">Edit tiers, pricing, and product types</p>
             </div>
             <div className="p-3 bg-[#CBB57B]/10 rounded-lg">
               <svg className="w-6 h-6 text-[#CBB57B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -328,8 +328,8 @@ function SubscriptionsDashboardContent() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-gray-900 mb-1">Seller Accounts</h3>
-              <p className="text-sm text-gray-600">Manage subscriptions</p>
+              <h3 className="text-base font-bold text-gray-900 mb-1">Seller Feature Plans</h3>
+              <p className="text-sm text-gray-600">View active subscriptions</p>
             </div>
             <div className="p-3 bg-[#CBB57B]/10 rounded-lg">
               <svg className="w-6 h-6 text-[#CBB57B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">

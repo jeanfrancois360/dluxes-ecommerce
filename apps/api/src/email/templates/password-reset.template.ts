@@ -1,6 +1,6 @@
 import { baseEmailTemplate } from './base.template';
 
-export const passwordResetTemplate = (name: string, resetLink: string) => {
+export const passwordResetTemplate = (name: string, resetLink: string, frontendUrl?: string) => {
   const content = `
     <div style="text-align: center;">
       <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-center;">
@@ -51,5 +51,8 @@ export const passwordResetTemplate = (name: string, resetLink: string) => {
     </p>
   `;
 
-  return baseEmailTemplate(content);
+  return baseEmailTemplate(content, {
+    frontendUrl,
+    showUnsubscribe: false // Don't show unsubscribe for security emails
+  });
 };

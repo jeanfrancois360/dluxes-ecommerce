@@ -92,7 +92,7 @@ export function useCanListProductType(productType: string | null) {
       productTypeAllowed: false,
       meetsTierRequirement: false,
       hasListingCapacity: false,
-      hasCredits: false,
+      hasMonthlyCredits: false,
     },
     isLoading,
     error,

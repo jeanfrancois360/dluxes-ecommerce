@@ -140,7 +140,7 @@ export function CommissionSettingsSection() {
             <SettingsToggle
               label="Include Shipping in Commission"
               description="Apply commission percentage to both product price AND shipping fees"
-              checked={field.value}
+              checked={!!field.value}
               onCheckedChange={field.onChange}
               tooltip="When ON: Commission applies to (Product + Shipping). When OFF: Commission only applies to Product price."
             />

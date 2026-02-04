@@ -234,7 +234,7 @@ export function ShippingSettingsSection() {
             <SettingsToggle
               label="Enable Free Shipping"
               description="Offer free shipping when order total exceeds threshold"
-              checked={field.value}
+              checked={!!field.value}
               onCheckedChange={field.onChange}
             />
           )}

@@ -73,9 +73,9 @@ export default function AddressesPage() {
         address1: editingAddress.address1,
         address2: editingAddress.address2 || '',
         city: editingAddress.city,
-        province: editingAddress.province,
+        province: editingAddress.province || '',
         country: editingAddress.country,
-        postalCode: editingAddress.postalCode,
+        postalCode: editingAddress.postalCode || '',
         phone: editingAddress.phone || '',
         isDefault: editingAddress.isDefault,
       });

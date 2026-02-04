@@ -440,7 +440,7 @@ export function PaymentSettingsSection() {
                 id="stripe_fee_percentage"
                 required
                 error={form.formState.errors.stripe_fee_percentage?.message}
-                description="Stripe's percentage fee (e.g., 2.9 for 2.9%)"
+                helperText="Stripe's percentage fee (e.g., 2.9 for 2.9%)"
               >
                 <div className="relative">
                   <Input
@@ -462,7 +462,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (EUR)"
                 id="stripe_fee_fixed_eur"
                 error={form.formState.errors.stripe_fee_fixed_eur?.message}
-                description="Fixed fee for EUR transactions"
+                helperText="Fixed fee for EUR transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -484,7 +484,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (USD)"
                 id="stripe_fee_fixed_usd"
                 error={form.formState.errors.stripe_fee_fixed_usd?.message}
-                description="Fixed fee for USD transactions"
+                helperText="Fixed fee for USD transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -506,7 +506,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (GBP)"
                 id="stripe_fee_fixed_gbp"
                 error={form.formState.errors.stripe_fee_fixed_gbp?.message}
-                description="Fixed fee for GBP transactions"
+                helperText="Fixed fee for GBP transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -528,7 +528,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (AUD)"
                 id="stripe_fee_fixed_aud"
                 error={form.formState.errors.stripe_fee_fixed_aud?.message}
-                description="Fixed fee for AUD transactions"
+                helperText="Fixed fee for AUD transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -550,7 +550,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (CAD)"
                 id="stripe_fee_fixed_cad"
                 error={form.formState.errors.stripe_fee_fixed_cad?.message}
-                description="Fixed fee for CAD transactions"
+                helperText="Fixed fee for CAD transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -572,7 +572,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (JPY)"
                 id="stripe_fee_fixed_jpy"
                 error={form.formState.errors.stripe_fee_fixed_jpy?.message}
-                description="Fixed fee for JPY transactions"
+                helperText="Fixed fee for JPY transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -594,7 +594,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (CHF)"
                 id="stripe_fee_fixed_chf"
                 error={form.formState.errors.stripe_fee_fixed_chf?.message}
-                description="Fixed fee for CHF transactions"
+                helperText="Fixed fee for CHF transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -616,7 +616,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (RWF)"
                 id="stripe_fee_fixed_rwf"
                 error={form.formState.errors.stripe_fee_fixed_rwf?.message}
-                description="Fixed fee for RWF transactions"
+                helperText="Fixed fee for RWF transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -649,7 +649,7 @@ export function PaymentSettingsSection() {
                 id="paypal_fee_percentage"
                 required
                 error={form.formState.errors.paypal_fee_percentage?.message}
-                description="PayPal's percentage fee (e.g., 3.49 for 3.49%)"
+                helperText="PayPal's percentage fee (e.g., 3.49 for 3.49%)"
               >
                 <div className="relative">
                   <Input
@@ -671,7 +671,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (EUR)"
                 id="paypal_fee_fixed_eur"
                 error={form.formState.errors.paypal_fee_fixed_eur?.message}
-                description="Fixed fee for EUR transactions"
+                helperText="Fixed fee for EUR transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -693,7 +693,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (USD)"
                 id="paypal_fee_fixed_usd"
                 error={form.formState.errors.paypal_fee_fixed_usd?.message}
-                description="Fixed fee for USD transactions"
+                helperText="Fixed fee for USD transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -715,7 +715,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (GBP)"
                 id="paypal_fee_fixed_gbp"
                 error={form.formState.errors.paypal_fee_fixed_gbp?.message}
-                description="Fixed fee for GBP transactions"
+                helperText="Fixed fee for GBP transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -737,7 +737,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (AUD)"
                 id="paypal_fee_fixed_aud"
                 error={form.formState.errors.paypal_fee_fixed_aud?.message}
-                description="Fixed fee for AUD transactions"
+                helperText="Fixed fee for AUD transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -759,7 +759,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (CAD)"
                 id="paypal_fee_fixed_cad"
                 error={form.formState.errors.paypal_fee_fixed_cad?.message}
-                description="Fixed fee for CAD transactions"
+                helperText="Fixed fee for CAD transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -781,7 +781,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (JPY)"
                 id="paypal_fee_fixed_jpy"
                 error={form.formState.errors.paypal_fee_fixed_jpy?.message}
-                description="Fixed fee for JPY transactions"
+                helperText="Fixed fee for JPY transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -803,7 +803,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (CHF)"
                 id="paypal_fee_fixed_chf"
                 error={form.formState.errors.paypal_fee_fixed_chf?.message}
-                description="Fixed fee for CHF transactions"
+                helperText="Fixed fee for CHF transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -825,7 +825,7 @@ export function PaymentSettingsSection() {
                 label="Fixed Fee (RWF)"
                 id="paypal_fee_fixed_rwf"
                 error={form.formState.errors.paypal_fee_fixed_rwf?.message}
-                description="Fixed fee for RWF transactions"
+                helperText="Fixed fee for RWF transactions"
               >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">

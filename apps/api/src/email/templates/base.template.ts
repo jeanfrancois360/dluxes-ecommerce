@@ -1,9 +1,22 @@
 /**
  * Base Email Template - NextPik E-commerce Design
  * Black, Gold, Gray, White aesthetic
+ * Production-ready with unsubscribe links and company information
  */
 
-export const baseEmailTemplate = (content: string) => `
+export const baseEmailTemplate = (
+  content: string,
+  options?: {
+    unsubscribeUrl?: string;
+    frontendUrl?: string;
+    showUnsubscribe?: boolean;
+  },
+) => {
+  const frontendUrl = options?.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const showUnsubscribe = options?.showUnsubscribe !== false; // Default true
+  const unsubscribeUrl = options?.unsubscribeUrl || `${frontendUrl}/account/notifications`;
+
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -151,21 +164,37 @@ export const baseEmailTemplate = (content: string) => `
 
     <div class="footer">
       <p class="footer-text">
-        &copy; ${new Date().getFullYear()} NextPik E-commerce. All rights reserved.
+        &copy; ${new Date().getFullYear()} NextPik. All rights reserved.
       </p>
       <p class="footer-text">
-        Premium quality, delivered with elegance
+        Premium luxury marketplace, delivered with excellence
       </p>
 
-      <div class="social-links">
-        <a href="#">Instagram</a>
+      <div class="social-links" style="margin-top: 16px; margin-bottom: 20px;">
+        <a href="${frontendUrl}" style="color: #CBB57B; text-decoration: none;">Visit Website</a>
         <span style="color: #E5E5E5;">|</span>
-        <a href="#">Twitter</a>
+        <a href="${frontendUrl}/support" style="color: #737373; text-decoration: none;">Support</a>
         <span style="color: #E5E5E5;">|</span>
-        <a href="#">Facebook</a>
+        <a href="${frontendUrl}/privacy" style="color: #737373; text-decoration: none;">Privacy Policy</a>
       </div>
+
+      <p class="footer-text" style="font-size: 12px; color: #A3A3A3; margin-top: 20px;">
+        NextPik Inc.<br/>
+        Premium Luxury E-commerce Platform<br/>
+        <a href="mailto:support@nextpik.com" style="color: #CBB57B; text-decoration: none;">support@nextpik.com</a>
+      </p>
+
+      ${
+        showUnsubscribe
+          ? `
+      <p class="footer-text" style="font-size: 12px; color: #A3A3A3; margin-top: 16px;">
+        Don't want to receive these emails? <a href="${unsubscribeUrl}" style="color: #CBB57B; text-decoration: underline;">Unsubscribe</a>
+      </p>`
+          : ''
+      }
     </div>
   </div>
 </body>
 </html>
 `;
+};
