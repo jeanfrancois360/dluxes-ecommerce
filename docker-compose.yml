@@ -20,23 +20,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # PostgreSQL Read Replica (for scaling reads)
-  postgres-replica:
-    image: postgres:16-alpine
-    container_name: nextpik-postgres-replica
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: User@123!
-      POSTGRES_DB: nextpik_ecommerce
-      PGUSER: postgres
-    ports:
-      - '5434:5432'
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: postgres -c 'hot_standby=on'
-
   # Redis Cache
   redis:
     image: redis:7-alpine
@@ -69,18 +52,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Adminer (Database GUI)
-  adminer:
-    image: adminer:latest
-    container_name: nextpik-adminer
-    restart: unless-stopped
-    ports:
-      - '8080:8080'
-    depends_on:
-      - postgres
-    environment:
-      ADMINER_DEFAULT_SERVER: postgres
 
 volumes:
   postgres_data:
