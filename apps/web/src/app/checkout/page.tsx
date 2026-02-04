@@ -27,10 +27,10 @@ interface Address {
   addressLine1: string;
   addressLine2?: string;
   city: string;
-  state?: string; // Optional - not all countries have states/provinces
-  postalCode?: string; // Optional - not all countries have postal codes
+  state: string;
+  postalCode: string;
   country: string;
-  phone?: string;
+  phone: string;
   saveAsDefault?: boolean;
 }
 import { ShippingMethodSelector } from '@/components/checkout/shipping-method';
@@ -60,8 +60,8 @@ function convertToLegacyAddress(data: AddressFormData, addressId?: string | null
     addressLine1: data.address,
     addressLine2: data.deliveryNotes || undefined,
     city: data.city,
-    state: data.state || undefined, // Only include if country uses it
-    postalCode: data.postalCode || undefined, // Only include if country uses it
+    state: data.state || '',
+    postalCode: data.postalCode || '',
     country: countryConfig.name,
     phone: data.phone,
     saveAsDefault: data.isDefault,
@@ -730,7 +730,7 @@ export default function CheckoutPage() {
                           {/* Conditional Payment Form - Stripe or PayPal */}
                           {selectedPaymentMethod === 'stripe' ? (
                             <StripeElementsWrapper
-                              clientSecret={clientSecret}
+                              clientSecret={clientSecret || ''}
                               amount={totalWithShipping}
                               currency={cartCurrency || 'USD'}
                               onSuccess={onPaymentSuccess}
@@ -743,7 +743,7 @@ export default function CheckoutPage() {
                               amount={totalWithShipping}
                               currency={cartCurrency}
                               items={items.map((item) => ({
-                                name: item.product?.name || 'Product',
+                                name: item.name || 'Product',
                                 quantity: item.quantity,
                                 price: item.priceAtAdd || 0,
                               }))}
