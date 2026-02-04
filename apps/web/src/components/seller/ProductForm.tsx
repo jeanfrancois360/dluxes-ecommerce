@@ -15,11 +15,27 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { AlertTriangle, Lock, ArrowRight, Crown } from 'lucide-react';
 import { categoriesAPI, type Category } from '@/lib/api/categories';
 import { VariantManager } from '../admin/variant-manager';
 import { StockLevelIndicator } from '../admin/stock-status-badge';
 import { RealEstateFields, VehicleFields, DigitalFields, ServiceFields, RentalFields } from '../admin/product-type-fields';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
+import { useCanListProductType } from '@/hooks/use-subscription';
+
+// Product types that require a subscription
+const SUBSCRIPTION_REQUIRED_TYPES = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
+
+// Human-readable labels for product types
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  PHYSICAL: 'Physical Products',
+  DIGITAL: 'Digital Products',
+  SERVICE: 'Services',
+  RENTAL: 'Rentals',
+  VEHICLE: 'Vehicles',
+  REAL_ESTATE: 'Real Estate',
+};
 
 // Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
 const EnhancedImageUpload = dynamic(() => import('../products/EnhancedImageUpload'), {
@@ -59,6 +75,130 @@ interface ProductFormProps {
   isEdit?: boolean;
   onSubmit: (data: Partial<ProductData>) => Promise<void>;
   onCancel: () => void;
+}
+
+// Product Type Selector with subscription check
+function ProductTypeSelector({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const { canList, reasons, isLoading } = useCanListProductType(value);
+  const requiresSubscription = SUBSCRIPTION_REQUIRED_TYPES.includes(value);
+  const typeLabel = PRODUCT_TYPE_LABELS[value] || value;
+
+  // Determine the specific reason for restriction
+  const getRestrictionInfo = () => {
+    if (!requiresSubscription) return null;
+    if (isLoading) return null;
+    if (canList) return null;
+
+    // Check for credits (API returns hasCredits, hook default uses hasMonthlyCredits)
+    const hasCredits = (reasons as any).hasCredits ?? (reasons as any).hasMonthlyCredits ?? true;
+    if (!hasCredits) {
+      return {
+        title: 'Subscription Required',
+        message: `You need an active subscription to list ${typeLabel}. Subscribe to start listing this type of product.`,
+        actionLabel: 'Get Subscription',
+        actionUrl: '/seller/selling-credits',
+      };
+    }
+    if (!reasons.productTypeAllowed) {
+      return {
+        title: 'Plan Upgrade Required',
+        message: `${typeLabel} listings are not included in your current plan. Upgrade to a plan that supports this product type.`,
+        actionLabel: 'View Plans',
+        actionUrl: '/seller/subscription/plans',
+      };
+    }
+    if (!reasons.meetsTierRequirement) {
+      return {
+        title: 'Higher Tier Required',
+        message: `${typeLabel} require a higher subscription tier. Upgrade your plan to unlock this feature.`,
+        actionLabel: 'Upgrade Plan',
+        actionUrl: '/seller/subscription/plans',
+      };
+    }
+    if (!reasons.hasListingCapacity) {
+      return {
+        title: 'Listing Limit Reached',
+        message: 'You have reached the maximum number of listings for your plan. Upgrade to add more products.',
+        actionLabel: 'Upgrade Plan',
+        actionUrl: '/seller/subscription/plans',
+      };
+    }
+    return null;
+  };
+
+  const restriction = getRestrictionInfo();
+
+  return (
+    <div>
+      <label htmlFor="productType" className="block text-sm font-medium text-gray-700 mb-2">
+        Product Type <span className="text-red-500">*</span>
+      </label>
+      <select
+        id="productType"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
+          restriction ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
+        }`}
+      >
+        <option value="PHYSICAL">Physical Product</option>
+        <option value="DIGITAL">Digital Product</option>
+        <option value="SERVICE">Service (Subscription Required)</option>
+        <option value="REAL_ESTATE">Real Estate (Subscription Required)</option>
+        <option value="VEHICLE">Vehicle (Subscription Required)</option>
+        <option value="RENTAL">Rental (Subscription Required)</option>
+      </select>
+
+      {/* Show loading state while checking */}
+      {requiresSubscription && isLoading && (
+        <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+          <div className="w-4 h-4 border-2 border-gray-300 border-t-[#CBB57B] rounded-full animate-spin" />
+          Checking subscription status...
+        </div>
+      )}
+
+      {/* Show restriction warning */}
+      {restriction && (
+        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Lock className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-amber-900 flex items-center gap-2">
+                {restriction.title}
+              </h4>
+              <p className="text-sm text-amber-700 mt-1">{restriction.message}</p>
+              <Link
+                href={restriction.actionUrl}
+                className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-[#CBB57B] text-black text-sm font-semibold rounded-lg hover:bg-[#b9a369] transition-colors"
+              >
+                <Crown className="w-4 h-4" />
+                {restriction.actionLabel}
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Show success state for allowed subscription types */}
+      {requiresSubscription && !isLoading && canList && (
+        <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Your subscription includes {typeLabel} listings
+        </div>
+      )}
+
+      {!requiresSubscription && (
+        <p className="mt-1 text-sm text-gray-500">
+          Select the type of product you're selling
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function ProductForm({ initialData, isEdit = false, onSubmit, onCancel }: ProductFormProps) {
@@ -541,27 +681,10 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
           </div>
 
           {/* Product Type */}
-          <div>
-            <label htmlFor="productType" className="block text-sm font-medium text-gray-700 mb-2">
-              Product Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="productType"
-              value={formData.productType}
-              onChange={(e) => setFormData({ ...formData, productType: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-            >
-              <option value="PHYSICAL">Physical Product</option>
-              <option value="DIGITAL">Digital Product</option>
-              <option value="SERVICE">Service</option>
-              <option value="REAL_ESTATE">Real Estate</option>
-              <option value="VEHICLE">Vehicle</option>
-              <option value="RENTAL">Rental</option>
-            </select>
-            <p className="mt-1 text-sm text-gray-500">
-              Select the type of product you're selling
-            </p>
-          </div>
+          <ProductTypeSelector
+            value={formData.productType}
+            onChange={(value) => setFormData({ ...formData, productType: value })}
+          />
 
           {/* Purchase Type */}
           <div>

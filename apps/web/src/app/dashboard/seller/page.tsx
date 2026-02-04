@@ -414,7 +414,7 @@ export default function SellerDashboard() {
                       You've used {subscription.activeListingsCount} of {plan.maxActiveListings} active listings. Upgrade to list more products.
                     </p>
                     <Link
-                      href="/seller/plans"
+                      href="/seller/subscription/plans"
                       className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
                     >
                       Upgrade Plan

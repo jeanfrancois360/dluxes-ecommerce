@@ -1,18 +1,258 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
+import { Button } from '@nextpik/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
-import { Loader2, Calculator, Info, DollarSign } from 'lucide-react';
+import { Loader2, Calculator, Info, DollarSign, Truck, CheckCircle, XCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { shippingSettingsSchema, type ShippingSettings } from '@/lib/validations/settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { api } from '@/lib/api/client';
+
+// DHL Health Status Interface
+interface DhlHealthStatus {
+  enabled: boolean;
+  configured: boolean;
+  credentialsValid?: boolean;
+  environment: string;
+}
+
+// DHL Test Rate Result Interface
+interface DhlTestRateResult {
+  success: boolean;
+  message: string;
+  ratesCount?: number;
+  rates?: Array<{
+    id: string;
+    name: string;
+    price: number;
+    currency: string;
+    estimatedDays: number;
+  }>;
+  error?: string;
+}
+
+// DHL Configuration Component
+function DhlConfigurationSection() {
+  const [healthStatus, setHealthStatus] = useState<DhlHealthStatus | null>(null);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+  const [isTestingRates, setIsTestingRates] = useState(false);
+  const [testRateResult, setTestRateResult] = useState<DhlTestRateResult | null>(null);
+  const [showTestRates, setShowTestRates] = useState(false);
+
+  const checkDhlHealth = useCallback(async () => {
+    setIsCheckingHealth(true);
+    try {
+      const status = await api.get<DhlHealthStatus>('/shipping/admin/dhl/health');
+      setHealthStatus(status);
+    } catch (error) {
+      console.error('Failed to check DHL health:', error);
+      setHealthStatus({
+        enabled: false,
+        configured: false,
+        environment: 'unknown',
+      });
+      toast.error('Failed to check DHL API status');
+    } finally {
+      setIsCheckingHealth(false);
+    }
+  }, []);
+
+  const testDhlRates = useCallback(async () => {
+    setIsTestingRates(true);
+    setTestRateResult(null);
+    try {
+      const result = await api.post<DhlTestRateResult>('/shipping/admin/dhl/test-rates', {
+        originCountry: 'US',
+        originPostalCode: '10001',
+        destinationCountry: 'GB',
+        destinationPostalCode: 'SW1A 1AA',
+        weight: 1,
+      });
+      setTestRateResult(result);
+      setShowTestRates(true);
+      if (result.success) {
+        toast.success(`DHL API working: ${result.ratesCount} rates found`);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error: any) {
+      console.error('Failed to test DHL rates:', error);
+      setTestRateResult({
+        success: false,
+        message: error.message || 'Failed to test DHL rates',
+        error: error.data?.message || error.message,
+      });
+      toast.error('Failed to test DHL rates');
+    } finally {
+      setIsTestingRates(false);
+    }
+  }, []);
+
+  // Check health on mount
+  useEffect(() => {
+    checkDhlHealth();
+  }, [checkDhlHealth]);
+
+  return (
+    <SettingsCard
+      icon={Truck}
+      title="DHL Express Configuration"
+      description="Configure and test DHL Express API integration for real-time shipping rates"
+    >
+      {/* Connection Status */}
+      <div className="rounded-lg border p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {isCheckingHealth ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : healthStatus?.credentialsValid ? (
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            ) : healthStatus?.configured ? (
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+            ) : (
+              <XCircle className="h-5 w-5 text-red-600" />
+            )}
+            <div>
+              <p className="text-sm font-medium">
+                {isCheckingHealth
+                  ? 'Checking connection...'
+                  : healthStatus?.credentialsValid
+                    ? 'DHL API Connected'
+                    : healthStatus?.configured
+                      ? 'Credentials Invalid'
+                      : 'Not Configured'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Environment: {healthStatus?.environment || 'Unknown'}
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={checkDhlHealth}
+            disabled={isCheckingHealth}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isCheckingHealth ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+
+        {/* Status Details */}
+        {healthStatus && (
+          <div className="grid grid-cols-3 gap-4 pt-2 border-t">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">API Key</p>
+              <p className={`text-sm font-medium ${healthStatus.configured ? 'text-green-600' : 'text-red-600'}`}>
+                {healthStatus.configured ? 'Configured' : 'Missing'}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Credentials</p>
+              <p className={`text-sm font-medium ${healthStatus.credentialsValid ? 'text-green-600' : healthStatus.configured ? 'text-yellow-600' : 'text-red-600'}`}>
+                {healthStatus.credentialsValid ? 'Valid' : healthStatus.configured ? 'Invalid' : 'Not Set'}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Mode</p>
+              <p className={`text-sm font-medium ${healthStatus.environment === 'production' ? 'text-blue-600' : 'text-orange-600'}`}>
+                {healthStatus.environment === 'production' ? 'Production' : 'Sandbox'}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Test Rates */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Test DHL Rates</p>
+            <p className="text-xs text-muted-foreground">
+              Send a test request to verify DHL API is working (US → UK, 1kg)
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={testDhlRates}
+            disabled={isTestingRates || !healthStatus?.configured}
+          >
+            {isTestingRates ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Testing...
+              </>
+            ) : (
+              'Test Rates'
+            )}
+          </Button>
+        </div>
+
+        {/* Test Results */}
+        {showTestRates && testRateResult && (
+          <div className={`rounded-lg border p-4 ${testRateResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+            <div className="flex items-center gap-2 mb-2">
+              {testRateResult.success ? (
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              ) : (
+                <XCircle className="h-4 w-4 text-red-600" />
+              )}
+              <p className={`text-sm font-medium ${testRateResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                {testRateResult.message}
+              </p>
+            </div>
+
+            {testRateResult.success && testRateResult.rates && testRateResult.rates.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-muted-foreground">Available Rates (US → UK, 1kg):</p>
+                <div className="space-y-1.5">
+                  {testRateResult.rates.slice(0, 5).map((rate, index) => (
+                    <div key={index} className="flex justify-between items-center text-sm bg-white rounded px-3 py-2">
+                      <span className="text-gray-700">{rate.name}</span>
+                      <span className="font-medium text-gray-900">
+                        {rate.currency} {rate.price.toFixed(2)} ({rate.estimatedDays} days)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {testRateResult.error && (
+              <p className="text-xs text-red-600 mt-2">Error: {testRateResult.error}</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Info Box */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div className="flex gap-2">
+          <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-amber-900">DHL API Configuration</p>
+            <ul className="text-sm text-amber-700 space-y-1">
+              <li>API credentials are configured in server environment variables</li>
+              <li>Current environment: <strong>{healthStatus?.environment || 'Unknown'}</strong></li>
+              <li>To switch to production, update <code className="bg-amber-100 px-1 rounded">DHL_API_ENVIRONMENT</code> in .env</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </SettingsCard>
+  );
+}
 
 export function ShippingSettingsSection() {
   const { settings, loading, refetch } = useSettings('shipping');
@@ -92,8 +332,8 @@ export function ShippingSettingsSection() {
               <p className="text-sm font-medium text-blue-900">Shipping Modes</p>
               <ul className="text-sm text-blue-700 space-y-1">
                 <li><strong>Manual:</strong> Use manually configured rates (below)</li>
-                <li><strong>DHL API:</strong> Real-time rates from DHL (coming soon)</li>
-                <li><strong>Hybrid:</strong> Try DHL API, fallback to manual if unavailable</li>
+                <li><strong>DHL API:</strong> Real-time rates from DHL Express</li>
+                <li><strong>Hybrid:</strong> Try DHL API, fallback to manual if unavailable (Recommended)</li>
               </ul>
             </div>
           </div>
@@ -115,13 +355,14 @@ export function ShippingSettingsSection() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="manual">Manual Configuration</SelectItem>
-              <SelectItem value="dhl_api" disabled>DHL API (Coming Soon)</SelectItem>
-              <SelectItem value="hybrid" disabled>Hybrid (Coming Soon)</SelectItem>
+              <SelectItem value="dhl_api">DHL API Only</SelectItem>
+              <SelectItem value="hybrid">Hybrid (Recommended)</SelectItem>
             </SelectContent>
           </Select>
         </SettingsField>
 
-        {currentMode === 'manual' && (
+        {/* Manual rates configuration - show when manual or hybrid mode */}
+        {(currentMode === 'manual' || currentMode === 'hybrid') && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <SettingsField
@@ -210,17 +451,45 @@ export function ShippingSettingsSection() {
             </div>
 
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <p className="text-sm font-medium mb-2">Rate Preview</p>
+              <p className="text-sm font-medium mb-2">
+                {currentMode === 'hybrid' ? 'Fallback Rate Preview' : 'Rate Preview'}
+              </p>
               <div className="text-sm text-muted-foreground space-y-1">
                 <p>Standard (5-7 days): ${(form.watch('shipping_standard_rate') ?? 9.99).toFixed(2)}</p>
                 <p>Express (2-3 days): ${(form.watch('shipping_express_rate') ?? 19.99).toFixed(2)}</p>
                 <p>Overnight (1 day): ${(form.watch('shipping_overnight_rate') ?? 29.99).toFixed(2)}</p>
                 <p>International Surcharge: +${(form.watch('shipping_international_surcharge') ?? 15.00).toFixed(2)}</p>
               </div>
+              {currentMode === 'hybrid' && (
+                <p className="text-xs text-amber-600 mt-2">
+                  These rates are used when DHL API is unavailable
+                </p>
+              )}
             </div>
           </>
         )}
+
+        {/* DHL-only mode info */}
+        {currentMode === 'dhl_api' && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-900">DHL API Only Mode</p>
+                <p className="text-sm text-amber-700">
+                  Shipping rates will be fetched exclusively from DHL Express. If DHL API is unavailable,
+                  customers will see an error. Consider using <strong>Hybrid mode</strong> for better reliability.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </SettingsCard>
+
+      {/* DHL Configuration Section - show when DHL or Hybrid mode */}
+      {(currentMode === 'dhl_api' || currentMode === 'hybrid') && (
+        <DhlConfigurationSection />
+      )}
 
       <SettingsCard
         icon={DollarSign}

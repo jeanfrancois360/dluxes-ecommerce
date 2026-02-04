@@ -1072,38 +1072,69 @@ export class SellerService {
       throw new ForbiddenException('Your store must be approved before you can add products.');
     }
 
-    // Check subscription requirements for subscription-based product types
-    const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
+    // Check subscription requirements for inquiry-based product types
+    // These product types require a valid subscription to list
+    const inquiryProductTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
     const productType = data.productType;
 
-    if (productType && subscriptionTypes.includes(productType)) {
+    if (productType && inquiryProductTypes.includes(productType)) {
       const check = await this.subscriptionService.canListProductType(
         userId,
         productType,
       );
 
       if (!check.canList) {
-        const messages: string[] = [];
+        // Provide clear, user-friendly error messages
+        const productTypeLabel = this.getProductTypeLabel(productType);
+
         if (!check.reasons.hasMonthlyCredits) {
-          messages.push(
-            'You need an active platform subscription to list products',
-          );
-        }
-        if (!check.reasons.productTypeAllowed) {
-          messages.push(
-            `Your feature plan does not include ${productType} listings. Upgrade to a plan that supports this product type`,
-          );
-        }
-        if (!check.reasons.meetsTierRequirement) {
-          messages.push(
-            `Your current feature plan tier doesn't support ${productType} products. Upgrade to a higher tier`,
-          );
-        }
-        if (!check.reasons.hasListingCapacity) {
-          messages.push('You have reached your maximum listing limit');
+          throw new BadRequestException({
+            code: 'NO_SUBSCRIPTION',
+            message: `A subscription is required to list ${productTypeLabel}.`,
+            userMessage: `You need an active subscription to list ${productTypeLabel}. Subscribe to start listing this type of product.`,
+            action: 'subscribe',
+            actionUrl: '/seller/selling-credits',
+          });
         }
 
-        throw new BadRequestException(messages.join('. '));
+        if (!check.reasons.productTypeAllowed) {
+          throw new BadRequestException({
+            code: 'PRODUCT_TYPE_NOT_ALLOWED',
+            message: `Your plan doesn't include ${productTypeLabel}.`,
+            userMessage: `${productTypeLabel} listings are not included in your current plan. Upgrade to a plan that supports this product type.`,
+            action: 'upgrade',
+            actionUrl: '/seller/plans',
+          });
+        }
+
+        if (!check.reasons.meetsTierRequirement) {
+          throw new BadRequestException({
+            code: 'TIER_UPGRADE_REQUIRED',
+            message: `Your plan tier doesn't support ${productTypeLabel}.`,
+            userMessage: `${productTypeLabel} require a higher subscription tier. Upgrade your plan to unlock this feature.`,
+            action: 'upgrade',
+            actionUrl: '/seller/plans',
+          });
+        }
+
+        if (!check.reasons.hasListingCapacity) {
+          throw new BadRequestException({
+            code: 'LISTING_LIMIT_REACHED',
+            message: 'You have reached your listing limit.',
+            userMessage: 'You have reached the maximum number of listings for your plan. Upgrade to add more products.',
+            action: 'upgrade',
+            actionUrl: '/seller/plans',
+          });
+        }
+
+        // Fallback generic error
+        throw new BadRequestException({
+          code: 'CANNOT_LIST_PRODUCT',
+          message: `Unable to list ${productTypeLabel}.`,
+          userMessage: `You cannot list ${productTypeLabel} with your current subscription. Please check your plan or contact support.`,
+          action: 'contact',
+          actionUrl: '/support',
+        });
       }
     }
 
@@ -1120,8 +1151,8 @@ export class SellerService {
       },
     });
 
-    // Deduct credits for subscription-based product types
-    if (productType && subscriptionTypes.includes(productType)) {
+    // Deduct credits for inquiry-based product types
+    if (productType && inquiryProductTypes.includes(productType)) {
       try {
         const action = `list_${productType.toLowerCase()}`;
         await this.creditsService.debitCredits(
@@ -2044,6 +2075,21 @@ export class SellerService {
       this.logger.error(`Failed to confirm shipment for order ${orderId}`, error.message);
       throw new BadRequestException('Failed to confirm shipment');
     }
+  }
+
+  /**
+   * Get human-readable label for product type
+   */
+  private getProductTypeLabel(productType: string): string {
+    const labels: Record<string, string> = {
+      PHYSICAL: 'Physical Products',
+      DIGITAL: 'Digital Products',
+      SERVICE: 'Services',
+      RENTAL: 'Rentals',
+      VEHICLE: 'Vehicles',
+      REAL_ESTATE: 'Real Estate',
+    };
+    return labels[productType] || productType;
   }
 
   /**
