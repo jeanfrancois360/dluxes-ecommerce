@@ -9,7 +9,7 @@ export default function SubscriptionCancelPage() {
   const router = useRouter();
 
   const handleRetry = () => {
-    router.push('/seller/plans');
+    router.push('/seller/subscription/plans');
   };
 
   const handleDashboard = () => {

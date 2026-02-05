@@ -33,7 +33,7 @@ export function Navbar({ className }: NavbarProps) {
     { label: 'Home', href: '/' },
     { label: 'Shop', href: '/products', hasMegaMenu: true, megaMenuType: 'shop' },
     { label: 'Stores', href: '/stores' },
-    { label: 'Hot Deals', href: '/' },
+    { label: 'Hot Deals', href: '/hot-deals' },
     { label: 'Contact', href: '/contact' },
   ];
 

@@ -2,19 +2,114 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Lock, AlertCircle, Crown, Package, Loader2 } from 'lucide-react';
+import { Lock, AlertCircle, Crown, Package, Loader2, X, ArrowRight } from 'lucide-react';
 import { PageLayout } from '@/components/layout/page-layout';
 import ProductForm from '@/components/seller/ProductForm';
-import { api } from '@/lib/api/client';
+import { api, APIError } from '@/lib/api/client';
 import { useMySubscription, useCanListProductType } from '@/hooks/use-subscription';
+
+// Error modal state type
+interface ErrorModalState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  action?: {
+    label: string;
+    href: string;
+  };
+}
+
+// Parse API error into user-friendly format
+function parseProductError(error: any): { title: string; message: string; action?: { label: string; href: string } } {
+  // Check if it's a structured error from our backend
+  const errorData = error?.data || error;
+
+  if (errorData?.userMessage) {
+    return {
+      title: getErrorTitle(errorData.code),
+      message: errorData.userMessage,
+      action: errorData.actionUrl ? {
+        label: getActionLabel(errorData.action),
+        href: errorData.actionUrl,
+      } : undefined,
+    };
+  }
+
+  // Fallback: parse the error message string
+  const errorMessage = error?.message || error?.toString() || 'An unexpected error occurred';
+
+  // Check for common error patterns
+  if (errorMessage.includes('subscription') || errorMessage.includes('credits')) {
+    return {
+      title: 'Subscription Required',
+      message: 'You need an active subscription to list this type of product.',
+      action: { label: 'Get Subscription', href: '/seller/selling-credits' },
+    };
+  }
+
+  if (errorMessage.includes('plan') && (errorMessage.includes('VEHICLE') || errorMessage.includes('REAL_ESTATE') || errorMessage.includes('SERVICE') || errorMessage.includes('RENTAL'))) {
+    return {
+      title: 'Plan Upgrade Required',
+      message: 'Your current plan doesn\'t support this product type. Upgrade to unlock this feature.',
+      action: { label: 'View Plans', href: '/seller/subscription/plans' },
+    };
+  }
+
+  if (errorMessage.includes('listing') && errorMessage.includes('limit')) {
+    return {
+      title: 'Listing Limit Reached',
+      message: 'You\'ve reached the maximum number of listings for your plan.',
+      action: { label: 'Upgrade Plan', href: '/seller/subscription/plans' },
+    };
+  }
+
+  if (errorMessage.includes('store') && (errorMessage.includes('approved') || errorMessage.includes('ACTIVE'))) {
+    return {
+      title: 'Store Not Active',
+      message: 'Your store must be approved before you can add products.',
+      action: { label: 'View Store Status', href: '/seller/dashboard' },
+    };
+  }
+
+  // Default error
+  return {
+    title: 'Failed to Create Product',
+    message: errorMessage.length > 200 ? 'There was a problem creating your product. Please try again.' : errorMessage,
+  };
+}
+
+function getErrorTitle(code: string): string {
+  const titles: Record<string, string> = {
+    NO_SUBSCRIPTION: 'Subscription Required',
+    PRODUCT_TYPE_NOT_ALLOWED: 'Product Type Not Available',
+    TIER_UPGRADE_REQUIRED: 'Upgrade Required',
+    LISTING_LIMIT_REACHED: 'Listing Limit Reached',
+    CANNOT_LIST_PRODUCT: 'Cannot Create Listing',
+  };
+  return titles[code] || 'Error';
+}
+
+function getActionLabel(action: string): string {
+  const labels: Record<string, string> = {
+    subscribe: 'Get Subscription',
+    upgrade: 'Upgrade Plan',
+    contact: 'Contact Support',
+  };
+  return labels[action] || 'Learn More';
+}
 
 export default function NewProductPage() {
   const router = useRouter();
   const [selectedProductType, setSelectedProductType] = useState('PHYSICAL');
   const [isCheckingLimits, setIsCheckingLimits] = useState(true);
   const [canCreate, setCanCreate] = useState<any>(null);
+  const [errorModal, setErrorModal] = useState<ErrorModalState>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
 
   const { subscription, plan, isLoading: subLoading } = useMySubscription();
   const { canList, reasons, isLoading: canListLoading } = useCanListProductType(selectedProductType);
@@ -33,16 +128,17 @@ export default function NewProductPage() {
 
   const handleSubmit = async (formData: any) => {
     try {
-      const response = await api.post('/seller/products', formData);
-
-      // Show success message
-      alert('Product created successfully!');
-
-      // Redirect to products list
-      router.push('/seller/products');
+      await api.post('/seller/products', formData);
+      router.push('/seller/products?success=created');
     } catch (error: any) {
       console.error('Failed to create product:', error);
-      throw error; // Let the form handle the error
+      const parsed = parseProductError(error);
+      setErrorModal({
+        isOpen: true,
+        title: parsed.title,
+        message: parsed.message,
+        action: parsed.action,
+      });
     }
   };
 
@@ -50,6 +146,10 @@ export default function NewProductPage() {
     if (confirm('Are you sure you want to cancel? All unsaved changes will be lost.')) {
       router.push('/seller/products');
     }
+  };
+
+  const closeErrorModal = () => {
+    setErrorModal({ isOpen: false, title: '', message: '' });
   };
 
   // Show loading state
@@ -180,7 +280,7 @@ export default function NewProductPage() {
                     Back to Products
                   </Link>
                   <Link
-                    href={!reasons.hasMonthlyCredits ? "/seller/selling-credits" : "/seller/plans"}
+                    href={!reasons.hasMonthlyCredits ? "/seller/selling-credits" : "/seller/subscription/plans"}
                     className="px-6 py-3 bg-[#CBB57B] text-black rounded-xl font-semibold hover:bg-[#b9a369] transition-colors shadow-md"
                   >
                     {!reasons.hasMonthlyCredits ? 'Purchase Credits' : 'Upgrade Plan'}
@@ -247,7 +347,7 @@ export default function NewProductPage() {
                   </p>
                   <p className="text-sm text-amber-800 mt-1">
                     Consider upgrading your plan to add more products.{' '}
-                    <Link href="/seller/plans" className="font-semibold underline hover:text-amber-900">
+                    <Link href="/seller/subscription/plans" className="font-semibold underline hover:text-amber-900">
                       View Plans
                     </Link>
                   </p>
@@ -271,6 +371,69 @@ export default function NewProductPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Error Modal */}
+      <AnimatePresence>
+        {errorModal.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            onClick={closeErrorModal}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+            >
+              {/* Header */}
+              <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">{errorModal.title}</h3>
+                  </div>
+                  <button
+                    onClick={closeErrorModal}
+                    className="p-1 hover:bg-red-100 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-5">
+                <p className="text-gray-600 leading-relaxed">{errorModal.message}</p>
+              </div>
+
+              {/* Actions */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end">
+                <button
+                  onClick={closeErrorModal}
+                  className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+                {errorModal.action && (
+                  <Link
+                    href={errorModal.action.href}
+                    className="px-4 py-2 bg-[#CBB57B] text-black font-semibold rounded-lg hover:bg-[#b9a369] transition-colors flex items-center gap-2"
+                  >
+                    {errorModal.action.label}
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageLayout>
   );
 }

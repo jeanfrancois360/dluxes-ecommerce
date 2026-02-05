@@ -279,6 +279,130 @@ export class StripeSubscriptionService {
   }
 
   /**
+   * Verify checkout session and activate subscription (fallback for delayed webhooks)
+   * This is called from the success page to ensure the subscription is activated
+   * even if the webhook hasn't been received yet
+   */
+  async verifyAndActivateCheckout(
+    userId: string,
+    sessionId: string,
+  ): Promise<{ activated: boolean; subscription: any }> {
+    const stripe = await this.getStripeClient();
+
+    // Retrieve the checkout session from Stripe (no expansion to keep subscription as string ID)
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    this.logger.log(`Verifying checkout session ${sessionId} for user ${userId}`);
+
+    // Get subscription ID (it's a string ID, not expanded object)
+    const stripeSubscriptionId = session.subscription as string;
+    const stripeCustomerId = session.customer as string;
+
+    this.logger.debug(`Session data: subscription=${stripeSubscriptionId}, customer=${stripeCustomerId}, status=${session.status}`);
+
+    // Verify the session belongs to this user
+    const sessionUserId = session.metadata?.userId;
+    if (sessionUserId && sessionUserId !== userId) {
+      throw new BadRequestException('Session does not belong to this user');
+    }
+
+    // Check if session was completed successfully
+    if (session.status !== 'complete') {
+      this.logger.warn(`Checkout session ${sessionId} not complete: ${session.status}`);
+      return {
+        activated: false,
+        subscription: null,
+      };
+    }
+
+    // Check if subscription already exists and is active
+    const existingSubscription = await this.prisma.sellerSubscription.findUnique({
+      where: { userId },
+      include: { plan: true },
+    });
+
+    if (
+      existingSubscription &&
+      existingSubscription.stripeSubscriptionId === stripeSubscriptionId &&
+      existingSubscription.status === 'ACTIVE' &&
+      existingSubscription.plan.tier !== 'FREE'
+    ) {
+      this.logger.log(`Subscription already active for user ${userId}`);
+      return {
+        activated: true,
+        subscription: existingSubscription,
+      };
+    }
+
+    // Get plan from metadata
+    const planId = session.metadata?.planId;
+    const billingCycle = session.metadata?.billingCycle;
+
+    if (!planId) {
+      this.logger.error(`No planId in session metadata for session ${sessionId}`);
+      throw new BadRequestException('Invalid checkout session');
+    }
+
+    const plan = await this.prisma.subscriptionPlan.findUnique({
+      where: { id: planId },
+    });
+
+    if (!plan) {
+      throw new NotFoundException('Plan not found');
+    }
+
+    // Calculate period end
+    const now = new Date();
+    const periodEnd = new Date(now);
+    if (billingCycle === 'YEARLY') {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    } else {
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    }
+
+    this.logger.log(`Creating/updating subscription: userId=${userId}, planId=${planId}, billingCycle=${billingCycle}`);
+
+    // Create or update subscription
+    const subscription = await this.prisma.sellerSubscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        planId,
+        status: SubscriptionStatus.ACTIVE,
+        billingCycle: (billingCycle as BillingCycle) || BillingCycle.MONTHLY,
+        stripeCustomerId: stripeCustomerId || null,
+        stripeSubscriptionId: stripeSubscriptionId || null,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        creditsAllocated: plan.monthlyCredits,
+        creditsUsed: 0,
+      },
+      update: {
+        planId,
+        status: SubscriptionStatus.ACTIVE,
+        billingCycle: (billingCycle as BillingCycle) || BillingCycle.MONTHLY,
+        stripeCustomerId: stripeCustomerId || undefined,
+        stripeSubscriptionId: stripeSubscriptionId || undefined,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        canceledAt: null,
+        cancelAtPeriodEnd: false,
+        creditsAllocated: plan.monthlyCredits,
+      },
+      include: { plan: true },
+    });
+
+    this.logger.log(
+      `Subscription activated via verify-checkout for user ${userId} with plan ${plan.name}`,
+    );
+
+    return {
+      activated: true,
+      subscription,
+    };
+  }
+
+  /**
    * Handle Stripe webhook events for subscriptions
    */
   async handleWebhookEvent(event: Stripe.Event): Promise<void> {

@@ -3,56 +3,53 @@ import { baseEmailTemplate } from './base.template';
 export const passwordResetTemplate = (name: string, resetLink: string, frontendUrl?: string) => {
   const content = `
     <div style="text-align: center;">
-      <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-center;">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2">
+      <div style="width: 56px; height: 56px; background-color: #000000; border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; border: 2px solid #CBB57B;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2">
           <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
         </svg>
       </div>
     </div>
 
-    <h2 style="color: #000000; font-size: 28px; font-weight: 700; margin-bottom: 16px; text-align: center; letter-spacing: -0.5px;">
+    <h2 style="color: #000000; font-size: 22px; font-weight: 600; margin-bottom: 16px; text-align: center;">
       Reset Your Password
     </h2>
 
-    <p style="color: #525252; font-size: 16px; line-height: 1.6; margin-bottom: 32px; text-align: center;">
+    <p style="color: #525252; font-size: 15px; line-height: 1.6; margin-bottom: 32px; text-align: center;">
       Hello ${name}, we received a request to reset your password.
-      Click the button below to create a new password.
-      This link will expire in <strong>1 hour</strong>.
+      This link expires in <strong>1 hour</strong>.
     </p>
 
     <div style="text-align: center; margin: 40px 0;">
       <a href="${resetLink}"
-         style="display: inline-block; background: linear-gradient(135deg, #000000 0%, #262626 100%); color: #FFFFFF; padding: 16px 48px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);">
+         style="display: inline-block; background-color: #000000; color: #FFFFFF; padding: 14px 40px; text-decoration: none; font-weight: 600; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;">
         Reset Password
       </a>
     </div>
 
-    <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 20px; border-radius: 8px; margin-top: 32px;">
-      <p style="color: #78350F; font-size: 14px; line-height: 1.6; margin-bottom: 12px;">
-        <strong>⚠️ Important:</strong>
+    <div style="background-color: #FAFAFA; border-left: 3px solid #CBB57B; padding: 16px 20px; margin-top: 32px;">
+      <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0 0 8px 0;">
+        <strong style="color: #000000;">Password Tips:</strong>
       </p>
-      <ul style="color: #92400E; font-size: 14px; line-height: 1.8; margin-left: 20px;">
-        <li>Use a strong, unique password</li>
-        <li>Don't share your password with anyone</li>
-        <li>Enable 2FA for extra security</li>
-      </ul>
-    </div>
-
-    <div style="background-color: #FAFAFA; border-left: 4px solid #CBB57B; padding: 20px; border-radius: 8px; margin-top: 20px;">
-      <p style="color: #525252; font-size: 14px; line-height: 1.6;">
-        <strong style="color: #000000;">Didn't request a password reset?</strong><br/>
-        Your account is still secure. You can safely ignore this email.
+      <p style="color: #737373; font-size: 13px; line-height: 1.6; margin: 0;">
+        Use a strong, unique password and enable 2FA for extra security.
       </p>
     </div>
 
-    <p style="color: #A3A3A3; font-size: 13px; text-align: center; margin-top: 32px; line-height: 1.6;">
-      Or copy and paste this link into your browser:<br/>
-      <a href="${resetLink}" style="color: #CBB57B; word-break: break-all;">${resetLink}</a>
+    <div style="background-color: #FFFFFF; border-left: 3px solid #E5E5E5; padding: 16px 20px; margin-top: 16px;">
+      <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0;">
+        <strong style="color: #000000;">Didn't request this?</strong>
+        Your account is secure. You can ignore this email.
+      </p>
+    </div>
+
+    <p style="color: #A3A3A3; font-size: 12px; text-align: center; margin-top: 32px; line-height: 1.6;">
+      Or copy this link:<br/>
+      <a href="${resetLink}" style="color: #000000; word-break: break-all; text-decoration: underline;">${resetLink}</a>
     </p>
   `;
 
   return baseEmailTemplate(content, {
     frontendUrl,
-    showUnsubscribe: false // Don't show unsubscribe for security emails
+    showUnsubscribe: false
   });
 };
