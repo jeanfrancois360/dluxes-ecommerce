@@ -245,7 +245,7 @@ export default function HotDealsPage() {
                       >
                         All Categories
                       </button>
-                      {categories.map(([key, label]) => (
+                      {categories?.map(([key, label]) => (
                         <button
                           key={key}
                           onClick={() => {
@@ -396,7 +396,7 @@ export default function HotDealsPage() {
           {!isLoading && !error && (!deals || deals.length === 0) && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {deals.map((deal) => (
+                {deals?.map((deal) => (
                   <HotDealCard key={deal.id} deal={deal} />
                 ))}
               </div>
