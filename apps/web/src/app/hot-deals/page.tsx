@@ -371,7 +371,7 @@ export default function HotDealsPage() {
           )}
 
           {/* Empty State */}
-          {!isLoading && !error && deals.length === 0 && (
+          {!isLoading && !error && (!deals || deals.length === 0) && (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
               <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
                 <Flame className="w-8 h-8 text-orange-500" />
@@ -393,7 +393,7 @@ export default function HotDealsPage() {
           )}
 
           {/* Deals Grid */}
-          {!isLoading && !error && deals.length > 0 && (
+          {!isLoading && !error && (!deals || deals.length === 0) && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {deals.map((deal) => (
