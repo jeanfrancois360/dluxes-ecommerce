@@ -35,6 +35,12 @@ export interface DhlRateRequest {
   unitOfMeasurement?: 'metric' | 'imperial';
 }
 
+export interface DhlTotalPriceItem {
+  currencyType: string; // 'BILLC' = billing currency, 'PULCL' = published local, 'BASEC' = base currency
+  priceCurrency?: string;
+  price: number;
+}
+
 export interface DhlRateProduct {
   productName: string;
   productCode: string;
@@ -42,11 +48,8 @@ export interface DhlRateProduct {
   networkTypeCode?: string;
   isCustomerAgreement: boolean;
 
-  // Pricing
-  totalPrice: {
-    price: number;
-    priceCurrency: string;
-  };
+  // Pricing - DHL returns an array of price types
+  totalPrice: DhlTotalPriceItem[];
 
   // Delivery time
   deliveryCapabilities: {
@@ -190,24 +193,43 @@ export class DhlRatesService {
     // Get account number from env only (also sensitive)
     const accountNumber = request.accountNumber || this.configService.get<string>('DHL_ACCOUNT_NUMBER', '');
 
+    if (!accountNumber) {
+      throw new HttpException(
+        'DHL Account Number is required. Please set DHL_ACCOUNT_NUMBER in .env file.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    // Format shipping date with timezone as required by DHL API
+    let plannedShippingDateAndTime: string;
+    if (request.plannedShippingDate) {
+      plannedShippingDateAndTime = `${request.plannedShippingDate}T10:00:00 GMT+00:00`;
+    } else {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dateStr = tomorrow.toISOString().split('T')[0];
+      plannedShippingDateAndTime = `${dateStr}T10:00:00 GMT+00:00`;
+    }
+
     // Build request payload according to DHL API specification
+    // Note: DHL requires cityName to be non-empty - use placeholder if not provided
     const payload = {
       customerDetails: {
         shipperDetails: {
           postalCode: request.originPostalCode,
-          cityName: request.originCityName || '',
+          cityName: request.originCityName || 'City',
           countryCode: request.originCountryCode,
         },
         receiverDetails: {
           postalCode: request.destinationPostalCode,
-          cityName: request.destinationCityName || '',
+          cityName: request.destinationCityName || 'City',
           countryCode: request.destinationCountryCode,
         },
       },
-      accounts: accountNumber ? [{ typeCode: 'shipper', number: accountNumber }] : [],
+      accounts: [{ typeCode: 'shipper', number: accountNumber }],
 
       // Shipment details
-      plannedShippingDateAndTime: request.plannedShippingDate || new Date().toISOString().split('T')[0],
+      plannedShippingDateAndTime,
       unitOfMeasurement: request.unitOfMeasurement || 'metric',
       isCustomsDeclarable: request.isCustomsDeclarable ?? (request.originCountryCode !== request.destinationCountryCode),
 
@@ -253,7 +275,16 @@ export class DhlRatesService {
       return response.data;
 
     } catch (error) {
-      this.logger.error('DHL Rates API error:', error.response?.data || error.message);
+      // Log error details for debugging
+      const errorData = error.response?.data;
+      if (errorData) {
+        this.logger.error(`DHL Rates API error: ${errorData.detail || errorData.message || 'Unknown error'}`);
+        if (errorData.additionalDetails) {
+          this.logger.error('Additional details:', errorData.additionalDetails);
+        }
+      } else {
+        this.logger.error('DHL Rates API error:', error.message);
+      }
 
       if (error.response?.status === 401 || error.response?.status === 403) {
         throw new HttpException(
@@ -310,6 +341,13 @@ export class DhlRatesService {
           deliveryDate = new Date(product.deliveryCapabilities.estimatedDeliveryDateAndTime);
         }
 
+        // Extract billing currency price from totalPrice array
+        // BILLC = billing currency (what customer will be charged)
+        const billingPrice = product.totalPrice.find(p => p.currencyType === 'BILLC')
+          || product.totalPrice[0];
+        const price = billingPrice?.price || 0;
+        const currency = billingPrice?.priceCurrency || 'EUR';
+
         // Determine description based on transit time
         let description = `${estimatedDays} business days`;
         if (estimatedDays === 1) {
@@ -328,8 +366,8 @@ export class DhlRatesService {
           id: `dhl-${product.productCode.toLowerCase()}`,
           name: productName,
           description,
-          price: product.totalPrice.price,
-          currency: product.totalPrice.priceCurrency,
+          price,
+          currency,
           estimatedDays,
           carrier: 'DHL Express',
           productCode: product.productCode,

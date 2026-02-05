@@ -94,21 +94,24 @@ export class SubscriptionService {
       hasMonthlyCredits: boolean;
     };
   }> {
-    // Check monthly selling credits (required for ALL product types)
-    const store = await this.prisma.store.findUnique({
-      where: { userId },
-    });
+    // Product types that require a subscription (inquiry-based)
+    const subscriptionRequiredTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
+    const requiresSubscription = subscriptionRequiredTypes.includes(productType);
 
-    const now = new Date();
-    const hasMonthlyCredits = store
-      ? store.creditsBalance > 0 ||
-        (store.creditsBalance === 0 &&
-          store.creditsGraceEndsAt &&
-          new Date(store.creditsGraceEndsAt) > now)
-      : false;
-
-    // PHYSICAL products only require monthly selling credits
+    // For PHYSICAL products, check store credits (selling credits)
     if (productType === 'PHYSICAL') {
+      const store = await this.prisma.store.findUnique({
+        where: { userId },
+      });
+
+      const now = new Date();
+      const hasMonthlyCredits = store
+        ? store.creditsBalance > 0 ||
+          (store.creditsBalance === 0 &&
+            store.creditsGraceEndsAt &&
+            new Date(store.creditsGraceEndsAt) > now)
+        : false;
+
       return {
         canList: hasMonthlyCredits,
         reasons: {
@@ -120,11 +123,14 @@ export class SubscriptionService {
       };
     }
 
-    // For SERVICE and other premium product types, check subscription
+    // For subscription-required product types, check subscription
     const subscription = await this.getOrCreateSubscription(userId);
     const plan = subscription.plan;
 
-    // Check if product type is allowed by plan
+    // Log subscription details for debugging
+    this.logger.debug(`Checking subscription for user ${userId}: tier=${plan.tier}, planId=${plan.id}, status=${subscription.status}`);
+
+    // Check if product type is allowed by plan's allowedProductTypes
     const allowedTypes = plan.allowedProductTypes as string[];
     const productTypeAllowed = allowedTypes.includes(productType);
 
@@ -141,22 +147,32 @@ export class SubscriptionService {
     const meetsTierRequirement =
       tierOrder.indexOf(plan.tier) >= tierOrder.indexOf(minTier);
 
-    // Check listing capacity
+    // Check listing capacity from subscription
     const hasListingCapacity =
       plan.maxActiveListings === -1 ||
       subscription.activeListingsCount < plan.maxActiveListings;
+
+    // For subscription-required types, check subscription credits (not store credits)
+    // The subscription must be active and have credits remaining
+    const subscriptionCreditsRemaining = subscription.creditsAllocated - subscription.creditsUsed;
+    const hasSubscriptionCredits =
+      subscription.status === 'ACTIVE' &&
+      (plan.tier !== 'FREE' || subscriptionCreditsRemaining > 0);
+
+    // Log the check results
+    this.logger.debug(`Subscription check results: productTypeAllowed=${productTypeAllowed}, meetsTierRequirement=${meetsTierRequirement}, hasListingCapacity=${hasListingCapacity}, hasSubscriptionCredits=${hasSubscriptionCredits}, tier=${plan.tier}`);
 
     return {
       canList:
         productTypeAllowed &&
         meetsTierRequirement &&
         hasListingCapacity &&
-        hasMonthlyCredits,
+        hasSubscriptionCredits,
       reasons: {
         productTypeAllowed,
         meetsTierRequirement,
         hasListingCapacity,
-        hasMonthlyCredits,
+        hasMonthlyCredits: hasSubscriptionCredits,
       },
     };
   }

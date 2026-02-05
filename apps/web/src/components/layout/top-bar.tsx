@@ -506,7 +506,7 @@ export function TopBar() {
                               </Link>
 
                               <Link
-                                href="/seller/subscription"
+                                href="/seller/subscription/plans"
                                 onClick={() => setAccountOpen(false)}
                                 className="w-full px-4 py-2.5 flex items-center gap-3 text-white/80 hover:bg-white/5 hover:text-white transition-all duration-200 group"
                               >

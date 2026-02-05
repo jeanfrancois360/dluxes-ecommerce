@@ -685,14 +685,14 @@ const defaultSettings = [
   {
     key: 'shipping_mode',
     category: 'shipping',
-    value: 'manual',
+    value: 'hybrid',
     valueType: SettingValueType.STRING,
     label: 'Shipping Mode',
-    description: 'manual: Use configured rates | dhl_api: DHL integration | hybrid: DHL with manual fallback',
+    description: 'manual: Use configured rates | dhl_api: DHL integration | hybrid: DHL with manual fallback (Recommended)',
     isPublic: false,
     isEditable: true,
     requiresRestart: false,
-    defaultValue: 'manual',
+    defaultValue: 'hybrid',
   },
   {
     key: 'shipping_standard_rate',

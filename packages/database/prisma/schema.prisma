@@ -106,6 +106,10 @@ model User {
   // Seller Credit Transactions
   sellerCreditTransactions SellerCreditTransaction[]
 
+  // Hot Deals - Emergency Services Marketplace
+  hotDeals         HotDeal[]         @relation("UserHotDeals")
+  hotDealResponses HotDealResponse[] @relation("UserHotDealResponses")
+
   @@index([email])
   @@index([lastLoginAt])
   @@index([deliveryProviderId])
@@ -3151,4 +3155,114 @@ model AdminNote {
   @@index([createdBy])
   @@index([createdAt])
   @@map("admin_notes")
+}
+
+// ============================================================================
+// Hot Deals - Emergency Services Marketplace
+// ============================================================================
+
+// Hot Deals - Emergency Service Requests ($1 per post)
+model HotDeal {
+  id     String @id @default(cuid())
+  userId String
+
+  // Content
+  title       String          @db.VarChar(100)
+  description String          @db.Text
+  category    HotDealCategory
+  urgency     UrgencyLevel    @default(NORMAL)
+
+  // Contact Info
+  contactName      String
+  contactPhone     String
+  contactEmail     String
+  preferredContact ContactMethod @default(PHONE)
+
+  // Location
+  city    String
+  state   String?
+  zipCode String?
+
+  // Payment
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentIntentId String?       @unique
+  paidAmount      Float         @default(1.00)
+
+  // Status & Timestamps
+  status      HotDealStatus @default(PENDING)
+  expiresAt   DateTime
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  user      User              @relation("UserHotDeals", fields: [userId], references: [id], onDelete: Cascade)
+  responses HotDealResponse[]
+
+  @@index([userId])
+  @@index([status, expiresAt])
+  @@index([category, status])
+  @@index([city, status])
+  @@index([createdAt])
+  @@map("hot_deals")
+}
+
+model HotDealResponse {
+  id        String @id @default(cuid())
+  hotDealId String
+  userId    String
+
+  message     String  @db.Text
+  contactInfo String? @db.Text
+
+  status    ResponseStatus @default(PENDING)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  hotDeal HotDeal @relation(fields: [hotDealId], references: [id], onDelete: Cascade)
+  user    User    @relation("UserHotDealResponses", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([hotDealId])
+  @@index([userId])
+  @@map("hot_deal_responses")
+}
+
+// Hot Deal Enums
+enum HotDealCategory {
+  CHILDCARE
+  HOME_SERVICES
+  AUTOMOTIVE
+  PET_SERVICES
+  MOVING_DELIVERY
+  TECH_SUPPORT
+  TUTORING
+  HEALTH_WELLNESS
+  CLEANING
+  OTHER
+}
+
+enum UrgencyLevel {
+  NORMAL
+  URGENT
+  EMERGENCY
+}
+
+enum ContactMethod {
+  PHONE
+  EMAIL
+  BOTH
+}
+
+enum HotDealStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  FULFILLED
+  CANCELLED
+}
+
+enum ResponseStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }

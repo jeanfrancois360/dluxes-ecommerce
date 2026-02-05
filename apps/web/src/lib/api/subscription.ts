@@ -67,7 +67,7 @@ export interface CanListProductTypeResponse {
     productTypeAllowed: boolean;
     meetsTierRequirement: boolean;
     hasListingCapacity: boolean;
-    hasCredits: boolean;
+    hasMonthlyCredits: boolean;
   };
 }
 
@@ -129,6 +129,14 @@ export const subscriptionApi = {
   async createCheckout(planId: string, billingCycle: 'MONTHLY' | 'YEARLY'): Promise<{ sessionId: string; url: string }> {
     const response = await api.post('/subscription/create-checkout', { planId, billingCycle });
     return response.data || response;
+  },
+
+  /**
+   * Verify checkout session and activate subscription (fallback for delayed webhooks)
+   */
+  async verifyCheckout(sessionId: string): Promise<{ activated: boolean; subscription: any }> {
+    // The API client already unwraps { success, data } - no need to do it again
+    return api.post('/subscription/verify-checkout', { sessionId });
   },
 
   /**
