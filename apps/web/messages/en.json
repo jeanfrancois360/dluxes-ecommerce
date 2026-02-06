@@ -444,6 +444,20 @@
     "failedAddItems": "Failed to add items to cart",
     "confirmClear": "Are you sure you want to clear your entire wishlist?"
   },
+  "quickViewModal": {
+    "color": "Color",
+    "size": "Size",
+    "quantity": "Quantity",
+    "inStock": "In Stock",
+    "available": "available",
+    "outOfStock": "Out of Stock",
+    "onlyLeftInStock": "Only {count} left in stock!",
+    "addToCart": "Add to Cart",
+    "viewFullDetails": "View Full Details",
+    "reviews": "reviews",
+    "review": "review",
+    "save": "Save {percent}%"
+  },
   "checkout": {
     "checkout": "Checkout",
     "completeSecurely": "Complete your purchase securely",

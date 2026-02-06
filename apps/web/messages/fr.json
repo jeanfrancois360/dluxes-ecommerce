@@ -444,6 +444,20 @@
     "failedAddItems": "Échec de l'ajout des articles au panier",
     "confirmClear": "Êtes-vous sûr de vouloir vider toute votre liste de favoris ?"
   },
+  "quickViewModal": {
+    "color": "Couleur",
+    "size": "Taille",
+    "quantity": "Quantité",
+    "inStock": "En Stock",
+    "available": "disponible",
+    "outOfStock": "Rupture de Stock",
+    "onlyLeftInStock": "Plus que {count} en stock !",
+    "addToCart": "Ajouter au Panier",
+    "viewFullDetails": "Voir Tous les Détails",
+    "reviews": "avis",
+    "review": "avis",
+    "save": "Économisez {percent}%"
+  },
   "checkout": {
     "checkout": "Paiement",
     "completeSecurely": "Finalisez votre achat en toute sécurité",
