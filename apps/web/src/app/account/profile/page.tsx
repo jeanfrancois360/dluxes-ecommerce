@@ -14,6 +14,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
 import { toast, standardToasts } from '@/lib/utils/toast';
@@ -34,6 +35,7 @@ interface FormErrors {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const t = useTranslations('account.profile');
   const { user, isLoading: authLoading, isAuthenticated, updateProfile, uploadAvatar, deleteAvatar, refreshUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -84,25 +86,25 @@ export default function ProfilePage() {
     const newErrors: FormErrors = {};
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
+      newErrors.firstName = t('firstNameRequired');
     } else if (formData.firstName.length < 2) {
-      newErrors.firstName = 'First name must be at least 2 characters';
+      newErrors.firstName = t('firstNameMinLength');
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
+      newErrors.lastName = t('lastNameRequired');
     } else if (formData.lastName.length < 2) {
-      newErrors.lastName = 'Last name must be at least 2 characters';
+      newErrors.lastName = t('lastNameMinLength');
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t('invalidEmail');
     }
 
     if (formData.phone && !/^[+]?[\d\s()-]{10,}$/.test(formData.phone)) {
-      newErrors.phone = 'Please enter a valid phone number';
+      newErrors.phone = t('invalidPhone');
     }
 
     setErrors(newErrors);
@@ -151,13 +153,13 @@ export default function ProfilePage() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
+      toast.error(t('selectImageFile'));
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Please select an image under 5MB');
+      toast.error(t('imageUnder5MB'));
       return;
     }
 
@@ -181,7 +183,7 @@ export default function ProfilePage() {
   };
 
   const handleDeleteAvatar = async () => {
-    if (!confirm('Are you sure you want to remove your avatar?')) {
+    if (!confirm(t('confirmRemoveAvatar'))) {
       return;
     }
 
@@ -255,8 +257,8 @@ export default function ProfilePage() {
               </svg>
             </div>
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">Edit Profile</h1>
-              <p className="text-lg text-white/80">Manage your personal information</p>
+              <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">{t('title')}</h1>
+              <p className="text-lg text-white/80">{t('subtitle')}</p>
             </div>
           </motion.div>
         </div>
@@ -273,7 +275,7 @@ export default function ProfilePage() {
               className="lg:col-span-1"
             >
               <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6 text-center">
-                <h2 className="text-xl font-bold font-['Poppins'] mb-6">Profile Photo</h2>
+                <h2 className="text-xl font-bold font-['Poppins'] mb-6">{t('profilePhoto')}</h2>
 
                 {/* Avatar Display */}
                 <div className="relative inline-block mb-6">
@@ -334,7 +336,7 @@ export default function ProfilePage() {
                     disabled={isUploadingAvatar}
                     className="w-full px-4 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isUploadingAvatar ? 'Uploading...' : 'Change Photo'}
+                    {isUploadingAvatar ? t('uploading') : t('changePhoto')}
                   </motion.button>
 
                   {user.avatar && (
@@ -345,12 +347,12 @@ export default function ProfilePage() {
                       disabled={isUploadingAvatar}
                       className="w-full px-4 py-3 bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Remove Photo
+                      {t('removePhoto')}
                     </motion.button>
                   )}
                 </div>
 
-                <p className="text-xs text-neutral-500 mt-4">JPG, PNG or GIF. Max 5MB.</p>
+                <p className="text-xs text-neutral-500 mt-4">{t('photoFormats')}</p>
               </div>
 
               {/* Account Info Card */}
@@ -360,14 +362,14 @@ export default function ProfilePage() {
                 transition={{ delay: 0.1 }}
                 className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6 mt-6"
               >
-                <h3 className="text-lg font-bold font-['Poppins'] mb-4">Account Info</h3>
+                <h3 className="text-lg font-bold font-['Poppins'] mb-4">{t('accountInfo')}</h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-neutral-500">Role</span>
+                    <span className="text-neutral-500">{t('role')}</span>
                     <span className="font-medium capitalize">{user.role?.toLowerCase().replace('_', ' ')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-neutral-500">Member Since</span>
+                    <span className="text-neutral-500">{t('memberSince')}</span>
                     <span className="font-medium">
                       {user.createdAt
                         ? new Date(user.createdAt).toLocaleDateString('en-US', {
@@ -378,7 +380,7 @@ export default function ProfilePage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-neutral-500">Email Verified</span>
+                    <span className="text-neutral-500">{t('emailVerified')}</span>
                     {user.emailVerified ? (
                       <span className="flex items-center gap-1 text-green-600 font-medium">
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -388,7 +390,7 @@ export default function ProfilePage() {
                             clipRule="evenodd"
                           />
                         </svg>
-                        Yes
+                        {t('yes')}
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-amber-600 font-medium">
@@ -399,12 +401,12 @@ export default function ProfilePage() {
                             clipRule="evenodd"
                           />
                         </svg>
-                        No
+                        {t('no')}
                       </span>
                     )}
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-neutral-500">2FA Enabled</span>
+                    <span className="text-neutral-500">{t('twoFAEnabled')}</span>
                     {user.twoFactorEnabled ? (
                       <span className="flex items-center gap-1 text-green-600 font-medium">
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -414,10 +416,10 @@ export default function ProfilePage() {
                             clipRule="evenodd"
                           />
                         </svg>
-                        Yes
+                        {t('yes')}
                       </span>
                     ) : (
-                      <span className="text-neutral-400 font-medium">No</span>
+                      <span className="text-neutral-400 font-medium">{t('no')}</span>
                     )}
                   </div>
                 </div>
@@ -432,14 +434,14 @@ export default function ProfilePage() {
               className="lg:col-span-2"
             >
               <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-8">
-                <h2 className="text-2xl font-bold font-['Poppins'] mb-6">Personal Information</h2>
+                <h2 className="text-2xl font-bold font-['Poppins'] mb-6">{t('personalInfo')}</h2>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Name Fields */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        First Name <span className="text-red-500">*</span>
+                        {t('firstName')} <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -457,7 +459,7 @@ export default function ProfilePage() {
 
                     <div>
                       <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Last Name <span className="text-red-500">*</span>
+                        {t('lastName')} <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -477,7 +479,7 @@ export default function ProfilePage() {
                   {/* Email Field */}
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Email Address <span className="text-red-500">*</span>
+                      {t('emailAddress')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="email"
@@ -498,14 +500,14 @@ export default function ProfilePage() {
                             clipRule="evenodd"
                           />
                         </svg>
-                        Changing your email will require re-verification
+                        {t('emailChangeWarning')}
                       </p>
                     )}
                   </div>
 
                   {/* Phone Field */}
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">Phone Number</label>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">{t('phoneNumber')}</label>
                     <input
                       type="tel"
                       value={formData.phone}
@@ -544,10 +546,10 @@ export default function ProfilePage() {
                               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                             />
                           </svg>
-                          Saving...
+                          {t('saving')}
                         </span>
                       ) : (
-                        'Save Changes'
+                        t('saveChanges')
                       )}
                     </motion.button>
 
@@ -569,14 +571,14 @@ export default function ProfilePage() {
                       }}
                       className="px-6 py-4 border-2 border-neutral-200 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Reset
+                      {t('reset')}
                     </motion.button>
                   </div>
                 </form>
 
                 {/* Security Link */}
                 <div className="mt-8 pt-8 border-t border-neutral-200">
-                  <h3 className="text-lg font-bold font-['Poppins'] mb-4">Security</h3>
+                  <h3 className="text-lg font-bold font-['Poppins'] mb-4">{t('security')}</h3>
                   <div className="space-y-3">
                     <Link
                       href="/account/security"
@@ -599,8 +601,8 @@ export default function ProfilePage() {
                           </svg>
                         </div>
                         <div>
-                          <p className="font-medium text-neutral-800">Security Settings</p>
-                          <p className="text-sm text-neutral-500">Change password, 2FA, and more</p>
+                          <p className="font-medium text-neutral-800">{t('securitySettings')}</p>
+                          <p className="text-sm text-neutral-500">{t('securitySettingsDesc')}</p>
                         </div>
                       </div>
                       <svg

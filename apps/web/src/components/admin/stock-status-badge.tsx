@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import { AlertTriangle, CheckCircle, XCircle, Package } from 'lucide-react';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
+import { useTranslations } from 'next-intl';
 
 interface StockStatusBadgeProps {
   stock: number;
@@ -19,22 +20,24 @@ export function StockStatusBadge({
   showIcon = true,
   size = 'md',
 }: StockStatusBadgeProps) {
+  const t = useTranslations('components.stockStatusBadge');
+
   const getStockStatus = () => {
     if (stock <= 0) {
       return {
-        label: 'Out of Stock',
+        label: t('outOfStock'),
         color: 'bg-red-100 text-red-800 border-red-200',
         icon: <XCircle className={cn('h-3 w-3', size === 'lg' && 'h-4 w-4')} />,
       };
     } else if (stock <= lowStockThreshold) {
       return {
-        label: 'Low Stock',
+        label: t('lowStock'),
         color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
         icon: <AlertTriangle className={cn('h-3 w-3', size === 'lg' && 'h-4 w-4')} />,
       };
     } else {
       return {
-        label: 'In Stock',
+        label: t('inStock'),
         color: 'bg-green-100 text-green-800 border-green-200',
         icon: <CheckCircle className={cn('h-3 w-3', size === 'lg' && 'h-4 w-4')} />,
       };
@@ -74,6 +77,7 @@ export function StockLevelIndicator({
   lowStockThreshold = INVENTORY_DEFAULTS.LOW_STOCK_THRESHOLD,
   className,
 }: StockLevelIndicatorProps) {
+  const t = useTranslations('components.stockStatusBadge');
   const percentage = Math.min((stock / (lowStockThreshold * 2)) * 100, 100);
 
   const getColorClass = () => {
@@ -85,8 +89,8 @@ export function StockLevelIndicator({
   return (
     <div className={cn('space-y-1', className)}>
       <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">Stock Level</span>
-        <span className="font-medium">{stock} units</span>
+        <span className="text-muted-foreground">{t('stockLevel')}</span>
+        <span className="font-medium">{stock} {t('units')}</span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
@@ -97,13 +101,13 @@ export function StockLevelIndicator({
       {stock <= lowStockThreshold && stock > 0 && (
         <p className="text-xs text-yellow-600 flex items-center gap-1">
           <AlertTriangle className="h-3 w-3" />
-          Low stock - consider restocking
+          {t('lowStockWarning')}
         </p>
       )}
       {stock <= 0 && (
         <p className="text-xs text-red-600 flex items-center gap-1">
           <XCircle className="h-3 w-3" />
-          Out of stock - restock immediately
+          {t('outOfStockWarning')}
         </p>
       )}
     </div>

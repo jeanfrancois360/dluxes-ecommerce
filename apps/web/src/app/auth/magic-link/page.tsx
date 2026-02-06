@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast, getUserFriendlyError } from '@/lib/utils/toast';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
@@ -14,6 +15,11 @@ export default function MagicLinkPage() {
   const router = useRouter();
   const token = searchParams.get('token');
   const { requestMagicLink, verifyMagicLink, isLoading: authLoading, error: authError, clearError } = useAuth();
+
+  const t = useTranslations('auth.magicLink');
+  const tc = useTranslations('common');
+  const tLogin = useTranslations('auth.login');
+  const tForgot = useTranslations('auth.forgotPassword');
 
   const [email, setEmail] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -30,19 +36,19 @@ export default function MagicLinkPage() {
     try {
       await verifyMagicLink(magicToken);
       setIsSuccess(true);
-      toast.success('Successfully signed in!');
+      toast.success(t('successfullySignedIn'));
       // Auth context handles redirect
     } catch (err: any) {
       const friendlyMessage = getUserFriendlyError(
         err,
-        'This link is invalid or has expired. Please request a new one.',
-        'Magic Link Verification'
+        t('invalidOrExpired'),
+        t('magicLinkVerification')
       );
       toast.error(friendlyMessage);
     } finally {
       setIsVerifying(false);
     }
-  }, [verifyMagicLink, clearError]);
+  }, [verifyMagicLink, clearError, t]);
 
   // Auto-verify if token is present in URL (ref guards against HMR / StrictMode double-fire)
   useEffect(() => {
@@ -58,24 +64,24 @@ export default function MagicLinkPage() {
 
     // Validate email
     if (!email) {
-      toast.error('Please enter your email address');
+      toast.error(tLogin('enterYourEmail'));
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      toast.error('Please enter a valid email address');
+      toast.error(tLogin('invalidEmail'));
       return;
     }
 
     try {
       await requestMagicLink(email);
       setIsSent(true);
-      toast.success('Magic link sent! Check your email.');
+      toast.success(t('magicLinkSent'));
     } catch (err: any) {
       const friendlyMessage = getUserFriendlyError(
         err,
-        'We couldn\'t send the link. Please try again.',
-        'Magic Link Request'
+        t('couldntSendLink'),
+        t('magicLinkRequest')
       );
       toast.error(friendlyMessage);
     }
@@ -85,8 +91,8 @@ export default function MagicLinkPage() {
   if (isVerifying) {
     return (
       <AuthLayout
-        title="Verifying..."
-        subtitle="Please wait while we sign you in"
+        title={t('verifying')}
+        subtitle={t('pleaseWait')}
       >
         <div className="text-center space-y-6">
           <motion.div
@@ -98,7 +104,7 @@ export default function MagicLinkPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
           </motion.div>
-          <p className="text-neutral-600">Authenticating your magic link...</p>
+          <p className="text-neutral-600">{t('authenticating')}</p>
         </div>
       </AuthLayout>
     );
@@ -108,8 +114,8 @@ export default function MagicLinkPage() {
   if (isSuccess) {
     return (
       <AuthLayout
-        title="Welcome Back!"
-        subtitle="You've been successfully signed in"
+        title={t('welcomeBack')}
+        subtitle={t('successfullySignedInSubtitle')}
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -138,7 +144,7 @@ export default function MagicLinkPage() {
 
           <div className="space-y-2">
             <p className="text-neutral-600 text-base">
-              Redirecting you to your dashboard...
+              {t('redirectingToDashboard')}
             </p>
           </div>
 
@@ -146,7 +152,7 @@ export default function MagicLinkPage() {
             onClick={() => router.push('/dashboard')}
             className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold"
           >
-            Go to Dashboard
+            {tc('buttons.goToDashboard')}
           </Button>
         </motion.div>
       </AuthLayout>
@@ -157,8 +163,8 @@ export default function MagicLinkPage() {
   if (isSent) {
     return (
       <AuthLayout
-        title="Check Your Email"
-        subtitle="We've sent you a magic link"
+        title={t('checkYourEmail')}
+        subtitle={t('sentMagicLink')}
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -174,22 +180,22 @@ export default function MagicLinkPage() {
 
           <div className="space-y-3">
             <p className="text-neutral-600 text-base">
-              We've sent a magic link to <strong className="text-black">{email}</strong>
+              {t('sentMagicLinkTo')} <strong className="text-black">{email}</strong>
             </p>
             <p className="text-sm text-neutral-500">
-              Click the link in your email to sign in instantly. The link will expire in 15 minutes.
+              {t('clickLinkToSignIn')}
             </p>
           </div>
 
           {/* Info Box */}
           <div className="bg-accent-50 border border-accent-200 rounded-lg p-4 text-left">
             <p className="text-sm text-neutral-600 mb-2">
-              <strong className="text-black">Didn't receive the email?</strong>
+              <strong className="text-black">{tForgot('didntReceiveEmail')}</strong>
             </p>
             <ul className="text-xs text-neutral-500 space-y-1">
-              <li>• Check your spam or junk folder</li>
-              <li>• Make sure you entered the correct email</li>
-              <li>• The email might take a few minutes to arrive</li>
+              <li>• {t('checkSpamFolder')}</li>
+              <li>• {t('correctEmail')}</li>
+              <li>• {t('emailMayTakeTime')}</li>
             </ul>
           </div>
 
@@ -202,14 +208,14 @@ export default function MagicLinkPage() {
               }}
               className="w-full text-gold hover:text-accent-700 font-medium transition-colors text-sm"
             >
-              Try a different email
+              {tc('buttons.tryDifferentEmail')}
             </button>
 
             <Link
               href="/auth/login"
               className="block w-full text-neutral-600 hover:text-black transition-colors text-sm"
             >
-              Back to login
+              {tc('buttons.backToLogin')}
             </Link>
           </div>
         </motion.div>
@@ -220,8 +226,8 @@ export default function MagicLinkPage() {
   // Request magic link form
   return (
     <AuthLayout
-      title="Sign In with Magic Link"
-      subtitle="No password needed - we'll email you a secure link"
+      title={t('title')}
+      subtitle={t('subtitle')}
     >
       <form onSubmit={handleRequestMagicLink} className="space-y-6">
         {/* Info Message */}
@@ -232,13 +238,13 @@ export default function MagicLinkPage() {
             </svg>
           </div>
           <p className="text-sm text-neutral-600">
-            Enter your email and we'll send you a secure link to sign in instantly
+            {t('description')}
           </p>
         </div>
 
         {/* Email Input */}
         <FloatingInput
-          label="Email Address"
+          label={tLogin('emailLabel')}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -257,25 +263,25 @@ export default function MagicLinkPage() {
 
         {/* Benefits */}
         <div className="bg-neutral-50 rounded-lg p-4">
-          <p className="text-xs font-medium text-black mb-2">Why use magic links?</p>
+          <p className="text-xs font-medium text-black mb-2">{t('whyMagicLinks')}</p>
           <ul className="text-xs text-neutral-600 space-y-1.5">
             <li className="flex items-start gap-2">
               <svg className="w-4 h-4 text-success-DEFAULT mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <span>No passwords to remember or type</span>
+              <span>{t('noPasswords')}</span>
             </li>
             <li className="flex items-start gap-2">
               <svg className="w-4 h-4 text-success-DEFAULT mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <span>More secure than traditional passwords</span>
+              <span>{t('moreSecure')}</span>
             </li>
             <li className="flex items-start gap-2">
               <svg className="w-4 h-4 text-success-DEFAULT mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <span>Sign in with just one click</span>
+              <span>{t('oneClick')}</span>
             </li>
           </ul>
         </div>
@@ -292,10 +298,10 @@ export default function MagicLinkPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Sending magic link...
+              {t('sendingMagicLink')}
             </span>
           ) : (
-            'Send Magic Link'
+            t('sendMagicLink')
           )}
         </Button>
 
@@ -308,17 +314,17 @@ export default function MagicLinkPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            Sign in with password instead
+            {t('signInWithPassword')}
           </Link>
 
           <div>
             <p className="text-sm text-neutral-600">
-              Don't have an account?{' '}
+              {tLogin('dontHaveAccount')}{' '}
               <Link
                 href="/auth/register"
                 className="text-gold hover:text-accent-700 font-semibold transition-colors"
               >
-                Create one
+                {tc('buttons.createOne')}
               </Link>
             </p>
           </div>

@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { SearchResults } from '@/components/search/search-results';
 
 export const metadata: Metadata = {
@@ -19,6 +20,9 @@ export default async function SearchPage(props: SearchPageProps) {
   const query = searchParams.q || '';
   const category = searchParams.category;
 
+  const t = await getTranslations('search');
+  const tc = await getTranslations('common');
+
   if (!query) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -36,9 +40,9 @@ export default async function SearchPage(props: SearchPageProps) {
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
             />
           </svg>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Start Your Search</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('startYourSearch')}</h1>
           <p className="text-gray-600 mb-6">
-            Enter a search query to find luxury products, brands, and collections
+            {t('enterSearchQuery')}
           </p>
         </div>
       </div>
@@ -52,7 +56,7 @@ export default async function SearchPage(props: SearchPageProps) {
         <ol className="flex items-center space-x-2 text-sm">
           <li>
             <a href="/" className="text-gray-500 hover:text-[#CBB57B] transition-colors">
-              Home
+              {tc('nav.home')}
             </a>
           </li>
           <li className="text-gray-400">/</li>

@@ -8,6 +8,7 @@ import { useCart } from '@/hooks/use-cart';
 import { useRouter } from 'next/navigation';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import { useTranslations } from 'next-intl';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function CartDrawer({
   onClose,
 }: CartDrawerProps) {
   const router = useRouter();
+  const t = useTranslations('cart');
   const {
     items,
     totals,
@@ -38,16 +40,16 @@ export function CartDrawer({
     try {
       await updateQuantity(id, quantity);
     } catch (error) {
-      toast.error('Failed to update quantity');
+      toast.error(t('failedUpdateQuantity'));
     }
   };
 
   const handleRemove = async (id: string) => {
     try {
       await removeItem(id);
-      toast.success('Item removed from cart');
+      toast.success(t('itemRemoved'));
     } catch (error) {
-      toast.error('Failed to remove item');
+      toast.error(t('failedRemoveItem'));
     }
   };
 
@@ -148,9 +150,9 @@ export function CartDrawer({
                     <span className="text-black">${formatCurrencyAmount(totals.subtotal || 0, 2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-600">Shipping</span>
+                    <span className="text-neutral-600">{t('shipping')}</span>
                     <span className="text-black">
-                      {(totals.shipping || 0) === 0 ? 'Free' : `$${formatCurrencyAmount(totals.shipping || 0, 2)}`}
+                      {(totals.shipping || 0) === 0 ? t('free') : `$${formatCurrencyAmount(totals.shipping || 0, 2)}`}
                     </span>
                   </div>
                   {taxCalculationMode !== 'disabled' && (
@@ -368,14 +370,14 @@ function PromoCodeInput() {
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="Enter code"
+                placeholder={t('enterCode')}
                 className="flex-1 px-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:border-gold"
               />
               <button
                 onClick={handleApply}
                 className="px-6 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors font-medium"
               >
-                Apply
+                {t('apply')}
               </button>
             </div>
             {applied && (

@@ -21,6 +21,7 @@ import {
 import { adminProductsApi } from '@/lib/api/admin';
 import { toast } from 'sonner';
 import { Loader2, Package, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface BulkInventoryModalProps {
   open: boolean;
@@ -31,25 +32,27 @@ interface BulkInventoryModalProps {
 
 type TransactionType = 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'RESTOCK';
 
-const transactionTypes: { value: TransactionType; label: string }[] = [
-  { value: 'PURCHASE', label: 'Purchase/Receive' },
-  { value: 'SALE', label: 'Sale' },
-  { value: 'ADJUSTMENT', label: 'Adjustment' },
-  { value: 'RETURN', label: 'Return' },
-  { value: 'DAMAGE', label: 'Damage/Loss' },
-  { value: 'RESTOCK', label: 'Restock' },
-];
-
 export function BulkInventoryModal({
   open,
   onOpenChange,
   productIds,
   onSuccess,
 }: BulkInventoryModalProps) {
+  const t = useTranslations('components.bulkInventoryModal');
+  const tInv = useTranslations('components.inventoryAdjustmentModal');
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState<string>('');
   const [type, setType] = useState<TransactionType>('ADJUSTMENT');
   const [reason, setReason] = useState('');
+
+  const transactionTypes: { value: TransactionType; label: string }[] = [
+    { value: 'PURCHASE', label: t('purchase') },
+    { value: 'SALE', label: tInv('sale') },
+    { value: 'ADJUSTMENT', label: tInv('adjustment') },
+    { value: 'RETURN', label: tInv('return') },
+    { value: 'DAMAGE', label: tInv('damageLoss') },
+    { value: 'RESTOCK', label: t('restock') },
+  ];
 
   const isDeduction = ['SALE', 'DAMAGE'].includes(type);
   const quantityNumber = parseInt(quantity) || 0;
@@ -59,12 +62,12 @@ export function BulkInventoryModal({
     e.preventDefault();
 
     if (!quantity || quantityNumber <= 0) {
-      toast.error('Please enter a valid quantity');
+      toast.error(t('validQuantityError'));
       return;
     }
 
     if (productIds.length === 0) {
-      toast.error('No products selected');
+      toast.error(t('noProductsError'));
       return;
     }
 
@@ -84,10 +87,10 @@ export function BulkInventoryModal({
       const failureCount = results.filter((r) => !r.success).length;
 
       if (failureCount === 0) {
-        toast.success(`Successfully updated inventory for ${successCount} products`);
+        toast.success(t('successMessage', { count: successCount }));
       } else {
         toast.warning(
-          `Updated ${successCount} products, but ${failureCount} failed. Check console for details.`
+          t('partialSuccess', { successCount, failureCount })
         );
         console.error('Failed updates:', results.filter((r) => !r.success));
       }
@@ -101,7 +104,7 @@ export function BulkInventoryModal({
       onOpenChange(false);
     } catch (error: any) {
       console.error('Error in bulk inventory update:', error);
-      toast.error(error.response?.data?.message || 'Failed to update inventory');
+      toast.error(error.response?.data?.message || t('failedMessage'));
     } finally {
       setLoading(false);
     }
@@ -117,9 +120,9 @@ export function BulkInventoryModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Bulk Inventory Adjustment</DialogTitle>
+          <DialogTitle>{t('bulkInventoryAdjustment')}</DialogTitle>
           <DialogDescription>
-            Update stock levels for {productIds.length} selected products
+            {t('updateStockLevelsPlural', { count: productIds.length })}
           </DialogDescription>
         </DialogHeader>
 
@@ -129,7 +132,7 @@ export function BulkInventoryModal({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-muted-foreground" />
-                <span className="text-sm font-medium">Selected Products</span>
+                <span className="text-sm font-medium">{t('selectedProducts')}</span>
               </div>
               <span className="text-2xl font-bold">{productIds.length}</span>
             </div>
@@ -140,7 +143,7 @@ export function BulkInventoryModal({
                     isDeduction ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                   }`}
                 >
-                  {isDeduction ? '−' : '+'} {Math.abs(adjustedQuantity)} units each
+                  {isDeduction ? '−' : '+'} {Math.abs(adjustedQuantity)} {t('unitsEach')}
                 </div>
               </div>
             )}
@@ -148,7 +151,7 @@ export function BulkInventoryModal({
 
           {/* Transaction Type */}
           <div className="space-y-2">
-            <Label htmlFor="type">Transaction Type</Label>
+            <Label htmlFor="type">{t('transactionType')}</Label>
             <Select value={type} onValueChange={(value) => setType(value as TransactionType)}>
               <SelectTrigger>
                 <SelectValue />
@@ -166,7 +169,7 @@ export function BulkInventoryModal({
           {/* Quantity */}
           <div className="space-y-2">
             <Label htmlFor="quantity">
-              Quantity per Product <span className="text-red-500">*</span>
+              {t('quantityPerProduct')} <span className="text-red-500">*</span>
             </Label>
             <Input
               id="quantity"
@@ -174,22 +177,22 @@ export function BulkInventoryModal({
               min="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              placeholder="Enter quantity"
+              placeholder={t('enterQuantity')}
               required
             />
             <p className="text-xs text-muted-foreground">
-              This amount will be {isDeduction ? 'deducted from' : 'added to'} each selected product
+              {isDeduction ? t('amountDeductedFrom') : t('amountAddedTo')}
             </p>
           </div>
 
           {/* Reason */}
           <div className="space-y-2">
-            <Label htmlFor="reason">Reason</Label>
+            <Label htmlFor="reason">{t('reason')}</Label>
             <Input
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g., Monthly inventory restock"
+              placeholder={t('reasonPlaceholder')}
             />
           </div>
 
@@ -198,19 +201,18 @@ export function BulkInventoryModal({
             <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 flex items-start gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div className="text-xs text-yellow-800">
-                <strong>Warning:</strong> This will deduct {Math.abs(adjustedQuantity)} units from
-                each selected product. Products with insufficient stock will fail.
+                <strong>{t('warning')}</strong> {t('deductionWarning', { quantity: Math.abs(adjustedQuantity) })}
               </div>
             </div>
           )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Update {productIds.length} Products
+              {t('updateProducts', { count: productIds.length })}
             </Button>
           </DialogFooter>
         </form>

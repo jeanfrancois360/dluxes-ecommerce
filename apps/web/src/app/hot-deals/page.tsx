@@ -14,6 +14,7 @@ import {
   Plus,
   AlertCircle,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -26,24 +27,25 @@ import {
 } from '@/lib/api/hot-deals';
 
 // Calculate time remaining
-function getTimeRemaining(expiresAt: string): string {
+function getTimeRemaining(expiresAt: string, t: any): string {
   const now = new Date();
   const expiry = new Date(expiresAt);
   const diff = expiry.getTime() - now.getTime();
 
-  if (diff <= 0) return 'Expired';
+  if (diff <= 0) return t('expired');
 
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
   if (hours > 0) {
-    return `${hours}h ${minutes}m left`;
+    return t('hoursLeft', { hours, minutes });
   }
-  return `${minutes}m left`;
+  return t('minutesLeft', { minutes });
 }
 
 // Hot Deal Card Component
 function HotDealCard({ deal }: { deal: HotDeal }) {
+  const t = useTranslations('pages.hotDeals');
   const urgencyConfig = URGENCY_CONFIG[deal.urgency];
 
   return (
@@ -60,7 +62,7 @@ function HotDealCard({ deal }: { deal: HotDeal }) {
         </span>
         <div className="flex items-center text-sm text-gray-500">
           <Clock className="w-4 h-4 mr-1" />
-          {getTimeRemaining(deal.expiresAt)}
+          {getTimeRemaining(deal.expiresAt, t)}
         </div>
       </div>
 
@@ -85,13 +87,13 @@ function HotDealCard({ deal }: { deal: HotDeal }) {
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
         <div className="flex items-center text-sm text-gray-500">
           <MessageCircle className="w-4 h-4 mr-1" />
-          {deal._count?.responses || 0} responses
+          {deal._count?.responses || 0} {deal._count?.responses === 1 ? t('response') : t('responses')}
         </div>
         <Link
           href={`/hot-deals/${deal.id}`}
           className="text-sm font-medium text-[#CBB57B] hover:text-[#b9a369] transition-colors"
         >
-          View Details →
+          {t('viewDetails')}
         </Link>
       </div>
     </motion.div>
@@ -99,6 +101,7 @@ function HotDealCard({ deal }: { deal: HotDeal }) {
 }
 
 export default function HotDealsPage() {
+  const t = useTranslations('pages.hotDeals');
   const { isAuthenticated } = useAuth();
   const [deals, setDeals] = useState<HotDeal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -125,13 +128,13 @@ export default function HotDealsPage() {
         setDeals(response.deals);
         setPagination(response.pagination);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load hot deals');
+        setError(err instanceof Error ? err.message : t('failedToLoad'));
       } finally {
         setIsLoading(false);
       }
     }
     fetchDeals();
-  }, [filters]);
+  }, [filters, t]);
 
   // Handle city search
   const handleCitySearch = () => {
@@ -171,10 +174,10 @@ export default function HotDealsPage() {
                   <div className="p-2 bg-white/20 rounded-lg">
                     <Flame className="w-8 h-8" />
                   </div>
-                  <h1 className="text-4xl font-bold">Hot Deals</h1>
+                  <h1 className="text-4xl font-bold">{t('title')}</h1>
                 </div>
                 <p className="text-lg text-white/90 max-w-xl">
-                  Emergency services marketplace - Post your urgent needs and get help fast. Only $1 per post!
+                  {t('subtitle')}
                 </p>
               </div>
               <Link
@@ -182,7 +185,7 @@ export default function HotDealsPage() {
                 className="hidden sm:inline-flex items-center gap-2 px-6 py-3 bg-white text-orange-600 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
               >
                 <Plus className="w-5 h-5" />
-                Post a Hot Deal ($1)
+                {t('postDeal')}
               </Link>
             </div>
           </div>
@@ -195,7 +198,7 @@ export default function HotDealsPage() {
             className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Post a Hot Deal ($1)
+            {t('postDeal')}
           </Link>
         </div>
 
@@ -210,7 +213,7 @@ export default function HotDealsPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search by city..."
+                  placeholder={t('searchPlaceholder')}
                   value={citySearch}
                   onChange={(e) => setCitySearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCitySearch()}
@@ -226,7 +229,7 @@ export default function HotDealsPage() {
                 >
                   <Filter className="w-5 h-5 text-gray-500" />
                   <span className="text-gray-700">
-                    {filters.category ? CATEGORY_LABELS[filters.category] : 'All Categories'}
+                    {filters.category ? CATEGORY_LABELS[filters.category] : t('allCategories')}
                   </span>
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 </button>
@@ -243,7 +246,7 @@ export default function HotDealsPage() {
                           !filters.category ? 'bg-orange-50 text-orange-700' : 'hover:bg-gray-50'
                         }`}
                       >
-                        All Categories
+                        {t('allCategories')}
                       </button>
                       {categories?.map(([key, label]) => (
                         <button
@@ -271,7 +274,7 @@ export default function HotDealsPage() {
                 onClick={handleCitySearch}
                 className="px-6 py-2.5 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
               >
-                Search
+                {t('search')}
               </button>
 
               {/* Clear Filters */}
@@ -280,7 +283,7 @@ export default function HotDealsPage() {
                   onClick={clearFilters}
                   className="px-4 py-2.5 text-gray-600 hover:text-gray-800 transition-colors"
                 >
-                  Clear
+                  {t('clear')}
                 </button>
               )}
             </div>
@@ -329,7 +332,7 @@ export default function HotDealsPage() {
                 href="/hot-deals/my-deals"
                 className="text-sm font-medium text-[#CBB57B] hover:text-[#b9a369] transition-colors"
               >
-                View My Deals →
+                {t('viewMyDeals')}
               </Link>
             </div>
           )}
@@ -365,7 +368,7 @@ export default function HotDealsPage() {
                 onClick={() => setFilters({ ...filters })}
                 className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
               >
-                Try Again
+                {t('tryAgain')}
               </button>
             </div>
           )}
@@ -376,18 +379,18 @@ export default function HotDealsPage() {
               <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
                 <Flame className="w-8 h-8 text-orange-500" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Hot Deals Found</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('noDealsFound')}</h3>
               <p className="text-gray-600 mb-6">
                 {filters.category || filters.city
-                  ? 'No hot deals match your filters. Try adjusting your search.'
-                  : 'Be the first to post a hot deal in your area!'}
+                  ? t('noDealsMatch')
+                  : t('beFirstToPost')}
               </p>
               <Link
                 href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                Post a Hot Deal
+                {t('postDealShort')}
               </Link>
             </div>
           )}
@@ -409,17 +412,17 @@ export default function HotDealsPage() {
                     disabled={pagination.page <= 1}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Previous
+                    {t('previous')}
                   </button>
                   <span className="px-4 py-2 text-gray-600">
-                    Page {pagination?.page} of {pagination?.totalPages}
+                    {t('pageOf', { page: pagination?.page, totalPages: pagination?.totalPages })}
                   </span>
                   <button
                     onClick={() => setFilters((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))}
                     disabled={pagination?.page >= pagination?.totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Next
+                    {t('next')}
                   </button>
                 </div>
               )}

@@ -19,6 +19,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { CardBrandLogo } from '@/components/payment/card-brand-logo';
 import { CardExpiryBadge } from '@/components/payment/card-expiry-badge';
 import { CardListSkeleton } from '@/components/payment/card-skeleton';
@@ -35,6 +36,7 @@ function AddCardModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const t = useTranslations('account.paymentMethods');
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
@@ -78,14 +80,14 @@ function AddCardModal({
       }
 
       if (setupIntent?.status === 'succeeded') {
-        toast.success('Your card has been saved successfully');
+        toast.success(t('cardSaved'));
         onSuccess();
         onClose();
       } else {
         throw new Error('Failed to save card');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add card';
+      const message = err instanceof Error ? err.message : t('failedAddCard');
       setError(message);
       toast.error(message);
     } finally {
@@ -117,15 +119,15 @@ function AddCardModal({
             </svg>
           </div>
           <div>
-            <h3 className="text-2xl font-bold">Add New Card</h3>
-            <p className="text-gray-600">Enter your card details</p>
+            <h3 className="text-2xl font-bold">{t('addNewCard')}</h3>
+            <p className="text-gray-600">{t('cardInformation')}</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Card Information
+              {t('cardInformation')}
             </label>
             <div className="p-4 border-2 border-neutral-200 rounded-xl focus-within:border-blue-500 transition-colors">
               <CardElement
@@ -159,9 +161,9 @@ function AddCardModal({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
               <div>
-                <p className="text-sm font-medium text-blue-900">Secure Payment</p>
+                <p className="text-sm font-medium text-blue-900">{t('securePayment')}</p>
                 <p className="text-xs text-blue-700 mt-1">
-                  Your card information is encrypted and securely processed by Stripe.
+                  {t('securePaymentDesc')}
                 </p>
               </div>
             </div>
@@ -174,7 +176,7 @@ function AddCardModal({
               disabled={isLoading}
               className="flex-1 px-6 py-3 border-2 border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors font-semibold disabled:opacity-50"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
@@ -187,10 +189,10 @@ function AddCardModal({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Adding...
+                  {t('adding')}
                 </>
               ) : (
-                'Add Card'
+                t('addCard')
               )}
             </button>
           </div>
@@ -202,6 +204,7 @@ function AddCardModal({
 
 // Main Page Component
 export default function PaymentMethodsPage() {
+  const t = useTranslations('account.paymentMethods');
   const { user, isLoading: authLoading } = useAuth();
   const [paymentMethods, setPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -240,7 +243,7 @@ export default function PaymentMethodsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch payment methods:', error);
-      toast.error('Failed to load payment methods');
+      toast.error(t('failedLoadMethods'));
     } finally {
       setIsLoading(false);
     }
@@ -257,13 +260,13 @@ export default function PaymentMethodsPage() {
       setIsSettingDefault(paymentMethodId);
       const response = await paymentMethodsApi.setDefault(paymentMethodId);
       if (response?.success) {
-        toast.success('Your default payment method has been updated');
+        toast.success(t('defaultUpdated'));
         fetchPaymentMethods();
       } else {
-        throw new Error(response?.message || 'Failed to set default');
+        throw new Error(response?.message || t('failedSetDefault'));
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update default');
+      toast.error(error instanceof Error ? error.message : t('failedSetDefault'));
     } finally {
       setIsSettingDefault(null);
     }
@@ -274,14 +277,14 @@ export default function PaymentMethodsPage() {
       setIsDeleting(true);
       const response = await paymentMethodsApi.remove(paymentMethodId);
       if (response?.success) {
-        toast.success('Your card has been removed');
+        toast.success(t('cardRemoved'));
         setShowDeleteConfirm(null);
         fetchPaymentMethods();
       } else {
-        throw new Error(response?.message || 'Failed to remove card');
+        throw new Error(response?.message || t('failedRemoveCard'));
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to remove card');
+      toast.error(error instanceof Error ? error.message : t('failedRemoveCard'));
     } finally {
       setIsDeleting(false);
     }
@@ -294,7 +297,7 @@ export default function PaymentMethodsPage() {
 
   const handleSaveNickname = async (paymentMethodId: string) => {
     if (!nicknameValue.trim()) {
-      toast.error('Please enter a nickname');
+      toast.error(t('enterNicknameError'));
       return;
     }
 
@@ -302,14 +305,14 @@ export default function PaymentMethodsPage() {
       setIsSavingNickname(true);
       const response = await paymentMethodsApi.updateNickname(paymentMethodId, nicknameValue.trim());
       if (response?.success) {
-        toast.success('Card nickname updated');
+        toast.success(t('nicknameUpdated'));
         setEditingNickname(null);
         fetchPaymentMethods();
       } else {
-        throw new Error(response?.message || 'Failed to update nickname');
+        throw new Error(response?.message || t('failedUpdateNickname'));
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update nickname');
+      toast.error(error instanceof Error ? error.message : t('failedUpdateNickname'));
     } finally {
       setIsSavingNickname(false);
     }
@@ -321,16 +324,16 @@ export default function PaymentMethodsPage() {
   };
 
   const formatLastUsed = (lastUsedAt?: string) => {
-    if (!lastUsedAt) return 'Never used';
+    if (!lastUsedAt) return t('neverUsed');
     const date = new Date(lastUsedAt);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return 'Used today';
-    if (diffDays === 1) return 'Used yesterday';
-    if (diffDays < 7) return `Used ${diffDays} days ago`;
-    if (diffDays < 30) return `Used ${Math.floor(diffDays / 7)} weeks ago`;
-    return `Used ${Math.floor(diffDays / 30)} months ago`;
+    if (diffDays === 0) return t('usedToday');
+    if (diffDays === 1) return t('usedYesterday');
+    if (diffDays < 7) return t('usedDaysAgo', { count: diffDays });
+    if (diffDays < 30) return t('usedWeeksAgo', { count: Math.floor(diffDays / 7) });
+    return t('usedMonthsAgo', { count: Math.floor(diffDays / 30) });
   };
 
   if (authLoading) {
@@ -383,10 +386,10 @@ export default function PaymentMethodsPage() {
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-bold font-['Poppins'] text-white mb-1">
-                Payment Methods
+                {t('title')}
               </h1>
               <p className="text-lg text-white/80">
-                Manage your saved cards for faster checkout
+                {t('subtitle')}
               </p>
             </div>
           </motion.div>
@@ -407,7 +410,7 @@ export default function PaymentMethodsPage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Add New Card
+            {t('addNewCard')}
           </button>
         </motion.div>
 
@@ -427,9 +430,9 @@ export default function PaymentMethodsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-black mb-2">No Saved Cards</h3>
+              <h3 className="text-xl font-bold text-black mb-2">{t('noSavedCards')}</h3>
               <p className="text-gray-600 mb-6">
-                Add a card to save it for faster checkout next time
+                {t('noSavedCardsDesc')}
               </p>
               <button
                 onClick={() => setShowAddCard(true)}
@@ -438,7 +441,7 @@ export default function PaymentMethodsPage() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Add Your First Card
+                {t('addYourFirstCard')}
               </button>
             </div>
           ) : (
@@ -471,7 +474,7 @@ export default function PaymentMethodsPage() {
                             type="text"
                             value={nicknameValue}
                             onChange={(e) => setNicknameValue(e.target.value)}
-                            placeholder="Enter card nickname"
+                            placeholder={t('enterNickname')}
                             className="px-2 py-1 border border-blue-500 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                             autoFocus
                             maxLength={30}
@@ -481,13 +484,13 @@ export default function PaymentMethodsPage() {
                             disabled={isSavingNickname}
                             className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
                           >
-                            {isSavingNickname ? 'Saving...' : 'Save'}
+                            {isSavingNickname ? t('saving') : t('save')}
                           </button>
                           <button
                             onClick={handleCancelEdit}
                             className="px-2 py-1 border border-neutral-300 text-xs rounded hover:bg-neutral-50"
                           >
-                            Cancel
+                            {t('cancel')}
                           </button>
                         </div>
                       ) : (
@@ -498,7 +501,7 @@ export default function PaymentMethodsPage() {
                               <button
                                 onClick={() => handleEditNickname(card.id, card.nickname)}
                                 className="text-blue-600 hover:text-blue-700"
-                                title="Edit nickname"
+                                title={t('editNickname')}
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -513,12 +516,12 @@ export default function PaymentMethodsPage() {
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                               </svg>
-                              Add nickname
+                              {t('addNickname')}
                             </button>
                           )}
                           {card.isDefault && (
                             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                              Default
+                              {t('default')}
                             </span>
                           )}
                         </div>
@@ -532,7 +535,7 @@ export default function PaymentMethodsPage() {
                       {/* Expiry and usage stats */}
                       <div className="flex items-center flex-wrap gap-2 mt-1">
                         <span className="text-xs text-gray-500">
-                          Expires {card.expMonth.toString().padStart(2, '0')}/{card.expYear}
+                          {t('expires')} {card.expMonth.toString().padStart(2, '0')}/{card.expYear}
                         </span>
                         <CardExpiryBadge expMonth={card.expMonth} expYear={card.expYear} />
 
@@ -540,7 +543,7 @@ export default function PaymentMethodsPage() {
                           <>
                             <span className="text-xs text-gray-400">•</span>
                             <span className="text-xs text-gray-500">
-                              Used {card.usageCount} {card.usageCount === 1 ? 'time' : 'times'}
+                              {card.usageCount === 1 ? t('usedTimes', { count: card.usageCount }) : t('usedTimesPlural', { count: card.usageCount })}
                             </span>
                           </>
                         )}
@@ -562,13 +565,13 @@ export default function PaymentMethodsPage() {
                         disabled={isSettingDefault === card.id}
                         className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
                       >
-                        {isSettingDefault === card.id ? 'Setting...' : 'Set Default'}
+                        {isSettingDefault === card.id ? t('setting') : t('setDefault')}
                       </button>
                     )}
                     <button
                       onClick={() => setShowDeleteConfirm(card.id)}
                       className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Remove card"
+                      title={t('removeCard')}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -595,9 +598,9 @@ export default function PaymentMethodsPage() {
               </svg>
             </div>
             <div>
-              <h3 className="font-semibold text-black mb-1">Your Cards are Secure</h3>
+              <h3 className="font-semibold text-black mb-1">{t('cardsSecure')}</h3>
               <p className="text-sm text-gray-600">
-                All card information is encrypted and securely stored by Stripe. We never store your full card number on our servers. Your payment data is protected by industry-leading security standards.
+                {t('cardsSecureDesc')}
               </p>
             </div>
           </div>
@@ -617,7 +620,7 @@ export default function PaymentMethodsPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Dashboard
+            {t('backToDashboard')}
           </Link>
         </motion.div>
       </div>
@@ -660,9 +663,9 @@ export default function PaymentMethodsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold mb-2">Remove Card?</h3>
+                <h3 className="text-2xl font-bold mb-2">{t('removeCard')}?</h3>
                 <p className="text-gray-600">
-                  Are you sure you want to remove this card? You can always add it again later.
+                  {t('removeCardConfirm')}
                 </p>
               </div>
 
@@ -672,14 +675,14 @@ export default function PaymentMethodsPage() {
                   disabled={isDeleting}
                   className="flex-1 px-6 py-3 border-2 border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors font-semibold disabled:opacity-50"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)}
                   disabled={isDeleting}
                   className="flex-1 px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors font-semibold disabled:opacity-50"
                 >
-                  {isDeleting ? 'Removing...' : 'Remove Card'}
+                  {isDeleting ? t('removing') : t('removeCard')}
                 </button>
               </div>
             </motion.div>

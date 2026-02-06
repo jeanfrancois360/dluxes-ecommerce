@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
 
@@ -11,9 +12,12 @@ interface OrderStatusBadgeProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-const STATUS_CONFIG = {
+export function OrderStatusBadge({ status, className, size = 'md' }: OrderStatusBadgeProps) {
+  const t = useTranslations('components.orderStatusBadge');
+
+  const STATUS_CONFIG = {
   pending: {
-    label: 'Pending',
+    label: t('pending'),
     color: 'bg-gray-100 text-gray-700 border-gray-200',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,7 +26,7 @@ const STATUS_CONFIG = {
     ),
   },
   confirmed: {
-    label: 'Confirmed',
+    label: t('confirmed'),
     color: 'bg-blue-100 text-blue-700 border-blue-200',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,7 +35,7 @@ const STATUS_CONFIG = {
     ),
   },
   processing: {
-    label: 'Processing',
+    label: t('processing'),
     color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -40,7 +44,7 @@ const STATUS_CONFIG = {
     ),
   },
   shipped: {
-    label: 'Shipped',
+    label: t('shipped'),
     color: 'bg-[#CBB57B]/20 text-[#8B7355] border-[#CBB57B]',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,7 +53,7 @@ const STATUS_CONFIG = {
     ),
   },
   delivered: {
-    label: 'Delivered',
+    label: t('delivered'),
     color: 'bg-green-100 text-green-700 border-green-200',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,7 +62,7 @@ const STATUS_CONFIG = {
     ),
   },
   cancelled: {
-    label: 'Cancelled',
+    label: t('cancelled'),
     color: 'bg-red-100 text-red-700 border-red-200',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +71,7 @@ const STATUS_CONFIG = {
     ),
   },
   refunded: {
-    label: 'Refunded',
+    label: t('refunded'),
     color: 'bg-purple-100 text-purple-700 border-purple-200',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,8 +86,6 @@ const SIZE_CLASSES = {
   md: 'text-sm px-3 py-1.5 gap-1.5',
   lg: 'text-base px-4 py-2 gap-2',
 };
-
-export function OrderStatusBadge({ status, className, size = 'md' }: OrderStatusBadgeProps) {
   // Normalize status to lowercase to handle both uppercase and lowercase values
   const normalizedStatus = status.toLowerCase() as OrderStatus;
   const config = STATUS_CONFIG[normalizedStatus];

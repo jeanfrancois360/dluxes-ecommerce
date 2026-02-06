@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Loader2, TrendingUp, TrendingDown, Package, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
+import { useTranslations } from 'next-intl';
 
 interface InventoryHistoryModalProps {
   open: boolean;
@@ -44,50 +45,51 @@ interface Transaction {
   };
 }
 
-const transactionTypeConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  PURCHASE: {
-    label: 'Purchase',
-    color: 'text-green-600 bg-green-100',
-    icon: <TrendingUp className="h-4 w-4" />,
-  },
-  SALE: {
-    label: 'Sale',
-    color: 'text-blue-600 bg-blue-100',
-    icon: <TrendingDown className="h-4 w-4" />,
-  },
-  ADJUSTMENT: {
-    label: 'Adjustment',
-    color: 'text-purple-600 bg-purple-100',
-    icon: <Package className="h-4 w-4" />,
-  },
-  RETURN: {
-    label: 'Return',
-    color: 'text-cyan-600 bg-cyan-100',
-    icon: <TrendingUp className="h-4 w-4" />,
-  },
-  DAMAGE: {
-    label: 'Damage',
-    color: 'text-red-600 bg-red-100',
-    icon: <AlertCircle className="h-4 w-4" />,
-  },
-  RESTOCK: {
-    label: 'Restock',
-    color: 'text-emerald-600 bg-emerald-100',
-    icon: <Package className="h-4 w-4" />,
-  },
-};
-
 export function InventoryHistoryModal({
   open,
   onOpenChange,
   productId,
   productName,
 }: InventoryHistoryModalProps) {
+  const t = useTranslations('components.inventoryHistoryModal');
   const [loading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const limit = INVENTORY_DEFAULTS.TRANSACTION_HISTORY_PAGE_SIZE;
+
+  const transactionTypeConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+    PURCHASE: {
+      label: t('purchase'),
+      color: 'text-green-600 bg-green-100',
+      icon: <TrendingUp className="h-4 w-4" />,
+    },
+    SALE: {
+      label: t('sale'),
+      color: 'text-blue-600 bg-blue-100',
+      icon: <TrendingDown className="h-4 w-4" />,
+    },
+    ADJUSTMENT: {
+      label: t('adjustment'),
+      color: 'text-purple-600 bg-purple-100',
+      icon: <Package className="h-4 w-4" />,
+    },
+    RETURN: {
+      label: t('return'),
+      color: 'text-cyan-600 bg-cyan-100',
+      icon: <TrendingUp className="h-4 w-4" />,
+    },
+    DAMAGE: {
+      label: t('damage'),
+      color: 'text-red-600 bg-red-100',
+      icon: <AlertCircle className="h-4 w-4" />,
+    },
+    RESTOCK: {
+      label: t('restock'),
+      color: 'text-emerald-600 bg-emerald-100',
+      icon: <Package className="h-4 w-4" />,
+    },
+  };
 
   useEffect(() => {
     if (open && productId) {
@@ -108,7 +110,7 @@ export function InventoryHistoryModal({
       setTotal(data.total);
     } catch (error: any) {
       console.error('Error fetching inventory history:', error);
-      toast.error('Failed to load inventory history');
+      toast.error(t('failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -120,9 +122,9 @@ export function InventoryHistoryModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Inventory History</DialogTitle>
+          <DialogTitle>{t('inventoryHistory')}</DialogTitle>
           <DialogDescription>
-            {productName ? `Transaction history for ${productName}` : 'Product transaction history'}
+            {productName ? t('transactionHistory', { productName }) : t('productTransactionHistory')}
           </DialogDescription>
         </DialogHeader>
 
@@ -134,7 +136,7 @@ export function InventoryHistoryModal({
           ) : transactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Package className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No inventory transactions yet</p>
+              <p className="text-muted-foreground">{t('noTransactions')}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -182,7 +184,7 @@ export function InventoryHistoryModal({
                             </span>
                             {transaction.user && (
                               <span>
-                                by {transaction.user.firstName} {transaction.user.lastName}
+                                {t('by', { firstName: transaction.user.firstName, lastName: transaction.user.lastName })}
                               </span>
                             )}
                           </div>
@@ -208,7 +210,7 @@ export function InventoryHistoryModal({
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-4 border-t">
             <div className="text-sm text-muted-foreground">
-              Showing {page * limit + 1} - {Math.min((page + 1) * limit, total)} of {total}
+              {t('showing', { start: page * limit + 1, end: Math.min((page + 1) * limit, total), total })}
             </div>
             <div className="flex gap-2">
               <Button
@@ -217,7 +219,7 @@ export function InventoryHistoryModal({
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0 || loading}
               >
-                Previous
+                {t('previous')}
               </Button>
               <Button
                 variant="outline"
@@ -225,7 +227,7 @@ export function InventoryHistoryModal({
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={page >= totalPages - 1 || loading}
               >
-                Next
+                {t('next')}
               </Button>
             </div>
           </div>

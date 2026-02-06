@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 
 export interface FilterState {
   categories: string[];
@@ -38,6 +39,7 @@ const brands = [
 const ratings = [5, 4, 3, 2, 1];
 
 export function FiltersSidebar({ filters, onFiltersChange, onClearAll }: FiltersSidebarProps) {
+  const t = useTranslations('components.filtersSidebar');
   const [expandedSections, setExpandedSections] = useState<string[]>([
     'categories',
     'price',
@@ -124,19 +126,19 @@ export function FiltersSidebar({ filters, onFiltersChange, onClearAll }: Filters
       <div className="sticky top-32 bg-white rounded-xl border border-gray-200 shadow-sm">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-serif font-bold text-black">Filters</h2>
+          <h2 className="text-lg font-serif font-bold text-black">{t('filters')}</h2>
           <button
             onClick={onClearAll}
             className="text-sm text-[#CBB57B] hover:text-black transition-colors font-medium"
           >
-            Clear All
+            {t('clearAll')}
           </button>
         </div>
 
         {/* Filters */}
         <div className="p-4 space-y-0">
           {/* Categories */}
-          <FilterSection title="Categories" id="categories">
+          <FilterSection title={t('categories')} id="categories">
             <div className="space-y-2.5 max-h-64 overflow-y-auto">
               {categories.map((category) => (
                 <label
@@ -161,7 +163,7 @@ export function FiltersSidebar({ filters, onFiltersChange, onClearAll }: Filters
           </FilterSection>
 
           {/* Price Range */}
-          <FilterSection title="Price Range" id="price">
+          <FilterSection title={t('priceRange')} id="price">
             <div className="space-y-4">
               <input
                 type="range"
@@ -179,7 +181,7 @@ export function FiltersSidebar({ filters, onFiltersChange, onClearAll }: Filters
           </FilterSection>
 
           {/* Brands */}
-          <FilterSection title="Brands" id="brands">
+          <FilterSection title={t('brands')} id="brands">
             <div className="space-y-2.5 max-h-64 overflow-y-auto">
               {brands.map((brand) => (
                 <label
@@ -204,7 +206,7 @@ export function FiltersSidebar({ filters, onFiltersChange, onClearAll }: Filters
           </FilterSection>
 
           {/* Ratings */}
-          <FilterSection title="Ratings" id="ratings">
+          <FilterSection title={t('ratings')} id="ratings">
             <div className="space-y-2.5">
               {ratings.map((rating) => (
                 <label
@@ -228,7 +230,7 @@ export function FiltersSidebar({ filters, onFiltersChange, onClearAll }: Filters
                       </svg>
                     ))}
                     <span className="text-sm text-gray-700 ml-1 group-hover:text-black transition-colors">
-                      & Up
+                      {t('andUp')}
                     </span>
                   </div>
                 </label>
@@ -237,7 +239,7 @@ export function FiltersSidebar({ filters, onFiltersChange, onClearAll }: Filters
           </FilterSection>
 
           {/* Availability */}
-          <FilterSection title="Availability" id="availability">
+          <FilterSection title={t('availability')} id="availability">
             <div className="space-y-2.5">
               {['all', 'in-stock', 'out-of-stock'].map((option) => (
                 <label
@@ -252,7 +254,7 @@ export function FiltersSidebar({ filters, onFiltersChange, onClearAll }: Filters
                     className="w-4 h-4 text-[#CBB57B] border-gray-300 focus:ring-[#CBB57B]/20 focus:ring-2"
                   />
                   <span className="text-sm text-gray-700 group-hover:text-black transition-colors capitalize">
-                    {option.replace('-', ' ')}
+                    {t(option.replace('-', '') as any)}
                   </span>
                 </label>
               ))}

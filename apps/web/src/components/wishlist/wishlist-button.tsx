@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 interface WishlistButtonProps {
   productId: string;
@@ -22,6 +23,7 @@ export function WishlistButton({
   variant = 'default',
   showTooltip = true,
 }: WishlistButtonProps) {
+  const t = useTranslations('components.wishlistButton');
   const [isHovered, setIsHovered] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const { user } = useAuth();
@@ -54,7 +56,7 @@ export function WishlistButton({
     onToggle?.(productId, !isInWishlist);
   };
 
-  const tooltipText = isInWishlist ? 'Remove from wishlist' : 'Add to wishlist';
+  const tooltipText = isInWishlist ? t('removeFromWishlist') : t('addToWishlist');
 
   return (
     <div className="relative group">

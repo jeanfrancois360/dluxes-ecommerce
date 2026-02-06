@@ -187,7 +187,7 @@ interface AdPlaceholderProps {
 function AdPlaceholder({
   placement,
   className = '',
-  aspectRatio = 'aspect-[4/1] md:aspect-[5/1]',
+  aspectRatio = 'aspect-[3/1] sm:aspect-[4/1] md:aspect-[5/1]',
   showCTA = true
 }: AdPlaceholderProps) {
   const info = placementInfo[placement] || {
@@ -211,7 +211,7 @@ function AdPlaceholder({
       </div>
 
       {/* Content */}
-      <div className="relative h-full flex flex-col items-center justify-center p-6 md:p-8">
+      <div className="relative h-full flex flex-col items-center justify-center p-4 sm:p-6 md:p-8">
         {/* Icon */}
         <div className="w-12 h-12 md:w-14 md:h-14 mb-4 rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm border border-slate-100 flex items-center justify-center">
           <Megaphone className="w-5 h-5 md:w-6 md:h-6 text-slate-400" />
@@ -257,18 +257,18 @@ function HeroPlaceholder({ className = '' }: { className?: string }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className={`relative w-full h-[450px] md:h-[550px] lg:h-[650px] ${className}`}
+      className={`relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] ${className}`}
     >
       {/* Dark elegant background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-zinc-900">
         {/* Subtle gradient orbs */}
-        <div className="absolute top-0 right-0 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-gradient-to-bl from-indigo-500/8 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-gradient-to-tr from-violet-500/8 to-transparent rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[900px] h-[600px] md:h-[900px] bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-[300px] sm:w-[400px] md:w-[600px] h-[300px] sm:h-[400px] md:h-[600px] bg-gradient-to-bl from-indigo-500/8 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[300px] sm:w-[400px] md:w-[600px] h-[300px] sm:h-[400px] md:h-[600px] bg-gradient-to-tr from-violet-500/8 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] sm:w-[600px] md:w-[900px] h-[500px] sm:h-[600px] md:h-[900px] bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-full blur-3xl" />
       </div>
 
       {/* Content */}
-      <div className="relative h-full flex flex-col items-center justify-center p-6 md:p-8 text-center">
+      <div className="relative h-full flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 text-center">
         {/* Icon */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -302,7 +302,7 @@ function HeroPlaceholder({ className = '' }: { className?: string }) {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.5 }}
-          className="flex items-center gap-6 md:gap-10 mb-8 md:mb-10"
+          className="flex items-center gap-4 sm:gap-6 md:gap-10 mb-6 sm:mb-8 md:mb-10"
         >
           <div className="text-center">
             <div className="text-2xl md:text-3xl font-bold text-white">50K+</div>
@@ -548,7 +548,7 @@ export function HeroBannerAd({
 
   if (isLoading) {
     return (
-      <div className={`relative w-full h-[500px] md:h-[600px] lg:h-[700px] bg-gray-100 animate-pulse ${className}`} />
+      <div className={`relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] bg-gray-100 animate-pulse ${className}`} />
     );
   }
 
@@ -560,7 +560,7 @@ export function HeroBannerAd({
 
   return (
     <div
-      className={`relative w-full h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden ${className}`}
+      className={`relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -593,7 +593,7 @@ export function HeroBannerAd({
             <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
 
             {/* Content */}
-            <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 lg:p-16">
+            <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-10 lg:p-16">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -624,21 +624,21 @@ export function HeroBannerAd({
           {/* Arrows */}
           <button
             onClick={() => goTo((currentIndex - 1 + ads.length) % ads.length)}
-            className="absolute left-6 top-1/2 -translate-y-1/2 p-3 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20 group"
+            className="absolute left-3 sm:left-4 md:left-6 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 md:p-3 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20 group"
             aria-label="Previous"
           >
-            <ChevronLeft className="w-6 h-6 text-white group-hover:-translate-x-0.5 transition-transform" />
+            <ChevronLeft className="w-5 h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white group-hover:-translate-x-0.5 transition-transform" />
           </button>
           <button
             onClick={() => goTo((currentIndex + 1) % ads.length)}
-            className="absolute right-6 top-1/2 -translate-y-1/2 p-3 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20 group"
+            className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 md:p-3 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20 group"
             aria-label="Next"
           >
-            <ChevronRight className="w-6 h-6 text-white group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight className="w-5 h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white group-hover:translate-x-0.5 transition-transform" />
           </button>
 
           {/* Progress Indicators */}
-          <div className="absolute bottom-8 md:bottom-12 right-8 md:right-12 flex gap-2">
+          <div className="absolute bottom-4 sm:bottom-6 md:bottom-10 right-4 sm:right-6 md:right-10 flex gap-2">
             {ads.map((_, index) => (
               <button
                 key={index}
@@ -693,7 +693,7 @@ export function InlineAd({ placement, className = '' }: InlineAdProps) {
   }
 
   if (!ad) {
-    return <AdPlaceholder placement={placement} className={className} aspectRatio="aspect-[4/1] md:aspect-[5/1] lg:aspect-[6/1]" />;
+    return <AdPlaceholder placement={placement} className={className} aspectRatio="aspect-[3/1] sm:aspect-[4/1] md:aspect-[5/1] lg:aspect-[6/1]" />;
   }
 
   return (
@@ -702,14 +702,14 @@ export function InlineAd({ placement, className = '' }: InlineAdProps) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
-      className={`relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 ${className}`}
+      className={`relative overflow-hidden rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 ${className}`}
     >
       <Link
         href={ad.linkUrl || '#'}
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => trackClick(ad.id)}
-        className="block relative aspect-[4/1] md:aspect-[5/1] lg:aspect-[6/1] group"
+        className="block relative aspect-[3/1] sm:aspect-[4/1] md:aspect-[5/1] lg:aspect-[6/1] group"
       >
         <AdImage
           src={ad.imageUrl}
@@ -722,17 +722,17 @@ export function InlineAd({ placement, className = '' }: InlineAdProps) {
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
 
         {/* Content */}
-        <div className="absolute inset-0 flex items-center p-6 md:p-10">
+        <div className="absolute inset-0 flex items-center p-4 sm:p-6 md:p-8 lg:p-10">
           <div className="text-white max-w-lg">
-            <h3 className="text-xl md:text-2xl lg:text-3xl font-bold mb-2">{ad.title}</h3>
+            <h3 className="text-base sm:text-lg md:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 line-clamp-2">{ad.title}</h3>
             {ad.description && (
-              <p className="text-sm md:text-base text-white/80 mb-4 hidden sm:block line-clamp-2">
+              <p className="text-xs sm:text-sm md:text-base text-white/80 mb-3 sm:mb-4 hidden sm:block line-clamp-2">
                 {ad.description}
               </p>
             )}
-            <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-full hover:bg-gray-100 transition-colors">
+            <span className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 bg-white text-black text-xs sm:text-sm font-semibold rounded-full hover:bg-gray-100 transition-colors">
               {ad.linkText || 'Shop Now'}
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
             </span>
           </div>
         </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/use-auth';
 import { PageLayout } from '@/components/layout/page-layout';
 import {
@@ -101,6 +102,7 @@ function SectionHeader({
 }
 
 export default function NotificationPreferencesPage() {
+  const t = useTranslations('account.notifications');
   const { user, isLoading: authLoading } = useAuth();
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,7 +118,7 @@ export default function NotificationPreferencesPage() {
         }
       } catch (error) {
         console.error('Failed to fetch notification preferences:', error);
-        toast.error('Failed to load notification preferences');
+        toast.error(t('failedLoad'));
       } finally {
         setIsLoading(false);
       }
@@ -138,12 +140,12 @@ export default function NotificationPreferencesPage() {
       const response = await notificationPreferencesApi.updatePreferences({ [key]: value });
       if (response?.data) {
         setPreferences(response.data);
-        toast.success('Preference updated successfully');
+        toast.success(t('preferenceUpdated'));
       }
     } catch (error) {
       // Revert on error
       setPreferences({ ...preferences, [key]: !value });
-      toast.error('Failed to update preference');
+      toast.error(t('failedUpdate'));
     } finally {
       setIsSaving(false);
     }
@@ -218,10 +220,10 @@ export default function NotificationPreferencesPage() {
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-bold font-['Poppins'] text-white mb-1">
-                Notification Preferences
+                {t('title')}
               </h1>
               <p className="text-lg text-white/80">
-                Control how and when we contact you
+                {t('subtitle')}
               </p>
             </div>
           </motion.div>
@@ -253,9 +255,9 @@ export default function NotificationPreferencesPage() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-xl font-bold">All Notifications</h2>
+                <h2 className="text-xl font-bold">{t('allNotifications')}</h2>
                 <p className="text-white/60 text-sm">
-                  Master toggle for all notifications
+                  {t('masterToggle')}
                 </p>
               </div>
             </div>
@@ -275,7 +277,7 @@ export default function NotificationPreferencesPage() {
                   clipRule="evenodd"
                 />
               </svg>
-              All notifications are currently disabled
+              {t('allDisabled')}
             </p>
           )}
         </motion.div>
@@ -294,43 +296,43 @@ export default function NotificationPreferencesPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
               }
-              title="Order Notifications"
-              description="Updates about your orders"
+              title={t('orderNotifications')}
+              description={t('orderNotificationsDesc')}
               color="blue"
             />
             {preferences && (
               <div className="mt-4">
                 <PreferenceRow
-                  title="Order Confirmation"
-                  description="Receive confirmation when you place an order"
+                  title={t('orderConfirmation')}
+                  description={t('orderConfirmationDesc')}
                   enabled={preferences.emailOrderConfirmation}
                   onChange={(value) => updatePreference('emailOrderConfirmation', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Shipping Updates"
-                  description="Get notified when your order ships"
+                  title={t('shippingUpdates')}
+                  description={t('shippingUpdatesDesc')}
                   enabled={preferences.emailOrderShipped}
                   onChange={(value) => updatePreference('emailOrderShipped', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Delivery Confirmation"
-                  description="Know when your order has been delivered"
+                  title={t('deliveryConfirmation')}
+                  description={t('deliveryConfirmationDesc')}
                   enabled={preferences.emailOrderDelivered}
                   onChange={(value) => updatePreference('emailOrderDelivered', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Payment Receipts"
-                  description="Receive payment confirmation emails"
+                  title={t('paymentReceipts')}
+                  description={t('paymentReceiptsDesc')}
                   enabled={preferences.emailPaymentReceipt}
                   onChange={(value) => updatePreference('emailPaymentReceipt', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Refund Notifications"
-                  description="Get notified when refunds are processed"
+                  title={t('refundNotifications')}
+                  description={t('refundNotificationsDesc')}
                   enabled={preferences.emailRefundProcessed}
                   onChange={(value) => updatePreference('emailRefundProcessed', value)}
                   disabled={masterDisabled}
@@ -352,36 +354,36 @@ export default function NotificationPreferencesPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                 </svg>
               }
-              title="Marketing & Promotions"
-              description="Special offers and deals"
+              title={t('marketingPromotions')}
+              description={t('marketingPromotionsDesc')}
               color="purple"
             />
             {preferences && (
               <div className="mt-4">
                 <PreferenceRow
-                  title="Newsletter"
-                  description="Weekly newsletter with latest updates and tips"
+                  title={t('newsletter')}
+                  description={t('newsletterDesc')}
                   enabled={preferences.newsletter}
                   onChange={(value) => updatePreference('newsletter', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Promotional Emails"
-                  description="Sales, discounts, and special offers"
+                  title={t('promotionalEmails')}
+                  description={t('promotionalEmailsDesc')}
                   enabled={preferences.emailPromotions}
                   onChange={(value) => updatePreference('emailPromotions', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Price Drop Alerts"
-                  description="Get notified when items in your wishlist go on sale"
+                  title={t('priceDropAlerts')}
+                  description={t('priceDropAlertsDesc')}
                   enabled={preferences.emailPriceDrops}
                   onChange={(value) => updatePreference('emailPriceDrops', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Back in Stock"
-                  description="Alerts when out-of-stock items become available"
+                  title={t('backInStock')}
+                  description={t('backInStockDesc')}
                   enabled={preferences.emailBackInStock}
                   onChange={(value) => updatePreference('emailBackInStock', value)}
                   disabled={masterDisabled}
@@ -403,22 +405,22 @@ export default function NotificationPreferencesPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               }
-              title="Account & Security"
-              description="Important account notifications"
+              title={t('accountSecurity')}
+              description={t('accountSecurityDesc')}
               color="green"
             />
             {preferences && (
               <div className="mt-4">
                 <PreferenceRow
-                  title="Security Alerts"
-                  description="Suspicious activity, login attempts, and password changes"
+                  title={t('securityAlerts')}
+                  description={t('securityAlertsDesc')}
                   enabled={preferences.emailSecurityAlerts}
                   onChange={(value) => updatePreference('emailSecurityAlerts', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Review Reminders"
-                  description="Reminders to review products you've purchased"
+                  title={t('reviewReminders')}
+                  description={t('reviewRemindersDesc')}
                   enabled={preferences.emailReviewReminder}
                   onChange={(value) => updatePreference('emailReviewReminder', value)}
                   disabled={masterDisabled}
@@ -440,43 +442,43 @@ export default function NotificationPreferencesPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               }
-              title="Push Notifications"
-              description="Mobile and browser notifications"
+              title={t('pushNotifications')}
+              description={t('pushNotificationsDesc')}
               color="gold"
             />
             {preferences && (
               <div className="mt-4">
                 <PreferenceRow
-                  title="Order Updates"
-                  description="Real-time updates about your orders"
+                  title={t('orderUpdates')}
+                  description={t('orderUpdatesDesc')}
                   enabled={preferences.pushOrderUpdates}
                   onChange={(value) => updatePreference('pushOrderUpdates', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Promotional Alerts"
-                  description="Flash sales and limited-time offers"
+                  title={t('promotionalAlerts')}
+                  description={t('promotionalAlertsDesc')}
                   enabled={preferences.pushPromotions}
                   onChange={(value) => updatePreference('pushPromotions', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Price Drop Alerts"
-                  description="Instant notifications when prices drop"
+                  title={t('pushPriceDrops')}
+                  description={t('pushPriceDropsDesc')}
                   enabled={preferences.pushPriceDrops}
                   onChange={(value) => updatePreference('pushPriceDrops', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Back in Stock"
-                  description="Be the first to know when items return"
+                  title={t('pushBackInStock')}
+                  description={t('pushBackInStockDesc')}
                   enabled={preferences.pushBackInStock}
                   onChange={(value) => updatePreference('pushBackInStock', value)}
                   disabled={masterDisabled}
                 />
                 <PreferenceRow
-                  title="Security Alerts"
-                  description="Important security notifications"
+                  title={t('pushSecurityAlerts')}
+                  description={t('pushSecurityAlertsDesc')}
                   enabled={preferences.pushSecurityAlerts}
                   onChange={(value) => updatePreference('pushSecurityAlerts', value)}
                   disabled={masterDisabled}
@@ -502,11 +504,9 @@ export default function NotificationPreferencesPage() {
               />
             </svg>
             <div>
-              <p className="text-sm text-blue-800 font-medium">About notifications</p>
+              <p className="text-sm text-blue-800 font-medium">{t('aboutNotifications')}</p>
               <p className="text-sm text-blue-600 mt-1">
-                We respect your inbox. Security alerts are always sent regardless of your
-                preferences to keep your account safe. You can unsubscribe from marketing
-                emails at any time.
+                {t('aboutNotificationsDesc')}
               </p>
             </div>
           </div>

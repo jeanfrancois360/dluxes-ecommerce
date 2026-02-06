@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/use-auth';
 import { PageLayout } from '@/components/layout/page-layout';
 import {
@@ -28,6 +29,7 @@ function StatusBadge({ status }: { status: ReturnRequest['status'] }) {
 
 export default function MyReturnsPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const t = useTranslations('account.returns');
   const [returns, setReturns] = useState<ReturnRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export default function MyReturnsPage() {
         }
       } catch (error) {
         console.error('Failed to fetch returns:', error);
-        toast.error('Failed to load return requests');
+        toast.error(t('toast.loadError'));
       } finally {
         setIsLoading(false);
       }
@@ -61,12 +63,12 @@ export default function MyReturnsPage() {
         setReturns((prev) =>
           prev.map((r) => (r.id === returnId ? { ...r, status: 'CANCELLED' as const } : r))
         );
-        toast.success('Return request has been cancelled');
+        toast.success(t('toast.cancelled'));
       } else {
-        toast.error(response?.message || 'Failed to cancel return request');
+        toast.error(response?.message || t('toast.cancelError'));
       }
     } catch (error) {
-      toast.error('Failed to cancel return request');
+      toast.error(t('toast.cancelError'));
     } finally {
       setCancellingId(null);
     }
@@ -121,7 +123,7 @@ export default function MyReturnsPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <span className="text-white font-medium">Returns & Refunds</span>
+            <span className="text-white font-medium">{t('breadcrumb')}</span>
           </motion.div>
 
           <motion.div
@@ -146,9 +148,9 @@ export default function MyReturnsPage() {
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-bold font-['Poppins'] text-white mb-1">
-                Returns & Refunds
+                {t('title')}
               </h1>
-              <p className="text-lg text-white/80">Track your return requests and refunds</p>
+              <p className="text-lg text-white/80">{t('subtitle')}</p>
             </div>
           </motion.div>
 
@@ -161,17 +163,17 @@ export default function MyReturnsPage() {
           >
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
               <p className="text-2xl font-bold text-gold">{returns.length}</p>
-              <p className="text-sm text-white/70">Total Requests</p>
+              <p className="text-sm text-white/70">{t('stats.totalRequests')}</p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
               <p className="text-2xl font-bold text-yellow-400">{activeReturns.length}</p>
-              <p className="text-sm text-white/70">In Progress</p>
+              <p className="text-sm text-white/70">{t('stats.inProgress')}</p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
               <p className="text-2xl font-bold text-green-400">
                 {returns.filter((r) => r.status === 'REFUNDED').length}
               </p>
-              <p className="text-sm text-white/70">Refunded</p>
+              <p className="text-sm text-white/70">{t('stats.refunded')}</p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
               <p className="text-2xl font-bold text-white">
@@ -183,7 +185,7 @@ export default function MyReturnsPage() {
                   2
                 )}
               </p>
-              <p className="text-sm text-white/70">Total Refunded</p>
+              <p className="text-sm text-white/70">{t('stats.totalRefunded')}</p>
             </div>
           </motion.div>
         </div>
@@ -213,11 +215,10 @@ export default function MyReturnsPage() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold font-['Poppins'] text-black mb-2">
-              No Return Requests
+              {t('empty.title')}
             </h2>
             <p className="text-neutral-600 mb-6 max-w-md mx-auto">
-              You haven't submitted any return requests yet. If you need to return a product,
-              visit your order details page.
+              {t('empty.description')}
             </p>
             <Link
               href="/account/orders"
@@ -231,7 +232,7 @@ export default function MyReturnsPage() {
                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
                 />
               </svg>
-              View My Orders
+              {t('empty.viewOrders')}
             </Link>
           </motion.div>
         ) : (
@@ -241,7 +242,7 @@ export default function MyReturnsPage() {
               <div>
                 <h2 className="text-xl font-bold font-['Poppins'] mb-4 flex items-center gap-2">
                   <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                  Active Requests
+                  {t('sections.active')}
                 </h2>
                 <div className="space-y-4">
                   {activeReturns.map((returnRequest, index) => (
@@ -265,12 +266,7 @@ export default function MyReturnsPage() {
                               <StatusBadge status={returnRequest.status} />
                             </div>
                             <p className="text-sm text-neutral-500">
-                              Requested on{' '}
-                              {new Date(returnRequest.createdAt).toLocaleDateString('en-US', {
-                                month: 'long',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
+                              {t('requestedOn', { date: new Date(returnRequest.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) })}
                             </p>
                           </div>
                           {returnRequest.status === 'PENDING' && (
@@ -279,7 +275,7 @@ export default function MyReturnsPage() {
                               disabled={cancellingId === returnRequest.id}
                               className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                             >
-                              {cancellingId === returnRequest.id ? 'Cancelling...' : 'Cancel'}
+                              {cancellingId === returnRequest.id ? t('cancelling') : t('cancel')}
                             </button>
                           )}
                         </div>
@@ -299,8 +295,7 @@ export default function MyReturnsPage() {
                             <div className="flex-1 min-w-0">
                               <p className="font-medium truncate">{returnRequest.orderItem.name}</p>
                               <p className="text-sm text-neutral-500">
-                                Qty: {returnRequest.orderItem.quantity} ×{' '}
-                                ${formatCurrencyAmount(returnRequest.orderItem.price, 2)}
+                                {t('quantity', { qty: returnRequest.orderItem.quantity })} × ${formatCurrencyAmount(returnRequest.orderItem.price, 2)}
                               </p>
                             </div>
                           </div>
@@ -309,12 +304,12 @@ export default function MyReturnsPage() {
                         {/* Reason & Description */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <p className="text-sm text-neutral-500 mb-1">Reason</p>
+                            <p className="text-sm text-neutral-500 mb-1">{t('reason')}</p>
                             <p className="font-medium">{RETURN_REASON_LABELS[returnRequest.reason]}</p>
                           </div>
                           {returnRequest.description && (
                             <div>
-                              <p className="text-sm text-neutral-500 mb-1">Description</p>
+                              <p className="text-sm text-neutral-500 mb-1">{t('description')}</p>
                               <p className="text-neutral-700">{returnRequest.description}</p>
                             </div>
                           )}
@@ -323,7 +318,7 @@ export default function MyReturnsPage() {
                         {/* Resolution (if any) */}
                         {returnRequest.resolution && (
                           <div className="mt-4 p-4 bg-blue-50 rounded-xl">
-                            <p className="text-sm text-blue-600 font-medium mb-1">Resolution Note</p>
+                            <p className="text-sm text-blue-600 font-medium mb-1">{t('resolutionNote')}</p>
                             <p className="text-blue-800">{returnRequest.resolution}</p>
                           </div>
                         )}
@@ -339,7 +334,7 @@ export default function MyReturnsPage() {
               <div>
                 <h2 className="text-xl font-bold font-['Poppins'] mb-4 flex items-center gap-2">
                   <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  Completed
+                  {t('sections.completed')}
                 </h2>
                 <div className="space-y-4">
                   {completedReturns.map((returnRequest, index) => (
@@ -364,13 +359,13 @@ export default function MyReturnsPage() {
                             </div>
                             <p className="text-sm text-neutral-500">
                               {returnRequest.status === 'REFUNDED' && returnRequest.refundedAt
-                                ? `Refunded on ${new Date(returnRequest.refundedAt).toLocaleDateString()}`
-                                : `Closed on ${new Date(returnRequest.updatedAt).toLocaleDateString()}`}
+                                ? t('refundedOn', { date: new Date(returnRequest.refundedAt).toLocaleDateString() })
+                                : t('closedOn', { date: new Date(returnRequest.updatedAt).toLocaleDateString() })}
                             </p>
                           </div>
                           {returnRequest.status === 'REFUNDED' && returnRequest.refundAmount && (
                             <div className="text-right">
-                              <p className="text-sm text-neutral-500">Refund Amount</p>
+                              <p className="text-sm text-neutral-500">{t('refundAmount')}</p>
                               <p className="text-xl font-bold text-green-600">
                                 ${formatCurrencyAmount(returnRequest.refundAmount, 2)}
                               </p>
@@ -402,7 +397,7 @@ export default function MyReturnsPage() {
                         {/* Resolution */}
                         {returnRequest.resolution && (
                           <div className="mt-4 p-4 bg-neutral-50 rounded-xl">
-                            <p className="text-sm text-neutral-500 mb-1">Resolution</p>
+                            <p className="text-sm text-neutral-500 mb-1">{t('resolution')}</p>
                             <p className="text-neutral-700">{returnRequest.resolution}</p>
                           </div>
                         )}
@@ -422,31 +417,31 @@ export default function MyReturnsPage() {
           transition={{ delay: 0.3 }}
           className="mt-8 bg-gradient-to-br from-neutral-50 to-white rounded-2xl border border-neutral-100 p-6"
         >
-          <h3 className="font-bold text-lg mb-4">Return Policy</h3>
+          <h3 className="font-bold text-lg mb-4">{t('policy.title')}</h3>
           <ul className="space-y-2 text-sm text-neutral-600">
             <li className="flex items-start gap-2">
               <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              Returns must be requested within 30 days of delivery
+              {t('policy.rule1')}
             </li>
             <li className="flex items-start gap-2">
               <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              Items must be in original condition with tags attached
+              {t('policy.rule2')}
             </li>
             <li className="flex items-start gap-2">
               <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              Refunds are processed within 5-7 business days after we receive the item
+              {t('policy.rule3')}
             </li>
             <li className="flex items-start gap-2">
               <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              Digital products and personalized items are non-refundable
+              {t('policy.rule4')}
             </li>
           </ul>
           <div className="mt-4 pt-4 border-t border-neutral-100">
@@ -454,7 +449,7 @@ export default function MyReturnsPage() {
               href="/contact"
               className="text-gold hover:text-gold/80 font-medium inline-flex items-center gap-1"
             >
-              Need help? Contact support
+              {t('needHelp')}
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
