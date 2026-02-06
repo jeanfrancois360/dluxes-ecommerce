@@ -127,14 +127,11 @@ function HotDealForm() {
         throw new Error('Card element not found');
       }
 
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        {
-          payment_method: {
-            card: cardElement,
-          },
-        }
-      );
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+        },
+      });
 
       if (stripeError) {
         throw new Error(stripeError.message);
@@ -175,12 +172,10 @@ function HotDealForm() {
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('hotDealPublished')}</h2>
-        <p className="text-gray-600 mb-6">
-          {t('nowLive')}
-        </p>
+        <p className="text-gray-600 mb-6">{t('nowLive')}</p>
         <Link
           href="/hot-deals"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
         >
           {t('viewHotDeals')}
         </Link>
@@ -192,7 +187,7 @@ function HotDealForm() {
   if (step === 'processing') {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
-        <Loader2 className="w-12 h-12 text-orange-500 mx-auto mb-4 animate-spin" />
+        <Loader2 className="w-12 h-12 text-gold mx-auto mb-4 animate-spin" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('processingPayment')}</h2>
         <p className="text-gray-600">{t('pleaseWait')}</p>
       </div>
@@ -209,13 +204,13 @@ function HotDealForm() {
       >
         <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('completePayment')}</h2>
 
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
+        <div className="bg-gold/10 border border-gold/20 rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-gray-900">{t('postingFee')}</p>
               <p className="text-sm text-gray-600">{t('activeFor24Hours')}</p>
             </div>
-            <p className="text-2xl font-bold text-orange-600">$1.00</p>
+            <p className="text-2xl font-bold text-gold">$1.00</p>
           </div>
         </div>
 
@@ -229,9 +224,7 @@ function HotDealForm() {
         )}
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('cardDetails')}
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('cardDetails')}</label>
           <div className="border border-gray-300 rounded-lg p-4">
             <CardElement
               options={{
@@ -268,7 +261,7 @@ function HotDealForm() {
             type="button"
             onClick={handlePayment}
             disabled={isSubmitting || !stripe}
-            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -279,9 +272,7 @@ function HotDealForm() {
           </button>
         </div>
 
-        <p className="text-xs text-gray-500 text-center mt-4">
-          {t('securePayment')}
-        </p>
+        <p className="text-xs text-gray-500 text-center mt-4">{t('securePayment')}</p>
       </motion.div>
     );
   }
@@ -312,11 +303,9 @@ function HotDealForm() {
                   maxLength: { value: 100, message: t('titleMax') },
                 })}
                 placeholder={t('titlePlaceholder')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
               />
-              {errors.title && (
-                <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
-              )}
+              {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>}
             </div>
 
             {/* Description */}
@@ -332,7 +321,7 @@ function HotDealForm() {
                 })}
                 rows={4}
                 placeholder={t('descriptionPlaceholder')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
               />
               {errors.description && (
                 <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
@@ -347,7 +336,7 @@ function HotDealForm() {
                 </label>
                 <select
                   {...register('category', { required: t('categoryRequired') })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
                 >
                   <option value="">{t('selectCategory')}</option>
                   {categories.map(([key, label]) => (
@@ -367,7 +356,7 @@ function HotDealForm() {
                 </label>
                 <select
                   {...register('urgency')}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
                 >
                   {URGENCY_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -392,7 +381,7 @@ function HotDealForm() {
               <input
                 type="text"
                 {...register('contactName', { required: t('contactNameRequired') })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
               />
               {errors.contactName && (
                 <p className="mt-1 text-sm text-red-600">{errors.contactName.message}</p>
@@ -414,7 +403,7 @@ function HotDealForm() {
                     },
                   })}
                   placeholder={t('phonePlaceholder')}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
                 />
                 {errors.contactPhone && (
                   <p className="mt-1 text-sm text-red-600">{errors.contactPhone.message}</p>
@@ -434,7 +423,7 @@ function HotDealForm() {
                       message: t('emailInvalid'),
                     },
                   })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
                 />
                 {errors.contactEmail && (
                   <p className="mt-1 text-sm text-red-600">{errors.contactEmail.message}</p>
@@ -453,7 +442,7 @@ function HotDealForm() {
                       type="radio"
                       {...register('preferredContact')}
                       value={option.value}
-                      className="text-orange-500 focus:ring-orange-500"
+                      className="text-gold focus:ring-gold"
                     />
                     <span className="text-sm text-gray-700">{option.label}</span>
                   </label>
@@ -476,29 +465,23 @@ function HotDealForm() {
                 type="text"
                 {...register('city', { required: t('cityRequired') })}
                 placeholder={t('cityPlaceholder')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
               />
-              {errors.city && (
-                <p className="mt-1 text-sm text-red-600">{errors.city.message}</p>
-              )}
+              {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city.message}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('state')}
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('state')}</label>
               <input
                 type="text"
                 {...register('state')}
                 placeholder={t('statePlaceholder')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('zipCode')}
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('zipCode')}</label>
               <input
                 type="text"
                 {...register('zipCode', {
@@ -508,7 +491,7 @@ function HotDealForm() {
                   },
                 })}
                 placeholder={t('zipPlaceholder')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
               />
               {errors.zipCode && (
                 <p className="mt-1 text-sm text-red-600">{errors.zipCode.message}</p>
@@ -533,9 +516,7 @@ function HotDealForm() {
               <CreditCard className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-gray-900">{t('oneTimeFee')}</p>
-                <p className="text-sm text-gray-600">
-                  {t('feeDescription')}
-                </p>
+                <p className="text-sm text-gray-600">{t('feeDescription')}</p>
               </div>
             </div>
           </div>
