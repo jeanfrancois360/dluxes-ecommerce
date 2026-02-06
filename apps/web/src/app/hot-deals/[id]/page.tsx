@@ -151,7 +151,7 @@ export default function HotDealDetailPage() {
     return (
       <PageLayout showCategoryNav={false}>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-gold animate-spin" />
         </div>
       </PageLayout>
     );
@@ -169,7 +169,7 @@ export default function HotDealDetailPage() {
               <p className="text-gray-600 mb-6">{error || t('mayBeRemoved')}</p>
               <Link
                 href="/hot-deals"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
                 {t('backToHotDeals')}
@@ -234,7 +234,8 @@ export default function HotDealDetailPage() {
                   <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
-                      {deal.city}{deal.state ? `, ${deal.state}` : ''}
+                      {deal.city}
+                      {deal.state ? `, ${deal.state}` : ''}
                       {deal.zipCode ? ` ${deal.zipCode}` : ''}
                     </div>
                     <div className="flex items-center gap-1">
@@ -257,7 +258,9 @@ export default function HotDealDetailPage() {
                 {/* Contact Info (only for logged-in users) */}
                 {isAuthenticated ? (
                   <div className="p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-3">{t('contactInformation')}</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                      {t('contactInformation')}
+                    </h2>
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <User className="w-5 h-5 text-gray-400" />
@@ -265,10 +268,7 @@ export default function HotDealDetailPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <Phone className="w-5 h-5 text-gray-400" />
-                        <a
-                          href={`tel:${deal.contactPhone}`}
-                          className="text-orange-600 hover:text-orange-700"
-                        >
+                        <a href={`tel:${deal.contactPhone}`} className="text-gold hover:text-gold">
                           {deal.contactPhone}
                         </a>
                         {deal.preferredContact === 'PHONE' && (
@@ -281,7 +281,7 @@ export default function HotDealDetailPage() {
                         <Mail className="w-5 h-5 text-gray-400" />
                         <a
                           href={`mailto:${deal.contactEmail}`}
-                          className="text-orange-600 hover:text-orange-700"
+                          className="text-gold hover:text-gold"
                         >
                           {deal.contactEmail}
                         </a>
@@ -297,12 +297,10 @@ export default function HotDealDetailPage() {
                   <div className="p-6 bg-gray-50">
                     <div className="text-center">
                       <AlertCircle className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600 mb-4">
-                        {t('logInToSee')}
-                      </p>
+                      <p className="text-gray-600 mb-4">{t('logInToSee')}</p>
                       <Link
                         href={`/auth/login?redirect=/hot-deals/${dealId}`}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
                       >
                         {t('logInToContinue')}
                       </Link>
@@ -322,7 +320,7 @@ export default function HotDealDetailPage() {
                   {!showResponseForm ? (
                     <button
                       onClick={() => setShowResponseForm(true)}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
                     >
                       <Send className="w-5 h-5" />
                       {t('respondToRequest')}
@@ -346,7 +344,7 @@ export default function HotDealDetailPage() {
                             })}
                             rows={4}
                             placeholder={t('messagePlaceholder')}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
                           />
                           {errors.message && (
                             <p className="mt-1 text-sm text-red-600">{errors.message.message}</p>
@@ -361,7 +359,7 @@ export default function HotDealDetailPage() {
                             {...register('contactInfo')}
                             rows={2}
                             placeholder={t('contactPlaceholder')}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
                           />
                         </div>
 
@@ -379,7 +377,7 @@ export default function HotDealDetailPage() {
                           <button
                             type="submit"
                             disabled={isSubmittingResponse}
-                            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50"
+                            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors disabled:opacity-50"
                           >
                             {isSubmittingResponse ? (
                               <Loader2 className="w-5 h-5 animate-spin" />
@@ -437,7 +435,9 @@ export default function HotDealDetailPage() {
                             <p className="text-gray-600 mb-3">{response.message}</p>
                             {response.contactInfo && (
                               <div className="bg-gray-50 rounded-lg p-3">
-                                <p className="text-sm font-medium text-gray-700 mb-1">{t('contactInfo')}</p>
+                                <p className="text-sm font-medium text-gray-700 mb-1">
+                                  {t('contactInfo')}
+                                </p>
                                 <p className="text-sm text-gray-600 whitespace-pre-wrap">
                                   {response.contactInfo}
                                 </p>
@@ -491,22 +491,18 @@ export default function HotDealDetailPage() {
                       )}
                       {t('markAsFulfilled')}
                     </button>
-                    <p className="text-xs text-gray-500 text-center mt-2">
-                      {t('markHelper')}
-                    </p>
+                    <p className="text-xs text-gray-500 text-center mt-2">{t('markHelper')}</p>
                   </div>
                 )}
 
                 {/* Time Warning */}
                 {deal.status === 'ACTIVE' && timeInfo && !timeInfo.isExpired && (
-                  <div className="mt-6 p-4 bg-orange-50 rounded-xl">
-                    <div className="flex items-center gap-2 text-orange-700">
+                  <div className="mt-6 p-4 bg-gold/10 rounded-xl">
+                    <div className="flex items-center gap-2 text-gold">
                       <Clock className="w-5 h-5" />
                       <p className="text-sm font-medium">{timeInfo.text}</p>
                     </div>
-                    <p className="text-xs text-orange-600 mt-1">
-                      {t('expiresAutomatically')}
-                    </p>
+                    <p className="text-xs text-gold mt-1">{t('expiresAutomatically')}</p>
                   </div>
                 )}
               </motion.div>

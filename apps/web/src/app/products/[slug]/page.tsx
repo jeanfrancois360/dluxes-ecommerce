@@ -24,7 +24,13 @@ import { getColorHex } from '@/lib/utils/color-mapping';
 import { Price } from '@/components/price';
 import { isLightColor, calculateDiscountPercentage } from '@nextpik/ui/lib/utils/color-utils';
 import { framerMotion } from '@nextpik/design-system/animations';
-import { RealEstateDetails, VehicleDetails, DigitalDetails, ServiceDetails, RentalDetails } from '@/components/products/type-details';
+import {
+  RealEstateDetails,
+  VehicleDetails,
+  DigitalDetails,
+  ServiceDetails,
+  RentalDetails,
+} from '@/components/products/type-details';
 import { RealEstateInquiryForm } from '@/components/products/RealEstateInquiryForm';
 import { VehicleInquiryForm } from '@/components/products/VehicleInquiryForm';
 import { ProductDetailAd } from '@/components/ads';
@@ -33,7 +39,8 @@ import { ProductDetailAd } from '@/components/ads';
 function ReviewsSection({ productId }: { productId: string }) {
   const t = useTranslations('products');
   const [showReviewForm, setShowReviewForm] = useState(false);
-  const { reviews, total, page, pageSize, summary, isLoading, updateFilters, refetch } = useReviews(productId);
+  const { reviews, total, page, pageSize, summary, isLoading, updateFilters, refetch } =
+    useReviews(productId);
   const { createReview } = useCreateReview();
   const { markHelpful } = useMarkHelpful();
   const { reportReview } = useReportReview();
@@ -56,10 +63,7 @@ function ReviewsSection({ productId }: { productId: string }) {
 
   return (
     <div className="space-y-8">
-      <ReviewSummaryComponent
-        summary={summary}
-        onWriteReview={() => setShowReviewForm(true)}
-      />
+      <ReviewSummaryComponent summary={summary} onWriteReview={() => setShowReviewForm(true)} />
       <ReviewsList
         reviews={reviews}
         total={total}
@@ -87,6 +91,7 @@ export default function ProductDetailPage() {
   const slug = params.slug as string;
   const t = useTranslations('products');
   const tc = useTranslations('common');
+  const tModal = useTranslations('quickViewModal');
 
   // Fetch product data
   const { product, isLoading, error } = useProduct(slug, true);
@@ -101,7 +106,9 @@ export default function ProductDetailPage() {
     size?: string;
   }>({});
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>('description');
+  const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>(
+    'description'
+  );
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
   const [showInquiryForm, setShowInquiryForm] = useState(false);
@@ -120,25 +127,25 @@ export default function ProductDetailPage() {
   const availableColors = useMemo(() => {
     if (!product?.variants) return [];
     const colors = product.variants
-      .filter(v => v.attributes.color)
-      .map(v => ({
+      .filter((v) => v.attributes.color)
+      .map((v) => ({
         name: v.attributes.color,
         value: v.attributes.color.toLowerCase(),
         hex: v.attributes.colorHex || getColorHex(v.attributes.color),
       }));
-    return Array.from(new Map(colors.map(c => [c.value, c])).values());
+    return Array.from(new Map(colors.map((c) => [c.value, c])).values());
   }, [product]);
 
   const availableSizes = useMemo(() => {
     if (!product?.variants) return [];
     const sizes = product.variants
-      .filter(v => v.attributes.size)
-      .map(v => ({
+      .filter((v) => v.attributes.size)
+      .map((v) => ({
         name: v.attributes.size,
         value: v.attributes.size.toLowerCase(),
         inStock: v.isAvailable && v.inventory > 0,
       }));
-    return Array.from(new Map(sizes.map(s => [s.value, s])).values());
+    return Array.from(new Map(sizes.map((s) => [s.value, s])).values());
   }, [product]);
 
   // Calculate stock status
@@ -147,7 +154,7 @@ export default function ProductDetailPage() {
 
     // If variants exist and one is selected, check variant stock
     const selectedVar = product.variants?.find(
-      v =>
+      (v) =>
         (!selectedVariant.color || v.attributes.color?.toLowerCase() === selectedVariant.color) &&
         (!selectedVariant.size || v.attributes.size?.toLowerCase() === selectedVariant.size)
     );
@@ -156,7 +163,7 @@ export default function ProductDetailPage() {
       return {
         inStock: selectedVar.isAvailable && selectedVar.inventory > 0,
         quantity: selectedVar.inventory,
-        showQuantity: true
+        showQuantity: true,
       };
     }
 
@@ -165,7 +172,7 @@ export default function ProductDetailPage() {
     return {
       inStock: inventoryCount > 0,
       quantity: inventoryCount,
-      showQuantity: inventoryCount > 0
+      showQuantity: inventoryCount > 0,
     };
   }, [product, selectedVariant]);
 
@@ -175,7 +182,7 @@ export default function ProductDetailPage() {
 
     // Check if a variant is selected and has a specific image
     const selectedVar = product.variants?.find(
-      v =>
+      (v) =>
         (!selectedVariant.color || v.attributes.color?.toLowerCase() === selectedVariant.color) &&
         (!selectedVariant.size || v.attributes.size?.toLowerCase() === selectedVariant.size)
     );
@@ -183,17 +190,14 @@ export default function ProductDetailPage() {
     // If variant has specific image, show it first
     if (selectedVar?.image) {
       const variantImage = selectedVar.image;
-      const baseImages = product.images?.length > 0
-        ? product.images.map(img => img.url)
-        : [product.heroImage];
+      const baseImages =
+        product.images?.length > 0 ? product.images.map((img) => img.url) : [product.heroImage];
       // Remove variant image from base images if it exists, then prepend it
-      const filteredImages = baseImages.filter(img => img !== variantImage);
+      const filteredImages = baseImages.filter((img) => img !== variantImage);
       return [variantImage, ...filteredImages];
     }
 
-    return product.images?.length > 0
-      ? product.images.map(img => img.url)
-      : [product.heroImage];
+    return product.images?.length > 0 ? product.images.map((img) => img.url) : [product.heroImage];
   }, [product, selectedVariant]);
 
   // Auto-switch to first image when variant changes (shows variant-specific image)
@@ -207,16 +211,19 @@ export default function ProductDetailPage() {
 
     // Check if a variant is selected and has a specific price
     const selectedVar = product.variants?.find(
-      v =>
+      (v) =>
         (!selectedVariant.color || v.attributes.color?.toLowerCase() === selectedVariant.color) &&
         (!selectedVariant.size || v.attributes.size?.toLowerCase() === selectedVariant.size)
     );
 
     if (selectedVar && selectedVar.price !== undefined && selectedVar.price !== null) {
       return {
-        price: typeof selectedVar.price === 'number' ? selectedVar.price : parseFloat(selectedVar.price),
+        price:
+          typeof selectedVar.price === 'number' ? selectedVar.price : parseFloat(selectedVar.price),
         compareAtPrice: selectedVar.compareAtPrice
-          ? (typeof selectedVar.compareAtPrice === 'number' ? selectedVar.compareAtPrice : parseFloat(selectedVar.compareAtPrice))
+          ? typeof selectedVar.compareAtPrice === 'number'
+            ? selectedVar.compareAtPrice
+            : parseFloat(selectedVar.compareAtPrice)
           : null,
       };
     }
@@ -269,8 +276,9 @@ export default function ProductDetailPage() {
       let variantId: string | undefined;
       if (product.variants?.length) {
         const selectedVar = product.variants.find(
-          v =>
-            (!selectedVariant.color || v.attributes.color?.toLowerCase() === selectedVariant.color) &&
+          (v) =>
+            (!selectedVariant.color ||
+              v.attributes.color?.toLowerCase() === selectedVariant.color) &&
             (!selectedVariant.size || v.attributes.size?.toLowerCase() === selectedVariant.size)
         );
         variantId = selectedVar?.id;
@@ -314,7 +322,7 @@ export default function ProductDetailPage() {
   }, [quickViewFullProduct, quickViewLoading, quickViewSlug]);
 
   const handleQuickView = (productId: string) => {
-    const prod = relatedProducts.find(p => p.id === productId);
+    const prod = relatedProducts.find((p) => p.id === productId);
     if (prod) {
       // Trigger fresh data fetch by setting the slug
       setQuickViewSlug(prod.slug);
@@ -337,7 +345,7 @@ export default function ProductDetailPage() {
             <div className="space-y-4">
               <div className="aspect-square bg-neutral-200 rounded-2xl animate-pulse" />
               <div className="grid grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map(i => (
+                {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="aspect-square bg-neutral-200 rounded-lg animate-pulse" />
                 ))}
               </div>
@@ -361,9 +369,10 @@ export default function ProductDetailPage() {
   }
 
   // Calculate discount percentage - use current price (may be variant-specific)
-  const discountPercent = currentPrice?.compareAtPrice && currentPrice?.price
-    ? calculateDiscountPercentage(currentPrice.compareAtPrice, currentPrice.price)
-    : 0;
+  const discountPercent =
+    currentPrice?.compareAtPrice && currentPrice?.price
+      ? calculateDiscountPercentage(currentPrice.compareAtPrice, currentPrice.price)
+      : 0;
 
   return (
     <PageLayout>
@@ -372,21 +381,43 @@ export default function ProductDetailPage() {
         <div className="bg-neutral-50 border-b border-neutral-200">
           <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
             <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-neutral-600 overflow-x-auto">
-              <Link href="/" className="hover:text-gold transition-colors">{tc('nav.home')}</Link>
+              <Link href="/" className="hover:text-gold transition-colors">
+                {tc('nav.home')}
+              </Link>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
-              <Link href="/products" className="hover:text-gold transition-colors">{tc('nav.products')}</Link>
+              <Link href="/products" className="hover:text-gold transition-colors">
+                {tc('nav.products')}
+              </Link>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
               {product.category && (
                 <>
-                  <Link href={`/products?category=${product.category.slug}`} className="hover:text-gold transition-colors">
+                  <Link
+                    href={`/products?category=${product.category.slug}`}
+                    className="hover:text-gold transition-colors"
+                  >
                     {product.category.name}
                   </Link>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </>
               )}
@@ -448,7 +479,11 @@ export default function ProductDetailPage() {
                       selectedImage === index ? 'border-gold' : 'border-transparent'
                     }`}
                   >
-                    <img src={img} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
+                    <img
+                      src={img}
+                      alt={`${product.name} ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
                   </motion.button>
                 ))}
               </div>
@@ -458,7 +493,9 @@ export default function ProductDetailPage() {
             <div>
               <div className="mb-4">
                 {product.brand && (
-                  <span className="text-xs sm:text-sm text-neutral-600 uppercase tracking-wide">{product.brand}</span>
+                  <span className="text-xs sm:text-sm text-neutral-600 uppercase tracking-wide">
+                    {product.brand}
+                  </span>
                 )}
                 <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-black mt-2 mb-3 sm:mb-4">
                   {product.name}
@@ -467,9 +504,7 @@ export default function ProductDetailPage() {
                 {/* Rating - TODO: Calculate from actual reviews */}
                 <div className="flex items-center gap-3 mb-4">
                   <div className="flex">{renderStars(4.5)}</div>
-                  <span className="text-sm text-neutral-600">
-                    4.5 (0 reviews)
-                  </span>
+                  <span className="text-sm text-neutral-600">4.5 (0 reviews)</span>
                 </div>
 
                 {/* Price */}
@@ -490,10 +525,16 @@ export default function ProductDetailPage() {
                         {...framerMotion.priceChange}
                         className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4"
                       >
-                        <Price amount={currentPrice?.price || 0} className="text-2xl sm:text-3xl md:text-4xl font-bold text-black" />
+                        <Price
+                          amount={currentPrice?.price || 0}
+                          className="text-2xl sm:text-3xl md:text-4xl font-bold text-black"
+                        />
                         {currentPrice?.compareAtPrice && (
                           <>
-                            <Price amount={currentPrice.compareAtPrice || 0} className="text-lg sm:text-xl md:text-2xl text-neutral-400 line-through" />
+                            <Price
+                              amount={currentPrice.compareAtPrice || 0}
+                              className="text-lg sm:text-xl md:text-2xl text-neutral-400 line-through"
+                            />
                             <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-red-100 text-red-600 text-xs sm:text-sm font-semibold rounded-full">
                               {t('save', { percent: discountPercent })}
                             </span>
@@ -505,7 +546,9 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* SKU */}
-                <p className="text-xs sm:text-sm text-neutral-600 mb-4 sm:mb-6">{t('sku', { sku: product.sku })}</p>
+                <p className="text-xs sm:text-sm text-neutral-600 mb-4 sm:mb-6">
+                  {t('sku', { sku: product.sku })}
+                </p>
               </div>
 
               {/* Store Info */}
@@ -535,26 +578,55 @@ export default function ProductDetailPage() {
                         {product.store.name}
                       </h4>
                       {product.store.verified && (
-                        <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        <svg
+                          className="w-4 h-4 text-blue-500"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                       )}
                     </div>
                     <div className="flex items-center gap-3 text-sm text-neutral-500 mt-1">
                       {product.store.rating && product.store.rating > 0 && (
                         <span className="flex items-center gap-1">
-                          <svg className="w-4 h-4 text-gold" fill="currentColor" viewBox="0 0 20 20">
+                          <svg
+                            className="w-4 h-4 text-gold"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                           </svg>
                           {Number(product.store.rating).toFixed(1)}
                         </span>
                       )}
-                      <span>{product.store.totalProducts} {t('productsCount')}</span>
+                      <span>
+                        {product.store.totalProducts} {t('productsCount')}
+                      </span>
                       {(product.store.city || product.store.country) && (
                         <span className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
                           </svg>
                           {[product.store.city, product.store.country].filter(Boolean).join(', ')}
                         </span>
@@ -564,14 +636,21 @@ export default function ProductDetailPage() {
                   <div className="flex items-center text-gold group-hover:translate-x-1 transition-transform">
                     <span className="text-sm font-medium mr-1">{t('visitStore')}</span>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   </div>
                 </Link>
               )}
 
               {/* Description */}
-              <p className="text-sm sm:text-base text-neutral-700 mb-6 sm:mb-8 leading-relaxed">{product.description}</p>
+              <p className="text-sm sm:text-base text-neutral-700 mb-6 sm:mb-8 leading-relaxed">
+                {product.description}
+              </p>
 
               {/* Inquiry Form or Product Options */}
               {isInquiryProduct ? (
@@ -583,22 +662,32 @@ export default function ProductDetailPage() {
                         product.productType === 'REAL_ESTATE'
                           ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
                           : product.productType === 'VEHICLE'
-                          ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
-                          : 'bg-gradient-to-r from-gold to-accent-700 text-black hover:from-black hover:to-neutral-800 hover:text-white'
+                            ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
+                            : 'bg-gradient-to-r from-gold to-accent-700 text-black hover:from-black hover:to-neutral-800 hover:text-white'
                       }`}
                     >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                        />
                       </svg>
                       {product.productType === 'REAL_ESTATE'
                         ? t('scheduleViewing')
                         : product.productType === 'VEHICLE'
-                        ? t('scheduleTestDrive')
-                        : product.productType === 'SERVICE'
-                        ? t('requestServiceQuote')
-                        : product.productType === 'RENTAL'
-                        ? t('requestRentalInfo')
-                        : t('contactAboutProduct')}
+                          ? t('scheduleTestDrive')
+                          : product.productType === 'SERVICE'
+                            ? t('requestServiceQuote')
+                            : product.productType === 'RENTAL'
+                              ? t('requestRentalInfo')
+                              : t('contactAboutProduct')}
                     </button>
                   ) : product.productType === 'REAL_ESTATE' ? (
                     <RealEstateInquiryForm
@@ -615,9 +704,11 @@ export default function ProductDetailPage() {
                     <VehicleInquiryForm
                       productId={product.id}
                       productName={product.name}
-                      vehicleInfo={product.vehicleYear && product.vehicleMake && product.vehicleModel
-                        ? `${product.vehicleYear} ${product.vehicleMake} ${product.vehicleModel}`
-                        : undefined}
+                      vehicleInfo={
+                        product.vehicleYear && product.vehicleMake && product.vehicleModel
+                          ? `${product.vehicleYear} ${product.vehicleMake} ${product.vehicleModel}`
+                          : undefined
+                      }
                       onSuccess={() => {
                         toast.success(t('salesTeamWillContact'));
                         setShowInquiryForm(false);
@@ -654,168 +745,196 @@ export default function ProductDetailPage() {
                 <>
                   {/* Color Selection */}
                   {availableColors.length > 0 && (
-                <div className="mb-4 sm:mb-6">
-                  <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
-                    {t('color')}
-                    {selectedVariant.color && (
-                      <span className="text-neutral-600 font-normal ml-2 capitalize">
-                        ({selectedVariant.color})
-                      </span>
-                    )}
-                  </label>
-                  <div className="flex gap-2 sm:gap-3 flex-wrap">
-                    {availableColors.map((color) => {
-                      const isLight = isLightColor(color.hex);
+                    <div className="mb-4 sm:mb-6">
+                      <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
+                        {t('color')}
+                        {selectedVariant.color && (
+                          <span className="text-neutral-600 font-normal ml-2 capitalize">
+                            ({selectedVariant.color})
+                          </span>
+                        )}
+                      </label>
+                      <div className="flex gap-2 sm:gap-3 flex-wrap">
+                        {availableColors.map((color) => {
+                          const isLight = isLightColor(color.hex);
 
-                      return (
-                        <motion.button
-                          key={`detail-color-${color.value}`}
-                          onClick={() => setSelectedVariant({ ...selectedVariant, color: color.value })}
-                          whileHover={framerMotion.interactions.swatchHover}
-                          whileTap={framerMotion.interactions.swatchTap}
-                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all duration-200 ${
-                            selectedVariant.color === color.value
-                              ? 'border-gold ring-2 ring-gold/20 scale-110'
-                              : isLight
-                              ? 'border-neutral-400 hover:border-neutral-500'
-                              : 'border-neutral-300 hover:border-gold/50'
-                          }`}
-                          style={{ backgroundColor: color.hex }}
-                          title={color.name}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                          return (
+                            <motion.button
+                              key={`detail-color-${color.value}`}
+                              onClick={() =>
+                                setSelectedVariant({ ...selectedVariant, color: color.value })
+                              }
+                              whileHover={framerMotion.interactions.swatchHover}
+                              whileTap={framerMotion.interactions.swatchTap}
+                              className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all duration-200 ${
+                                selectedVariant.color === color.value
+                                  ? 'border-gold ring-2 ring-gold/20 scale-110'
+                                  : isLight
+                                    ? 'border-neutral-400 hover:border-neutral-500'
+                                    : 'border-neutral-300 hover:border-gold/50'
+                              }`}
+                              style={{ backgroundColor: color.hex }}
+                              title={color.name}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
-              {/* Size Selection */}
-              {availableSizes.length > 0 && (
-                <div className="mb-6 sm:mb-8">
-                  <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
-                    {t('size')}
-                    {selectedVariant.size && (
-                      <span className="text-neutral-600 font-normal ml-2 uppercase">
-                        ({selectedVariant.size})
-                      </span>
-                    )}
-                  </label>
-                  <div className="flex gap-2 sm:gap-3 flex-wrap">
-                    {availableSizes.map((size) => (
-                      <motion.button
-                        key={`detail-size-${size.value}`}
-                        onClick={() => size.inStock && setSelectedVariant({ ...selectedVariant, size: size.value })}
-                        disabled={!size.inStock}
-                        whileHover={size.inStock ? framerMotion.interactions.sizeHover : {}}
-                        whileTap={size.inStock ? framerMotion.interactions.sizeTap : {}}
-                        className={`px-4 sm:px-6 py-2 sm:py-3 border-2 rounded-lg font-medium text-xs sm:text-sm transition-all duration-200 ${
-                          selectedVariant.size === size.value
-                            ? 'border-gold bg-gold text-black'
-                            : size.inStock
-                            ? 'border-neutral-300 hover:border-gold'
-                            : 'border-neutral-200 text-neutral-400 cursor-not-allowed line-through'
-                        }`}
-                      >
-                        {size.name}
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
-              )}
+                  {/* Size Selection */}
+                  {availableSizes.length > 0 && (
+                    <div className="mb-6 sm:mb-8">
+                      <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
+                        {t('size')}
+                        {selectedVariant.size && (
+                          <span className="text-neutral-600 font-normal ml-2 uppercase">
+                            ({selectedVariant.size})
+                          </span>
+                        )}
+                      </label>
+                      <div className="flex gap-2 sm:gap-3 flex-wrap">
+                        {availableSizes.map((size) => (
+                          <motion.button
+                            key={`detail-size-${size.value}`}
+                            onClick={() =>
+                              size.inStock &&
+                              setSelectedVariant({ ...selectedVariant, size: size.value })
+                            }
+                            disabled={!size.inStock}
+                            whileHover={size.inStock ? framerMotion.interactions.sizeHover : {}}
+                            whileTap={size.inStock ? framerMotion.interactions.sizeTap : {}}
+                            className={`px-4 sm:px-6 py-2 sm:py-3 border-2 rounded-lg font-medium text-xs sm:text-sm transition-all duration-200 ${
+                              selectedVariant.size === size.value
+                                ? 'border-gold bg-gold text-black'
+                                : size.inStock
+                                  ? 'border-neutral-300 hover:border-gold'
+                                  : 'border-neutral-200 text-neutral-400 cursor-not-allowed line-through'
+                            }`}
+                          >
+                            {size.name}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {/* Quantity */}
-              <div className="mb-6 sm:mb-8">
-                <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">{t('quantity')}</label>
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="flex items-center border-2 border-neutral-200 rounded-lg">
-                    <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="px-3 sm:px-4 py-2 hover:bg-neutral-100 transition-colors"
-                    >
-                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                      </svg>
-                    </button>
-                    <span className="px-4 sm:px-6 py-2 font-semibold text-sm sm:text-base">{quantity}</span>
-                    <button
-                      onClick={() => setQuantity(quantity + 1)}
-                      disabled={quantity >= stockStatus.quantity}
-                      className="px-3 sm:px-4 py-2 hover:bg-neutral-100 transition-colors disabled:opacity-50"
-                    >
-                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  {/* Stock Status */}
-                  <div className="flex items-center gap-2">
-                    {stockStatus.inStock ? (
-                      <>
-                        <div className="w-2 h-2 bg-green-500 rounded-full" />
-                        <span className="text-sm text-green-600 font-medium">
-                          {stockStatus.showQuantity
-                            ? t('inStockQuantity', { quantity: stockStatus.quantity })
-                            : t('inStock')}
+                  {/* Quantity */}
+                  <div className="mb-6 sm:mb-8">
+                    <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
+                      {t('quantity')}
+                    </label>
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="flex items-center border-2 border-neutral-200 rounded-lg">
+                        <button
+                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                          className="px-3 sm:px-4 py-2 hover:bg-neutral-100 transition-colors"
+                        >
+                          <svg
+                            className="w-3 h-3 sm:w-4 sm:h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M20 12H4"
+                            />
+                          </svg>
+                        </button>
+                        <span className="px-4 sm:px-6 py-2 font-semibold text-sm sm:text-base">
+                          {quantity}
                         </span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-2 h-2 bg-red-500 rounded-full" />
-                        <span className="text-sm text-red-600 font-medium">{t('outOfStock')}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
+                        <button
+                          onClick={() => setQuantity(quantity + 1)}
+                          disabled={quantity >= stockStatus.quantity}
+                          className="px-3 sm:px-4 py-2 hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                        >
+                          <svg
+                            className="w-3 h-3 sm:w-4 sm:h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 4v16m8-8H4"
+                            />
+                          </svg>
+                        </button>
+                      </div>
 
-              {/* Actions */}
-              <div className="flex gap-3 sm:gap-4 mb-6 sm:mb-8">
-                <motion.button
-                  onClick={handleAddToCart}
-                  disabled={!stockStatus.inStock}
-                  whileHover={framerMotion.interactions.buttonHover}
-                  whileTap={framerMotion.interactions.buttonTap}
-                  className="flex-1 px-6 sm:px-8 py-3 sm:py-4 bg-black text-white rounded-xl font-bold text-base sm:text-lg hover:bg-neutral-800 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t('addToCart')}
-                </motion.button>
-                <WishlistButton
-                  productId={product.id}
-                  isInWishlist={isInWishlist}
-                  onToggle={handleToggleWishlist}
-                  size="lg"
-                  variant="default"
-                />
-              </div>
-
-              {/* Tags */}
-              {product.tags && product.tags.length > 0 && (
-                <div className="border-t border-neutral-200 pt-6">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-neutral-600">{t('tags')}</span>
-                    {product.tags.map((tag) => (
-                      <Link
-                        key={tag.id}
-                        href={`/products?tag=${tag.slug}`}
-                        className="px-3 py-1 bg-neutral-100 text-neutral-700 text-sm rounded-full hover:bg-gold/20 hover:text-gold transition-colors"
-                      >
-                        {tag.name}
-                      </Link>
-                    ))}
+                      {/* Stock Status */}
+                      <div className="flex items-center gap-2">
+                        {stockStatus.inStock ? (
+                          <>
+                            <div className="w-2 h-2 bg-green-500 rounded-full" />
+                            <span className="text-sm text-green-600 font-medium">
+                              {stockStatus.showQuantity
+                                ? t('inStockQuantity', { quantity: stockStatus.quantity })
+                                : t('inStock')}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-2 h-2 bg-red-500 rounded-full" />
+                            <span className="text-sm text-red-600 font-medium">
+                              {t('outOfStock')}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+
+                  {/* Actions */}
+                  <div className="flex gap-3 sm:gap-4 mb-6 sm:mb-8">
+                    <motion.button
+                      onClick={handleAddToCart}
+                      disabled={!stockStatus.inStock}
+                      whileHover={framerMotion.interactions.buttonHover}
+                      whileTap={framerMotion.interactions.buttonTap}
+                      className="flex-1 px-6 sm:px-8 py-3 sm:py-4 bg-black text-white rounded-xl font-bold text-base sm:text-lg hover:bg-neutral-800 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {t('addToCart')}
+                    </motion.button>
+                    <WishlistButton
+                      productId={product.id}
+                      isInWishlist={isInWishlist}
+                      onToggle={handleToggleWishlist}
+                      size="lg"
+                      variant="default"
+                    />
+                  </div>
+
+                  {/* Tags */}
+                  {product.tags && product.tags.length > 0 && (
+                    <div className="border-t border-neutral-200 pt-6">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-neutral-600">{t('tags')}</span>
+                        {product.tags.map((tag) => (
+                          <Link
+                            key={tag.id}
+                            href={`/products?tag=${tag.slug}`}
+                            className="px-3 py-1 bg-neutral-100 text-neutral-700 text-sm rounded-full hover:bg-gold/20 hover:text-gold transition-colors"
+                          >
+                            {tag.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
 
             {/* Product Detail Ad Sidebar - Hidden on mobile */}
             <div className="hidden lg:block">
-              <ProductDetailAd
-                categoryId={product.categoryId}
-                className="sticky top-24"
-              />
+              <ProductDetailAd categoryId={product.categoryId} className="sticky top-24" />
             </div>
           </div>
 
@@ -861,7 +980,9 @@ export default function ProductDetailPage() {
               <button
                 onClick={() => setActiveTab('description')}
                 className={`pb-3 sm:pb-4 px-1 sm:px-2 text-sm sm:text-base md:text-lg font-semibold transition-colors relative whitespace-nowrap ${
-                  activeTab === 'description' ? 'text-black' : 'text-neutral-400 hover:text-neutral-600'
+                  activeTab === 'description'
+                    ? 'text-black'
+                    : 'text-neutral-400 hover:text-neutral-600'
                 }`}
               >
                 {t('description')}
@@ -875,7 +996,9 @@ export default function ProductDetailPage() {
               <button
                 onClick={() => setActiveTab('specifications')}
                 className={`pb-3 sm:pb-4 px-1 sm:px-2 text-sm sm:text-base md:text-lg font-semibold transition-colors relative whitespace-nowrap ${
-                  activeTab === 'specifications' ? 'text-black' : 'text-neutral-400 hover:text-neutral-600'
+                  activeTab === 'specifications'
+                    ? 'text-black'
+                    : 'text-neutral-400 hover:text-neutral-600'
                 }`}
               >
                 {t('specifications')}
@@ -957,9 +1080,7 @@ export default function ProductDetailPage() {
                   </div>
                 )}
 
-                {activeTab === 'reviews' && (
-                  <ReviewsSection productId={product.id} />
-                )}
+                {activeTab === 'reviews' && <ReviewsSection productId={product.id} />}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -991,6 +1112,20 @@ export default function ProductDetailPage() {
         product={quickViewProduct}
         onAddToCart={(id) => console.log('Add to cart:', id)}
         onViewDetails={handleNavigate}
+        translations={{
+          color: tModal('color'),
+          size: tModal('size'),
+          quantity: tModal('quantity'),
+          inStock: tModal('inStock'),
+          available: tModal('available'),
+          outOfStock: tModal('outOfStock'),
+          onlyLeftInStock: tModal('onlyLeftInStock', { count: 0 }),
+          addToCart: tModal('addToCart'),
+          viewFullDetails: tModal('viewFullDetails'),
+          reviews: tModal('reviews'),
+          review: tModal('review'),
+          save: tModal('save', { percent: 0 }),
+        }}
       />
     </PageLayout>
   );

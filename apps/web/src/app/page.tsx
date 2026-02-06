@@ -8,7 +8,12 @@ import { ProductCarousel } from '@/components/product-carousel';
 import { type QuickViewProduct, QuickViewModal } from '@nextpik/ui';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { useFeaturedProducts, useNewArrivals, useTrendingProducts, useOnSaleProducts } from '@/hooks/use-products';
+import {
+  useFeaturedProducts,
+  useNewArrivals,
+  useTrendingProducts,
+  useOnSaleProducts,
+} from '@/hooks/use-products';
 import { useProduct } from '@/hooks/use-product';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 import { useCart } from '@/hooks/use-cart';
@@ -20,12 +25,15 @@ import { navigateWithLoading } from '@/lib/navigation';
 import { useTranslations } from 'next-intl';
 
 // Lazy load heavy components
-const InlineAd = lazy(() => import('@/components/ads').then(m => ({ default: m.InlineAd })));
-const HeroBannerAd = lazy(() => import('@/components/ads').then(m => ({ default: m.HeroBannerAd })));
+const InlineAd = lazy(() => import('@/components/ads').then((m) => ({ default: m.InlineAd })));
+const HeroBannerAd = lazy(() =>
+  import('@/components/ads').then((m) => ({ default: m.HeroBannerAd }))
+);
 
 export default function Home() {
   const router = useRouter();
   const t = useTranslations('common');
+  const tModal = useTranslations('quickViewModal');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
@@ -46,9 +54,18 @@ export default function Home() {
   const { products: onSaleData, isLoading: onSaleLoading } = useOnSaleProducts(8);
 
   // Transform products to UI format
-  const featuredTransformed = useMemo(() => transformToQuickViewProducts(featuredData), [featuredData]);
-  const newArrivalsTransformed = useMemo(() => transformToQuickViewProducts(newArrivalsData), [newArrivalsData]);
-  const trendingTransformed = useMemo(() => transformToQuickViewProducts(trendingData), [trendingData]);
+  const featuredTransformed = useMemo(
+    () => transformToQuickViewProducts(featuredData),
+    [featuredData]
+  );
+  const newArrivalsTransformed = useMemo(
+    () => transformToQuickViewProducts(newArrivalsData),
+    [newArrivalsData]
+  );
+  const trendingTransformed = useMemo(
+    () => transformToQuickViewProducts(trendingData),
+    [trendingData]
+  );
   const onSaleTransformed = useMemo(() => transformToQuickViewProducts(onSaleData), [onSaleData]);
 
   // Convert prices to selected currency
@@ -71,52 +88,69 @@ export default function Home() {
     }
   }, [quickViewFullProduct, quickViewLoading, quickViewSlug]);
 
-  const handleQuickView = useCallback((productId: string) => {
-    const allProducts = [...featuredProducts, ...newArrivals, ...trendingProducts, ...onSaleProducts];
-    const product = allProducts.find((p) => p.id === productId);
-    if (product) {
-      // Trigger fresh data fetch by setting the slug
-      setQuickViewSlug(product.slug);
-    }
-  }, [featuredProducts, newArrivals, trendingProducts, onSaleProducts]);
+  const handleQuickView = useCallback(
+    (productId: string) => {
+      const allProducts = [
+        ...featuredProducts,
+        ...newArrivals,
+        ...trendingProducts,
+        ...onSaleProducts,
+      ];
+      const product = allProducts.find((p) => p.id === productId);
+      if (product) {
+        // Trigger fresh data fetch by setting the slug
+        setQuickViewSlug(product.slug);
+      }
+    },
+    [featuredProducts, newArrivals, trendingProducts, onSaleProducts]
+  );
 
-  const handleNavigate = useCallback((slug: string) => {
-    navigateWithLoading(router, `/products/${slug}`);
-  }, [router]);
+  const handleNavigate = useCallback(
+    (slug: string) => {
+      navigateWithLoading(router, `/products/${slug}`);
+    },
+    [router]
+  );
 
-  const handleAddToCart = useCallback(async (productId: string) => {
-    if (addingToCart) return;
-    setAddingToCart(productId);
-    try {
-      await addToCartApi(productId, 1);
-      toast.success(t('toast.addedToCart'));
-    } catch (error: any) {
-      console.error('Failed to add to cart:', error);
-      toast.error(t('toast.error'), error.message || t('toast.failedAddCart'));
-    } finally {
-      setAddingToCart(null);
-    }
-  }, [addingToCart, addToCartApi]);
+  const handleAddToCart = useCallback(
+    async (productId: string) => {
+      if (addingToCart) return;
+      setAddingToCart(productId);
+      try {
+        await addToCartApi(productId, 1);
+        toast.success(t('toast.addedToCart'));
+      } catch (error: any) {
+        console.error('Failed to add to cart:', error);
+        toast.error(t('toast.error'), error.message || t('toast.failedAddCart'));
+      } finally {
+        setAddingToCart(null);
+      }
+    },
+    [addingToCart, addToCartApi]
+  );
 
-  const handleAddToWishlist = useCallback(async (productId: string) => {
-    if (addingToWishlist) return;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    if (!token) {
-      toast.error(t('toast.loginRequired'));
-      router.push('/auth/login');
-      return;
-    }
-    setAddingToWishlist(productId);
-    try {
-      await addToWishlistApi(productId);
-      toast.success(t('toast.addedToWishlist'));
-    } catch (error: any) {
-      console.error('Failed to add to wishlist:', error);
-      toast.error(t('toast.error'), error.message || t('toast.failedAddWishlist'));
-    } finally {
-      setAddingToWishlist(null);
-    }
-  }, [addingToWishlist, addToWishlistApi, router]);
+  const handleAddToWishlist = useCallback(
+    async (productId: string) => {
+      if (addingToWishlist) return;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      if (!token) {
+        toast.error(t('toast.loginRequired'));
+        router.push('/auth/login');
+        return;
+      }
+      setAddingToWishlist(productId);
+      try {
+        await addToWishlistApi(productId);
+        toast.success(t('toast.addedToWishlist'));
+      } catch (error: any) {
+        console.error('Failed to add to wishlist:', error);
+        toast.error(t('toast.error'), error.message || t('toast.failedAddWishlist'));
+      } finally {
+        setAddingToWishlist(null);
+      }
+    },
+    [addingToWishlist, addToWishlistApi, router]
+  );
 
   return (
     <PageLayout>
@@ -287,12 +321,8 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                {t('home.stayUpdated')}
-              </h2>
-              <p className="text-xl mb-8 max-w-2xl mx-auto">
-                {t('home.subscribeDescription')}
-              </p>
+              <h2 className="text-4xl md:text-5xl font-bold mb-6">{t('home.stayUpdated')}</h2>
+              <p className="text-xl mb-8 max-w-2xl mx-auto">{t('home.subscribeDescription')}</p>
               <div className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto">
                 <input
                   type="email"
@@ -320,6 +350,20 @@ export default function Home() {
           onAddToCart={handleAddToCart}
           onViewDetails={handleNavigate}
           currencySymbol={currencySymbol}
+          translations={{
+            color: tModal('color'),
+            size: tModal('size'),
+            quantity: tModal('quantity'),
+            inStock: tModal('inStock'),
+            available: tModal('available'),
+            outOfStock: tModal('outOfStock'),
+            onlyLeftInStock: tModal('onlyLeftInStock', { count: 0 }),
+            addToCart: tModal('addToCart'),
+            viewFullDetails: tModal('viewFullDetails'),
+            reviews: tModal('reviews'),
+            review: tModal('review'),
+            save: tModal('save', { percent: 0 }),
+          }}
         />
       </Suspense>
     </PageLayout>
