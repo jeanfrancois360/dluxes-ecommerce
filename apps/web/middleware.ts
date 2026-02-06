@@ -13,6 +13,41 @@ import type { NextRequest } from 'next/server';
 
 const TOKEN_KEY = 'nextpik_ecommerce_access_token';
 
+// Locale detection
+const LOCALE_COOKIE = 'NEXT_LOCALE';
+const SUPPORTED_LOCALES = ['en', 'fr', 'es'];
+const DEFAULT_LOCALE = 'en';
+
+/**
+ * Detect locale from cookie or Accept-Language header.
+ * Sets cookie on the response if not already present.
+ */
+function handleLocale(request: NextRequest, response: NextResponse): NextResponse {
+  const existingLocale = request.cookies.get(LOCALE_COOKIE)?.value;
+
+  if (existingLocale && SUPPORTED_LOCALES.includes(existingLocale)) {
+    return response;
+  }
+
+  const acceptLanguage = request.headers.get('Accept-Language') || '';
+  let detectedLocale = DEFAULT_LOCALE;
+
+  for (const locale of SUPPORTED_LOCALES) {
+    if (acceptLanguage.toLowerCase().includes(locale)) {
+      detectedLocale = locale;
+      break;
+    }
+  }
+
+  response.cookies.set(LOCALE_COOKIE, detectedLocale, {
+    path: '/',
+    maxAge: 365 * 24 * 60 * 60,
+    sameSite: 'lax',
+  });
+
+  return response;
+}
+
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
   '/',
@@ -240,7 +275,7 @@ export function middleware(request: NextRequest) {
 
   // Skip middleware for always accessible routes
   if (ALWAYS_ACCESSIBLE.some((route) => pathname.startsWith(route))) {
-    return NextResponse.next();
+    return handleLocale(request, NextResponse.next());
   }
 
   // Get token from cookies
@@ -261,7 +296,7 @@ export function middleware(request: NextRequest) {
         try {
           const url = new URL(returnUrl, request.url);
           if (url.origin === request.nextUrl.origin) {
-            return NextResponse.redirect(new URL(url.pathname + url.search, request.url));
+            return handleLocale(request, NextResponse.redirect(new URL(url.pathname + url.search, request.url)));
           }
         } catch {
           // Invalid URL, fallthrough to dashboard redirect
@@ -270,11 +305,11 @@ export function middleware(request: NextRequest) {
 
       // Redirect to role-specific dashboard
       const dashboardUrl = getDashboardForRole(token);
-      return NextResponse.redirect(new URL(dashboardUrl, request.url));
+      return handleLocale(request, NextResponse.redirect(new URL(dashboardUrl, request.url)));
     }
 
     // Allow access to auth routes for non-authenticated users
-    return NextResponse.next();
+    return handleLocale(request, NextResponse.next());
   }
 
   // ============================================================================
@@ -286,11 +321,11 @@ export function middleware(request: NextRequest) {
     if (!isAuthenticated) {
       const loginUrl = new URL('/auth/login', request.url);
       loginUrl.searchParams.set('returnUrl', pathname);
-      return NextResponse.redirect(loginUrl);
+      return handleLocale(request, NextResponse.redirect(loginUrl));
     }
 
     // Authenticated - allow access
-    return NextResponse.next();
+    return handleLocale(request, NextResponse.next());
   }
 
   // ============================================================================
@@ -302,17 +337,17 @@ export function middleware(request: NextRequest) {
     if (!isAuthenticated) {
       const loginUrl = new URL('/auth/login', request.url);
       loginUrl.searchParams.set('returnUrl', pathname);
-      return NextResponse.redirect(loginUrl);
+      return handleLocale(request, NextResponse.redirect(loginUrl));
     }
 
     // Authenticated but not buyer - redirect to appropriate dashboard
     if (token && !isBuyer(token)) {
       const dashboardUrl = getDashboardForRole(token);
-      return NextResponse.redirect(new URL(dashboardUrl, request.url));
+      return handleLocale(request, NextResponse.redirect(new URL(dashboardUrl, request.url)));
     }
 
     // Buyer - allow access
-    return NextResponse.next();
+    return handleLocale(request, NextResponse.next());
   }
 
   // ============================================================================
@@ -324,17 +359,17 @@ export function middleware(request: NextRequest) {
     if (!isAuthenticated) {
       const loginUrl = new URL('/auth/login', request.url);
       loginUrl.searchParams.set('returnUrl', pathname);
-      return NextResponse.redirect(loginUrl);
+      return handleLocale(request, NextResponse.redirect(loginUrl));
     }
 
     // Authenticated but not seller - redirect to appropriate dashboard
     if (token && !isSeller(token) && !isAdmin(token)) {
       const dashboardUrl = getDashboardForRole(token);
-      return NextResponse.redirect(new URL(dashboardUrl, request.url));
+      return handleLocale(request, NextResponse.redirect(new URL(dashboardUrl, request.url)));
     }
 
     // Seller or Admin - allow access
-    return NextResponse.next();
+    return handleLocale(request, NextResponse.next());
   }
 
   // ============================================================================
@@ -346,17 +381,17 @@ export function middleware(request: NextRequest) {
     if (!isAuthenticated) {
       const loginUrl = new URL('/auth/login', request.url);
       loginUrl.searchParams.set('returnUrl', pathname);
-      return NextResponse.redirect(loginUrl);
+      return handleLocale(request, NextResponse.redirect(loginUrl));
     }
 
     // Authenticated but not admin - redirect to role-specific dashboard
     if (token && !isAdmin(token)) {
       const dashboardUrl = getDashboardForRole(token);
-      return NextResponse.redirect(new URL(dashboardUrl, request.url));
+      return handleLocale(request, NextResponse.redirect(new URL(dashboardUrl, request.url)));
     }
 
     // Admin - allow access
-    return NextResponse.next();
+    return handleLocale(request, NextResponse.next());
   }
 
   // ============================================================================
@@ -368,17 +403,17 @@ export function middleware(request: NextRequest) {
     if (!isAuthenticated) {
       const loginUrl = new URL('/auth/login', request.url);
       loginUrl.searchParams.set('returnUrl', pathname);
-      return NextResponse.redirect(loginUrl);
+      return handleLocale(request, NextResponse.redirect(loginUrl));
     }
 
     // Authenticated but not delivery partner or admin - redirect to role-specific dashboard
     if (token && !isDeliveryPartner(token) && !isAdmin(token)) {
       const dashboardUrl = getDashboardForRole(token);
-      return NextResponse.redirect(new URL(dashboardUrl, request.url));
+      return handleLocale(request, NextResponse.redirect(new URL(dashboardUrl, request.url)));
     }
 
     // Delivery Partner or Admin - allow access
-    return NextResponse.next();
+    return handleLocale(request, NextResponse.next());
   }
 
   // ============================================================================
@@ -386,14 +421,14 @@ export function middleware(request: NextRequest) {
   // ============================================================================
 
   if (isPublicRoute(pathname)) {
-    return NextResponse.next();
+    return handleLocale(request, NextResponse.next());
   }
 
   // ============================================================================
   // Default: Allow access
   // ============================================================================
 
-  return NextResponse.next();
+  return handleLocale(request, NextResponse.next());
 }
 
 // ============================================================================

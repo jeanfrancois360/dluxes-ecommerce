@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { WishlistItemComponent } from '@/components/wishlist/wishlist-item';
 import { QuickViewModal, type QuickViewProduct } from '@nextpik/ui';
@@ -16,6 +17,8 @@ import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 
 export default function WishlistPage() {
   const router = useRouter();
+  const t = useTranslations('wishlist');
+  const tc = useTranslations('common');
   const { items, total, isLoading, removeFromWishlist, clearWishlist } = useWishlist();
   const { addItem: addToCart } = useCart();
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
@@ -27,21 +30,21 @@ export default function WishlistPage() {
   const handleRemove = async (productId: string) => {
     try {
       await removeFromWishlist(productId);
-      toast.success('Item removed from wishlist');
+      toast.success(t('itemRemoved'));
     } catch (error) {
       console.error('Failed to remove from wishlist:', error);
-      toast.error('Failed to remove from wishlist');
+      toast.error(t('failedRemove'));
     }
   };
 
   const handleClearAll = async () => {
-    if (confirm('Are you sure you want to clear your entire wishlist?')) {
+    if (confirm(t('confirmClear'))) {
       try {
         await clearWishlist();
-        toast.success('Wishlist cleared successfully');
+        toast.success(t('wishlistCleared'));
       } catch (error) {
         console.error('Failed to clear wishlist:', error);
-        toast.error('Failed to clear wishlist');
+        toast.error(t('failedClear'));
       }
     }
   };
@@ -56,10 +59,10 @@ export default function WishlistPage() {
       // await removeFromWishlist(productId);
       // refetch();
 
-      toast.success('Item has been added to your cart');
+      toast.success(tc('toast.addedToCart'));
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
-      toast.error(error.message || 'Failed to add to cart');
+      toast.error(error.message || tc('toast.failedAddCart'));
     } finally {
       setAddingToCart(null);
     }
@@ -73,7 +76,7 @@ export default function WishlistPage() {
     );
 
     if (inStockItems.length === 0) {
-      toast.error('No items available to add to cart');
+      toast.error(t('noItemsAvailable'));
       return;
     }
 
@@ -100,7 +103,7 @@ export default function WishlistPage() {
       }
     } catch (error) {
       console.error('Failed to move items to cart:', error);
-      toast.error('Failed to add items to cart');
+      toast.error(t('failedAddItems'));
     }
   };
 
@@ -152,11 +155,11 @@ export default function WishlistPage() {
             animate={{ opacity: 1, y: 0 }}
             className="flex items-center gap-2 text-sm text-white/60 mb-6"
           >
-            <Link href="/" className="hover:text-gold transition-colors">Home</Link>
+            <Link href="/" className="hover:text-gold transition-colors">{tc('nav.home')}</Link>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <span className="text-white font-medium">Wishlist</span>
+            <span className="text-white font-medium">{tc('nav.wishlist')}</span>
           </motion.div>
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -172,17 +175,17 @@ export default function WishlistPage() {
                   </svg>
                 </div>
                 <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white">
-                  My Wishlist
+                  {t('myWishlist')}
                 </h1>
               </div>
               <p className="text-lg text-white/80 flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="font-semibold text-gold">{total ?? 0}</span>
-                  <span>item{(total ?? 0) !== 1 ? 's' : ''}</span>
+                  <span>{(total ?? 0) !== 1 ? t('items') : t('item')}</span>
                 </span>
-                <span className="text-white/40">•</span>
+                <span className="text-white/40">&bull;</span>
                 <span className="inline-flex items-center gap-1.5">
-                  <span>Total value:</span>
+                  <span>{t('totalValue')}</span>
                   <span className="font-semibold text-gold">${formatCurrencyAmount(Number(totalValue || 0), 2)}</span>
                 </span>
               </p>
@@ -205,7 +208,7 @@ export default function WishlistPage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
-                  Add All to Cart
+                  {t('addAllToCart')}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.05, y: -2 }}
@@ -213,7 +216,7 @@ export default function WishlistPage() {
                   onClick={handleClearAll}
                   className="px-6 py-3 bg-white/10 border-2 border-white/20 text-white font-semibold rounded-lg hover:bg-red-500/20 hover:border-red-500 hover:text-red-300 transition-all backdrop-blur-sm"
                 >
-                  Clear All
+                  {t('clearAll')}
                 </motion.button>
               </motion.div>
             )}
@@ -233,18 +236,18 @@ export default function WishlistPage() {
                 onChange={(e) => handleSortChange(e.target.value as typeof sortBy)}
                 className="px-4 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:border-[#CBB57B] transition-colors"
               >
-                <option value="recent">Recently Added</option>
-                <option value="priceAsc">Price: Low to High</option>
-                <option value="priceDesc">Price: High to Low</option>
+                <option value="recent">{t('recentlyAdded')}</option>
+                <option value="priceAsc">{t('priceLowToHigh')}</option>
+                <option value="priceDesc">{t('priceHighToLow')}</option>
               </select>
               <select
                 value={filterAvailability}
                 onChange={(e) => handleFilterChange(e.target.value as typeof filterAvailability)}
                 className="px-4 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:border-[#CBB57B] transition-colors"
               >
-                <option value="all">All Items</option>
-                <option value="inStock">In Stock</option>
-                <option value="outOfStock">Out of Stock</option>
+                <option value="all">{t('allItems')}</option>
+                <option value="inStock">{t('inStock')}</option>
+                <option value="outOfStock">{t('outOfStock')}</option>
               </select>
             </div>
           )}
@@ -275,15 +278,15 @@ export default function WishlistPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-serif font-bold text-black mb-2">Your wishlist is empty</h2>
-              <p className="text-neutral-600 mb-8">Start adding items you love</p>
+              <h2 className="text-2xl font-serif font-bold text-black mb-2">{t('emptyWishlist')}</h2>
+              <p className="text-neutral-600 mb-8">{t('startAddingItems')}</p>
               <Link href="/products">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="px-8 py-4 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-all"
                 >
-                  Browse Products
+                  {t('browseProducts')}
                 </motion.button>
               </Link>
             </motion.div>
@@ -311,8 +314,8 @@ export default function WishlistPage() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-12 bg-gradient-to-br from-neutral-900 to-black rounded-2xl shadow-lg p-8 text-white text-center"
             >
-              <h2 className="text-2xl font-serif font-bold mb-2">Share Your Wishlist</h2>
-              <p className="text-white/80 mb-6">Let friends and family know what you love</p>
+              <h2 className="text-2xl font-serif font-bold mb-2">{t('shareWishlist')}</h2>
+              <p className="text-white/80 mb-6">{t('letFriendsKnow')}</p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -322,7 +325,7 @@ export default function WishlistPage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                   </svg>
-                  Share via Email
+                  {t('shareViaEmail')}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -332,7 +335,7 @@ export default function WishlistPage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                   </svg>
-                  Copy Link
+                  {t('copyLink')}
                 </motion.button>
               </div>
             </motion.div>

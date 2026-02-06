@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@nextpik/ui';
+import { useTranslations } from 'next-intl';
 
 interface SessionTimeoutModalProps {
   /**
@@ -29,6 +30,7 @@ export function SessionTimeoutModal({
   onTimeout,
   onExtend,
 }: SessionTimeoutModalProps) {
+  const t = useTranslations('components.sessionTimeoutModal');
   const [showWarning, setShowWarning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isExtending, setIsExtending] = useState(false);
@@ -176,11 +178,11 @@ export function SessionTimeoutModal({
                 </div>
 
                 <h2 className="text-2xl font-bold text-black mb-2">
-                  Session Expiring Soon
+                  {t('sessionExpiring')}
                 </h2>
 
                 <p className="text-neutral-600 text-sm mb-4">
-                  Your session will expire due to inactivity
+                  {t('expiringMessage')}
                 </p>
 
                 {/* Countdown */}
@@ -202,8 +204,7 @@ export function SessionTimeoutModal({
               {/* Info Message */}
               <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 mb-6">
                 <p className="text-sm text-neutral-600 text-center">
-                  Click <strong className="text-black">"Stay Logged In"</strong> to continue your session,
-                  or you'll be automatically logged out for security.
+                  {t('infoMessage')}
                 </p>
               </div>
 
@@ -220,10 +221,10 @@ export function SessionTimeoutModal({
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Extending...
+                      {t('extending')}
                     </span>
                   ) : (
-                    'Stay Logged In'
+                    t('stayLoggedIn')
                   )}
                 </Button>
 
@@ -231,7 +232,7 @@ export function SessionTimeoutModal({
                   onClick={handleLogout}
                   className="w-full text-neutral-600 hover:text-black py-3 rounded-lg transition-colors font-medium text-sm"
                 >
-                  Log Out Now
+                  {t('logOutNow')}
                 </button>
               </div>
             </motion.div>

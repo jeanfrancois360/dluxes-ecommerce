@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Elements } from '@stripe/react-stripe-js';
 import { Stripe } from '@stripe/stripe-js';
+import { useTranslations } from 'next-intl';
 import { getStripe } from '@/lib/stripe';
 import { useCart } from '@/hooks/use-cart';
 import { useCheckout } from '@/hooks/use-checkout';
@@ -128,6 +129,7 @@ function StripeElementsWrapper({
   onError: (error: string) => void;
   onBack: () => void;
 }) {
+  const t = useTranslations('checkout');
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
 
   useEffect(() => {
@@ -163,7 +165,7 @@ function StripeElementsWrapper({
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          <p className="text-neutral-600">Loading payment system...</p>
+          <p className="text-neutral-600">{t('loadingPayment')}</p>
         </div>
       </div>
     );
@@ -187,6 +189,7 @@ function StripeElementsWrapper({
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const t = useTranslations('checkout');
   const { user, isLoading: authLoading, isInitialized } = useAuth();
   const { items, totals, clearCart, cartCurrency } = useCart();
   const { convertPrice, selectedCurrency } = useCurrencyConverter();
@@ -263,16 +266,16 @@ export default function CheckoutPage() {
         }
       }
 
-      console.log('📦 Backend shipping options:', calculation.shippingOptions);
-      console.log('💰 Tax calculation:', calculation.tax);
+      console.log('Backend shipping options:', calculation.shippingOptions);
+      console.log('Tax calculation:', calculation.tax);
     } catch (error: any) {
       console.error('Failed to fetch shipping options:', error);
       // Fallback to hardcoded options if backend fails
-      toast.error('Could not load shipping options. Using default rates.');
+      toast.error(t('couldNotLoadShipping'));
     } finally {
       setIsLoadingShippingOptions(false);
     }
-  }, [items, selectedShippingMethod, cartCurrency]);
+  }, [items, selectedShippingMethod, cartCurrency, t]);
 
   // Update shipping cost when shipping method changes
   // Only calculate if we've completed the shipping address step
@@ -296,19 +299,19 @@ export default function CheckoutPage() {
   useEffect(() => {
     // Wait for auth to initialize before making redirect decision
     if (isInitialized && !user) {
-      toast.warning('Please login to continue with checkout');
+      toast.warning(t('loginRequired'));
       router.push('/auth/login?redirect=/checkout');
     }
-  }, [user, isInitialized, router]);
+  }, [user, isInitialized, router, t]);
 
   // Redirect if cart is empty
   useEffect(() => {
     // Only check after auth is initialized and user is confirmed
     if (isInitialized && user && items.length === 0) {
-      toast.info('Your cart is empty. Please add items before checkout');
+      toast.info(t('emptyCartRedirect'));
       router.push('/cart');
     }
-  }, [items, router, isInitialized, user]);
+  }, [items, router, isInitialized, user, t]);
 
   // Create order and payment intent when shipping method is confirmed
   useEffect(() => {
@@ -321,16 +324,16 @@ export default function CheckoutPage() {
         total: totals.subtotal + calculatedShipping + calculatedTax,
       };
 
-      // 🔒 Pass cart's locked currency to ensure payment uses same currency
+      // Pass cart's locked currency to ensure payment uses same currency
       createOrderAndPaymentIntent(items, checkoutTotals, cartCurrency).catch((err) => {
         // Use longer duration for stock errors (they may contain multiple items)
         const duration = err.message?.includes('Insufficient stock') ? 8000 : 5000;
-        toast.error(err.message || 'Failed to initialize checkout. Please try again.', { duration });
+        toast.error(err.message || t('failedInitCheckout'), { duration });
         setShippingMethodConfirmed(false);
         goToStep('shipping');
       });
     }
-  }, [step, shippingMethodConfirmed, clientSecret, items, selectedShippingMethod, totals, calculatedShipping, calculatedTax, shippingAddress, createOrderAndPaymentIntent, goToStep, user, cartCurrency]);
+  }, [step, shippingMethodConfirmed, clientSecret, items, selectedShippingMethod, totals, calculatedShipping, calculatedTax, shippingAddress, createOrderAndPaymentIntent, goToStep, user, cartCurrency, t]);
 
   // Reset shipping method confirmation when leaving payment step
   useEffect(() => {
@@ -370,25 +373,25 @@ export default function CheckoutPage() {
       // Convert new AddressFormData to legacy Address format
       // Pass selectedSavedAddressId to avoid creating duplicates
       const legacyAddress = convertToLegacyAddress(data, selectedSavedAddressId);
-      console.log('📤 Submitting address:', legacyAddress);
+      console.log('Submitting address:', legacyAddress);
       const savedAddress = await saveShippingAddress(legacyAddress);
 
       if (selectedSavedAddressId) {
-        toast.success('Using saved address');
+        toast.success(t('usingSavedAddress'));
       } else {
-        toast.success('Shipping address saved successfully');
+        toast.success(t('addressSaved'));
       }
 
       // Fetch shipping options and tax calculation from backend
       const addressId = savedAddress?.id || selectedSavedAddressId;
       if (addressId) {
-        console.log('📦 Fetching shipping options for address:', addressId);
+        console.log('Fetching shipping options for address:', addressId);
         await fetchShippingOptionsAndTax(addressId);
       }
     } catch (error: any) {
-      console.error('❌ Error saving shipping address:', error);
-      console.error('❌ Error response:', error.response?.data);
-      toast.error(error.response?.data?.message || 'Failed to save shipping address');
+      console.error('Error saving shipping address:', error);
+      console.error('Error response:', error.response?.data);
+      toast.error(error.response?.data?.message || t('failedSaveAddress'));
     }
   };
 
@@ -418,7 +421,7 @@ export default function CheckoutPage() {
       setShippingMethodConfirmed(true);
     } else {
       // No valid shipping method found
-      toast.error('Please select a valid shipping method');
+      toast.error(t('selectValidShipping'));
     }
   };
 
@@ -438,14 +441,14 @@ export default function CheckoutPage() {
       standardToasts.order.created();
     } catch (error: any) {
       console.error('Payment completion failed:', error);
-      toast.error(error.message || 'Failed to complete order. Please contact support.');
+      toast.error(error.message || t('failedCompleteOrder'));
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handlePaymentError = (error: string) => {
-    toast.error(error || 'Payment failed. Please try again.');
+    toast.error(error || t('paymentFailed'));
   };
 
   const handleStepClick = (stepId: CheckoutStep) => {
@@ -475,8 +478,8 @@ export default function CheckoutPage() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-6xl mx-auto mb-8"
         >
-          <h1 className="text-4xl font-serif font-bold text-black mb-2">Checkout</h1>
-          <p className="text-neutral-600">Complete your purchase securely</p>
+          <h1 className="text-4xl font-serif font-bold text-black mb-2">{t('checkout')}</h1>
+          <p className="text-neutral-600">{t('completeSecurely')}</p>
         </motion.div>
 
         {/* Stepper */}
@@ -521,7 +524,7 @@ export default function CheckoutPage() {
                                 d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                               />
                             </svg>
-                            <h3 className="text-base font-semibold text-black">Use a Saved Address</h3>
+                            <h3 className="text-base font-semibold text-black">{t('useSavedAddress')}</h3>
                           </div>
 
                           <div className="space-y-3">
@@ -546,7 +549,7 @@ export default function CheckoutPage() {
                                   <svg className="w-4 h-4 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                   </svg>
-                                  <span className="font-medium text-black">Enter a new address</span>
+                                  <span className="font-medium text-black">{t('enterNewAddress')}</span>
                                 </div>
                               </div>
                             </label>
@@ -576,7 +579,7 @@ export default function CheckoutPage() {
                                     </span>
                                     {address.isDefault && (
                                       <span className="px-2 py-0.5 bg-gold/20 text-gold text-xs font-semibold rounded-full">
-                                        Default
+                                        {t('default')}
                                       </span>
                                     )}
                                   </div>
@@ -616,7 +619,7 @@ export default function CheckoutPage() {
                       <UniversalAddressForm
                         initialData={savedAddressFormData || (shippingAddress ? convertFromLegacyAddress(shippingAddress) : undefined)}
                         onSubmit={handleAddressSubmit}
-                        submitLabel="Continue to Shipping Method"
+                        submitLabel={t('continueToShipping')}
                         key={selectedSavedAddressId || 'new'}
                       />
                     </div>
@@ -688,8 +691,8 @@ export default function CheckoutPage() {
                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                               />
                             </svg>
-                            <p className="text-neutral-600 mb-2">Initializing secure payment...</p>
-                            <p className="text-sm text-neutral-500">Preparing your order and payment details</p>
+                            <p className="text-neutral-600 mb-2">{t('initializingPayment')}</p>
+                            <p className="text-sm text-neutral-500">{t('preparingOrder')}</p>
                           </div>
                         </motion.div>
                       )}
@@ -773,7 +776,7 @@ export default function CheckoutPage() {
                     transition={{ duration: 0.3 }}
                     className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm"
                   >
-                    <h3 className="text-2xl font-serif font-bold mb-6">Review Your Order</h3>
+                    <h3 className="text-2xl font-serif font-bold mb-6">{t('reviewYourOrder')}</h3>
                     <p className="text-neutral-600">
                       Review step would go here (currently handled in payment step)
                     </p>
@@ -794,7 +797,7 @@ export default function CheckoutPage() {
                 shipping={shippingCost}
                 tax={taxAmount}
                 total={totalWithShipping}
-                cartCurrency={cartCurrency} // 🔒 Pass locked currency to prevent double conversion
+                cartCurrency={cartCurrency} // Pass locked currency to prevent double conversion
                 shippingMethod={{
                   name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
                   price: shippingCost,
@@ -841,13 +844,13 @@ export default function CheckoutPage() {
                     />
                   </svg>
                   <h3 className="text-xl font-serif font-bold text-black mb-2">
-                    Processing Your Order
+                    {t('processingOrder')}
                   </h3>
                   <p className="text-neutral-600 mb-4">
-                    Please wait while we complete your purchase...
+                    {t('pleaseWait')}
                   </p>
                   <p className="text-sm text-neutral-500">
-                    Do not close this window or press the back button
+                    {t('doNotClose')}
                   </p>
                 </div>
               </motion.div>

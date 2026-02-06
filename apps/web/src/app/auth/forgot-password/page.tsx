@@ -10,10 +10,14 @@ import { FloatingInput, Button } from '@nextpik/ui';
 import { toast } from '@/lib/utils/toast';
 import { showAuthError } from '@/lib/utils/auth-errors';
 import { SuccessCheckmark } from '@/components/auth/success-animation';
+import { useTranslations } from 'next-intl';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const { requestPasswordReset, isLoading: authLoading, clearError } = useAuth();
+  const t = useTranslations('auth.forgotPassword');
+  const tc = useTranslations('common');
+  const tLogin = useTranslations('auth.login');
 
   const [email, setEmail] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -26,12 +30,12 @@ export default function ForgotPasswordPage() {
 
     // Validate email
     if (!email) {
-      toast.error('Please enter your email address');
+      toast.error(t('enterYourEmail'));
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      toast.error('Please enter a valid email address');
+      toast.error(tLogin('invalidEmail'));
       return;
     }
 
@@ -47,8 +51,8 @@ export default function ForgotPasswordPage() {
   if (isSuccess) {
     return (
       <AuthLayout
-        title="Check Your Email"
-        subtitle="We've sent you a password reset link"
+        title={t('checkYourEmail')}
+        subtitle={t('sentResetLink')}
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -69,24 +73,24 @@ export default function ForgotPasswordPage() {
 
           <div className="space-y-3">
             <p className="text-neutral-600 text-base">
-              If an account exists for <strong className="text-black">{email}</strong>,
-              you will receive a password reset link shortly.
+              {t('ifAccountExists')} <strong className="text-black">{email}</strong>,
+              {t('willReceiveLink')}
             </p>
 
             <p className="text-sm text-neutral-500">
-              The link will expire in 1 hour for security.
+              {t('linkExpires1Hour')}
             </p>
           </div>
 
           {/* Info Box */}
           <div className="bg-accent-50 border border-accent-200 rounded-lg p-4 text-left">
             <p className="text-sm text-neutral-600 mb-2">
-              <strong className="text-black">Didn't receive the email?</strong>
+              <strong className="text-black">{t('didntReceiveEmail')}</strong>
             </p>
             <ul className="text-xs text-neutral-500 space-y-1">
-              <li>• Check your spam folder</li>
-              <li>• Verify the email address is correct</li>
-              <li>• Wait a few minutes and check again</li>
+              <li>• {t('checkSpam')}</li>
+              <li>• {t('verifyEmailCorrect')}</li>
+              <li>• {t('waitFewMinutes')}</li>
             </ul>
           </div>
 
@@ -99,14 +103,14 @@ export default function ForgotPasswordPage() {
               }}
               className="w-full text-gold hover:text-accent-700 font-medium transition-colors text-sm"
             >
-              Try a different email
+              {tc('buttons.tryDifferentEmail')}
             </button>
 
             <Link
               href="/auth/login"
               className="block w-full text-neutral-600 hover:text-black transition-colors text-sm"
             >
-              Back to login
+              {tc('buttons.backToLogin')}
             </Link>
           </div>
         </motion.div>
@@ -116,8 +120,8 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthLayout
-      title="Forgot Password?"
-      subtitle="No worries, we'll send you reset instructions"
+      title={t('title')}
+      subtitle={t('subtitle')}
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Info Message */}
@@ -128,13 +132,13 @@ export default function ForgotPasswordPage() {
             </svg>
           </div>
           <p className="text-sm text-neutral-600">
-            Enter your email address and we'll send you a link to reset your password
+            {t('enterEmailForReset')}
           </p>
         </div>
 
         {/* Email Input */}
         <FloatingInput
-          label="Email Address"
+          label={tLogin('emailLabel')}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -157,10 +161,10 @@ export default function ForgotPasswordPage() {
           type="submit"
           className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg"
           loading={isLoading}
-          loadingText="Sending reset link..."
+          loadingText={t('sendingResetLink')}
           disabled={!email}
         >
-          Send Reset Link
+          {t('sendResetLink')}
         </Button>
 
         {/* Back to Login - Mobile-friendly touch target */}
@@ -172,7 +176,7 @@ export default function ForgotPasswordPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to login
+            {tc('buttons.backToLogin')}
           </Link>
         </div>
       </form>

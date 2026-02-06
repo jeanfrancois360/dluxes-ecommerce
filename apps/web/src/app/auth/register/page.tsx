@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
@@ -23,36 +24,39 @@ interface AccountTypeOption {
   benefits: string[];
 }
 
-const accountTypes: AccountTypeOption[] = [
-  {
-    type: 'BUYER',
-    title: 'Buyer Account',
-    description: 'Shop luxury products from verified sellers',
-    icon: '🛍️',
-    benefits: [
-      'Browse exclusive luxury collections',
-      'Secure checkout and payments',
-      'Order tracking and history',
-      'Wishlist and favorites',
-    ],
-  },
-  {
-    type: 'SELLER',
-    title: 'Seller Account',
-    description: 'Sell your luxury products to a global audience',
-    icon: '🏪',
-    benefits: [
-      'Create your own luxury store',
-      'List unlimited products',
-      'Analytics and insights',
-      'Secure seller dashboard',
-    ],
-  },
-];
-
 export default function RegisterPage() {
   const router = useRouter();
   const { register, isLoading: authLoading, error: authError, clearError } = useAuth();
+  const t = useTranslations('auth.register');
+  const tc = useTranslations('common');
+  const tLogin = useTranslations('auth.login');
+
+  const accountTypes: AccountTypeOption[] = [
+    {
+      type: 'BUYER',
+      title: t('buyerAccount'),
+      description: t('buyerDescription'),
+      icon: '🛍️',
+      benefits: [
+        t('buyerBenefit1'),
+        t('buyerBenefit2'),
+        t('buyerBenefit3'),
+        t('buyerBenefit4'),
+      ],
+    },
+    {
+      type: 'SELLER',
+      title: t('sellerAccount'),
+      description: t('sellerDescription'),
+      icon: '🏪',
+      benefits: [
+        t('sellerBenefit1'),
+        t('sellerBenefit2'),
+        t('sellerBenefit3'),
+        t('sellerBenefit4'),
+      ],
+    },
+  ];
 
   const [accountType, setAccountType] = useState<AccountType>('BUYER');
   const [formData, setFormData] = useState({
@@ -101,19 +105,19 @@ export default function RegisterPage() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.firstName) newErrors.firstName = 'First name is required';
-    if (!formData.lastName) newErrors.lastName = 'Last name is required';
-    if (!formData.email) newErrors.email = 'Email is required';
-    if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Invalid email format';
+    if (!formData.firstName) newErrors.firstName = t('firstNameRequired');
+    if (!formData.lastName) newErrors.lastName = t('lastNameRequired');
+    if (!formData.email) newErrors.email = t('emailRequired');
+    if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = t('invalidEmailFormat');
 
     // Enhanced password validation (matches backend requirements)
     const passwordError = validatePassword(formData.password);
     if (passwordError) newErrors.password = passwordError;
 
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = t('passwordsDoNotMatch');
     }
-    if (!acceptTerms) newErrors.terms = 'You must accept the terms';
+    if (!acceptTerms) newErrors.terms = t('mustAcceptTerms');
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -124,7 +128,7 @@ export default function RegisterPage() {
     clearError();
 
     if (!validateForm()) {
-      toast.error('Please fill in all required fields correctly');
+      toast.error(t('fillAllFields'));
       return;
     }
 
@@ -157,15 +161,15 @@ export default function RegisterPage() {
   if (isSuccess) {
     return (
       <AuthLayout
-        title="Welcome to NextPik!"
-        subtitle="Your account has been created successfully"
+        title={t('welcomeToNextPik')}
+        subtitle={t('accountCreatedSuccess')}
       >
         <SuccessAnimation
-          title={accountType === 'SELLER' ? 'Store Created!' : 'Account Created!'}
+          title={accountType === 'SELLER' ? t('storeCreated') : t('accountCreated')}
           message={
             accountType === 'SELLER'
-              ? 'Your store is ready! You can now start listing your luxury products.'
-              : 'Welcome to NextPik! Start exploring exclusive luxury collections.'
+              ? t('storeReadyMessage')
+              : t('welcomeExploreMessage')
           }
           countdown={countdown}
         />
@@ -175,8 +179,8 @@ export default function RegisterPage() {
 
   return (
     <AuthLayout
-      title={step === 'type' ? 'Choose Account Type' : 'Create Account'}
-      subtitle={step === 'type' ? 'Select how you want to join our platform' : 'Join our exclusive luxury collection'}
+      title={step === 'type' ? t('chooseAccountType') : t('createAccount')}
+      subtitle={step === 'type' ? t('selectHowToJoin') : t('joinExclusive')}
     >
       <AnimatePresence mode="wait">
         {step === 'type' ? (
@@ -247,18 +251,18 @@ export default function RegisterPage() {
               onClick={() => setStep('details')}
               className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg"
             >
-              Continue as {accountType === 'BUYER' ? 'Buyer' : 'Seller'}
+              {accountType === 'BUYER' ? t('continueAsBuyer') : t('continueAsSeller')}
             </Button>
 
             {/* Sign In Link */}
             <div className="text-center pt-4 border-t border-neutral-200">
               <p className="text-sm text-neutral-600">
-                Already have an account?{' '}
+                {t('alreadyHaveAccount')}{' '}
                 <Link
                   href="/auth/login"
                   className="text-gold hover:text-accent-700 font-semibold transition-colors"
                 >
-                  Sign in
+                  {tc('nav.signIn')}
                 </Link>
               </p>
             </div>
@@ -278,14 +282,14 @@ export default function RegisterPage() {
             <div className="flex items-center justify-between p-4 bg-gold/5 rounded-lg border border-gold/20">
               <div className="flex items-center gap-3">
                 <div className="text-2xl">
-                  {accountTypes.find(t => t.type === accountType)?.icon}
+                  {accountTypes.find(at => at.type === accountType)?.icon}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-black">
-                    {accountTypes.find(t => t.type === accountType)?.title}
+                    {accountTypes.find(at => at.type === accountType)?.title}
                   </p>
                   <p className="text-xs text-neutral-600">
-                    {accountTypes.find(t => t.type === accountType)?.description}
+                    {accountTypes.find(at => at.type === accountType)?.description}
                   </p>
                 </div>
               </div>
@@ -295,14 +299,14 @@ export default function RegisterPage() {
                 disabled={isLoading}
                 className="text-sm text-gold hover:text-accent-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Change
+                {tc('buttons.change')}
               </button>
             </div>
 
             {/* Name Fields - Responsive grid stacks on mobile */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FloatingInput
-                label="First Name"
+                label={t('firstName')}
                 value={formData.firstName}
                 onChange={(e) => handleChange('firstName', e.target.value)}
                 error={errors.firstName}
@@ -311,7 +315,7 @@ export default function RegisterPage() {
               />
 
               <FloatingInput
-                label="Last Name"
+                label={t('lastName')}
                 value={formData.lastName}
                 onChange={(e) => handleChange('lastName', e.target.value)}
                 error={errors.lastName}
@@ -322,7 +326,7 @@ export default function RegisterPage() {
 
             {/* Email */}
             <FloatingInput
-              label="Email Address"
+              label={tLogin('emailLabel')}
               type="email"
               value={formData.email}
               onChange={(e) => handleChange('email', e.target.value)}
@@ -344,7 +348,7 @@ export default function RegisterPage() {
             {/* Password */}
             <div className="relative">
               <FloatingInput
-                label="Password"
+                label={tLogin('passwordLabel')}
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={(e) => handleChange('password', e.target.value)}
@@ -379,7 +383,7 @@ export default function RegisterPage() {
 
             {/* Confirm Password */}
             <FloatingInput
-              label="Confirm Password"
+              label={t('confirmPassword')}
               type="password"
               value={formData.confirmPassword}
               onChange={(e) => handleChange('confirmPassword', e.target.value)}
@@ -410,7 +414,7 @@ export default function RegisterPage() {
                   <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
-                  <h3 className="font-semibold text-black">Store Information (Optional)</h3>
+                  <h3 className="font-semibold text-black">{t('storeInfoOptional')}</h3>
                 </div>
 
                 {/* Instant Store Activation Notice */}
@@ -420,16 +424,16 @@ export default function RegisterPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                      <p className="font-semibold text-success-dark text-sm mb-1">Instant Store Activation</p>
+                      <p className="font-semibold text-success-dark text-sm mb-1">{t('instantStoreActivation')}</p>
                       <p className="text-xs text-success-dark/80">
-                        Your store will be activated immediately upon registration. You can start listing products right away!
+                        {t('storeActivationMessage')}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <FloatingInput
-                  label="Store Name (Optional)"
+                  label={t('storeNameOptional')}
                   value={formData.storeName}
                   onChange={(e) => handleChange('storeName', e.target.value)}
                   disabled={isLoading}
@@ -438,12 +442,12 @@ export default function RegisterPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                   }
-                  placeholder="e.g., Luxury Fashion Boutique"
+                  placeholder={t('storeNamePlaceholder')}
                 />
 
                 <div className="relative">
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Store Description (Optional)
+                    {t('storeDescriptionOptional')}
                   </label>
                   <textarea
                     value={formData.storeDescription}
@@ -451,10 +455,10 @@ export default function RegisterPage() {
                     disabled={isLoading}
                     rows={3}
                     className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:border-gold focus:ring-2 focus:ring-gold/20 transition-all resize-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    placeholder="Tell us about your store and the products you plan to sell..."
+                    placeholder={t('storeDescriptionPlaceholder')}
                   />
                   <p className="text-xs text-neutral-500 mt-1">
-                    {formData.storeDescription.length}/500 characters
+                    {formData.storeDescription.length}{t('characters')}
                   </p>
                 </div>
               </motion.div>
@@ -470,19 +474,19 @@ export default function RegisterPage() {
                 className="w-4 h-4 mt-1 text-gold bg-white border-2 border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <span className="ml-3 text-sm text-neutral-600 group-hover:text-black transition-colors">
-                I agree to the{' '}
+                {t('agreeToTerms')}{' '}
                 <Link href="/terms" className="text-gold hover:text-accent-700 font-medium">
-                  Terms of Service
+                  {tc('footer.termsOfService')}
                 </Link>{' '}
-                and{' '}
+                {tLogin('and')}{' '}
                 <Link href="/privacy" className="text-gold hover:text-accent-700 font-medium">
-                  Privacy Policy
+                  {tc('footer.privacyPolicy')}
                 </Link>
                 {accountType === 'SELLER' && (
                   <>
-                    , as well as the{' '}
+                    {t('asWellAs')}{' '}
                     <Link href="/seller-agreement" className="text-gold hover:text-accent-700 font-medium">
-                      Seller Agreement
+                      {tc('footer.sellerAgreement')}
                     </Link>
                   </>
                 )}
@@ -497,9 +501,9 @@ export default function RegisterPage() {
               type="submit"
               className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg"
               loading={isLoading}
-              loadingText="Creating account..."
+              loadingText={t('creatingAccount')}
             >
-              {`Create ${accountType === 'BUYER' ? 'Buyer' : 'Seller'} Account`}
+              {accountType === 'BUYER' ? t('createBuyerAccount') : t('createSellerAccount')}
             </Button>
 
             {/* Back Button */}
@@ -508,18 +512,18 @@ export default function RegisterPage() {
               onClick={() => setStep('type')}
               className="w-full text-center text-sm text-neutral-600 hover:text-gold transition-colors py-2"
             >
-              ← Back to account type
+              {t('backToAccountType')}
             </button>
 
             {/* Sign In Link */}
             <div className="text-center pt-4 border-t border-neutral-200">
               <p className="text-sm text-neutral-600">
-                Already have an account?{' '}
+                {t('alreadyHaveAccount')}{' '}
                 <Link
                   href="/auth/login"
                   className="text-gold hover:text-accent-700 font-semibold transition-colors"
                 >
-                  Sign in
+                  {tc('nav.signIn')}
                 </Link>
               </p>
             </div>

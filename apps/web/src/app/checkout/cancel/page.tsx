@@ -3,9 +3,11 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 export default function CheckoutCancelPage() {
   const router = useRouter();
+  const t = useTranslations('checkoutCancel');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white py-12">
@@ -46,12 +48,12 @@ export default function CheckoutCancelPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <h1 className="text-4xl font-serif font-bold text-black mb-4">Checkout Cancelled</h1>
+              <h1 className="text-4xl font-serif font-bold text-black mb-4">{t('checkoutCancelled')}</h1>
               <p className="text-lg text-neutral-600 mb-2">
-                Your checkout process has been cancelled
+                {t('processCancelled')}
               </p>
               <p className="text-sm text-neutral-500 mb-6">
-                Don't worry! Your cart has been preserved and is waiting for you.
+                {t('cartPreserved')}
               </p>
             </motion.div>
 
@@ -76,7 +78,7 @@ export default function CheckoutCancelPage() {
                       d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
                     />
                   </svg>
-                  Return to Cart
+                  {t('returnToCart')}
                 </motion.button>
               </Link>
               <Link href="/products">
@@ -93,7 +95,7 @@ export default function CheckoutCancelPage() {
                       d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
                     />
                   </svg>
-                  Continue Shopping
+                  {t('continueShopping')}
                 </motion.button>
               </Link>
             </motion.div>
@@ -106,7 +108,7 @@ export default function CheckoutCancelPage() {
             transition={{ delay: 0.5 }}
             className="bg-white rounded-lg border-2 border-neutral-200 p-6 mb-8"
           >
-            <h2 className="text-xl font-serif font-bold text-black mb-4">Why did this happen?</h2>
+            <h2 className="text-xl font-serif font-bold text-black mb-4">{t('whyHappened')}</h2>
             <ul className="space-y-3 text-sm text-neutral-700">
               <li className="flex items-start gap-3">
                 <svg
@@ -118,7 +120,7 @@ export default function CheckoutCancelPage() {
                   <circle cx="12" cy="12" r="10" strokeWidth={2} />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" />
                 </svg>
-                <span>You clicked the back button or cancelled the checkout process</span>
+                <span>{t('reason1')}</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg
@@ -130,7 +132,7 @@ export default function CheckoutCancelPage() {
                   <circle cx="12" cy="12" r="10" strokeWidth={2} />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" />
                 </svg>
-                <span>The payment window was closed before completing the transaction</span>
+                <span>{t('reason2')}</span>
               </li>
               <li className="flex items-start gap-3">
                 <svg
@@ -142,7 +144,7 @@ export default function CheckoutCancelPage() {
                   <circle cx="12" cy="12" r="10" strokeWidth={2} />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" />
                 </svg>
-                <span>There was a technical issue during the checkout process</span>
+                <span>{t('reason3')}</span>
               </li>
             </ul>
           </motion.div>
@@ -154,7 +156,7 @@ export default function CheckoutCancelPage() {
             transition={{ delay: 0.6 }}
             className="bg-white rounded-lg border-2 border-neutral-200 p-6"
           >
-            <h2 className="text-xl font-serif font-bold text-black mb-4">You Might Also Like</h2>
+            <h2 className="text-xl font-serif font-bold text-black mb-4">{t('youMightAlsoLike')}</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {/* Suggested products would go here */}
               {[1, 2, 3].map((i) => (
@@ -187,7 +189,7 @@ export default function CheckoutCancelPage() {
             transition={{ delay: 0.7 }}
             className="mt-8 text-center"
           >
-            <p className="text-sm text-neutral-600 mb-4">Need assistance? We're here to help!</p>
+            <p className="text-sm text-neutral-600 mb-4">{t('needAssistance')}</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
                 href="/help"
@@ -201,7 +203,7 @@ export default function CheckoutCancelPage() {
                     d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                Visit Help Center
+                {t('visitHelpCenter')}
               </Link>
               <span className="hidden sm:inline text-neutral-300">|</span>
               <Link
@@ -216,7 +218,7 @@ export default function CheckoutCancelPage() {
                     d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                   />
                 </svg>
-                Contact Support
+                {t('contactSupport')}
               </Link>
             </div>
           </motion.div>

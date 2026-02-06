@@ -4,8 +4,10 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrencyRates, useSelectedCurrency } from '@/hooks/use-currency';
 import { useCart } from '@/hooks/use-cart';
+import { useTranslations } from 'next-intl';
 
 export function CurrencySelector() {
+  const t = useTranslations('components.currencySelector');
   const [isOpen, setIsOpen] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingCurrency, setPendingCurrency] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export function CurrencySelector() {
               ? 'border-amber-300 bg-amber-50 hover:border-amber-400'
               : 'border-neutral-200 hover:border-neutral-300'
           }`}
-          aria-label="Select currency"
+          aria-label={t('selectCurrency')}
         >
           {/* 🔒 Lock icon when currency is locked */}
           {isCurrencyLocked && (
@@ -131,14 +133,16 @@ export function CurrencySelector() {
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
                 <div>
-                  <p className="font-semibold mb-1">Currency Locked</p>
+                  <p className="font-semibold mb-1">{t('currencyLocked')}</p>
                   <p className="text-neutral-300">
-                    Your cart is locked to <strong>{cartCurrency}</strong> with {items.length} item{items.length !== 1 ? 's' : ''}.
-                    Clear your cart to change currency.
+                    {items.length === 1
+                      ? t('cartLockedTo', { currency: cartCurrency, count: items.length })
+                      : t('cartLockedToPlural', { currency: cartCurrency, count: items.length })}
+                    {' '}{t('clearCartToChange')}
                   </p>
                   {exchangeRate !== 1 && (
                     <p className="text-neutral-400 mt-1 text-[10px]">
-                      Rate: 1 USD = {exchangeRate.toFixed(6)} {cartCurrency}
+                      {t('rate', { rate: exchangeRate.toFixed(6), currency: cartCurrency })}
                     </p>
                   )}
                 </div>
@@ -221,8 +225,8 @@ export function CurrencySelector() {
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-neutral-900">Change Currency?</h3>
-                    <p className="text-sm text-neutral-600">Your cart will be cleared</p>
+                    <h3 className="text-lg font-semibold text-neutral-900">{t('changeCurrency')}</h3>
+                    <p className="text-sm text-neutral-600">{t('cartWillBeCleared')}</p>
                   </div>
                 </div>
 
@@ -236,19 +240,21 @@ export function CurrencySelector() {
                       />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-amber-900 mb-1">Currency Locked</p>
+                      <p className="text-sm font-semibold text-amber-900 mb-1">{t('currencyLocked')}</p>
                       <p className="text-sm text-amber-700">
-                        Your cart is currently locked to <strong>{cartCurrency}</strong>
+                        {items.length === 1
+                          ? t('cartLockedTo', { currency: cartCurrency, count: items.length })
+                          : t('cartLockedToPlural', { currency: cartCurrency, count: items.length })}
                       </p>
                     </div>
                   </div>
                   <p className="text-sm text-neutral-700 mb-2">
-                    You have <strong>{items.length} item{items.length !== 1 ? 's' : ''}</strong> in your cart.
+                    {items.length === 1
+                      ? t('yourCartIs', { count: items.length })
+                      : t('yourCartIsPlural', { count: items.length })}
                   </p>
                   <p className="text-sm text-neutral-600">
-                    Changing to{' '}
-                    <strong>{currencies.find(c => c.currencyCode === pendingCurrency)?.currencyCode}</strong>{' '}
-                    will clear your cart and unlock the currency.
+                    {t('changingTo', { currency: currencies.find(c => c.currencyCode === pendingCurrency)?.currencyCode })}
                   </p>
                 </div>
 
@@ -257,13 +263,13 @@ export function CurrencySelector() {
                     onClick={handleCancelCurrencyChange}
                     className="flex-1 px-4 py-2.5 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors text-sm font-medium text-neutral-700"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button
                     onClick={handleConfirmCurrencyChange}
                     className="flex-1 px-4 py-2.5 bg-[#CBB57B] text-black rounded-lg hover:bg-[#a89158] transition-colors text-sm font-medium"
                   >
-                    Clear Cart & Continue
+                    {t('clearCartAndContinue')}
                   </button>
                 </div>
               </div>

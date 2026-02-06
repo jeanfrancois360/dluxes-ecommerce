@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@nextpik/ui';
+import { useTranslations } from 'next-intl';
 import { SearchBar } from '@/components/search/search-bar';
 import { SearchModal } from '@/components/search/search-modal';
 import { MegaMenu, shopMegaMenuData, shopMegaMenuFeatured, collectionsMegaMenuData } from './mega-menu';
@@ -24,17 +25,18 @@ export function Navbar({ className }: NavbarProps) {
   const { total: wishlistCount } = useWishlist();
   const { items: cartItems } = useCart();
   const cartCount = cartItems?.length || 0;
+  const t = useTranslations('common');
 
   useMotionValueEvent(scrollY, 'change', (latest) => {
     setIsScrolled(latest > 50);
   });
 
   const navigationLinks = [
-    { label: 'Home', href: '/' },
-    { label: 'Shop', href: '/products', hasMegaMenu: true, megaMenuType: 'shop' },
-    { label: 'Stores', href: '/stores' },
-    { label: 'Hot Deals', href: '/hot-deals' },
-    { label: 'Contact', href: '/contact' },
+    { label: t('nav.home'), href: '/' },
+    { label: t('nav.shop'), href: '/products', hasMegaMenu: true, megaMenuType: 'shop' },
+    { label: t('nav.stores'), href: '/stores' },
+    { label: t('nav.hotDeals'), href: '/hot-deals' },
+    { label: t('nav.contact'), href: '/contact' },
   ];
 
   return (
@@ -75,7 +77,7 @@ export function Navbar({ className }: NavbarProps) {
                     width={160}
                     height={55}
                     priority
-                    className="h-auto w-auto max-h-12 transition-all duration-500 group-hover:brightness-110"
+                    className="h-auto w-auto max-h-14 sm:max-h-14 md:max-h-16 lg:max-h-14 transition-all duration-500 group-hover:brightness-110"
                   />
                   {/* Glow effect on hover */}
                   <div className="absolute inset-0 bg-[#CBB57B] blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-500" />

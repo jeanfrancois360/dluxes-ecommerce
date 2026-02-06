@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { OrderProgressTracker } from '@/components/orders/order-progress-tracker';
 import { OrderTimeline } from '@/components/orders/order-timeline';
@@ -10,6 +11,7 @@ import { useTrackOrder } from '@/hooks/use-orders';
 import type { Order } from '@/lib/api/types';
 
 export default function TrackOrderPage() {
+  const t = useTranslations('trackOrder');
   const [orderNumber, setOrderNumber] = useState('');
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<{ orderNumber?: string; email?: string }>({});
@@ -21,13 +23,13 @@ export default function TrackOrderPage() {
     const newErrors: { orderNumber?: string; email?: string } = {};
 
     if (!orderNumber.trim()) {
-      newErrors.orderNumber = 'Order number is required';
+      newErrors.orderNumber = t('orderNumberRequired');
     }
 
     if (!email.trim()) {
-      newErrors.email = 'Email address is required';
+      newErrors.email = t('emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t('invalidEmail');
     }
 
     setErrors(newErrors);
@@ -68,9 +70,9 @@ export default function TrackOrderPage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-12"
           >
-            <h1 className="font-serif text-5xl font-bold mb-4">Track Your Order</h1>
+            <h1 className="font-serif text-5xl font-bold mb-4">{t('title')}</h1>
             <p className="text-gray-600 text-lg">
-              Enter your order number and email to track your shipment
+              {t('subtitle')}
             </p>
           </motion.div>
 
@@ -92,7 +94,7 @@ export default function TrackOrderPage() {
                       : 'text-base top-1/2 -translate-y-1/2 text-gray-400'
                   }`}
                 >
-                  Order Number
+                  {t('orderNumber')}
                 </label>
                 <input
                   id="orderNumber"
@@ -126,7 +128,7 @@ export default function TrackOrderPage() {
                       : 'text-base top-1/2 -translate-y-1/2 text-gray-400'
                   }`}
                 >
-                  Email Address
+                  {t('emailAddress')}
                 </label>
                 <input
                   id="email"
@@ -173,7 +175,7 @@ export default function TrackOrderPage() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    Tracking Order...
+                    {t('tracking')}
                   </>
                 ) : (
                   <>
@@ -185,7 +187,7 @@ export default function TrackOrderPage() {
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                       />
                     </svg>
-                    Track Order
+                    {t('trackButton')}
                   </>
                 )}
               </motion.button>
@@ -208,10 +210,9 @@ export default function TrackOrderPage() {
                   />
                 </svg>
                 <div className="text-sm text-blue-800">
-                  <p className="font-semibold mb-1">Where to find your order number?</p>
+                  <p className="font-semibold mb-1">{t('whereToFind')}</p>
                   <p>
-                    Your order number can be found in the confirmation email we sent you after your
-                    purchase. It looks like: #ORD-123456
+                    {t('whereToFindDesc')}
                   </p>
                 </div>
               </div>
@@ -249,7 +250,7 @@ export default function TrackOrderPage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  <p className="text-gray-600 font-medium">Tracking your order...</p>
+                  <p className="text-gray-600 font-medium">{t('trackingYourOrder')}</p>
                 </div>
               </motion.div>
             )}
@@ -276,19 +277,19 @@ export default function TrackOrderPage() {
                     d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <h3 className="font-serif text-2xl font-bold mb-2">Order Not Found</h3>
+                <h3 className="font-serif text-2xl font-bold mb-2">{t('orderNotFound')}</h3>
                 <p className="text-gray-600 mb-6">
                   {error === 'Order not found'
-                    ? "We couldn't find an order with that number. Please check and try again."
+                    ? t('orderNotFoundDesc')
                     : error === 'Invalid credentials'
-                    ? "The email address doesn't match our records."
-                    : 'Unable to connect. Please check your internet connection.'}
+                    ? t('invalidCredentials')
+                    : t('unableToConnect')}
                 </p>
                 <button
                   onClick={handleReset}
                   className="px-8 py-3 bg-[#CBB57B] text-white rounded-xl hover:bg-[#A89968] transition-colors font-semibold"
                 >
-                  Try Again
+                  {t('trackAnother')}
                 </button>
               </motion.div>
             )}
@@ -307,10 +308,10 @@ export default function TrackOrderPage() {
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                     <div>
                       <h2 className="font-serif text-3xl font-bold mb-2">
-                        Order {trackingData.orderNumber}
+                        {t('orderTitle', { orderNumber: trackingData.orderNumber })}
                       </h2>
                       <p className="text-gray-600">
-                        Placed on{' '}
+                        {t('placedOn')}{' '}
                         {new Date(trackingData.createdAt).toLocaleDateString('en-US', {
                           month: 'long',
                           day: 'numeric',
@@ -351,7 +352,7 @@ export default function TrackOrderPage() {
                           />
                         </svg>
                         <div>
-                          <p className="text-sm text-gray-600">Estimated Delivery</p>
+                          <p className="text-sm text-gray-600">{t('estimatedDelivery')}</p>
                           <p className="font-bold text-black">
                             {new Date(trackingData.estimatedDelivery).toLocaleDateString('en-US', {
                               weekday: 'long',
@@ -398,9 +399,9 @@ export default function TrackOrderPage() {
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-bold text-lg mb-2">Tracking Number</h3>
+                        <h3 className="font-bold text-lg mb-2">{t('trackingNumber')}</h3>
                         <p className="text-sm text-gray-600 mb-4">
-                          Track your package directly with the shipping carrier
+                          {t('trackPackageDesc')}
                         </p>
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                           <code className="px-4 py-3 bg-gray-50 border border-neutral-200 rounded-lg font-mono text-sm flex-1">
@@ -412,7 +413,7 @@ export default function TrackOrderPage() {
                             rel="noopener noreferrer"
                             className="px-6 py-3 bg-[#CBB57B] text-white rounded-lg hover:bg-[#A89968] transition-colors text-sm font-semibold text-center whitespace-nowrap"
                           >
-                            Track with Carrier
+                            {t('trackWithCarrier')}
                           </a>
                         </div>
                       </div>
@@ -431,14 +432,14 @@ export default function TrackOrderPage() {
                     onClick={handleReset}
                     className="flex-1 px-8 py-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-semibold"
                   >
-                    Track Another Order
+                    {t('trackAnother')}
                   </button>
                   {isLoggedIn && (
                     <Link
                       href={`/account/orders/${trackingData.id}`}
                       className="flex-1 px-8 py-4 bg-[#CBB57B] text-white rounded-xl hover:bg-[#A89968] transition-colors font-semibold text-center"
                     >
-                      View Full Order Details
+                      {t('viewFullDetails')}
                     </Link>
                   )}
                   {!isLoggedIn && (
@@ -446,7 +447,7 @@ export default function TrackOrderPage() {
                       href="/login"
                       className="flex-1 px-8 py-4 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold text-center"
                     >
-                      Sign In for More Details
+                      {t('signInForDetails')}
                     </Link>
                   )}
                 </div>
@@ -476,9 +477,9 @@ export default function TrackOrderPage() {
                     />
                   </svg>
                 </div>
-                <h3 className="font-serif text-2xl font-bold mb-2">Ready to Track Your Order?</h3>
+                <h3 className="font-serif text-2xl font-bold mb-2">{t('readyToTrack')}</h3>
                 <p className="text-gray-600">
-                  Enter your order details above to see real-time tracking information
+                  {t('enterDetailsAbove')}
                 </p>
               </motion.div>
             )}
@@ -491,7 +492,7 @@ export default function TrackOrderPage() {
             transition={{ delay: 0.3 }}
             className="mt-12 text-center"
           >
-            <p className="text-gray-600 mb-4">Need help with your order?</p>
+            <p className="text-gray-600 mb-4">{t('needHelp')}</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
                 href="mailto:support@luxury.com"
@@ -505,7 +506,7 @@ export default function TrackOrderPage() {
                     d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                   />
                 </svg>
-                Email Support
+                {t('emailSupport')}
               </a>
               <a
                 href="tel:+1-555-123-4567"
@@ -519,7 +520,7 @@ export default function TrackOrderPage() {
                     d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                   />
                 </svg>
-                Call Us
+                {t('callUs')}
               </a>
             </div>
           </motion.div>

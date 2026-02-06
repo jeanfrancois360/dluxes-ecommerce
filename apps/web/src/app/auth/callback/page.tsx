@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { TokenManager } from '@/lib/api/client';
 import { storeUser, setTokenExpiry, getAuthRedirectUrl } from '@/lib/auth-utils';
+import { useTranslations } from 'next-intl';
 
 export default function AuthCallbackPage() {
   return (
@@ -30,6 +31,7 @@ export default function AuthCallbackPage() {
 function CallbackInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations('auth.callback');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ function CallbackInner() {
 
     // If there is no accessToken, this might be an error redirect that landed here
     if (!accessToken || !userB64) {
-      setError('Missing authentication data. Please try signing in again.');
+      setError(t('missingAuthData'));
       return;
     }
 
@@ -64,7 +66,7 @@ function CallbackInner() {
       const redirectUrl = getAuthRedirectUrl(user);
       router.replace(redirectUrl);
     } catch {
-      setError('Failed to process authentication data. Please try signing in again.');
+      setError(t('failedToProcess'));
     }
   }, [searchParams, router]);
 
@@ -77,13 +79,13 @@ function CallbackInner() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-neutral-900">Sign-in failed</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">{t('signInFailed')}</h1>
           <p className="text-neutral-600">{error}</p>
           <a
             href="/auth/login"
             className="inline-block w-full bg-black text-white py-3 rounded-lg hover:bg-neutral-800 transition-colors font-semibold"
           >
-            Back to Login
+            {t('backToLogin')}
           </a>
         </div>
       </div>
@@ -100,7 +102,7 @@ function CallbackInner() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
         </div>
-        <p className="text-neutral-600 font-medium">Signing you in...</p>
+        <p className="text-neutral-600 font-medium">{t('signingYouIn')}</p>
       </div>
     </div>
   );

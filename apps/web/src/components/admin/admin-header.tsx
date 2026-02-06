@@ -10,6 +10,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/hooks/use-user';
+import { useTranslations } from 'next-intl';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -67,6 +68,7 @@ const getPageTitle = (pathname: string) => {
 };
 
 export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
+  const t = useTranslations('components.adminHeader');
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useUser();
@@ -177,7 +179,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
               className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
             >
               <SearchIcon className="w-4 h-4" />
-              <span className="hidden lg:inline">Search</span>
+              <span className="hidden lg:inline">{t('search')}</span>
               <span className="hidden lg:inline text-xs text-gray-400 ml-2">⌘K</span>
             </button>
 
@@ -187,10 +189,10 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-black hover:bg-gray-800 rounded-lg transition-colors"
-              title="View Website"
+              title={t('viewWebsite')}
             >
               <ExternalLinkIcon className="w-4 h-4" />
-              <span className="hidden lg:inline">View Website</span>
+              <span className="hidden lg:inline">{t('viewWebsite')}</span>
             </a>
 
             {/* Notifications */}
@@ -209,8 +211,8 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">Notifications</h3>
-                    <span className="text-xs text-gray-500">{notifications.filter(n => n.unread).length} unread</span>
+                    <h3 className="font-semibold text-gray-900">{t('notifications')}</h3>
+                    <span className="text-xs text-gray-500">{t('unread', { count: notifications.filter(n => n.unread).length })}</span>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.map((notification) => (
@@ -235,7 +237,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                   </div>
                   <div className="px-4 py-3 bg-gray-50 text-center">
                     <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                      View all notifications
+                      {t('viewAllNotifications')}
                     </button>
                   </div>
                 </div>
@@ -279,7 +281,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                       </svg>
-                      Dashboard
+                      {t('dashboard')}
                     </Link>
                     <Link
                       href="/admin/settings"
@@ -290,7 +292,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      Settings
+                      {t('settings')}
                     </Link>
                   </div>
                   <div className="border-t border-gray-200 py-2">
@@ -301,7 +303,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                       </svg>
-                      Logout
+                      {t('logout')}
                     </button>
                   </div>
                 </div>
@@ -332,7 +334,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products, orders, customers..."
+                  placeholder={t('searchPlaceholder')}
                   className="flex-1 outline-none text-gray-900 placeholder-gray-400"
                   autoFocus
                 />
@@ -344,14 +346,14 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
               <div className="p-4 max-h-96 overflow-y-auto">
                 {searchQuery ? (
                   <div className="text-center py-12 text-gray-500">
-                    <p className="text-sm">Search for "{searchQuery}"</p>
-                    <p className="text-xs mt-2">Press Enter to search</p>
+                    <p className="text-sm">{t('searchFor', { query: searchQuery })}</p>
+                    <p className="text-xs mt-2">{t('pressEnterToSearch')}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                        Quick Actions
+                        {t('quickActions')}
                       </h3>
                       <div className="space-y-1">
                         <Link
@@ -360,7 +362,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                           onClick={() => setShowSearch(false)}
                         >
                           <span>📦</span>
-                          <span>Products</span>
+                          <span>{t('products')}</span>
                         </Link>
                         <Link
                           href="/admin/orders"
@@ -368,7 +370,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                           onClick={() => setShowSearch(false)}
                         >
                           <span>🛒</span>
-                          <span>Orders</span>
+                          <span>{t('orders')}</span>
                         </Link>
                         <Link
                           href="/admin/customers"
@@ -376,7 +378,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
                           onClick={() => setShowSearch(false)}
                         >
                           <span>👥</span>
-                          <span>Customers</span>
+                          <span>{t('customers')}</span>
                         </Link>
                       </div>
                     </div>

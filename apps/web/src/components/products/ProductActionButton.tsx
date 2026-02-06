@@ -5,6 +5,7 @@ import { ShoppingCart, MessageSquare, Package, Building, Car, Briefcase, Calenda
 import { Button } from '@nextpik/ui';
 import { Badge } from '@nextpik/ui';
 import ProductInquiryForm from './ProductInquiryForm';
+import { useTranslations } from 'next-intl';
 
 export type ProductType = 'PHYSICAL' | 'REAL_ESTATE' | 'VEHICLE' | 'SERVICE' | 'RENTAL' | 'DIGITAL';
 export type PurchaseType = 'INSTANT' | 'INQUIRY';
@@ -27,15 +28,6 @@ interface ProductActionButtonProps {
   showBadge?: boolean;
 }
 
-const PRODUCT_TYPE_CONFIG = {
-  PHYSICAL: { icon: Package, label: 'Physical Product' },
-  REAL_ESTATE: { icon: Building, label: 'Real Estate' },
-  VEHICLE: { icon: Car, label: 'Vehicle' },
-  SERVICE: { icon: Briefcase, label: 'Service' },
-  RENTAL: { icon: Calendar, label: 'Rental' },
-  DIGITAL: { icon: Download, label: 'Digital Product' },
-};
-
 export default function ProductActionButton({
   product,
   sellerId,
@@ -44,7 +36,17 @@ export default function ProductActionButton({
   className = '',
   showBadge = false,
 }: ProductActionButtonProps) {
+  const t = useTranslations('components.productActionButton');
   const [isInquiryFormOpen, setIsInquiryFormOpen] = useState(false);
+
+  const PRODUCT_TYPE_CONFIG = {
+    PHYSICAL: { icon: Package, label: t('physicalProduct') },
+    REAL_ESTATE: { icon: Building, label: t('realEstate') },
+    VEHICLE: { icon: Car, label: t('vehicle') },
+    SERVICE: { icon: Briefcase, label: t('service') },
+    RENTAL: { icon: Calendar, label: t('rental') },
+    DIGITAL: { icon: Download, label: t('digitalProduct') },
+  };
 
   const purchaseType = product.purchaseType || 'INSTANT';
   const productType = product.productType || 'PHYSICAL';
@@ -88,17 +90,17 @@ export default function ProductActionButton({
           {isOutOfStock && !isInquiryBased ? (
             <>
               <Package className="mr-2 h-4 w-4" />
-              Out of Stock
+              {t('outOfStock')}
             </>
           ) : isInquiryBased ? (
             <>
               <MessageSquare className="mr-2 h-4 w-4" />
-              Contact Seller
+              {t('contactSeller')}
             </>
           ) : (
             <>
               <ShoppingCart className="mr-2 h-4 w-4" />
-              Add to Cart
+              {t('addToCart')}
             </>
           )}
         </Button>
@@ -106,13 +108,13 @@ export default function ProductActionButton({
         {/* Info Text */}
         {isInquiryBased && (
           <p className="text-xs text-black/60 text-center">
-            This {typeConfig?.label.toLowerCase()} requires seller contact
+            {t('requiresContact', { productType: typeConfig?.label.toLowerCase() })}
           </p>
         )}
 
         {isOutOfStock && !isInquiryBased && (
           <p className="text-xs text-red-600 text-center">
-            Currently unavailable
+            {t('currentlyUnavailable')}
           </p>
         )}
       </div>

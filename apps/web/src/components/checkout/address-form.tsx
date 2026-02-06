@@ -7,6 +7,7 @@ import { FloatingSelect } from '@nextpik/ui';
 import { CountrySelector } from '@/components/forms/country-selector';
 import { SavedAddressSelector } from './saved-address-selector';
 import { useAuth } from '@/hooks/use-auth';
+import { useTranslations } from 'next-intl';
 
 export interface Address {
   id?: string; // Optional - present when using saved address
@@ -84,6 +85,7 @@ const US_STATES = [
 ];
 
 export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: AddressFormProps) {
+  const t = useTranslations('components.addressForm');
   const { user } = useAuth();
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
   const [isUsingNewAddress, setIsUsingNewAddress] = useState<boolean>(true);
@@ -135,39 +137,39 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
     const newErrors: Partial<Record<keyof Address, string>> = {};
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
+      newErrors.firstName = t('firstNameRequired');
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
+      newErrors.lastName = t('lastNameRequired');
     }
 
     if (!formData.addressLine1.trim()) {
-      newErrors.addressLine1 = 'Address is required';
+      newErrors.addressLine1 = t('addressRequired');
     }
 
     if (!formData.city.trim()) {
-      newErrors.city = 'City is required';
+      newErrors.city = t('cityRequired');
     }
 
     if (!formData.state.trim()) {
-      newErrors.state = 'State/Province is required';
+      newErrors.state = t('stateRequired');
     }
 
     if (!formData.postalCode.trim()) {
-      newErrors.postalCode = 'Postal code is required';
+      newErrors.postalCode = t('postalCodeRequired');
     } else if (formData.country === 'United States' && !/^\d{5}(-\d{4})?$/.test(formData.postalCode)) {
-      newErrors.postalCode = 'Invalid US postal code (e.g., 12345 or 12345-6789)';
+      newErrors.postalCode = t('invalidPostalCode');
     }
 
     if (!formData.country.trim()) {
-      newErrors.country = 'Country is required';
+      newErrors.country = t('countryRequired');
     }
 
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = t('phoneRequired');
     } else if (!/^[\d\s\-\+\(\)]+$/.test(formData.phone)) {
-      newErrors.phone = 'Invalid phone number format';
+      newErrors.phone = t('invalidPhone');
     }
 
     setErrors(newErrors);
@@ -224,8 +226,8 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-green-900">Using saved address</p>
-            <p className="text-xs text-green-700 mt-1">This address is already saved. Click "Continue to Shipping" to proceed.</p>
+            <p className="text-sm font-semibold text-green-900">{t('usingSavedAddress')}</p>
+            <p className="text-xs text-green-700 mt-1">{t('savedAddressNote')}</p>
           </div>
         </motion.div>
       )}
@@ -233,12 +235,12 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
       {/* Contact Information */}
       <div className={!isUsingNewAddress ? 'opacity-60 pointer-events-none' : ''}>
         <h3 className="text-lg font-serif font-semibold mb-4">
-          Contact Information
-          {!isUsingNewAddress && <span className="ml-2 text-sm font-normal text-neutral-500">(Read-only)</span>}
+          {t('contactInformation')}
+          {!isUsingNewAddress && <span className="ml-2 text-sm font-normal text-neutral-500">{t('readOnly')}</span>}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FloatingInput
-            label="First Name"
+            label={t('firstName')}
             value={formData.firstName}
             onChange={(e) => handleChange('firstName', e.target.value)}
             error={errors.firstName}
@@ -246,7 +248,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
             required
           />
           <FloatingInput
-            label="Last Name"
+            label={t('lastName')}
             value={formData.lastName}
             onChange={(e) => handleChange('lastName', e.target.value)}
             error={errors.lastName}
@@ -256,7 +258,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
         </div>
         <div className="mt-4">
           <FloatingInput
-            label="Company (Optional)"
+            label={t('companyOptional')}
             value={formData.company}
             onChange={(e) => handleChange('company', e.target.value)}
             disabled={isLoading}
@@ -267,12 +269,12 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
       {/* Shipping Address */}
       <div className={!isUsingNewAddress ? 'opacity-60 pointer-events-none' : ''}>
         <h3 className="text-lg font-serif font-semibold mb-4">
-          Shipping Address
-          {!isUsingNewAddress && <span className="ml-2 text-sm font-normal text-neutral-500">(Read-only)</span>}
+          {t('shippingAddress')}
+          {!isUsingNewAddress && <span className="ml-2 text-sm font-normal text-neutral-500">{t('readOnly')}</span>}
         </h3>
         <div className="space-y-4">
           <FloatingInput
-            label="Address Line 1"
+            label={t('addressLine1')}
             value={formData.addressLine1}
             onChange={(e) => handleChange('addressLine1', e.target.value)}
             error={errors.addressLine1}
@@ -280,14 +282,14 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
             required
           />
           <FloatingInput
-            label="Address Line 2 (Optional)"
+            label={t('addressLine2Optional')}
             value={formData.addressLine2}
             onChange={(e) => handleChange('addressLine2', e.target.value)}
             disabled={isLoading}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FloatingInput
-              label="City"
+              label={t('city')}
               value={formData.city}
               onChange={(e) => handleChange('city', e.target.value)}
               error={errors.city}
@@ -303,7 +305,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
                   errors.state ? 'border-red-500' : 'border-neutral-200'
                 } rounded-lg text-base text-black transition-all duration-300 focus:outline-none focus:border-gold hover:border-neutral-300`}
               >
-                <option value="">Select State</option>
+                <option value="">{t('selectState')}</option>
                 {US_STATES.map((state) => (
                   <option key={state.value} value={state.value}>
                     {state.label}
@@ -323,7 +325,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FloatingInput
-              label="Postal Code"
+              label={t('postalCode')}
               value={formData.postalCode}
               onChange={(e) => handleChange('postalCode', e.target.value)}
               error={errors.postalCode}
@@ -335,7 +337,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
                 value={formData.country}
                 onChange={(countryName) => handleChange('country', countryName)}
                 error={errors.country}
-                placeholder="Select your country"
+                placeholder={t('selectCountry')}
                 className={isLoading ? 'opacity-50 pointer-events-none' : ''}
               />
               {errors.country && (
@@ -355,7 +357,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
       {/* Phone Number */}
       <div className={!isUsingNewAddress ? 'opacity-60 pointer-events-none' : ''}>
         <FloatingInput
-          label="Phone Number"
+          label={t('phoneNumber')}
           type="tel"
           value={formData.phone}
           onChange={(e) => handleChange('phone', e.target.value)}
@@ -392,7 +394,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
             className="w-5 h-5 rounded border-neutral-300 text-gold focus:ring-gold focus:ring-offset-0"
           />
           <label htmlFor="saveAsDefault" className="text-sm text-neutral-700 cursor-pointer">
-            Save this address as my default shipping address
+            {t('saveAsDefault')}
           </label>
         </motion.div>
       )}
@@ -408,7 +410,7 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
             whileTap={{ scale: 0.98 }}
             className="flex-1 px-6 py-4 border-2 border-neutral-200 rounded-lg font-semibold hover:border-neutral-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Back
+            {t('back')}
           </motion.button>
         )}
         <motion.button
@@ -435,11 +437,11 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              Processing...
+              {t('processing')}
             </>
           ) : (
             <>
-              {isUsingNewAddress ? 'Save & Continue to Shipping' : 'Continue to Shipping'}
+              {isUsingNewAddress ? t('saveAndContinue') : t('continueToShipping')}
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import axios from 'axios';
@@ -49,6 +50,8 @@ function SuccessPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams?.get('orderId');
+  const t = useTranslations('checkoutSuccess');
+  const tc = useTranslations('common');
 
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
@@ -91,7 +94,7 @@ function SuccessPageContent() {
 
   useEffect(() => {
     if (!orderId) {
-      setError('No order ID provided');
+      setError(t('noOrderId'));
       setIsLoading(false);
       return;
     }
@@ -127,7 +130,7 @@ function SuccessPageContent() {
     };
 
     fetchOrder();
-  }, [orderId]);
+  }, [orderId, t]);
 
   if (isLoading) {
     return (
@@ -137,7 +140,7 @@ function SuccessPageContent() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          <p className="text-neutral-600">Loading order details...</p>
+          <p className="text-neutral-600">{t('loadingOrder')}</p>
         </div>
       </div>
     );
@@ -152,9 +155,9 @@ function SuccessPageContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h2 className="text-2xl font-serif font-bold text-black mb-2">Order Not Found</h2>
-          <p className="text-neutral-600 mb-6">{error || 'We could not find your order details'}</p>
-          <Link href="/account/orders"><motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-all">View All Orders</motion.button></Link>
+          <h2 className="text-2xl font-serif font-bold text-black mb-2">{t('orderNotFound')}</h2>
+          <p className="text-neutral-600 mb-6">{error || t('couldNotFind')}</p>
+          <Link href="/account/orders"><motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-all">{t('viewAllOrders')}</motion.button></Link>
         </motion.div>
       </div>
     );
@@ -169,26 +172,26 @@ function SuccessPageContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </motion.div>
-          <h1 className="text-4xl md:text-5xl font-serif font-bold text-black mb-4">Thank You for Your Order!</h1>
-          <p className="text-xl text-neutral-600 mb-2">Your order has been placed successfully</p>
-          <p className="text-neutral-500">Order number: <span className="font-mono font-semibold text-black">{order.orderNumber}</span></p>
+          <h1 className="text-4xl md:text-5xl font-serif font-bold text-black mb-4">{t('thankYou')}</h1>
+          <p className="text-xl text-neutral-600 mb-2">{t('orderPlaced')}</p>
+          <p className="text-neutral-500">{t('orderNumber')} <span className="font-mono font-semibold text-black">{order.orderNumber}</span></p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6 md:p-8 mb-8">
-          <h2 className="text-2xl font-serif font-bold text-black mb-6">Order Details</h2>
+          <h2 className="text-2xl font-serif font-bold text-black mb-6">{t('orderDetails')}</h2>
           <div className="space-y-4 mb-6">
             {order.items?.map((item) => (
               <div key={item.id} className="flex justify-between items-center py-3 border-b border-neutral-100">
                 <div>
                   <p className="font-semibold text-black">{item.name}</p>
-                  <p className="text-sm text-neutral-600">Quantity: {item.quantity}</p>
+                  <p className="text-sm text-neutral-600">{t('quantity', { quantity: item.quantity })}</p>
                 </div>
                 <p className="font-semibold text-black">\${formatCurrencyAmount(Number(item.price) * item.quantity, 2)}</p>
               </div>
             ))}
           </div>
           <div className="flex justify-between items-center pt-4 border-t-2 border-neutral-200">
-            <span className="text-lg font-semibold text-black">Total</span>
+            <span className="text-lg font-semibold text-black">{t('total')}</span>
             <span className="text-2xl font-bold text-black">\${formatCurrencyAmount(Number(order.total), 2)}</span>
           </div>
         </motion.div>
@@ -196,7 +199,7 @@ function SuccessPageContent() {
         {/* Shipping Address */}
         {order.shippingAddress && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6 md:p-8 mb-8">
-            <h2 className="text-xl font-serif font-bold text-black mb-4">Shipping Address</h2>
+            <h2 className="text-xl font-serif font-bold text-black mb-4">{t('shippingAddress')}</h2>
             <div className="text-neutral-600">
               {order.shippingAddress.firstName && order.shippingAddress.lastName && (
                 <p className="font-semibold text-black">{order.shippingAddress.firstName} {order.shippingAddress.lastName}</p>
@@ -211,15 +214,15 @@ function SuccessPageContent() {
 
         {/* Action Buttons */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="grid md:grid-cols-3 gap-4 mb-12">
-          <Link href="/account/orders"><motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full px-6 py-4 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-all flex items-center justify-center gap-2">View All Orders</motion.button></Link>
-          <Link href="/products"><motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full px-6 py-4 border-2 border-neutral-200 text-black font-semibold rounded-lg hover:border-gold transition-all flex items-center justify-center gap-2">Continue Shopping</motion.button></Link>
-          <Link href="/"><motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full px-6 py-4 border-2 border-neutral-200 text-neutral-700 font-semibold rounded-lg hover:border-neutral-300 transition-all flex items-center justify-center gap-2">Back to Home</motion.button></Link>
+          <Link href="/account/orders"><motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full px-6 py-4 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-all flex items-center justify-center gap-2">{t('viewAllOrders')}</motion.button></Link>
+          <Link href="/products"><motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full px-6 py-4 border-2 border-neutral-200 text-black font-semibold rounded-lg hover:border-gold transition-all flex items-center justify-center gap-2">{t('continueShopping')}</motion.button></Link>
+          <Link href="/"><motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full px-6 py-4 border-2 border-neutral-200 text-neutral-700 font-semibold rounded-lg hover:border-neutral-300 transition-all flex items-center justify-center gap-2">{t('backToHome')}</motion.button></Link>
         </motion.div>
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-            <h2 className="text-2xl font-serif font-bold text-black mb-6 text-center">You Might Also Like</h2>
+            <h2 className="text-2xl font-serif font-bold text-black mb-6 text-center">{t('youMightAlsoLike')}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {relatedProducts.map((product) => (
                 <Link key={product.id} href={`/products/${product.slug}`}>

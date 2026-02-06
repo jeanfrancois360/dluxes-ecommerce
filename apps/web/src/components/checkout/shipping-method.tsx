@@ -11,6 +11,7 @@ import {
   getAmountNeededForFreeShipping,
   SHIPPING_METHODS as SHIPPING_CONFIG,
 } from '@/lib/shipping-config';
+import { useTranslations } from 'next-intl';
 
 export interface ShippingMethod {
   id: string;
@@ -99,6 +100,7 @@ export function ShippingMethodSelector({
   isLoadingOptions,
   currency = 'USD', // Default to USD if not provided
 }: ShippingMethodProps) {
+  const t = useTranslations('components.shippingMethod');
   const [selected, setSelected] = useState(selectedMethod);
 
   // Get currency symbol using Intl API
@@ -184,8 +186,8 @@ export function ShippingMethodSelector({
       className="space-y-6"
     >
       <div>
-        <h3 className="text-lg font-serif font-semibold mb-2">Shipping Method</h3>
-        <p className="text-sm text-neutral-600">Select your preferred shipping option</p>
+        <h3 className="text-lg font-serif font-semibold mb-2">{t('shippingMethod')}</h3>
+        <p className="text-sm text-neutral-600">{t('selectPreferred')}</p>
       </div>
 
       <div className="space-y-4">
@@ -289,7 +291,7 @@ export function ShippingMethodSelector({
                     <div className="text-right flex-shrink-0">
                       {shippingCalculations[method.id]?.isFree ? (
                         <div className="flex flex-col items-end">
-                          <p className="text-lg font-serif font-bold text-green-600">Free</p>
+                          <p className="text-lg font-serif font-bold text-green-600">{t('free')}</p>
                           <p className="text-xs text-neutral-400 line-through">
                             {currencySymbol}{formatCurrencyAmount(shippingCalculations[method.id].originalPrice, 2)}
                           </p>
@@ -328,7 +330,7 @@ export function ShippingMethodSelector({
                     </span>
                     <span className="text-neutral-400">•</span>
                     <span className="text-neutral-500">
-                      Est. delivery: {getEstimatedDeliveryDate(String(method.estimatedDays))}
+                      {t('estDelivery', { date: getEstimatedDeliveryDate(String(method.estimatedDays)) })}
                     </span>
                   </div>
                 </div>
@@ -401,24 +403,22 @@ export function ShippingMethodSelector({
           {amountNeededForFreeShipping > 0 ? (
             <>
               <p className="text-amber-900 font-medium">
-                Add {currencySymbol}{formatCurrencyAmount(amountNeededForFreeShipping, 2)} more to qualify for free
-                shipping!
+                {t('addMoreForFreeShipping', { amount: `${currencySymbol}${formatCurrencyAmount(amountNeededForFreeShipping, 2)}` })}
               </p>
               <p className="text-amber-700 mt-1">
-                Free shipping available on orders over {currencySymbol}{formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}
+                {t('freeShippingAvailable', { amount: `${currencySymbol}${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}` })}
               </p>
             </>
           ) : (
             <>
-              <p className="text-green-900 font-medium">You qualify for free shipping!</p>
+              <p className="text-green-900 font-medium">{t('qualifyForFreeShipping')}</p>
               <p className="text-green-700 mt-1">
-                Your order meets the {currencySymbol}{formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)} minimum for
-                complimentary delivery
+                {t('orderMeetsMinimum', { amount: `${currencySymbol}${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}` })}
               </p>
             </>
           )}
           <p className={cn('mt-1', amountNeededForFreeShipping > 0 ? 'text-amber-600' : 'text-green-600')}>
-            All orders are insured and require signature upon delivery
+            {t('ordersInsured')}
           </p>
         </div>
       </motion.div>
@@ -434,7 +434,7 @@ export function ShippingMethodSelector({
             whileTap={{ scale: 0.98 }}
             className="flex-1 px-6 py-4 border-2 border-neutral-200 rounded-lg font-semibold hover:border-neutral-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Back
+            {t('back')}
           </motion.button>
         )}
         <motion.button
@@ -462,11 +462,11 @@ export function ShippingMethodSelector({
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              Processing...
+              {t('processing')}
             </>
           ) : (
             <>
-              Continue to Payment
+              {t('continueToPayment')}
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>

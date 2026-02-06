@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader } from '@nextpik/ui';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { ShoppingCart } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface OrderStatusBreakdown {
   pending: number;
@@ -27,15 +28,8 @@ const STATUS_COLORS = {
   cancelled: '#EF4444',   // Red
 };
 
-const STATUS_LABELS = {
-  pending: 'Pending',
-  processing: 'Processing',
-  shipped: 'Shipped',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-};
-
 export function OrderStatusDonut({ data, isLoading }: OrderStatusDonutProps) {
+  const t = useTranslations('components.orderStatusDonut');
   if (isLoading) {
     return (
       <Card className="border-none shadow-sm">
@@ -53,11 +47,11 @@ export function OrderStatusDonut({ data, isLoading }: OrderStatusDonutProps) {
 
   // Transform data for recharts
   const chartData = [
-    { name: 'Pending', value: data?.pending || 0, color: STATUS_COLORS.pending },
-    { name: 'Processing', value: data?.processing || 0, color: STATUS_COLORS.processing },
-    { name: 'Shipped', value: data?.shipped || 0, color: STATUS_COLORS.shipped },
-    { name: 'Delivered', value: data?.delivered || 0, color: STATUS_COLORS.delivered },
-    { name: 'Cancelled', value: data?.cancelled || 0, color: STATUS_COLORS.cancelled },
+    { name: t('pending'), value: data?.pending || 0, color: STATUS_COLORS.pending },
+    { name: t('processing'), value: data?.processing || 0, color: STATUS_COLORS.processing },
+    { name: t('shipped'), value: data?.shipped || 0, color: STATUS_COLORS.shipped },
+    { name: t('delivered'), value: data?.delivered || 0, color: STATUS_COLORS.delivered },
+    { name: t('cancelled'), value: data?.cancelled || 0, color: STATUS_COLORS.cancelled },
   ].filter(item => item.value > 0); // Only show non-zero values
 
   const isEmpty = chartData.length === 0;
@@ -83,7 +77,7 @@ export function OrderStatusDonut({ data, isLoading }: OrderStatusDonutProps) {
           dominantBaseline="middle"
           className="fill-neutral-500 text-sm"
         >
-          Total Orders
+          {t('totalOrders')}
         </text>
       </g>
     );
@@ -98,7 +92,7 @@ export function OrderStatusDonut({ data, isLoading }: OrderStatusDonutProps) {
       <Card className="border-none shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-neutral-900">Order Status</h3>
+            <h3 className="text-lg font-semibold text-neutral-900">{t('orderStatus')}</h3>
             <ShoppingCart className="h-5 w-5 text-neutral-400" />
           </div>
         </CardHeader>
@@ -108,9 +102,9 @@ export function OrderStatusDonut({ data, isLoading }: OrderStatusDonutProps) {
             <div className="h-[300px] flex items-center justify-center">
               <div className="text-center">
                 <ShoppingCart className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
-                <p className="text-neutral-500 text-sm">No orders yet</p>
+                <p className="text-neutral-500 text-sm">{t('noOrders')}</p>
                 <p className="text-neutral-400 text-xs mt-1">
-                  Order breakdown will appear here
+                  {t('orderBreakdown')}
                 </p>
               </div>
             </div>
