@@ -36,6 +36,20 @@ export interface ProductCardProps {
     verified?: boolean;
   };
   showStore?: boolean;
+  translations?: {
+    addToWishlist: string;
+    removeFromWishlist: string;
+    quickView: string;
+    outOfStock: string;
+    onlyLeft: string;
+    contactForPrice: string;
+    inquiryRequired: string;
+    contactSeller: string;
+    contact: string;
+    addToBag: string;
+    add: string;
+    by: string;
+  };
 }
 
 export const ProductCard: React.FC<ProductCardProps> = React.memo(
@@ -65,6 +79,20 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
     lowStockThreshold = 10,
     store,
     showStore = false,
+    translations = {
+      addToWishlist: 'Add to wishlist',
+      removeFromWishlist: 'Remove from wishlist',
+      quickView: 'Quick View',
+      outOfStock: 'Out of Stock',
+      onlyLeft: 'Only {count} Left',
+      contactForPrice: 'Contact for Price',
+      inquiryRequired: 'Inquiry Required',
+      contactSeller: 'Contact Seller',
+      contact: 'Contact',
+      addToBag: 'Add to Bag',
+      add: 'Add',
+      by: 'by',
+    },
   }) => {
     const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
     const [isWishlisted, setIsWishlisted] = React.useState(inWishlist);
@@ -187,7 +215,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
             'border-2 transition-colors duration-200',
             isWishlisted ? 'border-red-500' : 'border-neutral-200'
           )}
-          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-label={isWishlisted ? translations.removeFromWishlist : translations.addToWishlist}
         >
           <motion.svg
             className={cn(
@@ -277,7 +305,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                   whileTap={{ scale: 0.95 }}
                   className="px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3.5 bg-white text-black rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm shadow-2xl hover:bg-gold transition-colors duration-200"
                 >
-                  Quick View
+                  {translations.quickView}
                 </motion.button>
               </motion.div>
             )}
@@ -305,7 +333,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                 className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-neutral-900/95 backdrop-blur-md rounded-full shadow-xl"
               >
                 <span className="text-white font-bold text-[10px] sm:text-xs uppercase tracking-wider">
-                  Out of Stock
+                  {translations.outOfStock}
                 </span>
               </motion.div>
             </div>
@@ -318,7 +346,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                 className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-orange-500/95 backdrop-blur-md rounded-full shadow-xl"
               >
                 <span className="text-white font-bold text-[10px] sm:text-xs uppercase tracking-wider">
-                  Only {stockQuantity} Left
+                  {translations.onlyLeft.replace('{count}', String(stockQuantity))}
                 </span>
               </motion.div>
             </div>
@@ -371,10 +399,10 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
             {isInquiryProduct ? (
               <div className="flex flex-col">
                 <span className="font-serif text-base sm:text-lg md:text-xl font-bold text-gold">
-                  Contact for Price
+                  {translations.contactForPrice}
                 </span>
                 <span className="text-[10px] sm:text-xs text-neutral-500 mt-0.5">
-                  Inquiry Required
+                  {translations.inquiryRequired}
                 </span>
               </div>
             ) : (
@@ -413,7 +441,9 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                   d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
-              <span>by {store.name}</span>
+              <span>
+                {translations.by} {store.name}
+              </span>
               {store.verified && (
                 <svg
                   className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500"
@@ -463,8 +493,8 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                   d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                 />
               </svg>
-              <span className="hidden xs:inline">Contact Seller</span>
-              <span className="xs:hidden">Contact</span>
+              <span className="hidden xs:inline">{translations.contactSeller}</span>
+              <span className="xs:hidden">{translations.contact}</span>
             </button>
           ) : (
             <button
@@ -495,11 +525,11 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
               </svg>
               {inStock ? (
                 <>
-                  <span className="hidden xs:inline">Add to Bag</span>
-                  <span className="xs:hidden">Add</span>
+                  <span className="hidden xs:inline">{translations.addToBag}</span>
+                  <span className="xs:hidden">{translations.add}</span>
                 </>
               ) : (
-                <span>Out of Stock</span>
+                <span>{translations.outOfStock}</span>
               )}
             </button>
           )}

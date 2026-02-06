@@ -7,6 +7,7 @@ import { useSearch } from '@/hooks/use-search';
 import { FiltersSidebar } from '@/components/filters-sidebar';
 import { Product } from '@/lib/api/types';
 import { SearchResultsAd } from '@/components/ads';
+import { useTranslations } from 'next-intl';
 
 interface SearchResultsProps {
   initialQuery: string;
@@ -22,6 +23,7 @@ const sortOptions = [
 ];
 
 export function SearchResults({ initialQuery, initialCategory }: SearchResultsProps) {
+  const tCard = useTranslations('productCard');
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState(initialCategory);
   const [sortBy, setSortBy] = useState('relevance');
@@ -134,7 +136,9 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
             transition={{ delay: 0.1 }}
             className="text-gray-600"
           >
-            {isLoading ? 'Searching...' : `${data.total} ${data.total === 1 ? 'result' : 'results'} found`}
+            {isLoading
+              ? 'Searching...'
+              : `${data.total} ${data.total === 1 ? 'result' : 'results'} found`}
           </motion.p>
         )}
       </div>
@@ -229,6 +233,20 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
                         images={product.images?.map((img) => img.url) || []}
                         badges={product.badges}
                         slug={product.slug}
+                        translations={{
+                          addToWishlist: tCard('addToWishlist'),
+                          removeFromWishlist: tCard('removeFromWishlist'),
+                          quickView: tCard('quickView'),
+                          outOfStock: tCard('outOfStock'),
+                          onlyLeft: tCard('onlyLeft'),
+                          contactForPrice: tCard('contactForPrice'),
+                          inquiryRequired: tCard('inquiryRequired'),
+                          contactSeller: tCard('contactSeller'),
+                          contact: tCard('contact'),
+                          addToBag: tCard('addToBag'),
+                          add: tCard('add'),
+                          by: tCard('by'),
+                        }}
                       />
                     </motion.div>
                   ))}
