@@ -458,6 +458,20 @@
     "review": "avis",
     "save": "Économisez {percent}%"
   },
+  "productCard": {
+    "addToWishlist": "Ajouter à la liste de souhaits",
+    "removeFromWishlist": "Retirer de la liste de souhaits",
+    "quickView": "Aperçu Rapide",
+    "outOfStock": "Rupture de Stock",
+    "onlyLeft": "Plus que {count} Disponible",
+    "contactForPrice": "Contactez pour le Prix",
+    "inquiryRequired": "Demande Requise",
+    "contactSeller": "Contacter le Vendeur",
+    "contact": "Contacter",
+    "addToBag": "Ajouter au Sac",
+    "add": "Ajouter",
+    "by": "par"
+  },
   "checkout": {
     "checkout": "Paiement",
     "completeSecurely": "Finalisez votre achat en toute sécurité",
