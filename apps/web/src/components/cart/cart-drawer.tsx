@@ -15,10 +15,7 @@ interface CartDrawerProps {
   onClose: () => void;
 }
 
-export function CartDrawer({
-  isOpen,
-  onClose,
-}: CartDrawerProps) {
+export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const router = useRouter();
   const t = useTranslations('cart');
   const {
@@ -28,7 +25,7 @@ export function CartDrawer({
     taxCalculationMode = 'disabled',
     taxRate = 0,
     updateQuantity,
-    removeItem
+    removeItem,
   } = useCart();
 
   const handleCheckout = () => {
@@ -92,7 +89,12 @@ export function CartDrawer({
                   className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -123,7 +125,11 @@ export function CartDrawer({
                   className="mt-6 p-4 bg-accent-50 border border-accent-200 rounded-lg"
                 >
                   <p className="text-sm text-neutral-700">
-                    Add <strong className="text-black">${formatCurrencyAmount(freeShippingThreshold - (totals.subtotal || 0), 2)}</strong> more for <strong className="text-gold">free shipping</strong>
+                    Add{' '}
+                    <strong className="text-black">
+                      ${formatCurrencyAmount(freeShippingThreshold - (totals.subtotal || 0), 2)}
+                    </strong>{' '}
+                    more for <strong className="text-gold">free shipping</strong>
                   </p>
                   <div className="mt-2 h-2 bg-neutral-200 rounded-full overflow-hidden">
                     <motion.div
@@ -147,12 +153,16 @@ export function CartDrawer({
                 <div className="space-y-2 pt-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-600">Subtotal</span>
-                    <span className="text-black">${formatCurrencyAmount(totals.subtotal || 0, 2)}</span>
+                    <span className="text-black">
+                      ${formatCurrencyAmount(totals.subtotal || 0, 2)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-600">{t('shipping')}</span>
                     <span className="text-black">
-                      {(totals.shipping || 0) === 0 ? t('free') : `$${formatCurrencyAmount(totals.shipping || 0, 2)}`}
+                      {(totals.shipping || 0) === 0
+                        ? t('free')
+                        : `$${formatCurrencyAmount(totals.shipping || 0, 2)}`}
                     </span>
                   </div>
                   {taxCalculationMode !== 'disabled' && (
@@ -164,7 +174,9 @@ export function CartDrawer({
                           <span className="text-xs ml-1">(At checkout)</span>
                         )}
                       </span>
-                      <span className="text-black">${formatCurrencyAmount(totals.tax || 0, 2)}</span>
+                      <span className="text-black">
+                        ${formatCurrencyAmount(totals.tax || 0, 2)}
+                      </span>
                     </div>
                   )}
                   <div className="flex justify-between text-xl font-serif font-bold pt-2 border-t border-neutral-200">
@@ -182,14 +194,24 @@ export function CartDrawer({
                 >
                   Proceed to Checkout
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    />
                   </svg>
                 </motion.button>
 
                 {/* Security Badge */}
                 <p className="text-xs text-center text-neutral-500 flex items-center justify-center gap-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
                   Secure checkout with SSL encryption
                 </p>
@@ -249,9 +271,7 @@ function CartItemComponent({
           <p className="text-xs uppercase tracking-wider text-neutral-500 mb-1">{item.brand}</p>
         )}
         <h4 className="font-medium text-black truncate">{item.name}</h4>
-        {item.sku && (
-          <p className="text-xs text-neutral-500 mt-1">SKU: {item.sku}</p>
-        )}
+        {item.sku && <p className="text-xs text-neutral-500 mt-1">SKU: {item.sku}</p>}
         <p className="text-gold font-serif mt-2">${formatCurrencyAmount(item.price || 0, 2)}</p>
       </div>
 
@@ -273,7 +293,12 @@ function CartItemComponent({
             className="w-7 h-7 rounded-full hover:bg-white transition-colors flex items-center justify-center"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
           </button>
         </div>
@@ -284,7 +309,12 @@ function CartItemComponent({
           className="text-neutral-400 hover:text-error-DEFAULT transition-colors text-xs flex items-center gap-1 mt-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
           </svg>
           Remove
         </button>
@@ -298,7 +328,12 @@ function EmptyCart({ onClose }: { onClose: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <div className="w-32 h-32 bg-neutral-100 rounded-full flex items-center justify-center mb-6">
-        <svg className="w-16 h-16 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg
+          className="w-16 h-16 text-neutral-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -308,9 +343,7 @@ function EmptyCart({ onClose }: { onClose: () => void }) {
         </svg>
       </div>
       <h3 className="text-xl font-serif font-bold text-black mb-2">Your bag is empty</h3>
-      <p className="text-neutral-600 text-center mb-6">
-        Looks like you haven't added anything yet
-      </p>
+      <p className="text-neutral-600 text-center mb-6">Looks like you haven't added anything yet</p>
       <button
         onClick={onClose}
         className="px-8 py-3 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors font-medium"
@@ -323,6 +356,7 @@ function EmptyCart({ onClose }: { onClose: () => void }) {
 
 // Promo Code Input
 function PromoCodeInput() {
+  const t = useTranslations('cart');
   const [isExpanded, setIsExpanded] = useState(false);
   const [code, setCode] = useState('');
   const [applied, setApplied] = useState(false);
@@ -342,7 +376,12 @@ function PromoCodeInput() {
       >
         <span className="text-sm font-medium flex items-center gap-2">
           <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+            />
           </svg>
           Have a promo code?
         </span>
@@ -387,7 +426,12 @@ function PromoCodeInput() {
                 className="px-4 pb-4 flex items-center gap-2 text-success-DEFAULT text-sm"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
                 Code "{code}" applied successfully!
               </motion.div>
