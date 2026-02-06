@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import useSWR, { mutate } from 'swr';
@@ -106,12 +107,13 @@ function StarRating({ rating, size = 'md' }: { rating: number; size?: 'sm' | 'md
       {[...Array(5)].map((_, i) => (
         <Star
           key={i}
-          className={`${sizeClass} ${i < Math.floor(rating)
+          className={`${sizeClass} ${
+            i < Math.floor(rating)
               ? 'fill-gold text-gold'
               : i < rating
                 ? 'fill-gold/50 text-gold'
                 : 'fill-neutral-200 text-neutral-200'
-            }`}
+          }`}
         />
       ))}
     </div>
@@ -119,7 +121,13 @@ function StarRating({ rating, size = 'md' }: { rating: number; size?: 'sm' | 'md
 }
 
 // Rating Breakdown Component
-function RatingBreakdown({ breakdown, total }: { breakdown: { 5: number; 4: number; 3: number; 2: number; 1: number }; total: number }) {
+function RatingBreakdown({
+  breakdown,
+  total,
+}: {
+  breakdown: { 5: number; 4: number; 3: number; 2: number; 1: number };
+  total: number;
+}) {
   const stars = [5, 4, 3, 2, 1] as const;
 
   return (
@@ -226,7 +234,15 @@ function PolicySection({ title, content }: { title: string; content: string | nu
 }
 
 // Empty State Component
-function EmptyState({ icon: Icon, title, description }: { icon: any; title: string; description: string }) {
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: any;
+  title: string;
+  description: string;
+}) {
   return (
     <div className="text-center py-16">
       <div className="w-16 h-16 mx-auto bg-neutral-100 rounded-full flex items-center justify-center mb-4">
@@ -266,6 +282,7 @@ export default function PublicStorePage() {
   const router = useRouter();
   const slug = params.slug as string;
   const { user, isAuthenticated } = useAuth();
+  const tModal = useTranslations('quickViewModal');
 
   const [activeTab, setActiveTab] = useState<TabType>('products');
   const [productPage, setProductPage] = useState(1);
@@ -290,20 +307,23 @@ export default function PublicStorePage() {
   const currencySymbol = currency?.symbol || '$';
 
   // Fetch store data
-  const { data: store, error: storeError, isLoading: storeLoading } = useSWR<Store>(
-    slug ? `store-${slug}` : null,
-    () => storesAPI.getStoreBySlug(slug)
-  );
+  const {
+    data: store,
+    error: storeError,
+    isLoading: storeLoading,
+  } = useSWR<Store>(slug ? `store-${slug}` : null, () => storesAPI.getStoreBySlug(slug));
 
   // Fetch store products with pagination and filters
   const { data: productsData, isLoading: productsLoading } = useSWR<SearchResult<Product>>(
-    store?.id ? `store-products-${store.id}-${productPage}-${sortBy}-${searchQuery}-${selectedCategory}` : null,
+    store?.id
+      ? `store-products-${store.id}-${productPage}-${sortBy}-${searchQuery}-${selectedCategory}`
+      : null,
     () => {
       const sortConfig: Record<string, { sortBy: string; sortOrder: 'asc' | 'desc' }> = {
-        'newest': { sortBy: 'createdAt', sortOrder: 'desc' },
+        newest: { sortBy: 'createdAt', sortOrder: 'desc' },
         'price-asc': { sortBy: 'price', sortOrder: 'asc' },
         'price-desc': { sortBy: 'price', sortOrder: 'desc' },
-        'popular': { sortBy: 'viewCount', sortOrder: 'desc' },
+        popular: { sortBy: 'viewCount', sortOrder: 'desc' },
       };
       const sort = sortConfig[sortBy];
 
@@ -383,7 +403,7 @@ export default function PublicStorePage() {
   const categories = useMemo(() => {
     if (!products.length) return [];
     const cats = new Set<string>();
-    products.forEach(p => {
+    products.forEach((p) => {
       if (p.category?.name) cats.add(p.category.name);
     });
     return Array.from(cats).sort();
@@ -411,44 +431,56 @@ export default function PublicStorePage() {
   }, [searchQuery, selectedCategory]);
 
   // Handlers
-  const handleAddToCart = useCallback(async (productId: string) => {
-    if (addingToCart) return; // Prevent double-click
+  const handleAddToCart = useCallback(
+    async (productId: string) => {
+      if (addingToCart) return; // Prevent double-click
 
-    setAddingToCart(productId);
-    try {
-      await addToCartApi(productId, 1);
-      toast.success('Added to Cart');
-    } catch (error: any) {
-      console.error('Failed to add to cart:', error);
-      toast.error(error.message || 'Failed to add item to cart');
-    } finally {
-      setAddingToCart(null);
-    }
-  }, [addingToCart, addToCartApi]);
+      setAddingToCart(productId);
+      try {
+        await addToCartApi(productId, 1);
+        toast.success('Added to Cart');
+      } catch (error: any) {
+        console.error('Failed to add to cart:', error);
+        toast.error(error.message || 'Failed to add item to cart');
+      } finally {
+        setAddingToCart(null);
+      }
+    },
+    [addingToCart, addToCartApi]
+  );
 
-  const handleQuickView = useCallback((id: string) => {
-    const product = currencyProducts.find(p => p.id === id);
-    if (product?.slug) {
-      setQuickViewSlug(product.slug);
-    }
-  }, [currencyProducts]);
+  const handleQuickView = useCallback(
+    (id: string) => {
+      const product = currencyProducts.find((p) => p.id === id);
+      if (product?.slug) {
+        setQuickViewSlug(product.slug);
+      }
+    },
+    [currencyProducts]
+  );
 
-  const handleNavigate = useCallback((slug: string) => {
-    navigateWithLoading(router, `/products/${slug}`);
-  }, [router]);
+  const handleNavigate = useCallback(
+    (slug: string) => {
+      navigateWithLoading(router, `/products/${slug}`);
+    },
+    [router]
+  );
 
-  const handleAddToWishlist = useCallback(async (id: string) => {
-    if (!isAuthenticated) {
-      toast.error('Please sign in to add items to wishlist');
-      return;
-    }
-    try {
-      await addToWishlistApi(id);
-      toast.success('Added to Wishlist');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to add to wishlist');
-    }
-  }, [isAuthenticated, addToWishlistApi]);
+  const handleAddToWishlist = useCallback(
+    async (id: string) => {
+      if (!isAuthenticated) {
+        toast.error('Please sign in to add items to wishlist');
+        return;
+      }
+      try {
+        await addToWishlistApi(id);
+        toast.success('Added to Wishlist');
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to add to wishlist');
+      }
+    },
+    [isAuthenticated, addToWishlistApi]
+  );
 
   // Handle follow/unfollow
   const handleFollowToggle = async () => {
@@ -636,7 +668,9 @@ export default function PublicStorePage() {
                             <>
                               <div className="flex items-center gap-1.5">
                                 <StarRating rating={averageRating} size="sm" />
-                                <span className="font-semibold text-neutral-900">{averageRating.toFixed(1)}</span>
+                                <span className="font-semibold text-neutral-900">
+                                  {averageRating.toFixed(1)}
+                                </span>
                                 <span className="text-neutral-500">({totalReviews})</span>
                               </div>
                               <span className="text-neutral-300">•</span>
@@ -671,14 +705,16 @@ export default function PublicStorePage() {
                           disabled={isFollowLoading}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          className={`inline-flex items-center gap-2 px-5 py-2.5 font-semibold text-sm rounded-xl transition-all ${isFollowing
+                          className={`inline-flex items-center gap-2 px-5 py-2.5 font-semibold text-sm rounded-xl transition-all ${
+                            isFollowing
                               ? 'bg-white text-neutral-700 border-2 border-neutral-200 hover:bg-neutral-50'
                               : 'bg-white text-neutral-700 border-2 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50'
-                            }`}
+                          }`}
                         >
                           <Heart
-                            className={`w-4 h-4 transition-all ${isFollowing ? 'fill-pink-500 text-pink-500' : 'text-neutral-400'
-                              } ${isFollowLoading ? 'animate-pulse' : ''}`}
+                            className={`w-4 h-4 transition-all ${
+                              isFollowing ? 'fill-pink-500 text-pink-500' : 'text-neutral-400'
+                            } ${isFollowLoading ? 'animate-pulse' : ''}`}
                           />
                           <span>{isFollowing ? 'Following' : 'Follow'}</span>
                           {followerCount > 0 && (
@@ -707,14 +743,16 @@ export default function PublicStorePage() {
                         disabled={isFollowLoading}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 font-semibold text-sm rounded-xl transition-all ${isFollowing
+                        className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 font-semibold text-sm rounded-xl transition-all ${
+                          isFollowing
                             ? 'bg-white text-neutral-700 border-2 border-neutral-200'
                             : 'bg-white text-neutral-700 border-2 border-neutral-200'
-                          }`}
+                        }`}
                       >
                         <Heart
-                          className={`w-4 h-4 transition-all ${isFollowing ? 'fill-pink-500 text-pink-500' : 'text-neutral-400'
-                            } ${isFollowLoading ? 'animate-pulse' : ''}`}
+                          className={`w-4 h-4 transition-all ${
+                            isFollowing ? 'fill-pink-500 text-pink-500' : 'text-neutral-400'
+                          } ${isFollowLoading ? 'animate-pulse' : ''}`}
                         />
                         <span>{isFollowing ? 'Following' : 'Follow'}</span>
                         {followerCount > 0 && (
@@ -754,11 +792,13 @@ export default function PublicStorePage() {
                   <div className="flex-1">
                     <h3 className="font-semibold text-amber-900 mb-1">Store on Vacation</h3>
                     <p className="text-amber-800 text-sm">
-                      {store.vacationMessage || 'This store is currently on vacation. Orders may be delayed.'}
+                      {store.vacationMessage ||
+                        'This store is currently on vacation. Orders may be delayed.'}
                     </p>
                     {store.vacationEndDate && (
                       <p className="text-amber-600 text-xs mt-2">
-                        Expected return: {new Date(store.vacationEndDate).toLocaleDateString('en-US', {
+                        Expected return:{' '}
+                        {new Date(store.vacationEndDate).toLocaleDateString('en-US', {
                           weekday: 'long',
                           month: 'long',
                           day: 'numeric',
@@ -785,10 +825,11 @@ export default function PublicStorePage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as TabType)}
-                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
+                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                      activeTab === tab.id
                         ? 'border-gold text-gold'
                         : 'border-transparent text-neutral-500 hover:text-black hover:border-neutral-300'
-                      }`}
+                    }`}
                   >
                     <tab.icon className="w-4 h-4" />
                     {tab.label}
@@ -845,7 +886,9 @@ export default function PublicStorePage() {
                         >
                           <option value="">All Categories</option>
                           {categories.map((cat) => (
-                            <option key={cat} value={cat}>{cat}</option>
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
                           ))}
                         </select>
                       )}
@@ -887,7 +930,9 @@ export default function PublicStorePage() {
                     {/* Active Filters */}
                     {hasActiveFilters && (
                       <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-neutral-100">
-                        <span className="text-sm font-medium text-neutral-500">Active filters:</span>
+                        <span className="text-sm font-medium text-neutral-500">
+                          Active filters:
+                        </span>
                         {searchQuery && (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-full text-sm">
                             Search: <span className="font-medium">{searchQuery}</span>
@@ -899,7 +944,10 @@ export default function PublicStorePage() {
                         {selectedCategory && (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-full text-sm">
                             <span className="font-medium">{selectedCategory}</span>
-                            <button onClick={() => setSelectedCategory('')} className="hover:text-black">
+                            <button
+                              onClick={() => setSelectedCategory('')}
+                              className="hover:text-black"
+                            >
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </span>
@@ -919,13 +967,15 @@ export default function PublicStorePage() {
                     <p className="text-neutral-600">
                       {totalProducts > 0 ? (
                         <>
-                          Showing <span className="font-semibold text-neutral-900">{startIndex}-{endIndex}</span> of{' '}
-                          <span className="font-semibold text-neutral-900">{totalProducts}</span> products
+                          Showing{' '}
+                          <span className="font-semibold text-neutral-900">
+                            {startIndex}-{endIndex}
+                          </span>{' '}
+                          of <span className="font-semibold text-neutral-900">{totalProducts}</span>{' '}
+                          products
                         </>
                       ) : (
-                        <>
-                          No products found
-                        </>
+                        <>No products found</>
                       )}
                     </p>
                   </div>
@@ -957,7 +1007,7 @@ export default function PublicStorePage() {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => setProductPage(p => Math.max(1, p - 1))}
+                            onClick={() => setProductPage((p) => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
                             className="px-4 py-2 bg-white border border-neutral-200 rounded-xl hover:border-gold hover:bg-gold/5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-neutral-200 transition-all flex items-center gap-2 font-medium text-neutral-700"
                           >
@@ -990,7 +1040,10 @@ export default function PublicStorePage() {
 
                               if (showEllipsis) {
                                 return (
-                                  <span key={`ellipsis-${i}`} className="px-3 py-2 text-neutral-400">
+                                  <span
+                                    key={`ellipsis-${i}`}
+                                    className="px-3 py-2 text-neutral-400"
+                                  >
                                     ...
                                   </span>
                                 );
@@ -1002,10 +1055,11 @@ export default function PublicStorePage() {
                                   whileHover={{ scale: isCurrentPage ? 1 : 1.05 }}
                                   whileTap={{ scale: isCurrentPage ? 1 : 0.95 }}
                                   onClick={() => setProductPage(pageNum)}
-                                  className={`min-w-[40px] h-10 rounded-xl font-medium transition-all ${isCurrentPage
+                                  className={`min-w-[40px] h-10 rounded-xl font-medium transition-all ${
+                                    isCurrentPage
                                       ? 'bg-gold text-white shadow-lg shadow-gold/30'
                                       : 'bg-white border border-neutral-200 text-neutral-700 hover:border-gold hover:bg-gold/5'
-                                    }`}
+                                  }`}
                                 >
                                   {pageNum}
                                 </motion.button>
@@ -1017,7 +1071,7 @@ export default function PublicStorePage() {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => setProductPage(p => Math.min(totalPages, p + 1))}
+                            onClick={() => setProductPage((p) => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages}
                             className="px-4 py-2 bg-white border border-neutral-200 rounded-xl hover:border-gold hover:bg-gold/5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-neutral-200 transition-all flex items-center gap-2 font-medium text-neutral-700"
                           >
@@ -1040,8 +1094,7 @@ export default function PublicStorePage() {
                           ? searchQuery
                             ? `No products match "${searchQuery}"`
                             : 'No products match your filters'
-                          : "This store hasn't added any products yet. Check back later!"
-                        }
+                          : "This store hasn't added any products yet. Check back later!"}
                       </p>
                       {hasActiveFilters && (
                         <button
@@ -1088,7 +1141,11 @@ export default function PublicStorePage() {
                         { label: 'Products', value: totalProducts, icon: Package },
                         { label: 'Total Sales', value: store.totalOrders, icon: ShoppingBag },
                         { label: 'Followers', value: followerCount, icon: Users },
-                        { label: 'Rating', value: averageRating > 0 ? averageRating.toFixed(1) : 'N/A', icon: Star },
+                        {
+                          label: 'Rating',
+                          value: averageRating > 0 ? averageRating.toFixed(1) : 'N/A',
+                          icon: Star,
+                        },
                         { label: 'Reviews', value: totalReviews, icon: MessageCircle },
                       ].map((stat) => (
                         <div
@@ -1133,7 +1190,9 @@ export default function PublicStorePage() {
                             className="flex items-center gap-3 text-neutral-600 hover:text-gold transition-colors"
                           >
                             <Globe className="w-5 h-5" />
-                            <span className="truncate">{store.website.replace(/^https?:\/\//, '')}</span>
+                            <span className="truncate">
+                              {store.website.replace(/^https?:\/\//, '')}
+                            </span>
                           </a>
                         )}
                         {location && (
@@ -1155,7 +1214,8 @@ export default function PublicStorePage() {
                           <div>
                             <h3 className="font-semibold text-blue-900">Verified Seller</h3>
                             <p className="text-sm text-blue-700">
-                              Since {new Date(store.verifiedAt!).toLocaleDateString('en-US', {
+                              Since{' '}
+                              {new Date(store.verifiedAt!).toLocaleDateString('en-US', {
                                 month: 'long',
                                 year: 'numeric',
                               })}
@@ -1196,12 +1256,13 @@ export default function PublicStorePage() {
                               {averageRating.toFixed(1)}
                             </p>
                             <StarRating rating={averageRating} size="lg" />
-                            <p className="text-neutral-500 mt-2">
-                              Based on {totalReviews} reviews
-                            </p>
+                            <p className="text-neutral-500 mt-2">Based on {totalReviews} reviews</p>
                           </div>
                           {reviewsSummary && (
-                            <RatingBreakdown breakdown={reviewsSummary.breakdown} total={totalReviews} />
+                            <RatingBreakdown
+                              breakdown={reviewsSummary.breakdown}
+                              total={totalReviews}
+                            />
                           )}
                         </div>
                       </div>
@@ -1257,6 +1318,20 @@ export default function PublicStorePage() {
         onAddToCart={handleAddToCart}
         onViewDetails={handleNavigate}
         currencySymbol={currencySymbol}
+        translations={{
+          color: tModal('color'),
+          size: tModal('size'),
+          quantity: tModal('quantity'),
+          inStock: tModal('inStock'),
+          available: tModal('available'),
+          outOfStock: tModal('outOfStock'),
+          onlyLeftInStock: tModal('onlyLeftInStock', { count: 0 }),
+          addToCart: tModal('addToCart'),
+          viewFullDetails: tModal('viewFullDetails'),
+          reviews: tModal('reviews'),
+          review: tModal('review'),
+          save: tModal('save', { percent: 0 }),
+        }}
       />
     </PageLayout>
   );
