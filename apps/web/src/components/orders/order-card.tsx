@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { OrderStatusBadge } from './order-status-badge';
 import type { Order } from '@/lib/api/types';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import { useTranslations } from 'next-intl';
 
 interface OrderCardProps {
   order: Order;
 }
 
 export function OrderCard({ order }: OrderCardProps) {
+  const t = useTranslations('components.orderCard');
   const firstItem = order.items[0];
   const itemCount = order.items.length;
 
@@ -43,7 +45,7 @@ export function OrderCard({ order }: OrderCardProps) {
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Order Number</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('orderNumber')}</p>
             <h3 className="font-bold text-lg">{order.orderNumber}</h3>
           </div>
           <OrderStatusBadge status={order.status} />
@@ -73,7 +75,7 @@ export function OrderCard({ order }: OrderCardProps) {
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-base truncate mb-1">{productName}</p>
             <p className="text-sm text-gray-500">
-              {itemCount} {itemCount === 1 ? 'item' : 'items'}
+              {itemCount} {itemCount === 1 ? t('item') : t('items')}
             </p>
           </div>
         </div>
@@ -81,7 +83,7 @@ export function OrderCard({ order }: OrderCardProps) {
         {/* Footer */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-gray-500 mb-1">Order Date</p>
+            <p className="text-xs text-gray-500 mb-1">{t('orderDate')}</p>
             <p className="text-sm font-medium">
               {new Date(order.createdAt).toLocaleDateString('en-US', {
                 month: 'short',
@@ -91,7 +93,7 @@ export function OrderCard({ order }: OrderCardProps) {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-500 mb-1">Total</p>
+            <p className="text-xs text-gray-500 mb-1">{t('total')}</p>
             <p className="font-serif text-xl font-bold">{currencySymbol}{formatCurrencyAmount(order.total, 2)}</p>
           </div>
         </div>
@@ -101,7 +103,7 @@ export function OrderCard({ order }: OrderCardProps) {
           whileHover={{ x: 4 }}
           className="mt-4 pt-4 border-t border-neutral-100 flex items-center justify-between text-[#CBB57B] font-semibold text-sm"
         >
-          <span>View Details</span>
+          <span>{t('viewDetails')}</span>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>

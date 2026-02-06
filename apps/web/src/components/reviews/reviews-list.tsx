@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReviewCard } from './review-card';
 import type { Review, ReviewFilters } from '@nextpik/shared';
+import { useTranslations } from 'next-intl';
 
 interface ReviewsListProps {
   reviews: Review[];
@@ -26,6 +27,7 @@ export function ReviewsList({
   onMarkHelpful,
   onReport,
 }: ReviewsListProps) {
+  const t = useTranslations('components.reviewsList');
   const [sortBy, setSortBy] = useState<ReviewFilters['sortBy']>('recent');
   const [filterRating, setFilterRating] = useState<number | undefined>(undefined);
 
@@ -84,12 +86,12 @@ export function ReviewsList({
         </svg>
       </div>
       <h3 className="text-xl font-semibold text-black mb-2">
-        {filterRating ? `No ${filterRating}-star reviews yet` : 'No reviews yet'}
+        {filterRating ? t('noRatingReviews', { rating: filterRating }) : t('noReviews')}
       </h3>
       <p className="text-neutral-600 mb-6">
         {filterRating
-          ? 'Try adjusting your filters to see more reviews'
-          : 'Be the first to share your experience with this product!'}
+          ? t('adjustFilters')
+          : t('beFirst')}
       </p>
     </motion.div>
   );
@@ -108,7 +110,7 @@ export function ReviewsList({
                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
             }`}
           >
-            All Reviews
+            {t('allReviews')}
           </button>
           {[5, 4, 3, 2, 1].map((rating) => (
             <button
@@ -130,16 +132,16 @@ export function ReviewsList({
 
         {/* Sort Dropdown */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-neutral-600">Sort by:</span>
+          <span className="text-sm text-neutral-600">{t('sortBy')}</span>
           <select
             value={sortBy}
             onChange={(e) => handleSortChange(e.target.value as ReviewFilters['sortBy'])}
             className="px-4 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:border-[#CBB57B] transition-colors"
           >
-            <option value="recent">Most Recent</option>
-            <option value="highest">Highest Rated</option>
-            <option value="lowest">Lowest Rated</option>
-            <option value="helpful">Most Helpful</option>
+            <option value="recent">{t('mostRecent')}</option>
+            <option value="highest">{t('highestRated')}</option>
+            <option value="lowest">{t('lowestRated')}</option>
+            <option value="helpful">{t('mostHelpful')}</option>
           </select>
         </div>
       </div>

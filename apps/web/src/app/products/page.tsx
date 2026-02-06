@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ProductGrid, QuickViewModal, type QuickViewProduct } from '@nextpik/ui';
 import { PageLayout } from '@/components/layout/page-layout';
@@ -24,6 +25,8 @@ import { navigateWithLoading } from '@/lib/navigation';
 export default function ProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('products');
+  const tc = useTranslations('common');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
@@ -180,14 +183,14 @@ export default function ProductsPage() {
     setAddingToCart(productId);
     try {
       await addToCartApi(productId, 1);
-      toast.success('Item has been added to your cart');
+      toast.success(tc('toast.addedToCart'));
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
-      toast.error('Error', error.message || 'Failed to add item to cart');
+      toast.error(tc('toast.error'), error.message || tc('toast.failedAddCart'));
     } finally {
       setAddingToCart(null);
     }
-  }, [addingToCart, addToCartApi]);
+  }, [addingToCart, addToCartApi, tc]);
 
   const handleAddToWishlist = useCallback(async (id: string) => {
     if (addingToWishlist) return; // Prevent double-click
@@ -195,7 +198,7 @@ export default function ProductsPage() {
     // Check if user is logged in
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
-      toast.error('Please login to add items to wishlist');
+      toast.error(tc('toast.loginRequired'));
       router.push('/auth/login');
       return;
     }
@@ -203,14 +206,14 @@ export default function ProductsPage() {
     setAddingToWishlist(id);
     try {
       await addToWishlistApi(id);
-      toast.success('Item has been added to your wishlist');
+      toast.success(tc('toast.addedToWishlist'));
     } catch (error: any) {
       console.error('Failed to add to wishlist:', error);
-      toast.error('Error', error.message || 'Failed to add item to wishlist');
+      toast.error(tc('toast.error'), error.message || tc('toast.failedAddWishlist'));
     } finally {
       setAddingToWishlist(null);
     }
-  }, [addingToWishlist, addToWishlistApi, router]);
+  }, [addingToWishlist, addToWishlistApi, router, tc]);
 
   const handleSortChange = (value: string) => {
     setSortBy(value as any);
@@ -272,14 +275,14 @@ export default function ProductsPage() {
             className="inline-block mb-4"
           >
             <span className="px-4 py-2 bg-[#CBB57B]/20 border border-[#CBB57B]/30 rounded-full text-[#CBB57B] text-sm font-semibold backdrop-blur-sm">
-              Featured Collection
+              {t('featuredCollection')}
             </span>
           </motion.div>
           <h1 className="text-5xl md:text-6xl lg:text-8xl font-bold mb-6 bg-gradient-to-r from-white via-white to-[#CBB57B] bg-clip-text text-transparent leading-tight">
-            Product Catalog
+            {t('productCatalog')}
           </h1>
           <p className="text-base md:text-xl text-white/80 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Browse our extensive collection of quality products from trusted sellers
+            {t('browseCollection')}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 text-sm md:text-base">
             <motion.div
@@ -291,7 +294,7 @@ export default function ProductsPage() {
               <svg className="w-5 h-5 text-[#CBB57B]" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              <span className="text-white/90 font-medium">Authentic Products</span>
+              <span className="text-white/90 font-medium">{t('authenticProducts')}</span>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -302,7 +305,7 @@ export default function ProductsPage() {
               <svg className="w-5 h-5 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
               </svg>
-              <span className="text-white/90 font-medium">Free Shipping</span>
+              <span className="text-white/90 font-medium">{t('freeShipping')}</span>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -313,7 +316,7 @@ export default function ProductsPage() {
               <svg className="w-5 h-5 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <span className="text-white/90 font-medium">Secure Payment</span>
+              <span className="text-white/90 font-medium">{t('securePayment')}</span>
             </motion.div>
           </div>
         </motion.div>
@@ -323,11 +326,11 @@ export default function ProductsPage() {
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-4">
           <div className="flex items-center gap-2 text-sm text-neutral-600">
-            <Link href="/" className="hover:text-gold transition-colors">Home</Link>
+            <Link href="/" className="hover:text-gold transition-colors">{tc('nav.home')}</Link>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <span className="text-black font-medium">Products</span>
+            <span className="text-black font-medium">{tc('nav.products')}</span>
           </div>
         </div>
       </div>
@@ -356,20 +359,20 @@ export default function ProductsPage() {
           <aside className="hidden lg:block w-72 flex-shrink-0">
             <div className="sticky top-24 space-y-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-serif font-bold text-black">Filters</h3>
+                <h3 className="text-2xl font-serif font-bold text-black">{t('filters')}</h3>
                 {hasActiveFilters && (
                   <button
                     onClick={clearFilters}
                     className="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors shadow-sm hover:shadow-md"
                   >
-                    Clear All
+                    {t('clearAll')}
                   </button>
                 )}
               </div>
 
               {/* Categories Filter */}
               <div className="pb-6 border-b border-neutral-200">
-                <h4 className="text-lg font-semibold text-black mb-4">Categories</h4>
+                <h4 className="text-lg font-semibold text-black mb-4">{t('categories')}</h4>
                 {categoriesLoading ? (
                   <div className="space-y-3">
                     {[...Array(6)].map((_, i) => (
@@ -416,7 +419,7 @@ export default function ProductsPage() {
                         </label>
                       ))
                     ) : (
-                      <p className="text-sm text-neutral-500 italic">No categories available</p>
+                      <p className="text-sm text-neutral-500 italic">{t('noCategoriesAvailable')}</p>
                     )}
                   </div>
                 )}
@@ -425,7 +428,7 @@ export default function ProductsPage() {
               {/* Price Range */}
               <div className="pb-6 border-b border-neutral-200">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-semibold text-black">Price Range</h4>
+                  <h4 className="text-lg font-semibold text-black">{t('priceRange')}</h4>
                   <span className="text-sm font-bold text-gold">
                     ${priceRange[0].toLocaleString()} - ${priceRange[1].toLocaleString()}
                   </span>
@@ -447,7 +450,7 @@ export default function ProductsPage() {
                   </div>
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
-                      <label className="text-xs font-semibold text-neutral-700 mb-1.5 block">Min Price</label>
+                      <label className="text-xs font-semibold text-neutral-700 mb-1.5 block">{t('minPrice')}</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-semibold">$</span>
                         <input
@@ -461,7 +464,7 @@ export default function ProductsPage() {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <label className="text-xs font-semibold text-neutral-700 mb-1.5 block">Max Price</label>
+                      <label className="text-xs font-semibold text-neutral-700 mb-1.5 block">{t('maxPrice')}</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-semibold">$</span>
                         <input
@@ -481,7 +484,7 @@ export default function ProductsPage() {
               {/* Brands */}
               {brands.length > 0 && (
                 <div className="pb-6 border-b border-neutral-200">
-                  <h4 className="text-lg font-semibold text-black mb-4">Brands</h4>
+                  <h4 className="text-lg font-semibold text-black mb-4">{t('brands')}</h4>
                   <div className="space-y-3 max-h-48 overflow-y-auto">
                     {brands.map((brand) => (
                       <label key={brand} className="flex items-center gap-3 cursor-pointer group">
@@ -506,7 +509,7 @@ export default function ProductsPage() {
 
               {/* Availability */}
               <div className="pb-6 border-b border-neutral-200">
-                <h4 className="text-lg font-semibold text-black mb-4">Availability</h4>
+                <h4 className="text-lg font-semibold text-black mb-4">{t('availability')}</h4>
                 <div className="space-y-3">
                   <label className="flex items-center gap-3 cursor-pointer group hover:bg-neutral-50 -mx-3 px-3 py-2 rounded-lg transition-colors">
                     <input
@@ -516,7 +519,7 @@ export default function ProductsPage() {
                       className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 cursor-pointer"
                     />
                     <span className="text-neutral-800 group-hover:text-black transition-colors font-medium flex items-center gap-2">
-                      In Stock Only
+                      {t('inStockOnly')}
                       {inStockOnly && (
                         <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -532,7 +535,7 @@ export default function ProductsPage() {
                       className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 cursor-pointer"
                     />
                     <span className="text-neutral-800 group-hover:text-black transition-colors font-medium flex items-center gap-2">
-                      On Sale
+                      {t('onSale')}
                       {onSaleOnly && (
                         <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
@@ -555,10 +558,10 @@ export default function ProductsPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Applying...
+                    {t('applying')}
                   </>
                 ) : (
-                  'Apply Filters'
+                  t('applyFilters')
                 )}
               </button>
             </div>
@@ -587,11 +590,11 @@ export default function ProductsPage() {
                         <div>
                           <div className="flex items-baseline gap-2">
                             <span className="font-bold text-black text-2xl">{total.toLocaleString()}</span>
-                            <span className="text-neutral-600 text-sm font-medium">product{total !== 1 ? 's' : ''}</span>
+                            <span className="text-neutral-600 text-sm font-medium">{total !== 1 ? t('productsCount') : t('productCount')}</span>
                           </div>
                           {total > 0 && (
                             <span className="text-neutral-500 text-xs">
-                              Page {page} of {totalPages}
+                              {t('pageOf', { page, totalPages })}
                             </span>
                           )}
                         </div>
@@ -609,7 +612,7 @@ export default function ProductsPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
-                    Filters
+                    {t('filters')}
                     {hasActiveFilters && (
                       <span className="bg-white text-black rounded-full min-w-[24px] h-6 flex items-center justify-center text-xs font-bold px-2">
                         {[selectedCategories.length, selectedBrands.length, inStockOnly ? 1 : 0, onSaleOnly ? 1 : 0].reduce((a, b) => a + b, 0)}
@@ -629,8 +632,8 @@ export default function ProductsPage() {
                         ? 'bg-gradient-to-br from-[#CBB57B] to-[#A89968] text-white shadow-lg'
                         : 'text-neutral-600 hover:text-black hover:bg-white/80'
                         }`}
-                      aria-label="Grid layout"
-                      title="Grid View"
+                      aria-label={t('gridLayout')}
+                      title={t('gridView')}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -644,8 +647,8 @@ export default function ProductsPage() {
                         ? 'bg-gradient-to-br from-[#CBB57B] to-[#A89968] text-white shadow-lg'
                         : 'text-neutral-600 hover:text-black hover:bg-white/80'
                         }`}
-                      aria-label="List layout"
-                      title="List View"
+                      aria-label={t('listLayout')}
+                      title={t('listView')}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
@@ -659,12 +662,12 @@ export default function ProductsPage() {
                     onChange={(e) => handleSortChange(e.target.value)}
                     className="flex-1 sm:flex-initial px-4 py-3 border-2 border-neutral-200 rounded-xl text-sm font-semibold text-black focus:outline-none focus:border-[#CBB57B] focus:ring-2 focus:ring-[#CBB57B]/20 bg-white shadow-sm hover:border-neutral-300 transition-all cursor-pointer"
                   >
-                    <option value="relevance">Relevance</option>
-                    <option value="popular">Best Selling</option>
-                    <option value="rating">Highest Rated</option>
-                    <option value="newest">Newest First</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
+                    <option value="relevance">{t('relevance')}</option>
+                    <option value="popular">{t('bestSelling')}</option>
+                    <option value="rating">{t('highestRated')}</option>
+                    <option value="newest">{t('newestFirst')}</option>
+                    <option value="price-asc">{t('priceLowToHigh')}</option>
+                    <option value="price-desc">{t('priceHighToLow')}</option>
                   </select>
                 </div>
               </div>
@@ -673,7 +676,7 @@ export default function ProductsPage() {
             {/* Active Filters */}
             {hasActiveFilters && (
               <div className="mb-6 flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-neutral-600 font-medium">Active filters:</span>
+                <span className="text-sm text-neutral-600 font-medium">{t('activeFilters')}</span>
                 {selectedCategories.map((cat) => {
                   const category = categories.find(c => c.slug === cat);
                   return (
@@ -742,7 +745,7 @@ export default function ProductsPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="px-3 py-1.5 bg-gold/10 text-gold text-sm rounded-full flex items-center gap-2 font-medium"
                   >
-                    In Stock
+                    {t('inStock')}
                     <button
                       onClick={() => {
                         setInStockOnly(false);
@@ -770,7 +773,7 @@ export default function ProductsPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="px-3 py-1.5 bg-gold/10 text-gold text-sm rounded-full flex items-center gap-2 font-medium"
                   >
-                    On Sale
+                    {t('onSale')}
                     <button
                       onClick={() => {
                         setOnSaleOnly(false);
@@ -814,13 +817,13 @@ export default function ProductsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </motion.div>
-                <h3 className="text-2xl font-serif font-bold text-black mb-3">Unable to Load Products</h3>
+                <h3 className="text-2xl font-serif font-bold text-black mb-3">{t('unableToLoad')}</h3>
                 <p className="text-neutral-700 mb-2 font-medium">{error.message}</p>
                 {error.status && (
                   <p className="text-sm text-neutral-600 mb-8 max-w-md mx-auto">
                     {error.status === 0 || error.message.includes('Network')
-                      ? 'Unable to connect to the server. Please ensure the API is running on http://localhost:4000 and try again.'
-                      : `Error code: ${error.status}`}
+                      ? t('networkError')
+                      : t('errorCode', { status: error.status })}
                   </p>
                 )}
                 <div className="flex items-center justify-center gap-4">
@@ -831,13 +834,13 @@ export default function ProductsPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Try Again
+                    {t('tryAgain')}
                   </button>
                   <Link href="/" className="px-8 py-3.5 border-2 border-neutral-300 text-neutral-700 rounded-lg hover:border-gold hover:text-black transition-all duration-300 font-semibold flex items-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                     </svg>
-                    Go Home
+                    {t('goHome')}
                   </Link>
                 </div>
               </motion.div>
@@ -853,8 +856,8 @@ export default function ProductsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                   </svg>
                 </motion.div>
-                <h3 className="text-2xl font-serif font-bold text-black mb-3">No Products Found</h3>
-                <p className="text-neutral-600 mb-8 max-w-md mx-auto">We couldn't find any products matching your criteria. Try adjusting your filters or search terms.</p>
+                <h3 className="text-2xl font-serif font-bold text-black mb-3">{t('noProductsFound')}</h3>
+                <p className="text-neutral-600 mb-8 max-w-md mx-auto">{t('noProductsMessage')}</p>
                 <div className="flex items-center justify-center gap-4">
                   <button
                     onClick={clearFilters}
@@ -863,10 +866,10 @@ export default function ProductsPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    Clear All Filters
+                    {t('clearAllFilters')}
                   </button>
                   <Link href="/products" className="px-8 py-3.5 border-2 border-neutral-300 text-neutral-700 rounded-lg hover:border-gold hover:text-black transition-all duration-300 font-semibold flex items-center gap-2">
-                    View All Products
+                    {t('viewAllProducts')}
                   </Link>
                 </div>
               </div>
@@ -900,7 +903,7 @@ export default function ProductsPage() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                       </svg>
-                      Previous
+                      {tc('buttons.previous')}
                     </motion.button>
                     <div className="flex items-center gap-2">
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
@@ -936,7 +939,7 @@ export default function ProductsPage() {
                       disabled={page === totalPages}
                       className="px-6 py-3 border-2 border-neutral-200 rounded-xl text-sm font-semibold hover:border-[#CBB57B] hover:bg-[#CBB57B]/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-neutral-200 disabled:hover:bg-transparent flex items-center gap-2"
                     >
-                      Next
+                      {tc('buttons.next')}
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
@@ -967,7 +970,7 @@ export default function ProductsPage() {
               className="fixed left-0 top-0 bottom-0 w-80 bg-white z-50 lg:hidden overflow-y-auto p-6"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-serif font-bold">Filters</h2>
+                <h2 className="text-2xl font-serif font-bold">{t('filters')}</h2>
                 <button
                   onClick={() => setShowFilters(false)}
                   className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
@@ -982,7 +985,7 @@ export default function ProductsPage() {
               <div className="space-y-6">
                 {/* Categories */}
                 <div className="pb-6 border-b border-neutral-200">
-                  <h4 className="text-lg font-semibold text-black mb-4">Categories</h4>
+                  <h4 className="text-lg font-semibold text-black mb-4">{t('categories')}</h4>
                   {categoriesLoading ? (
                     <div className="space-y-3">
                       {[...Array(6)].map((_, i) => (
@@ -1031,7 +1034,7 @@ export default function ProductsPage() {
                           </label>
                         ))
                       ) : (
-                        <p className="text-sm text-neutral-500">No categories available</p>
+                        <p className="text-sm text-neutral-500">{t('noCategoriesAvailable')}</p>
                       )}
                     </div>
                   )}
@@ -1040,7 +1043,7 @@ export default function ProductsPage() {
                 {/* Brands */}
                 {brands.length > 0 && (
                   <div className="pb-6 border-b border-neutral-200">
-                    <h4 className="text-lg font-semibold text-black mb-4">Brands</h4>
+                    <h4 className="text-lg font-semibold text-black mb-4">{t('brands')}</h4>
                     <div className="space-y-3">
                       {brands.map((brand) => (
                         <label key={brand} className="flex items-center gap-3 cursor-pointer group">
@@ -1065,7 +1068,7 @@ export default function ProductsPage() {
 
                 {/* Availability */}
                 <div className="pb-6 border-b border-neutral-200">
-                  <h4 className="text-lg font-semibold text-black mb-4">Availability</h4>
+                  <h4 className="text-lg font-semibold text-black mb-4">{t('availability')}</h4>
                   <div className="space-y-3">
                     <label className="flex items-center gap-3 cursor-pointer group">
                       <input
@@ -1074,7 +1077,7 @@ export default function ProductsPage() {
                         onChange={(e) => setInStockOnly(e.target.checked)}
                         className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
                       />
-                      <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">In Stock Only</span>
+                      <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">{t('inStockOnly')}</span>
                     </label>
                     <label className="flex items-center gap-3 cursor-pointer group">
                       <input
@@ -1083,7 +1086,7 @@ export default function ProductsPage() {
                         onChange={(e) => setOnSaleOnly(e.target.checked)}
                         className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
                       />
-                      <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">On Sale</span>
+                      <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">{t('onSale')}</span>
                     </label>
                   </div>
                 </div>
@@ -1105,10 +1108,10 @@ export default function ProductsPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Applying...
+                      {t('applying')}
                     </>
                   ) : (
-                    'Apply Filters'
+                    t('applyFilters')
                   )}
                 </button>
                 <button
@@ -1118,7 +1121,7 @@ export default function ProductsPage() {
                   }}
                   className="w-full px-6 py-3 border border-neutral-200 text-neutral-700 font-semibold rounded-lg hover:border-gold transition-colors"
                 >
-                  Clear All
+                  {t('clearAll')}
                 </button>
               </div>
             </motion.div>

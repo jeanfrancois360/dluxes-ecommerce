@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -30,20 +31,20 @@ import {
 } from '@/lib/api/hot-deals';
 
 // Calculate time remaining
-function getTimeRemaining(expiresAt: string): { text: string; isExpired: boolean } {
+function getTimeRemaining(expiresAt: string, t: any): { text: string; isExpired: boolean } {
   const now = new Date();
   const expiry = new Date(expiresAt);
   const diff = expiry.getTime() - now.getTime();
 
-  if (diff <= 0) return { text: 'Expired', isExpired: true };
+  if (diff <= 0) return { text: t('expired'), isExpired: true };
 
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
   if (hours > 0) {
-    return { text: `${hours}h ${minutes}m remaining`, isExpired: false };
+    return { text: t('hoursRemaining', { hours, minutes }), isExpired: false };
   }
-  return { text: `${minutes}m remaining`, isExpired: false };
+  return { text: t('minutesRemaining', { minutes }), isExpired: false };
 }
 
 // Format date
@@ -63,6 +64,7 @@ interface ResponseFormData {
 }
 
 export default function HotDealDetailPage() {
+  const t = useTranslations('pages.hotDealsDetail');
   const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
@@ -91,13 +93,13 @@ export default function HotDealDetailPage() {
         const data = await hotDealsApi.getOne(dealId);
         setDeal(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load hot deal');
+        setError(err instanceof Error ? err.message : t('failedToLoad'));
       } finally {
         setIsLoading(false);
       }
     }
     fetchDeal();
-  }, [dealId]);
+  }, [dealId, t]);
 
   // Handle response submission
   const onSubmitResponse = async (data: ResponseFormData) => {
@@ -109,14 +111,14 @@ export default function HotDealDetailPage() {
     setIsSubmittingResponse(true);
     try {
       await hotDealsApi.respond(dealId, data);
-      toast.success('Response sent successfully!');
+      toast.success(t('responseSent'));
       reset();
       setShowResponseForm(false);
       // Refresh deal to show the new response
       const updatedDeal = await hotDealsApi.getOne(dealId);
       setDeal(updatedDeal);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send response');
+      toast.error(err instanceof Error ? err.message : t('failedToSend'));
     } finally {
       setIsSubmittingResponse(false);
     }
@@ -129,11 +131,11 @@ export default function HotDealDetailPage() {
     setIsMarkingFulfilled(true);
     try {
       await hotDealsApi.markFulfilled(dealId);
-      toast.success('Hot deal marked as fulfilled!');
+      toast.success(t('markedFulfilled'));
       const updatedDeal = await hotDealsApi.getOne(dealId);
       setDeal(updatedDeal);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to mark as fulfilled');
+      toast.error(err instanceof Error ? err.message : t('failedToMark'));
     } finally {
       setIsMarkingFulfilled(false);
     }
@@ -142,7 +144,7 @@ export default function HotDealDetailPage() {
   const isOwner = user && deal && user.id === deal.user.id;
   const hasResponded = deal?.responses?.some((r) => r.user.id === user?.id);
   const canRespond = isAuthenticated && !isOwner && deal?.status === 'ACTIVE' && !hasResponded;
-  const timeInfo = deal ? getTimeRemaining(deal.expiresAt) : null;
+  const timeInfo = deal ? getTimeRemaining(deal.expiresAt, t) : null;
 
   // Loading state
   if (isLoading) {
@@ -163,14 +165,14 @@ export default function HotDealDetailPage() {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Hot Deal Not Found</h2>
-              <p className="text-gray-600 mb-6">{error || 'This hot deal may have been removed or expired.'}</p>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('notFound')}</h2>
+              <p className="text-gray-600 mb-6">{error || t('mayBeRemoved')}</p>
               <Link
                 href="/hot-deals"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
-                Back to Hot Deals
+                {t('backToHotDeals')}
               </Link>
             </div>
           </div>
@@ -193,7 +195,7 @@ export default function HotDealDetailPage() {
               className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Hot Deals
+              {t('backToHotDeals')}
             </Link>
           </div>
         </div>
@@ -241,21 +243,21 @@ export default function HotDealDetailPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <MessageCircle className="w-4 h-4" />
-                      {deal._count?.responses || 0} responses
+                      {t('responsesCount', { count: deal._count?.responses || 0 })}
                     </div>
                   </div>
                 </div>
 
                 {/* Description */}
                 <div className="p-6 border-b border-gray-100">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-3">Description</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-3">{t('description')}</h2>
                   <p className="text-gray-600 whitespace-pre-wrap">{deal.description}</p>
                 </div>
 
                 {/* Contact Info (only for logged-in users) */}
                 {isAuthenticated ? (
                   <div className="p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-3">Contact Information</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3">{t('contactInformation')}</h2>
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <User className="w-5 h-5 text-gray-400" />
@@ -271,7 +273,7 @@ export default function HotDealDetailPage() {
                         </a>
                         {deal.preferredContact === 'PHONE' && (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                            Preferred
+                            {t('preferred')}
                           </span>
                         )}
                       </div>
@@ -285,7 +287,7 @@ export default function HotDealDetailPage() {
                         </a>
                         {deal.preferredContact === 'EMAIL' && (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                            Preferred
+                            {t('preferred')}
                           </span>
                         )}
                       </div>
@@ -296,13 +298,13 @@ export default function HotDealDetailPage() {
                     <div className="text-center">
                       <AlertCircle className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                       <p className="text-gray-600 mb-4">
-                        Log in to see contact information and respond to this hot deal.
+                        {t('logInToSee')}
                       </p>
                       <Link
                         href={`/auth/login?redirect=/hot-deals/${dealId}`}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
                       >
-                        Log In to Continue
+                        {t('logInToContinue')}
                       </Link>
                     </div>
                   </div>
@@ -323,27 +325,27 @@ export default function HotDealDetailPage() {
                       className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
                     >
                       <Send className="w-5 h-5" />
-                      Respond to This Request
+                      {t('respondToRequest')}
                     </button>
                   ) : (
                     <form onSubmit={handleSubmit(onSubmitResponse)}>
                       <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                        Send Your Response
+                        {t('sendYourResponse')}
                       </h2>
 
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Your Message <span className="text-red-500">*</span>
+                            {t('yourMessage')} <span className="text-red-500">*</span>
                           </label>
                           <textarea
                             {...register('message', {
-                              required: 'Message is required',
-                              minLength: { value: 20, message: 'Message must be at least 20 characters' },
-                              maxLength: { value: 500, message: 'Message cannot exceed 500 characters' },
+                              required: t('messageRequired'),
+                              minLength: { value: 20, message: t('messageMin') },
+                              maxLength: { value: 500, message: t('messageMax') },
                             })}
                             rows={4}
-                            placeholder="Introduce yourself and explain how you can help..."
+                            placeholder={t('messagePlaceholder')}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                           />
                           {errors.message && (
@@ -353,12 +355,12 @@ export default function HotDealDetailPage() {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Your Contact Info (optional)
+                            {t('yourContactInfo')}
                           </label>
                           <textarea
                             {...register('contactInfo')}
                             rows={2}
-                            placeholder="Phone: xxx-xxx-xxxx, Email: your@email.com"
+                            placeholder={t('contactPlaceholder')}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                           />
                         </div>
@@ -372,7 +374,7 @@ export default function HotDealDetailPage() {
                             }}
                             className="flex-1 px-6 py-3 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                           >
-                            Cancel
+                            {t('cancel')}
                           </button>
                           <button
                             type="submit"
@@ -384,7 +386,7 @@ export default function HotDealDetailPage() {
                             ) : (
                               <Send className="w-5 h-5" />
                             )}
-                            Send Response
+                            {t('sendResponse')}
                           </button>
                         </div>
                       </div>
@@ -398,7 +400,7 @@ export default function HotDealDetailPage() {
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-green-700">
                     <CheckCircle className="w-5 h-5" />
-                    <p className="font-medium">You have already responded to this hot deal.</p>
+                    <p className="font-medium">{t('alreadyResponded')}</p>
                   </div>
                 </div>
               )}
@@ -413,7 +415,7 @@ export default function HotDealDetailPage() {
                 >
                   <div className="p-6 border-b border-gray-100">
                     <h2 className="text-lg font-semibold text-gray-900">
-                      Responses ({deal.responses.length})
+                      {t('responses', { count: deal.responses.length })}
                     </h2>
                   </div>
                   <div className="divide-y divide-gray-100">
@@ -435,7 +437,7 @@ export default function HotDealDetailPage() {
                             <p className="text-gray-600 mb-3">{response.message}</p>
                             {response.contactInfo && (
                               <div className="bg-gray-50 rounded-lg p-3">
-                                <p className="text-sm font-medium text-gray-700 mb-1">Contact Info:</p>
+                                <p className="text-sm font-medium text-gray-700 mb-1">{t('contactInfo')}</p>
                                 <p className="text-sm text-gray-600 whitespace-pre-wrap">
                                   {response.contactInfo}
                                 </p>
@@ -460,7 +462,7 @@ export default function HotDealDetailPage() {
               >
                 {/* Posted By */}
                 <div className="mb-6">
-                  <p className="text-sm text-gray-500 mb-2">Posted by</p>
+                  <p className="text-sm text-gray-500 mb-2">{t('postedBy')}</p>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
                       <User className="w-5 h-5 text-gray-500" />
@@ -487,10 +489,10 @@ export default function HotDealDetailPage() {
                       ) : (
                         <CheckCircle className="w-5 h-5" />
                       )}
-                      Mark as Fulfilled
+                      {t('markAsFulfilled')}
                     </button>
                     <p className="text-xs text-gray-500 text-center mt-2">
-                      Mark when you've found help for your request
+                      {t('markHelper')}
                     </p>
                   </div>
                 )}
@@ -503,7 +505,7 @@ export default function HotDealDetailPage() {
                       <p className="text-sm font-medium">{timeInfo.text}</p>
                     </div>
                     <p className="text-xs text-orange-600 mt-1">
-                      This deal will expire automatically
+                      {t('expiresAutomatically')}
                     </p>
                   </div>
                 )}

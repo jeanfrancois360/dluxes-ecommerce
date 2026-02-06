@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
 import { inquiriesApi, Inquiry, InquiryStatus } from '@/lib/api/inquiries';
@@ -84,6 +85,7 @@ type FilterStatus = 'all' | InquiryStatus;
 export default function MyInquiriesPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const t = useTranslations('account.inquiries');
 
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -225,8 +227,8 @@ export default function MyInquiriesPage() {
                 </svg>
               </div>
               <div>
-                <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">My Inquiries</h1>
-                <p className="text-lg text-white/80">Track your property and vehicle inquiries</p>
+                <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">{t('title')}</h1>
+                <p className="text-lg text-white/80">{t('subtitle')}</p>
               </div>
             </motion.div>
 
@@ -239,15 +241,15 @@ export default function MyInquiriesPage() {
             >
               <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center">
                 <p className="text-2xl font-bold text-gold">{stats.total}</p>
-                <p className="text-xs text-white/60">Total</p>
+                <p className="text-xs text-white/60">{t('total')}</p>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center">
                 <p className="text-2xl font-bold text-blue-400">{stats.active}</p>
-                <p className="text-xs text-white/60">Active</p>
+                <p className="text-xs text-white/60">{t('active')}</p>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center">
                 <p className="text-2xl font-bold text-green-400">{stats.converted}</p>
-                <p className="text-xs text-white/60">Converted</p>
+                <p className="text-xs text-white/60">{t('converted')}</p>
               </div>
             </motion.div>
           </div>
@@ -272,7 +274,7 @@ export default function MyInquiriesPage() {
                     : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                 }`}
               >
-                All ({inquiries.length})
+                {t('all')} ({inquiries.length})
               </button>
               {(['NEW', 'CONTACTED', 'VIEWING_SCHEDULED', 'TEST_DRIVE_SCHEDULED', 'NEGOTIATING', 'CONVERTED', 'CLOSED'] as InquiryStatus[]).map(
                 (status) => {
@@ -329,13 +331,13 @@ export default function MyInquiriesPage() {
                   />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold mb-2">Failed to Load Inquiries</h3>
+              <h3 className="text-xl font-bold mb-2">{t('failedToLoad')}</h3>
               <p className="text-neutral-500 mb-6">{error}</p>
               <button
                 onClick={() => window.location.reload()}
                 className="px-6 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all"
               >
-                Try Again
+                {t('tryAgain')}
               </button>
             </motion.div>
           ) : filteredInquiries.length === 0 ? (
@@ -355,19 +357,19 @@ export default function MyInquiriesPage() {
                 </svg>
               </div>
               <h3 className="text-2xl font-bold font-['Poppins'] mb-2">
-                {filterStatus === 'all' ? 'No Inquiries Yet' : `No ${STATUS_CONFIG[filterStatus as InquiryStatus].label} Inquiries`}
+                {filterStatus === 'all' ? t('noInquiriesYet') : `No ${STATUS_CONFIG[filterStatus as InquiryStatus].label} Inquiries`}
               </h3>
               <p className="text-neutral-500 mb-8">
                 {filterStatus === 'all'
-                  ? "You haven't submitted any inquiries for properties or vehicles yet."
-                  : 'No inquiries match this filter.'}
+                  ? t('noInquiriesDesc')
+                  : t('noInquiriesMatch')}
               </p>
               {filterStatus === 'all' && (
                 <Link
                   href="/products?type=REAL_ESTATE,VEHICLE"
                   className="inline-block px-8 py-4 bg-gold text-black font-semibold rounded-xl hover:bg-gold/90 transition-all"
                 >
-                  Browse Properties & Vehicles
+                  {t('browsePropertiesVehicles')}
                 </Link>
               )}
             </motion.div>
@@ -417,7 +419,7 @@ export default function MyInquiriesPage() {
                             )}
                             {/* Product Type Badge */}
                             <div className="absolute top-2 left-2 px-2 py-1 bg-black/70 rounded-lg text-xs text-white font-medium">
-                              {inquiry.product?.productType === 'REAL_ESTATE' ? 'Property' : 'Vehicle'}
+                              {inquiry.product?.productType === 'REAL_ESTATE' ? t('property') : t('vehicle')}
                             </div>
                           </div>
 
@@ -430,7 +432,7 @@ export default function MyInquiriesPage() {
                                   onClick={(e) => e.stopPropagation()}
                                   className="text-lg font-bold font-['Poppins'] text-neutral-800 hover:text-gold transition-colors line-clamp-1"
                                 >
-                                  {inquiry.product?.name || 'Unknown Product'}
+                                  {inquiry.product?.name || t('unknownProduct')}
                                 </Link>
                                 {inquiry.store && (
                                   <p className="text-sm text-neutral-500">by {inquiry.store.name}</p>
@@ -460,7 +462,7 @@ export default function MyInquiriesPage() {
                                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                                   />
                                 </svg>
-                                Submitted {formatDate(inquiry.createdAt)}
+                                {t('submitted')} {formatDate(inquiry.createdAt)}
                               </span>
                               {inquiry.respondedAt && (
                                 <span className="flex items-center gap-1 text-green-600">
@@ -472,7 +474,7 @@ export default function MyInquiriesPage() {
                                       d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                                     />
                                   </svg>
-                                  Responded
+                                  {t('responded')}
                                 </span>
                               )}
                               {inquiry.scheduledViewing && (
@@ -491,7 +493,7 @@ export default function MyInquiriesPage() {
                                       d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                                     />
                                   </svg>
-                                  Viewing: {formatDate(inquiry.scheduledViewing)}
+                                  {t('viewing')}: {formatDate(inquiry.scheduledViewing)}
                                 </span>
                               )}
                               {inquiry.scheduledTestDrive && (
@@ -504,7 +506,7 @@ export default function MyInquiriesPage() {
                                       d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"
                                     />
                                   </svg>
-                                  Test Drive: {formatDate(inquiry.scheduledTestDrive)}
+                                  {t('testDrive')}: {formatDate(inquiry.scheduledTestDrive)}
                                 </span>
                               )}
                             </div>
@@ -539,16 +541,16 @@ export default function MyInquiriesPage() {
                               <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Your Inquiry */}
                                 <div>
-                                  <h4 className="font-bold text-neutral-800 mb-3">Your Inquiry</h4>
+                                  <h4 className="font-bold text-neutral-800 mb-3">{t('yourInquiry')}</h4>
                                   <div className="bg-neutral-50 rounded-xl p-4 space-y-3">
                                     <div>
-                                      <p className="text-xs text-neutral-500 uppercase tracking-wide mb-1">Message</p>
+                                      <p className="text-xs text-neutral-500 uppercase tracking-wide mb-1">{t('message')}</p>
                                       <p className="text-sm text-neutral-700">{inquiry.message}</p>
                                     </div>
                                     {inquiry.preferredContact && (
                                       <div>
                                         <p className="text-xs text-neutral-500 uppercase tracking-wide mb-1">
-                                          Preferred Contact
+                                          {t('preferredContact')}
                                         </p>
                                         <p className="text-sm text-neutral-700 capitalize">{inquiry.preferredContact}</p>
                                       </div>
@@ -556,7 +558,7 @@ export default function MyInquiriesPage() {
                                     {inquiry.preferredTime && (
                                       <div>
                                         <p className="text-xs text-neutral-500 uppercase tracking-wide mb-1">
-                                          Preferred Time
+                                          {t('preferredTime')}
                                         </p>
                                         <p className="text-sm text-neutral-700 capitalize">{inquiry.preferredTime}</p>
                                       </div>
@@ -570,7 +572,7 @@ export default function MyInquiriesPage() {
                                             clipRule="evenodd"
                                           />
                                         </svg>
-                                        <span className="text-sm font-medium">Pre-approved for financing</span>
+                                        <span className="text-sm font-medium">{t('preApprovedFinancing')}</span>
                                       </div>
                                     )}
                                     {inquiry.tradeInInterest && (
@@ -582,7 +584,7 @@ export default function MyInquiriesPage() {
                                             clipRule="evenodd"
                                           />
                                         </svg>
-                                        <span className="text-sm font-medium">Interested in trade-in</span>
+                                        <span className="text-sm font-medium">{t('interestedInTradeIn')}</span>
                                       </div>
                                     )}
                                   </div>
@@ -590,7 +592,7 @@ export default function MyInquiriesPage() {
 
                                 {/* Status Timeline */}
                                 <div>
-                                  <h4 className="font-bold text-neutral-800 mb-3">Status History</h4>
+                                  <h4 className="font-bold text-neutral-800 mb-3">{t('statusHistory')}</h4>
                                   <div className="bg-neutral-50 rounded-xl p-4 space-y-3">
                                     <div className="flex items-start gap-3">
                                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -604,7 +606,7 @@ export default function MyInquiriesPage() {
                                         </svg>
                                       </div>
                                       <div>
-                                        <p className="text-sm font-medium text-neutral-800">Inquiry Submitted</p>
+                                        <p className="text-sm font-medium text-neutral-800">{t('inquirySubmitted')}</p>
                                         <p className="text-xs text-neutral-500">{formatDateTime(inquiry.createdAt)}</p>
                                       </div>
                                     </div>
@@ -626,7 +628,7 @@ export default function MyInquiriesPage() {
                                           </svg>
                                         </div>
                                         <div>
-                                          <p className="text-sm font-medium text-neutral-800">Seller Responded</p>
+                                          <p className="text-sm font-medium text-neutral-800">{t('sellerResponded')}</p>
                                           <p className="text-xs text-neutral-500">{formatDateTime(inquiry.respondedAt)}</p>
                                         </div>
                                       </div>
@@ -650,7 +652,7 @@ export default function MyInquiriesPage() {
                                         </div>
                                         <div>
                                           <p className="text-sm font-medium text-neutral-800">{statusConfig.label}</p>
-                                          <p className="text-xs text-neutral-500">Current status</p>
+                                          <p className="text-xs text-neutral-500">{t('currentStatus')}</p>
                                         </div>
                                       </div>
                                     )}
@@ -678,7 +680,7 @@ export default function MyInquiriesPage() {
                                       d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                                     />
                                   </svg>
-                                  View {inquiry.product?.productType === 'REAL_ESTATE' ? 'Property' : 'Vehicle'}
+                                  {inquiry.product?.productType === 'REAL_ESTATE' ? t('viewProperty') : t('viewVehicle')}
                                 </Link>
                                 <a
                                   href={`mailto:${inquiry.store?.name || 'seller'}?subject=Re: Inquiry for ${inquiry.product?.name}`}
@@ -692,7 +694,7 @@ export default function MyInquiriesPage() {
                                       d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                                     />
                                   </svg>
-                                  Contact Seller
+                                  {t('contactSeller')}
                                 </a>
                               </div>
                             </div>

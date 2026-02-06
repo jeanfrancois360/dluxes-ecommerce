@@ -15,6 +15,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 interface ShipmentEvent {
   id: string;
@@ -101,6 +102,7 @@ function formatDate(dateString: string) {
 }
 
 export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps) {
+  const t = useTranslations('components.shipmentCard');
   const { icon: StatusIcon, color: iconColor } = getStatusIcon(shipment.status);
   const [expanded, setExpanded] = React.useState(false);
 
@@ -142,7 +144,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
             <div className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-neutral-400" />
               <div>
-                <p className="text-xs text-neutral-500">Carrier</p>
+                <p className="text-xs text-neutral-500">{t('carrier')}</p>
                 <p className="text-sm font-medium text-black">{shipment.carrier}</p>
               </div>
             </div>
@@ -151,7 +153,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
             <div className="flex items-center gap-2">
               <Package className="w-4 h-4 text-neutral-400" />
               <div>
-                <p className="text-xs text-neutral-500">Tracking Number</p>
+                <p className="text-xs text-neutral-500">{t('trackingNumber')}</p>
                 <p className="text-sm font-mono font-medium text-black">
                   {shipment.trackingNumber}
                 </p>
@@ -169,14 +171,14 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
             className="flex items-center gap-2 text-sm text-gold hover:text-gold/80 transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
-            Track Package
+            {t('trackPackage')}
           </a>
         )}
 
         {/* Items */}
         <div>
           <p className="text-xs font-medium text-neutral-600 mb-2">
-            Items in this shipment ({shipment.items.length})
+            {t('itemsInShipment', { count: shipment.items.length })}
           </p>
           <div className="space-y-1">
             {shipment.items.map((item) => (
@@ -196,7 +198,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-neutral-400" />
               <div>
-                <p className="text-xs text-neutral-500">Est. Delivery</p>
+                <p className="text-xs text-neutral-500">{t('estDelivery')}</p>
                 <p className="font-medium text-black">
                   {formatDate(shipment.estimatedDelivery)}
                 </p>
@@ -207,7 +209,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
             <div className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-neutral-400" />
               <div>
-                <p className="text-xs text-neutral-500">Shipped</p>
+                <p className="text-xs text-neutral-500">{t('shipped')}</p>
                 <p className="font-medium text-black">
                   {formatDate(shipment.shippedAt)}
                 </p>
@@ -218,7 +220,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
             <div className="flex items-center gap-2 col-span-2">
               <CheckCircle2 className="w-4 h-4 text-green-600" />
               <div>
-                <p className="text-xs text-neutral-500">Delivered</p>
+                <p className="text-xs text-neutral-500">{t('delivered')}</p>
                 <p className="font-medium text-green-600">
                   {formatDate(shipment.deliveredAt)}
                 </p>
@@ -232,7 +234,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
           <div className="flex items-center gap-4 text-sm">
             {shipment.shippingCost && (
               <div>
-                <p className="text-xs text-neutral-500">Shipping Cost</p>
+                <p className="text-xs text-neutral-500">{t('shippingCost')}</p>
                 <p className="font-medium text-black">
                   {formatCurrency(Number(shipment.shippingCost), currency)}
                 </p>
@@ -240,7 +242,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
             )}
             {shipment.weight && (
               <div>
-                <p className="text-xs text-neutral-500">Weight</p>
+                <p className="text-xs text-neutral-500">{t('weight')}</p>
                 <p className="font-medium text-black">{Number(shipment.weight)} kg</p>
               </div>
             )}
@@ -250,7 +252,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
         {/* Notes */}
         {shipment.notes && (
           <div className="p-3 bg-neutral-50 rounded-lg">
-            <p className="text-xs font-medium text-neutral-600 mb-1">Notes</p>
+            <p className="text-xs font-medium text-neutral-600 mb-1">{t('notes')}</p>
             <p className="text-sm text-neutral-700">{shipment.notes}</p>
           </div>
         )}
@@ -261,7 +263,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
             onClick={() => setExpanded(!expanded)}
             className="w-full flex items-center justify-between text-sm font-medium text-neutral-700 hover:text-black transition-colors"
           >
-            <span>Tracking Timeline ({shipment.events.length} events)</span>
+            <span>{t('trackingTimeline', { count: shipment.events.length })}</span>
             <ChevronRight
               className={`w-4 h-4 transition-transform ${expanded ? 'rotate-90' : ''}`}
             />

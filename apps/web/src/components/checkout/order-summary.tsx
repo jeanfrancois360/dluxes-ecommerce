@@ -7,6 +7,7 @@ import { cn } from '@nextpik/ui';
 import type { CartItem } from '@/contexts/cart-context';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { useSelectedCurrency, useCurrencyConverter, useCurrencyRates } from '@/hooks/use-currency';
+import { useTranslations } from 'next-intl';
 
 interface OrderSummaryProps {
   items: CartItem[];
@@ -38,6 +39,7 @@ export function OrderSummary({
   className,
   hasShippingAddress = false, // Default to false if not provided
 }: OrderSummaryProps) {
+  const t = useTranslations('components.orderSummary');
   const [isSticky, setIsSticky] = useState(false);
   const [showPromo, setShowPromo] = useState(false);
   const [promoInput, setPromoInput] = useState('');
@@ -60,7 +62,7 @@ export function OrderSummary({
 
   const handleApplyPromo = () => {
     if (!promoInput.trim()) {
-      setPromoError('Please enter a promo code');
+      setPromoError(t('pleaseEnterPromoCode'));
       return;
     }
 
@@ -113,9 +115,9 @@ export function OrderSummary({
     >
       {/* Header */}
       <div className="p-6 border-b border-neutral-200 bg-gradient-to-br from-neutral-50 to-white">
-        <h2 className="text-xl font-serif font-bold text-black">Order Summary</h2>
+        <h2 className="text-xl font-serif font-bold text-black">{t('orderSummary')}</h2>
         <p className="text-sm text-neutral-600 mt-1">
-          {items.length} {items.length === 1 ? 'item' : 'items'}
+          {items.length} {items.length === 1 ? t('item') : t('items')}
         </p>
       </div>
 
@@ -153,7 +155,7 @@ export function OrderSummary({
               )}
               <h4 className="text-sm font-medium text-black truncate">{item.name}</h4>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-xs text-neutral-500">Qty: {item.quantity}</span>
+                <span className="text-xs text-neutral-500">{t('qty')}: {item.quantity}</span>
                 <span className="text-sm font-serif font-semibold text-gold">
                   {/* 🔒 Use locked price (priceAtAdd) if available, otherwise convert from USD */}
                   {formatWithCurrency(
@@ -185,7 +187,7 @@ export function OrderSummary({
                     d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
                   />
                 </svg>
-                Add Promo Code
+                {t('addPromoCode')}
               </span>
               <svg
                 className={cn('w-5 h-5 transition-transform', showPromo && 'rotate-180')}
@@ -214,7 +216,7 @@ export function OrderSummary({
                         setPromoInput(e.target.value.toUpperCase());
                         setPromoError('');
                       }}
-                      placeholder="Enter code"
+                      placeholder={t('enterCode')}
                       className={cn(
                         'flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-gold transition-colors',
                         promoError ? 'border-red-500' : 'border-neutral-200'
@@ -224,7 +226,7 @@ export function OrderSummary({
                       onClick={handleApplyPromo}
                       className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
                     >
-                      Apply
+                      {t('apply')}
                     </button>
                   </div>
                   {promoError && (
@@ -245,8 +247,8 @@ export function OrderSummary({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <div>
-                <p className="text-sm font-medium text-green-900">Code: {appliedPromo}</p>
-                <p className="text-xs text-green-700">Discount applied!</p>
+                <p className="text-sm font-medium text-green-900">{t('code')}: {appliedPromo}</p>
+                <p className="text-xs text-green-700">{t('discountApplied')}</p>
               </div>
             </div>
             <button
@@ -265,23 +267,23 @@ export function OrderSummary({
       <div className="p-6 border-t border-neutral-200 space-y-3">
         {/* Subtotal */}
         <div className="flex justify-between text-sm">
-          <span className="text-neutral-600">Subtotal</span>
+          <span className="text-neutral-600">{t('subtotal')}</span>
           <span className="font-medium text-black">{formatWithCurrency(subtotal, false)}</span>
         </div>
 
         {/* Shipping */}
         <div className="flex justify-between text-sm">
           <div className="flex items-center gap-1">
-            <span className="text-neutral-600">Shipping</span>
+            <span className="text-neutral-600">{t('shipping')}</span>
             {shippingMethod && (
               <span className="text-xs text-neutral-500">({shippingMethod.name})</span>
             )}
           </div>
           <span className="font-medium text-black">
             {!hasShippingAddress ? (
-              <span className="text-neutral-400 text-xs">Calculated at next step</span>
+              <span className="text-neutral-400 text-xs">{t('calculatedAtNextStep')}</span>
             ) : shipping === 0 ? (
-              <span className="text-green-600 font-semibold">Free</span>
+              <span className="text-green-600 font-semibold">{t('free')}</span>
             ) : (
               formatWithCurrency(shipping, false)
             )}
@@ -290,10 +292,10 @@ export function OrderSummary({
 
         {/* Tax */}
         <div className="flex justify-between text-sm">
-          <span className="text-neutral-600">Tax (estimated)</span>
+          <span className="text-neutral-600">{t('taxEstimated')}</span>
           <span className="font-medium text-black">
             {!hasShippingAddress ? (
-              <span className="text-neutral-400 text-xs">Calculated at next step</span>
+              <span className="text-neutral-400 text-xs">{t('calculatedAtNextStep')}</span>
             ) : (
               formatWithCurrency(tax, false)
             )}
@@ -307,7 +309,7 @@ export function OrderSummary({
             animate={{ opacity: 1, y: 0 }}
             className="flex justify-between text-sm"
           >
-            <span className="text-green-600">Discount</span>
+            <span className="text-green-600">{t('discount')}</span>
             <span className="font-medium text-green-600">-{formatWithCurrency(discount, false)}</span>
           </motion.div>
         )}
@@ -315,7 +317,7 @@ export function OrderSummary({
         {/* Total */}
         <div className="pt-3 border-t border-neutral-200">
           <div className="flex justify-between items-center">
-            <span className="text-lg font-serif font-bold text-black">Total</span>
+            <span className="text-lg font-serif font-bold text-black">{t('total')}</span>
             <div className="text-right">
               {discount > 0 && (
                 <p className="text-sm text-neutral-500 line-through">{formatWithCurrency(total, false)}</p>

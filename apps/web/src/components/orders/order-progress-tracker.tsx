@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
 
@@ -14,15 +15,16 @@ interface OrderProgressTrackerProps {
   className?: string;
 }
 
-const STEPS = [
-  { key: 'pending', label: 'Order Placed', icon: '📝' },
-  { key: 'confirmed', label: 'Confirmed', icon: '✓' },
-  { key: 'processing', label: 'Processing', icon: '⚙️' },
-  { key: 'shipped', label: 'Shipped', icon: '📦' },
-  { key: 'delivered', label: 'Delivered', icon: '🎉' },
-];
-
 export function OrderProgressTracker({ currentStatus, timeline = [], className }: OrderProgressTrackerProps) {
+  const t = useTranslations('components.orderProgressTracker');
+
+  const STEPS = [
+    { key: 'pending', label: t('orderPlaced'), icon: '📝' },
+    { key: 'confirmed', label: t('confirmed'), icon: '✓' },
+    { key: 'processing', label: t('processing'), icon: '⚙️' },
+    { key: 'shipped', label: t('shipped'), icon: '📦' },
+    { key: 'delivered', label: t('delivered'), icon: '🎉' },
+  ];
   // Handle cancelled or refunded orders
   if (currentStatus === 'cancelled' || currentStatus === 'refunded') {
     return (
@@ -32,11 +34,11 @@ export function OrderProgressTracker({ currentStatus, timeline = [], className }
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
           <div>
-            <h3 className="font-bold text-lg">Order {currentStatus === 'cancelled' ? 'Cancelled' : 'Refunded'}</h3>
+            <h3 className="font-bold text-lg">{currentStatus === 'cancelled' ? t('orderCancelled') : t('orderRefunded')}</h3>
             <p className="text-sm">
               {currentStatus === 'cancelled'
-                ? 'This order has been cancelled and will not be processed.'
-                : 'This order has been refunded. The amount will be returned to your payment method.'}
+                ? t('cancelledMessage')
+                : t('refundedMessage')}
             </p>
           </div>
         </div>

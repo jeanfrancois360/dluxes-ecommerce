@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { storesAPI, Store } from '@/lib/api/stores';
 import { useAuth } from '@/hooks/use-auth';
@@ -52,6 +53,7 @@ function FollowedStoreCard({
   store: FollowedStore;
   onUnfollow: (storeId: string) => void;
 }) {
+  const t = useTranslations('account.following');
   const [isUnfollowing, setIsUnfollowing] = useState(false);
   const averageRating = store.rating ? Number(store.rating) : 0;
   const location = [store.city, store.country].filter(Boolean).join(', ');
@@ -60,10 +62,10 @@ function FollowedStoreCard({
     setIsUnfollowing(true);
     try {
       await storesAPI.unfollowStore(store.id);
-      toast.success(`Unfollowed ${store.name}`);
+      toast.success(t('unfollowed', { name: store.name }));
       onUnfollow(store.id);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to unfollow store');
+      toast.error(error.response?.data?.message || t('failedUnfollow'));
     } finally {
       setIsUnfollowing(false);
     }
@@ -95,7 +97,7 @@ function FollowedStoreCard({
           {store.vacationMode && (
             <div className="absolute top-2 left-2 px-2 py-1 bg-amber-500/90 backdrop-blur-sm rounded-full flex items-center gap-1">
               <Palmtree className="w-3 h-3 text-white" />
-              <span className="text-xs font-medium text-white">On Vacation</span>
+              <span className="text-xs font-medium text-white">{t('onVacation')}</span>
             </div>
           )}
 
@@ -103,7 +105,7 @@ function FollowedStoreCard({
           {store.verified && (
             <div className="absolute top-2 right-2 px-2 py-1 bg-blue-500/90 backdrop-blur-sm rounded-full flex items-center gap-1">
               <Shield className="w-3 h-3 text-white" />
-              <span className="text-xs font-medium text-white">Verified</span>
+              <span className="text-xs font-medium text-white">{t('verified')}</span>
             </div>
           )}
         </div>
@@ -167,7 +169,7 @@ function FollowedStoreCard({
         <div className="flex items-center gap-4 text-xs text-neutral-500 mb-3">
           <div className="flex items-center gap-1">
             <Package className="w-3.5 h-3.5" />
-            <span>{store.totalProducts} products</span>
+            <span>{store.totalProducts} {t('products')}</span>
           </div>
           {location && (
             <div className="flex items-center gap-1">
@@ -180,7 +182,7 @@ function FollowedStoreCard({
         {/* Followed date & Unfollow button */}
         <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
           <span className="text-xs text-neutral-400">
-            Following since {new Date(store.followedAt).toLocaleDateString('en-US', {
+            {t('followingSince')} {new Date(store.followedAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric',
@@ -196,7 +198,7 @@ function FollowedStoreCard({
             ) : (
               <Heart className="w-4 h-4 fill-pink-500" />
             )}
-            <span>{isUnfollowing ? 'Unfollowing...' : 'Unfollow'}</span>
+            <span>{isUnfollowing ? t('unfollowing') : t('unfollow')}</span>
           </button>
         </div>
       </div>
@@ -223,27 +225,29 @@ function StoreCardSkeleton() {
 
 // Empty State
 function EmptyState() {
+  const t = useTranslations('account.following');
   return (
     <div className="text-center py-16">
       <div className="w-20 h-20 mx-auto bg-pink-50 rounded-full flex items-center justify-center mb-6">
         <Heart className="w-10 h-10 text-pink-300" />
       </div>
-      <h3 className="text-xl font-bold text-neutral-900 mb-2">No stores followed yet</h3>
+      <h3 className="text-xl font-bold text-neutral-900 mb-2">{t('noStoresFollowed')}</h3>
       <p className="text-neutral-500 max-w-md mx-auto mb-6">
-        Start exploring stores and follow your favorites to see them here!
+        {t('startExploring')}
       </p>
       <Link
         href="/stores"
         className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-black font-semibold rounded-xl hover:bg-gold/90 transition-colors"
       >
         <StoreIcon className="w-5 h-5" />
-        Browse Stores
+        {t('browseStores')}
       </Link>
     </div>
   );
 }
 
 export default function FollowingStoresPage() {
+  const t = useTranslations('account.following');
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [page, setPage] = useState(1);
   const pageSize = 12;
@@ -300,15 +304,15 @@ export default function FollowingStoresPage() {
             <div className="w-20 h-20 mx-auto bg-neutral-100 rounded-full flex items-center justify-center mb-6">
               <Heart className="w-10 h-10 text-neutral-400" />
             </div>
-            <h1 className="text-2xl font-bold text-neutral-900 mb-2">Sign in required</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 mb-2">{t('signInRequired')}</h1>
             <p className="text-neutral-600 mb-6">
-              Please sign in to view your followed stores.
+              {t('signInToView')}
             </p>
             <Link
               href="/auth/login?redirect=/account/following"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-black font-semibold rounded-xl hover:bg-gold/90 transition-colors"
             >
-              Sign In
+              {t('signIn')}
             </Link>
           </div>
         </div>
@@ -334,11 +338,11 @@ export default function FollowingStoresPage() {
                 <Heart className="w-8 h-8 text-white fill-white" />
               </div>
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold mb-1">Following</h1>
+                <h1 className="text-3xl md:text-4xl font-bold mb-1">{t('title')}</h1>
                 <p className="text-lg text-white/80">
                   {totalStores > 0
-                    ? `${totalStores} store${totalStores === 1 ? '' : 's'} you follow`
-                    : 'Stores you love, all in one place'}
+                    ? (totalStores === 1 ? t('storesYouFollow', { count: totalStores }) : t('storesYouFollowPlural', { count: totalStores }))
+                    : t('storesYouLove')}
                 </p>
               </div>
             </motion.div>
@@ -353,7 +357,7 @@ export default function FollowingStoresPage() {
             className="inline-flex items-center gap-2 text-neutral-600 hover:text-black mb-6 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
-            <span>Back to Dashboard</span>
+            <span>{t('backToDashboard')}</span>
           </Link>
 
           {/* Error State */}
@@ -362,8 +366,8 @@ export default function FollowingStoresPage() {
               <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-6">
                 <StoreIcon className="w-10 h-10 text-red-500" />
               </div>
-              <h3 className="text-xl font-bold text-neutral-900 mb-2">Failed to load stores</h3>
-              <p className="text-neutral-500">Please try again later.</p>
+              <h3 className="text-xl font-bold text-neutral-900 mb-2">{t('failedLoadStores')}</h3>
+              <p className="text-neutral-500">{t('tryAgainLater')}</p>
             </div>
           )}
 

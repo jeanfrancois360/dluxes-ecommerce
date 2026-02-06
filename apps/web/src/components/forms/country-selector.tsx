@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { countries, popularCountries, type Country } from '@/lib/data/countries';
+import { useTranslations } from 'next-intl';
 
 interface CountrySelectorProps {
   value: string;
@@ -16,15 +17,18 @@ export function CountrySelector({
   value,
   onChange,
   error,
-  placeholder = 'Select a country',
+  placeholder,
   className = '',
 }: CountrySelectorProps) {
+  const t = useTranslations('components.countrySelector');
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  const defaultPlaceholder = placeholder || t('selectCountry');
 
   // Get selected country
   const selectedCountry = countries.find(c => c.name === value);
@@ -141,7 +145,7 @@ export function CountrySelector({
               <span className="text-neutral-900">{selectedCountry.name}</span>
             </>
           ) : (
-            <span className="text-neutral-400">{placeholder}</span>
+            <span className="text-neutral-400">{defaultPlaceholder}</span>
           )}
         </span>
         <svg
@@ -186,7 +190,7 @@ export function CountrySelector({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Search countries..."
+                  placeholder={t('searchPlaceholder')}
                   className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:border-gold text-sm"
                 />
               </div>
@@ -209,8 +213,8 @@ export function CountrySelector({
                       d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <p className="text-sm font-medium">No countries found</p>
-                  <p className="text-xs mt-1">Try a different search term</p>
+                  <p className="text-sm font-medium">{t('noCountriesFound')}</p>
+                  <p className="text-xs mt-1">{t('tryDifferentSearch')}</p>
                 </div>
               ) : (
                 <>
@@ -218,7 +222,7 @@ export function CountrySelector({
                   {!searchQuery.trim() && popularFiltered.length > 0 && (
                     <div>
                       <div className="px-4 py-2 bg-neutral-100 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                        Popular Countries
+                        {t('popularCountries')}
                       </div>
                       {popularFiltered.map((country, index) => (
                         <button
@@ -253,7 +257,7 @@ export function CountrySelector({
                   {!searchQuery.trim() && otherFiltered.length > 0 && (
                     <div>
                       <div className="px-4 py-2 bg-neutral-100 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                        All Countries
+                        {t('allCountries')}
                       </div>
                       {otherFiltered.map((country, index) => {
                         const actualIndex = popularFiltered.length + index;
@@ -291,7 +295,7 @@ export function CountrySelector({
                   {searchQuery.trim() && (
                     <div>
                       <div className="px-4 py-2 bg-neutral-100 text-xs font-semibold text-neutral-600">
-                        {filteredCountries.length} {filteredCountries.length === 1 ? 'result' : 'results'}
+                        {filteredCountries.length === 1 ? t('result', { count: filteredCountries.length }) : t('results', { count: filteredCountries.length })}
                       </div>
                       {filteredCountries.map((country, index) => (
                         <button

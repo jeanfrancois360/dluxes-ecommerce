@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { TokenManager } from '@/lib/api/client';
 
 /**
@@ -16,6 +17,7 @@ import { TokenManager } from '@/lib/api/client';
  */
 export default function AccountDashboard() {
   const router = useRouter();
+  const t = useTranslations('account');
 
   useEffect(() => {
     const token = TokenManager.getAccessToken();
@@ -57,7 +59,7 @@ export default function AccountDashboard() {
     <div className="min-h-screen flex items-center justify-center bg-neutral-50">
       <div className="text-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-black mb-4"></div>
-        <p className="text-neutral-600">Redirecting to your dashboard...</p>
+        <p className="text-neutral-600">{t('redirect.redirecting')}</p>
       </div>
     </div>
   );

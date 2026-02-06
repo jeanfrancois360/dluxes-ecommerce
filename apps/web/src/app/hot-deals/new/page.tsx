@@ -18,6 +18,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CardElement, useStripe, useElements, Elements } from '@stripe/react-stripe-js';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
 import { getStripe } from '@/lib/stripe';
@@ -31,22 +32,11 @@ import {
   ContactMethod,
 } from '@/lib/api/hot-deals';
 
-const URGENCY_OPTIONS = [
-  { value: 'NORMAL', label: 'Normal', description: 'Standard urgency' },
-  { value: 'URGENT', label: 'Urgent', description: 'Need help soon' },
-  { value: 'EMERGENCY', label: 'Emergency', description: 'Need help ASAP' },
-];
-
-const CONTACT_OPTIONS = [
-  { value: 'PHONE', label: 'Phone', icon: Phone },
-  { value: 'EMAIL', label: 'Email', icon: Mail },
-  { value: 'BOTH', label: 'Both', icon: null },
-];
-
 interface FormData extends CreateHotDealData {}
 
 // Payment form component (uses Stripe Elements)
 function HotDealForm() {
+  const t = useTranslations('pages.hotDealsNew');
   const router = useRouter();
   const { user } = useAuth();
   const stripe = useStripe();
@@ -72,6 +62,18 @@ function HotDealForm() {
     },
   });
 
+  const URGENCY_OPTIONS = [
+    { value: 'NORMAL', label: t('normal'), description: t('normalDesc') },
+    { value: 'URGENT', label: t('urgent'), description: t('urgentDesc') },
+    { value: 'EMERGENCY', label: t('emergency'), description: t('emergencyDesc') },
+  ];
+
+  const CONTACT_OPTIONS = [
+    { value: 'PHONE', label: t('phoneOption'), icon: Phone },
+    { value: 'EMAIL', label: t('emailOption'), icon: Mail },
+    { value: 'BOTH', label: t('bothOption'), icon: null },
+  ];
+
   const categories = Object.entries(CATEGORY_LABELS) as [HotDealCategory, string][];
 
   const onSubmit = async (data: FormData) => {
@@ -83,10 +85,10 @@ function HotDealForm() {
       const deal = await hotDealsApi.create(data);
       setCreatedDealId(deal.id);
       setStep('payment');
-      toast.info('Deal created! Please complete payment to publish.');
+      toast.info(t('dealCreated'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create hot deal');
-      toast.error('Failed to create hot deal');
+      setError(err instanceof Error ? err.message : t('failedToCreate'));
+      toast.error(t('failedToCreate'));
     } finally {
       setIsSubmitting(false);
     }
@@ -146,16 +148,16 @@ function HotDealForm() {
       await hotDealsApi.confirmPayment(createdDealId, paymentIntent.id);
 
       setStep('success');
-      toast.success('Hot deal published successfully!');
+      toast.success(t('hotDealPublished'));
 
       // Redirect after short delay
       setTimeout(() => {
         router.push('/hot-deals');
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed');
+      setError(err instanceof Error ? err.message : t('paymentFailed'));
       setStep('payment');
-      toast.error('Payment failed');
+      toast.error(t('paymentFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -172,15 +174,15 @@ function HotDealForm() {
         <div className="w-16 h-16 bg-green-100 rounded-full mx-auto mb-4 flex items-center justify-center">
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Hot Deal Published!</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('hotDealPublished')}</h2>
         <p className="text-gray-600 mb-6">
-          Your hot deal is now live and will be visible for 24 hours.
+          {t('nowLive')}
         </p>
         <Link
           href="/hot-deals"
           className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
         >
-          View Hot Deals
+          {t('viewHotDeals')}
         </Link>
       </motion.div>
     );
@@ -191,8 +193,8 @@ function HotDealForm() {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
         <Loader2 className="w-12 h-12 text-orange-500 mx-auto mb-4 animate-spin" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Processing Payment...</h2>
-        <p className="text-gray-600">Please wait while we process your payment.</p>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('processingPayment')}</h2>
+        <p className="text-gray-600">{t('pleaseWait')}</p>
       </div>
     );
   }
@@ -205,13 +207,13 @@ function HotDealForm() {
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-2xl shadow-sm p-8"
       >
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Complete Payment</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('completePayment')}</h2>
 
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-gray-900">Hot Deal Posting Fee</p>
-              <p className="text-sm text-gray-600">Your deal will be active for 24 hours</p>
+              <p className="font-medium text-gray-900">{t('postingFee')}</p>
+              <p className="text-sm text-gray-600">{t('activeFor24Hours')}</p>
             </div>
             <p className="text-2xl font-bold text-orange-600">$1.00</p>
           </div>
@@ -228,7 +230,7 @@ function HotDealForm() {
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Card Details
+            {t('cardDetails')}
           </label>
           <div className="border border-gray-300 rounded-lg p-4">
             <CardElement
@@ -260,7 +262,7 @@ function HotDealForm() {
             }}
             className="flex-1 px-6 py-3 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Go Back
+            {t('goBack')}
           </button>
           <button
             type="button"
@@ -273,12 +275,12 @@ function HotDealForm() {
             ) : (
               <CreditCard className="w-5 h-5" />
             )}
-            Pay $1.00
+            {t('payAmount')}
           </button>
         </div>
 
         <p className="text-xs text-gray-500 text-center mt-4">
-          Secure payment powered by Stripe. Your card details are never stored on our servers.
+          {t('securePayment')}
         </p>
       </motion.div>
     );
@@ -294,22 +296,22 @@ function HotDealForm() {
       <form onSubmit={handleSubmit(onSubmit)}>
         {/* Basic Info Section */}
         <div className="p-6 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Service Request Details</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('serviceRequestDetails')}</h2>
 
           <div className="space-y-4">
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Title <span className="text-red-500">*</span>
+                {t('title_label')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 {...register('title', {
-                  required: 'Title is required',
-                  minLength: { value: 10, message: 'Title must be at least 10 characters' },
-                  maxLength: { value: 100, message: 'Title cannot exceed 100 characters' },
+                  required: t('titleRequired'),
+                  minLength: { value: 10, message: t('titleMin') },
+                  maxLength: { value: 100, message: t('titleMax') },
                 })}
-                placeholder="e.g., Need emergency plumber for leaky pipe"
+                placeholder={t('titlePlaceholder')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
               {errors.title && (
@@ -320,16 +322,16 @@ function HotDealForm() {
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description <span className="text-red-500">*</span>
+                {t('description')} <span className="text-red-500">*</span>
               </label>
               <textarea
                 {...register('description', {
-                  required: 'Description is required',
-                  minLength: { value: 20, message: 'Description must be at least 20 characters' },
-                  maxLength: { value: 500, message: 'Description cannot exceed 500 characters' },
+                  required: t('descriptionRequired'),
+                  minLength: { value: 20, message: t('descriptionMin') },
+                  maxLength: { value: 500, message: t('descriptionMax') },
                 })}
                 rows={4}
-                placeholder="Describe what you need help with, including any specific requirements or time constraints..."
+                placeholder={t('descriptionPlaceholder')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
               {errors.description && (
@@ -341,13 +343,13 @@ function HotDealForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category <span className="text-red-500">*</span>
+                  {t('category')} <span className="text-red-500">*</span>
                 </label>
                 <select
-                  {...register('category', { required: 'Category is required' })}
+                  {...register('category', { required: t('categoryRequired') })}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 >
-                  <option value="">Select a category</option>
+                  <option value="">{t('selectCategory')}</option>
                   {categories.map(([key, label]) => (
                     <option key={key} value={key}>
                       {label}
@@ -361,7 +363,7 @@ function HotDealForm() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Urgency Level
+                  {t('urgencyLevel')}
                 </label>
                 <select
                   {...register('urgency')}
@@ -380,16 +382,16 @@ function HotDealForm() {
 
         {/* Contact Info Section */}
         <div className="p-6 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('contactInformation')}</h2>
 
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contact Name <span className="text-red-500">*</span>
+                {t('contactName')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                {...register('contactName', { required: 'Contact name is required' })}
+                {...register('contactName', { required: t('contactNameRequired') })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
               {errors.contactName && (
@@ -400,18 +402,18 @@ function HotDealForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone <span className="text-red-500">*</span>
+                  {t('phone')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
                   {...register('contactPhone', {
-                    required: 'Phone number is required',
+                    required: t('phoneRequired'),
                     pattern: {
                       value: /^\+?1?\d{10,14}$/,
-                      message: 'Please enter a valid phone number',
+                      message: t('phoneInvalid'),
                     },
                   })}
-                  placeholder="+1234567890"
+                  placeholder={t('phonePlaceholder')}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 />
                 {errors.contactPhone && (
@@ -421,15 +423,15 @@ function HotDealForm() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email <span className="text-red-500">*</span>
+                  {t('email')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
                   {...register('contactEmail', {
-                    required: 'Email is required',
+                    required: t('emailRequired'),
                     pattern: {
                       value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: 'Please enter a valid email',
+                      message: t('emailInvalid'),
                     },
                   })}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
@@ -442,7 +444,7 @@ function HotDealForm() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Preferred Contact Method
+                {t('preferredContact')}
               </label>
               <div className="flex gap-4">
                 {CONTACT_OPTIONS.map((option) => (
@@ -463,17 +465,17 @@ function HotDealForm() {
 
         {/* Location Section */}
         <div className="p-6 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Location</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('location')}</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                City <span className="text-red-500">*</span>
+                {t('city')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                {...register('city', { required: 'City is required' })}
-                placeholder="New York"
+                {...register('city', { required: t('cityRequired') })}
+                placeholder={t('cityPlaceholder')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
               {errors.city && (
@@ -483,29 +485,29 @@ function HotDealForm() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                State
+                {t('state')}
               </label>
               <input
                 type="text"
                 {...register('state')}
-                placeholder="NY"
+                placeholder={t('statePlaceholder')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                ZIP Code
+                {t('zipCode')}
               </label>
               <input
                 type="text"
                 {...register('zipCode', {
                   pattern: {
                     value: /^\d{5}(-\d{4})?$/,
-                    message: 'Invalid ZIP code format',
+                    message: t('zipInvalid'),
                   },
                 })}
-                placeholder="10001"
+                placeholder={t('zipPlaceholder')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
               {errors.zipCode && (
@@ -530,9 +532,9 @@ function HotDealForm() {
             <div className="flex items-start gap-3">
               <CreditCard className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-gray-900">$1.00 One-time Fee</p>
+                <p className="font-medium text-gray-900">{t('oneTimeFee')}</p>
                 <p className="text-sm text-gray-600">
-                  Your hot deal will be active for 24 hours and visible to all service providers in your area.
+                  {t('feeDescription')}
                 </p>
               </div>
             </div>
@@ -543,7 +545,7 @@ function HotDealForm() {
               href="/hot-deals"
               className="flex-1 flex items-center justify-center px-6 py-3 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              {t('cancel')}
             </Link>
             <button
               type="submit"
@@ -555,7 +557,7 @@ function HotDealForm() {
               ) : (
                 <Flame className="w-5 h-5" />
               )}
-              Continue to Payment
+              {t('continueToPayment')}
             </button>
           </div>
         </div>
@@ -566,6 +568,7 @@ function HotDealForm() {
 
 // Main page component with Stripe Elements provider
 export default function NewHotDealPage() {
+  const t = useTranslations('pages.hotDealsNew');
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [stripePromise] = useState(() => getStripe());
@@ -600,8 +603,8 @@ export default function NewHotDealPage() {
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Post a Hot Deal</h1>
-                <p className="text-gray-600">Get help fast - post your urgent service request</p>
+                <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+                <p className="text-gray-600">{t('subtitle')}</p>
               </div>
             </div>
           </div>

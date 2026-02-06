@@ -10,6 +10,7 @@ import { CardBrandLogo } from './card-brand-logo';
 import { CardExpiryBadge } from './card-expiry-badge';
 import type { SavedPaymentMethod } from '@/lib/api/payment-methods';
 import { cn } from '@nextpik/ui';
+import { useTranslations } from 'next-intl';
 
 interface QuickCardSelectorProps {
   cards: SavedPaymentMethod[];
@@ -26,6 +27,8 @@ export function QuickCardSelector({
   onAddNewCard,
   isLoading = false,
 }: QuickCardSelectorProps) {
+  const t = useTranslations('components.quickCardSelector');
+
   if (isLoading) {
     return (
       <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
@@ -55,8 +58,8 @@ export function QuickCardSelector({
             d="M12 4v16m8-8H4"
           />
         </svg>
-        <span className="font-medium">Add Your First Card</span>
-        <span className="text-sm text-neutral-500">Save cards for faster checkout</span>
+        <span className="font-medium">{t('addFirstCard')}</span>
+        <span className="text-sm text-neutral-500">{t('saveCardsForCheckout')}</span>
       </motion.button>
     );
   }
@@ -64,7 +67,7 @@ export function QuickCardSelector({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-neutral-700">Quick Select</h3>
+        <h3 className="text-sm font-medium text-neutral-700">{t('quickSelect')}</h3>
         <button
           onClick={onAddNewCard}
           className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
@@ -72,7 +75,7 @@ export function QuickCardSelector({
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Add New
+          {t('addNew')}
         </button>
       </div>
 
@@ -114,7 +117,7 @@ export function QuickCardSelector({
                   <p className="font-semibold text-neutral-900 truncate">{card.nickname}</p>
                 ) : (
                   <p className="font-medium text-neutral-700">
-                    {card.brand.charAt(0).toUpperCase() + card.brand.slice(1)} Card
+                    {t('brandCard', { brand: card.brand.charAt(0).toUpperCase() + card.brand.slice(1) })}
                   </p>
                 )}
                 <p className="text-sm text-neutral-600">•••• {card.last4}</p>
@@ -127,7 +130,7 @@ export function QuickCardSelector({
               </span>
               {card.isDefault && (
                 <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                  Default
+                  {t('default')}
                 </span>
               )}
             </div>
@@ -151,7 +154,7 @@ export function QuickCardSelector({
               d="M7 16l-4-4m0 0l4-4m-4 4h18"
             />
           </svg>
-          Scroll to see more cards
+          {t('scrollToSeeMore')}
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"

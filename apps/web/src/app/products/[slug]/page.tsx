@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { ProductCarousel } from '@/components/product-carousel';
 import { QuickViewModal, type QuickViewProduct } from '@nextpik/ui';
@@ -30,6 +31,7 @@ import { ProductDetailAd } from '@/components/ads';
 
 // Reviews Section Component
 function ReviewsSection({ productId }: { productId: string }) {
+  const t = useTranslations('products');
   const [showReviewForm, setShowReviewForm] = useState(false);
   const { reviews, total, page, pageSize, summary, isLoading, updateFilters, refetch } = useReviews(productId);
   const { createReview } = useCreateReview();
@@ -47,7 +49,7 @@ function ReviewsSection({ productId }: { productId: string }) {
   };
 
   const handleReport = async (reviewId: string) => {
-    if (confirm('Are you sure you want to report this review?')) {
+    if (confirm(t('confirmReportReview'))) {
       await reportReview(reviewId);
     }
   };
@@ -72,7 +74,7 @@ function ReviewsSection({ productId }: { productId: string }) {
         isOpen={showReviewForm}
         onClose={() => setShowReviewForm(false)}
         productId={productId}
-        productName="Product"
+        productName={t('productCount')}
         onSubmit={handleCreateReview}
       />
     </div>
@@ -83,6 +85,8 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
+  const t = useTranslations('products');
+  const tc = useTranslations('common');
 
   // Fetch product data
   const { product, isLoading, error } = useProduct(slug, true);
@@ -273,10 +277,10 @@ export default function ProductDetailPage() {
       }
 
       await addToCart(product.id, quantity, variantId);
-      toast.success(`${product.name} has been added to your cart`);
+      toast.success(t('addedToCart', { name: product.name }));
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
-      toast.error(error.message || 'Failed to add item to cart');
+      toast.error(error.message || t('failedAddToCart'));
     }
   };
 
@@ -284,14 +288,14 @@ export default function ProductDetailPage() {
     try {
       if (isCurrentlyInWishlist) {
         await removeFromWishlist(productId);
-        toast.success('Removed from wishlist');
+        toast.success(t('removedFromWishlist'));
       } else {
         await addToWishlist(productId);
-        toast.success('Added to wishlist');
+        toast.success(t('addedToWishlist'));
       }
     } catch (error) {
       console.error('Failed to toggle wishlist:', error);
-      toast.error('Failed to update wishlist');
+      toast.error(t('failedUpdateWishlist'));
     }
   };
 
@@ -328,8 +332,8 @@ export default function ProductDetailPage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-12">
-          <div className="grid lg:grid-cols-2 gap-12">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12">
             <div className="space-y-4">
               <div className="aspect-square bg-neutral-200 rounded-2xl animate-pulse" />
               <div className="grid grid-cols-4 gap-4">
@@ -366,13 +370,13 @@ export default function ProductDetailPage() {
       <div className="bg-white">
         {/* Breadcrumb */}
         <div className="bg-neutral-50 border-b border-neutral-200">
-          <div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-4">
-            <div className="flex items-center gap-2 text-sm text-neutral-600">
-              <Link href="/" className="hover:text-gold transition-colors">Home</Link>
+          <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-neutral-600 overflow-x-auto">
+              <Link href="/" className="hover:text-gold transition-colors">{tc('nav.home')}</Link>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
-              <Link href="/products" className="hover:text-gold transition-colors">Products</Link>
+              <Link href="/products" className="hover:text-gold transition-colors">{tc('nav.products')}</Link>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -392,8 +396,8 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Product Section */}
-        <div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-12">
-          <div className="grid lg:grid-cols-[1fr,1fr,300px] xl:grid-cols-[1fr,1fr,350px] gap-8 lg:gap-12 mb-16">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr,1fr,300px] xl:grid-cols-[1fr,1fr,350px] gap-6 sm:gap-8 lg:gap-12 mb-8 sm:mb-12 lg:mb-16">
             {/* Image Gallery */}
             <div>
               {/* Main Image */}
@@ -433,7 +437,7 @@ export default function ProductDetailPage() {
               </motion.div>
 
               {/* Thumbnails */}
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
                 {productImages.map((img, index) => (
                   <motion.button
                     key={index}
@@ -454,9 +458,9 @@ export default function ProductDetailPage() {
             <div>
               <div className="mb-4">
                 {product.brand && (
-                  <span className="text-sm text-neutral-600 uppercase tracking-wide">{product.brand}</span>
+                  <span className="text-xs sm:text-sm text-neutral-600 uppercase tracking-wide">{product.brand}</span>
                 )}
-                <h1 className="text-4xl md:text-5xl font-serif font-bold text-black mt-2 mb-4">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-black mt-2 mb-3 sm:mb-4">
                   {product.name}
                 </h1>
 
@@ -469,14 +473,14 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* Price */}
-                <div className="flex items-baseline gap-3 mb-6">
+                <div className="flex items-baseline gap-2 sm:gap-3 mb-4 sm:mb-6">
                   {isInquiryProduct ? (
                     <div className="flex flex-col">
-                      <span className="text-4xl font-serif font-bold text-gold">
-                        Contact for Price
+                      <span className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-gold">
+                        {t('contactForPrice')}
                       </span>
-                      <span className="text-sm text-neutral-600 mt-2">
-                        Submit an inquiry to get pricing information
+                      <span className="text-xs sm:text-sm text-neutral-600 mt-1 sm:mt-2">
+                        {t('submitInquiry')}
                       </span>
                     </div>
                   ) : (
@@ -484,14 +488,14 @@ export default function ProductDetailPage() {
                       <motion.div
                         key={`${currentPrice?.price}-${currentPrice?.compareAtPrice}`}
                         {...framerMotion.priceChange}
-                        className="flex items-center gap-4"
+                        className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4"
                       >
-                        <Price amount={currentPrice?.price || 0} className="text-4xl font-bold text-black" />
+                        <Price amount={currentPrice?.price || 0} className="text-2xl sm:text-3xl md:text-4xl font-bold text-black" />
                         {currentPrice?.compareAtPrice && (
                           <>
-                            <Price amount={currentPrice.compareAtPrice || 0} className="text-2xl text-neutral-400 line-through" />
-                            <span className="px-3 py-1 bg-red-100 text-red-600 text-sm font-semibold rounded-full">
-                              Save {discountPercent}%
+                            <Price amount={currentPrice.compareAtPrice || 0} className="text-lg sm:text-xl md:text-2xl text-neutral-400 line-through" />
+                            <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-red-100 text-red-600 text-xs sm:text-sm font-semibold rounded-full">
+                              {t('save', { percent: discountPercent })}
                             </span>
                           </>
                         )}
@@ -501,14 +505,14 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* SKU */}
-                <p className="text-sm text-neutral-600 mb-6">SKU: {product.sku}</p>
+                <p className="text-xs sm:text-sm text-neutral-600 mb-4 sm:mb-6">{t('sku', { sku: product.sku })}</p>
               </div>
 
               {/* Store Info */}
               {product.store && (
                 <Link
                   href={`/store/${product.store.slug}`}
-                  className="flex items-center gap-4 p-4 bg-neutral-50 rounded-xl mb-8 hover:bg-neutral-100 transition-colors group"
+                  className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-neutral-50 rounded-xl mb-6 sm:mb-8 hover:bg-neutral-100 transition-colors group"
                 >
                   <div className="w-14 h-14 rounded-xl bg-white border border-neutral-200 overflow-hidden flex-shrink-0">
                     {product.store.logo ? (
@@ -545,7 +549,7 @@ export default function ProductDetailPage() {
                           {Number(product.store.rating).toFixed(1)}
                         </span>
                       )}
-                      <span>{product.store.totalProducts} products</span>
+                      <span>{product.store.totalProducts} {t('productsCount')}</span>
                       {(product.store.city || product.store.country) && (
                         <span className="flex items-center gap-1">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -558,7 +562,7 @@ export default function ProductDetailPage() {
                     </div>
                   </div>
                   <div className="flex items-center text-gold group-hover:translate-x-1 transition-transform">
-                    <span className="text-sm font-medium mr-1">Visit Store</span>
+                    <span className="text-sm font-medium mr-1">{t('visitStore')}</span>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
@@ -567,15 +571,15 @@ export default function ProductDetailPage() {
               )}
 
               {/* Description */}
-              <p className="text-neutral-700 mb-8 leading-relaxed">{product.description}</p>
+              <p className="text-sm sm:text-base text-neutral-700 mb-6 sm:mb-8 leading-relaxed">{product.description}</p>
 
               {/* Inquiry Form or Product Options */}
               {isInquiryProduct ? (
-                <div className="mb-8">
+                <div className="mb-6 sm:mb-8">
                   {!showInquiryForm ? (
                     <button
                       onClick={() => setShowInquiryForm(true)}
-                      className={`w-full py-4 px-8 font-bold text-lg rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 ${
+                      className={`w-full py-3 sm:py-4 px-6 sm:px-8 font-bold text-base sm:text-lg rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 sm:gap-3 ${
                         product.productType === 'REAL_ESTATE'
                           ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
                           : product.productType === 'VEHICLE'
@@ -587,14 +591,14 @@ export default function ProductDetailPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                       {product.productType === 'REAL_ESTATE'
-                        ? 'Schedule a Viewing'
+                        ? t('scheduleViewing')
                         : product.productType === 'VEHICLE'
-                        ? 'Schedule a Test Drive'
+                        ? t('scheduleTestDrive')
                         : product.productType === 'SERVICE'
-                        ? 'Request Service Quote'
+                        ? t('requestServiceQuote')
                         : product.productType === 'RENTAL'
-                        ? 'Request Rental Information'
-                        : 'Contact About This Product'}
+                        ? t('requestRentalInfo')
+                        : t('contactAboutProduct')}
                     </button>
                   ) : product.productType === 'REAL_ESTATE' ? (
                     <RealEstateInquiryForm
@@ -602,7 +606,7 @@ export default function ProductDetailPage() {
                       productName={product.name}
                       productType={product.propertyType || 'property'}
                       onSuccess={() => {
-                        toast.success('Our agent will contact you soon!');
+                        toast.success(t('agentWillContact'));
                         setShowInquiryForm(false);
                       }}
                       onCancel={() => setShowInquiryForm(false)}
@@ -615,7 +619,7 @@ export default function ProductDetailPage() {
                         ? `${product.vehicleYear} ${product.vehicleMake} ${product.vehicleModel}`
                         : undefined}
                       onSuccess={() => {
-                        toast.success('Our sales team will contact you soon!');
+                        toast.success(t('salesTeamWillContact'));
                         setShowInquiryForm(false);
                       }}
                       onCancel={() => setShowInquiryForm(false)}
@@ -631,7 +635,7 @@ export default function ProductDetailPage() {
                         onClick={() => setShowInquiryForm(false)}
                         className="mt-4 text-gray-600 hover:text-gray-800 text-sm font-medium"
                       >
-                        Cancel
+                        {tc('buttons.cancel')}
                       </button>
                     </div>
                   ) : (
@@ -639,7 +643,7 @@ export default function ProductDetailPage() {
                       productId={product.id}
                       productName={product.name}
                       onSuccess={() => {
-                        toast.success('We will contact you soon!');
+                        toast.success(t('weWillContact'));
                         setShowInquiryForm(false);
                       }}
                       onCancel={() => setShowInquiryForm(false)}
@@ -650,16 +654,16 @@ export default function ProductDetailPage() {
                 <>
                   {/* Color Selection */}
                   {availableColors.length > 0 && (
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-black mb-3">
-                    Color
+                <div className="mb-4 sm:mb-6">
+                  <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
+                    {t('color')}
                     {selectedVariant.color && (
                       <span className="text-neutral-600 font-normal ml-2 capitalize">
                         ({selectedVariant.color})
                       </span>
                     )}
                   </label>
-                  <div className="flex gap-3 flex-wrap">
+                  <div className="flex gap-2 sm:gap-3 flex-wrap">
                     {availableColors.map((color) => {
                       const isLight = isLightColor(color.hex);
 
@@ -669,7 +673,7 @@ export default function ProductDetailPage() {
                           onClick={() => setSelectedVariant({ ...selectedVariant, color: color.value })}
                           whileHover={framerMotion.interactions.swatchHover}
                           whileTap={framerMotion.interactions.swatchTap}
-                          className={`w-10 h-10 rounded-full border-2 transition-all duration-200 ${
+                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all duration-200 ${
                             selectedVariant.color === color.value
                               ? 'border-gold ring-2 ring-gold/20 scale-110'
                               : isLight
@@ -687,16 +691,16 @@ export default function ProductDetailPage() {
 
               {/* Size Selection */}
               {availableSizes.length > 0 && (
-                <div className="mb-8">
-                  <label className="block text-sm font-semibold text-black mb-3">
-                    Size
+                <div className="mb-6 sm:mb-8">
+                  <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
+                    {t('size')}
                     {selectedVariant.size && (
                       <span className="text-neutral-600 font-normal ml-2 uppercase">
                         ({selectedVariant.size})
                       </span>
                     )}
                   </label>
-                  <div className="flex gap-3 flex-wrap">
+                  <div className="flex gap-2 sm:gap-3 flex-wrap">
                     {availableSizes.map((size) => (
                       <motion.button
                         key={`detail-size-${size.value}`}
@@ -704,7 +708,7 @@ export default function ProductDetailPage() {
                         disabled={!size.inStock}
                         whileHover={size.inStock ? framerMotion.interactions.sizeHover : {}}
                         whileTap={size.inStock ? framerMotion.interactions.sizeTap : {}}
-                        className={`px-6 py-3 border-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                        className={`px-4 sm:px-6 py-2 sm:py-3 border-2 rounded-lg font-medium text-xs sm:text-sm transition-all duration-200 ${
                           selectedVariant.size === size.value
                             ? 'border-gold bg-gold text-black'
                             : size.inStock
@@ -720,25 +724,25 @@ export default function ProductDetailPage() {
               )}
 
               {/* Quantity */}
-              <div className="mb-8">
-                <label className="block text-sm font-semibold text-black mb-3">Quantity</label>
-                <div className="flex items-center gap-4">
+              <div className="mb-6 sm:mb-8">
+                <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">{t('quantity')}</label>
+                <div className="flex items-center gap-3 sm:gap-4">
                   <div className="flex items-center border-2 border-neutral-200 rounded-lg">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="px-4 py-2 hover:bg-neutral-100 transition-colors"
+                      className="px-3 sm:px-4 py-2 hover:bg-neutral-100 transition-colors"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                       </svg>
                     </button>
-                    <span className="px-6 py-2 font-semibold">{quantity}</span>
+                    <span className="px-4 sm:px-6 py-2 font-semibold text-sm sm:text-base">{quantity}</span>
                     <button
                       onClick={() => setQuantity(quantity + 1)}
                       disabled={quantity >= stockStatus.quantity}
-                      className="px-4 py-2 hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                      className="px-3 sm:px-4 py-2 hover:bg-neutral-100 transition-colors disabled:opacity-50"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
@@ -751,14 +755,14 @@ export default function ProductDetailPage() {
                         <div className="w-2 h-2 bg-green-500 rounded-full" />
                         <span className="text-sm text-green-600 font-medium">
                           {stockStatus.showQuantity
-                            ? `In Stock (${stockStatus.quantity} available)`
-                            : 'In Stock'}
+                            ? t('inStockQuantity', { quantity: stockStatus.quantity })
+                            : t('inStock')}
                         </span>
                       </>
                     ) : (
                       <>
                         <div className="w-2 h-2 bg-red-500 rounded-full" />
-                        <span className="text-sm text-red-600 font-medium">Out of Stock</span>
+                        <span className="text-sm text-red-600 font-medium">{t('outOfStock')}</span>
                       </>
                     )}
                   </div>
@@ -766,15 +770,15 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-4 mb-8">
+              <div className="flex gap-3 sm:gap-4 mb-6 sm:mb-8">
                 <motion.button
                   onClick={handleAddToCart}
                   disabled={!stockStatus.inStock}
                   whileHover={framerMotion.interactions.buttonHover}
                   whileTap={framerMotion.interactions.buttonTap}
-                  className="flex-1 px-8 py-4 bg-black text-white rounded-xl font-bold text-lg hover:bg-neutral-800 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-6 sm:px-8 py-3 sm:py-4 bg-black text-white rounded-xl font-bold text-base sm:text-lg hover:bg-neutral-800 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Add to Cart
+                  {t('addToCart')}
                 </motion.button>
                 <WishlistButton
                   productId={product.id}
@@ -789,7 +793,7 @@ export default function ProductDetailPage() {
               {product.tags && product.tags.length > 0 && (
                 <div className="border-t border-neutral-200 pt-6">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-neutral-600">Tags:</span>
+                    <span className="text-sm text-neutral-600">{t('tags')}</span>
                     {product.tags.map((tag) => (
                       <Link
                         key={tag.id}
@@ -851,16 +855,16 @@ export default function ProductDetailPage() {
           )}
 
           {/* Tabs Section */}
-          <div className="border-t border-neutral-200 pt-12 mb-16">
+          <div className="border-t border-neutral-200 pt-8 sm:pt-10 lg:pt-12 mb-8 sm:mb-12 lg:mb-16">
             {/* Tab Headers */}
-            <div className="flex gap-8 mb-8 border-b border-neutral-200">
+            <div className="flex gap-4 sm:gap-6 md:gap-8 mb-6 sm:mb-8 border-b border-neutral-200 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('description')}
-                className={`pb-4 px-2 text-lg font-semibold transition-colors relative ${
+                className={`pb-3 sm:pb-4 px-1 sm:px-2 text-sm sm:text-base md:text-lg font-semibold transition-colors relative whitespace-nowrap ${
                   activeTab === 'description' ? 'text-black' : 'text-neutral-400 hover:text-neutral-600'
                 }`}
               >
-                Description
+                {t('description')}
                 {activeTab === 'description' && (
                   <motion.div
                     layoutId="tab-indicator"
@@ -870,11 +874,11 @@ export default function ProductDetailPage() {
               </button>
               <button
                 onClick={() => setActiveTab('specifications')}
-                className={`pb-4 px-2 text-lg font-semibold transition-colors relative ${
+                className={`pb-3 sm:pb-4 px-1 sm:px-2 text-sm sm:text-base md:text-lg font-semibold transition-colors relative whitespace-nowrap ${
                   activeTab === 'specifications' ? 'text-black' : 'text-neutral-400 hover:text-neutral-600'
                 }`}
               >
-                Specifications
+                {t('specifications')}
                 {activeTab === 'specifications' && (
                   <motion.div
                     layoutId="tab-indicator"
@@ -884,11 +888,11 @@ export default function ProductDetailPage() {
               </button>
               <button
                 onClick={() => setActiveTab('reviews')}
-                className={`pb-4 px-2 text-lg font-semibold transition-colors relative ${
+                className={`pb-3 sm:pb-4 px-1 sm:px-2 text-sm sm:text-base md:text-lg font-semibold transition-colors relative whitespace-nowrap ${
                   activeTab === 'reviews' ? 'text-black' : 'text-neutral-400 hover:text-neutral-600'
                 }`}
               >
-                Reviews
+                {t('reviews')}
                 {activeTab === 'reviews' && (
                   <motion.div
                     layoutId="tab-indicator"
@@ -920,7 +924,7 @@ export default function ProductDetailPage() {
                 {activeTab === 'specifications' && (
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <h3 className="text-lg font-semibold mb-4">Product Details</h3>
+                      <h3 className="text-lg font-semibold mb-4">{t('productDetails')}</h3>
                       <dl className="space-y-3">
                         <div className="flex justify-between py-2 border-b border-neutral-200">
                           <dt className="text-neutral-600">SKU</dt>
@@ -928,24 +932,24 @@ export default function ProductDetailPage() {
                         </div>
                         {product.brand && (
                           <div className="flex justify-between py-2 border-b border-neutral-200">
-                            <dt className="text-neutral-600">Brand</dt>
+                            <dt className="text-neutral-600">{t('brand')}</dt>
                             <dd className="font-medium">{product.brand}</dd>
                           </div>
                         )}
                         {product.category && (
                           <div className="flex justify-between py-2 border-b border-neutral-200">
-                            <dt className="text-neutral-600">Category</dt>
+                            <dt className="text-neutral-600">{t('category')}</dt>
                             <dd className="font-medium">{product.category.name}</dd>
                           </div>
                         )}
                         <div className="flex justify-between py-2 border-b border-neutral-200">
-                          <dt className="text-neutral-600">Availability</dt>
+                          <dt className="text-neutral-600">{t('availability')}</dt>
                           <dd className="font-medium">
                             {stockStatus.inStock
                               ? stockStatus.showQuantity
-                                ? `In Stock (${stockStatus.quantity})`
-                                : 'In Stock'
-                              : 'Out of Stock'}
+                                ? t('inStockQuantity', { quantity: stockStatus.quantity })
+                                : t('inStock')
+                              : t('outOfStock')}
                           </dd>
                         </div>
                       </dl>
@@ -964,7 +968,7 @@ export default function ProductDetailPage() {
           {relatedProducts.length > 0 && (
             <section className="border-t border-neutral-200 pt-12">
               <ProductCarousel
-                title="Related Products"
+                title={t('relatedProducts')}
                 products={relatedProducts}
                 onQuickView={handleQuickView}
                 onAddToWishlist={(id) => console.log('Wishlist:', id)}

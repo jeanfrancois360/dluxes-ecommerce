@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FloatingInput } from '@nextpik/ui';
 import type { CreateReviewInput } from '@nextpik/shared';
+import { useTranslations } from 'next-intl';
 
 interface ReviewFormProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface ReviewFormProps {
 }
 
 export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }: ReviewFormProps) {
+  const t = useTranslations('components.reviewForm');
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [title, setTitle] = useState('');
@@ -28,21 +30,21 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
     const newErrors: Record<string, string> = {};
 
     if (rating === 0) {
-      newErrors.rating = 'Please select a rating';
+      newErrors.rating = t('pleaseSelectRating');
     }
 
     if (comment.length < 10) {
-      newErrors.comment = 'Review must be at least 10 characters';
+      newErrors.comment = t('reviewMinLength');
     } else if (comment.length > 2000) {
-      newErrors.comment = 'Review must be less than 2000 characters';
+      newErrors.comment = t('reviewMaxLength');
     }
 
     if (title && title.length > 100) {
-      newErrors.title = 'Title must be less than 100 characters';
+      newErrors.title = t('titleMaxLength');
     }
 
     if (images.length > 5) {
-      newErrors.images = 'Maximum 5 images allowed';
+      newErrors.images = t('maxImagesAllowed');
     }
 
     setErrors(newErrors);
@@ -65,7 +67,7 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
       });
       handleClose();
     } catch (error) {
-      setErrors({ submit: 'Failed to submit review. Please try again.' });
+      setErrors({ submit: t('failedToSubmit') });
     } finally {
       setIsSubmitting(false);
     }
@@ -89,17 +91,17 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
 
   const addImages = (files: File[]) => {
     if (images.length + files.length > 5) {
-      setErrors({ images: 'Maximum 5 images allowed' });
+      setErrors({ images: t('maxImagesAllowed') });
       return;
     }
 
     const validFiles = files.filter((file) => {
       if (file.size > 5 * 1024 * 1024) {
-        setErrors({ images: 'Each image must be less than 5MB' });
+        setErrors({ images: t('imageTooLarge') });
         return false;
       }
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        setErrors({ images: 'Only JPG, PNG, and WebP images are allowed' });
+        setErrors({ images: t('invalidImageType') });
         return false;
       }
       return true;
@@ -157,7 +159,7 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
           className="focus:outline-none"
         >
           <svg
-            className={`w-10 h-10 transition-colors ${
+            className={`w-8 h-8 sm:w-10 sm:h-10 transition-colors ${
               isFilled ? 'text-[#CBB57B]' : 'text-neutral-300'
             }`}
             fill="currentColor"
@@ -178,7 +180,7 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       >
         <motion.div
@@ -186,20 +188,20 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] sm:max-h-[90vh] overflow-y-auto"
         >
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 z-10">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-serif font-bold text-black">Write a Review</h2>
-                <p className="text-sm text-neutral-600 mt-1">{productName}</p>
+          <div className="sticky top-0 bg-white border-b border-neutral-200 px-4 sm:px-6 py-3 sm:py-4 z-10 rounded-t-xl sm:rounded-t-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-serif font-bold text-black truncate">{t('writeReview')}</h2>
+                <p className="text-xs sm:text-sm text-neutral-600 mt-0.5 sm:mt-1 truncate">{productName}</p>
               </div>
               <button
                 onClick={handleClose}
-                className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                className="flex-shrink-0 p-1.5 sm:p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -207,22 +209,22 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Rating */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-3">
-                Rating <span className="text-red-500">*</span>
+              <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
+                {t('rating')} <span className="text-red-500">*</span>
               </label>
-              <div className="flex gap-2">{renderStars()}</div>
+              <div className="flex gap-1 sm:gap-2">{renderStars()}</div>
               {errors.rating && (
-                <p className="mt-2 text-sm text-red-500">{errors.rating}</p>
+                <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-red-500">{errors.rating}</p>
               )}
             </div>
 
             {/* Title */}
             <div>
               <FloatingInput
-                label="Review Title (Optional)"
+                label={t('reviewTitle')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 error={errors.title}
@@ -233,39 +235,39 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
 
             {/* Comment */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
-                Your Review <span className="text-red-500">*</span>
+              <label className="block text-xs sm:text-sm font-semibold text-black mb-2">
+                {t('yourReview')} <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                rows={6}
+                rows={5}
                 maxLength={2000}
-                placeholder="Share your thoughts about this product..."
-                className={`w-full px-4 py-3 border-2 rounded-lg resize-none focus:outline-none focus:border-[#CBB57B] transition-colors ${
+                placeholder={t('reviewPlaceholder')}
+                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 rounded-lg resize-none focus:outline-none focus:border-[#CBB57B] transition-colors text-sm sm:text-base ${
                   errors.comment ? 'border-red-500' : 'border-neutral-200'
                 }`}
               />
-              <div className="flex justify-between items-center mt-1">
+              <div className="flex justify-between items-center mt-1 gap-2">
                 {errors.comment ? (
-                  <p className="text-sm text-red-500">{errors.comment}</p>
+                  <p className="text-xs sm:text-sm text-red-500 flex-1 min-w-0 truncate">{errors.comment}</p>
                 ) : (
-                  <p className="text-xs text-neutral-500">Minimum 10 characters</p>
+                  <p className="text-xs text-neutral-500">{t('minimumLength')}</p>
                 )}
-                <p className="text-xs text-neutral-500">{comment.length}/2000</p>
+                <p className="text-xs text-neutral-500 flex-shrink-0">{comment.length}/2000</p>
               </div>
             </div>
 
             {/* Image Upload */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
-                Photos (Optional)
+              <label className="block text-xs sm:text-sm font-semibold text-black mb-2">
+                {t('photos')}
               </label>
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-colors ${
                   isDragging
                     ? 'border-[#CBB57B] bg-[#CBB57B]/10'
                     : 'border-neutral-300 hover:border-[#CBB57B]'
@@ -281,7 +283,7 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
                 />
                 <label htmlFor="image-upload" className="cursor-pointer">
                   <svg
-                    className="w-12 h-12 mx-auto text-neutral-400 mb-2"
+                    className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-neutral-400 mb-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -293,21 +295,22 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
                       d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                     />
                   </svg>
-                  <p className="text-neutral-600 mb-1">
-                    <span className="text-[#CBB57B] font-semibold">Click to upload</span> or drag and drop
+                  <p className="text-xs sm:text-sm text-neutral-600 mb-1">
+                    <span className="text-[#CBB57B] font-semibold">{t('clickToUpload')}</span>{' '}
+                    <span className="hidden sm:inline">{t('orDragDrop')}</span>
                   </p>
                   <p className="text-xs text-neutral-500">
-                    JPG, PNG or WebP (max 5MB, up to 5 images)
+                    {t('imageRequirements')}
                   </p>
                 </label>
               </div>
               {errors.images && (
-                <p className="mt-2 text-sm text-red-500">{errors.images}</p>
+                <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-red-500">{errors.images}</p>
               )}
 
               {/* Image Previews */}
               {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-5 gap-2 mt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 mt-3 sm:mt-4">
                   {imagePreviews.map((preview, index) => (
                     <div key={index} className="relative aspect-square group">
                       <img
@@ -318,9 +321,9 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 p-1 bg-red-500 text-white rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-lg"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
@@ -332,26 +335,26 @@ export function ReviewForm({ isOpen, onClose, productId, productName, onSubmit }
 
             {/* Submit Error */}
             {errors.submit && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{errors.submit}</p>
+              <div className="p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-xs sm:text-sm text-red-600">{errors.submit}</p>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4">
               <button
                 type="button"
                 onClick={handleClose}
-                className="flex-1 px-6 py-3 border-2 border-neutral-200 text-neutral-700 font-semibold rounded-lg hover:bg-neutral-50 transition-colors"
+                className="w-full sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-neutral-200 text-neutral-700 font-semibold rounded-lg hover:bg-neutral-50 transition-colors text-sm sm:text-base"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Review'}
+                {isSubmitting ? t('submitting') : t('submitReview')}
               </button>
             </div>
           </form>

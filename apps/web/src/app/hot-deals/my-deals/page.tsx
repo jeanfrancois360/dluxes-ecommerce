@@ -19,6 +19,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -31,20 +32,20 @@ import {
 } from '@/lib/api/hot-deals';
 
 // Calculate time remaining
-function getTimeRemaining(expiresAt: string): { text: string; isExpired: boolean } {
+function getTimeRemaining(expiresAt: string, t: any): { text: string; isExpired: boolean } {
   const now = new Date();
   const expiry = new Date(expiresAt);
   const diff = expiry.getTime() - now.getTime();
 
-  if (diff <= 0) return { text: 'Expired', isExpired: true };
+  if (diff <= 0) return { text: t('expired'), isExpired: true };
 
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
   if (hours > 0) {
-    return { text: `${hours}h ${minutes}m left`, isExpired: false };
+    return { text: t('hoursLeft', { hours, minutes }), isExpired: false };
   }
-  return { text: `${minutes}m left`, isExpired: false };
+  return { text: t('minutesLeft', { minutes }), isExpired: false };
 }
 
 // Format date
@@ -57,6 +58,7 @@ function formatDate(date: string): string {
 }
 
 export default function MyDealsPage() {
+  const t = useTranslations('pages.hotDealsMyDeals');
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
@@ -83,7 +85,7 @@ export default function MyDealsPage() {
         const data = await hotDealsApi.getMyDeals();
         setDeals(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load your deals');
+        setError(err instanceof Error ? err.message : t('failedToLoad'));
       } finally {
         setIsLoading(false);
       }
@@ -96,7 +98,7 @@ export default function MyDealsPage() {
     setActionLoading(dealId);
     try {
       await hotDealsApi.markFulfilled(dealId);
-      toast.success('Hot deal marked as fulfilled!');
+      toast.success(t('markedFulfilled'));
       // Update local state
       setDeals((prev) =>
         prev.map((d) =>
@@ -104,7 +106,7 @@ export default function MyDealsPage() {
         )
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to mark as fulfilled');
+      toast.error(err instanceof Error ? err.message : t('failedToMark'));
     } finally {
       setActionLoading(null);
     }
@@ -112,12 +114,12 @@ export default function MyDealsPage() {
 
   // Handle cancel
   const handleCancel = async (dealId: string) => {
-    if (!confirm('Are you sure you want to cancel this hot deal?')) return;
+    if (!confirm(t('confirmCancel'))) return;
 
     setActionLoading(dealId);
     try {
       await hotDealsApi.cancel(dealId);
-      toast.success('Hot deal cancelled');
+      toast.success(t('dealCancelled'));
       // Update local state
       setDeals((prev) =>
         prev.map((d) =>
@@ -125,7 +127,7 @@ export default function MyDealsPage() {
         )
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel deal');
+      toast.error(err instanceof Error ? err.message : t('failedToCancel'));
     } finally {
       setActionLoading(null);
     }
@@ -169,8 +171,8 @@ export default function MyDealsPage() {
                   <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">My Hot Deals</h1>
-                  <p className="text-gray-600">Manage your service requests</p>
+                  <h1 className="text-2xl font-bold text-gray-900">{t('myHotDeals')}</h1>
+                  <p className="text-gray-600">{t('manageRequests')}</p>
                 </div>
               </div>
               <Link
@@ -178,7 +180,7 @@ export default function MyDealsPage() {
                 className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                Post New Deal
+                {t('postNewDeal')}
               </Link>
             </div>
           </div>
@@ -202,16 +204,16 @@ export default function MyDealsPage() {
               <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
                 <Flame className="w-8 h-8 text-orange-500" />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">No Hot Deals Yet</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('noDealsYet')}</h2>
               <p className="text-gray-600 mb-6">
-                You haven't posted any hot deals. Start by posting your first service request!
+                {t('noDealsDescription')}
               </p>
               <Link
                 href="/hot-deals/new"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                Post Your First Hot Deal
+                {t('postFirstDeal')}
               </Link>
             </div>
           )}
@@ -221,7 +223,7 @@ export default function MyDealsPage() {
             <section className="mb-8">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-yellow-500" />
-                Pending Payment ({pendingDeals.length})
+                {t('pendingPayment', { count: pendingDeals.length })}
               </h2>
               <div className="space-y-4">
                 {pendingDeals.map((deal) => (
@@ -230,6 +232,7 @@ export default function MyDealsPage() {
                     deal={deal}
                     actionLoading={actionLoading}
                     onCancel={handleCancel}
+                    t={t}
                   />
                 ))}
               </div>
@@ -241,7 +244,7 @@ export default function MyDealsPage() {
             <section className="mb-8">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Flame className="w-5 h-5 text-orange-500" />
-                Active Deals ({activeDeals.length})
+                {t('activeDeals', { count: activeDeals.length })}
               </h2>
               <div className="space-y-4">
                 {activeDeals.map((deal) => (
@@ -251,6 +254,7 @@ export default function MyDealsPage() {
                     actionLoading={actionLoading}
                     onMarkFulfilled={handleMarkFulfilled}
                     onCancel={handleCancel}
+                    t={t}
                   />
                 ))}
               </div>
@@ -262,11 +266,11 @@ export default function MyDealsPage() {
             <section>
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-gray-500" />
-                Past Deals ({pastDeals.length})
+                {t('pastDeals', { count: pastDeals.length })}
               </h2>
               <div className="space-y-4">
                 {pastDeals.map((deal) => (
-                  <DealCard key={deal.id} deal={deal} isPast />
+                  <DealCard key={deal.id} deal={deal} isPast t={t} />
                 ))}
               </div>
             </section>
@@ -294,16 +298,18 @@ function DealCard({
   onMarkFulfilled,
   onCancel,
   isPast,
+  t,
 }: {
   deal: HotDeal;
   actionLoading?: string | null;
   onMarkFulfilled?: (id: string) => void;
   onCancel?: (id: string) => void;
   isPast?: boolean;
+  t: any;
 }) {
   const urgencyConfig = URGENCY_CONFIG[deal.urgency];
   const statusConfig = STATUS_CONFIG[deal.status];
-  const timeInfo = getTimeRemaining(deal.expiresAt);
+  const timeInfo = getTimeRemaining(deal.expiresAt, t);
   const isThisDealLoading = actionLoading === deal.id;
 
   return (
@@ -348,7 +354,7 @@ function DealCard({
             </div>
             <div className="flex items-center gap-1">
               <MessageCircle className="w-4 h-4" />
-              {deal._count?.responses || 0} responses
+              {t('responsesCount', { count: deal._count?.responses || 0 })}
             </div>
             {deal.status === 'ACTIVE' && !timeInfo.isExpired && (
               <div className="flex items-center gap-1 text-orange-600">
@@ -357,7 +363,7 @@ function DealCard({
               </div>
             )}
             <div className="flex items-center gap-1">
-              Posted {formatDate(deal.createdAt)}
+              {t('posted')} {formatDate(deal.createdAt)}
             </div>
           </div>
         </div>
@@ -369,7 +375,7 @@ function DealCard({
             className="flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Eye className="w-4 h-4" />
-            <span className="hidden sm:inline">View</span>
+            <span className="hidden sm:inline">{t('view')}</span>
           </Link>
 
           {deal.status === 'ACTIVE' && onMarkFulfilled && (
@@ -383,7 +389,7 @@ function DealCard({
               ) : (
                 <CheckCircle className="w-4 h-4" />
               )}
-              <span className="hidden sm:inline">Fulfill</span>
+              <span className="hidden sm:inline">{t('fulfill')}</span>
             </button>
           )}
 
@@ -398,7 +404,7 @@ function DealCard({
               ) : (
                 <XCircle className="w-4 h-4" />
               )}
-              <span className="hidden sm:inline">Cancel</span>
+              <span className="hidden sm:inline">{t('cancel')}</span>
             </button>
           )}
         </div>

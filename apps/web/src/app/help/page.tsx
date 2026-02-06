@@ -4,106 +4,109 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import Link from 'next/link';
-
-const faqCategories = [
-  {
-    id: 'orders',
-    title: 'Orders & Shipping',
-    icon: '📦',
-    faqs: [
-      {
-        q: 'How long does shipping take?',
-        a: 'Standard shipping takes 5-7 business days. Express shipping (2-3 business days) and overnight options are also available at checkout.',
-      },
-      {
-        q: 'Do you ship internationally?',
-        a: 'Yes! We ship to over 50 countries worldwide. International shipping times vary by location, typically 7-14 business days. Customs duties may apply.',
-      },
-      {
-        q: 'Can I track my order?',
-        a: 'Absolutely! Once your order ships, you\'ll receive a tracking number via email. You can also track your order from your account dashboard.',
-      },
-      {
-        q: 'What if my item arrives damaged?',
-        a: 'We\'re sorry if that happens! Contact us within 48 hours with photos of the damage, and we\'ll arrange a replacement or full refund immediately.',
-      },
-    ],
-  },
-  {
-    id: 'returns',
-    title: 'Returns & Exchanges',
-    icon: '🔄',
-    faqs: [
-      {
-        q: 'What is your return policy?',
-        a: 'We offer a 30-day return policy for most items. Products must be in original condition with all packaging and tags intact.',
-      },
-      {
-        q: 'How do I initiate a return?',
-        a: 'Log into your account, go to your order history, and select "Return Item". Follow the prompts to print your prepaid return label.',
-      },
-      {
-        q: 'Are returns free?',
-        a: 'Yes! We provide free return shipping on all domestic orders. International returns may require shipping fees.',
-      },
-      {
-        q: 'How long does it take to receive my refund?',
-        a: 'Once we receive your return, refunds are processed within 3-5 business days. The funds will appear in your original payment method.',
-      },
-    ],
-  },
-  {
-    id: 'products',
-    title: 'Products & Pricing',
-    icon: '🛍️',
-    faqs: [
-      {
-        q: 'Are your products authentic?',
-        a: 'Yes, 100%! We source directly from authorized manufacturers and distributors. Every item comes with a certificate of authenticity.',
-      },
-      {
-        q: 'Do you offer price matching?',
-        a: 'Yes, we offer price matching on identical items from authorized retailers. Contact our support team with proof of the lower price.',
-      },
-      {
-        q: 'Can I get notified when an out-of-stock item is available?',
-        a: 'Absolutely! Click "Notify Me" on any product page, and we\'ll email you as soon as it\'s back in stock.',
-      },
-      {
-        q: 'Do you offer gift wrapping?',
-        a: 'Yes! Select the gift wrapping option at checkout for $15. We\'ll include a personalized message card and premium packaging.',
-      },
-    ],
-  },
-  {
-    id: 'account',
-    title: 'Account & Payment',
-    icon: '👤',
-    faqs: [
-      {
-        q: 'Is it safe to save my payment information?',
-        a: 'Yes! We use industry-standard encryption (SSL) to protect your data. Your payment information is securely stored and never shared.',
-      },
-      {
-        q: 'What payment methods do you accept?',
-        a: 'We accept Visa, Mastercard, American Express, PayPal, Apple Pay, Google Pay, and Affirm for financing options.',
-      },
-      {
-        q: 'How do I reset my password?',
-        a: 'Click "Forgot Password" on the login page. Enter your email, and we\'ll send you a secure link to reset your password.',
-      },
-      {
-        q: 'Can I change my shipping address after ordering?',
-        a: 'If your order hasn\'t shipped yet, you can update the address in your account. Contact support immediately if you need help.',
-      },
-    ],
-  },
-];
+import { useTranslations } from 'next-intl';
 
 export default function HelpPage() {
+  const t = useTranslations('help');
+
   const [activeCategory, setActiveCategory] = useState('orders');
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const faqCategories = [
+    {
+      id: 'orders',
+      title: t('ordersShipping'),
+      icon: '\u{1F4E6}',
+      faqs: [
+        {
+          q: t('faq.shippingTime'),
+          a: t('faq.shippingTimeAnswer'),
+        },
+        {
+          q: t('faq.shipInternationally'),
+          a: t('faq.shipInternationallyAnswer'),
+        },
+        {
+          q: t('faq.trackOrder'),
+          a: t('faq.trackOrderAnswer'),
+        },
+        {
+          q: t('faq.damagedItem'),
+          a: t('faq.damagedItemAnswer'),
+        },
+      ],
+    },
+    {
+      id: 'returns',
+      title: t('returnsExchanges'),
+      icon: '\u{1F504}',
+      faqs: [
+        {
+          q: t('faq.returnPolicy'),
+          a: t('faq.returnPolicyAnswer'),
+        },
+        {
+          q: t('faq.initiateReturn'),
+          a: t('faq.initiateReturnAnswer'),
+        },
+        {
+          q: t('faq.freeReturns'),
+          a: t('faq.freeReturnsAnswer'),
+        },
+        {
+          q: t('faq.refundTime'),
+          a: t('faq.refundTimeAnswer'),
+        },
+      ],
+    },
+    {
+      id: 'products',
+      title: t('productsPricing'),
+      icon: '\u{1F6CD}\uFE0F',
+      faqs: [
+        {
+          q: t('faq.authentic'),
+          a: t('faq.authenticAnswer'),
+        },
+        {
+          q: t('faq.priceMatch'),
+          a: t('faq.priceMatchAnswer'),
+        },
+        {
+          q: t('faq.notifyRestock'),
+          a: t('faq.notifyRestockAnswer'),
+        },
+        {
+          q: t('faq.giftWrapping'),
+          a: t('faq.giftWrappingAnswer'),
+        },
+      ],
+    },
+    {
+      id: 'account',
+      title: t('accountPayment'),
+      icon: '\u{1F464}',
+      faqs: [
+        {
+          q: t('faq.paymentSafe'),
+          a: t('faq.paymentSafeAnswer'),
+        },
+        {
+          q: t('faq.paymentMethods'),
+          a: t('faq.paymentMethodsAnswer'),
+        },
+        {
+          q: t('faq.resetPassword'),
+          a: t('faq.resetPasswordAnswer'),
+        },
+        {
+          q: t('faq.changeAddress'),
+          a: t('faq.changeAddressAnswer'),
+        },
+      ],
+    },
+  ];
 
   const currentCategory = faqCategories.find(cat => cat.id === activeCategory);
 
@@ -118,10 +121,10 @@ export default function HelpPage() {
             className="max-w-4xl mx-auto px-4 lg:px-8 text-center z-10"
           >
             <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6">
-              How Can We Help?
+              {t('howCanWeHelp')}
             </h1>
             <p className="text-xl md:text-2xl text-white/80 mb-8">
-              Find answers to common questions or contact our support team
+              {t('findAnswers')}
             </p>
 
             {/* Search Bar */}
@@ -131,7 +134,7 @@ export default function HelpPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search for help articles..."
+                  placeholder={t('searchPlaceholder')}
                   className="w-full px-6 py-4 pl-14 text-black rounded-xl focus:outline-none focus:ring-2 focus:ring-gold"
                 />
                 <svg
@@ -154,7 +157,7 @@ export default function HelpPage() {
             {/* Category Sidebar */}
             <aside className="lg:col-span-1">
               <div className="bg-white rounded-xl shadow-md border border-neutral-200 p-4 sticky top-24">
-                <h2 className="text-lg font-semibold text-black mb-4">Categories</h2>
+                <h2 className="text-lg font-semibold text-black mb-4">{t('categoriesTitle')}</h2>
                 <div className="space-y-2">
                   {faqCategories.map((category) => (
                     <motion.button
@@ -175,15 +178,15 @@ export default function HelpPage() {
 
                 {/* Contact Support */}
                 <div className="mt-8 p-4 bg-neutral-50 rounded-lg">
-                  <h3 className="font-semibold text-black mb-2">Still need help?</h3>
-                  <p className="text-sm text-neutral-600 mb-4">Our support team is here 24/7</p>
+                  <h3 className="font-semibold text-black mb-2">{t('stillNeedHelp')}</h3>
+                  <p className="text-sm text-neutral-600 mb-4">{t('supportTeam247')}</p>
                   <Link href="/contact">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       className="w-full px-4 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all"
                     >
-                      Contact Support
+                      {t('contactSupport')}
                     </motion.button>
                   </Link>
                 </div>
@@ -205,7 +208,7 @@ export default function HelpPage() {
                         {currentCategory.title}
                       </h2>
                       <p className="text-neutral-600">
-                        {currentCategory.faqs.length} frequently asked questions
+                        {t('faqCount', { count: currentCategory.faqs.length })}
                       </p>
                     </div>
 
@@ -267,10 +270,10 @@ export default function HelpPage() {
         <section className="py-16 bg-gradient-to-br from-neutral-900 to-black text-white">
           <div className="max-w-4xl mx-auto px-4 lg:px-8 text-center">
             <h2 className="text-4xl font-serif font-bold mb-4">
-              Didn't find what you're looking for?
+              {t('didntFind')}
             </h2>
             <p className="text-xl text-white/80 mb-8">
-              Our customer support team is available 24/7 to assist you
+              {t('customerSupport247')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/contact">
@@ -279,7 +282,7 @@ export default function HelpPage() {
                   whileTap={{ scale: 0.95 }}
                   className="px-8 py-4 bg-gold text-black font-semibold text-lg rounded-lg hover:bg-gold/90 transition-all"
                 >
-                  Contact Us
+                  {t('contactUs')}
                 </motion.button>
               </Link>
               <motion.button
@@ -287,7 +290,7 @@ export default function HelpPage() {
                 whileTap={{ scale: 0.95 }}
                 className="px-8 py-4 bg-white/10 border-2 border-white text-white font-semibold text-lg rounded-lg hover:bg-white/20 transition-all"
               >
-                Live Chat
+                {t('liveChat')}
               </motion.button>
             </div>
 
@@ -297,7 +300,7 @@ export default function HelpPage() {
                 <svg className="w-8 h-8 text-gold mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                <h3 className="font-semibold mb-1">Email</h3>
+                <h3 className="font-semibold mb-1">{t('email')}</h3>
                 <p className="text-sm text-white/80">support@luxury.com</p>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6">
@@ -311,8 +314,8 @@ export default function HelpPage() {
                 <svg className="w-8 h-8 text-gold mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <h3 className="font-semibold mb-1">Live Chat</h3>
-                <p className="text-sm text-white/80">Available 24/7</p>
+                <h3 className="font-semibold mb-1">{t('liveChat')}</h3>
+                <p className="text-sm text-white/80">{t('available247')}</p>
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import Link from 'next/link';
@@ -22,6 +23,7 @@ export default function AddressesPage() {
   const { updateAddress, isLoading: updating } = useUpdateAddress();
   const { deleteAddress, isLoading: deleting } = useDeleteAddress();
   const { setDefaultAddress: setDefault, isLoading: settingDefault } = useSetDefaultAddress();
+  const t = useTranslations('account.addresses');
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
@@ -110,34 +112,34 @@ export default function AddressesPage() {
       if (editingAddress) {
         // Update existing address
         await updateAddress(editingAddress.id, formData);
-        toast.success('Address updated successfully');
+        toast.success(t('addressUpdated'));
         setEditingAddress(null);
       } else {
         // Create new address
         await createAddress(formData);
-        toast.success('Address added successfully');
+        toast.success(t('addressAdded'));
         setShowAddModal(false);
       }
 
       // Refresh addresses list
       await refetch();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save address');
+      toast.error(error.message || t('failedSave'));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this address?')) {
+    if (!confirm(t('confirmDelete'))) {
       return;
     }
 
     setDeletingId(id);
     try {
       await deleteAddress(id);
-      toast.success('Address deleted successfully');
+      toast.success(t('addressDeleted'));
       await refetch();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete address');
+      toast.error(error.message || t('failedDelete'));
     } finally {
       setDeletingId(null);
     }
@@ -147,10 +149,10 @@ export default function AddressesPage() {
     setSettingDefaultId(id);
     try {
       await setDefault(id);
-      toast.success('Default address updated');
+      toast.success(t('defaultUpdated'));
       await refetch();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to set default address');
+      toast.error(error.message || t('failedSetDefault'));
     } finally {
       setSettingDefaultId(null);
     }
@@ -204,9 +206,9 @@ export default function AddressesPage() {
               </div>
               <div>
                 <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">
-                  Saved Addresses
+                  {t('title')}
                 </h1>
-                <p className="text-lg text-white/80">Manage your shipping addresses</p>
+                <p className="text-lg text-white/80">{t('subtitle')}</p>
               </div>
             </motion.div>
 
@@ -224,7 +226,7 @@ export default function AddressesPage() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Add Address
+                {t('addAddress')}
               </motion.button>
             </motion.div>
           </div>
@@ -268,7 +270,7 @@ export default function AddressesPage() {
                     {/* Default Badge */}
                     {address.isDefault && (
                       <span className="absolute top-4 right-4 px-3 py-1 bg-gold text-black text-xs font-semibold rounded-full">
-                        Default
+                        {t('default')}
                       </span>
                     )}
 
@@ -300,7 +302,7 @@ export default function AddressesPage() {
                         onClick={() => setEditingAddress(address)}
                         className="flex-1 px-4 py-2 bg-neutral-100 text-neutral-700 font-semibold rounded-lg hover:bg-neutral-200 transition-all"
                       >
-                        Edit
+                        {t('edit')}
                       </motion.button>
                       {!address.isDefault && (
                         <motion.button
@@ -310,7 +312,7 @@ export default function AddressesPage() {
                           disabled={settingDefaultId === address.id}
                           className="flex-1 px-4 py-2 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {settingDefaultId === address.id ? 'Setting...' : 'Set Default'}
+                          {settingDefaultId === address.id ? t('setting') : t('setDefault')}
                         </motion.button>
                       )}
                       <motion.button
@@ -320,7 +322,7 @@ export default function AddressesPage() {
                         disabled={deletingId === address.id}
                         className="px-4 py-2 bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {deletingId === address.id ? 'Deleting...' : 'Delete'}
+                        {deletingId === address.id ? t('deleting') : t('delete')}
                       </motion.button>
                     </div>
                   </motion.div>
@@ -338,7 +340,7 @@ export default function AddressesPage() {
                   <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  <span className="text-lg font-semibold">Add New Address</span>
+                  <span className="text-lg font-semibold">{t('addNewAddress')}</span>
                 </motion.button>
               )}
             </div>
@@ -365,7 +367,7 @@ export default function AddressesPage() {
                     <div className="p-8">
                       <div className="flex items-center justify-between mb-6">
                         <h2 className="text-2xl font-serif font-bold text-black">
-                          {editingAddress ? 'Edit Address' : 'Add New Address'}
+                          {editingAddress ? t('editAddress') : t('addNewAddress')}
                         </h2>
                         <button
                           onClick={closeModal}
@@ -381,14 +383,14 @@ export default function AddressesPage() {
                         {/* Company (Optional) */}
                         <div>
                           <label className="block text-sm font-medium text-neutral-700 mb-2">
-                            Company (Optional)
+                            {t('companyOptional')}
                           </label>
                           <input
                             type="text"
                             value={formData.company}
                             onChange={(e) => handleInputChange('company', e.target.value)}
                             className="w-full px-4 py-3 border-2 border-neutral-200 rounded-lg focus:border-gold focus:outline-none"
-                            placeholder="Company name"
+                            placeholder={t('companyPlaceholder')}
                           />
                         </div>
 
@@ -396,7 +398,7 @@ export default function AddressesPage() {
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-neutral-700 mb-2">
-                              First Name <span className="text-red-500">*</span>
+                              {t('firstName')} <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"
@@ -413,7 +415,7 @@ export default function AddressesPage() {
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-neutral-700 mb-2">
-                              Last Name <span className="text-red-500">*</span>
+                              {t('lastName')} <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"
@@ -433,7 +435,7 @@ export default function AddressesPage() {
                         {/* Address Line 1 */}
                         <div>
                           <label className="block text-sm font-medium text-neutral-700 mb-2">
-                            Street Address <span className="text-red-500">*</span>
+                            {t('streetAddress')} <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -452,7 +454,7 @@ export default function AddressesPage() {
                         {/* Address Line 2 */}
                         <div>
                           <label className="block text-sm font-medium text-neutral-700 mb-2">
-                            Apartment, Suite, etc. (Optional)
+                            {t('aptSuiteOptional')}
                           </label>
                           <input
                             type="text"
@@ -467,7 +469,7 @@ export default function AddressesPage() {
                         <div className="grid md:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-neutral-700 mb-2">
-                              City <span className="text-red-500">*</span>
+                              {t('city')} <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"
@@ -484,7 +486,7 @@ export default function AddressesPage() {
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-neutral-700 mb-2">
-                              State/Province <span className="text-red-500">*</span>
+                              {t('stateProvince')} <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"
@@ -501,7 +503,7 @@ export default function AddressesPage() {
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-neutral-700 mb-2">
-                              Postal Code <span className="text-red-500">*</span>
+                              {t('postalCode')} <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"
@@ -521,13 +523,13 @@ export default function AddressesPage() {
                         {/* Country */}
                         <div>
                           <label className="block text-sm font-medium text-neutral-700 mb-2">
-                            Country <span className="text-red-500">*</span>
+                            {t('country')} <span className="text-red-500">*</span>
                           </label>
                           <CountrySelector
                             value={formData.country}
                             onChange={(countryName) => handleInputChange('country', countryName)}
                             error={validationErrors.country}
-                            placeholder="Select your country"
+                            placeholder={t('selectCountry')}
                           />
                           {validationErrors.country && (
                             <p className="mt-1 text-sm text-red-500">{validationErrors.country}</p>
@@ -537,7 +539,7 @@ export default function AddressesPage() {
                         {/* Phone */}
                         <div>
                           <label className="block text-sm font-medium text-neutral-700 mb-2">
-                            Phone Number
+                            {t('phoneNumber')}
                           </label>
                           <input
                             type="tel"
@@ -561,7 +563,7 @@ export default function AddressesPage() {
                             onChange={(e) => handleInputChange('isDefault', e.target.checked)}
                             className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
                           />
-                          <span className="text-sm text-neutral-700">Set as default address</span>
+                          <span className="text-sm text-neutral-700">{t('setAsDefault')}</span>
                         </label>
 
                         {/* Action Buttons */}
@@ -573,7 +575,7 @@ export default function AddressesPage() {
                             disabled={creating || updating}
                             className="flex-1 px-6 py-4 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {creating || updating ? 'Saving...' : editingAddress ? 'Update Address' : 'Add Address'}
+                            {creating || updating ? t('saving') : editingAddress ? t('updateAddress') : t('addAddress')}
                           </motion.button>
                           <motion.button
                             whileHover={{ scale: 1.02 }}
@@ -582,7 +584,7 @@ export default function AddressesPage() {
                             onClick={closeModal}
                             className="flex-1 px-6 py-4 bg-neutral-100 text-neutral-700 font-semibold rounded-lg hover:bg-neutral-200 transition-all"
                           >
-                            Cancel
+                            {t('cancel')}
                           </motion.button>
                         </div>
                       </form>

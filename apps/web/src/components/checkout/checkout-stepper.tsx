@@ -3,6 +3,7 @@
 import React from 'react';
 import { cn } from '@nextpik/ui';
 import { Package, CreditCard, ShieldCheck, Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export type CheckoutStep = 'shipping' | 'payment' | 'review';
 
@@ -13,38 +14,39 @@ interface CheckoutStepperProps {
   className?: string;
 }
 
-const STEPS: Array<{
-  id: CheckoutStep;
-  label: string;
-  number: number;
-  icon: any;
-}> = [
-  {
-    id: 'shipping',
-    label: 'Shipping Details',
-    number: 1,
-    icon: Package,
-  },
-  {
-    id: 'payment',
-    label: 'Payment Info',
-    number: 2,
-    icon: CreditCard,
-  },
-  {
-    id: 'review',
-    label: 'Review Order',
-    number: 3,
-    icon: ShieldCheck,
-  },
-];
-
 export function CheckoutStepper({
   currentStep,
   completedSteps,
   onStepClick,
   className,
 }: CheckoutStepperProps) {
+  const t = useTranslations('components.checkoutStepper');
+
+  const STEPS: Array<{
+    id: CheckoutStep;
+    label: string;
+    number: number;
+    icon: any;
+  }> = [
+    {
+      id: 'shipping',
+      label: t('shippingDetails'),
+      number: 1,
+      icon: Package,
+    },
+    {
+      id: 'payment',
+      label: t('paymentInfo'),
+      number: 2,
+      icon: CreditCard,
+    },
+    {
+      id: 'review',
+      label: t('reviewOrder'),
+      number: 3,
+      icon: ShieldCheck,
+    },
+  ];
   const currentStepIndex = STEPS.findIndex((step) => step.id === currentStep);
 
   const isStepCompleted = (stepId: CheckoutStep) => {
@@ -144,7 +146,7 @@ export function CheckoutStepper({
                 {/* Labels */}
                 <div className="flex flex-col items-center gap-1.5 min-w-[120px]">
                   <p className="text-xs text-neutral-500 font-medium uppercase tracking-wide">
-                    Step {step.number}
+                    {t('step')} {step.number}
                   </p>
                   <p
                     className={cn(
@@ -164,9 +166,9 @@ export function CheckoutStepper({
                       status === 'pending' && 'bg-neutral-100 text-neutral-500'
                     )}
                   >
-                    {status === 'completed' && 'Completed'}
-                    {status === 'in-progress' && 'In Progress'}
-                    {status === 'pending' && 'Pending'}
+                    {status === 'completed' && t('completed')}
+                    {status === 'in-progress' && t('inProgress')}
+                    {status === 'pending' && t('pending')}
                   </span>
                 </div>
               </button>

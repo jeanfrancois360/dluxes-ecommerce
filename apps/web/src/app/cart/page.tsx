@@ -9,9 +9,12 @@ import { useRouter } from 'next/navigation';
 import { Price } from '@/components/price';
 import { CartPageSkeleton } from '@/components/loading/skeleton';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 export default function CartPage() {
   const router = useRouter();
+  const t = useTranslations('cart');
+  const tc = useTranslations('common');
   const {
     items = [],
     totals,
@@ -38,16 +41,16 @@ export default function CartPage() {
     try {
       await updateQuantity(id, newQuantity);
     } catch (error) {
-      toast.error('Failed to update quantity');
+      toast.error(t('failedUpdateQuantity'));
     }
   };
 
   const handleRemoveItem = async (id: string) => {
     try {
       await removeItem(id);
-      toast.success('Item removed from cart');
+      toast.success(t('itemRemoved'));
     } catch (error) {
-      toast.error('Failed to remove item');
+      toast.error(t('failedRemoveItem'));
     }
   };
 
@@ -80,11 +83,11 @@ export default function CartPage() {
             animate={{ opacity: 1, y: 0 }}
             className="flex items-center gap-2 text-sm text-white/60 mb-6"
           >
-            <Link href="/" className="hover:text-gold transition-colors">Home</Link>
+            <Link href="/" className="hover:text-gold transition-colors">{tc('nav.home')}</Link>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <span className="text-white font-medium">Cart</span>
+            <span className="text-white font-medium">{tc('nav.cart')}</span>
           </motion.div>
 
           <motion.div
@@ -100,11 +103,11 @@ export default function CartPage() {
             </div>
             <div>
               <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">
-                Shopping Cart
+                {t('shoppingCart')}
               </h1>
               <p className="text-lg text-white/80 flex items-center gap-2">
                 <span className="font-semibold text-gold">{items.length}</span>
-                <span>item{items.length !== 1 ? 's' : ''} in your cart</span>
+                <span>{items.length !== 1 ? t('itemsInCart') : t('itemInCart')}</span>
               </p>
             </div>
           </motion.div>
@@ -127,15 +130,15 @@ export default function CartPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-serif font-bold text-black mb-2">Your cart is empty</h2>
-              <p className="text-neutral-600 mb-8">Add some luxury items to get started</p>
+              <h2 className="text-2xl font-serif font-bold text-black mb-2">{t('emptyCart')}</h2>
+              <p className="text-neutral-600 mb-8">{t('addLuxuryItems')}</p>
               <Link href="/products">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="px-8 py-4 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-all"
                 >
-                  Continue Shopping
+                  {tc('buttons.continueShopping')}
                 </motion.button>
               </Link>
             </motion.div>
@@ -218,7 +221,7 @@ export default function CartPage() {
 
                             {/* Price */}
                             <div className="text-right">
-                              {/* 🔒 Use locked price (priceAtAdd) if available, otherwise convert USD price */}
+                              {/* Use locked price (priceAtAdd) if available, otherwise convert USD price */}
                               <Price
                                 amount={Number(item.priceAtAdd !== undefined ? item.priceAtAdd : item.price) * item.quantity}
                                 fromCurrency={item.currencyAtAdd || 'USD'}
@@ -230,7 +233,7 @@ export default function CartPage() {
                                     amount={Number(item.priceAtAdd !== undefined ? item.priceAtAdd : item.price)}
                                     fromCurrency={item.currencyAtAdd || 'USD'}
                                     className="inline"
-                                  /> each
+                                  /> {t('each')}
                                 </p>
                               )}
                             </div>
@@ -250,7 +253,7 @@ export default function CartPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
-                    Continue Shopping
+                    {tc('buttons.continueShopping')}
                   </motion.button>
                 </Link>
               </div>
@@ -258,26 +261,26 @@ export default function CartPage() {
               {/* Order Summary */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-xl shadow-lg border border-neutral-200 p-6 sticky top-24">
-                  <h2 className="text-2xl font-serif font-bold text-black mb-6">Order Summary</h2>
+                  <h2 className="text-2xl font-serif font-bold text-black mb-6">{t('orderSummary')}</h2>
 
                   {/* Summary Details */}
                   <div className="space-y-4 py-4 border-y border-neutral-200">
                     <div className="flex justify-between text-neutral-600">
-                      <span>Subtotal ({totals.itemCount} items)</span>
-                      {/* 🔒 Totals are already in cart currency - no conversion needed */}
+                      <span>{t('subtotalItems', { count: totals.itemCount })}</span>
+                      {/* Totals are already in cart currency - no conversion needed */}
                       <Price amount={totals.subtotal} fromCurrency={cartCurrency} className="font-semibold text-black" />
                     </div>
                     <div className="flex justify-between text-neutral-600">
-                      <span>Shipping</span>
+                      <span>{t('shipping')}</span>
                       <span className="text-sm text-neutral-500 italic">
-                        Calculated at checkout
+                        {t('calculatedAtCheckout')}
                       </span>
                     </div>
                     {taxCalculationMode !== 'disabled' && (
                       <div className="flex justify-between text-neutral-600">
-                        <span>Tax</span>
+                        <span>{t('tax')}</span>
                         <span className="text-sm text-neutral-500 italic">
-                          Calculated at checkout
+                          {t('calculatedAtCheckout')}
                         </span>
                       </div>
                     )}
@@ -285,10 +288,10 @@ export default function CartPage() {
 
                   {/* Total */}
                   <div className="flex justify-between items-center py-4">
-                    <span className="text-lg font-semibold text-black">Subtotal</span>
+                    <span className="text-lg font-semibold text-black">{t('subtotal')}</span>
                     <div className="text-right">
                       <Price amount={totals.subtotal} fromCurrency={cartCurrency} className="text-3xl font-bold text-black" />
-                      <p className="text-xs text-neutral-500 mt-1">Taxes and shipping at checkout</p>
+                      <p className="text-xs text-neutral-500 mt-1">{t('taxesAndShipping')}</p>
                     </div>
                   </div>
 
@@ -304,7 +307,7 @@ export default function CartPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <div>
-                          <p className="font-medium text-blue-900">Free shipping available!</p>
+                          <p className="font-medium text-blue-900">{t('freeShippingAvailable')}</p>
                           <p className="text-blue-700 mt-1">
                             Add <Price amount={freeShippingThreshold - totals.subtotal} className="font-semibold inline" /> more to qualify for free shipping.
                           </p>
@@ -323,7 +326,7 @@ export default function CartPage() {
                         <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <p className="font-medium text-green-900">You qualify for free shipping! 🎉</p>
+                        <p className="font-medium text-green-900">{t('qualifyForFreeShipping')}</p>
                       </div>
                     </motion.div>
                   )}
@@ -336,7 +339,7 @@ export default function CartPage() {
                     disabled={isLoading}
                     className="w-full px-6 py-4 bg-gold text-black font-semibold text-lg rounded-lg hover:bg-gold/90 transition-all shadow-lg hover:shadow-xl mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isLoading ? 'Processing...' : 'Proceed to Checkout'}
+                    {isLoading ? t('processing') : tc('buttons.proceedToCheckout')}
                   </motion.button>
 
                   {/* Trust Badges */}
@@ -345,25 +348,25 @@ export default function CartPage() {
                       <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                       </svg>
-                      Secure Checkout
+                      {t('secureCheckout')}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-neutral-600">
                       <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Money-Back Guarantee
+                      {t('moneyBackGuarantee')}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-neutral-600">
                       <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                       </svg>
-                      Free Returns
+                      {t('freeReturns')}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-neutral-600">
                       <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
                       </svg>
-                      24/7 Support
+                      {t('support247')}
                     </div>
                   </div>
                 </div>

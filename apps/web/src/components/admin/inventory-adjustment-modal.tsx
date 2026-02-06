@@ -21,6 +21,7 @@ import {
 import { adminProductsApi } from '@/lib/api/admin';
 import { toast } from 'sonner';
 import { Loader2, Package, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface InventoryAdjustmentModalProps {
   open: boolean;
@@ -35,14 +36,6 @@ interface InventoryAdjustmentModalProps {
 
 type TransactionType = 'SALE' | 'RETURN' | 'RESTOCK' | 'ADJUSTMENT' | 'DAMAGE';
 
-const transactionTypes: { value: TransactionType; label: string; icon: React.ReactNode }[] = [
-  { value: 'RESTOCK', label: 'Purchase/Receive', icon: <TrendingUp className="h-4 w-4" /> },
-  { value: 'SALE', label: 'Sale', icon: <TrendingDown className="h-4 w-4" /> },
-  { value: 'ADJUSTMENT', label: 'Adjustment', icon: <RefreshCw className="h-4 w-4" /> },
-  { value: 'RETURN', label: 'Return', icon: <TrendingUp className="h-4 w-4" /> },
-  { value: 'DAMAGE', label: 'Damage/Loss', icon: <TrendingDown className="h-4 w-4" /> },
-];
-
 export function InventoryAdjustmentModal({
   open,
   onOpenChange,
@@ -53,11 +46,20 @@ export function InventoryAdjustmentModal({
   currentStock = 0,
   onSuccess,
 }: InventoryAdjustmentModalProps) {
+  const t = useTranslations('components.inventoryAdjustmentModal');
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState<string>('');
   const [type, setType] = useState<TransactionType>('ADJUSTMENT');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
+
+  const transactionTypes: { value: TransactionType; label: string; icon: React.ReactNode }[] = [
+    { value: 'RESTOCK', label: t('purchaseReceive'), icon: <TrendingUp className="h-4 w-4" /> },
+    { value: 'SALE', label: t('sale'), icon: <TrendingDown className="h-4 w-4" /> },
+    { value: 'ADJUSTMENT', label: t('adjustment'), icon: <RefreshCw className="h-4 w-4" /> },
+    { value: 'RETURN', label: t('return'), icon: <TrendingUp className="h-4 w-4" /> },
+    { value: 'DAMAGE', label: t('damageLoss'), icon: <TrendingDown className="h-4 w-4" /> },
+  ];
 
   const itemName = variantName || productName || 'Product';
   const isDeduction = ['SALE', 'DAMAGE'].includes(type);
@@ -69,17 +71,17 @@ export function InventoryAdjustmentModal({
     e.preventDefault();
 
     if (!quantity || quantityNumber <= 0) {
-      toast.error('Please enter a valid quantity');
+      toast.error(t('validQuantityError'));
       return;
     }
 
     if (newStock < 0) {
-      toast.error('Adjustment would result in negative stock');
+      toast.error(t('negativeStockError'));
       return;
     }
 
     if (!productId) {
-      toast.error('Product ID is required');
+      toast.error(t('productIdError'));
       return;
     }
 
@@ -99,7 +101,7 @@ export function InventoryAdjustmentModal({
         await adminProductsApi.adjustProductInventory(productId, adjustmentData);
       }
 
-      toast.success('Inventory adjusted successfully');
+      toast.success(t('successMessage'));
 
       // Reset form
       setQuantity('');
@@ -111,7 +113,7 @@ export function InventoryAdjustmentModal({
       onOpenChange(false);
     } catch (error: any) {
       console.error('Error adjusting inventory:', error);
-      toast.error(error.response?.data?.message || 'Failed to adjust inventory');
+      toast.error(error.response?.data?.message || t('failedMessage'));
     } finally {
       setLoading(false);
     }
@@ -127,9 +129,9 @@ export function InventoryAdjustmentModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Adjust Inventory</DialogTitle>
+          <DialogTitle>{t('adjustInventory')}</DialogTitle>
           <DialogDescription>
-            Update stock levels for {itemName}
+            {t('updateStockLevels', { itemName })}
           </DialogDescription>
         </DialogHeader>
 
@@ -138,11 +140,11 @@ export function InventoryAdjustmentModal({
           <div className="rounded-lg border bg-muted/50 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Current Stock</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('currentStock')}</p>
                 <p className="text-2xl font-bold">{currentStock}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-medium text-muted-foreground">New Stock</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('newStock')}</p>
                 <p className={`text-2xl font-bold ${newStock < 0 ? 'text-red-600' : newStock < 10 ? 'text-yellow-600' : 'text-green-600'}`}>
                   {newStock}
                 </p>
@@ -153,7 +155,7 @@ export function InventoryAdjustmentModal({
                 <div className={`rounded-full px-3 py-1 text-sm font-medium ${
                   isDeduction ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                 }`}>
-                  {isDeduction ? '−' : '+'} {Math.abs(adjustedQuantity)} units
+                  {isDeduction ? '−' : '+'} {Math.abs(adjustedQuantity)} {t('units')}
                 </div>
               </div>
             )}
@@ -161,7 +163,7 @@ export function InventoryAdjustmentModal({
 
           {/* Transaction Type */}
           <div className="space-y-2">
-            <Label htmlFor="type">Transaction Type</Label>
+            <Label htmlFor="type">{t('transactionType')}</Label>
             <Select value={type} onValueChange={(value) => setType(value as TransactionType)}>
               <SelectTrigger>
                 <SelectValue />
@@ -182,7 +184,7 @@ export function InventoryAdjustmentModal({
           {/* Quantity */}
           <div className="space-y-2">
             <Label htmlFor="quantity">
-              Quantity <span className="text-red-500">*</span>
+              {t('quantity')} <span className="text-red-500">*</span>
             </Label>
             <Input
               id="quantity"
@@ -190,30 +192,30 @@ export function InventoryAdjustmentModal({
               min="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              placeholder="Enter quantity"
+              placeholder={t('enterQuantity')}
               required
             />
           </div>
 
           {/* Reason */}
           <div className="space-y-2">
-            <Label htmlFor="reason">Reason</Label>
+            <Label htmlFor="reason">{t('reason')}</Label>
             <Input
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g., New shipment received"
+              placeholder={t('reasonPlaceholder')}
             />
           </div>
 
           {/* Notes */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">{t('notes')}</Label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Additional notes (optional)"
+              placeholder={t('notesPlaceholder')}
               rows={3}
             />
           </div>
@@ -225,11 +227,11 @@ export function InventoryAdjustmentModal({
               onClick={handleClose}
               disabled={loading}
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={loading || newStock < 0}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Adjust Inventory
+              {t('adjustInventoryButton')}
             </Button>
           </DialogFooter>
         </form>

@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useLocale as useNextIntlLocale } from 'next-intl';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 // Language types
@@ -45,34 +46,34 @@ interface LocaleContextType {
 
 const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 
-const LANGUAGE_KEY = 'nextpik_ecommerce_language';
 const CURRENCY_KEY = 'nextpik_ecommerce_currency';
+const LOCALE_COOKIE = 'NEXT_LOCALE';
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('en');
+  // Read current locale from next-intl (server-set)
+  const nextIntlLocale = useNextIntlLocale() as Language;
+
   const [currency, setCurrencyState] = useState<Currency>('USD');
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load from localStorage on mount
+  // The language is now sourced from next-intl
+  const language = nextIntlLocale;
+
+  // Load currency from localStorage on mount
   useEffect(() => {
-    const savedLanguage = localStorage.getItem(LANGUAGE_KEY) as Language;
     const savedCurrency = localStorage.getItem(CURRENCY_KEY) as Currency;
-
-    if (savedLanguage && languages.some(l => l.code === savedLanguage)) {
-      setLanguageState(savedLanguage);
-    }
-
     if (savedCurrency && currencies.some(c => c.code === savedCurrency)) {
       setCurrencyState(savedCurrency);
     }
-
     setIsInitialized(true);
   }, []);
 
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    localStorage.setItem(LANGUAGE_KEY, lang);
-  };
+  // Set language by writing the NEXT_LOCALE cookie and reloading
+  const setLanguage = useCallback((lang: Language) => {
+    document.cookie = `${LOCALE_COOKIE}=${lang};path=/;max-age=${365 * 24 * 60 * 60};samesite=lax`;
+    localStorage.setItem('nextpik_ecommerce_language', lang);
+    window.location.reload();
+  }, []);
 
   const setCurrency = (curr: Currency) => {
     setCurrencyState(curr);

@@ -2,6 +2,7 @@
 
 import { useState, useRef, DragEvent } from 'react';
 import { api } from '@/lib/api/client';
+import { useTranslations } from 'next-intl';
 
 interface ImageUploadProps {
   value: string;
@@ -20,6 +21,7 @@ export default function ImageUpload({
   required = false,
   error,
 }: ImageUploadProps) {
+  const t = useTranslations('components.imageUpload');
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -31,14 +33,14 @@ export default function ImageUpload({
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
-      setUploadError('Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.');
+      setUploadError(t('invalidFileType'));
       return;
     }
 
     // Validate file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      setUploadError('File size exceeds 5MB limit');
+      setUploadError(t('fileSizeExceeds'));
       return;
     }
 
@@ -61,11 +63,11 @@ export default function ImageUpload({
         onChange(imageUrl);
         setUploadError(null);
       } else {
-        setUploadError('Failed to upload image - no URL returned');
+        setUploadError(t('noUrlReturned'));
       }
     } catch (err: any) {
       console.error('Upload failed:', err);
-      setUploadError(err.response?.data?.message || 'Failed to upload image');
+      setUploadError(err.response?.data?.message || t('uploadFailed'));
     } finally {
       setIsUploading(false);
     }
@@ -145,7 +147,7 @@ export default function ImageUpload({
             {isUploading ? (
               <div className="py-4">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-neutral-200 border-t-black mb-3"></div>
-                <p className="text-neutral-600">Uploading...</p>
+                <p className="text-neutral-600">{t('uploading')}</p>
               </div>
             ) : (
               <>
@@ -156,22 +158,22 @@ export default function ImageUpload({
                 </div>
 
                 <p className="text-neutral-700 font-medium mb-1">
-                  Drop your image here, or{' '}
+                  {t('dropImageHere')}{' '}
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="text-gold hover:text-gold-dark underline"
                   >
-                    browse
+                    {t('browse')}
                   </button>
                 </p>
                 <p className="text-sm text-neutral-500 mb-4">
-                  JPEG, PNG, WebP, or GIF (max 5MB)
+                  {t('fileRequirements')}
                 </p>
 
                 <div className="flex items-center justify-center gap-4">
                   <div className="h-px bg-neutral-300 flex-1"></div>
-                  <span className="text-xs text-neutral-500">OR</span>
+                  <span className="text-xs text-neutral-500">{t('or')}</span>
                   <div className="h-px bg-neutral-300 flex-1"></div>
                 </div>
 
@@ -180,7 +182,7 @@ export default function ImageUpload({
                   onClick={() => setShowUrlInput(!showUrlInput)}
                   className="mt-4 text-sm text-neutral-600 hover:text-black underline"
                 >
-                  {showUrlInput ? 'Hide URL input' : 'Use image URL instead'}
+                  {showUrlInput ? t('hideUrlInput') : t('useImageUrl')}
                 </button>
 
                 {showUrlInput && (
@@ -189,7 +191,7 @@ export default function ImageUpload({
                       type="url"
                       value={urlInput}
                       onChange={(e) => setUrlInput(e.target.value)}
-                      placeholder="https://example.com/image.jpg"
+                      placeholder={t('urlPlaceholder')}
                       className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent text-sm"
                     />
                     <button
@@ -198,7 +200,7 @@ export default function ImageUpload({
                       disabled={!urlInput.trim()}
                       className="px-4 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     >
-                      Add
+                      {t('add')}
                     </button>
                   </div>
                 )}
@@ -239,7 +241,7 @@ export default function ImageUpload({
               onClick={() => fileInputRef.current?.click()}
               className="text-sm text-neutral-600 hover:text-black underline"
             >
-              Change image
+              {t('changeImage')}
             </button>
             <input
               ref={fileInputRef}
@@ -254,7 +256,7 @@ export default function ImageUpload({
       )}
 
       <p className="mt-2 text-xs text-neutral-500">
-        Recommended: 1200 x 1200 pixels for best quality
+        {t('recommended')}
       </p>
     </div>
   );
