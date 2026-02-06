@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Review } from '@nextpik/shared';
 import { formatDistanceToNow } from 'date-fns';
+import { useTranslations } from 'next-intl';
 
 interface ReviewCardProps {
   review: Review;
@@ -12,6 +13,7 @@ interface ReviewCardProps {
 }
 
 export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps) {
+  const t = useTranslations('components.reviewCard');
   const [showFullText, setShowFullText] = useState(false);
   const [showImages, setShowImages] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
                       clipRule="evenodd"
                     />
                   </svg>
-                  Verified Purchase
+                  {t('verifiedPurchase')}
                 </span>
               )}
             </div>
@@ -97,7 +99,7 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
           <button
             onClick={() => onReport?.(review.id)}
             className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
-            aria-label="Report review"
+            aria-label={t('reportReview')}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -124,7 +126,7 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
             onClick={() => setShowFullText(!showFullText)}
             className="text-[#CBB57B] hover:text-[#A89968] font-medium text-sm mb-4 transition-colors"
           >
-            {showFullText ? 'Show less' : 'Read more'}
+            {showFullText ? t('showLess') : t('readMore')}
           </button>
         )}
 
@@ -142,7 +144,7 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
                 >
                   <img
                     src={image}
-                    alt={`Review image ${index + 1}`}
+                    alt={t('reviewImage', { number: index + 1 })}
                     className="w-full h-full object-cover"
                   />
                 </motion.button>
@@ -170,7 +172,7 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
               />
             </svg>
             <span className="text-sm font-medium">
-              Helpful {review.helpfulCount > 0 && `(${review.helpfulCount})`}
+              {review.helpfulCount > 0 ? t('helpfulWithCount', { count: review.helpfulCount }) : t('helpful')}
             </span>
           </button>
         </div>
@@ -203,7 +205,7 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
               </button>
               <img
                 src={selectedImage}
-                alt="Review image"
+                alt={t('reviewImage', { number: '' })}
                 className="max-w-full max-h-[90vh] rounded-lg"
               />
             </motion.div>

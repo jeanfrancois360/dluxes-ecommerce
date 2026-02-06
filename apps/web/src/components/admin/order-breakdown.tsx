@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { currencyApi, CurrencyRate } from '@/lib/api/currency';
+import { useTranslations } from 'next-intl';
 
 // Currency symbols map for common currencies (fallback if API fails)
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -110,6 +111,7 @@ export function OrderBreakdown({
   total,
   currency = 'USD',
 }: OrderBreakdownProps) {
+  const t = useTranslations('components.orderBreakdown');
   const [currencyData, setCurrencyData] = useState<CurrencyRate | null>(null);
 
   // Fetch currency data on mount or when currency changes
@@ -186,7 +188,7 @@ export function OrderBreakdown({
               />
             </svg>
             <h3 className="text-lg font-semibold text-gray-900">
-              Multi-Vendor Order Breakdown
+              {t('multiVendorBreakdown')}
             </h3>
           </div>
 
@@ -202,8 +204,7 @@ export function OrderBreakdown({
                       {store.storeName}
                     </h4>
                     <p className="text-sm text-gray-600">
-                      {store.items.length} item
-                      {store.items.length !== 1 ? 's' : ''}
+                      {store.items.length} {store.items.length === 1 ? t('item') : t('items')}
                     </p>
                   </div>
                   <div className="text-right">
@@ -234,14 +235,14 @@ export function OrderBreakdown({
                 {store.commission && (
                   <div className="border-t pt-3 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Order Amount</span>
+                      <span className="text-gray-600">{t('orderAmount')}</span>
                       <span className="text-gray-900">
                         {formatAdminCurrency(store.commission.orderAmount, currency, currencyData)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">
-                        Platform Commission ({' '}
+                        {t('platformCommission')} ({' '}
                         {store.commission.orderAmount > 0
                           ? (
                               (store.commission.commissionAmount /
@@ -257,7 +258,7 @@ export function OrderBreakdown({
                     </div>
                     <div className="flex justify-between text-sm font-semibold border-t pt-2">
                       <span className="text-gray-900">
-                        Seller Net Payout
+                        {t('sellerNetPayout')}
                       </span>
                       <span className="text-green-600">
                         {formatAdminCurrency(store.netPayout || 0, currency, currencyData)}
@@ -274,7 +275,7 @@ export function OrderBreakdown({
             <div className="mt-4 pt-4 border-t border-blue-200">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-blue-900">
-                  Total Platform Commission
+                  {t('totalPlatformCommission')}
                 </span>
                 <span className="text-lg font-bold text-blue-600">
                   {formatAdminCurrency(totalCommission, currency, currencyData)}
@@ -288,37 +289,37 @@ export function OrderBreakdown({
       {/* Order Summary */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Order Summary
+          {t('orderSummary')}
         </h3>
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Subtotal</span>
+            <span className="text-gray-600">{t('subtotal')}</span>
             <span className="text-gray-900">
               {formatAdminCurrency(subtotal, currency, currencyData)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Tax</span>
+            <span className="text-gray-600">{t('tax')}</span>
             <span className="text-gray-900">
               {formatAdminCurrency(tax, currency, currencyData)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Shipping</span>
+            <span className="text-gray-600">{t('shipping')}</span>
             <span className="text-gray-900">
               {formatAdminCurrency(shipping, currency, currencyData)}
             </span>
           </div>
           {totalCommission > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Platform Commission</span>
+              <span className="text-gray-600">{t('platformCommission')}</span>
               <span className="text-blue-600 font-medium">
                 {formatAdminCurrency(totalCommission, currency, currencyData)}
               </span>
             </div>
           )}
           <div className="flex justify-between text-lg font-bold border-t pt-3">
-            <span className="text-gray-900">Total</span>
+            <span className="text-gray-900">{t('total')}</span>
             <span className="text-gray-900">
               {formatAdminCurrency(total, currency, currencyData)}
             </span>

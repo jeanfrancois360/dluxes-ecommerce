@@ -1,4 +1,7 @@
 const path = require('path');
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -104,6 +107,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+      },
     ],
   },
   // Security headers
@@ -141,4 +148,4 @@ const nextConfig = {
   output: 'standalone',
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

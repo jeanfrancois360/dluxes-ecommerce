@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAutocomplete } from '@/hooks/use-search';
 import { SearchAutocompleteItem } from './search-autocomplete-item';
 import { SearchSuggestions } from './search-suggestions';
+import { useTranslations } from 'next-intl';
 
 interface SearchBarProps {
   className?: string;
@@ -16,10 +17,12 @@ interface SearchBarProps {
 
 export function SearchBar({
   className = '',
-  placeholder = 'Search luxury items, brands, or collections...',
+  placeholder,
   autoFocus = false,
   onSearch,
 }: SearchBarProps) {
+  const t = useTranslations('components.searchBar');
+  const defaultPlaceholder = placeholder || t('placeholder');
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -174,7 +177,7 @@ export function SearchBar({
                 setSelectedIndex(-1);
               }}
               onFocus={() => setIsFocused(true)}
-              placeholder={placeholder}
+              placeholder={defaultPlaceholder}
               className="flex-1 h-full pl-12 pr-24 bg-transparent text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none"
               aria-label="Search"
               aria-autocomplete="list"

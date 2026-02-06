@@ -11,12 +11,16 @@ import { toast } from '@/lib/utils/toast';
 import { showAuthError } from '@/lib/utils/auth-errors';
 import { PasswordStrengthIndicator, validatePassword } from '@/components/auth/password-strength-indicator';
 import { SuccessAnimation } from '@/components/auth/success-animation';
+import { useTranslations } from 'next-intl';
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
   const { confirmPasswordReset, isLoading: authLoading, clearError } = useAuth();
+  const t = useTranslations('auth.resetPassword');
+  const tc = useTranslations('common');
+  const tRegister = useTranslations('auth.register');
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,7 +33,7 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (!token) {
-      toast.error('Invalid or missing reset token');
+      toast.error(t('invalidToken'));
     }
   }, [token]);
 
@@ -56,7 +60,7 @@ export default function ResetPasswordPage() {
     }
 
     if (password !== confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
+      errors.confirmPassword = tRegister('passwordsDoNotMatch');
     }
 
     setValidationErrors(errors);
@@ -82,12 +86,12 @@ export default function ResetPasswordPage() {
   if (isSuccess) {
     return (
       <AuthLayout
-        title="Password Reset!"
-        subtitle="Your password has been successfully updated"
+        title={t('passwordReset')}
+        subtitle={t('passwordUpdated')}
       >
         <SuccessAnimation
-          title="Password Reset Complete!"
-          message="You can now sign in with your new password."
+          title={t('resetComplete')}
+          message={t('canSignInNow')}
           countdown={countdown}
         />
       </AuthLayout>
@@ -96,8 +100,8 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthLayout
-      title="Set New Password"
-      subtitle="Create a strong password for your account"
+      title={t('title')}
+      subtitle={t('subtitle')}
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Info Message */}
@@ -108,14 +112,14 @@ export default function ResetPasswordPage() {
             </svg>
           </div>
           <p className="text-sm text-neutral-600">
-            Your new password must be different from previously used passwords
+            {t('mustBeDifferent')}
           </p>
         </div>
 
         {/* New Password */}
         <div className="relative">
           <FloatingInput
-            label="New Password"
+            label={t('newPassword')}
             type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => {
@@ -164,7 +168,7 @@ export default function ResetPasswordPage() {
 
         {/* Confirm Password */}
         <FloatingInput
-          label="Confirm Password"
+          label={tRegister('confirmPassword')}
           type="password"
           value={confirmPassword}
           onChange={(e) => {
@@ -193,10 +197,10 @@ export default function ResetPasswordPage() {
           type="submit"
           className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg"
           loading={isLoading}
-          loadingText="Resetting password..."
+          loadingText={t('resettingPassword')}
           disabled={!password || !confirmPassword || !token}
         >
-          Reset Password
+          {t('resetPasswordButton')}
         </Button>
 
         {/* Back to Login - Mobile-friendly touch target */}
@@ -208,7 +212,7 @@ export default function ResetPasswordPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to login
+            {tc('buttons.backToLogin')}
           </Link>
         </div>
       </form>

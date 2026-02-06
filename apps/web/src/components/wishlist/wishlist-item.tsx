@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { WishlistItem } from '@nextpik/shared';
 import { formatDistanceToNow } from 'date-fns';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import { useTranslations } from 'next-intl';
 
 interface WishlistItemProps {
   item: WishlistItem;
@@ -19,6 +20,7 @@ export function WishlistItemComponent({
   onAddToCart,
   onQuickView,
 }: WishlistItemProps) {
+  const t = useTranslations('components.wishlistItem');
   const { product, addedAt, createdAt } = item as any;
   const isOnSale = product.compareAtPrice && product.compareAtPrice > product.price;
   const discountPercent = isOnSale
@@ -27,7 +29,7 @@ export function WishlistItemComponent({
 
   // Handle both addedAt and createdAt field names, with fallback
   const dateValue = addedAt || createdAt;
-  let relativeDate = 'Recently added';
+  let relativeDate = t('recentlyAdded');
   if (dateValue) {
     try {
       const date = new Date(dateValue);
@@ -74,12 +76,12 @@ export function WishlistItemComponent({
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           {isOnSale && (
             <span className="px-2 py-1 bg-red-500 text-white text-xs font-semibold rounded">
-              Save {discountPercent}%
+              {t('save', { percent: discountPercent })}
             </span>
           )}
           {!product.isAvailable && (
             <span className="px-2 py-1 bg-neutral-900 text-white text-xs font-semibold rounded">
-              Out of Stock
+              {t('outOfStock')}
             </span>
           )}
         </div>
@@ -92,7 +94,7 @@ export function WishlistItemComponent({
               whileTap={{ scale: 0.9 }}
               onClick={() => onQuickView(product.id)}
               className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-all shadow-lg"
-              aria-label="Quick view"
+              aria-label={t('quickView')}
             >
               <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -115,7 +117,7 @@ export function WishlistItemComponent({
             whileTap={{ scale: 0.9 }}
             onClick={() => onRemove?.(product.id)}
             className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-red-50 transition-all shadow-lg group/remove"
-            aria-label="Remove from wishlist"
+            aria-label={t('removeFromWishlist')}
           >
             <svg
               className="w-5 h-5 text-neutral-600 group-hover/remove:text-red-500 transition-colors"
@@ -160,12 +162,12 @@ export function WishlistItemComponent({
         <div className="flex items-center gap-2 mb-3">
           <div className={`w-2 h-2 rounded-full ${product.isAvailable ? 'bg-green-500' : 'bg-red-500'}`} />
           <span className={`text-xs font-medium ${product.isAvailable ? 'text-green-600' : 'text-red-600'}`}>
-            {product.isAvailable ? `In Stock (${product.inventory})` : 'Out of Stock'}
+            {product.isAvailable ? t('inStock', { count: product.inventory }) : t('outOfStock')}
           </span>
         </div>
 
         {/* Added Date */}
-        <p className="text-xs text-neutral-500 mb-4">Added {relativeDate}</p>
+        <p className="text-xs text-neutral-500 mb-4">{t('added', { date: relativeDate })}</p>
 
         {/* Actions */}
         <div className="flex gap-2">
@@ -180,14 +182,14 @@ export function WishlistItemComponent({
                 : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
             }`}
           >
-            {product.isAvailable ? 'Add to Cart' : 'Out of Stock'}
+            {product.isAvailable ? t('addToCart') : t('outOfStock')}
           </motion.button>
           <Link href={`/products/${product.slug}`}>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="px-4 py-3 border-2 border-neutral-200 rounded-lg hover:border-[#CBB57B] transition-colors"
-              aria-label="View details"
+              aria-label={t('viewDetails')}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path

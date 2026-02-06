@@ -10,6 +10,7 @@ import { FloatingInput, OTPInput, Button } from '@nextpik/ui';
 import { initiateGoogleAuth } from '@/lib/api/auth';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { showAuthError } from '@/lib/utils/auth-errors';
+import { useTranslations } from 'next-intl';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,6 +24,8 @@ export default function LoginPage() {
   const [show2FA, setShow2FA] = useState(false);
   const [otpValue, setOtpValue] = useState('');
   const [localError, setLocalError] = useState('');
+  const t = useTranslations('auth.login');
+  const tc = useTranslations('common');
 
   // Show error from OAuth redirect (e.g. ?error=Account+suspended)
   useEffect(() => {
@@ -43,12 +46,12 @@ export default function LoginPage() {
 
     // Validate fields
     if (!email || !password) {
-      toast.error('Please enter both email and password');
+      toast.error(t('enterBothFields'));
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      toast.error('Please enter a valid email address');
+      toast.error(t('invalidEmail'));
       return;
     }
 
@@ -58,13 +61,13 @@ export default function LoginPage() {
       // Check if 2FA is required
       if (result && (result as any).requires2FA) {
         setShow2FA(true);
-        toast.info('Please enter your 2FA code to continue');
+        toast.info(t('enter2FACode'));
         return;
       }
 
       // Show success toast only if not 2FA (2FA will show success after code verification)
       if (!show2FA) {
-        toast.success('Welcome back! Redirecting to your dashboard...', {
+        toast.success(t('welcomeBackRedirect'), {
           duration: 2000,
         });
       }
@@ -85,15 +88,15 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      title="Welcome Back"
-      subtitle="Sign in to access your luxury collection"
+      title={t('title')}
+      subtitle={t('subtitle')}
     >
       <form onSubmit={handleLogin} className="space-y-6">
         {!show2FA ? (
           <>
             {/* Email & Password Fields */}
             <FloatingInput
-              label="Email Address"
+              label={t('emailLabel')}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -113,7 +116,7 @@ export default function LoginPage() {
 
             <div className="relative">
               <FloatingInput
-                label="Password"
+                label={t('passwordLabel')}
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -159,7 +162,7 @@ export default function LoginPage() {
                   className="w-5 h-5 text-gold bg-white border-2 border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 transition-colors flex-shrink-0"
                 />
                 <span className="ml-2 text-sm text-neutral-600 group-hover:text-black transition-colors">
-                  Remember me
+                  {t('rememberMe')}
                 </span>
               </label>
 
@@ -167,7 +170,7 @@ export default function LoginPage() {
                 href="/auth/forgot-password"
                 className="text-sm text-gold hover:text-accent-700 transition-colors font-medium py-2 px-1"
               >
-                Forgot password?
+                {t('forgotPassword')}
               </Link>
             </div>
 
@@ -176,9 +179,9 @@ export default function LoginPage() {
               type="submit"
               className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold hover:shadow-lg"
               loading={isLoading}
-              loadingText="Signing in..."
+              loadingText={t('signingIn')}
             >
-              Sign In
+              {tc('nav.signIn')}
             </Button>
 
             {/* Divider */}
@@ -187,7 +190,7 @@ export default function LoginPage() {
                 <div className="w-full border-t border-neutral-200" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-neutral-500">Or continue with</span>
+                <span className="px-4 bg-white text-neutral-500">{t('orContinueWith')}</span>
               </div>
             </div>
 
@@ -206,7 +209,7 @@ export default function LoginPage() {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
-              <span className="font-medium text-neutral-700">Continue with Google</span>
+              <span className="font-medium text-neutral-700">{tc('buttons.continueWithGoogle')}</span>
             </motion.button>
 
             {/* Magic Link */}
@@ -218,7 +221,7 @@ export default function LoginPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
-                Send me a magic link instead
+                {t('magicLinkInstead')}
               </Link>
             </div>
           </>
@@ -235,9 +238,9 @@ export default function LoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-black mb-2">Enter Verification Code</h3>
+              <h3 className="text-lg font-semibold text-black mb-2">{t('enterVerificationCode')}</h3>
               <p className="text-sm text-neutral-600">
-                Enter the 6-digit code from your authenticator app
+                {t('enter6DigitCode')}
               </p>
             </div>
 
@@ -251,7 +254,7 @@ export default function LoginPage() {
               type="submit"
               className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold"
             >
-              Verify & Sign In
+              {t('verifySignIn')}
             </Button>
 
             <div className="text-center space-y-2">
@@ -260,14 +263,14 @@ export default function LoginPage() {
                 onClick={() => setShow2FA(false)}
                 className="w-full text-center text-sm text-neutral-600 hover:text-gold transition-colors"
               >
-                Use a different method
+                {t('useDifferentMethod')}
               </button>
 
               <Link
                 href="/auth/2fa-email"
                 className="block text-sm text-gold hover:text-accent-700 transition-colors"
               >
-                Can't access authenticator app? Get code via email
+                {t('cantAccessAuthenticator')}
               </Link>
             </div>
           </motion.div>
@@ -276,12 +279,12 @@ export default function LoginPage() {
         {/* Sign Up Link - Mobile-friendly touch target */}
         <div className="text-center pt-4 border-t border-neutral-200">
           <p className="text-sm text-neutral-600">
-            Don't have an account?{' '}
+            {t('dontHaveAccount')}{' '}
             <Link
               href="/auth/register"
               className="text-gold hover:text-accent-700 font-semibold transition-colors inline-block py-1 px-1"
             >
-              Create one
+              {tc('buttons.createOne')}
             </Link>
           </p>
         </div>
@@ -289,13 +292,13 @@ export default function LoginPage() {
         {/* Legal Links - Mobile-friendly touch targets */}
         <div className="text-center pt-4 border-t border-neutral-200">
           <p className="text-xs text-neutral-500">
-            By signing in, you agree to our{' '}
+            {t('bySigningIn')}{' '}
             <Link href="/terms" className="text-gold hover:text-accent-700 transition-colors inline-block py-1 px-1">
-              Terms of Service
+              {tc('footer.termsOfService')}
             </Link>
-            {' '}and{' '}
+            {' '}{t('and')}{' '}
             <Link href="/privacy" className="text-gold hover:text-accent-700 transition-colors inline-block py-1 px-1">
-              Privacy Policy
+              {tc('footer.privacyPolicy')}
             </Link>
           </p>
         </div>

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { storesAPI, Store } from '@/lib/api/stores';
 import {
@@ -41,6 +42,7 @@ interface StoresResponse {
 
 // Store Card Component
 function StoreCard({ store }: { store: Store }) {
+  const t = useTranslations('stores');
   const averageRating = store.rating ? Number(store.rating) : 0;
   const location = [store.city, store.country].filter(Boolean).join(', ');
 
@@ -84,7 +86,7 @@ function StoreCard({ store }: { store: Store }) {
           {store.verified && (
             <div className="absolute top-3 right-3 px-2 py-1 bg-blue-500/90 backdrop-blur-sm rounded-full flex items-center gap-1">
               <Shield className="w-3 h-3 text-white" />
-              <span className="text-xs font-medium text-white">Verified</span>
+              <span className="text-xs font-medium text-white">{t('verified')}</span>
             </div>
           )}
         </div>
@@ -152,11 +154,11 @@ function StoreCard({ store }: { store: Store }) {
           <div className="flex items-center gap-4 text-xs text-neutral-500">
             <div className="flex items-center gap-1">
               <Package className="w-3.5 h-3.5" />
-              <span>{store.totalProducts} products</span>
+              <span>{store.totalProducts} {t('productsCount')}</span>
             </div>
             <div className="flex items-center gap-1">
               <ShoppingBag className="w-3.5 h-3.5" />
-              <span>{store.totalOrders} sales</span>
+              <span>{store.totalOrders} {t('salesCount')}</span>
             </div>
           </div>
 
@@ -193,22 +195,26 @@ function StoreCardSkeleton() {
 
 // Empty State Component
 function EmptyState({ searchQuery }: { searchQuery: string }) {
+  const t = useTranslations('stores');
+
   return (
     <div className="text-center py-16">
       <div className="w-20 h-20 mx-auto bg-neutral-100 rounded-full flex items-center justify-center mb-6">
         <StoreIcon className="w-10 h-10 text-neutral-400" />
       </div>
-      <h3 className="text-xl font-bold text-neutral-900 mb-2">No stores found</h3>
+      <h3 className="text-xl font-bold text-neutral-900 mb-2">{t('noStoresFound')}</h3>
       <p className="text-neutral-500 max-w-md mx-auto">
         {searchQuery
-          ? `No stores match "${searchQuery}". Try a different search term.`
-          : 'There are no stores available at the moment. Check back later!'}
+          ? t('noStoresMatch', { query: searchQuery })
+          : t('noStoresAvailable')}
       </p>
     </div>
   );
 }
 
 export default function StoresDirectoryPage() {
+  const t = useTranslations('stores');
+  const tc = useTranslations('common');
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -255,13 +261,13 @@ export default function StoresDirectoryPage() {
             >
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-gold/20 rounded-full mb-6">
                 <Sparkles className="w-4 h-4 text-gold" />
-                <span className="text-sm font-medium text-gold">Discover Amazing Stores</span>
+                <span className="text-sm font-medium text-gold">{t('discoverStores')}</span>
               </div>
               <h1 className="text-4xl md:text-5xl font-bold font-serif mb-4">
-                Store Directory
+                {t('storeDirectory')}
               </h1>
               <p className="text-lg text-white/80 max-w-2xl mx-auto">
-                Explore our curated collection of verified sellers offering premium products
+                {t('exploreCollection')}
               </p>
 
               {/* Search Bar */}
@@ -270,7 +276,7 @@ export default function StoresDirectoryPage() {
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                   <input
                     type="text"
-                    placeholder="Search stores by name..."
+                    placeholder={t('searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/50 transition-all"
@@ -292,10 +298,10 @@ export default function StoresDirectoryPage() {
             <div className="flex items-center gap-4">
               <p className="text-neutral-600">
                 {isLoading ? (
-                  'Loading stores...'
+                  t('loadingStores')
                 ) : (
                   <>
-                    <span className="font-semibold text-black">{totalStores}</span> stores found
+                    <span className="font-semibold text-black">{totalStores}</span> {t('storesFound')}
                   </>
                 )}
               </p>
@@ -315,7 +321,7 @@ export default function StoresDirectoryPage() {
                 }`}
               >
                 <Shield className="w-4 h-4" />
-                <span className="text-sm font-medium">Verified Only</span>
+                <span className="text-sm font-medium">{t('verifiedOnly')}</span>
                 {verifiedOnly && (
                   <CheckCircle className="w-4 h-4" />
                 )}
@@ -337,7 +343,7 @@ export default function StoresDirectoryPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-black">{totalStores}</p>
-                  <p className="text-xs text-neutral-500">Total Stores</p>
+                  <p className="text-xs text-neutral-500">{t('totalStores')}</p>
                 </div>
               </div>
             </div>
@@ -350,7 +356,7 @@ export default function StoresDirectoryPage() {
                   <p className="text-2xl font-bold text-black">
                     {stores.filter(s => s.verified).length}
                   </p>
-                  <p className="text-xs text-neutral-500">Verified Sellers</p>
+                  <p className="text-xs text-neutral-500">{t('verifiedSellers')}</p>
                 </div>
               </div>
             </div>
@@ -363,7 +369,7 @@ export default function StoresDirectoryPage() {
                   <p className="text-2xl font-bold text-black">
                     {stores.reduce((sum, s) => sum + (s.totalProducts || 0), 0).toLocaleString()}
                   </p>
-                  <p className="text-xs text-neutral-500">Products</p>
+                  <p className="text-xs text-neutral-500">{t('products')}</p>
                 </div>
               </div>
             </div>
@@ -376,7 +382,7 @@ export default function StoresDirectoryPage() {
                   <p className="text-2xl font-bold text-black">
                     {stores.reduce((sum, s) => sum + (s.totalOrders || 0), 0).toLocaleString()}
                   </p>
-                  <p className="text-xs text-neutral-500">Total Sales</p>
+                  <p className="text-xs text-neutral-500">{t('totalSales')}</p>
                 </div>
               </div>
             </div>
@@ -388,8 +394,8 @@ export default function StoresDirectoryPage() {
               <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-6">
                 <StoreIcon className="w-10 h-10 text-red-500" />
               </div>
-              <h3 className="text-xl font-bold text-neutral-900 mb-2">Failed to load stores</h3>
-              <p className="text-neutral-500">Please try again later.</p>
+              <h3 className="text-xl font-bold text-neutral-900 mb-2">{t('failedToLoad')}</h3>
+              <p className="text-neutral-500">{t('tryAgainLater')}</p>
             </div>
           ) : isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 
 interface WhatsAppChatProps {
   phoneNumber?: string;
@@ -13,14 +14,15 @@ interface WhatsAppChatProps {
 
 export function WhatsAppChat({
   phoneNumber = '+32466140993',
-  defaultMessage = 'Hello! I am interested in your products.',
+  defaultMessage,
   businessName = 'DLuxes',
   position = 'bottom-right',
   showOnMobile = true,
 }: WhatsAppChatProps) {
+  const t = useTranslations('components.whatsappChat');
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [message, setMessage] = useState(defaultMessage);
+  const [message, setMessage] = useState(defaultMessage || t('defaultMessage'));
 
   // Show button after page loads (for better UX)
   useEffect(() => {
@@ -64,7 +66,7 @@ export function WhatsAppChat({
               <button
                 onClick={() => setIsOpen(false)}
                 className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
-                aria-label="Close chat"
+                aria-label={t('closeChat')}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -78,7 +80,7 @@ export function WhatsAppChat({
                 </div>
                 <div>
                   <h3 className="font-bold text-lg">{businessName}</h3>
-                  <p className="text-sm text-white/90">Typically replies instantly</p>
+                  <p className="text-sm text-white/90">{t('repliesInstantly')}</p>
                 </div>
               </div>
             </div>
@@ -104,10 +106,10 @@ export function WhatsAppChat({
               >
                 <div className="bg-white rounded-lg rounded-tl-none p-3 shadow-sm max-w-[85%]">
                   <p className="text-sm text-gray-800">
-                    Hi there! 👋<br />
-                    How can we help you today?
+                    {t('welcomeMessage')}<br />
+                    {t('howCanWeHelp')}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">Just now</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('justNow')}</p>
                 </div>
               </motion.div>
 
@@ -116,14 +118,14 @@ export function WhatsAppChat({
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type your message..."
+                  placeholder={t('typePlaceholder')}
                   rows={3}
                   className="w-full p-3 pr-12 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#25D366] resize-none text-sm"
                 />
                 <button
                   onClick={handleWhatsAppClick}
                   className="absolute right-2 bottom-2 w-8 h-8 bg-[#25D366] text-white rounded-full flex items-center justify-center hover:bg-[#128C7E] transition-colors shadow-lg"
-                  aria-label="Send message"
+                  aria-label={t('sendMessage')}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -134,19 +136,19 @@ export function WhatsAppChat({
 
             {/* Quick Messages */}
             <div className="p-4 bg-white border-t border-gray-200">
-              <p className="text-xs text-gray-600 mb-2 font-semibold">Quick messages:</p>
+              <p className="text-xs text-gray-600 mb-2 font-semibold">{t('quickMessages')}</p>
               <div className="space-y-2">
                 {[
-                  'Product inquiry',
-                  'Order status',
-                  'Customer support',
+                  { key: 'productInquiry', label: t('productInquiry') },
+                  { key: 'orderStatus', label: t('orderStatus') },
+                  { key: 'customerSupport', label: t('customerSupport') },
                 ].map((quickMsg) => (
                   <button
-                    key={quickMsg}
-                    onClick={() => setMessage(quickMsg)}
+                    key={quickMsg.key}
+                    onClick={() => setMessage(quickMsg.label)}
                     className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                   >
-                    💬 {quickMsg}
+                    💬 {quickMsg.label}
                   </button>
                 ))}
               </div>
@@ -163,7 +165,7 @@ export function WhatsAppChat({
         whileTap={{ scale: 0.9 }}
         onClick={handleWhatsAppClick}
         className="relative w-16 h-16 bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white rounded-full shadow-2xl flex items-center justify-center hover:shadow-3xl transition-shadow group"
-        aria-label="Open WhatsApp chat"
+        aria-label={t('openChat')}
       >
         {/* Pulse animation */}
         <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-20"></span>
@@ -188,7 +190,7 @@ export function WhatsAppChat({
           whileHover={{ opacity: 1, x: 0 }}
           className="absolute right-full mr-3 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
         >
-          Chat with us on WhatsApp
+          {t('chatWithUs')}
           <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-8 border-transparent border-l-gray-900"></div>
         </motion.div>
       </motion.button>

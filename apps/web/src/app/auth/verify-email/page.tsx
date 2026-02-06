@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import AuthLayout from '@/components/auth/auth-layout';
 import { Button, FloatingInput } from '@nextpik/ui';
 import { api } from '@/lib/api/client';
@@ -14,6 +15,9 @@ type VerificationState = 'verifying' | 'success' | 'error' | 'expired' | 'resend
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations('auth.verifyEmail');
+  const tc = useTranslations('common');
+  const tLogin = useTranslations('auth.login');
   const token = searchParams.get('token');
 
   const [state, setState] = useState<VerificationState>('verifying');
@@ -37,7 +41,7 @@ export default function VerifyEmailPage() {
 
       if (response.message) {
         setState('success');
-        toast.success('Email verified successfully! Redirecting to login...');
+        toast.success(t('verifiedSuccess'));
         // Redirect to login after 5 seconds
         setTimeout(() => {
           router.push('/auth/login');
@@ -46,8 +50,8 @@ export default function VerifyEmailPage() {
     } catch (err: any) {
       const friendlyMessage = getUserFriendlyError(
         err,
-        'Unable to verify your email. The link may be invalid or expired.',
-        'Email Verification'
+        t('unableToVerify'),
+        t('emailVerification')
       );
       setError(friendlyMessage);
       toast.error(friendlyMessage);
@@ -71,7 +75,7 @@ export default function VerifyEmailPage() {
 
       await api.post('/auth/email/resend-verification', { email: resendEmail });
       setResendSuccess(true);
-      toast.success('Verification email sent! Please check your inbox.');
+      toast.success(t('verificationSent'));
       setResendEmail('');
 
       setTimeout(() => {
@@ -80,8 +84,8 @@ export default function VerifyEmailPage() {
     } catch (err: any) {
       const friendlyMessage = getUserFriendlyError(
         err,
-        'Unable to resend verification email. Please try again.',
-        'Resend Verification'
+        t('unableToResend'),
+        t('resendVerification')
       );
       setError(friendlyMessage);
       toast.error(friendlyMessage);
@@ -94,8 +98,8 @@ export default function VerifyEmailPage() {
   if (state === 'verifying') {
     return (
       <AuthLayout
-        title="Verifying Your Email"
-        subtitle="Please wait while we verify your email address..."
+        title={t('verifyingTitle')}
+        subtitle={t('verifyingSubtitle')}
       >
         <motion.div
           initial={{ opacity: 0 }}
@@ -127,10 +131,10 @@ export default function VerifyEmailPage() {
 
           <div className="space-y-2">
             <p className="text-neutral-600 text-base">
-              Verifying your email address...
+              {t('verifyingMessage')}
             </p>
             <p className="text-sm text-neutral-500">
-              This should only take a moment
+              {t('onlyTakesMoment')}
             </p>
           </div>
         </motion.div>
@@ -142,8 +146,8 @@ export default function VerifyEmailPage() {
   if (state === 'success') {
     return (
       <AuthLayout
-        title="Email Verified!"
-        subtitle="Your email has been successfully verified"
+        title={t('emailVerified')}
+        subtitle={t('successfullyVerified')}
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -172,10 +176,10 @@ export default function VerifyEmailPage() {
 
           <div className="space-y-2">
             <p className="text-neutral-600 text-base">
-              You can now sign in to your account
+              {t('canSignIn')}
             </p>
             <p className="text-sm text-neutral-500">
-              Redirecting to login page...
+              {t('redirectingToLogin')}
             </p>
           </div>
 
@@ -183,7 +187,7 @@ export default function VerifyEmailPage() {
             onClick={() => router.push('/auth/login')}
             className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold"
           >
-            Go to Login
+            {tc('buttons.goToLogin')}
           </Button>
 
           <div className="pt-4 border-t border-neutral-200">
@@ -194,7 +198,7 @@ export default function VerifyEmailPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
-              Back to home
+              {tc('buttons.backToHome')}
             </Link>
           </div>
         </motion.div>
@@ -206,8 +210,8 @@ export default function VerifyEmailPage() {
   if (state === 'expired') {
     return (
       <AuthLayout
-        title="Link Expired"
-        subtitle="Your verification link has expired"
+        title={t('linkExpired')}
+        subtitle={t('linkHasExpired')}
       >
         <div className="space-y-6">
           {/* Warning Icon */}
@@ -218,13 +222,13 @@ export default function VerifyEmailPage() {
               </svg>
             </div>
             <p className="text-sm text-neutral-600 mb-6">
-              Verification links expire after 24 hours for security reasons
+              {t('linksExpire24h')}
             </p>
           </div>
 
           <form onSubmit={handleResendVerification} className="space-y-4">
             <FloatingInput
-              label="Email Address"
+              label={tLogin('emailLabel')}
               type="email"
               value={resendEmail}
               onChange={(e) => setResendEmail(e.target.value)}
@@ -234,7 +238,7 @@ export default function VerifyEmailPage() {
                 </svg>
               }
               required
-              placeholder="Enter your email"
+              placeholder={t('enterYourEmail')}
             />
 
             {resendSuccess && (
@@ -243,7 +247,7 @@ export default function VerifyEmailPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="p-4 bg-success-light border border-success-DEFAULT rounded-lg text-success-dark text-sm"
               >
-                Verification email sent! Please check your inbox.
+                {t('verificationSent')}
               </motion.div>
             )}
 
@@ -258,10 +262,10 @@ export default function VerifyEmailPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Sending...
+                  {t('sending')}
                 </span>
               ) : (
-                'Resend Verification Email'
+                t('resendVerification')
               )}
             </Button>
           </form>
@@ -274,7 +278,7 @@ export default function VerifyEmailPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Back to login
+              {tc('buttons.backToLogin')}
             </Link>
           </div>
         </div>
@@ -285,8 +289,8 @@ export default function VerifyEmailPage() {
   // Error or Resend State
   return (
     <AuthLayout
-      title={state === 'error' ? 'Verification Failed' : 'Verify Your Email'}
-      subtitle={state === 'error' ? 'We couldn\'t verify your email' : 'Resend verification link'}
+      title={state === 'error' ? t('verificationFailed') : t('verifyYourEmail')}
+      subtitle={state === 'error' ? t('couldntVerify') : t('resendLink')}
     >
       <div className="space-y-6">
         {/* Error Icon */}
@@ -302,7 +306,7 @@ export default function VerifyEmailPage() {
 
         <form onSubmit={handleResendVerification} className="space-y-4">
           <FloatingInput
-            label="Email Address"
+            label={tLogin('emailLabel')}
             type="email"
             value={resendEmail}
             onChange={(e) => setResendEmail(e.target.value)}
@@ -312,7 +316,7 @@ export default function VerifyEmailPage() {
               </svg>
             }
             required
-            placeholder="Enter your email"
+            placeholder={t('enterYourEmail')}
           />
 
           {resendSuccess && (
@@ -321,7 +325,7 @@ export default function VerifyEmailPage() {
               animate={{ opacity: 1, y: 0 }}
               className="p-4 bg-success-light border border-success-DEFAULT rounded-lg text-success-dark text-sm"
             >
-              Verification email sent! Please check your inbox.
+              {t('verificationSent')}
             </motion.div>
           )}
 
@@ -336,10 +340,10 @@ export default function VerifyEmailPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Sending...
+                {t('sending')}
               </span>
             ) : (
-              'Send Verification Email'
+              t('resendVerification')
             )}
           </Button>
         </form>
@@ -352,16 +356,16 @@ export default function VerifyEmailPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to login
+            {tc('buttons.backToLogin')}
           </Link>
 
           <div>
-            <span className="text-sm text-neutral-500">or </span>
+            <span className="text-sm text-neutral-500">{t('or')}</span>
             <Link
               href="/"
               className="text-sm text-neutral-600 hover:text-gold transition-colors"
             >
-              return home
+              {t('returnHome')}
             </Link>
           </div>
         </div>

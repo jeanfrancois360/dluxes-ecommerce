@@ -12,6 +12,7 @@ import {
   LucideIcon
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useTranslations } from 'next-intl';
 
 interface Activity {
   id: string;
@@ -72,6 +73,8 @@ const getActivityColor = (type: Activity['type']) => {
 };
 
 export function ActivityFeed({ activities = [], isLoading, limit = 10 }: ActivityFeedProps) {
+  const t = useTranslations('components.activityFeed');
+
   if (isLoading) {
     return (
       <Card className="border-none shadow-sm">
@@ -109,10 +112,10 @@ export function ActivityFeed({ activities = [], isLoading, limit = 10 }: Activit
       <Card className="border-none shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-neutral-900">Recent Activity</h3>
+            <h3 className="text-lg font-semibold text-neutral-900">{t('recentActivity')}</h3>
             {!isEmpty && (
               <span className="text-xs text-neutral-500">
-                {displayActivities.length} {displayActivities.length === 1 ? 'activity' : 'activities'}
+                {displayActivities.length} {displayActivities.length === 1 ? t('activity') : t('activities')}
               </span>
             )}
           </div>
@@ -122,9 +125,9 @@ export function ActivityFeed({ activities = [], isLoading, limit = 10 }: Activit
           {isEmpty ? (
             <div className="py-12 text-center">
               <Clock className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
-              <p className="text-neutral-500 text-sm">No recent activity</p>
+              <p className="text-neutral-500 text-sm">{t('noRecentActivity')}</p>
               <p className="text-neutral-400 text-xs mt-1">
-                Activity will appear here as you manage your store
+                {t('activityWillAppear')}
               </p>
             </div>
           ) : (

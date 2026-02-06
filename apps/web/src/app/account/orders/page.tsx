@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/page-layout';
 import { OrderCard } from '@/components/orders/order-card';
@@ -8,6 +9,7 @@ import { useOrders } from '@/hooks/use-orders';
 import Link from 'next/link';
 
 export default function OrdersPage() {
+  const t = useTranslations('account.orders');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,8 +66,8 @@ export default function OrdersPage() {
               </svg>
             </div>
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">My Orders</h1>
-              <p className="text-lg text-white/80">Track and manage your orders</p>
+              <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">{t('title')}</h1>
+              <p className="text-lg text-white/80">{t('subtitle')}</p>
             </div>
           </motion.div>
         </div>
@@ -80,7 +82,7 @@ export default function OrdersPage() {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search by order number..."
+                placeholder={t('searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-4 py-3 pl-10 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
@@ -106,14 +108,14 @@ export default function OrdersPage() {
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent bg-white"
             >
-              <option value="">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="refunded">Refunded</option>
+              <option value="">{t('allStatus')}</option>
+              <option value="pending">{t('pending')}</option>
+              <option value="confirmed">{t('confirmed')}</option>
+              <option value="processing">{t('processing')}</option>
+              <option value="shipped">{t('shipped')}</option>
+              <option value="delivered">{t('delivered')}</option>
+              <option value="cancelled">{t('cancelled')}</option>
+              <option value="refunded">{t('refunded')}</option>
             </select>
 
             {/* Sort */}
@@ -122,8 +124,8 @@ export default function OrdersPage() {
               onChange={(e) => setSortBy(e.target.value as 'recent' | 'oldest')}
               className="px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent bg-white"
             >
-              <option value="recent">Most Recent</option>
-              <option value="oldest">Oldest First</option>
+              <option value="recent">{t('mostRecent')}</option>
+              <option value="oldest">{t('oldestFirst')}</option>
             </select>
           </div>
         </div>
@@ -153,13 +155,13 @@ export default function OrdersPage() {
                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <h3 className="font-bold text-lg mb-2">Failed to Load Orders</h3>
+            <h3 className="font-bold text-lg mb-2">{t('failedToLoad')}</h3>
             <p className="text-gray-600 mb-4">{error}</p>
             <button
               onClick={() => refetch()}
               className="px-6 py-2 bg-[#CBB57B] text-white rounded-xl hover:bg-[#A89968] transition-colors"
             >
-              Try Again
+              {t('tryAgain')}
             </button>
           </div>
         )}
@@ -180,17 +182,17 @@ export default function OrdersPage() {
                 d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
               />
             </svg>
-            <h3 className="font-serif text-2xl font-bold mb-2">No Orders Yet</h3>
+            <h3 className="font-serif text-2xl font-bold mb-2">{t('noOrdersYet')}</h3>
             <p className="text-gray-600 mb-6">
               {searchQuery
-                ? 'No orders match your search criteria.'
-                : 'Start shopping to see your orders here.'}
+                ? t('noOrdersMatch')
+                : t('startShopping')}
             </p>
             <Link
               href="/products"
               className="inline-block px-8 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold"
             >
-              Browse Products
+              {t('browseProducts')}
             </Link>
           </div>
         )}
@@ -214,7 +216,7 @@ export default function OrdersPage() {
                   disabled={page === 1}
                   className="px-4 py-2 border border-neutral-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  Previous
+                  {t('previous')}
                 </button>
 
                 <div className="flex items-center gap-2">
@@ -238,7 +240,7 @@ export default function OrdersPage() {
                   disabled={page === totalPages}
                   className="px-4 py-2 border border-neutral-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  Next
+                  {t('next')}
                 </button>
               </div>
             )}

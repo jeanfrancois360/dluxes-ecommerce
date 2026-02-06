@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from '@nextpik/ui';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { format } from 'date-fns';
+import { useTranslations } from 'next-intl';
 
 interface RevenueChartProps {
   data: Array<{ date: string; amount: number; orders: number }>;
@@ -26,6 +27,7 @@ export function RevenueChart({
   isLoading,
   onPeriodChange,
 }: RevenueChartProps) {
+  const t = useTranslations('components.revenueChart');
   const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'weekly' | 'monthly'>(period);
 
   const handlePeriodChange = (newPeriod: 'daily' | 'weekly' | 'monthly') => {
@@ -86,7 +88,7 @@ export function RevenueChart({
         <CardHeader>
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h3 className="text-lg font-semibold text-neutral-900">Revenue Overview</h3>
+              <h3 className="text-lg font-semibold text-neutral-900">{t('revenueOverview')}</h3>
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-2xl font-bold text-neutral-900">{formatCurrency(total)}</p>
                 <div className={`flex items-center gap-1 text-sm font-medium px-2 py-1 rounded-full ${
@@ -114,7 +116,7 @@ export function RevenueChart({
                       : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                   }`}
                 >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {t(p)}
                 </button>
               ))}
             </div>
@@ -125,9 +127,9 @@ export function RevenueChart({
           {isEmpty ? (
             <div className="h-[300px] flex items-center justify-center">
               <div className="text-center">
-                <p className="text-neutral-500 text-sm">No revenue data available</p>
+                <p className="text-neutral-500 text-sm">{t('noRevenueData')}</p>
                 <p className="text-neutral-400 text-xs mt-1">
-                  Data will appear here once you start receiving orders
+                  {t('dataWillAppear')}
                 </p>
               </div>
             </div>
@@ -167,16 +169,16 @@ export function RevenueChart({
                   }}
                   formatter={(value: any, name: string) => {
                     if (name === 'amount') {
-                      return [formatCurrency(Number(value)), 'Revenue'];
+                      return [formatCurrency(Number(value)), t('revenue')];
                     }
-                    return [value, 'Orders'];
+                    return [value, t('orders')];
                   }}
                   labelFormatter={(label) => {
                     try {
                       if (period === 'daily') {
                         return format(new Date(label), 'MMMM dd, yyyy');
                       } else if (period === 'weekly') {
-                        return `Week ${label}`;
+                        return t('week', { week: label });
                       } else {
                         return format(new Date(label + '-01'), 'MMMM yyyy');
                       }

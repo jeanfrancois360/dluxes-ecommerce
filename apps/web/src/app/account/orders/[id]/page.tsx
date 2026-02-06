@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { OrderStatusBadge } from '@/components/orders/order-status-badge';
 import { OrderTimeline } from '@/components/orders/order-timeline';
@@ -52,6 +53,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   const { order, isLoading, error, refetch } = useOrder(id);
   const { cancelOrder, isLoading: isCancelling } = useCancelOrder();
   const { createReview, isLoading: isSubmittingReview } = useCreateReview();
+  const t = useTranslations('account.orderDetail');
 
   // Get currency symbol dynamically based on order's currency
   const currencySymbol = order?.currency ? (() => {
@@ -116,17 +118,17 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       if (data.success) {
         const { results } = data.data;
         if (results.added.length > 0) {
-          toast.success(`${results.added.length} item(s) added to your cart`);
+          toast.success(t('toast.reorderSuccess', { count: results.added.length }));
           // Redirect to cart
           router.push('/cart');
         } else if (results.skipped.length > 0) {
           toast.error(results.skipped[0]?.reason || 'Some items could not be added');
         }
       } else {
-        toast.error(data.message || 'Failed to reorder');
+        toast.error(data.message || t('toast.reorderError'));
       }
     } catch (error) {
-      toast.error('An error occurred while reordering');
+      toast.error(t('toast.reorderException'));
     } finally {
       setIsReordering(false);
     }
@@ -232,7 +234,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
   const handleDigitalDownload = async (download: DigitalPurchase) => {
     if (!download.canDownload) {
-      toast.error('You have reached the download limit for this file');
+      toast.error(t('toast.downloadLimit'));
       return;
     }
 
@@ -242,17 +244,17 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
       if (response?.data?.url) {
         window.open(response.data.url, '_blank');
-        toast.success(`Downloading ${response.data.fileName}`);
+        toast.success(t('toast.downloading', { fileName: response.data.fileName }));
         // Refresh downloads to update count
         const refreshResponse = await downloadsApi.getOrderDigitalProducts(download.orderId);
         if (refreshResponse?.data) {
           setDigitalDownloads(refreshResponse.data);
         }
       } else {
-        toast.error('Could not get download link');
+        toast.error(t('toast.downloadLinkError'));
       }
     } catch (error) {
-      toast.error('An error occurred while starting download');
+      toast.error(t('toast.downloadError'));
     } finally {
       setDownloadingProductId(null);
     }
@@ -266,7 +268,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   const handleSubmitReview = async (data: { productId: string; rating: number; title?: string; comment: string; images?: File[] }) => {
     try {
       await createReview(data);
-      toast.success('Thank you for your review!');
+      toast.success(t('toast.reviewSuccess'));
       setShowReviewForm(false);
       setSelectedProduct(null);
       // Update reviewable products
@@ -275,7 +277,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
         [data.productId]: false,
       }));
     } catch (error) {
-      toast.error('Failed to submit review. Please try again.');
+      toast.error(t('toast.reviewError'));
       throw error;
     }
   };
@@ -287,7 +289,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       refetch();
       setShowCancelConfirm(false);
     } catch (error) {
-      toast.error('Failed to cancel order. Please contact support.');
+      toast.error(t('toast.cancelError'));
     }
   };
 
@@ -305,13 +307,13 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
       });
 
       if (response?.data) {
-        toast.success('Return request submitted. We will review your request and get back to you soon');
+        toast.success(t('toast.returnSuccess'));
         setShowReturnForm(false);
         setCanRequestReturn(false);
         // Redirect to returns page
         router.push('/account/returns');
       } else {
-        toast.error('Failed to submit return request. Please try again.');
+        toast.error(t('toast.returnError'));
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'An error occurred');
@@ -344,13 +346,13 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h2 className="text-2xl font-bold mb-2">Order Not Found</h2>
-            <p className="text-gray-600 mb-6">{error || 'The order you are looking for does not exist'}</p>
+            <h2 className="text-2xl font-bold mb-2">{t('error.title')}</h2>
+            <p className="text-gray-600 mb-6">{error || t('error.description')}</p>
             <Link
               href="/account/orders"
               className="inline-block px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors"
             >
-              Back to Orders
+              {t('error.backToOrders')}
             </Link>
           </div>
         </div>
@@ -381,7 +383,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <Link href="/account/orders" className="hover:text-gold transition-colors">Orders</Link>
+            <Link href="/account/orders" className="hover:text-gold transition-colors">{t('breadcrumb.orders')}</Link>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
@@ -398,13 +400,13 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 Order #{order.orderNumber}
               </h1>
               <p className="text-lg text-white/80">
-                Placed on {new Date(order.createdAt).toLocaleDateString('en-US', {
+                {t('placedOn', { date: new Date(order.createdAt).toLocaleDateString('en-US', {
                   month: 'long',
                   day: 'numeric',
                   year: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit'
-                })}
+                })})}
               </p>
             </motion.div>
 
@@ -433,10 +435,10 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold font-['Poppins']">
-                        Shipment Tracking
+                        {t('shipmentTracking.title')}
                       </h2>
                       <p className="text-sm text-gray-600">
-                        {shipments.length} {shipments.length === 1 ? 'shipment' : 'shipments'} for this order
+                        {t('shipmentTracking.shipmentCount', { count: shipments.length })}
                       </p>
                     </div>
                   </div>
@@ -464,7 +466,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-xl border-2 border-neutral-100 p-6"
             >
-              <h2 className="text-2xl font-bold font-['Poppins'] mb-6">Order Timeline</h2>
+              <h2 className="text-2xl font-bold font-['Poppins'] mb-6">{t('timeline.title')}</h2>
               <OrderTimeline timeline={order.timeline || []} status={order.status} />
             </motion.div>
 
@@ -475,7 +477,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               transition={{ delay: 0.1 }}
               className="bg-white rounded-xl border-2 border-neutral-100 p-6"
             >
-              <h2 className="text-2xl font-bold font-['Poppins'] mb-6">Order Items</h2>
+              <h2 className="text-2xl font-bold font-['Poppins'] mb-6">{t('items.title')}</h2>
               <div className="space-y-4">
                 {order.items?.map((item, index) => (
                   <motion.div
@@ -503,11 +505,11 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       </Link>
                       {item.variant && (
                         <p className="text-sm text-gray-500">
-                          Variant: {item.variant.attributes?.size || ''} {item.variant.attributes?.color || ''}
+                          {t('items.variant', { details: `${item.variant.attributes?.size || ''} ${item.variant.attributes?.color || ''}`.trim() })}
                         </p>
                       )}
                       <p className="text-sm text-gray-600 mt-1">
-                        Quantity: {item.quantity} × {currencySymbol}{formatCurrencyAmount(item.price, 2)}
+                        {t('items.quantity', { qty: item.quantity, price: `${currencySymbol}${formatCurrencyAmount(item.price, 2)}` })}
                       </p>
                       {/* Write Review Button for Delivered Orders */}
                       {order.status?.toLowerCase() === 'delivered' && item.product?.id && (
@@ -519,14 +521,14 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                             </svg>
-                            Write Review
+                            {t('items.writeReview')}
                           </button>
                         ) : (
                           <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-green-600 bg-green-50 rounded-lg">
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
-                            Reviewed
+                            {t('items.reviewed')}
                           </span>
                         )
                       )}
@@ -556,8 +558,8 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold font-['Poppins']">Digital Downloads</h2>
-                    <p className="text-sm text-gray-600">Download your digital products</p>
+                    <h2 className="text-2xl font-bold font-['Poppins']">{t('digitalDownloads.title')}</h2>
+                    <p className="text-sm text-gray-600">{t('digitalDownloads.subtitle')}</p>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -597,7 +599,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           )}
                           {download.digitalDownloadLimit && (
                             <span className="text-gray-400">
-                              {download.downloadCount}/{download.digitalDownloadLimit} downloads used
+                              {t('digitalDownloads.downloadsUsed', { used: download.downloadCount, limit: download.digitalDownloadLimit })}
                             </span>
                           )}
                         </div>
@@ -619,14 +621,14 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
-                            <span className="hidden sm:inline">Downloading...</span>
+                            <span className="hidden sm:inline">{t('digitalDownloads.downloading')}</span>
                           </>
                         ) : (
                           <>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            <span className="hidden sm:inline">Download</span>
+                            <span className="hidden sm:inline">{t('digitalDownloads.download')}</span>
                           </>
                         )}
                       </button>
@@ -638,7 +640,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     href="/account/downloads"
                     className="text-sm text-purple-600 hover:text-purple-700 font-medium inline-flex items-center gap-1"
                   >
-                    View all downloads
+                    {t('digitalDownloads.viewAll')}
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
@@ -656,25 +658,25 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               animate={{ opacity: 1, x: 0 }}
               className="bg-gradient-to-br from-neutral-50 to-white rounded-xl border-2 border-neutral-100 p-6 sticky top-24"
             >
-              <h3 className="text-xl font-bold font-['Poppins'] mb-4">Order Summary</h3>
+              <h3 className="text-xl font-bold font-['Poppins'] mb-4">{t('summary.title')}</h3>
 
               <div className="space-y-3 mb-6 pb-6 border-b border-neutral-200">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal</span>
+                  <span className="text-gray-600">{t('summary.subtotal')}</span>
                   <span className="font-medium">{currencySymbol}{formatCurrencyAmount(order.subtotal, 2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Shipping</span>
+                  <span className="text-gray-600">{t('summary.shipping')}</span>
                   <span className="font-medium">{currencySymbol}{formatCurrencyAmount(order.shipping, 2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax</span>
+                  <span className="text-gray-600">{t('summary.tax')}</span>
                   <span className="font-medium">{currencySymbol}{formatCurrencyAmount(order.tax, 2)}</span>
                 </div>
               </div>
 
               <div className="flex justify-between items-center mb-6">
-                <span className="text-lg font-semibold">Total</span>
+                <span className="text-lg font-semibold">{t('summary.total')}</span>
                 <span className="text-2xl font-serif font-bold text-gold">
                   {currencySymbol}{formatCurrencyAmount(order.total, 2)}
                 </span>
@@ -688,7 +690,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    Shipping Address
+                    {t('shippingAddress')}
                   </h4>
                   <p className="text-sm text-gray-600">
                     {order.shippingAddress.firstName} {order.shippingAddress.lastName}<br />
@@ -706,10 +708,10 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                   <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
-                  Payment Method
+                  {t('paymentMethod')}
                 </h4>
                 <p className="text-sm text-gray-600 capitalize">
-                  {order.paymentMethod?.replace('_', ' ') || 'Credit Card'}
+                  {order.paymentMethod?.replace('_', ' ') || t('creditCardFallback')}
                 </p>
               </div>
 
@@ -727,14 +729,14 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Adding to Cart...
+                      {t('actions.addingToCart')}
                     </>
                   ) : (
                     <>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
-                      Reorder
+                      {t('actions.reorder')}
                     </>
                   )}
                 </button>
@@ -750,7 +752,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Download Invoice
+                  {t('actions.downloadInvoice')}
                 </button>
 
                 {canCancel && (
@@ -759,7 +761,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     disabled={isCancelling}
                     className="w-full px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isCancelling ? 'Cancelling...' : 'Cancel Order'}
+                    {isCancelling ? t('actions.cancelling') : t('actions.cancelOrder')}
                   </button>
                 )}
 
@@ -774,11 +776,11 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                         </svg>
-                        Request Return
+                        {t('actions.requestReturn')}
                       </button>
                     ) : returnEligibilityReason ? (
                       <div className="px-4 py-3 bg-gray-100 rounded-xl text-sm text-gray-600 text-center">
-                        <p className="font-medium text-gray-900 mb-1">Return Not Available</p>
+                        <p className="font-medium text-gray-900 mb-1">{t('actions.returnNotAvailable')}</p>
                         <p>{returnEligibilityReason}</p>
                       </div>
                     ) : daysRemainingForReturn !== null && daysRemainingForReturn > 0 ? (
@@ -789,7 +791,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                         </svg>
-                        Request Return ({daysRemainingForReturn} days left)
+                        {t('actions.requestReturnDays', { days: daysRemainingForReturn })}
                       </button>
                     ) : null}
                   </div>
@@ -799,14 +801,14 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                   href="/contact"
                   className="w-full block text-center px-6 py-3 border-2 border-neutral-200 rounded-xl hover:border-gold hover:bg-gold/5 transition-all font-semibold"
                 >
-                  Contact Support
+                  {t('actions.contactSupport')}
                 </Link>
 
                 <Link
                   href="/account/orders"
                   className="w-full block text-center px-6 py-3 bg-neutral-100 rounded-xl hover:bg-neutral-200 transition-colors font-semibold"
                 >
-                  Back to Orders
+                  {t('actions.backToOrders')}
                 </Link>
               </div>
             </motion.div>
@@ -837,9 +839,9 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold mb-2">Cancel Order?</h3>
+                <h3 className="text-2xl font-bold mb-2">{t('cancelModal.title')}</h3>
                 <p className="text-gray-600">
-                  Are you sure you want to cancel order {order.orderNumber}? This action cannot be undone.
+                  {t('cancelModal.description', { orderNumber: order.orderNumber })}
                 </p>
               </div>
 
@@ -848,14 +850,14 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                   onClick={() => setShowCancelConfirm(false)}
                   className="flex-1 px-6 py-3 border-2 border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors font-semibold"
                 >
-                  Keep Order
+                  {t('cancelModal.keepOrder')}
                 </button>
                 <button
                   onClick={handleCancelOrder}
                   disabled={isCancelling}
                   className="flex-1 px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors font-semibold disabled:opacity-50"
                 >
-                  {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                  {isCancelling ? t('cancelModal.cancelling') : t('cancelModal.yesCancel')}
                 </button>
               </div>
             </motion.div>
@@ -901,8 +903,8 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold">Request Return</h3>
-                  <p className="text-gray-600">Order #{order.orderNumber}</p>
+                  <h3 className="text-2xl font-bold">{t('returnModal.title')}</h3>
+                  <p className="text-gray-600">{t('returnModal.orderLabel', { orderNumber: order.orderNumber })}</p>
                 </div>
               </div>
 
@@ -911,7 +913,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 {order.items && order.items.length > 1 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Which item do you want to return?
+                      {t('returnModal.selectItem')}
                     </label>
                     <select
                       value={returnFormData.orderItemId || ''}
@@ -923,7 +925,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       }
                       className="w-full px-4 py-3 border-2 border-neutral-200 rounded-xl focus:border-orange-500 focus:ring-0 transition-colors"
                     >
-                      <option value="">All items in this order</option>
+                      <option value="">{t('returnModal.allItems')}</option>
                       {order.items.map((item, index) => (
                         <option key={index} value={item.id}>
                           {item.name} (x{item.quantity})
@@ -936,7 +938,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 {/* Reason */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Reason for return <span className="text-red-500">*</span>
+                    {t('returnModal.reasonLabel')} <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={returnFormData.reason}
@@ -960,7 +962,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 {/* Description */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Additional details (optional)
+                    {t('returnModal.detailsLabel')}
                   </label>
                   <textarea
                     value={returnFormData.description}
@@ -970,7 +972,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                         description: e.target.value,
                       }))
                     }
-                    placeholder="Please provide any additional details about your return request..."
+                    placeholder={t('returnModal.detailsPlaceholder')}
                     rows={4}
                     className="w-full px-4 py-3 border-2 border-neutral-200 rounded-xl focus:border-orange-500 focus:ring-0 transition-colors resize-none"
                   />
@@ -982,13 +984,13 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Return Policy
+                    {t('returnModal.policy.title')}
                   </h4>
                   <ul className="text-sm text-orange-800 space-y-1">
-                    <li>• Returns must be requested within 30 days of delivery</li>
-                    <li>• Items must be unused and in original packaging</li>
-                    <li>• Refunds are processed within 5-7 business days</li>
-                    <li>• Shipping costs may apply for non-defective returns</li>
+                    <li>• {t('returnModal.policy.rule1')}</li>
+                    <li>• {t('returnModal.policy.rule2')}</li>
+                    <li>• {t('returnModal.policy.rule3')}</li>
+                    <li>• {t('returnModal.policy.rule4')}</li>
                   </ul>
                 </div>
 
@@ -999,7 +1001,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     onClick={() => setShowReturnForm(false)}
                     className="flex-1 px-6 py-3 border-2 border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors font-semibold"
                   >
-                    Cancel
+                    {t('returnModal.cancel')}
                   </button>
                   <button
                     type="submit"
@@ -1012,10 +1014,10 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
-                        Submitting...
+                        {t('returnModal.submitting')}
                       </>
                     ) : (
-                      'Submit Request'
+                      t('returnModal.submit')
                     )}
                   </button>
                 </div>

@@ -6,6 +6,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 
 interface CardExpiryBadgeProps {
   expMonth: number;
@@ -36,6 +37,7 @@ export function getCardExpiryStatus(expMonth: number, expYear: number) {
 }
 
 export function CardExpiryBadge({ expMonth, expYear }: CardExpiryBadgeProps) {
+  const t = useTranslations('components.cardExpiryBadge');
   const expiryInfo = getCardExpiryStatus(expMonth, expYear);
 
   if (expiryInfo.status === 'valid') {
@@ -58,7 +60,7 @@ export function CardExpiryBadge({ expMonth, expYear }: CardExpiryBadgeProps) {
               />
             </svg>
           ),
-          label: 'Expired',
+          label: t('expired'),
         };
       case 'expiring_soon':
         return {
@@ -74,7 +76,7 @@ export function CardExpiryBadge({ expMonth, expYear }: CardExpiryBadgeProps) {
               />
             </svg>
           ),
-          label: `Expires in ${expiryInfo.days} days`,
+          label: t('expiresInDays', { days: expiryInfo.days }),
         };
       case 'expiring':
         return {
@@ -90,7 +92,7 @@ export function CardExpiryBadge({ expMonth, expYear }: CardExpiryBadgeProps) {
               />
             </svg>
           ),
-          label: `Expires in ${expiryInfo.days} days`,
+          label: t('expiresInDays', { days: expiryInfo.days }),
         };
       default:
         return null;

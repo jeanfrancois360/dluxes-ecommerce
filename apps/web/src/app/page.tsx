@@ -17,6 +17,7 @@ import { useCurrencyProducts } from '@/hooks/use-currency-products';
 import { useSelectedCurrency } from '@/hooks/use-currency';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { navigateWithLoading } from '@/lib/navigation';
+import { useTranslations } from 'next-intl';
 
 // Lazy load heavy components
 const InlineAd = lazy(() => import('@/components/ads').then(m => ({ default: m.InlineAd })));
@@ -24,6 +25,7 @@ const HeroBannerAd = lazy(() => import('@/components/ads').then(m => ({ default:
 
 export default function Home() {
   const router = useRouter();
+  const t = useTranslations('common');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
@@ -87,10 +89,10 @@ export default function Home() {
     setAddingToCart(productId);
     try {
       await addToCartApi(productId, 1);
-      toast.success('Item has been added to your cart');
+      toast.success(t('toast.addedToCart'));
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
-      toast.error('Error', error.message || 'Failed to add item to cart');
+      toast.error(t('toast.error'), error.message || t('toast.failedAddCart'));
     } finally {
       setAddingToCart(null);
     }
@@ -100,17 +102,17 @@ export default function Home() {
     if (addingToWishlist) return;
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
-      toast.error('Please login to add items to wishlist');
+      toast.error(t('toast.loginRequired'));
       router.push('/auth/login');
       return;
     }
     setAddingToWishlist(productId);
     try {
       await addToWishlistApi(productId);
-      toast.success('Item has been added to your wishlist');
+      toast.success(t('toast.addedToWishlist'));
     } catch (error: any) {
       console.error('Failed to add to wishlist:', error);
-      toast.error('Error', error.message || 'Failed to add item to wishlist');
+      toast.error(t('toast.error'), error.message || t('toast.failedAddWishlist'));
     } finally {
       setAddingToWishlist(null);
     }
@@ -152,17 +154,17 @@ export default function Home() {
                   transition={{ duration: 0.7 }}
                 >
                   <span className="inline-block px-6 py-2 bg-[#CBB57B]/20 border border-[#CBB57B] text-[#CBB57B] text-sm font-semibold uppercase tracking-wider rounded-full mb-8">
-                    Welcome to NextPik
+                    {t('home.welcomeTag')}
                   </span>
                   <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-                    Your Modern
+                    {t('home.heroTitle')}
                     <br />
                     <span className="bg-gradient-to-r from-[#CBB57B] to-white bg-clip-text text-transparent">
-                      Shopping Platform
+                      {t('home.heroTitleHighlight')}
                     </span>
                   </h1>
                   <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
-                    Browse quality products from trusted sellers across multiple categories
+                    {t('home.heroDescription')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-4">
                     <Link href="/products">
@@ -171,7 +173,7 @@ export default function Home() {
                         whileTap={{ scale: 0.95 }}
                         className="px-10 py-4 bg-[#CBB57B] text-black font-bold text-lg rounded-xl hover:bg-[#A89968] transition-colors shadow-xl"
                       >
-                        Shop Now
+                        {t('buttons.shopNow')}
                       </motion.button>
                     </Link>
                     <Link href="/collections">
@@ -180,7 +182,7 @@ export default function Home() {
                         whileTap={{ scale: 0.95 }}
                         className="px-10 py-4 bg-white/10 backdrop-blur-sm border-2 border-white text-white font-bold text-lg rounded-xl hover:bg-white/20 transition-colors"
                       >
-                        Browse Collections
+                        {t('buttons.browseCollections')}
                       </motion.button>
                     </Link>
                   </div>
@@ -194,7 +196,7 @@ export default function Home() {
       {/* Featured Products */}
       <section className="max-w-[1920px] mx-auto px-4 lg:px-8 pt-16 pb-16 bg-white">
         <ProductCarousel
-          title="Featured Products"
+          title={t('home.featuredProducts')}
           products={featuredProducts}
           viewAllHref="/products?featured=true"
           onQuickView={handleQuickView}
@@ -207,7 +209,7 @@ export default function Home() {
       </section>
 
       {/* Sponsored Content - After Featured */}
-      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 py-8">
+      <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <Suspense fallback={<div className="h-32 bg-gray-100 animate-pulse rounded-lg" />}>
           <InlineAd placement="HOMEPAGE_FEATURED" />
         </Suspense>
@@ -217,7 +219,7 @@ export default function Home() {
       <section className="bg-gray-50 py-16">
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8">
           <ProductCarousel
-            title="New Arrivals"
+            title={t('home.newArrivals')}
             products={newArrivals}
             viewAllHref="/products?sortBy=newest"
             onQuickView={handleQuickView}
@@ -231,7 +233,7 @@ export default function Home() {
       </section>
 
       {/* Sponsored Content - After New Arrivals */}
-      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 py-8">
+      <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <Suspense fallback={<div className="h-32 bg-gray-100 animate-pulse rounded-lg" />}>
           <InlineAd placement="PRODUCTS_INLINE" />
         </Suspense>
@@ -240,7 +242,7 @@ export default function Home() {
       {/* Trending Products */}
       <section className="max-w-[1920px] mx-auto px-4 lg:px-8 py-16">
         <ProductCarousel
-          title="Trending Now"
+          title={t('home.trendingNow')}
           products={trendingProducts}
           viewAllHref="/products?sortBy=popular"
           onQuickView={handleQuickView}
@@ -253,7 +255,7 @@ export default function Home() {
       </section>
 
       {/* Sponsored Content - After Trending */}
-      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 py-8">
+      <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <Suspense fallback={<div className="h-32 bg-gray-100 animate-pulse rounded-lg" />}>
           <InlineAd placement="PRODUCTS_BANNER" />
         </Suspense>
@@ -263,7 +265,7 @@ export default function Home() {
       <section className="bg-gray-50 py-16">
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8">
           <ProductCarousel
-            title="On Sale"
+            title={t('home.onSale')}
             products={onSaleProducts}
             viewAllHref="/products?onSale=true"
             onQuickView={handleQuickView}
@@ -286,19 +288,19 @@ export default function Home() {
               viewport={{ once: true }}
             >
               <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                Stay Updated
+                {t('home.stayUpdated')}
               </h2>
               <p className="text-xl mb-8 max-w-2xl mx-auto">
-                Subscribe for special offers, new arrivals, and personalized recommendations
+                {t('home.subscribeDescription')}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto">
                 <input
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder={t('home.enterEmail')}
                   className="flex-1 px-6 py-4 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-white"
                 />
                 <button className="px-8 py-4 bg-black text-white font-bold rounded-xl hover:bg-gray-900 transition-colors">
-                  Subscribe
+                  {t('buttons.subscribe')}
                 </button>
               </div>
             </motion.div>

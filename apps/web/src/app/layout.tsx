@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Poppins } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import { AuthProvider } from '@/contexts/auth-context';
 import { CartProvider } from '@/contexts/cart-context';
 import { WishlistProvider } from '@/contexts/wishlist-context';
@@ -99,13 +101,16 @@ export const viewport: Viewport = {
   themeColor: '#ffffff',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth" className={`${poppins.variable} overflow-x-hidden`}>
+    <html lang={locale} suppressHydrationWarning data-scroll-behavior="smooth" className={`${poppins.variable} overflow-x-hidden`}>
       <head>
         {/* Preconnect to critical origins */}
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'} />
@@ -124,32 +129,34 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://m.stripe.com" />
       </head>
       <body className="font-sans antialiased bg-white text-black overflow-x-hidden">
-        <RouteLoadingProvider>
-          <LocaleProvider>
-            <AuthProvider>
-              <CartProvider>
-                <WishlistProvider>
-                  {children}
-                  <Toaster
-                    position="top-right"
-                    theme="dark"
-                    closeButton
-                    toastOptions={{
-                      duration: 4000,
-                    }}
-                  />
-                  <WhatsAppChat
-                    phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890'}
-                    businessName={process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'Luxury Marketplace'}
-                    defaultMessage={process.env.NEXT_PUBLIC_WHATSAPP_DEFAULT_MESSAGE || "Hello! I'm interested in your luxury products."}
-                    position="bottom-right"
-                    showOnMobile={true}
-                  />
-                </WishlistProvider>
-              </CartProvider>
-            </AuthProvider>
-          </LocaleProvider>
-        </RouteLoadingProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <RouteLoadingProvider>
+            <LocaleProvider>
+              <AuthProvider>
+                <CartProvider>
+                  <WishlistProvider>
+                    {children}
+                    <Toaster
+                      position="top-right"
+                      theme="dark"
+                      closeButton
+                      toastOptions={{
+                        duration: 4000,
+                      }}
+                    />
+                    <WhatsAppChat
+                      phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890'}
+                      businessName={process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'Luxury Marketplace'}
+                      defaultMessage={process.env.NEXT_PUBLIC_WHATSAPP_DEFAULT_MESSAGE || "Hello! I'm interested in your luxury products."}
+                      position="bottom-right"
+                      showOnMobile={true}
+                    />
+                  </WishlistProvider>
+                </CartProvider>
+              </AuthProvider>
+            </LocaleProvider>
+          </RouteLoadingProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

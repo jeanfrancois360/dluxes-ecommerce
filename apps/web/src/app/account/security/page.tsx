@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
 import { toast, standardToasts } from '@/lib/utils/toast';
@@ -52,6 +53,7 @@ interface FormErrors {
 export default function SecurityPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, isAuthenticated, changePassword } = useAuth();
+  const t = useTranslations('account.security');
 
   const [formData, setFormData] = useState<PasswordFormData>({
     currentPassword: '',
@@ -121,36 +123,36 @@ export default function SecurityPage() {
   };
 
   const getStrengthText = () => {
-    if (passwordStrength <= 1) return 'Weak';
-    if (passwordStrength <= 2) return 'Fair';
-    if (passwordStrength <= 3) return 'Good';
-    if (passwordStrength <= 4) return 'Strong';
-    return 'Very Strong';
+    if (passwordStrength <= 1) return t('weak');
+    if (passwordStrength <= 2) return t('fair');
+    if (passwordStrength <= 3) return t('good');
+    if (passwordStrength <= 4) return t('strong');
+    return t('veryStrong');
   };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
     if (!formData.currentPassword) {
-      newErrors.currentPassword = 'Current password is required';
+      newErrors.currentPassword = t('currentPasswordRequired');
     }
 
     if (!formData.newPassword) {
-      newErrors.newPassword = 'New password is required';
+      newErrors.newPassword = t('newPasswordRequired');
     } else if (formData.newPassword.length < 8) {
-      newErrors.newPassword = 'Password must be at least 8 characters';
+      newErrors.newPassword = t('passwordMinLength');
     } else if (!/[a-z]/.test(formData.newPassword) || !/[A-Z]/.test(formData.newPassword)) {
-      newErrors.newPassword = 'Password must contain uppercase and lowercase letters';
+      newErrors.newPassword = t('passwordNeedsCases');
     } else if (!/\d/.test(formData.newPassword)) {
-      newErrors.newPassword = 'Password must contain at least one number';
+      newErrors.newPassword = t('passwordNeedsNumber');
     } else if (formData.newPassword === formData.currentPassword) {
-      newErrors.newPassword = 'New password must be different from current password';
+      newErrors.newPassword = t('passwordMustBeDifferent');
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your new password';
+      newErrors.confirmPassword = t('pleaseConfirmPassword');
     } else if (formData.confirmPassword !== formData.newPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = t('passwordsDoNotMatch');
     }
 
     setErrors(newErrors);
@@ -194,7 +196,7 @@ export default function SecurityPage() {
 
   const handleDeleteAccount = async () => {
     if (!deletePassword || !deleteConfirm) {
-      setDeleteError('Please enter your password and confirm deletion');
+      setDeleteError(t('enterPasswordAndConfirm'));
       return;
     }
 
@@ -216,13 +218,13 @@ export default function SecurityPage() {
       if (data.success) {
         // Clear local storage and redirect
         localStorage.removeItem('token');
-        toast.success('Your account has been successfully deleted');
+        toast.success(t('accountDeleted'));
         router.push('/');
       } else {
-        setDeleteError(data.message || 'Failed to delete account');
+        setDeleteError(data.message || t('failedDeleteAccount'));
       }
     } catch (error: any) {
-      setDeleteError(error.message || 'An error occurred while deleting your account');
+      setDeleteError(error.message || t('errorDeletingAccount'));
     } finally {
       setIsDeleting(false);
     }
@@ -242,13 +244,13 @@ export default function SecurityPage() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success('Device logged out successfully');
+        toast.success(t('deviceLoggedOut'));
         mutateSessions();
       } else {
-        toast.error(data.message || 'Failed to revoke session');
+        toast.error(data.message || t('failedRevokeSession'));
       }
     } catch {
-      toast.error('Failed to revoke session');
+      toast.error(t('failedRevokeSession'));
     } finally {
       setRevokingSessionId(null);
     }
@@ -270,13 +272,13 @@ export default function SecurityPage() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(`All other devices logged out successfully (${data.revokedCount} sessions)`);
+        toast.success(t('allOtherLoggedOut'));
         mutateSessions();
       } else {
-        toast.error(data.message || 'Failed to revoke sessions');
+        toast.error(data.message || t('failedRevokeSessions'));
       }
     } catch {
-      toast.error('Failed to revoke sessions');
+      toast.error(t('failedRevokeSessions'));
     } finally {
       setIsRevokingAll(false);
     }
@@ -290,10 +292,10 @@ export default function SecurityPage() {
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffMins < 1) return t('justNow');
+    if (diffMins < 60) return diffMins > 1 ? t('minutesAgo', { count: diffMins }) : t('minuteAgo', { count: diffMins });
+    if (diffHours < 24) return diffHours > 1 ? t('hoursAgo', { count: diffHours }) : t('hourAgo', { count: diffHours });
+    if (diffDays < 7) return diffDays > 1 ? t('daysAgo', { count: diffDays }) : t('dayAgo', { count: diffDays });
 
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -422,8 +424,8 @@ export default function SecurityPage() {
               </svg>
             </div>
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">Security</h1>
-              <p className="text-lg text-white/80">Manage your account security settings</p>
+              <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">{t('title')}</h1>
+              <p className="text-lg text-white/80">{t('subtitle')}</p>
             </div>
           </motion.div>
         </div>
@@ -441,7 +443,7 @@ export default function SecurityPage() {
             >
               {/* Security Status Card */}
               <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6">
-                <h2 className="text-xl font-bold font-['Poppins'] mb-6">Security Status</h2>
+                <h2 className="text-xl font-bold font-['Poppins'] mb-6">{t('securityStatus')}</h2>
 
                 <div className="space-y-4">
                   {/* Password Status */}
@@ -456,8 +458,8 @@ export default function SecurityPage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="font-medium text-green-800">Password Set</p>
-                      <p className="text-sm text-green-600">Your account has a password</p>
+                      <p className="font-medium text-green-800">{t('passwordSet')}</p>
+                      <p className="text-sm text-green-600">{t('passwordSetDesc')}</p>
                     </div>
                   </div>
 
@@ -486,10 +488,10 @@ export default function SecurityPage() {
                     </div>
                     <div>
                       <p className={`font-medium ${user.twoFactorEnabled ? 'text-green-800' : 'text-amber-800'}`}>
-                        Two-Factor Auth
+                        {t('twoFactorAuth')}
                       </p>
                       <p className={`text-sm ${user.twoFactorEnabled ? 'text-green-600' : 'text-amber-600'}`}>
-                        {user.twoFactorEnabled ? 'Enabled' : 'Not enabled'}
+                        {user.twoFactorEnabled ? t('enabled') : t('notEnabled')}
                       </p>
                     </div>
                   </div>
@@ -516,10 +518,10 @@ export default function SecurityPage() {
                     </div>
                     <div>
                       <p className={`font-medium ${user.emailVerified ? 'text-green-800' : 'text-amber-800'}`}>
-                        Email Verified
+                        {t('emailVerified')}
                       </p>
                       <p className={`text-sm ${user.emailVerified ? 'text-green-600' : 'text-amber-600'}`}>
-                        {user.emailVerified ? 'Your email is verified' : 'Please verify your email'}
+                        {user.emailVerified ? t('emailVerifiedDesc') : t('pleaseVerifyEmail')}
                       </p>
                     </div>
                   </div>
@@ -533,7 +535,7 @@ export default function SecurityPage() {
                 transition={{ delay: 0.1 }}
                 className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6 mt-6"
               >
-                <h3 className="text-lg font-bold font-['Poppins'] mb-4">Quick Links</h3>
+                <h3 className="text-lg font-bold font-['Poppins'] mb-4">{t('quickLinks')}</h3>
                 <div className="space-y-2">
                   <Link
                     href="/account/profile"
@@ -555,7 +557,7 @@ export default function SecurityPage() {
                       </svg>
                     </div>
                     <span className="font-medium text-neutral-700 group-hover:text-gold transition-colors">
-                      Edit Profile
+                      {t('editProfile')}
                     </span>
                   </Link>
                   <Link
@@ -584,7 +586,7 @@ export default function SecurityPage() {
                       </svg>
                     </div>
                     <span className="font-medium text-neutral-700 group-hover:text-gold transition-colors">
-                      Addresses
+                      {t('addresses')}
                     </span>
                   </Link>
                 </div>
@@ -617,8 +619,8 @@ export default function SecurityPage() {
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold font-['Poppins']">Change Password</h2>
-                    <p className="text-neutral-500">Update your password to keep your account secure</p>
+                    <h2 className="text-2xl font-bold font-['Poppins']">{t('changePassword')}</h2>
+                    <p className="text-neutral-500">{t('changePasswordDesc')}</p>
                   </div>
                 </div>
 
@@ -626,7 +628,7 @@ export default function SecurityPage() {
                   {/* Current Password */}
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Current Password <span className="text-red-500">*</span>
+                      {t('currentPassword')} <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -638,7 +640,7 @@ export default function SecurityPage() {
                             ? 'border-red-500 focus:border-red-500'
                             : 'border-neutral-200 focus:border-gold'
                         }`}
-                        placeholder="Enter your current password"
+                        placeholder={t('enterCurrentPassword')}
                       />
                       <PasswordToggle
                         show={showCurrentPassword}
@@ -653,7 +655,7 @@ export default function SecurityPage() {
                   {/* New Password */}
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      New Password <span className="text-red-500">*</span>
+                      {t('newPassword')} <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -665,7 +667,7 @@ export default function SecurityPage() {
                             ? 'border-red-500 focus:border-red-500'
                             : 'border-neutral-200 focus:border-gold'
                         }`}
-                        placeholder="Enter your new password"
+                        placeholder={t('enterNewPassword')}
                       />
                       <PasswordToggle
                         show={showNewPassword}
@@ -678,7 +680,7 @@ export default function SecurityPage() {
                     {formData.newPassword && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between text-sm mb-1">
-                          <span className="text-neutral-500">Password strength</span>
+                          <span className="text-neutral-500">{t('passwordStrength')}</span>
                           <span
                             className={`font-medium ${
                               passwordStrength <= 1
@@ -707,7 +709,7 @@ export default function SecurityPage() {
                   {/* Confirm Password */}
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Confirm New Password <span className="text-red-500">*</span>
+                      {t('confirmNewPassword')} <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -721,7 +723,7 @@ export default function SecurityPage() {
                             ? 'border-green-500 focus:border-green-500'
                             : 'border-neutral-200 focus:border-gold'
                         }`}
-                        placeholder="Confirm your new password"
+                        placeholder={t('confirmNewPasswordPlaceholder')}
                       />
                       <PasswordToggle
                         show={showConfirmPassword}
@@ -742,14 +744,14 @@ export default function SecurityPage() {
                               clipRule="evenodd"
                             />
                           </svg>
-                          Passwords match
+                          {t('passwordsMatch')}
                         </p>
                       )}
                   </div>
 
                   {/* Password Requirements */}
                   <div className="p-4 bg-neutral-50 rounded-xl">
-                    <p className="text-sm font-medium text-neutral-700 mb-3">Password Requirements:</p>
+                    <p className="text-sm font-medium text-neutral-700 mb-3">{t('passwordRequirements')}</p>
                     <ul className="space-y-2 text-sm">
                       <li
                         className={`flex items-center gap-2 ${
@@ -777,7 +779,7 @@ export default function SecurityPage() {
                             />
                           )}
                         </svg>
-                        At least 8 characters
+                        {t('atLeast8Chars')}
                       </li>
                       <li
                         className={`flex items-center gap-2 ${
@@ -809,7 +811,7 @@ export default function SecurityPage() {
                             />
                           )}
                         </svg>
-                        Uppercase and lowercase letters
+                        {t('uppercaseAndLowercase')}
                       </li>
                       <li
                         className={`flex items-center gap-2 ${
@@ -837,7 +839,7 @@ export default function SecurityPage() {
                             />
                           )}
                         </svg>
-                        At least one number
+                        {t('atLeastOneNumber')}
                       </li>
                       <li
                         className={`flex items-center gap-2 ${
@@ -865,7 +867,7 @@ export default function SecurityPage() {
                             />
                           )}
                         </svg>
-                        Special character (recommended)
+                        {t('specialCharRecommended')}
                       </li>
                     </ul>
                   </div>
@@ -895,10 +897,10 @@ export default function SecurityPage() {
                             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                           />
                         </svg>
-                        Updating Password...
+                        {t('updatingPassword')}
                       </span>
                     ) : (
-                      'Update Password'
+                      t('updatePassword')
                     )}
                   </motion.button>
                 </form>
@@ -906,9 +908,9 @@ export default function SecurityPage() {
                 {/* Forgot Password Link */}
                 <div className="mt-6 pt-6 border-t border-neutral-200 text-center">
                   <p className="text-sm text-neutral-500">
-                    Forgot your current password?{' '}
+                    {t('forgotCurrentPassword')}{' '}
                     <Link href="/auth/forgot-password" className="text-gold hover:underline font-medium">
-                      Reset it here
+                      {t('resetItHere')}
                     </Link>
                   </p>
                 </div>
@@ -934,8 +936,8 @@ export default function SecurityPage() {
                       </svg>
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold font-['Poppins']">Active Sessions</h2>
-                      <p className="text-neutral-500">Manage devices where you&apos;re logged in</p>
+                      <h2 className="text-2xl font-bold font-['Poppins']">{t('activeSessions')}</h2>
+                      <p className="text-neutral-500">{t('activeSessionsDesc')}</p>
                     </div>
                   </div>
                   {sessions.length > 1 && (
@@ -944,7 +946,7 @@ export default function SecurityPage() {
                       disabled={isRevokingAll}
                       className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isRevokingAll ? 'Revoking...' : 'Log Out All Other'}
+                      {isRevokingAll ? t('revoking') : t('logOutAllOther')}
                     </button>
                   )}
                 </div>
@@ -966,9 +968,9 @@ export default function SecurityPage() {
                         />
                       </svg>
                     </div>
-                    <p className="text-neutral-500">No active sessions found</p>
+                    <p className="text-neutral-500">{t('noActiveSessions')}</p>
                     <p className="text-sm text-neutral-400 mt-1">
-                      Sessions will appear here when you log in from different devices
+                      {t('sessionsWillAppear')}
                     </p>
                   </div>
                 ) : (
@@ -1000,7 +1002,7 @@ export default function SecurityPage() {
                               </p>
                               {session.isCurrent && (
                                 <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
-                                  Current Device
+                                  {t('currentDevice')}
                                 </span>
                               )}
                             </div>
@@ -1065,7 +1067,7 @@ export default function SecurityPage() {
                                 </svg>
                               </span>
                             ) : (
-                              'Log Out'
+                              t('logOut')
                             )}
                           </button>
                         )}
@@ -1090,8 +1092,7 @@ export default function SecurityPage() {
                       />
                     </svg>
                     <p>
-                      If you see a session you don&apos;t recognize, log it out immediately and consider
-                      changing your password for security.
+                      {t('unrecognizedSessionWarning')}
                     </p>
                   </div>
                 </div>
@@ -1116,8 +1117,8 @@ export default function SecurityPage() {
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold font-['Poppins'] text-red-600">Delete Account</h2>
-                    <p className="text-neutral-500">Permanently delete your account and all data</p>
+                    <h2 className="text-2xl font-bold font-['Poppins'] text-red-600">{t('deleteAccount')}</h2>
+                    <p className="text-neutral-500">{t('deleteAccountDesc')}</p>
                   </div>
                 </div>
 
@@ -1137,12 +1138,12 @@ export default function SecurityPage() {
                       />
                     </svg>
                     <div>
-                      <p className="font-semibold text-red-800 mb-1">Warning: This action cannot be undone</p>
+                      <p className="font-semibold text-red-800 mb-1">{t('warningCannotBeUndone')}</p>
                       <ul className="text-sm text-red-700 space-y-1">
-                        <li>Your account and profile information will be deleted</li>
-                        <li>Your order history will be anonymized</li>
-                        <li>Your wishlist and saved items will be removed</li>
-                        <li>You will lose access to any pending orders</li>
+                        <li>{t('deleteWarning1')}</li>
+                        <li>{t('deleteWarning2')}</li>
+                        <li>{t('deleteWarning3')}</li>
+                        <li>{t('deleteWarning4')}</li>
                       </ul>
                     </div>
                   </div>
@@ -1152,7 +1153,7 @@ export default function SecurityPage() {
                   onClick={() => setShowDeleteModal(true)}
                   className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors"
                 >
-                  Delete My Account
+                  {t('deleteMyAccount')}
                 </button>
               </div>
             </motion.div>
@@ -1185,13 +1186,13 @@ export default function SecurityPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-black">Confirm Account Deletion</h3>
-                <p className="text-sm text-neutral-500">This action is permanent</p>
+                <h3 className="text-xl font-bold text-black">{t('confirmAccountDeletion')}</h3>
+                <p className="text-sm text-neutral-500">{t('thisActionIsPermanent')}</p>
               </div>
             </div>
 
             <p className="text-neutral-600 mb-4">
-              Please enter your password to confirm you want to delete your account.
+              {t('enterPasswordToConfirm')}
             </p>
 
             {deleteError && (
@@ -1203,14 +1204,14 @@ export default function SecurityPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Enter your password
+                  {t('enterYourPassword')}
                 </label>
                 <input
                   type="password"
                   value={deletePassword}
                   onChange={(e) => setDeletePassword(e.target.value)}
                   className="w-full px-4 py-3 border-2 border-neutral-200 rounded-xl focus:outline-none focus:border-red-500"
-                  placeholder="Your password"
+                  placeholder={t('yourPassword')}
                 />
               </div>
 
@@ -1222,7 +1223,7 @@ export default function SecurityPage() {
                   className="mt-1 w-5 h-5 text-red-600 border-neutral-300 rounded focus:ring-red-500"
                 />
                 <span className="text-sm text-neutral-600">
-                  I understand that deleting my account is permanent and cannot be undone.
+                  {t('understandDeletion')}
                 </span>
               </label>
             </div>
@@ -1237,7 +1238,7 @@ export default function SecurityPage() {
                 }}
                 className="flex-1 px-4 py-3 border-2 border-neutral-200 text-neutral-700 font-medium rounded-xl hover:bg-neutral-50 transition-colors"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 onClick={handleDeleteAccount}
@@ -1261,10 +1262,10 @@ export default function SecurityPage() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    Deleting...
+                    {t('deletingAccount')}
                   </span>
                 ) : (
-                  'Delete Account'
+                  t('deleteAccount')
                 )}
               </button>
             </div>
