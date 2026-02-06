@@ -101,9 +101,7 @@ export default function MyDealsPage() {
       toast.success(t('markedFulfilled'));
       // Update local state
       setDeals((prev) =>
-        prev.map((d) =>
-          d.id === dealId ? { ...d, status: 'FULFILLED' as HotDealStatus } : d
-        )
+        prev.map((d) => (d.id === dealId ? { ...d, status: 'FULFILLED' as HotDealStatus } : d))
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('failedToMark'));
@@ -122,9 +120,7 @@ export default function MyDealsPage() {
       toast.success(t('dealCancelled'));
       // Update local state
       setDeals((prev) =>
-        prev.map((d) =>
-          d.id === dealId ? { ...d, status: 'CANCELLED' as HotDealStatus } : d
-        )
+        prev.map((d) => (d.id === dealId ? { ...d, status: 'CANCELLED' as HotDealStatus } : d))
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('failedToCancel'));
@@ -138,7 +134,7 @@ export default function MyDealsPage() {
     return (
       <PageLayout showCategoryNav={false}>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-gold animate-spin" />
         </div>
       </PageLayout>
     );
@@ -152,9 +148,7 @@ export default function MyDealsPage() {
   // Group deals by status
   const activeDeals = deals.filter((d) => d.status === 'ACTIVE');
   const pendingDeals = deals.filter((d) => d.status === 'PENDING');
-  const pastDeals = deals.filter((d) =>
-    ['FULFILLED', 'EXPIRED', 'CANCELLED'].includes(d.status)
-  );
+  const pastDeals = deals.filter((d) => ['FULFILLED', 'EXPIRED', 'CANCELLED'].includes(d.status));
 
   return (
     <PageLayout showCategoryNav={false}>
@@ -177,7 +171,7 @@ export default function MyDealsPage() {
               </div>
               <Link
                 href="/hot-deals/new"
-                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-neutral-800 transition-colors"
               >
                 <Plus className="w-5 h-5" />
                 {t('postNewDeal')}
@@ -201,16 +195,14 @@ export default function MyDealsPage() {
           {/* Empty State */}
           {deals.length === 0 && !isLoading && !error && (
             <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <Flame className="w-8 h-8 text-orange-500" />
+              <div className="w-16 h-16 bg-gold/20 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <Flame className="w-8 h-8 text-gold" />
               </div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('noDealsYet')}</h2>
-              <p className="text-gray-600 mb-6">
-                {t('noDealsDescription')}
-              </p>
+              <p className="text-gray-600 mb-6">{t('noDealsDescription')}</p>
               <Link
                 href="/hot-deals/new"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
               >
                 <Plus className="w-5 h-5" />
                 {t('postFirstDeal')}
@@ -243,7 +235,7 @@ export default function MyDealsPage() {
           {activeDeals.length > 0 && (
             <section className="mb-8">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Flame className="w-5 h-5 text-orange-500" />
+                <Flame className="w-5 h-5 text-gold" />
                 {t('activeDeals', { count: activeDeals.length })}
               </h2>
               <div className="space-y-4">
@@ -281,7 +273,7 @@ export default function MyDealsPage() {
         <div className="sm:hidden fixed bottom-6 right-6">
           <Link
             href="/hot-deals/new"
-            className="flex items-center justify-center w-14 h-14 bg-orange-500 text-white rounded-full shadow-lg hover:bg-orange-600 transition-colors"
+            className="flex items-center justify-center w-14 h-14 bg-black text-white rounded-full shadow-lg hover:bg-neutral-800 transition-colors"
           >
             <Plus className="w-6 h-6" />
           </Link>
@@ -334,13 +326,11 @@ function DealCard({
             >
               {urgencyConfig.label}
             </span>
-            <span className="text-xs text-gray-500">
-              {CATEGORY_LABELS[deal.category]}
-            </span>
+            <span className="text-xs text-gray-500">{CATEGORY_LABELS[deal.category]}</span>
           </div>
 
           <Link href={`/hot-deals/${deal.id}`}>
-            <h3 className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors mb-1 line-clamp-1">
+            <h3 className="text-lg font-semibold text-gray-900 hover:text-gold transition-colors mb-1 line-clamp-1">
               {deal.title}
             </h3>
           </Link>
@@ -350,14 +340,15 @@ function DealCard({
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
             <div className="flex items-center gap-1">
               <MapPin className="w-4 h-4" />
-              {deal.city}{deal.state ? `, ${deal.state}` : ''}
+              {deal.city}
+              {deal.state ? `, ${deal.state}` : ''}
             </div>
             <div className="flex items-center gap-1">
               <MessageCircle className="w-4 h-4" />
               {t('responsesCount', { count: deal._count?.responses || 0 })}
             </div>
             {deal.status === 'ACTIVE' && !timeInfo.isExpired && (
-              <div className="flex items-center gap-1 text-orange-600">
+              <div className="flex items-center gap-1 text-gold">
                 <Clock className="w-4 h-4" />
                 {timeInfo.text}
               </div>

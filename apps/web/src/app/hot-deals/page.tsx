@@ -78,16 +78,18 @@ function HotDealCard({ deal }: { deal: HotDeal }) {
         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
           {CATEGORY_LABELS[deal.category]}
         </span>
-        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700">
           <MapPin className="w-3 h-3 mr-1" />
-          {deal.city}{deal.state ? `, ${deal.state}` : ''}
+          {deal.city}
+          {deal.state ? `, ${deal.state}` : ''}
         </span>
       </div>
 
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
         <div className="flex items-center text-sm text-gray-500">
           <MessageCircle className="w-4 h-4 mr-1" />
-          {deal._count?.responses || 0} {deal._count?.responses === 1 ? t('response') : t('responses')}
+          {deal._count?.responses || 0}{' '}
+          {deal._count?.responses === 1 ? t('response') : t('responses')}
         </div>
         <Link
           href={`/hot-deals/${deal.id}`}
@@ -166,7 +168,7 @@ export default function HotDealsPage() {
     <PageLayout showCategoryNav={false}>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white">
+        <div className="bg-gradient-to-r from-gold to-accent-700 text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="flex items-center justify-between">
               <div>
@@ -176,13 +178,11 @@ export default function HotDealsPage() {
                   </div>
                   <h1 className="text-4xl font-bold">{t('title')}</h1>
                 </div>
-                <p className="text-lg text-white/90 max-w-xl">
-                  {t('subtitle')}
-                </p>
+                <p className="text-lg text-white/90 max-w-xl">{t('subtitle')}</p>
               </div>
               <Link
                 href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
-                className="hidden sm:inline-flex items-center gap-2 px-6 py-3 bg-white text-orange-600 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
+                className="hidden sm:inline-flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
               >
                 <Plus className="w-5 h-5" />
                 {t('postDeal')}
@@ -195,7 +195,7 @@ export default function HotDealsPage() {
         <div className="sm:hidden px-4 py-4 bg-white border-b">
           <Link
             href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
           >
             <Plus className="w-5 h-5" />
             {t('postDeal')}
@@ -217,7 +217,7 @@ export default function HotDealsPage() {
                   value={citySearch}
                   onChange={(e) => setCitySearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCitySearch()}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
                 />
               </div>
 
@@ -243,7 +243,7 @@ export default function HotDealsPage() {
                           setShowFilters(false);
                         }}
                         className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                          !filters.category ? 'bg-orange-50 text-orange-700' : 'hover:bg-gray-50'
+                          !filters.category ? 'bg-gold/10 text-gold' : 'hover:bg-gray-50'
                         }`}
                       >
                         {t('allCategories')}
@@ -256,9 +256,7 @@ export default function HotDealsPage() {
                             setShowFilters(false);
                           }}
                           className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                            filters.category === key
-                              ? 'bg-orange-50 text-orange-700'
-                              : 'hover:bg-gray-50'
+                            filters.category === key ? 'bg-gold/10 text-gold' : 'hover:bg-gray-50'
                           }`}
                         >
                           {label}
@@ -272,7 +270,7 @@ export default function HotDealsPage() {
               {/* Search Button */}
               <button
                 onClick={handleCitySearch}
-                className="px-6 py-2.5 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
+                className="px-6 py-2.5 bg-black text-white rounded-lg font-medium hover:bg-neutral-800 transition-colors"
               >
                 {t('search')}
               </button>
@@ -292,11 +290,11 @@ export default function HotDealsPage() {
             {(filters.category || filters.city) && (
               <div className="flex flex-wrap gap-2 mt-3">
                 {filters.category && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-gold/20 text-gold rounded-full text-sm">
                     {CATEGORY_LABELS[filters.category]}
                     <button
                       onClick={() => handleCategoryChange('')}
-                      className="ml-1 hover:text-orange-900"
+                      className="ml-1 hover:text-gold/80"
                     >
                       ×
                     </button>
@@ -341,7 +339,10 @@ export default function HotDealsPage() {
           {isLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
+                <div
+                  key={i}
+                  className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse"
+                >
                   <div className="flex justify-between mb-3">
                     <div className="h-6 w-20 bg-gray-200 rounded-full" />
                     <div className="h-5 w-24 bg-gray-200 rounded" />
@@ -381,13 +382,11 @@ export default function HotDealsPage() {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('noDealsFound')}</h3>
               <p className="text-gray-600 mb-6">
-                {filters.category || filters.city
-                  ? t('noDealsMatch')
-                  : t('beFirstToPost')}
+                {filters.category || filters.city ? t('noDealsMatch') : t('beFirstToPost')}
               </p>
               <Link
                 href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
               >
                 <Plus className="w-5 h-5" />
                 {t('postDealShort')}

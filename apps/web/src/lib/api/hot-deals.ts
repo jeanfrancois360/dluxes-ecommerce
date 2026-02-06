@@ -110,14 +110,20 @@ export const CATEGORY_LABELS: Record<HotDealCategory, string> = {
 };
 
 // Urgency display names and colors
-export const URGENCY_CONFIG: Record<UrgencyLevel, { label: string; color: string; bgColor: string }> = {
+export const URGENCY_CONFIG: Record<
+  UrgencyLevel,
+  { label: string; color: string; bgColor: string }
+> = {
   NORMAL: { label: 'Normal', color: 'text-gray-700', bgColor: 'bg-gray-100' },
-  URGENT: { label: 'Urgent', color: 'text-orange-700', bgColor: 'bg-orange-100' },
+  URGENT: { label: 'Urgent', color: 'text-gold', bgColor: 'bg-gold/20' },
   EMERGENCY: { label: 'Emergency', color: 'text-red-700', bgColor: 'bg-red-100' },
 };
 
 // Status display names and colors
-export const STATUS_CONFIG: Record<HotDealStatus, { label: string; color: string; bgColor: string }> = {
+export const STATUS_CONFIG: Record<
+  HotDealStatus,
+  { label: string; color: string; bgColor: string }
+> = {
   PENDING: { label: 'Pending Payment', color: 'text-yellow-700', bgColor: 'bg-yellow-100' },
   ACTIVE: { label: 'Active', color: 'text-green-700', bgColor: 'bg-green-100' },
   EXPIRED: { label: 'Expired', color: 'text-gray-700', bgColor: 'bg-gray-100' },
@@ -172,7 +178,10 @@ export const hotDealsApi = {
   /**
    * Respond to a hot deal
    */
-  async respond(dealId: string, data: { message: string; contactInfo?: string }): Promise<HotDealResponse> {
+  async respond(
+    dealId: string,
+    data: { message: string; contactInfo?: string }
+  ): Promise<HotDealResponse> {
     return api.post(`/hot-deals/${dealId}/respond`, data);
   },
 
