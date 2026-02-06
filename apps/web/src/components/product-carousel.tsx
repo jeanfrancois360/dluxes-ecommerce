@@ -2,6 +2,7 @@
 
 import { useRef, useState, memo, useCallback } from 'react';
 import { ProductCard, type QuickViewProduct } from '@nextpik/ui';
+import { useTranslations } from 'next-intl';
 
 export interface ProductCarouselProps {
   title: string;
@@ -26,6 +27,7 @@ export const ProductCarousel = memo(function ProductCarousel({
   isLoading = false,
   currencySymbol = '$',
 }: ProductCarouselProps) {
+  const tCard = useTranslations('productCard');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -208,6 +210,20 @@ export const ProductCarousel = memo(function ProductCarousel({
                 onAddToWishlist={onAddToWishlist ? () => onAddToWishlist(product.id) : undefined}
                 onQuickAdd={onQuickAdd ? () => onQuickAdd(product.id) : undefined}
                 onNavigate={onNavigate ? () => onNavigate(product.slug) : undefined}
+                translations={{
+                  addToWishlist: tCard('addToWishlist'),
+                  removeFromWishlist: tCard('removeFromWishlist'),
+                  quickView: tCard('quickView'),
+                  outOfStock: tCard('outOfStock'),
+                  onlyLeft: tCard('onlyLeft'),
+                  contactForPrice: tCard('contactForPrice'),
+                  inquiryRequired: tCard('inquiryRequired'),
+                  contactSeller: tCard('contactSeller'),
+                  contact: tCard('contact'),
+                  addToBag: tCard('addToBag'),
+                  add: tCard('add'),
+                  by: tCard('by'),
+                }}
               />
             </div>
           ))}

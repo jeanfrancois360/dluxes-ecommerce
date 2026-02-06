@@ -458,6 +458,20 @@
     "review": "review",
     "save": "Save {percent}%"
   },
+  "productCard": {
+    "addToWishlist": "Add to wishlist",
+    "removeFromWishlist": "Remove from wishlist",
+    "quickView": "Quick View",
+    "outOfStock": "Out of Stock",
+    "onlyLeft": "Only {count} Left",
+    "contactForPrice": "Contact for Price",
+    "inquiryRequired": "Inquiry Required",
+    "contactSeller": "Contact Seller",
+    "contact": "Contact",
+    "addToBag": "Add to Bag",
+    "add": "Add",
+    "by": "by"
+  },
   "checkout": {
     "checkout": "Checkout",
     "completeSecurely": "Complete your purchase securely",
