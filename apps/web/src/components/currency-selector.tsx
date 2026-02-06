@@ -15,7 +15,8 @@ export function CurrencySelector() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { currencies, isLoading } = useCurrencyRates();
   const { currency, selectedCurrency, setSelectedCurrency } = useSelectedCurrency();
-  const { items, clearCart, isCurrencyLocked, cartCurrency, exchangeRate, handleCurrencyChange } = useCart();
+  const { items, clearCart, isCurrencyLocked, cartCurrency, exchangeRate, handleCurrencyChange } =
+    useCart();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -90,11 +91,7 @@ export function CurrencySelector() {
         >
           {/* 🔒 Lock icon when currency is locked */}
           {isCurrencyLocked && (
-            <svg
-              className="w-3.5 h-3.5 text-amber-600"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
+            <svg className="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
@@ -129,16 +126,27 @@ export function CurrencySelector() {
               className="absolute top-full left-0 mt-2 w-64 bg-neutral-900 text-white text-xs rounded-lg shadow-lg p-3 z-50"
             >
               <div className="flex items-start gap-2">
-                <svg className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                <svg
+                  className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 <div>
                   <p className="font-semibold mb-1">{t('currencyLocked')}</p>
                   <p className="text-neutral-300">
                     {items.length === 1
                       ? t('cartLockedTo', { currency: cartCurrency, count: items.length })
-                      : t('cartLockedToPlural', { currency: cartCurrency, count: items.length })}
-                    {' '}{t('clearCartToChange')}
+                      : t('cartLockedToPlural', {
+                          currency: cartCurrency,
+                          count: items.length,
+                        })}{' '}
+                    {t('clearCartToChange')}
                   </p>
                   {exchangeRate !== 1 && (
                     <p className="text-neutral-400 mt-1 text-[10px]">
@@ -168,10 +176,11 @@ export function CurrencySelector() {
                 <button
                   key={curr.currencyCode}
                   onClick={() => handleSelect(curr.currencyCode)}
-                  className={`w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 transition-colors ${selectedCurrency === curr.currencyCode
+                  className={`w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 transition-colors ${
+                    selectedCurrency === curr.currencyCode
                       ? 'bg-neutral-50 border-l-2 border-[#CBB57B]'
                       : ''
-                    }`}
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg font-semibold text-neutral-700">{curr.symbol}</span>
@@ -220,19 +229,35 @@ export function CurrencySelector() {
               <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <svg
+                      className="w-6 h-6 text-amber-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-neutral-900">{t('changeCurrency')}</h3>
+                    <h3 className="text-lg font-semibold text-neutral-900">
+                      {t('changeCurrency')}
+                    </h3>
                     <p className="text-sm text-neutral-600">{t('cartWillBeCleared')}</p>
                   </div>
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                   <div className="flex items-start gap-2 mb-3">
-                    <svg className="w-5 h-5 text-amber-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <svg
+                      className="w-5 h-5 text-amber-600 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
@@ -240,11 +265,16 @@ export function CurrencySelector() {
                       />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-amber-900 mb-1">{t('currencyLocked')}</p>
+                      <p className="text-sm font-semibold text-amber-900 mb-1">
+                        {t('currencyLocked')}
+                      </p>
                       <p className="text-sm text-amber-700">
                         {items.length === 1
                           ? t('cartLockedTo', { currency: cartCurrency, count: items.length })
-                          : t('cartLockedToPlural', { currency: cartCurrency, count: items.length })}
+                          : t('cartLockedToPlural', {
+                              currency: cartCurrency,
+                              count: items.length,
+                            })}
                       </p>
                     </div>
                   </div>
@@ -254,7 +284,12 @@ export function CurrencySelector() {
                       : t('yourCartIsPlural', { count: items.length })}
                   </p>
                   <p className="text-sm text-neutral-600">
-                    {t('changingTo', { currency: currencies.find(c => c.currencyCode === pendingCurrency)?.currencyCode })}
+                    {t('changingTo', {
+                      currency:
+                        currencies.find((c) => c.currencyCode === pendingCurrency)?.currencyCode ||
+                        pendingCurrency ||
+                        '',
+                    })}
                   </p>
                 </div>
 
