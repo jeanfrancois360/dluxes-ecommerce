@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api/client';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+import { useTranslations } from 'next-intl';
 interface Product {
   id: string;
   name: string;
@@ -29,6 +30,7 @@ interface Product {
 export default function SellerProductsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const t = useTranslations('sellerProducts');
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,9 +113,9 @@ export default function SellerProductsPage() {
       // Refresh products
       await fetchProducts();
       setSelectedProducts(new Set());
-      alert(`${selectedProducts.size} products updated successfully`);
+      alert(t('alerts.bulkUpdateSuccess', { count: selectedProducts.size }));
     } catch (error: any) {
-      alert(error?.data?.message || 'Failed to update products');
+      alert(error?.data?.message || t('alerts.bulkUpdateFailed'));
     } finally {
       setBulkActionLoading(false);
       setShowBulkActions(false);
@@ -123,11 +125,7 @@ export default function SellerProductsPage() {
   const handleBulkDelete = async () => {
     if (selectedProducts.size === 0) return;
 
-    if (
-      !confirm(
-        `Are you sure you want to delete ${selectedProducts.size} products? This action cannot be undone.`
-      )
-    ) {
+    if (!confirm(t('alerts.bulkDeleteConfirm', { count: selectedProducts.size }))) {
       return;
     }
 
@@ -141,9 +139,9 @@ export default function SellerProductsPage() {
       // Refresh products
       await fetchProducts();
       setSelectedProducts(new Set());
-      alert(`${selectedProducts.size} products deleted successfully`);
+      alert(t('alerts.bulkDeleteSuccess', { count: selectedProducts.size }));
     } catch (error: any) {
-      alert(error?.data?.message || 'Failed to delete products');
+      alert(error?.data?.message || t('alerts.bulkDeleteFailed'));
     } finally {
       setBulkActionLoading(false);
       setShowBulkActions(false);
@@ -151,18 +149,16 @@ export default function SellerProductsPage() {
   };
 
   const handleDeleteProduct = async (productId: string, productName: string) => {
-    if (
-      !confirm(`Are you sure you want to delete "${productName}"? This action cannot be undone.`)
-    ) {
+    if (!confirm(t('alerts.deleteConfirm', { name: productName }))) {
       return;
     }
 
     try {
       await api.delete(`/seller/products/${productId}`);
       await fetchProducts();
-      alert('Product deleted successfully');
+      alert(t('alerts.deleteSuccess'));
     } catch (error: any) {
-      alert(error?.data?.message || 'Failed to delete product');
+      alert(error?.data?.message || t('alerts.deleteFailed'));
     }
   };
 
@@ -235,8 +231,8 @@ export default function SellerProductsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-black">Products</h1>
-              <p className="text-neutral-600 mt-2">Manage your product inventory</p>
+              <h1 className="text-3xl font-bold text-black">{t('pageTitle')}</h1>
+              <p className="text-neutral-600 mt-2">{t('pageSubtitle')}</p>
             </div>
             <Link
               href="/seller/products/new"
@@ -250,7 +246,7 @@ export default function SellerProductsPage() {
                   d="M12 4v16m8-8H4"
                 />
               </svg>
-              Add Product
+              {t('addProduct')}
             </Link>
           </div>
         </div>
@@ -264,7 +260,7 @@ export default function SellerProductsPage() {
             <div className="md:col-span-2">
               <input
                 type="text"
-                placeholder="Search by name or SKU..."
+                placeholder={t('searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -283,11 +279,11 @@ export default function SellerProductsPage() {
               }}
               className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all font-medium cursor-pointer"
             >
-              <option value="">All Status</option>
-              <option value="ACTIVE">Active</option>
-              <option value="DRAFT">Draft</option>
-              <option value="OUT_OF_STOCK">Out of Stock</option>
-              <option value="ARCHIVED">Archived</option>
+              <option value="">{t('allStatus')}</option>
+              <option value="ACTIVE">{t('statuses.ACTIVE')}</option>
+              <option value="DRAFT">{t('statuses.DRAFT')}</option>
+              <option value="OUT_OF_STOCK">{t('statuses.OUT_OF_STOCK')}</option>
+              <option value="ARCHIVED">{t('statuses.ARCHIVED')}</option>
             </select>
 
             {/* Sort */}
@@ -301,14 +297,14 @@ export default function SellerProductsPage() {
               }}
               className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all font-medium cursor-pointer"
             >
-              <option value="createdAt-desc">Newest First</option>
-              <option value="createdAt-asc">Oldest First</option>
-              <option value="name-asc">Name (A-Z)</option>
-              <option value="name-desc">Name (Z-A)</option>
-              <option value="price-asc">Price (Low-High)</option>
-              <option value="price-desc">Price (High-Low)</option>
-              <option value="inventory-asc">Stock (Low-High)</option>
-              <option value="inventory-desc">Stock (High-Low)</option>
+              <option value="createdAt-desc">{t('sort.newestFirst')}</option>
+              <option value="createdAt-asc">{t('sort.oldestFirst')}</option>
+              <option value="name-asc">{t('sort.nameAZ')}</option>
+              <option value="name-desc">{t('sort.nameZA')}</option>
+              <option value="price-asc">{t('sort.priceLowHigh')}</option>
+              <option value="price-desc">{t('sort.priceHighLow')}</option>
+              <option value="inventory-asc">{t('sort.stockLowHigh')}</option>
+              <option value="inventory-desc">{t('sort.stockHighLow')}</option>
             </select>
           </div>
         </div>
@@ -318,7 +314,7 @@ export default function SellerProductsPage() {
           <div className="bg-gradient-to-r from-gold to-[#a89158] text-black rounded-2xl shadow-2xl p-4 border border-gold/50">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-lg">
-                {selectedProducts.size} products selected
+                {t('bulkActions.selected', { count: selectedProducts.size })}
               </span>
               <div className="flex items-center gap-3">
                 <button
@@ -326,28 +322,28 @@ export default function SellerProductsPage() {
                   disabled={bulkActionLoading}
                   className="px-4 py-2 bg-white/90 hover:bg-white text-gray-900 rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg disabled:opacity-50"
                 >
-                  Activate
+                  {t('bulkActions.activate')}
                 </button>
                 <button
                   onClick={() => handleBulkStatusUpdate('DRAFT')}
                   disabled={bulkActionLoading}
                   className="px-4 py-2 bg-white/90 hover:bg-white text-gray-900 rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg disabled:opacity-50"
                 >
-                  Draft
+                  {t('bulkActions.draft')}
                 </button>
                 <button
                   onClick={handleBulkDelete}
                   disabled={bulkActionLoading}
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg disabled:opacity-50"
                 >
-                  Delete
+                  {t('bulkActions.delete')}
                 </button>
                 <button
                   onClick={() => setSelectedProducts(new Set())}
                   disabled={bulkActionLoading}
                   className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-semibold transition-all hover:scale-105 shadow-lg disabled:opacity-50"
                 >
-                  Cancel
+                  {t('bulkActions.cancel')}
                 </button>
               </div>
             </div>
@@ -375,17 +371,15 @@ export default function SellerProductsPage() {
                   />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-black mb-2">No products found</h3>
+              <h3 className="text-xl font-semibold text-black mb-2">{t('empty.title')}</h3>
               <p className="text-neutral-600 mb-6">
-                {searchQuery || statusFilter
-                  ? 'Try adjusting your filters'
-                  : 'Get started by adding your first product'}
+                {searchQuery || statusFilter ? t('empty.subtitle') : t('empty.action')}
               </p>
               <Link
                 href="/seller/products/new"
                 className="inline-block bg-gold text-white px-6 py-3 rounded-lg hover:bg-gold/90 transition-colors font-semibold"
               >
-                Add Your First Product
+                {t('addProduct')}
               </Link>
             </div>
           ) : (
@@ -403,42 +397,45 @@ export default function SellerProductsPage() {
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
-                        Image <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
+                        {t('table.image')} <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
                       </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
-                        Product <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
+                        {t('table.product')}{' '}
+                        <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
                       </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
-                        SKU <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
+                        {t('table.sku')} <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
                       </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
-                        Category <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
+                        {t('table.category')}{' '}
+                        <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
                       </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
-                        Price <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
+                        {t('table.price')} <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
                       </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
-                        Stock <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
+                        {t('table.stock')} <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
                       </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
-                        Status <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
+                        {t('table.status')} <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
                       </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
-                        Actions <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
+                        {t('table.actions')}{' '}
+                        <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
                       </div>
                     </th>
                   </tr>
@@ -550,7 +547,7 @@ export default function SellerProductsPage() {
                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                               />
                             </svg>
-                            Edit
+                            {t('table.edit')}
                           </Link>
                           <button
                             onClick={() => handleDeleteProduct(product.id, product.name)}
@@ -569,7 +566,7 @@ export default function SellerProductsPage() {
                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                               />
                             </svg>
-                            Delete
+                            {t('table.delete')}
                           </button>
                         </div>
                       </td>
@@ -586,9 +583,11 @@ export default function SellerProductsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-neutral-700 font-medium">
-                    Showing <span className="font-bold text-black">{(page - 1) * 20 + 1}</span> to{' '}
-                    <span className="font-bold text-black">{Math.min(page * 20, total)}</span> of{' '}
-                    <span className="font-bold text-black">{total}</span> products
+                    {t('pagination.showing', {
+                      from: (page - 1) * 20 + 1,
+                      to: Math.min(page * 20, total),
+                      total,
+                    })}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -597,17 +596,17 @@ export default function SellerProductsPage() {
                     disabled={page === 1}
                     className="px-4 py-2 border-2 border-neutral-300 bg-white text-black rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-gold transition-all"
                   >
-                    Previous
+                    {t('pagination.previous')}
                   </button>
                   <span className="text-sm text-black font-bold px-3">
-                    Page {page} of {totalPages}
+                    {t('pagination.page', { current: page, total: totalPages })}
                   </span>
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
                     className="px-4 py-2 border-2 border-neutral-300 bg-white text-black rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-gold transition-all"
                   >
-                    Next
+                    {t('pagination.next')}
                   </button>
                 </div>
               </div>
@@ -633,7 +632,7 @@ export default function SellerProductsPage() {
                   d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              Export to CSV
+              {t('exportCSV')}
             </button>
           </div>
         )}

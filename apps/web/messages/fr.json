@@ -2370,5 +2370,74 @@
       "saveSuccess": "Paramètres de la boutique mis à jour avec succès !",
       "saveFailed": "Échec de la mise à jour des paramètres"
     }
+  },
+  "sellerProducts": {
+    "pageTitle": "Produits",
+    "pageSubtitle": "Gérez votre inventaire de produits",
+    "addProduct": "Ajouter un Produit",
+    "searchPlaceholder": "Rechercher par nom ou SKU...",
+    "allStatus": "Tous les Statuts",
+    "sort": {
+      "newestFirst": "Plus Récent en Premier",
+      "oldestFirst": "Plus Ancien en Premier",
+      "nameAZ": "Nom (A-Z)",
+      "nameZA": "Nom (Z-A)",
+      "priceLowHigh": "Prix (Bas-Élevé)",
+      "priceHighLow": "Prix (Élevé-Bas)",
+      "stockLowHigh": "Stock (Bas-Élevé)",
+      "stockHighLow": "Stock (Élevé-Bas)"
+    },
+    "statuses": {
+      "ACTIVE": "Actif",
+      "DRAFT": "Brouillon",
+      "OUT_OF_STOCK": "Rupture de Stock",
+      "ARCHIVED": "Archivé"
+    },
+    "bulkActions": {
+      "selected": "{count} produits sélectionnés",
+      "activate": "Activer",
+      "draft": "Brouillon",
+      "delete": "Supprimer",
+      "cancel": "Annuler",
+      "export": "Exporter CSV"
+    },
+    "table": {
+      "image": "Image",
+      "product": "Produit",
+      "sku": "SKU",
+      "category": "Catégorie",
+      "price": "Prix",
+      "stock": "Stock",
+      "status": "Statut",
+      "views": "Vues",
+      "actions": "Actions",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "noCategory": "N/D",
+      "inStock": "En Stock",
+      "outOfStock": "Rupture de Stock"
+    },
+    "empty": {
+      "title": "Aucun produit trouvé",
+      "subtitle": "Essayez d'ajuster vos filtres",
+      "action": "Commencez par ajouter votre premier produit"
+    },
+    "exportCSV": "Exporter en CSV",
+    "pagination": {
+      "showing": "Affichage de <bold>{from}</bold> à <bold>{to}</bold> sur <bold>{total}</bold> produits",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "page": "Page {current} sur {total}"
+    },
+    "alerts": {
+      "bulkUpdateSuccess": "{count} produits mis à jour avec succès",
+      "bulkUpdateFailed": "Échec de la mise à jour des produits",
+      "bulkDeleteConfirm": "Êtes-vous sûr de vouloir supprimer {count} produits ? Cette action ne peut pas être annulée.",
+      "bulkDeleteSuccess": "{count} produits supprimés avec succès",
+      "bulkDeleteFailed": "Échec de la suppression des produits",
+      "deleteConfirm": "Êtes-vous sûr de vouloir supprimer \"{name}\" ? Cette action ne peut pas être annulée.",
+      "deleteSuccess": "Produit supprimé avec succès",
+      "deleteFailed": "Échec de la suppression du produit"
+    }
   }
 }
