@@ -385,7 +385,9 @@
     "failedAddToCart": "Échec de l'ajout au panier",
     "addedToCart": "{name} a été ajouté à votre panier",
     "confirmReportReview": "Êtes-vous sûr de vouloir signaler cet avis ?",
-    "reviews_count": "({count} avis)"
+    "reviews_count": "({count} avis)",
+    "review": "avis",
+    "reviewsPlural": "avis"
   },
   "cart": {
     "shoppingCart": "Panier",
@@ -1969,6 +1971,96 @@
       "failedToCancel": "Échec de l'annulation de l'offre",
       "confirmCancel": "Êtes-vous sûr de vouloir annuler cette offre urgente ?",
       "failedToLoadDeals": "Échec du chargement de vos offres"
+    },
+    "ads": {
+      "sponsored": "Sponsorisé",
+      "adSpace": "Espace Publicitaire",
+      "advertiseHere": "Annoncez Ici",
+      "advertise": "Annoncer",
+      "startAdvertising": "Commencer à Annoncer",
+      "recommended": "Recommandé",
+      "featured": "En Vedette",
+      "premiumPlacement": "Placement Premium",
+      "dismiss": "Fermer",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "goToSlide": "Aller à la diapositive {number}",
+      "placements": {
+        "homepageHero": {
+          "title": "Espace Hero Premium",
+          "description": "Visibilité maximale pour votre marque"
+        },
+        "homepageFeatured": {
+          "title": "Bannière en Vedette",
+          "description": "Mettez en avant vos meilleurs produits"
+        },
+        "homepageSidebar": {
+          "title": "Barre Latérale Page d'Accueil",
+          "description": "Présence persistante de la marque"
+        },
+        "productsBanner": {
+          "title": "Bannière Produits",
+          "description": "Atteignez les acheteurs actifs"
+        },
+        "productsInline": {
+          "title": "Promotion Intégrée",
+          "description": "Placement natif dans le flux de produits"
+        },
+        "productsSidebar": {
+          "title": "Publicité Barre Latérale",
+          "description": "Captez l'attention des visiteurs"
+        },
+        "categoryBanner": {
+          "title": "Bannière Catégorie",
+          "description": "Ciblez des catégories spécifiques"
+        },
+        "productDetailSidebar": {
+          "title": "Publicité Page Produit",
+          "description": "Acheteurs à forte intention"
+        },
+        "checkoutUpsell": {
+          "title": "Vente Incitative Paiement",
+          "description": "Conversions de dernière minute"
+        },
+        "searchResults": {
+          "title": "Résultat Sponsorisé",
+          "description": "Placement en haut des résultats"
+        }
+      },
+      "hero": {
+        "title": "Espace Publicitaire Premium",
+        "description": "Mettez en valeur votre marque dans notre placement le plus visible",
+        "dailyViews": "Vues Quotidiennes",
+        "avgCTR": "CTR Moyen",
+        "visibility": "Visibilité"
+      },
+      "sidebar": {
+        "title": "Publicité Barre Latérale",
+        "description": "Atteignez les acheteurs en navigation"
+      },
+      "checkout": {
+        "title": "Opportunité de Vente Incitative",
+        "description": "Promouvoir des produits au paiement",
+        "learnMore": "En savoir plus",
+        "completeYourLook": "Complétez Votre Look",
+        "addToOrder": "Ajouter à la Commande"
+      },
+      "search": {
+        "title": "Espace Résultat Sponsorisé",
+        "description": "Obtenez un placement en haut des résultats de recherche"
+      },
+      "productDetail": {
+        "title": "Publicité Page Produit",
+        "description": "Atteignez les acheteurs à forte intention"
+      },
+      "defaultLinkText": {
+        "discoverNow": "Découvrir Maintenant",
+        "shopNow": "Acheter Maintenant",
+        "learnMore": "En Savoir Plus",
+        "viewOffer": "Voir l'Offre",
+        "viewDetails": "Voir les Détails",
+        "explore": "Explorer"
+      }
     }
   }
 }
