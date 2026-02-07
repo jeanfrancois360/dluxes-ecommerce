@@ -120,8 +120,15 @@ export default function ProductDetailPage() {
   // Cart
   const { addItem: addToCart } = useCart();
 
-  // Transform related products
-  const relatedProducts = useMemo(() => transformToQuickViewProducts(relatedData), [relatedData]);
+  // Transform related products and add wishlist status
+  const relatedProducts = useMemo(
+    () =>
+      transformToQuickViewProducts(relatedData).map((product) => ({
+        ...product,
+        inWishlist: checkIsInWishlist(product.id),
+      })),
+    [relatedData, checkIsInWishlist]
+  );
 
   // Get available colors and sizes from variants
   const availableColors = useMemo(() => {
@@ -292,14 +299,15 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleToggleWishlist = async (productId: string, isCurrentlyInWishlist: boolean) => {
+  const handleToggleWishlist = async (productId: string, isAdding: boolean) => {
     try {
-      if (isCurrentlyInWishlist) {
-        await removeFromWishlist(productId);
-        toast.success(t('removedFromWishlist'));
-      } else {
+      // isAdding is the NEW state (true = adding to wishlist, false = removing from wishlist)
+      if (isAdding) {
         await addToWishlist(productId);
         toast.success(t('addedToWishlist'));
+      } else {
+        await removeFromWishlist(productId);
+        toast.success(t('removedFromWishlist'));
       }
     } catch (error) {
       console.error('Failed to toggle wishlist:', error);
@@ -1092,7 +1100,10 @@ export default function ProductDetailPage() {
                 title={t('relatedProducts')}
                 products={relatedProducts}
                 onQuickView={handleQuickView}
-                onAddToWishlist={(id) => console.log('Wishlist:', id)}
+                onAddToWishlist={async (id) => {
+                  const inWishlist = checkIsInWishlist(id);
+                  await handleToggleWishlist(id, !inWishlist);
+                }}
                 onQuickAdd={(id) => console.log('Add to cart:', id)}
                 onNavigate={handleNavigate}
                 isLoading={relatedLoading}

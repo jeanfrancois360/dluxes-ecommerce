@@ -98,6 +98,11 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
     const [isWishlisted, setIsWishlisted] = React.useState(inWishlist);
     const [isHovered, setIsHovered] = React.useState(false);
 
+    // Sync local wishlist state with prop
+    React.useEffect(() => {
+      setIsWishlisted(inWishlist);
+    }, [inWishlist]);
+
     // Check if this is an inquiry product or has no price
     const isInquiryProduct = purchaseType === 'INQUIRY' || price === null || price === undefined;
 
@@ -120,7 +125,9 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
 
     const handleWishlistToggle = (e: React.MouseEvent) => {
       e.stopPropagation();
+      // Optimistically update UI
       setIsWishlisted(!isWishlisted);
+      // Call the handler which will handle add/remove logic
       onAddToWishlist?.(id);
     };
 
