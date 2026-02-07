@@ -221,19 +221,15 @@ export const storesAPI = {
 
   updateMyStore: (data: UpdateStoreDto) => api.patch<Store>('/stores/me/store', data),
 
-  createStore: (data: CreateStoreDto) => api.post<{ message: string; store: Store }>('/stores', data),
+  createStore: (data: CreateStoreDto) =>
+    api.post<{ message: string; store: Store }>('/stores', data),
 
   deleteMyStore: () => api.delete('/stores/me/store'),
 
   getMyAnalytics: () => api.get('/stores/me/analytics'),
 
   // Public Routes
-  getStores: (params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    verified?: string;
-  }) => {
+  getStores: (params?: { page?: number; limit?: number; status?: string; verified?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.append('page', params.page.toString());
     if (params?.limit) searchParams.append('limit', params.limit.toString());
@@ -254,42 +250,48 @@ export const storesAPI = {
   getStoreBySlug: (slug: string) => api.get<Store>(`/stores/${slug}`),
 
   // Get store products (uses products API with storeId filter)
-  getStoreProducts: (storeId: string, params?: {
-    page?: number;
-    limit?: number;
-    sortBy?: string;
-    sortOrder?: 'asc' | 'desc';
-  }) => api.get('/products', {
-    params: {
-      storeId,
-      status: 'ACTIVE',
-      ...params,
-    },
-  } as any),
+  getStoreProducts: (
+    storeId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+    }
+  ) =>
+    api.get('/products', {
+      params: {
+        storeId,
+        status: 'ACTIVE',
+        ...params,
+      },
+    } as any),
 
   // Get store reviews (aggregated from product reviews)
-  getStoreReviews: (storeId: string, params?: {
-    page?: number;
-    limit?: number;
-  }) => api.get(`/stores/${storeId}/reviews`, {
-    params,
-  } as any),
+  getStoreReviews: (
+    storeId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+    }
+  ) =>
+    api.get(`/stores/${storeId}/reviews`, {
+      params,
+    } as any),
 
   // File Upload
   uploadLogo: (file: File) => {
     const formData = new FormData();
     formData.append('logo', file);
-    return api.post('/stores/me/store/logo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    } as any);
+    // Don't set Content-Type manually - browser will set it with boundary
+    return api.post('/stores/me/store/logo', formData);
   },
 
   uploadBanner: (file: File) => {
     const formData = new FormData();
     formData.append('banner', file);
-    return api.post('/stores/me/store/banner', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    } as any);
+    // Don't set Content-Type manually - browser will set it with boundary
+    return api.post('/stores/me/store/banner', formData);
   },
 
   // Payout Settings
@@ -298,13 +300,10 @@ export const storesAPI = {
   updatePayoutSettings: (data: UpdatePayoutSettingsDto) =>
     api.patch<{ message: string; settings: PayoutSettings }>('/stores/me/payout-settings', data),
 
-  getPayoutHistory: (params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-  }) => api.get<PayoutHistoryResponse>('/stores/me/payouts', {
-    params,
-  } as any),
+  getPayoutHistory: (params?: { page?: number; limit?: number; status?: string }) =>
+    api.get<PayoutHistoryResponse>('/stores/me/payouts', {
+      params,
+    } as any),
 
   // Vacation Mode
   getVacationStatus: () => api.get<VacationStatusResponse>('/stores/me/vacation'),
@@ -313,18 +312,16 @@ export const storesAPI = {
     api.patch<VacationUpdateResponse>('/stores/me/vacation', data),
 
   // Store Following
-  getFollowingStores: (params?: {
-    page?: number;
-    limit?: number;
-  }) => api.get<{
-    data: (Store & { followedAt: string })[];
-    meta: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
-  }>('/stores/me/following', { params } as any),
+  getFollowingStores: (params?: { page?: number; limit?: number }) =>
+    api.get<{
+      data: (Store & { followedAt: string })[];
+      meta: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      };
+    }>('/stores/me/following', { params } as any),
 
   getFollowerCount: (storeId: string) =>
     api.get<{ count: number }>(`/stores/${storeId}/followers/count`),

@@ -358,8 +358,7 @@ export const sellerAPI = {
       params: { period },
     } as any),
 
-  getOrderStatusBreakdown: () =>
-    api.get<OrderStatusBreakdown>('/seller/analytics/orders'),
+  getOrderStatusBreakdown: () => api.get<OrderStatusBreakdown>('/seller/analytics/orders'),
 
   getTopProducts: (limit: number = 5) =>
     api.get<TopProduct[]>('/seller/analytics/top-products', {
@@ -391,9 +390,10 @@ export const sellerAPI = {
     category?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
-  }) => api.get<{ data: SellerProduct[]; total: number }>('/seller/products', {
-    params,
-  } as any),
+  }) =>
+    api.get<{ data: SellerProduct[]; total: number }>('/seller/products', {
+      params,
+    } as any),
 
   getProduct: (id: string) => api.get<SellerProduct>(`/seller/products/${id}`),
 
@@ -411,17 +411,20 @@ export const sellerAPI = {
     status?: string;
     startDate?: string;
     endDate?: string;
-  }) => api.get<{ data: SellerOrder[]; total: number }>('/seller/orders', {
-    params,
-  } as any),
+  }) =>
+    api.get<{ data: SellerOrder[]; total: number }>('/seller/orders', {
+      params,
+    } as any),
 
   getOrder: (id: string) => api.get<SellerOrderDetail>(`/seller/orders/${id}`),
 
   updateOrderStatus: (id: string, data: { status: string; notes?: string }) =>
     api.patch(`/seller/orders/${id}/status`, data),
 
-  updateShippingInfo: (id: string, data: { trackingNumber?: string; carrier?: string; notes?: string }) =>
-    api.patch(`/seller/orders/${id}/shipping`, data),
+  updateShippingInfo: (
+    id: string,
+    data: { trackingNumber?: string; carrier?: string; notes?: string }
+  ) => api.patch(`/seller/orders/${id}/shipping`, data),
 
   markAsShipped: (id: string, data: { trackingNumber?: string; shippingCarrier?: string }) =>
     api.patch(`/seller/orders/${id}/mark-shipped`, data),
@@ -429,9 +432,8 @@ export const sellerAPI = {
   uploadDeliveryProof: (id: string, file: File) => {
     const formData = new FormData();
     formData.append('proof', file);
-    return api.post(`/seller/orders/${id}/upload-proof`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    } as any);
+    // Don't set Content-Type manually - browser will set it with boundary
+    return api.post(`/seller/orders/${id}/upload-proof`, formData);
   },
 
   // Commissions
@@ -441,9 +443,10 @@ export const sellerAPI = {
     status?: string;
     startDate?: string;
     endDate?: string;
-  }) => api.get<{ data: Commission[]; total: number }>('/seller/commissions', {
-    params,
-  } as any),
+  }) =>
+    api.get<{ data: Commission[]; total: number }>('/seller/commissions', {
+      params,
+    } as any),
 
   getCommissionSummary: () =>
     api.get<{
@@ -472,17 +475,15 @@ export const sellerAPI = {
   uploadStoreLogo: (file: File) => {
     const formData = new FormData();
     formData.append('logo', file);
-    return api.post('/seller/store/logo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    } as any);
+    // Don't set Content-Type manually - browser will set it with boundary
+    return api.post('/seller/store/logo', formData);
   },
 
   uploadStoreBanner: (file: File) => {
     const formData = new FormData();
     formData.append('banner', file);
-    return api.post('/seller/store/banner', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    } as any);
+    // Don't set Content-Type manually - browser will set it with boundary
+    return api.post('/seller/store/banner', formData);
   },
 
   // Notifications
@@ -491,20 +492,16 @@ export const sellerAPI = {
       params,
     } as any),
 
-  markNotificationAsRead: (id: string) =>
-    api.patch(`/seller/notifications/${id}/read`),
+  markNotificationAsRead: (id: string) => api.patch(`/seller/notifications/${id}/read`),
 
   markAllNotificationsAsRead: () => api.patch('/seller/notifications/read-all'),
 
   // Inquiries
-  getInquiries: (params?: {
-    page?: number;
-    limit?: number;
-    status?: InquiryStatus;
-  }) => api.get<{
-    inquiries: Inquiry[];
-    pagination: { total: number; page: number; limit: number; totalPages: number };
-  }>('/inquiries/seller', { params } as any),
+  getInquiries: (params?: { page?: number; limit?: number; status?: InquiryStatus }) =>
+    api.get<{
+      inquiries: Inquiry[];
+      pagination: { total: number; page: number; limit: number; totalPages: number };
+    }>('/inquiries/seller', { params } as any),
 
   getInquiryStats: () => api.get<InquiryStats>('/inquiries/seller/stats'),
 
@@ -526,6 +523,10 @@ export const getTopProducts = (limit?: number) => sellerAPI.getTopProducts(limit
 export const getLowStockProducts = (threshold?: number, limit?: number) =>
   sellerAPI.getLowStockProducts(threshold, limit);
 export const getRecentActivity = (limit?: number) => sellerAPI.getRecentActivity(limit);
-export const getReviews = (params?: { page?: number; limit?: number; rating?: number; productId?: string }) =>
-  sellerAPI.getReviews(params);
+export const getReviews = (params?: {
+  page?: number;
+  limit?: number;
+  rating?: number;
+  productId?: string;
+}) => sellerAPI.getReviews(params);
 export const getReviewStats = () => sellerAPI.getReviewStats();
