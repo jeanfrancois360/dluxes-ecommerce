@@ -129,7 +129,12 @@ export function SearchBar({
 
   return (
     <div ref={searchRef} className={`relative w-full ${className}`}>
-      <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSearch();
+        }}
+      >
         <motion.div
           animate={{ scale: isFocused ? 1.01 : 1 }}
           transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
@@ -226,8 +231,18 @@ export function SearchBar({
                   className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
                   aria-label="Clear search"
                 >
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </motion.button>
               )}
@@ -263,7 +278,7 @@ export function SearchBar({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden z-[60] max-h-[500px] overflow-y-auto"
+            className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden z-[60] max-h-[70vh] sm:max-h-[500px] overflow-y-auto"
           >
             {/* Show autocomplete results when searching */}
             {searchQuery.length >= 2 && (
@@ -324,9 +339,7 @@ export function SearchBar({
                       />
                     </svg>
                     <p className="text-sm font-medium text-gray-900 mb-1">No results found</p>
-                    <p className="text-xs text-gray-500">
-                      Try searching for different keywords
-                    </p>
+                    <p className="text-xs text-gray-500">Try searching for different keywords</p>
                   </div>
                 ) : null}
               </>
