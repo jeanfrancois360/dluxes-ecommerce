@@ -224,6 +224,11 @@ export const ProductCarousel = memo(function ProductCarousel({
                   addToBag: tCard('addToBag'),
                   add: tCard('add'),
                   by: tCard('by'),
+                  new: tCard('new'),
+                  sale: tCard('sale'),
+                  featured: tCard('featured'),
+                  bestseller: tCard('bestseller'),
+                  limitedEdition: tCard('limitedEdition'),
                 }}
               />
             </div>

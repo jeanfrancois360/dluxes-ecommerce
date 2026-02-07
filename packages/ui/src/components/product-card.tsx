@@ -49,6 +49,12 @@ export interface ProductCardProps {
     addToBag: string;
     add: string;
     by: string;
+    // Badge translations
+    new?: string;
+    sale?: string;
+    featured?: string;
+    bestseller?: string;
+    limitedEdition?: string;
   };
 }
 
@@ -96,6 +102,17 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
   }) => {
     const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
     const [isWishlisted, setIsWishlisted] = React.useState(inWishlist);
+
+    // Helper function to translate badges
+    const translateBadge = (badge: string): string => {
+      const badgeLower = badge.toLowerCase().replace(/\s+/g, '');
+      if (badgeLower === 'new') return translations.new || 'New';
+      if (badgeLower === 'sale') return translations.sale || 'Sale';
+      if (badgeLower === 'featured') return translations.featured || 'Featured';
+      if (badgeLower === 'bestseller') return translations.bestseller || 'Bestseller';
+      if (badgeLower === 'limitededition') return translations.limitedEdition || 'Limited Edition';
+      return badge; // Return original if no translation found
+    };
     const [isHovered, setIsHovered] = React.useState(false);
 
     // Sync local wishlist state with prop
@@ -197,7 +214,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                       'bg-neutral-800/90 text-white'
                   )}
                 >
-                  {badge}
+                  {translateBadge(badge)}
                 </motion.span>
               ))}
             </div>
