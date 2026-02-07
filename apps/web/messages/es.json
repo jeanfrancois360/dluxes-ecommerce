@@ -392,6 +392,7 @@
   "cart": {
     "shoppingCart": "Carrito de Compras",
     "itemsInCart": "artículo{s} en tu carrito",
+    "itemInCart": "artículo en tu carrito",
     "emptyCart": "Tu carrito está vacío",
     "addLuxuryItems": "Añade algunos artículos para comenzar",
     "orderSummary": "Resumen del Pedido",
