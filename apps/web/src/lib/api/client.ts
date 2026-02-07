@@ -127,6 +127,10 @@ const SILENT_FAIL_ENDPOINTS = [
   '/products/new-arrivals',
   '/products/sale',
   '/products/related',
+  '/advertisements/my',
+  '/advertisements/active',
+  '/advertisements/pending',
+  '/advertisement-plans',
 ];
 
 async function handleResponse(response: Response) {
@@ -137,10 +141,15 @@ async function handleResponse(response: Response) {
   // Check if this is a non-critical endpoint that can fail silently
   const url = new URL(response.url);
   const pathname = url.pathname;
-  const isSilentFailEndpoint = SILENT_FAIL_ENDPOINTS.some(endpoint => pathname.includes(endpoint));
+  const isSilentFailEndpoint = SILENT_FAIL_ENDPOINTS.some((endpoint) =>
+    pathname.includes(endpoint)
+  );
 
   // Debug logging (skip for silent fail endpoints)
-  if (!isSilentFailEndpoint && (!response.ok || (typeof window !== 'undefined' && window.location.pathname.includes('seller')))) {
+  if (
+    !isSilentFailEndpoint &&
+    (!response.ok || (typeof window !== 'undefined' && window.location.pathname.includes('seller')))
+  ) {
     console.log('[API Debug] Response:', {
       url: response.url,
       status: response.status,
@@ -166,11 +175,7 @@ async function handleResponse(response: Response) {
       console.error('[API Error Details]', JSON.stringify(errorDetails, null, 2));
     }
 
-    throw new APIError(
-      errorMessage,
-      response.status,
-      data
-    );
+    throw new APIError(errorMessage, response.status, data);
   }
 
   // Unwrap response if it's wrapped in { success, data } format
@@ -190,26 +195,17 @@ async function handleResponse(response: Response) {
         });
       }
 
-      throw new APIError(
-        errorMessage,
-        response.status,
-        data
-      );
+      throw new APIError(errorMessage, response.status, data);
     }
   }
 
   return data;
 }
 
-export async function apiClient<T = any>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
+export async function apiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const { headers, body, ...restOptions } = options;
 
-  const token = typeof window !== 'undefined'
-    ? localStorage.getItem('auth_token')
-    : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
 
   // Check if body is FormData to handle file uploads correctly
   const isFormData = body instanceof FormData;
@@ -237,21 +233,21 @@ export const api = {
     apiClient<T>(url, {
       ...options,
       method: 'POST',
-      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
+      body: data instanceof FormData ? data : data ? JSON.stringify(data) : undefined,
     }),
 
   put: <T = any>(url: string, data?: any, options?: RequestInit) =>
     apiClient<T>(url, {
       ...options,
       method: 'PUT',
-      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
+      body: data instanceof FormData ? data : data ? JSON.stringify(data) : undefined,
     }),
 
   patch: <T = any>(url: string, data?: any, options?: RequestInit) =>
     apiClient<T>(url, {
       ...options,
       method: 'PATCH',
-      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
+      body: data instanceof FormData ? data : data ? JSON.stringify(data) : undefined,
     }),
 
   delete: <T = any>(url: string, options?: RequestInit) =>
@@ -259,7 +255,13 @@ export const api = {
 
   // Orders API namespace
   orders: {
-    getOrders: (params?: { page?: number; limit?: number; status?: string; sortBy?: string; sortOrder?: string }) => {
+    getOrders: (params?: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      sortBy?: string;
+      sortOrder?: string;
+    }) => {
       const searchParams = new URLSearchParams();
       if (params?.page) searchParams.append('page', params.page.toString());
       if (params?.limit) searchParams.append('limit', params.limit.toString());
