@@ -2287,5 +2287,88 @@
       "CHECKOUT_UPSELL": "Vente Incitative Caisse",
       "SEARCH_RESULTS": "Résultats de Recherche"
     }
+  },
+  "sellerStoreSettings": {
+    "pageTitle": "Paramètres de la Boutique",
+    "pageSubtitle": "Gérez les informations et la configuration de votre boutique",
+    "backToDashboard": "Retour au Tableau de Bord",
+    "loading": "Chargement...",
+    "errorLoading": "Échec du chargement des paramètres de la boutique",
+    "retry": "Réessayer",
+    "save": "Enregistrer les Modifications",
+    "saving": "Enregistrement...",
+    "branding": {
+      "title": "Image de Marque de la Boutique",
+      "subtitle": "Téléchargez le logo et la bannière de votre boutique",
+      "banner": "Bannière de la Boutique",
+      "logo": "Logo de la Boutique",
+      "changeBanner": "Changer la Bannière",
+      "uploadBanner": "Cliquez pour télécharger la bannière",
+      "bannerRecommended": "Recommandé : 1200x300px, max 10 Mo",
+      "uploading": "Téléchargement...",
+      "upload": "Télécharger",
+      "uploadLogo": "Téléchargez le logo de votre boutique",
+      "logoRecommended": "Taille recommandée : 200x200px",
+      "logoMaxSize": "Taille maximale du fichier : 5 Mo",
+      "logoFormats": "Formats : JPG, PNG, GIF, WebP",
+      "bannerAlt": "Bannière de la Boutique",
+      "logoAlt": "Logo de la Boutique"
+    },
+    "storeInfo": {
+      "title": "Informations sur la Boutique",
+      "subtitle": "Mettez à jour les détails et les coordonnées de votre boutique",
+      "basicInfo": "Informations de Base",
+      "contactInfo": "Informations de Contact",
+      "addressInfo": "Informations d'Adresse",
+      "legalInfo": "Juridique et Politiques"
+    },
+    "fields": {
+      "storeName": "Nom de la Boutique",
+      "storeSlug": "Identifiant de la Boutique",
+      "slugUrl": "URL : /stores/{slug}",
+      "description": "Description",
+      "email": "Email",
+      "phone": "Numéro de Téléphone",
+      "website": "Site Web (Optionnel)",
+      "address1": "Adresse Ligne 1",
+      "address2": "Adresse Ligne 2 (Optionnel)",
+      "city": "Ville",
+      "province": "État/Province",
+      "postalCode": "Code Postal",
+      "country": "Pays",
+      "taxId": "Numéro d'Identification Fiscale / TVA (Optionnel)",
+      "returnPolicy": "Politique de Retour",
+      "shippingPolicy": "Politique d'Expédition",
+      "termsConditions": "Conditions Générales",
+      "required": "*"
+    },
+    "placeholders": {
+      "storeName": "Ma Boutique de Luxe",
+      "storeSlug": "ma-boutique-luxe",
+      "description": "Décrivez votre boutique et vos produits...",
+      "email": "boutique@exemple.com",
+      "phone": "+33 1 23 45 67 89",
+      "website": "https://maboutique.com",
+      "address1": "123 Rue Principale",
+      "address2": "Appartement 100",
+      "city": "Paris",
+      "province": "Île-de-France",
+      "postalCode": "75001",
+      "taxId": "FR12345678901",
+      "returnPolicy": "Décrivez votre politique de retour ici...",
+      "shippingPolicy": "Décrivez vos méthodes et délais d'expédition...",
+      "termsConditions": "Spécifiez les conditions générales de votre boutique..."
+    },
+    "toast": {
+      "uploadImage": "Veuillez télécharger un fichier image",
+      "logoTooLarge": "Le logo doit faire moins de 5 Mo",
+      "logoSuccess": "Logo téléchargé avec succès !",
+      "logoFailed": "Échec du téléchargement du logo",
+      "bannerTooLarge": "La bannière doit faire moins de 10 Mo",
+      "bannerSuccess": "Bannière téléchargée avec succès !",
+      "bannerFailed": "Échec du téléchargement de la bannière",
+      "saveSuccess": "Paramètres de la boutique mis à jour avec succès !",
+      "saveFailed": "Échec de la mise à jour des paramètres"
+    }
   }
 }
