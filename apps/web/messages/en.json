@@ -392,6 +392,7 @@
   "cart": {
     "shoppingCart": "Shopping Cart",
     "itemsInCart": "item{s} in your cart",
+    "itemInCart": "item in your cart",
     "emptyCart": "Your cart is empty",
     "addLuxuryItems": "Add some luxury items to get started",
     "orderSummary": "Order Summary",

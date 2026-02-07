@@ -392,6 +392,7 @@
   "cart": {
     "shoppingCart": "Panier",
     "itemsInCart": "article{s} dans votre panier",
+    "itemInCart": "article dans votre panier",
     "emptyCart": "Votre panier est vide",
     "addLuxuryItems": "Ajoutez des articles pour commencer",
     "orderSummary": "Résumé de la Commande",
