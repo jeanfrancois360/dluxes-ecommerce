@@ -2370,5 +2370,74 @@
       "saveSuccess": "Store settings updated successfully!",
       "saveFailed": "Failed to update settings"
     }
+  },
+  "sellerProducts": {
+    "pageTitle": "Products",
+    "pageSubtitle": "Manage your product inventory",
+    "addProduct": "Add Product",
+    "searchPlaceholder": "Search by name or SKU...",
+    "allStatus": "All Status",
+    "sort": {
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "nameAZ": "Name (A-Z)",
+      "nameZA": "Name (Z-A)",
+      "priceLowHigh": "Price (Low-High)",
+      "priceHighLow": "Price (High-Low)",
+      "stockLowHigh": "Stock (Low-High)",
+      "stockHighLow": "Stock (High-Low)"
+    },
+    "statuses": {
+      "ACTIVE": "Active",
+      "DRAFT": "Draft",
+      "OUT_OF_STOCK": "Out of Stock",
+      "ARCHIVED": "Archived"
+    },
+    "bulkActions": {
+      "selected": "{count} products selected",
+      "activate": "Activate",
+      "draft": "Draft",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "export": "Export CSV"
+    },
+    "table": {
+      "image": "Image",
+      "product": "Product",
+      "sku": "SKU",
+      "category": "Category",
+      "price": "Price",
+      "stock": "Stock",
+      "status": "Status",
+      "views": "Views",
+      "actions": "Actions",
+      "edit": "Edit",
+      "delete": "Delete",
+      "noCategory": "N/A",
+      "inStock": "In Stock",
+      "outOfStock": "Out of Stock"
+    },
+    "empty": {
+      "title": "No products found",
+      "subtitle": "Try adjusting your filters",
+      "action": "Get started by adding your first product"
+    },
+    "exportCSV": "Export to CSV",
+    "pagination": {
+      "showing": "Showing <bold>{from}</bold> to <bold>{to}</bold> of <bold>{total}</bold> products",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "alerts": {
+      "bulkUpdateSuccess": "{count} products updated successfully",
+      "bulkUpdateFailed": "Failed to update products",
+      "bulkDeleteConfirm": "Are you sure you want to delete {count} products? This action cannot be undone.",
+      "bulkDeleteSuccess": "{count} products deleted successfully",
+      "bulkDeleteFailed": "Failed to delete products",
+      "deleteConfirm": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+      "deleteSuccess": "Product deleted successfully",
+      "deleteFailed": "Failed to delete product"
+    }
   }
 }

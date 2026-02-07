@@ -2370,5 +2370,74 @@
       "saveSuccess": "¡Configuración de la tienda actualizada con éxito!",
       "saveFailed": "Error al actualizar la configuración"
     }
+  },
+  "sellerProducts": {
+    "pageTitle": "Productos",
+    "pageSubtitle": "Gestione su inventario de productos",
+    "addProduct": "Agregar Producto",
+    "searchPlaceholder": "Buscar por nombre o SKU...",
+    "allStatus": "Todos los Estados",
+    "sort": {
+      "newestFirst": "Más Reciente Primero",
+      "oldestFirst": "Más Antiguo Primero",
+      "nameAZ": "Nombre (A-Z)",
+      "nameZA": "Nombre (Z-A)",
+      "priceLowHigh": "Precio (Bajo-Alto)",
+      "priceHighLow": "Precio (Alto-Bajo)",
+      "stockLowHigh": "Stock (Bajo-Alto)",
+      "stockHighLow": "Stock (Alto-Bajo)"
+    },
+    "statuses": {
+      "ACTIVE": "Activo",
+      "DRAFT": "Borrador",
+      "OUT_OF_STOCK": "Agotado",
+      "ARCHIVED": "Archivado"
+    },
+    "bulkActions": {
+      "selected": "{count} productos seleccionados",
+      "activate": "Activar",
+      "draft": "Borrador",
+      "delete": "Eliminar",
+      "cancel": "Cancelar",
+      "export": "Exportar CSV"
+    },
+    "table": {
+      "image": "Imagen",
+      "product": "Producto",
+      "sku": "SKU",
+      "category": "Categoría",
+      "price": "Precio",
+      "stock": "Stock",
+      "status": "Estado",
+      "views": "Vistas",
+      "actions": "Acciones",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "noCategory": "N/D",
+      "inStock": "En Stock",
+      "outOfStock": "Agotado"
+    },
+    "empty": {
+      "title": "No se encontraron productos",
+      "subtitle": "Intente ajustar sus filtros",
+      "action": "Comience agregando su primer producto"
+    },
+    "exportCSV": "Exportar a CSV",
+    "pagination": {
+      "showing": "Mostrando <bold>{from}</bold> a <bold>{to}</bold> de <bold>{total}</bold> productos",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "page": "Página {current} de {total}"
+    },
+    "alerts": {
+      "bulkUpdateSuccess": "{count} productos actualizados con éxito",
+      "bulkUpdateFailed": "Error al actualizar productos",
+      "bulkDeleteConfirm": "¿Está seguro de que desea eliminar {count} productos? Esta acción no se puede deshacer.",
+      "bulkDeleteSuccess": "{count} productos eliminados con éxito",
+      "bulkDeleteFailed": "Error al eliminar productos",
+      "deleteConfirm": "¿Está seguro de que desea eliminar \"{name}\"? Esta acción no se puede deshacer.",
+      "deleteSuccess": "Producto eliminado con éxito",
+      "deleteFailed": "Error al eliminar el producto"
+    }
   }
 }
