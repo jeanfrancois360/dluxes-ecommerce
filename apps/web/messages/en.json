@@ -2115,5 +2115,43 @@
       "art": "Art & Collectibles",
       "automotive": "Automotive"
     }
+  },
+  "track": {
+    "title": "Track Your Delivery",
+    "subtitle": "Enter your tracking number to see real-time updates on your package's location and delivery status",
+    "enterTrackingNumber": "Enter Tracking Number",
+    "findInEmail": "You can find your tracking number in your order confirmation email",
+    "trackingPlaceholder": "Enter tracking number (e.g., TRK1234567890ABC)",
+    "trackPackage": "Track Package",
+    "track": "Track",
+    "realTimeUpdates": "Real-Time Updates",
+    "realTimeUpdatesDesc": "Get live updates on your package's current location and status",
+    "deliveryConfirmation": "Delivery Confirmation",
+    "deliveryConfirmationDesc": "Receive confirmation with proof of delivery when your package arrives",
+    "multipleCarriers": "Multiple Carriers",
+    "multipleCarriersDesc": "Track packages from various delivery providers in one place",
+    "faq": "Frequently Asked Questions",
+    "faqQuestion1": "Where can I find my tracking number?",
+    "faqAnswer1": "Your tracking number is included in your order confirmation email and is also available in your order history.",
+    "faqQuestion2": "How often is tracking information updated?",
+    "faqAnswer2": "Tracking information is updated in real-time as your package moves through our delivery network.",
+    "faqQuestion3": "What if my tracking number doesn't work?",
+    "faqAnswer3": "If your tracking number isn't working, please check that you've entered it correctly. If the problem persists, contact our customer support team.",
+    "fetchingInfo": "Fetching tracking information...",
+    "trackingNotFound": "Tracking Number Not Found",
+    "notFoundMessage": "We couldn't find any delivery with tracking number",
+    "checkAndRetry": "Please check the tracking number and try again",
+    "deliveredBy": "Delivered by",
+    "expectedDelivery": "Expected Delivery",
+    "deliveryProgress": "Delivery Progress",
+    "trackJourney": "Track your package's journey",
+    "statuses": {
+      "pendingPickup": "Pending Pickup",
+      "pickupScheduled": "Pickup Scheduled",
+      "pickedUp": "Picked Up",
+      "inTransit": "In Transit",
+      "outForDelivery": "Out for Delivery",
+      "delivered": "Delivered"
+    }
   }
 }

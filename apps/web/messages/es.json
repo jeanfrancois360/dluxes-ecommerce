@@ -2115,5 +2115,43 @@
       "art": "Arte & Coleccionables",
       "automotive": "Automotriz"
     }
+  },
+  "track": {
+    "title": "Rastrear Tu Entrega",
+    "subtitle": "Ingrese su número de seguimiento para ver actualizaciones en tiempo real sobre la ubicación y el estado de su paquete",
+    "enterTrackingNumber": "Ingrese el Número de Seguimiento",
+    "findInEmail": "Puede encontrar su número de seguimiento en su correo electrónico de confirmación de pedido",
+    "trackingPlaceholder": "Ingrese el número de seguimiento (ej: TRK1234567890ABC)",
+    "trackPackage": "Rastrear Paquete",
+    "track": "Rastrear",
+    "realTimeUpdates": "Actualizaciones en Tiempo Real",
+    "realTimeUpdatesDesc": "Obtenga actualizaciones en vivo sobre la ubicación actual y el estado de su paquete",
+    "deliveryConfirmation": "Confirmación de Entrega",
+    "deliveryConfirmationDesc": "Reciba confirmación con prueba de entrega cuando llegue su paquete",
+    "multipleCarriers": "Múltiples Transportistas",
+    "multipleCarriersDesc": "Rastree paquetes de varios proveedores de entrega en un solo lugar",
+    "faq": "Preguntas Frecuentes",
+    "faqQuestion1": "¿Dónde puedo encontrar mi número de seguimiento?",
+    "faqAnswer1": "Su número de seguimiento está incluido en su correo electrónico de confirmación de pedido y también está disponible en su historial de pedidos.",
+    "faqQuestion2": "¿Con qué frecuencia se actualiza la información de seguimiento?",
+    "faqAnswer2": "La información de seguimiento se actualiza en tiempo real a medida que su paquete se mueve a través de nuestra red de entrega.",
+    "faqQuestion3": "¿Qué pasa si mi número de seguimiento no funciona?",
+    "faqAnswer3": "Si su número de seguimiento no funciona, verifique que lo haya ingresado correctamente. Si el problema persiste, comuníquese con nuestro equipo de atención al cliente.",
+    "fetchingInfo": "Obteniendo información de seguimiento...",
+    "trackingNotFound": "Número de Seguimiento No Encontrado",
+    "notFoundMessage": "No pudimos encontrar ninguna entrega con el número de seguimiento",
+    "checkAndRetry": "Por favor verifique el número de seguimiento e intente nuevamente",
+    "deliveredBy": "Entregado por",
+    "expectedDelivery": "Entrega Esperada",
+    "deliveryProgress": "Progreso de Entrega",
+    "trackJourney": "Rastree el viaje de su paquete",
+    "statuses": {
+      "pendingPickup": "Pendiente de Recogida",
+      "pickupScheduled": "Recogida Programada",
+      "pickedUp": "Recogido",
+      "inTransit": "En Tránsito",
+      "outForDelivery": "En Camino para Entrega",
+      "delivered": "Entregado"
+    }
   }
 }

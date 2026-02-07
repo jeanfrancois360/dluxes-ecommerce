@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
 import { Button } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
@@ -9,6 +10,7 @@ import { Package, Truck, Search, MapPin, CheckCircle } from 'lucide-react';
 
 export default function TrackPage() {
   const router = useRouter();
+  const t = useTranslations('track');
   const [trackingNumber, setTrackingNumber] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -26,26 +28,22 @@ export default function TrackPage() {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6">
             <Package className="h-10 w-10 text-primary" />
           </div>
-          <h1 className="text-5xl font-bold tracking-tight mb-4">Track Your Delivery</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Enter your tracking number to see real-time updates on your package's location and delivery status
-          </p>
+          <h1 className="text-5xl font-bold tracking-tight mb-4">{t('title')}</h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">{t('subtitle')}</p>
         </div>
 
         {/* Search Card */}
         <Card className="mb-12 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl">Enter Tracking Number</CardTitle>
-            <CardDescription>
-              You can find your tracking number in your order confirmation email
-            </CardDescription>
+            <CardTitle className="text-2xl">{t('enterTrackingNumber')}</CardTitle>
+            <CardDescription>{t('findInEmail')}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Enter tracking number (e.g., TRK1234567890ABC)"
+                  placeholder={t('trackingPlaceholder')}
                   value={trackingNumber}
                   onChange={(e) => setTrackingNumber(e.target.value)}
                   className="pl-12 h-14 text-lg"
@@ -54,7 +52,7 @@ export default function TrackPage() {
               </div>
               <Button type="submit" size="lg" className="w-full h-12 text-lg">
                 <Truck className="mr-2 h-5 w-5" />
-                Track Package
+                {t('trackPackage')}
               </Button>
             </form>
           </CardContent>
@@ -68,10 +66,8 @@ export default function TrackPage() {
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-blue-100 mb-2">
                   <MapPin className="h-7 w-7 text-blue-600 " />
                 </div>
-                <h3 className="font-semibold text-lg">Real-Time Updates</h3>
-                <p className="text-sm text-muted-foreground">
-                  Get live updates on your package's current location and status
-                </p>
+                <h3 className="font-semibold text-lg">{t('realTimeUpdates')}</h3>
+                <p className="text-sm text-muted-foreground">{t('realTimeUpdatesDesc')}</p>
               </div>
             </CardContent>
           </Card>
@@ -82,10 +78,8 @@ export default function TrackPage() {
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 mb-2">
                   <CheckCircle className="h-7 w-7 text-green-600 " />
                 </div>
-                <h3 className="font-semibold text-lg">Delivery Confirmation</h3>
-                <p className="text-sm text-muted-foreground">
-                  Receive confirmation with proof of delivery when your package arrives
-                </p>
+                <h3 className="font-semibold text-lg">{t('deliveryConfirmation')}</h3>
+                <p className="text-sm text-muted-foreground">{t('deliveryConfirmationDesc')}</p>
               </div>
             </CardContent>
           </Card>
@@ -96,10 +90,8 @@ export default function TrackPage() {
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-purple-100 mb-2">
                   <Truck className="h-7 w-7 text-purple-600 " />
                 </div>
-                <h3 className="font-semibold text-lg">Multiple Carriers</h3>
-                <p className="text-sm text-muted-foreground">
-                  Track packages from various delivery providers in one place
-                </p>
+                <h3 className="font-semibold text-lg">{t('multipleCarriers')}</h3>
+                <p className="text-sm text-muted-foreground">{t('multipleCarriersDesc')}</p>
               </div>
             </CardContent>
           </Card>
@@ -108,27 +100,21 @@ export default function TrackPage() {
         {/* FAQ Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Frequently Asked Questions</CardTitle>
+            <CardTitle>{t('faq')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-1">Where can I find my tracking number?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Your tracking number is included in your order confirmation email and is also available in your order history.
-                </p>
+                <h4 className="font-semibold mb-1">{t('faqQuestion1')}</h4>
+                <p className="text-sm text-muted-foreground">{t('faqAnswer1')}</p>
               </div>
               <div>
-                <h4 className="font-semibold mb-1">How often is tracking information updated?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Tracking information is updated in real-time as your package moves through our delivery network.
-                </p>
+                <h4 className="font-semibold mb-1">{t('faqQuestion2')}</h4>
+                <p className="text-sm text-muted-foreground">{t('faqAnswer2')}</p>
               </div>
               <div>
-                <h4 className="font-semibold mb-1">What if my tracking number doesn't work?</h4>
-                <p className="text-sm text-muted-foreground">
-                  If your tracking number isn't working, please check that you've entered it correctly. If the problem persists, contact our customer support team.
-                </p>
+                <h4 className="font-semibold mb-1">{t('faqQuestion3')}</h4>
+                <p className="text-sm text-muted-foreground">{t('faqAnswer3')}</p>
               </div>
             </div>
           </CardContent>
