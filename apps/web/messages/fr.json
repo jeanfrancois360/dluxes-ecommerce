@@ -2153,5 +2153,64 @@
       "outForDelivery": "En Cours de Livraison",
       "delivered": "Livré"
     }
+  },
+  "legal": {
+    "backToHome": "Retour à l'Accueil",
+    "lastUpdated": "Dernière Mise à Jour",
+    "effective": "En Vigueur",
+    "version": "Version",
+    "tableOfContents": "Table des Matières",
+    "printDownload": "Imprimer / Télécharger",
+    "jumpToSection": "Aller à la Section",
+    "relatedDocuments": "Documents Connexes",
+    "privacyPolicy": "Politique de Confidentialité",
+    "termsOfService": "Conditions d'Utilisation",
+    "sellerAgreement": "Accord Vendeur",
+    "questionsAboutDocument": "Questions sur ce document ?",
+    "questionsHelp": "Si vous avez des questions ou des préoccupations, veuillez contacter notre équipe juridique.",
+    "contactUs": "Nous Contacter",
+    "quickNavigation": "Navigation Rapide",
+    "documentInformation": "Informations sur le Document"
+  },
+  "terms": {
+    "pageTitle": "Conditions d'Utilisation",
+    "sections": {
+      "introduction": "1. Introduction",
+      "accountSecurity": "2. Inscription et Sécurité du Compte",
+      "platformUsage": "3. Utilisation de la Plateforme",
+      "productListings": "4. Listes de Produits et Achats",
+      "multiVendor": "5. Marché Multi-Vendeurs",
+      "shipping": "6. Expédition et Livraison",
+      "returns": "7. Retours, Remboursements et Annulations",
+      "reviews": "8. Avis et Évaluations",
+      "prohibited": "9. Activités Interdites",
+      "privacy": "10. Confidentialité et Protection des Données",
+      "disclaimers": "11. Avis de Non-Responsabilité et Limitations de Responsabilité",
+      "indemnification": "12. Indemnisation",
+      "disputes": "13. Résolution des Litiges",
+      "platformFeatures": "14. Fonctionnalités et Politiques de la Plateforme",
+      "contact": "15. Informations de Contact",
+      "acknowledgment": "16. Reconnaissance"
+    }
+  },
+  "privacy": {
+    "pageTitle": "Politique de Confidentialité",
+    "sections": {
+      "introduction": "1. Introduction",
+      "informationWeCollect": "2. Informations que Nous Collectons",
+      "howWeUse": "3. Comment Nous Utilisons Vos Informations",
+      "howWeShare": "4. Comment Nous Partageons Vos Informations",
+      "dataSecurity": "5. Sécurité des Données",
+      "yourRights": "6. Vos Droits et Choix en Matière de Confidentialité",
+      "dataRetention": "7. Conservation des Données",
+      "childrensPrivacy": "8. Confidentialité des Enfants",
+      "internationalTransfers": "9. Transferts Internationaux de Données",
+      "regionalRights": "10. Droits Régionaux en Matière de Confidentialité",
+      "cookies": "11. Cookies et Technologies de Suivi",
+      "changes": "12. Modifications de cette Politique de Confidentialité",
+      "systemSettings": "13. Paramètres Système et Journalisation des Audits",
+      "contact": "14. Informations de Contact",
+      "acknowledgment": "15. Reconnaissance et Consentement"
+    }
   }
 }

@@ -2153,5 +2153,64 @@
       "outForDelivery": "En Camino para Entrega",
       "delivered": "Entregado"
     }
+  },
+  "legal": {
+    "backToHome": "Volver al Inicio",
+    "lastUpdated": "Última Actualización",
+    "effective": "Vigente",
+    "version": "Versión",
+    "tableOfContents": "Tabla de Contenidos",
+    "printDownload": "Imprimir / Descargar",
+    "jumpToSection": "Ir a la Sección",
+    "relatedDocuments": "Documentos Relacionados",
+    "privacyPolicy": "Política de Privacidad",
+    "termsOfService": "Términos de Servicio",
+    "sellerAgreement": "Acuerdo de Vendedor",
+    "questionsAboutDocument": "¿Preguntas sobre este documento?",
+    "questionsHelp": "Si tiene alguna pregunta o inquietud, comuníquese con nuestro equipo legal.",
+    "contactUs": "Contáctenos",
+    "quickNavigation": "Navegación Rápida",
+    "documentInformation": "Información del Documento"
+  },
+  "terms": {
+    "pageTitle": "Términos de Servicio",
+    "sections": {
+      "introduction": "1. Introducción",
+      "accountSecurity": "2. Registro y Seguridad de la Cuenta",
+      "platformUsage": "3. Uso de la Plataforma",
+      "productListings": "4. Listados de Productos y Compras",
+      "multiVendor": "5. Mercado Multi-Vendedor",
+      "shipping": "6. Envío y Entrega",
+      "returns": "7. Devoluciones, Reembolsos y Cancelaciones",
+      "reviews": "8. Reseñas y Calificaciones",
+      "prohibited": "9. Actividades Prohibidas",
+      "privacy": "10. Privacidad y Protección de Datos",
+      "disclaimers": "11. Descargos de Responsabilidad y Limitaciones de Responsabilidad",
+      "indemnification": "12. Indemnización",
+      "disputes": "13. Resolución de Disputas",
+      "platformFeatures": "14. Características y Políticas de la Plataforma",
+      "contact": "15. Información de Contacto",
+      "acknowledgment": "16. Reconocimiento"
+    }
+  },
+  "privacy": {
+    "pageTitle": "Política de Privacidad",
+    "sections": {
+      "introduction": "1. Introducción",
+      "informationWeCollect": "2. Información que Recopilamos",
+      "howWeUse": "3. Cómo Utilizamos Su Información",
+      "howWeShare": "4. Cómo Compartimos Su Información",
+      "dataSecurity": "5. Seguridad de Datos",
+      "yourRights": "6. Sus Derechos y Opciones de Privacidad",
+      "dataRetention": "7. Retención de Datos",
+      "childrensPrivacy": "8. Privacidad de los Niños",
+      "internationalTransfers": "9. Transferencias Internacionales de Datos",
+      "regionalRights": "10. Derechos Regionales de Privacidad",
+      "cookies": "11. Cookies y Tecnologías de Seguimiento",
+      "changes": "12. Cambios a esta Política de Privacidad",
+      "systemSettings": "13. Configuraciones del Sistema y Registro de Auditoría",
+      "contact": "14. Información de Contacto",
+      "acknowledgment": "15. Reconocimiento y Consentimiento"
+    }
   }
 }
