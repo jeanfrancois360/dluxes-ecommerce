@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
-import { PageLayout } from '@/components/layout/page-layout';
+import PageHeader from '@/components/buyer/page-header';
 import { storesAPI, Store } from '@/lib/api/stores';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
@@ -118,16 +118,10 @@ function FollowedStoreCard({
           <div className="relative -mt-8 mb-3">
             <div className="w-16 h-16 rounded-xl bg-white shadow-lg border-4 border-white overflow-hidden">
               {store.logo ? (
-                <img
-                  src={store.logo}
-                  alt={store.name}
-                  className="w-full h-full object-cover"
-                />
+                <img src={store.logo} alt={store.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-gold to-amber-600 flex items-center justify-center">
-                  <span className="text-xl font-bold text-white">
-                    {store.name[0]}
-                  </span>
+                  <span className="text-xl font-bold text-white">{store.name[0]}</span>
                 </div>
               )}
             </div>
@@ -169,7 +163,9 @@ function FollowedStoreCard({
         <div className="flex items-center gap-4 text-xs text-neutral-500 mb-3">
           <div className="flex items-center gap-1">
             <Package className="w-3.5 h-3.5" />
-            <span>{store.totalProducts} {t('products')}</span>
+            <span>
+              {store.totalProducts} {t('products')}
+            </span>
           </div>
           {location && (
             <div className="flex items-center gap-1">
@@ -182,7 +178,8 @@ function FollowedStoreCard({
         {/* Followed date & Unfollow button */}
         <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
           <span className="text-xs text-neutral-400">
-            {t('followingSince')} {new Date(store.followedAt).toLocaleDateString('en-US', {
+            {t('followingSince')}{' '}
+            {new Date(store.followedAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric',
@@ -232,9 +229,7 @@ function EmptyState() {
         <Heart className="w-10 h-10 text-pink-300" />
       </div>
       <h3 className="text-xl font-bold text-neutral-900 mb-2">{t('noStoresFollowed')}</h3>
-      <p className="text-neutral-500 max-w-md mx-auto mb-6">
-        {t('startExploring')}
-      </p>
+      <p className="text-neutral-500 max-w-md mx-auto mb-6">{t('startExploring')}</p>
       <Link
         href="/stores"
         className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-black font-semibold rounded-xl hover:bg-gold/90 transition-colors"
@@ -283,7 +278,7 @@ export default function FollowingStoresPage() {
   // Show loading while checking auth
   if (authLoading) {
     return (
-      <PageLayout showCategoryNav={false}>
+      <div className="min-h-screen bg-neutral-50">
         <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
           <motion.div
             animate={{ rotate: 360 }}
@@ -291,23 +286,21 @@ export default function FollowingStoresPage() {
             className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
           />
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
     return (
-      <PageLayout showCategoryNav={false}>
+      <div className="min-h-screen bg-neutral-50">
         <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <div className="w-20 h-20 mx-auto bg-neutral-100 rounded-full flex items-center justify-center mb-6">
               <Heart className="w-10 h-10 text-neutral-400" />
             </div>
             <h1 className="text-2xl font-bold text-neutral-900 mb-2">{t('signInRequired')}</h1>
-            <p className="text-neutral-600 mb-6">
-              {t('signInToView')}
-            </p>
+            <p className="text-neutral-600 mb-6">{t('signInToView')}</p>
             <Link
               href="/auth/login?redirect=/account/following"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-black font-semibold rounded-xl hover:bg-gold/90 transition-colors"
@@ -316,41 +309,27 @@ export default function FollowingStoresPage() {
             </Link>
           </div>
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout showCategoryNav={false}>
-      <div className="min-h-screen bg-neutral-50">
-        {/* Hero Section */}
-        <div className="relative bg-gradient-to-br from-pink-600 via-pink-500 to-rose-500 text-white overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-tr from-black/10 via-transparent to-transparent pointer-events-none" />
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-neutral-50">
+      <PageHeader
+        title={t('title')}
+        description={
+          totalStores > 0
+            ? totalStores === 1
+              ? t('storesYouFollow', { count: totalStores })
+              : t('storesYouFollowPlural', { count: totalStores })
+            : t('storesYouLove')
+        }
+        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: t('title') }]}
+      />
 
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-4"
-            >
-              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                <Heart className="w-8 h-8 text-white fill-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl md:text-4xl font-bold mb-1">{t('title')}</h1>
-                <p className="text-lg text-white/80">
-                  {totalStores > 0
-                    ? (totalStores === 1 ? t('storesYouFollow', { count: totalStores }) : t('storesYouFollowPlural', { count: totalStores }))
-                    : t('storesYouLove')}
-                </p>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main Content */}
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl mx-auto">
           {/* Back link */}
           <Link
             href="/dashboard/buyer"
@@ -386,11 +365,7 @@ export default function FollowingStoresPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <AnimatePresence mode="popLayout">
                   {stores.map((store) => (
-                    <FollowedStoreCard
-                      key={store.id}
-                      store={store}
-                      onUnfollow={handleUnfollow}
-                    />
+                    <FollowedStoreCard key={store.id} store={store} onUnfollow={handleUnfollow} />
                   ))}
                 </AnimatePresence>
               </div>
@@ -422,9 +397,7 @@ export default function FollowingStoresPage() {
                           key={pageNum}
                           onClick={() => setPage(pageNum)}
                           className={`w-10 h-10 rounded-lg font-medium transition-colors ${
-                            page === pageNum
-                              ? 'bg-pink-500 text-white'
-                              : 'hover:bg-neutral-100'
+                            page === pageNum ? 'bg-pink-500 text-white' : 'hover:bg-neutral-100'
                           }`}
                         >
                           {pageNum}
@@ -447,10 +420,7 @@ export default function FollowingStoresPage() {
           {/* Empty State */}
           {!isLoading && !error && stores.length === 0 && <EmptyState />}
         </div>
-
-        {/* Bottom Spacing */}
-        <div className="h-16" />
       </div>
-    </PageLayout>
+    </div>
   );
 }

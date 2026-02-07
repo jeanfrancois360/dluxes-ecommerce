@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PageLayout } from '@/components/layout/page-layout';
 import { OrderCard } from '@/components/orders/order-card';
 import { useOrders } from '@/hooks/use-orders';
-import Link from 'next/link';
+import PageHeader from '@/components/buyer/page-header';
 
 export default function OrdersPage() {
   const t = useTranslations('account.orders');
@@ -23,58 +23,19 @@ export default function OrdersPage() {
   });
 
   // Filter orders by search query (client-side for order number search)
-  const filteredOrders = orders.filter(order =>
+  const filteredOrders = orders.filter((order) =>
     order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <PageLayout>
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-black via-neutral-900 to-black text-white overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-gold/5 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gold/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-neutral-50">
+      <PageHeader
+        title={t('title')}
+        description={t('subtitle')}
+        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'My Orders' }]}
+      />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {/* Breadcrumbs */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 text-sm text-white/60 mb-6"
-          >
-            <Link href="/" className="hover:text-gold transition-colors">Home</Link>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <Link href="/account" className="hover:text-gold transition-colors">Account</Link>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="text-white font-medium">Orders</span>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-center gap-4"
-          >
-            <div className="w-14 h-14 bg-gradient-to-br from-gold to-gold/80 rounded-2xl flex items-center justify-center shadow-lg shadow-gold/20">
-              <svg className="w-7 h-7 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">{t('title')}</h1>
-              <p className="text-lg text-white/80">{t('subtitle')}</p>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters and Search */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -184,9 +145,7 @@ export default function OrdersPage() {
             </svg>
             <h3 className="font-serif text-2xl font-bold mb-2">{t('noOrdersYet')}</h3>
             <p className="text-gray-600 mb-6">
-              {searchQuery
-                ? t('noOrdersMatch')
-                : t('startShopping')}
+              {searchQuery ? t('noOrdersMatch') : t('startShopping')}
             </p>
             <Link
               href="/products"
@@ -212,7 +171,7 @@ export default function OrdersPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2">
                 <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                   className="px-4 py-2 border border-neutral-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -236,7 +195,7 @@ export default function OrdersPage() {
                 </div>
 
                 <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
                   className="px-4 py-2 border border-neutral-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -247,6 +206,6 @@ export default function OrdersPage() {
           </>
         )}
       </div>
-    </PageLayout>
+    </div>
   );
 }

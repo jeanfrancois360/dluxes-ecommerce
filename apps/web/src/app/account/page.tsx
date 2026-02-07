@@ -10,7 +10,7 @@ import { TokenManager } from '@/lib/api/client';
  *
  * This page redirects users to their appropriate dashboard based on role:
  * - BUYER/CUSTOMER → /dashboard/buyer
- * - SELLER → /dashboard/seller
+ * - SELLER → /seller
  * - ADMIN/SUPER_ADMIN → /admin/dashboard
  *
  * If not authenticated, redirects to login
@@ -40,7 +40,7 @@ export default function AccountDashboard() {
           router.push('/admin/dashboard');
           break;
         case 'SELLER':
-          router.push('/dashboard/seller');
+          router.push('/seller');
           break;
         case 'BUYER':
         case 'CUSTOMER':
