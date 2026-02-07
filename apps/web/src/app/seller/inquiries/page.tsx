@@ -30,12 +30,16 @@ import {
 
 function InquiryStatusBadge({ status }: { status: InquiryStatus }) {
   const config: Record<InquiryStatus, { bg: string; text: string; label: string }> = {
-    NEW: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'New' },
+    NEW: { bg: 'bg-[#CBB57B]/10', text: 'text-[#A89968]', label: 'New' },
     CONTACTED: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Contacted' },
-    VIEWING_SCHEDULED: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Viewing Scheduled' },
+    VIEWING_SCHEDULED: {
+      bg: 'bg-neutral-100',
+      text: 'text-neutral-800',
+      label: 'Viewing Scheduled',
+    },
     TEST_DRIVE_SCHEDULED: {
-      bg: 'bg-purple-100',
-      text: 'text-purple-800',
+      bg: 'bg-neutral-100',
+      text: 'text-neutral-800',
       label: 'Test Drive Scheduled',
     },
     NEGOTIATING: { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Negotiating' },
@@ -197,10 +201,10 @@ export default function SellerInquiriesPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-sm"
+            className="bg-[#CBB57B]/10 border border-[#CBB57B]/30 rounded-xl p-4 shadow-sm"
           >
-            <p className="text-sm text-blue-700 font-medium">New</p>
-            <p className="text-2xl font-bold text-blue-700 mt-1">{stats.new}</p>
+            <p className="text-sm text-[#A89968] font-medium">New</p>
+            <p className="text-2xl font-bold text-[#A89968] mt-1">{stats.new}</p>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -215,10 +219,10 @@ export default function SellerInquiriesPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-purple-50 border border-purple-200 rounded-xl p-4 shadow-sm"
+            className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 shadow-sm"
           >
-            <p className="text-sm text-purple-700 font-medium">Scheduled</p>
-            <p className="text-2xl font-bold text-purple-700 mt-1">{stats.scheduled}</p>
+            <p className="text-sm text-neutral-700 font-medium">Scheduled</p>
+            <p className="text-2xl font-bold text-neutral-700 mt-1">{stats.scheduled}</p>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -249,7 +253,7 @@ export default function SellerInquiriesPage() {
                 onClick={() => setStatusFilter(filter.value as InquiryStatus | '')}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                   statusFilter === filter.value
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#CBB57B] text-white'
                     : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                 }`}
               >
