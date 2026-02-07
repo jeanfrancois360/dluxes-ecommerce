@@ -2586,5 +2586,29 @@
     "updateError": "Failed to update order status",
     "shippedSuccess": "Order marked as shipped successfully",
     "shippedError": "Failed to mark order as shipped"
+  },
+  "sellerReviews": {
+    "title": "Product Reviews",
+    "subtitle": "See what customers are saying about your products",
+    "backToDashboard": "Back to Dashboard",
+    "stats": {
+      "averageRating": "Average Rating",
+      "totalReviews": "Total Reviews",
+      "ratingDistribution": "Rating Distribution"
+    },
+    "filters": {
+      "allRatings": "All Ratings",
+      "stars": "{count} Stars"
+    },
+    "noReviews": "No reviews yet",
+    "noReviewsDesc": "Reviews from customers will appear here",
+    "reviewBy": "Review by",
+    "verified": "Verified Purchase",
+    "helpful": "Helpful",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    }
   }
 }

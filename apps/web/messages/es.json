@@ -2586,5 +2586,29 @@
     "updateError": "Error al actualizar el estado del pedido",
     "shippedSuccess": "Pedido marcado como enviado con éxito",
     "shippedError": "Error al marcar el pedido como enviado"
+  },
+  "sellerReviews": {
+    "title": "Reseñas de Productos",
+    "subtitle": "Vea lo que los clientes dicen sobre sus productos",
+    "backToDashboard": "Volver al Panel",
+    "stats": {
+      "averageRating": "Calificación Promedio",
+      "totalReviews": "Total de Reseñas",
+      "ratingDistribution": "Distribución de Calificaciones"
+    },
+    "filters": {
+      "allRatings": "Todas las Calificaciones",
+      "stars": "{count} Estrellas"
+    },
+    "noReviews": "Aún no hay reseñas",
+    "noReviewsDesc": "Las reseñas de los clientes aparecerán aquí",
+    "reviewBy": "Reseña por",
+    "verified": "Compra Verificada",
+    "helpful": "Útil",
+    "pagination": {
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "page": "Página {current} de {total}"
+    }
   }
 }
