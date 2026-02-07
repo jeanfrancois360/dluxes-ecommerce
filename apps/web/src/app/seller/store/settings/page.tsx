@@ -16,6 +16,7 @@ import { storesAPI } from '@/lib/api/stores';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { Camera, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface StoreSettings {
   name: string;
@@ -37,6 +38,7 @@ interface StoreSettings {
 }
 
 export default function StoreSettingsPage() {
+  const t = useTranslations('sellerStoreSettings');
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
@@ -46,13 +48,13 @@ export default function StoreSettingsPage() {
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch store data from API
-  const { data: store, error, mutate } = useSWR(
-    user && user.role === 'SELLER' ? 'my-store' : null,
-    () => storesAPI.getMyStore(),
-    {
-      revalidateOnFocus: true,
-    }
-  );
+  const {
+    data: store,
+    error,
+    mutate,
+  } = useSWR(user && user.role === 'SELLER' ? 'my-store' : null, () => storesAPI.getMyStore(), {
+    revalidateOnFocus: true,
+  });
 
   const [settings, setSettings] = useState<StoreSettings>({
     name: '',
@@ -129,10 +131,10 @@ export default function StoreSettingsPage() {
       // Revalidate the store data
       await mutate();
 
-      toast.success('Store settings saved successfully!');
+      toast.success(t('toast.saveSuccess'));
     } catch (error: any) {
       console.error('Failed to save settings:', error);
-      toast.error(error?.response?.data?.message || 'Failed to save store settings');
+      toast.error(error?.response?.data?.message || t('toast.saveFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -148,13 +150,13 @@ export default function StoreSettingsPage() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
+      toast.error(t('toast.uploadImage'));
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Logo must be less than 5MB');
+      toast.error(t('toast.logoTooLarge'));
       return;
     }
 
@@ -162,10 +164,10 @@ export default function StoreSettingsPage() {
       setIsUploadingLogo(true);
       await storesAPI.uploadLogo(file);
       await mutate();
-      toast.success('Logo uploaded successfully!');
+      toast.success(t('toast.logoSuccess'));
     } catch (error: any) {
       console.error('Failed to upload logo:', error);
-      toast.error(error?.message || 'Failed to upload logo');
+      toast.error(error?.message || t('toast.logoFailed'));
     } finally {
       setIsUploadingLogo(false);
       if (logoInputRef.current) {
@@ -180,13 +182,13 @@ export default function StoreSettingsPage() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
+      toast.error(t('toast.uploadImage'));
       return;
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('Banner must be less than 10MB');
+      toast.error(t('toast.bannerTooLarge'));
       return;
     }
 
@@ -194,10 +196,10 @@ export default function StoreSettingsPage() {
       setIsUploadingBanner(true);
       await storesAPI.uploadBanner(file);
       await mutate();
-      toast.success('Banner uploaded successfully!');
+      toast.success(t('toast.bannerSuccess'));
     } catch (error: any) {
       console.error('Failed to upload banner:', error);
-      toast.error(error?.message || 'Failed to upload banner');
+      toast.error(error?.message || t('toast.bannerFailed'));
     } finally {
       setIsUploadingBanner(false);
       if (bannerInputRef.current) {
@@ -224,12 +226,12 @@ export default function StoreSettingsPage() {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">Failed to load store settings</p>
+          <p className="text-red-600 mb-4">{t('errorLoading')}</p>
           <button
             onClick={() => mutate()}
             className="px-4 py-2 bg-gold text-black rounded-lg hover:bg-gold/90"
           >
-            Retry
+            {t('retry')}
           </button>
         </div>
       </div>
@@ -243,14 +245,14 @@ export default function StoreSettingsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Store Settings</h1>
-              <p className="text-neutral-300 mt-1">Manage your store information and configuration</p>
+              <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
+              <p className="text-neutral-300 mt-1">{t('pageSubtitle')}</p>
             </div>
             <Link
               href="/dashboard/seller"
               className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
             >
-              Back to Dashboard
+              {t('backToDashboard')}
             </Link>
           </div>
         </div>
@@ -260,14 +262,16 @@ export default function StoreSettingsPage() {
         {/* Store Branding Section */}
         <div className="bg-white rounded-xl shadow-sm mb-6">
           <div className="p-6 border-b border-neutral-200">
-            <h2 className="text-lg font-semibold text-black">Store Branding</h2>
-            <p className="text-sm text-neutral-500 mt-1">Upload your store logo and banner image</p>
+            <h2 className="text-lg font-semibold text-black">{t('branding.title')}</h2>
+            <p className="text-sm text-neutral-500 mt-1">{t('branding.subtitle')}</p>
           </div>
 
           <div className="p-6 space-y-8">
             {/* Banner Upload */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-3">Store Banner</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-3">
+                {t('branding.banner')}
+              </label>
               <div className="relative">
                 <div
                   className={`relative w-full h-48 rounded-xl overflow-hidden border-2 border-dashed transition-colors ${
@@ -278,7 +282,7 @@ export default function StoreSettingsPage() {
                     <>
                       <img
                         src={store.banner}
-                        alt="Store Banner"
+                        alt={t('branding.bannerAlt')}
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -290,12 +294,12 @@ export default function StoreSettingsPage() {
                           {isUploadingBanner ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              Uploading...
+                              {t('branding.uploading')}
                             </>
                           ) : (
                             <>
                               <Camera className="w-4 h-4" />
-                              Change Banner
+                              {t('branding.changeBanner')}
                             </>
                           )}
                         </button>
@@ -310,13 +314,15 @@ export default function StoreSettingsPage() {
                       {isUploadingBanner ? (
                         <>
                           <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                          <span className="text-sm">Uploading...</span>
+                          <span className="text-sm">{t('branding.uploading')}</span>
                         </>
                       ) : (
                         <>
                           <ImageIcon className="w-12 h-12 mb-2" />
-                          <span className="text-sm font-medium">Click to upload banner</span>
-                          <span className="text-xs text-neutral-400 mt-1">Recommended: 1200x300px, max 10MB</span>
+                          <span className="text-sm font-medium">{t('branding.uploadBanner')}</span>
+                          <span className="text-xs text-neutral-400 mt-1">
+                            {t('branding.bannerRecommended')}
+                          </span>
                         </>
                       )}
                     </button>
@@ -334,7 +340,9 @@ export default function StoreSettingsPage() {
 
             {/* Logo Upload */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-3">Store Logo</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-3">
+                {t('branding.logo')}
+              </label>
               <div className="flex items-center gap-6">
                 <div className="relative">
                   <div
@@ -346,7 +354,7 @@ export default function StoreSettingsPage() {
                       <>
                         <img
                           src={store.logo}
-                          alt="Store Logo"
+                          alt={t('branding.logoAlt')}
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
@@ -374,7 +382,7 @@ export default function StoreSettingsPage() {
                         ) : (
                           <>
                             <Upload className="w-8 h-8 mb-1" />
-                            <span className="text-xs">Upload</span>
+                            <span className="text-xs">{t('branding.upload')}</span>
                           </>
                         )}
                       </button>
@@ -389,10 +397,10 @@ export default function StoreSettingsPage() {
                   />
                 </div>
                 <div className="text-sm text-neutral-500">
-                  <p className="font-medium text-neutral-700 mb-1">Upload your store logo</p>
-                  <p>Recommended size: 200x200px</p>
-                  <p>Maximum file size: 5MB</p>
-                  <p>Formats: JPG, PNG, GIF, WebP</p>
+                  <p className="font-medium text-neutral-700 mb-1">{t('branding.uploadLogo')}</p>
+                  <p>{t('branding.logoRecommended')}</p>
+                  <p>{t('branding.logoMaxSize')}</p>
+                  <p>{t('branding.logoFormats')}</p>
                 </div>
               </div>
             </div>
@@ -401,17 +409,19 @@ export default function StoreSettingsPage() {
 
         <div className="bg-white rounded-xl shadow-sm">
           <div className="p-6 border-b border-neutral-200">
-            <h2 className="text-lg font-semibold text-black">Store Information</h2>
-            <p className="text-sm text-neutral-500 mt-1">Update your store details and contact information</p>
+            <h2 className="text-lg font-semibold text-black">{t('storeInfo.title')}</h2>
+            <p className="text-sm text-neutral-500 mt-1">{t('storeInfo.subtitle')}</p>
           </div>
 
           <div className="p-6 space-y-6">
             {/* Basic Information */}
             <div>
-              <h3 className="text-md font-semibold text-black mb-4">Basic Information</h3>
+              <h3 className="text-md font-semibold text-black mb-4">{t('storeInfo.basicInfo')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">Store Name *</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Store Name *
+                  </label>
                   <input
                     type="text"
                     value={settings.name}
@@ -421,7 +431,9 @@ export default function StoreSettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">Store Slug *</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Store Slug *
+                  </label>
                   <input
                     type="text"
                     value={settings.slug}
@@ -448,7 +460,9 @@ export default function StoreSettingsPage() {
 
             {/* Contact Information */}
             <div>
-              <h3 className="text-md font-semibold text-black mb-4">Contact Information</h3>
+              <h3 className="text-md font-semibold text-black mb-4">
+                {t('storeInfo.contactInfo')}
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">Email *</label>
@@ -488,7 +502,9 @@ export default function StoreSettingsPage() {
               <h3 className="text-md font-semibold text-black mb-4">Business Address</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">Street Address Line 1</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Street Address Line 1
+                  </label>
                   <input
                     type="text"
                     value={settings.address1}
@@ -498,7 +514,9 @@ export default function StoreSettingsPage() {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">Street Address Line 2</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Street Address Line 2
+                  </label>
                   <input
                     type="text"
                     value={settings.address2}
@@ -518,7 +536,9 @@ export default function StoreSettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">State/Province</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    State/Province
+                  </label>
                   <input
                     type="text"
                     value={settings.province}
@@ -528,7 +548,9 @@ export default function StoreSettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">ZIP/Postal Code</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    ZIP/Postal Code
+                  </label>
                   <input
                     type="text"
                     value={settings.postalCode}
@@ -553,7 +575,9 @@ export default function StoreSettingsPage() {
               <h3 className="text-md font-semibold text-black mb-4">Business Details</h3>
               <div className="grid grid-cols-1 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">Tax ID/EIN</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Tax ID/EIN
+                  </label>
                   <input
                     type="text"
                     value={settings.taxId}

@@ -2287,5 +2287,88 @@
       "CHECKOUT_UPSELL": "Checkout Upsell",
       "SEARCH_RESULTS": "Search Results"
     }
+  },
+  "sellerStoreSettings": {
+    "pageTitle": "Store Settings",
+    "pageSubtitle": "Manage your store information and configuration",
+    "backToDashboard": "Back to Dashboard",
+    "loading": "Loading...",
+    "errorLoading": "Failed to load store settings",
+    "retry": "Retry",
+    "save": "Save Changes",
+    "saving": "Saving...",
+    "branding": {
+      "title": "Store Branding",
+      "subtitle": "Upload your store logo and banner image",
+      "banner": "Store Banner",
+      "logo": "Store Logo",
+      "changeBanner": "Change Banner",
+      "uploadBanner": "Click to upload banner",
+      "bannerRecommended": "Recommended: 1200x300px, max 10MB",
+      "uploading": "Uploading...",
+      "upload": "Upload",
+      "uploadLogo": "Upload your store logo",
+      "logoRecommended": "Recommended size: 200x200px",
+      "logoMaxSize": "Maximum file size: 5MB",
+      "logoFormats": "Formats: JPG, PNG, GIF, WebP",
+      "bannerAlt": "Store Banner",
+      "logoAlt": "Store Logo"
+    },
+    "storeInfo": {
+      "title": "Store Information",
+      "subtitle": "Update your store details and contact information",
+      "basicInfo": "Basic Information",
+      "contactInfo": "Contact Information",
+      "addressInfo": "Address Information",
+      "legalInfo": "Legal & Policies"
+    },
+    "fields": {
+      "storeName": "Store Name",
+      "storeSlug": "Store Slug",
+      "slugUrl": "URL: /stores/{slug}",
+      "description": "Description",
+      "email": "Email",
+      "phone": "Phone Number",
+      "website": "Website (Optional)",
+      "address1": "Address Line 1",
+      "address2": "Address Line 2 (Optional)",
+      "city": "City",
+      "province": "State/Province",
+      "postalCode": "Postal Code",
+      "country": "Country",
+      "taxId": "Tax ID / VAT Number (Optional)",
+      "returnPolicy": "Return Policy",
+      "shippingPolicy": "Shipping Policy",
+      "termsConditions": "Terms & Conditions",
+      "required": "*"
+    },
+    "placeholders": {
+      "storeName": "My Luxury Store",
+      "storeSlug": "my-luxury-store",
+      "description": "Describe your store and products...",
+      "email": "store@example.com",
+      "phone": "+1 (555) 000-0000",
+      "website": "https://mystore.com",
+      "address1": "123 Main Street",
+      "address2": "Suite 100",
+      "city": "New York",
+      "province": "NY",
+      "postalCode": "10001",
+      "taxId": "12-3456789",
+      "returnPolicy": "Outline your return policy here...",
+      "shippingPolicy": "Describe your shipping methods and timeframes...",
+      "termsConditions": "Specify your store's terms and conditions..."
+    },
+    "toast": {
+      "uploadImage": "Please upload an image file",
+      "logoTooLarge": "Logo must be less than 5MB",
+      "logoSuccess": "Logo uploaded successfully!",
+      "logoFailed": "Failed to upload logo",
+      "bannerTooLarge": "Banner must be less than 10MB",
+      "bannerSuccess": "Banner uploaded successfully!",
+      "bannerFailed": "Failed to upload banner",
+      "saveSuccess": "Store settings updated successfully!",
+      "saveFailed": "Failed to update settings"
+    }
   }
 }

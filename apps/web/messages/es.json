@@ -2287,5 +2287,88 @@
       "CHECKOUT_UPSELL": "Venta Adicional en Pago",
       "SEARCH_RESULTS": "Resultados de Búsqueda"
     }
+  },
+  "sellerStoreSettings": {
+    "pageTitle": "Configuración de la Tienda",
+    "pageSubtitle": "Gestione la información y configuración de su tienda",
+    "backToDashboard": "Volver al Panel",
+    "loading": "Cargando...",
+    "errorLoading": "Error al cargar la configuración de la tienda",
+    "retry": "Reintentar",
+    "save": "Guardar Cambios",
+    "saving": "Guardando...",
+    "branding": {
+      "title": "Imagen de Marca de la Tienda",
+      "subtitle": "Suba el logo y banner de su tienda",
+      "banner": "Banner de la Tienda",
+      "logo": "Logo de la Tienda",
+      "changeBanner": "Cambiar Banner",
+      "uploadBanner": "Haga clic para subir el banner",
+      "bannerRecommended": "Recomendado: 1200x300px, máx 10MB",
+      "uploading": "Subiendo...",
+      "upload": "Subir",
+      "uploadLogo": "Suba el logo de su tienda",
+      "logoRecommended": "Tamaño recomendado: 200x200px",
+      "logoMaxSize": "Tamaño máximo del archivo: 5MB",
+      "logoFormats": "Formatos: JPG, PNG, GIF, WebP",
+      "bannerAlt": "Banner de la Tienda",
+      "logoAlt": "Logo de la Tienda"
+    },
+    "storeInfo": {
+      "title": "Información de la Tienda",
+      "subtitle": "Actualice los detalles y la información de contacto de su tienda",
+      "basicInfo": "Información Básica",
+      "contactInfo": "Información de Contacto",
+      "addressInfo": "Información de Dirección",
+      "legalInfo": "Legal y Políticas"
+    },
+    "fields": {
+      "storeName": "Nombre de la Tienda",
+      "storeSlug": "Identificador de la Tienda",
+      "slugUrl": "URL: /stores/{slug}",
+      "description": "Descripción",
+      "email": "Email",
+      "phone": "Número de Teléfono",
+      "website": "Sitio Web (Opcional)",
+      "address1": "Dirección Línea 1",
+      "address2": "Dirección Línea 2 (Opcional)",
+      "city": "Ciudad",
+      "province": "Estado/Provincia",
+      "postalCode": "Código Postal",
+      "country": "País",
+      "taxId": "Número de Identificación Fiscal / IVA (Opcional)",
+      "returnPolicy": "Política de Devoluciones",
+      "shippingPolicy": "Política de Envío",
+      "termsConditions": "Términos y Condiciones",
+      "required": "*"
+    },
+    "placeholders": {
+      "storeName": "Mi Tienda de Lujo",
+      "storeSlug": "mi-tienda-lujo",
+      "description": "Describa su tienda y productos...",
+      "email": "tienda@ejemplo.com",
+      "phone": "+34 912 345 678",
+      "website": "https://mitienda.com",
+      "address1": "Calle Principal 123",
+      "address2": "Piso 100",
+      "city": "Madrid",
+      "province": "Madrid",
+      "postalCode": "28001",
+      "taxId": "ES12345678X",
+      "returnPolicy": "Describa su política de devoluciones aquí...",
+      "shippingPolicy": "Describa sus métodos y plazos de envío...",
+      "termsConditions": "Especifique los términos y condiciones de su tienda..."
+    },
+    "toast": {
+      "uploadImage": "Por favor suba un archivo de imagen",
+      "logoTooLarge": "El logo debe ser menor a 5MB",
+      "logoSuccess": "¡Logo subido con éxito!",
+      "logoFailed": "Error al subir el logo",
+      "bannerTooLarge": "El banner debe ser menor a 10MB",
+      "bannerSuccess": "¡Banner subido con éxito!",
+      "bannerFailed": "Error al subir el banner",
+      "saveSuccess": "¡Configuración de la tienda actualizada con éxito!",
+      "saveFailed": "Error al actualizar la configuración"
+    }
   }
 }
