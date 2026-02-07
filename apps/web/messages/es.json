@@ -1971,96 +1971,96 @@
       "failedToCancel": "Error al cancelar oferta",
       "confirmCancel": "¿Estás seguro de que quieres cancelar esta oferta urgente?",
       "failedToLoadDeals": "Error al cargar tus ofertas"
-    },
-    "ads": {
-      "sponsored": "Patrocinado",
-      "adSpace": "Espacio Publicitario",
-      "advertiseHere": "Anuncie Aquí",
-      "advertise": "Anunciar",
-      "startAdvertising": "Comenzar a Anunciar",
-      "recommended": "Recomendado",
-      "featured": "Destacado",
-      "premiumPlacement": "Ubicación Premium",
-      "dismiss": "Cerrar",
-      "previous": "Anterior",
-      "next": "Siguiente",
-      "goToSlide": "Ir a diapositiva {number}",
-      "placements": {
-        "homepageHero": {
-          "title": "Espacio Hero Premium",
-          "description": "Máxima visibilidad para tu marca"
-        },
-        "homepageFeatured": {
-          "title": "Banner Destacado",
-          "description": "Destaca tus mejores productos"
-        },
-        "homepageSidebar": {
-          "title": "Barra Lateral Inicio",
-          "description": "Presencia persistente de marca"
-        },
-        "productsBanner": {
-          "title": "Banner de Productos",
-          "description": "Alcanza compradores activos"
-        },
-        "productsInline": {
-          "title": "Promoción Integrada",
-          "description": "Ubicación nativa en feed de productos"
-        },
-        "productsSidebar": {
-          "title": "Anuncio Barra Lateral",
-          "description": "Capta la atención de navegantes"
-        },
-        "categoryBanner": {
-          "title": "Banner de Categoría",
-          "description": "Dirige categorías específicas"
-        },
-        "productDetailSidebar": {
-          "title": "Anuncio Página Producto",
-          "description": "Compradores de alta intención"
-        },
-        "checkoutUpsell": {
-          "title": "Venta Adicional Checkout",
-          "description": "Conversiones de último minuto"
-        },
-        "searchResults": {
-          "title": "Resultado Patrocinado",
-          "description": "Ubicación superior en búsqueda"
-        }
+    }
+  },
+  "ads": {
+    "sponsored": "Patrocinado",
+    "adSpace": "Espacio Publicitario",
+    "advertiseHere": "Anuncie Aquí",
+    "advertise": "Anunciar",
+    "startAdvertising": "Comenzar a Anunciar",
+    "recommended": "Recomendado",
+    "featured": "Destacado",
+    "premiumPlacement": "Ubicación Premium",
+    "dismiss": "Cerrar",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "goToSlide": "Ir a diapositiva {number}",
+    "placements": {
+      "homepageHero": {
+        "title": "Espacio Hero Premium",
+        "description": "Máxima visibilidad para tu marca"
       },
-      "hero": {
-        "title": "Espacio Publicitario Premium",
-        "description": "Muestra tu marca en nuestra ubicación más visible",
-        "dailyViews": "Vistas Diarias",
-        "avgCTR": "CTR Promedio",
-        "visibility": "Visibilidad"
+      "homepageFeatured": {
+        "title": "Banner Destacado",
+        "description": "Destaca tus mejores productos"
       },
-      "sidebar": {
+      "homepageSidebar": {
+        "title": "Barra Lateral Inicio",
+        "description": "Presencia persistente de marca"
+      },
+      "productsBanner": {
+        "title": "Banner de Productos",
+        "description": "Alcanza compradores activos"
+      },
+      "productsInline": {
+        "title": "Promoción Integrada",
+        "description": "Ubicación nativa en feed de productos"
+      },
+      "productsSidebar": {
         "title": "Anuncio Barra Lateral",
-        "description": "Alcanza compradores navegando"
+        "description": "Capta la atención de navegantes"
       },
-      "checkout": {
-        "title": "Oportunidad de Venta Adicional",
-        "description": "Promociona productos en checkout",
-        "learnMore": "Más información",
-        "completeYourLook": "Completa Tu Look",
-        "addToOrder": "Agregar al Pedido"
+      "categoryBanner": {
+        "title": "Banner de Categoría",
+        "description": "Dirige categorías específicas"
       },
-      "search": {
-        "title": "Espacio Resultado Patrocinado",
-        "description": "Obtén ubicación superior en resultados de búsqueda"
-      },
-      "productDetail": {
+      "productDetailSidebar": {
         "title": "Anuncio Página Producto",
-        "description": "Alcanza compradores de alta intención"
+        "description": "Compradores de alta intención"
       },
-      "defaultLinkText": {
-        "discoverNow": "Descubrir Ahora",
-        "shopNow": "Comprar Ahora",
-        "learnMore": "Más Información",
-        "viewOffer": "Ver Oferta",
-        "viewDetails": "Ver Detalles",
-        "explore": "Explorar"
+      "checkoutUpsell": {
+        "title": "Venta Adicional Checkout",
+        "description": "Conversiones de último minuto"
+      },
+      "searchResults": {
+        "title": "Resultado Patrocinado",
+        "description": "Ubicación superior en búsqueda"
       }
+    },
+    "hero": {
+      "title": "Espacio Publicitario Premium",
+      "description": "Muestra tu marca en nuestra ubicación más visible",
+      "dailyViews": "Vistas Diarias",
+      "avgCTR": "CTR Promedio",
+      "visibility": "Visibilidad"
+    },
+    "sidebar": {
+      "title": "Anuncio Barra Lateral",
+      "description": "Alcanza compradores navegando"
+    },
+    "checkout": {
+      "title": "Oportunidad de Venta Adicional",
+      "description": "Promociona productos en checkout",
+      "learnMore": "Más información",
+      "completeYourLook": "Completa Tu Look",
+      "addToOrder": "Agregar al Pedido"
+    },
+    "search": {
+      "title": "Espacio Resultado Patrocinado",
+      "description": "Obtén ubicación superior en resultados de búsqueda"
+    },
+    "productDetail": {
+      "title": "Anuncio Página Producto",
+      "description": "Alcanza compradores de alta intención"
+    },
+    "defaultLinkText": {
+      "discoverNow": "Descubrir Ahora",
+      "shopNow": "Comprar Ahora",
+      "learnMore": "Más Información",
+      "viewOffer": "Ver Oferta",
+      "viewDetails": "Ver Detalles",
+      "explore": "Explorar"
     }
   }
 }
