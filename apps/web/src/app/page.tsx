@@ -273,7 +273,7 @@ export default function Home() {
       </Suspense>
 
       {/* Featured Products */}
-      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 pt-16 pb-16 bg-white">
+      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 pt-16 pb-0 bg-white">
         <ProductCarousel
           title={t('home.featuredProducts')}
           products={featuredProducts}
@@ -288,14 +288,14 @@ export default function Home() {
       </section>
 
       {/* Sponsored Content - After Featured */}
-      <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
         <Suspense fallback={<div className="h-32 bg-gray-100 animate-pulse rounded-lg" />}>
           <InlineAd placement="HOMEPAGE_FEATURED" />
         </Suspense>
       </section>
 
       {/* New Arrivals */}
-      <section className="bg-gray-50 py-16">
+      <section className="bg-gray-50 py-4">
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8">
           <ProductCarousel
             title={t('home.newArrivals')}
@@ -312,14 +312,14 @@ export default function Home() {
       </section>
 
       {/* Sponsored Content - After New Arrivals */}
-      <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
         <Suspense fallback={<div className="h-32 bg-gray-100 animate-pulse rounded-lg" />}>
           <InlineAd placement="PRODUCTS_INLINE" />
         </Suspense>
       </section>
 
       {/* Trending Products */}
-      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 py-16">
+      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 py-4">
         <ProductCarousel
           title={t('home.trendingNow')}
           products={trendingProducts}
@@ -334,14 +334,14 @@ export default function Home() {
       </section>
 
       {/* Sponsored Content - After Trending */}
-      <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
         <Suspense fallback={<div className="h-32 bg-gray-100 animate-pulse rounded-lg" />}>
           <InlineAd placement="PRODUCTS_BANNER" />
         </Suspense>
       </section>
 
       {/* On Sale Products */}
-      <section className="bg-gray-50 py-16">
+      <section className="bg-gray-50 py-4">
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8">
           <ProductCarousel
             title={t('home.onSale')}
@@ -358,7 +358,7 @@ export default function Home() {
       </section>
 
       {/* Promotional Banner */}
-      <section className="relative py-24 bg-gradient-to-br from-[#CBB57B] to-[#A89968] text-white overflow-hidden">
+      <section className="relative py-8 bg-gradient-to-br from-[#CBB57B] to-[#A89968] text-white overflow-hidden">
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8">
           <div className="text-center">
             <motion.div
