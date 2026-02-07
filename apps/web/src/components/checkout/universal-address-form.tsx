@@ -93,7 +93,7 @@ export function UniversalAddressForm({
     setCountryConfig(config);
 
     // Clear state and postal code if new country doesn't use them
-    setFormData(prev => {
+    setFormData((prev) => {
       const updates: Partial<AddressFormData> = {};
 
       if (!config.showState) {
@@ -108,7 +108,7 @@ export function UniversalAddressForm({
     });
 
     // Clear related errors
-    setErrors(prev => {
+    setErrors((prev) => {
       const newErrors = { ...prev };
       if (!config.showState) delete newErrors.state;
       if (!config.showPostalCode) delete newErrors.postalCode;
@@ -119,15 +119,13 @@ export function UniversalAddressForm({
   /**
    * Handle input changes
    */
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
     // Clear error for this field
     if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -135,11 +133,11 @@ export function UniversalAddressForm({
    * Handle country change
    */
   const handleCountryChange = (countryCode: string) => {
-    setFormData(prev => ({ ...prev, country: countryCode }));
+    setFormData((prev) => ({ ...prev, country: countryCode }));
 
     // Clear country error
     if (errors.country) {
-      setErrors(prev => ({ ...prev, country: undefined }));
+      setErrors((prev) => ({ ...prev, country: undefined }));
     }
   };
 
@@ -147,11 +145,11 @@ export function UniversalAddressForm({
    * Handle phone change
    */
   const handlePhoneChange = (phone: string) => {
-    setFormData(prev => ({ ...prev, phone }));
+    setFormData((prev) => ({ ...prev, phone }));
 
     // Clear phone error
     if (errors.phone) {
-      setErrors(prev => ({ ...prev, phone: undefined }));
+      setErrors((prev) => ({ ...prev, phone: undefined }));
     }
   };
 
@@ -159,7 +157,7 @@ export function UniversalAddressForm({
    * Handle checkbox change
    */
   const handleDefaultChange = (checked: boolean) => {
-    setFormData(prev => ({ ...prev, isDefault: checked }));
+    setFormData((prev) => ({ ...prev, isDefault: checked }));
   };
 
   /**
@@ -319,9 +317,7 @@ export function UniversalAddressForm({
             {errors.fullName}
           </p>
         )}
-        <p className="text-xs text-muted-foreground">
-          First and last name for delivery
-        </p>
+        <p className="text-xs text-muted-foreground">First and last name for delivery</p>
       </div>
 
       {/* Phone Number with Country Prefix */}
@@ -341,9 +337,7 @@ export function UniversalAddressForm({
             {errors.phone}
           </p>
         )}
-        <p className="text-xs text-muted-foreground">
-          For delivery updates and contact
-        </p>
+        <p className="text-xs text-muted-foreground">For delivery updates and contact</p>
       </div>
 
       {/* Address (Textarea) */}
@@ -382,7 +376,7 @@ export function UniversalAddressForm({
           type="text"
           value={formData.city}
           onChange={handleChange}
-          placeholder="Kigali"
+          placeholder="Paris"
           className={errors.city ? 'border-red-500' : ''}
           disabled={isSubmitting}
         />
@@ -398,9 +392,7 @@ export function UniversalAddressForm({
         <div className="space-y-2">
           <Label htmlFor="state">
             {countryConfig.stateLabel}
-            {countryConfig.requiresState && (
-              <span className="text-red-500"> *</span>
-            )}
+            {countryConfig.requiresState && <span className="text-red-500"> *</span>}
           </Label>
           <Input
             id="state"
@@ -425,9 +417,7 @@ export function UniversalAddressForm({
         <div className="space-y-2">
           <Label htmlFor="postalCode">
             {countryConfig.postalCodeLabel}
-            {countryConfig.requiresPostalCode && (
-              <span className="text-red-500"> *</span>
-            )}
+            {countryConfig.requiresPostalCode && <span className="text-red-500"> *</span>}
           </Label>
           <Input
             id="postalCode"
@@ -458,8 +448,7 @@ export function UniversalAddressForm({
       {/* Delivery Instructions (Optional) */}
       <div className="space-y-2">
         <Label htmlFor="deliveryNotes">
-          Delivery Instructions{' '}
-          <span className="text-xs text-muted-foreground">(Optional)</span>
+          Delivery Instructions <span className="text-xs text-muted-foreground">(Optional)</span>
         </Label>
         <Textarea
           id="deliveryNotes"
@@ -470,9 +459,7 @@ export function UniversalAddressForm({
           rows={2}
           disabled={isSubmitting}
         />
-        <p className="text-xs text-muted-foreground">
-          Help courier find your location easily
-        </p>
+        <p className="text-xs text-muted-foreground">Help courier find your location easily</p>
       </div>
 
       {/* Save as Default Checkbox */}
@@ -483,10 +470,7 @@ export function UniversalAddressForm({
           onCheckedChange={handleDefaultChange}
           disabled={isSubmitting}
         />
-        <Label
-          htmlFor="isDefault"
-          className="text-sm font-normal cursor-pointer"
-        >
+        <Label htmlFor="isDefault" className="text-sm font-normal cursor-pointer">
           Save this address as my default shipping address
         </Label>
       </div>
@@ -515,9 +499,7 @@ export function UniversalAddressForm({
               <span className="animate-spin">⏳</span>
             </>
           ) : (
-            <>
-              {submitLabel} →
-            </>
+            <>{submitLabel} →</>
           )}
         </Button>
       </div>

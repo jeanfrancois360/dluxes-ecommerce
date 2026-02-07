@@ -14,59 +14,53 @@ export class AdminService {
    * Get dashboard statistics
    */
   async getStats() {
-    const [
-      totalRevenue,
-      totalOrders,
-      totalCustomers,
-      totalProducts,
-      pendingOrders,
-      recentOrders,
-    ] = await Promise.all([
-      // Total revenue
-      this.prisma.order.aggregate({
-        where: {
-          status: {
-            not: 'CANCELLED',
-          },
-        },
-        _sum: {
-          total: true,
-        },
-      }),
-      // Total orders
-      this.prisma.order.count(),
-      // Total customers
-      this.prisma.user.count({
-        where: {
-          role: UserRole.BUYER,
-        },
-      }),
-      // Total products
-      this.prisma.product.count(),
-      // Pending orders
-      this.prisma.order.count({
-        where: {
-          status: 'PENDING',
-        },
-      }),
-      // Recent orders
-      this.prisma.order.findMany({
-        take: 10,
-        orderBy: {
-          createdAt: 'desc',
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
+    const [totalRevenue, totalOrders, totalCustomers, totalProducts, pendingOrders, recentOrders] =
+      await Promise.all([
+        // Total revenue
+        this.prisma.order.aggregate({
+          where: {
+            status: {
+              not: 'CANCELLED',
             },
           },
-        },
-      }),
-    ]);
+          _sum: {
+            total: true,
+          },
+        }),
+        // Total orders
+        this.prisma.order.count(),
+        // Total customers
+        this.prisma.user.count({
+          where: {
+            role: UserRole.BUYER,
+          },
+        }),
+        // Total products
+        this.prisma.product.count(),
+        // Pending orders
+        this.prisma.order.count({
+          where: {
+            status: 'PENDING',
+          },
+        }),
+        // Recent orders
+        this.prisma.order.findMany({
+          take: 10,
+          orderBy: {
+            createdAt: 'desc',
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        }),
+      ]);
 
     return {
       revenue: totalRevenue._sum.total || 0,
@@ -162,11 +156,7 @@ export class AdminService {
   /**
    * Get all orders with filters (Admin)
    */
-  async getAllOrders(filters?: {
-    status?: string;
-    page?: number;
-    pageSize?: number;
-  }) {
+  async getAllOrders(filters?: { status?: string; page?: number; pageSize?: number }) {
     const { status, page = 1, pageSize = 20 } = filters || {};
 
     const where: any = {};
@@ -279,7 +269,7 @@ export class AdminService {
     ]);
 
     // Calculate totalSpent for each user from their orders
-    const userIds = users.map(u => u.id);
+    const userIds = users.map((u) => u.id);
     const orderTotals = await this.prisma.order.groupBy({
       by: ['userId'],
       where: {
@@ -291,11 +281,9 @@ export class AdminService {
       },
     });
 
-    const totalSpentMap = new Map(
-      orderTotals.map(ot => [ot.userId, Number(ot._sum.total || 0)])
-    );
+    const totalSpentMap = new Map(orderTotals.map((ot) => [ot.userId, Number(ot._sum.total || 0)]));
 
-    const transformedUsers = users.map(user => ({
+    const transformedUsers = users.map((user) => ({
       ...user,
       totalSpent: totalSpentMap.get(user.id) || 0,
     }));
@@ -319,18 +307,18 @@ export class AdminService {
 
     const [total, newThisMonth, newLastMonth, totalRevenueResult] = await Promise.all([
       this.prisma.user.count({
-        where: { role: UserRole.BUYER }
+        where: { role: UserRole.BUYER },
       }),
       this.prisma.user.count({
         where: {
           role: UserRole.BUYER,
-          createdAt: { gte: startOfMonth }
+          createdAt: { gte: startOfMonth },
         },
       }),
       this.prisma.user.count({
         where: {
           role: UserRole.BUYER,
-          createdAt: { gte: startOfLastMonth, lt: startOfMonth }
+          createdAt: { gte: startOfLastMonth, lt: startOfMonth },
         },
       }),
       // Total revenue from all customer orders
@@ -362,9 +350,8 @@ export class AdminService {
       },
     });
 
-    const growthPercent = newLastMonth > 0
-      ? Math.round(((newThisMonth - newLastMonth) / newLastMonth) * 100)
-      : 100;
+    const growthPercent =
+      newLastMonth > 0 ? Math.round(((newThisMonth - newLastMonth) / newLastMonth) * 100) : 100;
 
     return {
       total,
@@ -426,7 +413,7 @@ export class AdminService {
     return {
       ...user,
       totalSpent: totalSpentResult._sum.total ? Number(totalSpentResult._sum.total) : 0,
-      orders: user.orders.map(order => ({
+      orders: user.orders.map((order) => ({
         ...order,
         total: Number(order.total),
       })),
@@ -436,14 +423,17 @@ export class AdminService {
   /**
    * Update user details
    */
-  async updateUser(userId: string, data: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    phone?: string;
-    role?: UserRole;
-    isActive?: boolean;
-  }) {
+  async updateUser(
+    userId: string,
+    data: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      role?: UserRole;
+      isActive?: boolean;
+    }
+  ) {
     return this.prisma.user.update({
       where: { id: userId },
       data,
@@ -468,7 +458,7 @@ export class AdminService {
       where: { id: userId },
       data: {
         isSuspended: true,
-        isActive: false
+        isActive: false,
       },
     });
   }
@@ -481,7 +471,7 @@ export class AdminService {
       where: { id: userId },
       data: {
         isSuspended: false,
-        isActive: true
+        isActive: true,
       },
     });
   }
@@ -557,7 +547,7 @@ export class AdminService {
     ]);
 
     // Transform Decimal values to numbers for JSON serialization
-    const transformedProducts = products.map(product => ({
+    const transformedProducts = products.map((product) => ({
       ...product,
       price: Number(product.price),
       compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
@@ -575,11 +565,7 @@ export class AdminService {
   /**
    * Get all reviews for moderation (Admin)
    */
-  async getAllReviews(filters?: {
-    isApproved?: boolean;
-    page?: number;
-    pageSize?: number;
-  }) {
+  async getAllReviews(filters?: { isApproved?: boolean; page?: number; pageSize?: number }) {
     const { isApproved, page = 1, pageSize = 20 } = filters || {};
 
     const where: any = {};
@@ -621,6 +607,129 @@ export class AdminService {
       pageSize,
       pages: Math.ceil(total / pageSize),
     };
+  }
+
+  /**
+   * Update review status (Admin)
+   */
+  async updateReviewStatus(reviewId: string, isApproved: boolean) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+
+    if (!review) {
+      throw new Error('Review not found');
+    }
+
+    const updatedReview = await this.prisma.review.update({
+      where: { id: reviewId },
+      data: { isApproved },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            heroImage: true,
+          },
+        },
+      },
+    });
+
+    // Update product rating after approval status changes
+    await this.updateProductRating(review.productId);
+
+    return updatedReview;
+  }
+
+  /**
+   * Bulk update review status (Admin)
+   */
+  async bulkUpdateReviewStatus(reviewIds: string[], isApproved: boolean) {
+    const reviews = await this.prisma.review.findMany({
+      where: { id: { in: reviewIds } },
+      select: { id: true, productId: true },
+    });
+
+    if (reviews.length === 0) {
+      throw new Error('No reviews found');
+    }
+
+    await this.prisma.review.updateMany({
+      where: { id: { in: reviewIds } },
+      data: { isApproved },
+    });
+
+    // Update product ratings for affected products
+    const productIds = [...new Set(reviews.map((r) => r.productId))];
+    await Promise.all(productIds.map((productId) => this.updateProductRating(productId)));
+  }
+
+  /**
+   * Delete review (Admin)
+   */
+  async deleteReview(reviewId: string) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+
+    if (!review) {
+      throw new Error('Review not found');
+    }
+
+    await this.prisma.review.delete({
+      where: { id: reviewId },
+    });
+
+    // Update product rating after deletion
+    await this.updateProductRating(review.productId);
+  }
+
+  /**
+   * Update product rating based on approved reviews
+   * @private
+   */
+  private async updateProductRating(productId: string) {
+    const reviews = await this.prisma.review.findMany({
+      where: {
+        productId,
+        isApproved: true,
+      },
+      select: {
+        rating: true,
+      },
+    });
+
+    if (reviews.length === 0) {
+      await this.prisma.product.update({
+        where: { id: productId },
+        data: {
+          rating: null,
+          reviewCount: 0,
+        },
+      });
+      return;
+    }
+
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const avgRating = totalRating / reviews.length;
+
+    await this.prisma.product.update({
+      where: { id: productId },
+      data: {
+        rating: avgRating,
+        reviewCount: reviews.length,
+      },
+    });
   }
 
   /**

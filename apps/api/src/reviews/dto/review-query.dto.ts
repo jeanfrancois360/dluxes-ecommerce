@@ -20,4 +20,8 @@ export class ReviewQueryDto {
   @IsNumber()
   @Type(() => Number)
   pageSize?: number;
+
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
 }

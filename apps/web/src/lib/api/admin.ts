@@ -199,13 +199,30 @@ export interface Advertisement {
 export interface Review {
   id: string;
   productId: string;
-  productName: string;
-  customerId: string;
-  customerName: string;
+  userId: string;
   rating: number;
+  title?: string;
   comment: string;
-  status: 'pending' | 'approved' | 'rejected';
+  images?: string[];
+  videos?: string[];
+  isApproved: boolean;
+  isPinned: boolean;
+  helpfulCount: number;
   createdAt: string;
+  updatedAt: string;
+  product?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    avatar?: string;
+  };
+  // Computed field for UI convenience
+  status?: 'pending' | 'approved' | 'rejected';
 }
 
 // Dashboard APIs
@@ -269,13 +286,13 @@ function transformProductData(data: Partial<AdminProduct>): any {
   // Status mapping
   if (data.status) {
     const statusMap: Record<string, string> = {
-      'active': 'ACTIVE',
-      'inactive': 'ARCHIVED',
-      'draft': 'DRAFT',
-      'ACTIVE': 'ACTIVE',
-      'ARCHIVED': 'ARCHIVED',
-      'DRAFT': 'DRAFT',
-      'OUT_OF_STOCK': 'OUT_OF_STOCK',
+      active: 'ACTIVE',
+      inactive: 'ARCHIVED',
+      draft: 'DRAFT',
+      ACTIVE: 'ACTIVE',
+      ARCHIVED: 'ARCHIVED',
+      DRAFT: 'DRAFT',
+      OUT_OF_STOCK: 'OUT_OF_STOCK',
     };
     transformed.status = statusMap[data.status] || 'DRAFT';
   }
@@ -305,8 +322,10 @@ function transformProductData(data: Partial<AdminProduct>): any {
   if ((data as any).featured !== undefined) transformed.featured = (data as any).featured;
   if ((data as any).weight !== undefined) transformed.weight = (data as any).weight;
   if ((data as any).isPreOrder !== undefined) transformed.isPreOrder = (data as any).isPreOrder;
-  if ((data as any).contactRequired !== undefined) transformed.contactRequired = (data as any).contactRequired;
-  if ((data as any).displayOrder !== undefined) transformed.displayOrder = (data as any).displayOrder;
+  if ((data as any).contactRequired !== undefined)
+    transformed.contactRequired = (data as any).contactRequired;
+  if ((data as any).displayOrder !== undefined)
+    transformed.displayOrder = (data as any).displayOrder;
 
   // SEO fields
   if ((data as any).metaTitle) transformed.metaTitle = (data as any).metaTitle;
@@ -394,7 +413,10 @@ export const adminProductsApi = {
     return response;
   },
 
-  async reorderImages(productId: string, imageOrders: Array<{ id: string; order: number }>): Promise<AdminProduct> {
+  async reorderImages(
+    productId: string,
+    imageOrders: Array<{ id: string; order: number }>
+  ): Promise<AdminProduct> {
     const response = await api.patch(`/products/${productId}/images/reorder`, { imageOrders });
     return response;
   },
@@ -423,7 +445,10 @@ export const adminProductsApi = {
       notes?: string;
     }
   ): Promise<any> {
-    const response = await api.patch(`/products/${productId}/variants/${variantId}/inventory`, data);
+    const response = await api.patch(
+      `/products/${productId}/variants/${variantId}/inventory`,
+      data
+    );
     return response;
   },
 
@@ -445,12 +470,16 @@ export const adminProductsApi = {
     }>;
     total: number;
   }> {
-    const response = await api.get(`/products/${productId}/inventory/transactions${buildQueryString(params)}`);
+    const response = await api.get(
+      `/products/${productId}/inventory/transactions${buildQueryString(params)}`
+    );
     return response;
   },
 
   async getLowStockProducts(threshold?: number): Promise<AdminProduct[]> {
-    const response = await api.get(`/products/inventory/low-stock${buildQueryString({ threshold })}`);
+    const response = await api.get(
+      `/products/inventory/low-stock${buildQueryString({ threshold })}`
+    );
     return response;
   },
 
@@ -621,8 +650,10 @@ export const adminCustomersApi = {
 
     return {
       customers,
-      total: params?.segment ? customers.length : (data.total || 0),
-      pages: params?.segment ? Math.ceil(customers.length / (params?.limit || 25)) : (data.pages || 0),
+      total: params?.segment ? customers.length : data.total || 0,
+      pages: params?.segment
+        ? Math.ceil(customers.length / (params?.limit || 25))
+        : data.pages || 0,
     };
   },
 
@@ -637,14 +668,17 @@ export const adminCustomersApi = {
     return data;
   },
 
-  async update(id: string, data: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    phone?: string;
-    role?: string;
-    isActive?: boolean;
-  }): Promise<any> {
+  async update(
+    id: string,
+    data: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      role?: string;
+      isActive?: boolean;
+    }
+  ): Promise<any> {
     const response = await api.patch(`/admin/users/${id}`, data);
     return response.data || response;
   },
@@ -708,7 +742,15 @@ export const adminCategoriesApi = {
     return response.data || response;
   },
 
-  async updateVisibility(id: string, data: { showInNavbar?: boolean; showInFooter?: boolean; showOnHomepage?: boolean; isFeatured?: boolean }): Promise<Category> {
+  async updateVisibility(
+    id: string,
+    data: {
+      showInNavbar?: boolean;
+      showInFooter?: boolean;
+      showOnHomepage?: boolean;
+      isFeatured?: boolean;
+    }
+  ): Promise<Category> {
     const response = await api.patch(`/categories/${id}/visibility`, data);
 
     // Check if backend returned success: false
@@ -757,7 +799,10 @@ export const adminAdvertisementsApi = {
   },
 
   async approve(id: string, approved: boolean, rejectionReason?: string): Promise<Advertisement> {
-    const response = await api.patch(`/advertisements/${id}/approve`, { approved, rejectionReason });
+    const response = await api.patch(`/advertisements/${id}/approve`, {
+      approved,
+      rejectionReason,
+    });
     return response.data || response;
   },
 
@@ -785,7 +830,16 @@ export const adminReviewsApi = {
     productId?: string;
   }): Promise<{ reviews: Review[]; total: number; pages: number }> {
     const response = await api.get(`/admin/reviews${buildQueryString(params)}`);
-    return response;
+    // Add computed status field for UI convenience
+    const reviews =
+      response.reviews?.map((review: Review) => ({
+        ...review,
+        status: review.isApproved ? 'approved' : ('pending' as 'pending' | 'approved' | 'rejected'),
+      })) || [];
+    return {
+      ...response,
+      reviews,
+    };
   },
 
   async updateStatus(id: string, status: 'approved' | 'rejected'): Promise<Review> {
@@ -804,21 +858,29 @@ export const adminReviewsApi = {
 
 // Analytics APIs
 export const adminAnalyticsApi = {
-  async getMetrics(startDate: string, endDate: string): Promise<{
+  async getMetrics(
+    startDate: string,
+    endDate: string
+  ): Promise<{
     revenue: number;
     orders: number;
     customers: number;
     conversionRate: number;
     averageOrderValue: number;
   }> {
-    const response = await api.get(`/admin/analytics/metrics${buildQueryString({ startDate, endDate })}`);
+    const response = await api.get(
+      `/admin/analytics/metrics${buildQueryString({ startDate, endDate })}`
+    );
     return response;
   },
 
-  async getSalesByCategory(startDate: string, endDate: string): Promise<
-    Array<{ category: string; sales: number; orders: number }>
-  > {
-    const response = await api.get(`/admin/analytics/sales-by-category${buildQueryString({ startDate, endDate })}`);
+  async getSalesByCategory(
+    startDate: string,
+    endDate: string
+  ): Promise<Array<{ category: string; sales: number; orders: number }>> {
+    const response = await api.get(
+      `/admin/analytics/sales-by-category${buildQueryString({ startDate, endDate })}`
+    );
     return response;
   },
 
@@ -827,7 +889,9 @@ export const adminAnalyticsApi = {
     endDate: string,
     limit: number = 10
   ): Promise<Array<{ productId: string; name: string; sales: number; orders: number }>> {
-    const response = await api.get(`/admin/analytics/sales-by-product${buildQueryString({ startDate, endDate, limit })}`);
+    const response = await api.get(
+      `/admin/analytics/sales-by-product${buildQueryString({ startDate, endDate, limit })}`
+    );
     return response;
   },
 };

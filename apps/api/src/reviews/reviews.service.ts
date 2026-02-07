@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
@@ -23,7 +19,8 @@ export class ReviewsService {
     const { productId, rating, page = 1, pageSize = 20 } = query;
 
     const where: any = {
-      isApproved: true,
+      // Remove approval filter - show all reviews immediately (can be moderated later)
+      // isApproved: true,
     };
 
     if (productId) {
@@ -61,12 +58,35 @@ export class ReviewsService {
       this.prisma.review.count({ where }),
     ]);
 
+    // Calculate summary statistics
+    const allProductReviews = productId
+      ? await this.prisma.review.findMany({
+          where: { productId },
+          select: { rating: true },
+        })
+      : [];
+
+    const ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    let totalRating = 0;
+
+    allProductReviews.forEach((review) => {
+      ratingDistribution[review.rating as keyof typeof ratingDistribution]++;
+      totalRating += review.rating;
+    });
+
+    const averageRating = allProductReviews.length > 0 ? totalRating / allProductReviews.length : 0;
+
     return {
       reviews,
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
+      summary: {
+        averageRating,
+        totalReviews: allProductReviews.length,
+        ratingDistribution,
+      },
     };
   }
 
@@ -106,8 +126,7 @@ export class ReviewsService {
    * Create new review
    */
   async create(userId: string, createReviewDto: CreateReviewDto) {
-    const { productId, rating, title, comment, images, videos } =
-      createReviewDto;
+    const { productId, rating, title, comment, images, videos } = createReviewDto;
 
     // Check if product exists
     const product = await this.prisma.product.findUnique({

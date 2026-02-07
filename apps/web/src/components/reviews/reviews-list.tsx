@@ -88,11 +88,7 @@ export function ReviewsList({
       <h3 className="text-xl font-semibold text-black mb-2">
         {filterRating ? t('noRatingReviews', { rating: filterRating }) : t('noReviews')}
       </h3>
-      <p className="text-neutral-600 mb-6">
-        {filterRating
-          ? t('adjustFilters')
-          : t('beFirst')}
-      </p>
+      <p className="text-neutral-600 mb-6">{filterRating ? t('adjustFilters') : t('beFirst')}</p>
     </motion.div>
   );
 
@@ -149,7 +145,7 @@ export function ReviewsList({
       {/* Reviews */}
       {isLoading ? (
         renderSkeleton()
-      ) : reviews.length === 0 ? (
+      ) : !reviews || reviews.length === 0 ? (
         renderEmptyState()
       ) : (
         <div className="space-y-4">
@@ -162,11 +158,7 @@ export function ReviewsList({
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <ReviewCard
-                  review={review}
-                  onMarkHelpful={onMarkHelpful}
-                  onReport={onReport}
-                />
+                <ReviewCard review={review} onMarkHelpful={onMarkHelpful} onReport={onReport} />
               </motion.div>
             ))}
           </AnimatePresence>
@@ -182,7 +174,12 @@ export function ReviewsList({
             className="px-4 py-2 border-2 border-neutral-200 rounded-lg hover:border-[#CBB57B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
           </button>
 

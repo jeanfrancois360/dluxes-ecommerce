@@ -387,7 +387,9 @@
     "confirmReportReview": "¿Estás seguro de que deseas reportar esta reseña?",
     "reviews_count": "({count} reseñas)",
     "review": "reseña",
-    "reviewsPlural": "reseñas"
+    "reviewsPlural": "reseñas",
+    "reviewSubmittedSuccess": "¡Reseña enviada con éxito! Será visible después de la aprobación.",
+    "reviewSubmitFailed": "Error al enviar la reseña. Por favor, inténtalo de nuevo."
   },
   "cart": {
     "shoppingCart": "Carrito de Compras",
@@ -1818,6 +1820,32 @@
       "fileSizeExceeds": "El tamaño del archivo excede el límite de 5MB",
       "uploadFailed": "Error al subir la imagen",
       "noUrlReturned": "Error al subir la imagen - no se devolvió URL"
+    },
+    "reviewForm": {
+      "writeReview": "Escribir una Reseña",
+      "rating": "Calificación",
+      "reviewTitle": "Título de la Reseña (Opcional)",
+      "yourReview": "Tu Reseña",
+      "reviewPlaceholder": "Comparte tu experiencia con este producto. ¿Qué te gustó o no te gustó? ¿Lo recomendarías a otros?",
+      "minimumLength": "Mínimo 20 caracteres",
+      "photos": "Fotos (Opcional)",
+      "clickToUpload": "Haz clic para subir",
+      "orDragDrop": "o arrastra y suelta",
+      "imageRequirements": "PNG, JPG o WebP (máx 5MB cada uno, hasta 5 imágenes)",
+      "cancel": "Cancelar",
+      "submitting": "Enviando...",
+      "submitReview": "Enviar Reseña",
+      "pleaseSelectRating": "Por favor selecciona una calificación",
+      "reviewMinLength": "La reseña debe tener al menos 10 caracteres",
+      "reviewMaxLength": "La reseña no debe exceder 2000 caracteres",
+      "titleMaxLength": "El título no debe exceder 100 caracteres",
+      "maxImagesAllowed": "Máximo 5 imágenes permitidas",
+      "failedToSubmit": "Error al enviar la reseña. Por favor, inténtalo de nuevo."
+    },
+    "reviewSummary": {
+      "basedOn": "Basado en {count, plural, =0 {0 reseñas} =1 {1 reseña} other {# reseñas}}",
+      "writeReview": "Escribir una Reseña",
+      "ratingDistribution": "Distribución de Calificaciones"
     }
   },
   "pages": {
