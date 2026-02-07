@@ -216,7 +216,7 @@ export const ProductCarousel = memo(function ProductCarousel({
                   removeFromWishlist: tCard('removeFromWishlist'),
                   quickView: tCard('quickView'),
                   outOfStock: tCard('outOfStock'),
-                  onlyLeft: 'Only {count} Left',
+                  onlyLeft: tCard('onlyLeft'),
                   contactForPrice: tCard('contactForPrice'),
                   inquiryRequired: tCard('inquiryRequired'),
                   contactSeller: tCard('contactSeller'),
