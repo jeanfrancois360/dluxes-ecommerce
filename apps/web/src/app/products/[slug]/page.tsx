@@ -1070,7 +1070,7 @@ export default function ProductDetailPage() {
                       <h3 className="text-lg font-semibold mb-4">{t('productDetails')}</h3>
                       <dl className="space-y-3">
                         <div className="flex justify-between py-2 border-b border-neutral-200">
-                          <dt className="text-neutral-600">SKU</dt>
+                          <dt className="text-neutral-600">{t('skuLabel')}</dt>
                           <dd className="font-medium">{product.sku}</dd>
                         </div>
                         {product.brand && (
