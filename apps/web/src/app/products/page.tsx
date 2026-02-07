@@ -17,7 +17,7 @@ import { useProduct } from '@/hooks/use-product';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 import { SearchFilters } from '@/lib/api/types';
-import { CategoryBannerAd, InlineAd } from '@/components/ads';
+import { InlineAd } from '@/components/ads';
 import { ProductGridSkeleton } from '@/components/loading/skeleton';
 import { ScrollToTop } from '@/components/scroll-to-top';
 import { navigateWithLoading } from '@/lib/navigation';
@@ -424,15 +424,6 @@ export default function ProductsPage() {
       <div className="max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-4 sm:pt-6 md:pt-8">
         <InlineAd placement="PRODUCTS_BANNER" className="mb-0" />
       </div>
-
-      {/* Category Banner Ad */}
-      {selectedCategories.length === 1 && categories && categories.length > 0 && (
-        <div className="max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-4 sm:pt-6 md:pt-8">
-          <CategoryBannerAd
-            categoryId={categories.find((c) => c.slug === selectedCategories[0])?.id}
-          />
-        </div>
-      )}
 
       {/* Filters & Content */}
       <div className="max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12">
