@@ -246,6 +246,11 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
                           addToBag: tCard('addToBag'),
                           add: tCard('add'),
                           by: tCard('by'),
+                          new: tCard('new'),
+                          sale: tCard('sale'),
+                          featured: tCard('featured'),
+                          bestseller: tCard('bestseller'),
+                          limitedEdition: tCard('limitedEdition'),
                         }}
                       />
                     </motion.div>

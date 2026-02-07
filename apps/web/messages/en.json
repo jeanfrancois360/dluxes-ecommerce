@@ -456,7 +456,11 @@
     "viewFullDetails": "View Full Details",
     "reviews": "reviews",
     "review": "review",
-    "save": "Save {percent}%"
+    "save": "Save {percent}%",
+    "new": "New",
+    "sale": "Sale",
+    "featured": "Featured",
+    "bestseller": "Bestseller"
   },
   "productCard": {
     "addToWishlist": "Add to wishlist",
@@ -470,7 +474,12 @@
     "contact": "Contact",
     "addToBag": "Add to Bag",
     "add": "Add",
-    "by": "by"
+    "by": "by",
+    "new": "New",
+    "sale": "Sale",
+    "featured": "Featured",
+    "bestseller": "Bestseller",
+    "limitedEdition": "Limited Edition"
   },
   "checkout": {
     "checkout": "Checkout",

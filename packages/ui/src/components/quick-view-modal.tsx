@@ -52,6 +52,11 @@ export interface QuickViewModalProps {
     reviews: string;
     review: string;
     save: string;
+    // Badge translations
+    new: string;
+    sale: string;
+    featured: string;
+    bestseller: string;
   };
 }
 
@@ -78,7 +83,22 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
     reviews: 'reviews',
     review: 'review',
     save: 'Save {percent}%',
+    new: 'New',
+    sale: 'Sale',
+    featured: 'Featured',
+    bestseller: 'Bestseller',
   };
+
+  // Helper function to translate badges
+  const translateBadge = (badge: string): string => {
+    const badgeLower = badge.toLowerCase();
+    if (badgeLower === 'new') return t.new;
+    if (badgeLower === 'sale') return t.sale;
+    if (badgeLower === 'featured') return t.featured;
+    if (badgeLower === 'bestseller') return t.bestseller;
+    return badge; // Return original if no translation found
+  };
+
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const [selectedColor, setSelectedColor] = React.useState<string | null>(null);
   const [selectedSize, setSelectedSize] = React.useState<string | null>(null);
@@ -237,7 +257,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                                 ) && 'bg-neutral-800/90 text-white'
                               )}
                             >
-                              {badge}
+                              {translateBadge(badge)}
                             </span>
                           ))}
                         </div>

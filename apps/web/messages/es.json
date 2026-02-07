@@ -456,7 +456,11 @@
     "viewFullDetails": "Ver Detalles Completos",
     "reviews": "reseñas",
     "review": "reseña",
-    "save": "Ahorra {percent}%"
+    "save": "Ahorra {percent}%",
+    "new": "Nuevo",
+    "sale": "Oferta",
+    "featured": "Destacado",
+    "bestseller": "Más Vendido"
   },
   "productCard": {
     "addToWishlist": "Añadir a la lista de deseos",
@@ -470,7 +474,12 @@
     "contact": "Contactar",
     "addToBag": "Añadir a la Bolsa",
     "add": "Añadir",
-    "by": "por"
+    "by": "por",
+    "new": "Nuevo",
+    "sale": "Oferta",
+    "featured": "Destacado",
+    "bestseller": "Más Vendido",
+    "limitedEdition": "Edición Limitada"
   },
   "checkout": {
     "checkout": "Pago",
