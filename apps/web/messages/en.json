@@ -2512,5 +2512,27 @@
       "cancelSuccess": "Subscription cancelled successfully",
       "cancelError": "Failed to cancel subscription"
     }
+  },
+  "sellerCreditsSuccess": {
+    "processing": "Processing your purchase...",
+    "errorTitle": "Unable to Load Balance",
+    "goToDashboard": "Go to Credits Dashboard",
+    "title": "Credits Purchased!",
+    "subtitle": "Your listing credits have been added to your account",
+    "newBalance": "New Credit Balance",
+    "creditsAvailable": "credit{count, plural, =1 {} other {s}} available",
+    "lifetimeCredits": "Lifetime Credits",
+    "lifetimeUsed": "Lifetime Used",
+    "whatCanYouDo": "What can you do with credits?",
+    "benefits": {
+      "realEstate": "List high-value items (Real Estate: 10 credits, Vehicles: 5 credits)",
+      "feature": "Feature your listings to get more visibility",
+      "boost": "Boost listings to the top of search results",
+      "renew": "Renew expired listings",
+      "noExpiry": "Credits never expire - use them at your own pace"
+    },
+    "listProduct": "List a Product",
+    "viewHistory": "View Credit History",
+    "emailSent": "A confirmation email has been sent to your registered email address"
   }
 }

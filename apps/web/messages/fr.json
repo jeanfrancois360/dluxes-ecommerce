@@ -2512,5 +2512,27 @@
       "cancelSuccess": "Abonnement annulé avec succès",
       "cancelError": "Échec de l'annulation de l'abonnement"
     }
+  },
+  "sellerCreditsSuccess": {
+    "processing": "Traitement de votre achat...",
+    "errorTitle": "Impossible de Charger le Solde",
+    "goToDashboard": "Aller au Tableau de Bord des Crédits",
+    "title": "Crédits Achetés !",
+    "subtitle": "Vos crédits de mise en vente ont été ajoutés à votre compte",
+    "newBalance": "Nouveau Solde de Crédits",
+    "creditsAvailable": "crédit{count, plural, =1 {} other {s}} disponible{count, plural, =1 {} other {s}}",
+    "lifetimeCredits": "Crédits à Vie",
+    "lifetimeUsed": "Utilisés à Vie",
+    "whatCanYouDo": "Que pouvez-vous faire avec des crédits ?",
+    "benefits": {
+      "realEstate": "Lister des articles de grande valeur (Immobilier : 10 crédits, Véhicules : 5 crédits)",
+      "feature": "Mettre en vedette vos annonces pour plus de visibilité",
+      "boost": "Booster les annonces en haut des résultats de recherche",
+      "renew": "Renouveler les annonces expirées",
+      "noExpiry": "Les crédits n'expirent jamais - utilisez-les à votre rythme"
+    },
+    "listProduct": "Lister un Produit",
+    "viewHistory": "Voir l'Historique des Crédits",
+    "emailSent": "Un email de confirmation a été envoyé à votre adresse email enregistrée"
   }
 }
