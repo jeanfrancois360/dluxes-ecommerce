@@ -4,8 +4,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { useActiveAdvertisements } from '@/hooks/use-advertisements';
-import { advertisementsApi, type AdvertisementDetail as Advertisement, type AdPlacement } from '@/lib/api';
+import {
+  advertisementsApi,
+  type AdvertisementDetail as Advertisement,
+  type AdPlacement,
+} from '@/lib/api';
 import { ChevronLeft, ChevronRight, X, ExternalLink, Sparkles, Megaphone } from 'lucide-react';
 
 // ============================================================================
@@ -54,13 +59,23 @@ interface AdImageProps {
   priority?: boolean;
 }
 
-function AdImage({ src, mobileSrc, alt, fill = true, className = '', priority = false }: AdImageProps) {
+function AdImage({
+  src,
+  mobileSrc,
+  alt,
+  fill = true,
+  className = '',
+  priority = false,
+}: AdImageProps) {
+  const t = useTranslations('ads');
   const [imgError, setImgError] = useState(false);
 
   if (imgError) {
     return (
-      <div className={`bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center ${className}`}>
-        <span className="text-gray-400 text-sm">Ad</span>
+      <div
+        className={`bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center ${className}`}
+      >
+        <span className="text-gray-400 text-sm">{t('adSpace')}</span>
       </div>
     );
   }
@@ -94,6 +109,7 @@ function AdImage({ src, mobileSrc, alt, fill = true, className = '', priority = 
 }
 
 function SponsoredBadge({ variant = 'light' }: { variant?: 'light' | 'dark' | 'glass' }) {
+  const t = useTranslations('ads');
   const styles = {
     light: 'bg-white/90 text-gray-600 border border-gray-200',
     dark: 'bg-gray-900 text-white border border-gray-700',
@@ -101,8 +117,10 @@ function SponsoredBadge({ variant = 'light' }: { variant?: 'light' | 'dark' | 'g
   };
 
   return (
-    <span className={`px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full ${styles[variant]}`}>
-      Sponsored
+    <span
+      className={`px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase rounded-full ${styles[variant]}`}
+    >
+      {t('sponsored')}
     </span>
   );
 }
@@ -117,60 +135,6 @@ const placeholderStyles = {
   background: 'bg-gradient-to-br from-slate-50/80 via-gray-50/50 to-slate-100/80',
   border: 'border border-slate-200/40',
   shadow: 'shadow-sm',
-};
-
-// Placement information
-const placementInfo: Record<AdPlacement, { title: string; description: string; icon: string }> = {
-  HOMEPAGE_HERO: {
-    title: 'Premium Hero Space',
-    description: 'Maximum visibility for your brand',
-    icon: 'hero'
-  },
-  HOMEPAGE_FEATURED: {
-    title: 'Featured Banner',
-    description: 'Highlight your best products',
-    icon: 'featured'
-  },
-  HOMEPAGE_SIDEBAR: {
-    title: 'Homepage Sidebar',
-    description: 'Persistent brand presence',
-    icon: 'sidebar'
-  },
-  PRODUCTS_BANNER: {
-    title: 'Products Banner',
-    description: 'Reach active shoppers',
-    icon: 'banner'
-  },
-  PRODUCTS_INLINE: {
-    title: 'Inline Promotion',
-    description: 'Native product feed placement',
-    icon: 'inline'
-  },
-  PRODUCTS_SIDEBAR: {
-    title: 'Sidebar Ad',
-    description: 'Capture browsing attention',
-    icon: 'sidebar'
-  },
-  CATEGORY_BANNER: {
-    title: 'Category Banner',
-    description: 'Target specific categories',
-    icon: 'category'
-  },
-  PRODUCT_DETAIL_SIDEBAR: {
-    title: 'Product Page Ad',
-    description: 'High-intent shoppers',
-    icon: 'product'
-  },
-  CHECKOUT_UPSELL: {
-    title: 'Checkout Upsell',
-    description: 'Last-minute conversions',
-    icon: 'checkout'
-  },
-  SEARCH_RESULTS: {
-    title: 'Sponsored Result',
-    description: 'Top search placement',
-    icon: 'search'
-  },
 };
 
 // ============================================================================
@@ -188,13 +152,29 @@ function AdPlaceholder({
   placement,
   className = '',
   aspectRatio = 'aspect-[3/1] sm:aspect-[4/1] md:aspect-[5/1]',
-  showCTA = true
+  showCTA = true,
 }: AdPlaceholderProps) {
-  const info = placementInfo[placement] || {
-    title: 'Ad Space',
-    description: 'Promote your products',
-    icon: 'default'
+  const t = useTranslations('ads');
+
+  const getPlacementKey = (placement: AdPlacement): string => {
+    const keyMap: Record<AdPlacement, string> = {
+      HOMEPAGE_HERO: 'homepageHero',
+      HOMEPAGE_FEATURED: 'homepageFeatured',
+      HOMEPAGE_SIDEBAR: 'homepageSidebar',
+      PRODUCTS_BANNER: 'productsBanner',
+      PRODUCTS_INLINE: 'productsInline',
+      PRODUCTS_SIDEBAR: 'productsSidebar',
+      CATEGORY_BANNER: 'categoryBanner',
+      PRODUCT_DETAIL_SIDEBAR: 'productDetailSidebar',
+      CHECKOUT_UPSELL: 'checkoutUpsell',
+      SEARCH_RESULTS: 'searchResults',
+    };
+    return keyMap[placement] || 'productsBanner';
   };
+
+  const placementKey = getPlacementKey(placement);
+  const title = t(`placements.${placementKey}.title` as any);
+  const description = t(`placements.${placementKey}.description` as any);
 
   return (
     <motion.div
@@ -204,7 +184,9 @@ function AdPlaceholder({
       className={`${placeholderStyles.base} ${aspectRatio} ${className}`}
     >
       {/* Background */}
-      <div className={`absolute inset-0 ${placeholderStyles.background} ${placeholderStyles.border}`}>
+      <div
+        className={`absolute inset-0 ${placeholderStyles.background} ${placeholderStyles.border}`}
+      >
         {/* Subtle gradient orbs */}
         <div className="absolute -top-20 -right-20 w-40 h-40 bg-slate-200/30 rounded-full blur-3xl" />
         <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-gray-200/30 rounded-full blur-3xl" />
@@ -219,11 +201,9 @@ function AdPlaceholder({
 
         {/* Text */}
         <h4 className="text-sm md:text-base font-semibold text-slate-600 mb-1 text-center">
-          {info.title}
+          {title}
         </h4>
-        <p className="text-xs md:text-sm text-slate-400 mb-4 text-center max-w-xs">
-          {info.description}
-        </p>
+        <p className="text-xs md:text-sm text-slate-400 mb-4 text-center max-w-xs">{description}</p>
 
         {/* CTA */}
         {showCTA && (
@@ -232,7 +212,7 @@ function AdPlaceholder({
             className="inline-flex items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 bg-slate-800 text-white text-xs md:text-sm font-medium rounded-full hover:bg-slate-700 transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Advertise Here
+            {t('advertiseHere')}
           </Link>
         )}
       </div>
@@ -240,7 +220,7 @@ function AdPlaceholder({
       {/* Badge */}
       <div className="absolute top-3 right-3 md:top-4 md:right-4">
         <span className="px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-medium text-slate-400 uppercase tracking-wider bg-white/70 backdrop-blur-sm rounded-full border border-slate-200/50">
-          Ad Space
+          {t('adSpace')}
         </span>
       </div>
     </motion.div>
@@ -252,6 +232,8 @@ function AdPlaceholder({
 // ============================================================================
 
 function HeroPlaceholder({ className = '' }: { className?: string }) {
+  const t = useTranslations('ads');
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -286,7 +268,7 @@ function HeroPlaceholder({ className = '' }: { className?: string }) {
           transition={{ delay: 0.3, duration: 0.5 }}
           className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 md:mb-4 tracking-tight"
         >
-          Premium Ad Space
+          {t('hero.title')}
         </motion.h2>
         <motion.p
           initial={{ y: 20, opacity: 0 }}
@@ -294,7 +276,7 @@ function HeroPlaceholder({ className = '' }: { className?: string }) {
           transition={{ delay: 0.4, duration: 0.5 }}
           className="text-base md:text-lg text-white/40 mb-8 md:mb-10 max-w-md"
         >
-          Showcase your brand in our most visible placement
+          {t('hero.description')}
         </motion.p>
 
         {/* Stats */}
@@ -306,17 +288,17 @@ function HeroPlaceholder({ className = '' }: { className?: string }) {
         >
           <div className="text-center">
             <div className="text-2xl md:text-3xl font-bold text-white">50K+</div>
-            <div className="text-xs md:text-sm text-white/30 mt-1">Daily Views</div>
+            <div className="text-xs md:text-sm text-white/30 mt-1">{t('hero.dailyViews')}</div>
           </div>
           <div className="w-px h-10 md:h-12 bg-white/10" />
           <div className="text-center">
             <div className="text-2xl md:text-3xl font-bold text-white">4.5%</div>
-            <div className="text-xs md:text-sm text-white/30 mt-1">Avg CTR</div>
+            <div className="text-xs md:text-sm text-white/30 mt-1">{t('hero.avgCTR')}</div>
           </div>
           <div className="w-px h-10 md:h-12 bg-white/10" />
           <div className="text-center">
             <div className="text-2xl md:text-3xl font-bold text-white">#1</div>
-            <div className="text-xs md:text-sm text-white/30 mt-1">Visibility</div>
+            <div className="text-xs md:text-sm text-white/30 mt-1">{t('hero.visibility')}</div>
           </div>
         </motion.div>
 
@@ -331,7 +313,7 @@ function HeroPlaceholder({ className = '' }: { className?: string }) {
             className="inline-flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3 md:py-4 bg-white text-slate-900 text-sm md:text-base font-semibold rounded-full hover:bg-slate-100 transition-all duration-300 shadow-lg shadow-black/20 hover:-translate-y-0.5"
           >
             <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
-            Start Advertising
+            {t('startAdvertising')}
           </Link>
         </motion.div>
       </div>
@@ -339,7 +321,7 @@ function HeroPlaceholder({ className = '' }: { className?: string }) {
       {/* Badge */}
       <div className="absolute top-4 right-4 md:top-6 md:right-6">
         <span className="px-2.5 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-medium text-white/30 uppercase tracking-wider bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
-          Premium Placement
+          {t('premiumPlacement')}
         </span>
       </div>
     </motion.div>
@@ -351,6 +333,8 @@ function HeroPlaceholder({ className = '' }: { className?: string }) {
 // ============================================================================
 
 function SidebarPlaceholder({ className = '' }: { className?: string }) {
+  const t = useTranslations('ads');
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 10 }}
@@ -365,13 +349,13 @@ function SidebarPlaceholder({ className = '' }: { className?: string }) {
         <div className="w-10 h-10 mb-3 rounded-xl bg-slate-100 flex items-center justify-center">
           <Megaphone className="w-4 h-4 text-slate-400" />
         </div>
-        <h4 className="font-medium text-slate-600 text-sm mb-1">Sidebar Ad</h4>
-        <p className="text-xs text-slate-400 mb-3">Reach browsing shoppers</p>
+        <h4 className="font-medium text-slate-600 text-sm mb-1">{t('sidebar.title')}</h4>
+        <p className="text-xs text-slate-400 mb-3">{t('sidebar.description')}</p>
         <Link
           href="/seller/advertisements"
           className="text-xs font-medium text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors"
         >
-          Advertise <ChevronRight className="w-3 h-3" />
+          {t('advertise')} <ChevronRight className="w-3 h-3" />
         </Link>
       </div>
     </motion.div>
@@ -383,6 +367,8 @@ function SidebarPlaceholder({ className = '' }: { className?: string }) {
 // ============================================================================
 
 function CheckoutPlaceholder({ className = '' }: { className?: string }) {
+  const t = useTranslations('ads');
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -399,16 +385,14 @@ function CheckoutPlaceholder({ className = '' }: { className?: string }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide mb-0.5">
-            Upsell Opportunity
+            {t('checkout.title')}
           </p>
-          <h4 className="font-medium text-slate-700 text-sm">
-            Promote products at checkout
-          </h4>
+          <h4 className="font-medium text-slate-700 text-sm">{t('checkout.description')}</h4>
           <Link
             href="/seller/advertisements"
             className="text-xs font-medium text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1 transition-colors"
           >
-            Learn more <ChevronRight className="w-3 h-3" />
+            {t('checkout.learnMore')} <ChevronRight className="w-3 h-3" />
           </Link>
         </div>
       </div>
@@ -421,6 +405,8 @@ function CheckoutPlaceholder({ className = '' }: { className?: string }) {
 // ============================================================================
 
 function SearchPlaceholder({ className = '' }: { className?: string }) {
+  const t = useTranslations('ads');
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -437,19 +423,15 @@ function SearchPlaceholder({ className = '' }: { className?: string }) {
         </div>
         <div className="flex-1 min-w-0">
           <span className="inline-block px-2 py-0.5 text-[9px] font-semibold text-blue-600 uppercase tracking-wide bg-blue-100/80 rounded-full mb-2">
-            Sponsored
+            {t('sponsored')}
           </span>
-          <h4 className="font-semibold text-slate-700 mb-1">
-            Sponsored Result Space
-          </h4>
-          <p className="text-sm text-slate-500 mb-2">
-            Get top placement in search results
-          </p>
+          <h4 className="font-semibold text-slate-700 mb-1">{t('search.title')}</h4>
+          <p className="text-sm text-slate-500 mb-2">{t('search.description')}</p>
           <Link
             href="/seller/advertisements"
             className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
           >
-            Advertise Here <ChevronRight className="w-4 h-4" />
+            {t('advertiseHere')} <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
       </div>
@@ -462,6 +444,8 @@ function SearchPlaceholder({ className = '' }: { className?: string }) {
 // ============================================================================
 
 function ProductDetailPlaceholder({ className = '' }: { className?: string }) {
+  const t = useTranslations('ads');
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -475,22 +459,24 @@ function ProductDetailPlaceholder({ className = '' }: { className?: string }) {
       <div className="relative">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="w-4 h-4 text-slate-400" />
-          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Recommended</span>
+          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+            {t('recommended')}
+          </span>
         </div>
 
         <div className="aspect-square rounded-xl bg-slate-100 flex items-center justify-center mb-4">
           <Megaphone className="w-8 h-8 text-slate-300" />
         </div>
 
-        <h4 className="font-medium text-slate-600 text-sm mb-1">Product Page Ad</h4>
-        <p className="text-xs text-slate-400 mb-4">Reach high-intent shoppers</p>
+        <h4 className="font-medium text-slate-600 text-sm mb-1">{t('productDetail.title')}</h4>
+        <p className="text-xs text-slate-400 mb-4">{t('productDetail.description')}</p>
 
         <Link
           href="/seller/advertisements"
           className="inline-flex items-center gap-2 w-full justify-center px-4 py-2.5 bg-slate-800 text-white text-xs font-medium rounded-full hover:bg-slate-700 transition-colors"
         >
           <Sparkles className="w-3.5 h-3.5" />
-          Advertise
+          {t('advertise')}
         </Link>
       </div>
     </motion.div>
@@ -512,8 +498,9 @@ export function HeroBannerAd({
   className = '',
   autoRotate = true,
   rotationInterval = 6000,
-  fallback
+  fallback,
 }: HeroBannerAdProps) {
+  const t = useTranslations('ads');
   const { advertisements, isLoading } = useActiveAdvertisements('HOMEPAGE_HERO');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -548,7 +535,9 @@ export function HeroBannerAd({
 
   if (isLoading) {
     return (
-      <div className={`relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] bg-gray-100 animate-pulse ${className}`} />
+      <div
+        className={`relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] bg-gray-100 animate-pulse ${className}`}
+      />
     );
   }
 
@@ -609,7 +598,7 @@ export function HeroBannerAd({
                   </p>
                 )}
                 <span className="inline-flex items-center gap-2 px-8 py-4 bg-white text-black font-semibold rounded-full hover:bg-gray-100 transition-all duration-300 hover:gap-3 group-hover:shadow-2xl">
-                  {currentAd.linkText || 'Discover Now'}
+                  {currentAd.linkText || t('defaultLinkText.discoverNow')}
                   <ExternalLink className="w-4 h-4" />
                 </span>
               </motion.div>
@@ -625,14 +614,14 @@ export function HeroBannerAd({
           <button
             onClick={() => goTo((currentIndex - 1 + ads.length) % ads.length)}
             className="absolute left-3 sm:left-4 md:left-6 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 md:p-3 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20 group"
-            aria-label="Previous"
+            aria-label={t('previous')}
           >
             <ChevronLeft className="w-5 h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white group-hover:-translate-x-0.5 transition-transform" />
           </button>
           <button
             onClick={() => goTo((currentIndex + 1) % ads.length)}
             className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 md:p-3 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20 group"
-            aria-label="Next"
+            aria-label={t('next')}
           >
             <ChevronRight className="w-5 h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white group-hover:translate-x-0.5 transition-transform" />
           </button>
@@ -645,7 +634,7 @@ export function HeroBannerAd({
                 onClick={() => goTo(index)}
                 className="group relative h-1 rounded-full overflow-hidden transition-all duration-300"
                 style={{ width: index === currentIndex ? '40px' : '16px' }}
-                aria-label={`Go to slide ${index + 1}`}
+                aria-label={t('goToSlide', { number: index + 1 })}
               >
                 <div className="absolute inset-0 bg-white/30" />
                 {index === currentIndex && (
@@ -681,6 +670,7 @@ interface InlineAdProps {
 }
 
 export function InlineAd({ placement, className = '' }: InlineAdProps) {
+  const t = useTranslations('ads');
   const { advertisements, isLoading } = useActiveAdvertisements(placement);
   const ad = advertisements?.[0];
 
@@ -693,7 +683,13 @@ export function InlineAd({ placement, className = '' }: InlineAdProps) {
   }
 
   if (!ad) {
-    return <AdPlaceholder placement={placement} className={className} aspectRatio="aspect-[3/1] sm:aspect-[4/1] md:aspect-[5/1] lg:aspect-[6/1]" />;
+    return (
+      <AdPlaceholder
+        placement={placement}
+        className={className}
+        aspectRatio="aspect-[3/1] sm:aspect-[4/1] md:aspect-[5/1] lg:aspect-[6/1]"
+      />
+    );
   }
 
   return (
@@ -724,14 +720,16 @@ export function InlineAd({ placement, className = '' }: InlineAdProps) {
         {/* Content */}
         <div className="absolute inset-0 flex items-center p-4 sm:p-6 md:p-8 lg:p-10">
           <div className="text-white max-w-lg">
-            <h3 className="text-base sm:text-lg md:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 line-clamp-2">{ad.title}</h3>
+            <h3 className="text-base sm:text-lg md:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 line-clamp-2">
+              {ad.title}
+            </h3>
             {ad.description && (
               <p className="text-xs sm:text-sm md:text-base text-white/80 mb-3 sm:mb-4 hidden sm:block line-clamp-2">
                 {ad.description}
               </p>
             )}
             <span className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 bg-white text-black text-xs sm:text-sm font-semibold rounded-full hover:bg-gray-100 transition-colors">
-              {ad.linkText || 'Shop Now'}
+              {ad.linkText || t('defaultLinkText.shopNow')}
               <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
             </span>
           </div>
@@ -759,13 +757,14 @@ interface SidebarAdProps {
 export function SidebarAd({
   placement = 'PRODUCTS_SIDEBAR',
   className = '',
-  maxAds = 2
+  maxAds = 2,
 }: SidebarAdProps) {
+  const t = useTranslations('ads');
   const { advertisements, isLoading } = useActiveAdvertisements(placement);
   const ads = (advertisements || []).slice(0, maxAds);
 
   useEffect(() => {
-    ads.forEach(ad => trackImpression(ad.id));
+    ads.forEach((ad) => trackImpression(ad.id));
   }, [ads]);
 
   if (isLoading) {
@@ -817,7 +816,7 @@ export function SidebarAd({
                 <p className="text-sm text-gray-500 mt-1.5 line-clamp-2">{ad.description}</p>
               )}
               <div className="flex items-center gap-1 mt-3 text-sm font-medium text-blue-600">
-                <span>{ad.linkText || 'Learn More'}</span>
+                <span>{ad.linkText || t('defaultLinkText.learnMore')}</span>
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
@@ -843,10 +842,11 @@ interface ProductDetailAdProps {
 }
 
 export function ProductDetailAd({ categoryId, className = '' }: ProductDetailAdProps) {
+  const t = useTranslations('ads');
   const { advertisements, isLoading } = useActiveAdvertisements('PRODUCT_DETAIL_SIDEBAR');
 
   const filteredAds = categoryId
-    ? advertisements?.filter(ad => !ad.categoryId || ad.categoryId === categoryId)
+    ? advertisements?.filter((ad) => !ad.categoryId || ad.categoryId === categoryId)
     : advertisements;
 
   const ad = filteredAds?.[0];
@@ -879,7 +879,9 @@ export function ProductDetailAd({ categoryId, className = '' }: ProductDetailAdP
       >
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="w-4 h-4 text-amber-500" />
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Recommended</span>
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            {t('recommended')}
+          </span>
         </div>
 
         <div className="relative aspect-square rounded-lg overflow-hidden mb-4 shadow-md">
@@ -900,7 +902,7 @@ export function ProductDetailAd({ categoryId, className = '' }: ProductDetailAdP
 
         <div className="mt-4">
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white text-sm font-medium rounded-full group-hover:bg-gray-800 transition-colors">
-            {ad.linkText || 'View Offer'}
+            {ad.linkText || t('defaultLinkText.viewOffer')}
             <ExternalLink className="w-3.5 h-3.5" />
           </span>
         </div>
@@ -919,6 +921,7 @@ interface CheckoutUpsellAdProps {
 }
 
 export function CheckoutUpsellAd({ className = '', onDismiss }: CheckoutUpsellAdProps) {
+  const t = useTranslations('ads');
   const { advertisements, isLoading } = useActiveAdvertisements('CHECKOUT_UPSELL');
   const [dismissed, setDismissed] = useState(false);
   const ad = advertisements?.[0];
@@ -949,14 +952,16 @@ export function CheckoutUpsellAd({ className = '', onDismiss }: CheckoutUpsellAd
         <button
           onClick={handleDismiss}
           className="absolute top-3 right-3 p-1.5 hover:bg-amber-100 rounded-full transition-colors"
-          aria-label="Dismiss"
+          aria-label={t('dismiss')}
         >
           <X className="w-4 h-4 text-amber-600" />
         </button>
 
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="w-4 h-4 text-amber-500" />
-          <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Complete Your Look</span>
+          <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+            {t('checkout.completeYourLook')}
+          </span>
         </div>
 
         <Link
@@ -984,7 +989,7 @@ export function CheckoutUpsellAd({ className = '', onDismiss }: CheckoutUpsellAd
               <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">{ad.description}</p>
             )}
             <span className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-amber-700 group-hover:gap-2 transition-all">
-              {ad.linkText || 'Add to Order'}
+              {ad.linkText || t('checkout.addToOrder')}
               <ChevronRight className="w-4 h-4" />
             </span>
           </div>
@@ -1003,6 +1008,7 @@ interface SearchResultsAdProps {
 }
 
 export function SearchResultsAd({ className = '' }: SearchResultsAdProps) {
+  const t = useTranslations('ads');
   const { advertisements, isLoading } = useActiveAdvertisements('SEARCH_RESULTS');
   const ad = advertisements?.[0];
 
@@ -1046,7 +1052,7 @@ export function SearchResultsAd({ className = '' }: SearchResultsAdProps) {
         <div className="flex-1 min-w-0 py-1">
           <div className="flex items-center gap-2 mb-2">
             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide rounded-full">
-              Sponsored
+              {t('sponsored')}
             </span>
           </div>
           <h4 className="font-semibold text-gray-900 text-lg line-clamp-1 group-hover:text-blue-600 transition-colors">
@@ -1056,7 +1062,7 @@ export function SearchResultsAd({ className = '' }: SearchResultsAdProps) {
             <p className="text-sm text-gray-600 mt-1 line-clamp-2">{ad.description}</p>
           )}
           <div className="flex items-center gap-1 mt-3 text-sm font-medium text-blue-600">
-            <span>{ad.linkText || 'View Details'}</span>
+            <span>{ad.linkText || t('defaultLinkText.viewDetails')}</span>
             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </div>
         </div>
@@ -1075,9 +1081,10 @@ interface CategoryBannerAdProps {
 }
 
 export function CategoryBannerAd({ categoryId, className = '' }: CategoryBannerAdProps) {
+  const t = useTranslations('ads');
   const { advertisements, isLoading } = useActiveAdvertisements('CATEGORY_BANNER');
 
-  const filteredAds = advertisements?.filter(ad => {
+  const filteredAds = advertisements?.filter((ad) => {
     if (!ad.categoryId) return true;
     return ad.categoryId === categoryId;
   });
@@ -1093,7 +1100,13 @@ export function CategoryBannerAd({ categoryId, className = '' }: CategoryBannerA
   }
 
   if (!ad) {
-    return <AdPlaceholder placement="CATEGORY_BANNER" className={className} aspectRatio="aspect-[5/1] md:aspect-[6/1]" />;
+    return (
+      <AdPlaceholder
+        placement="CATEGORY_BANNER"
+        className={className}
+        aspectRatio="aspect-[5/1] md:aspect-[6/1]"
+      />
+    );
   }
 
   return (
@@ -1123,7 +1136,7 @@ export function CategoryBannerAd({ categoryId, className = '' }: CategoryBannerA
           <div className="text-white">
             <h3 className="text-lg md:text-2xl font-bold">{ad.title}</h3>
             <span className="inline-flex items-center gap-1 mt-2 text-sm font-medium opacity-90 group-hover:opacity-100 group-hover:gap-2 transition-all">
-              {ad.linkText || 'Shop Now'}
+              {ad.linkText || t('defaultLinkText.shopNow')}
               <ChevronRight className="w-4 h-4" />
             </span>
           </div>
@@ -1146,6 +1159,7 @@ interface FeaturedProductAdProps {
 }
 
 export function FeaturedProductAd({ className = '' }: FeaturedProductAdProps) {
+  const t = useTranslations('ads');
   const { advertisements, isLoading } = useActiveAdvertisements('HOMEPAGE_FEATURED');
   const ad = advertisements?.[0];
 
@@ -1156,7 +1170,13 @@ export function FeaturedProductAd({ className = '' }: FeaturedProductAdProps) {
   if (isLoading) return null;
 
   if (!ad) {
-    return <AdPlaceholder placement="HOMEPAGE_FEATURED" className={className} aspectRatio="aspect-[3/4]" />;
+    return (
+      <AdPlaceholder
+        placement="HOMEPAGE_FEATURED"
+        className={className}
+        aspectRatio="aspect-[3/4]"
+      />
+    );
   }
 
   return (
@@ -1186,14 +1206,16 @@ export function FeaturedProductAd({ className = '' }: FeaturedProductAdProps) {
           <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-4 h-4 text-yellow-300" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-yellow-300">Featured</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-yellow-300">
+                {t('featured')}
+              </span>
             </div>
             <h4 className="font-bold text-lg line-clamp-2">{ad.title}</h4>
             {ad.description && (
               <p className="text-sm text-white/80 mt-1 line-clamp-2">{ad.description}</p>
             )}
             <span className="inline-flex items-center gap-1 mt-3 text-sm font-medium group-hover:gap-2 transition-all">
-              {ad.linkText || 'Explore'}
+              {ad.linkText || t('defaultLinkText.explore')}
               <ChevronRight className="w-4 h-4" />
             </span>
           </div>
