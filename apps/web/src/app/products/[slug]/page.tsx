@@ -92,6 +92,7 @@ export default function ProductDetailPage() {
   const t = useTranslations('products');
   const tc = useTranslations('common');
   const tModal = useTranslations('quickViewModal');
+  const tCard = useTranslations('productCard');
 
   // Fetch product data
   const { product, isLoading, error } = useProduct(slug, true);
@@ -129,6 +130,17 @@ export default function ProductDetailPage() {
       })),
     [relatedData, checkIsInWishlist]
   );
+
+  // Helper function to translate badges
+  const translateBadge = (badge: string): string => {
+    const badgeLower = badge.toLowerCase().replace(/\s+/g, '');
+    if (badgeLower === 'new') return tCard('new');
+    if (badgeLower === 'sale') return tCard('sale');
+    if (badgeLower === 'featured') return tCard('featured');
+    if (badgeLower === 'bestseller') return tCard('bestseller');
+    if (badgeLower === 'limitededition') return tCard('limitedEdition');
+    return badge; // Return original if no translation found
+  };
 
   // Get available colors and sizes from variants
   const availableColors = useMemo(() => {
@@ -458,7 +470,7 @@ export default function ProductDetailPage() {
                         key={badge}
                         className="px-3 py-1 bg-gold text-black text-sm font-semibold rounded-full"
                       >
-                        {badge}
+                        {translateBadge(badge)}
                       </span>
                     ))}
                   </div>
