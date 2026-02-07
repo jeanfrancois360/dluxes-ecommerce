@@ -50,10 +50,18 @@ export function useReviews(productId: string, options: UseReviewsOptions = {}) {
         throw new Error('Failed to fetch reviews');
       }
 
-      const data: ReviewListResponse = await response.json();
-      setReviews(data.reviews);
-      setTotal(data.total);
-      setSummary(data.summary);
+      const result = await response.json();
+      // Backend wraps response in { success, data } format
+      const data: ReviewListResponse = result.data || result;
+      setReviews(data.reviews || []);
+      setTotal(data.total || 0);
+      setSummary(
+        data.summary || {
+          averageRating: 0,
+          totalReviews: 0,
+          ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+        }
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch reviews');
     } finally {
