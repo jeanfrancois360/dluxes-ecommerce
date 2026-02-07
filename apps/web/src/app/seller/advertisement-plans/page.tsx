@@ -69,7 +69,7 @@ export default function SellerAdvertisementPlansPage() {
   const getStatusBadge = (status: string) => {
     const statusColors: Record<string, string> = {
       ACTIVE: 'bg-green-100 text-green-700',
-      TRIAL: 'bg-blue-100 text-blue-700',
+      TRIAL: 'bg-[#CBB57B]/10 text-[#A89968]',
       PAST_DUE: 'bg-red-100 text-red-700',
       CANCELLED: 'bg-gray-100 text-gray-700',
       EXPIRED: 'bg-gray-100 text-gray-600',
@@ -176,8 +176,8 @@ export default function SellerAdvertisementPlansPage() {
                 </div>
 
                 {subscription.status === 'TRIAL' && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-sm text-blue-700">
+                  <div className="bg-[#CBB57B]/10 border border-[#CBB57B]/30 rounded-lg p-4">
+                    <p className="text-sm text-[#A89968]">
                       {t('currentSubscription.trialMessage', {
                         date: new Date(subscription.currentPeriodEnd).toLocaleDateString(),
                       })}
@@ -226,7 +226,7 @@ export default function SellerAdvertisementPlansPage() {
                 onClick={() => setBillingPeriod('MONTHLY')}
                 className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingPeriod === 'MONTHLY'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#CBB57B] text-white'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
@@ -236,7 +236,7 @@ export default function SellerAdvertisementPlansPage() {
                 onClick={() => setBillingPeriod('YEARLY')}
                 className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingPeriod === 'YEARLY'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#CBB57B] text-white'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
@@ -422,8 +422,8 @@ export default function SellerAdvertisementPlansPage() {
                       disabled={subscribing === plan.slug}
                       className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
                         plan.isFeatured
-                          ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          ? 'bg-[#CBB57B] hover:bg-[#A89968] text-white'
+                          : 'bg-black hover:bg-neutral-900 text-[#CBB57B] border border-[#CBB57B]'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {subscribing === plan.slug
