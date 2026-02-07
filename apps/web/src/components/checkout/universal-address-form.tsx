@@ -382,7 +382,7 @@ export function UniversalAddressForm({
           type="text"
           value={formData.city}
           onChange={handleChange}
-          placeholder="Kigali"
+          placeholder="Paris"
           className={errors.city ? 'border-red-500' : ''}
           disabled={isSubmitting}
         />
