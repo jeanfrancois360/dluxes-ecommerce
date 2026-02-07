@@ -62,7 +62,7 @@ const navigationGroups: NavGroup[] = [
     title: 'Marketing & Growth',
     items: [
       { name: 'Advertisements', href: '/seller/advertisements', icon: Megaphone },
-      { name: 'Ad Plans', href: '/seller/advertisements/plans', icon: Receipt },
+      { name: 'Ad Plans', href: '/seller/advertisement-plans', icon: Receipt },
     ],
   },
   {
