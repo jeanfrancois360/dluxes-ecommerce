@@ -357,6 +357,7 @@
     "submitInquiry": "Soumettez une demande pour obtenir des informations sur les prix",
     "save": "Économisez {percent}%",
     "sku": "Réf : {sku}",
+    "skuLabel": "Réf",
     "visitStore": "Visiter la Boutique",
     "color": "Couleur",
     "size": "Taille",

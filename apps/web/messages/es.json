@@ -357,6 +357,7 @@
     "submitInquiry": "Envía una consulta para obtener información de precios",
     "save": "Ahorra {percent}%",
     "sku": "SKU: {sku}",
+    "skuLabel": "SKU",
     "visitStore": "Visitar Tienda",
     "color": "Color",
     "size": "Talla",
