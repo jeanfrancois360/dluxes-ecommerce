@@ -20,9 +20,10 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
 
   const MAX_TEXT_LENGTH = 300;
   const shouldTruncate = review.comment.length > MAX_TEXT_LENGTH;
-  const displayText = shouldTruncate && !showFullText
-    ? review.comment.slice(0, MAX_TEXT_LENGTH) + '...'
-    : review.comment;
+  const displayText =
+    shouldTruncate && !showFullText
+      ? review.comment.slice(0, MAX_TEXT_LENGTH) + '...'
+      : review.comment;
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }).map((_, index) => (
@@ -38,6 +39,7 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
   };
 
   const getInitials = (name: string) => {
+    if (!name) return 'A';
     return name
       .split(' ')
       .map((n) => n[0])
@@ -45,6 +47,12 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
       .toUpperCase()
       .slice(0, 2);
   };
+
+  // Construct user name from user object
+  const userName = review.user
+    ? `${review.user.firstName || ''} ${review.user.lastName || ''}`.trim() || 'Anonymous'
+    : 'Anonymous';
+  const userAvatar = review.user?.avatar || null;
 
   const relativeDate = formatDistanceToNow(new Date(review.createdAt), { addSuffix: true });
 
@@ -59,15 +67,15 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
         <div className="flex items-start gap-4 mb-4">
           {/* Avatar */}
           <div className="flex-shrink-0">
-            {review.userAvatar ? (
+            {userAvatar ? (
               <img
-                src={review.userAvatar}
-                alt={review.userName}
+                src={userAvatar}
+                alt={userName}
                 className="w-12 h-12 rounded-full object-cover"
               />
             ) : (
               <div className="w-12 h-12 rounded-full bg-[#CBB57B]/20 text-[#CBB57B] flex items-center justify-center font-semibold text-sm">
-                {getInitials(review.userName)}
+                {getInitials(userName)}
               </div>
             )}
           </div>
@@ -75,8 +83,8 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
           {/* User Info & Rating */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-semibold text-black">{review.userName}</h4>
-              {review.isVerifiedPurchase && (
+              <h4 className="font-semibold text-black">{userName}</h4>
+              {review.isVerified && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path
@@ -113,14 +121,10 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
         </div>
 
         {/* Title */}
-        {review.title && (
-          <h5 className="font-bold text-black mb-2">{review.title}</h5>
-        )}
+        {review.title && <h5 className="font-bold text-black mb-2">{review.title}</h5>}
 
         {/* Comment */}
-        <p className="text-neutral-700 leading-relaxed mb-4">
-          {displayText}
-        </p>
+        <p className="text-neutral-700 leading-relaxed mb-4">{displayText}</p>
         {shouldTruncate && (
           <button
             onClick={() => setShowFullText(!showFullText)}
@@ -172,7 +176,9 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
               />
             </svg>
             <span className="text-sm font-medium">
-              {review.helpfulCount > 0 ? t('helpfulWithCount', { count: review.helpfulCount }) : t('helpful')}
+              {review.helpfulCount > 0
+                ? t('helpfulWithCount', { count: review.helpfulCount })
+                : t('helpful')}
             </span>
           </button>
         </div>
@@ -200,7 +206,12 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
                 className="absolute -top-12 right-0 p-2 text-white hover:text-neutral-300 transition-colors"
               >
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
               <img
