@@ -29,6 +29,7 @@ import {
   ArrowRight,
   Store,
 } from 'lucide-react';
+import PageHeader from '@/components/seller/page-header';
 
 export default function VacationModePage() {
   const router = useRouter();
@@ -174,62 +175,38 @@ export default function VacationModePage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
-      <div
-        className={`bg-gradient-to-r ${formData.vacationMode ? 'from-amber-600 to-orange-500' : 'from-black to-neutral-800'} text-white transition-colors duration-500`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-2 text-sm text-white/70 mb-6">
-            <Link href="/dashboard/seller" className="hover:text-white transition-colors">
-              Dashboard
-            </Link>
-            <span>/</span>
-            <span className="text-white">Vacation Mode</span>
-          </nav>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div
-                className={`w-16 h-16 rounded-2xl flex items-center justify-center ${formData.vacationMode ? 'bg-white/20' : 'bg-white/10'}`}
-              >
-                <Palmtree className="w-8 h-8" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold mb-1">Vacation Mode</h1>
-                <p className="text-white/80">
-                  {formData.vacationMode
-                    ? 'Your store is currently on vacation'
-                    : 'Take a break without losing your store'}
-                </p>
-              </div>
-            </div>
-
-            {/* Quick Toggle */}
-            <button
-              onClick={handleToggleVacation}
-              disabled={isSaving}
-              className={`flex items-center gap-3 px-6 py-3 rounded-xl font-semibold transition-all ${
-                formData.vacationMode
-                  ? 'bg-white text-amber-600 hover:bg-white/90'
-                  : 'bg-amber-500 text-white hover:bg-amber-600'
-              }`}
-            >
-              {formData.vacationMode ? (
-                <>
-                  <PowerOff className="w-5 h-5" />
-                  End Vacation
-                </>
-              ) : (
-                <>
-                  <Power className="w-5 h-5" />
-                  Start Vacation
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Vacation Mode"
+        description={
+          formData.vacationMode
+            ? 'Your store is currently on vacation'
+            : 'Take a break without losing your store'
+        }
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Vacation Mode' }]}
+        actions={
+          <button
+            onClick={handleToggleVacation}
+            disabled={isSaving}
+            className={`flex items-center gap-3 px-6 py-3 rounded-lg font-semibold transition-all ${
+              formData.vacationMode
+                ? 'bg-black text-white border border-neutral-700 hover:bg-neutral-900'
+                : 'bg-black text-[#CBB57B] border border-[#CBB57B] hover:bg-neutral-900 hover:text-[#D4C794]'
+            }`}
+          >
+            {formData.vacationMode ? (
+              <>
+                <PowerOff className="w-5 h-5" />
+                End Vacation
+              </>
+            ) : (
+              <>
+                <Power className="w-5 h-5" />
+                Start Vacation
+              </>
+            )}
+          </button>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Alerts */}
@@ -550,7 +527,7 @@ export default function VacationModePage() {
                 <h3 className="text-lg font-bold text-black mb-4">Quick Links</h3>
                 <div className="space-y-3">
                   <Link
-                    href="/dashboard/seller"
+                    href="/seller"
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-neutral-50 transition-colors group"
                   >
                     <span className="text-sm font-medium">Dashboard</span>

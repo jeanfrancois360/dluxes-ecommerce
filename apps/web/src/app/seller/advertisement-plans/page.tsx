@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
+import PageHeader from '@/components/seller/page-header';
 
 export default function SellerAdvertisementPlansPage() {
   const t = useTranslations('sellerAdPlans');
@@ -116,14 +117,14 @@ export default function SellerAdvertisementPlansPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{t('pageTitle')}</h1>
-          <p className="mt-2 text-gray-600">{t('pageSubtitle')}</p>
-        </div>
+    <div className="min-h-screen bg-neutral-50">
+      <PageHeader
+        title={t('pageTitle')}
+        description={t('pageSubtitle')}
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Advertisement Plans' }]}
+      />
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Current Subscription Status */}
         {subscription && (
           <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">

@@ -16,9 +16,10 @@ import {
   DollarSign,
   Package,
   Gift,
-  MinusCircle
+  MinusCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import PageHeader from '@/components/seller/page-header';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -29,7 +30,7 @@ const fetcher = async (url: string) => {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...(token && { Authorization: `Bearer ${token}` }),
     },
   });
   if (!res.ok) throw new Error('Failed to fetch');
@@ -81,18 +82,18 @@ export default function SellingCreditsPage() {
   const [historyPage, setHistoryPage] = useState(1);
 
   // Fetch credit balance
-  const { data: balanceData, error: balanceError, mutate: mutateBalance } = useSWR<{ data: CreditBalance }>(
-    `${API_URL}/seller/credits`,
-    fetcher,
-    {
-      refreshInterval: 30000,
-      shouldRetryOnError: false,
-      onError: (err) => {
-        console.error('Failed to fetch balance:', err);
-        toast.error('Please log in as a seller to view credits');
-      },
-    }
-  );
+  const {
+    data: balanceData,
+    error: balanceError,
+    mutate: mutateBalance,
+  } = useSWR<{ data: CreditBalance }>(`${API_URL}/seller/credits`, fetcher, {
+    refreshInterval: 30000,
+    shouldRetryOnError: false,
+    onError: (err) => {
+      console.error('Failed to fetch balance:', err);
+      toast.error('Please log in as a seller to view credits');
+    },
+  });
 
   // Fetch credit price
   const { data: priceData, error: priceError } = useSWR<{ data: { pricePerMonth: number } }>(
@@ -105,7 +106,11 @@ export default function SellingCreditsPage() {
   );
 
   // Fetch transaction history
-  const { data: historyData, error: historyError, mutate: mutateHistory } = useSWR<{
+  const {
+    data: historyData,
+    error: historyError,
+    mutate: mutateHistory,
+  } = useSWR<{
     data: { transactions: Transaction[]; pagination: any };
   }>(`${API_URL}/seller/credits/history?page=${historyPage}&limit=10`, fetcher, {
     shouldRetryOnError: false,
@@ -161,7 +166,7 @@ export default function SellingCreditsPage() {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ months: selectedMonths }),
       });
@@ -229,23 +234,18 @@ export default function SellingCreditsPage() {
   };
 
   const maxMonths = getMaxMonths(balance.creditsBalance);
-  const progressPercent = balance.creditsBalance > 0 ? (balance.creditsBalance / maxMonths) * 100 : 0;
+  const progressPercent =
+    balance.creditsBalance > 0 ? (balance.creditsBalance / maxMonths) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Platform Subscription</h1>
-          <p className="text-gray-600">
-            Manage your monthly subscription to keep your products active
-          </p>
-        </motion.div>
+    <div className="min-h-screen bg-neutral-50">
+      <PageHeader
+        title="Platform Subscription"
+        description="Manage your monthly subscription to keep your products active"
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Selling Credits' }]}
+      />
 
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Grace Period Alert */}
         <AnimatePresence>
           {balance.isInGracePeriod && graceDays !== null && (
@@ -265,7 +265,9 @@ export default function SellingCreditsPage() {
                   </h3>
                   <p className="text-red-700 mb-3">
                     Your products are currently inactive. You have{' '}
-                    <span className="font-bold">{graceDays} day{graceDays !== 1 ? 's' : ''}</span>{' '}
+                    <span className="font-bold">
+                      {graceDays} day{graceDays !== 1 ? 's' : ''}
+                    </span>{' '}
                     remaining in your grace period before they are permanently suspended.
                   </p>
                   <button
@@ -305,7 +307,9 @@ export default function SellingCreditsPage() {
               >
                 {balance.creditsBalance}
               </motion.div>
-              <div className="text-sm opacity-90">month{balance.creditsBalance !== 1 ? 's' : ''}</div>
+              <div className="text-sm opacity-90">
+                month{balance.creditsBalance !== 1 ? 's' : ''}
+              </div>
             </div>
           </div>
 
@@ -313,7 +317,9 @@ export default function SellingCreditsPage() {
           <div className="mb-6">
             <div className="flex justify-between text-sm mb-2 opacity-90">
               <span>Available Credits</span>
-              <span>{balance.creditsBalance} of {maxMonths} months ({progressPercent.toFixed(0)}%)</span>
+              <span>
+                {balance.creditsBalance} of {maxMonths} months ({progressPercent.toFixed(0)}%)
+              </span>
             </div>
             <div className="h-3 bg-white/20 rounded-full overflow-hidden">
               <motion.div
@@ -333,9 +339,7 @@ export default function SellingCreditsPage() {
                 <span className="text-sm opacity-90">Expires On</span>
               </div>
               <div className="text-lg font-semibold">
-                {balance.creditsExpiresAt
-                  ? formatDate(balance.creditsExpiresAt)
-                  : 'No expiry'}
+                {balance.creditsExpiresAt ? formatDate(balance.creditsExpiresAt) : 'No expiry'}
               </div>
               {expiryDays !== null && expiryDays > 0 && (
                 <div className="text-sm opacity-75">in {expiryDays} days</div>
@@ -348,9 +352,7 @@ export default function SellingCreditsPage() {
                 <span className="text-sm opacity-90">Last Deducted</span>
               </div>
               <div className="text-lg font-semibold">
-                {balance.creditsLastDeducted
-                  ? formatDate(balance.creditsLastDeducted)
-                  : 'Never'}
+                {balance.creditsLastDeducted ? formatDate(balance.creditsLastDeducted) : 'Never'}
               </div>
             </div>
 
@@ -363,8 +365,8 @@ export default function SellingCreditsPage() {
                 {balance.isInGracePeriod
                   ? 'Grace Period'
                   : balance.creditsBalance > 0
-                  ? 'Active'
-                  : 'Depleted'}
+                    ? 'Active'
+                    : 'Depleted'}
               </div>
               {balance.isInGracePeriod && graceDays !== null && (
                 <div className="text-sm opacity-75">{graceDays} days left</div>
@@ -405,9 +407,7 @@ export default function SellingCreditsPage() {
                   `}
                 >
                   {months}
-                  <div className="text-xs mt-1 opacity-75">
-                    {months === 1 ? 'month' : 'months'}
-                  </div>
+                  <div className="text-xs mt-1 opacity-75">{months === 1 ? 'month' : 'months'}</div>
                   {selectedMonths === months && (
                     <motion.div
                       layoutId="selected-month"
@@ -434,9 +434,7 @@ export default function SellingCreditsPage() {
             <div className="border-t border-gray-300 my-3" />
             <div className="flex justify-between items-center text-2xl">
               <span className="font-bold text-gray-900">Total</span>
-              <span className="font-bold text-[#CBB57B]">
-                ${totalPrice.toFixed(2)}
-              </span>
+              <span className="font-bold text-[#CBB57B]">${totalPrice.toFixed(2)}</span>
             </div>
           </div>
 
@@ -490,7 +488,10 @@ export default function SellingCreditsPage() {
               {history.transactions.map((transaction) => {
                 const Icon = TRANSACTION_ICONS[transaction.type];
                 const colorClass = TRANSACTION_COLORS[transaction.type];
-                const isPositive = transaction.type === 'PURCHASE' || transaction.type === 'BONUS' || transaction.type === 'ADJUSTMENT';
+                const isPositive =
+                  transaction.type === 'PURCHASE' ||
+                  transaction.type === 'BONUS' ||
+                  transaction.type === 'ADJUSTMENT';
 
                 return (
                   <motion.div
@@ -510,14 +511,17 @@ export default function SellingCreditsPage() {
                               {transaction.type.charAt(0) + transaction.type.slice(1).toLowerCase()}
                             </h3>
                             <p className="text-sm text-gray-600 mt-1">
-                              {transaction.description || `${transaction.type.toLowerCase()} transaction`}
+                              {transaction.description ||
+                                `${transaction.type.toLowerCase()} transaction`}
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
                               {formatDate(transaction.createdAt)}
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <div className={`text-xl font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                            <div
+                              className={`text-xl font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}
+                            >
                               {isPositive ? '+' : ''}
                               {transaction.amount}
                             </div>
@@ -541,11 +545,12 @@ export default function SellingCreditsPage() {
             {/* Pagination */}
             {history.pagination.totalPages > 1 && (
               <div className="flex justify-center gap-2 mt-6">
-                {Array.from({ length: history.pagination.totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setHistoryPage(page)}
-                    className={`
+                {Array.from({ length: history.pagination.totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => setHistoryPage(page)}
+                      className={`
                       px-4 py-2 rounded-lg font-medium transition-colors
                       ${
                         historyPage === page
@@ -553,10 +558,11 @@ export default function SellingCreditsPage() {
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }
                     `}
-                  >
-                    {page}
-                  </button>
-                ))}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
               </div>
             )}
           </motion.div>

@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { sellerAPI } from '@/lib/api/seller';
 import useSWR from 'swr';
+import PageHeader from '@/components/seller/page-header';
 
 interface Order {
   id: string;
@@ -194,22 +195,11 @@ export default function SellerOrdersPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Orders</h1>
-              <p className="text-neutral-300 mt-1">Manage orders for your products</p>
-            </div>
-            <Link
-              href="/dashboard/seller"
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Orders"
+        description="Manage orders for your products"
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Orders' }]}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}

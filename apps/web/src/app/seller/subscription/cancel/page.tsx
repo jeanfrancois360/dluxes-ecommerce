@@ -12,7 +12,7 @@ export default function SubscriptionCancelPage() {
   };
 
   const handleDashboard = () => {
-    router.push('/dashboard/seller');
+    router.push('/seller');
   };
 
   return (

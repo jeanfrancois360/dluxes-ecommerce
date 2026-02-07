@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { api } from '@/lib/api/client';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import PageHeader from '@/components/seller/page-header';
 import {
   DollarSign,
   Clock,
@@ -234,35 +235,21 @@ export default function SellerEarningsPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-2 text-sm text-neutral-400 mb-6">
-            <Link href="/dashboard/seller" className="hover:text-white transition-colors">
-              Dashboard
-            </Link>
-            <span>/</span>
-            <span className="text-white">Earnings & Payouts</span>
-          </nav>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Earnings & Payouts</h1>
-              <p className="text-neutral-300">
-                Track your earnings, commissions, and payout history
-              </p>
-            </div>
-            <button
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Earnings & Payouts"
+        description="Track your earnings, commissions, and payout history"
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Earnings' }]}
+        actions={
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-black text-[#CBB57B] rounded-lg hover:bg-neutral-900 hover:text-[#D4C794] transition-all border border-[#CBB57B]"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (

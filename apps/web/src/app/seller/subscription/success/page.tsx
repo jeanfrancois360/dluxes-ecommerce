@@ -155,7 +155,7 @@ export default function SubscriptionSuccessPage() {
   };
 
   const handleDashboard = () => {
-    router.push('/dashboard/seller');
+    router.push('/seller');
   };
 
   return (

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
+import PageHeader from '@/components/seller/page-header';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -158,18 +159,14 @@ export default function SellerOnboardingPage() {
   const progressPercentage = (currentStep / STEPS.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">{t('title')}</h1>
-          <p className="text-lg text-gray-600">{t('subtitle')}</p>
-        </motion.div>
+    <div className="min-h-screen bg-neutral-50">
+      <PageHeader
+        title={t('title')}
+        description={t('subtitle')}
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Onboarding' }]}
+      />
 
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Progress Bar */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -431,7 +428,7 @@ export default function SellerOnboardingPage() {
                 View Products
               </button>
               <button
-                onClick={() => router.push('/dashboard/seller')}
+                onClick={() => router.push('/seller')}
                 className="px-6 py-3 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-800 transition-colors"
               >
                 Go to Dashboard

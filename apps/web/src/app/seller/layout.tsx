@@ -1,9 +1,9 @@
 import { Metadata } from 'next';
 import { sellerDashboardMetadata } from '@/lib/metadata';
-import { PageLayout } from '@/components/layout/page-layout';
+import SellerLayout from '@/components/seller/seller-layout';
 
 export const metadata: Metadata = sellerDashboardMetadata;
 
-export default function SellerLayout({ children }: { children: React.ReactNode }) {
-  return <PageLayout>{children}</PageLayout>;
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <SellerLayout>{children}</SellerLayout>;
 }
