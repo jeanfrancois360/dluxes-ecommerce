@@ -18,6 +18,7 @@ import useSWR from 'swr';
 import { PackingSlip } from '@/components/seller/packing-slip';
 import { MarkAsShippedModal } from '@/components/seller/mark-as-shipped-modal';
 import { ShipmentCard } from '@/components/seller/shipment-card';
+import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
   Package,
@@ -57,7 +58,9 @@ function StatusBadge({ status, type }: { status: string; type: 'order' | 'paymen
   const colors = type === 'order' ? orderColors : paymentColors;
 
   return (
-    <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border ${colors[status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+    <span
+      className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border ${colors[status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}
+    >
       {status}
     </span>
   );
@@ -77,6 +80,7 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   const router = useRouter();
   const resolvedParams = use(params);
   const { user, isLoading: authLoading } = useAuth();
+  const t = useTranslations('sellerOrderDetails');
   const [updating, setUpdating] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [shippingCarrier, setShippingCarrier] = useState('');
@@ -85,7 +89,12 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   const packingSlipRef = useRef<HTMLDivElement>(null);
 
   // Fetch order data
-  const { data: order, error, isLoading, mutate } = useSWR<SellerOrderDetail>(
+  const {
+    data: order,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR<SellerOrderDetail>(
     user && user.role === 'SELLER' ? ['seller-order', resolvedParams.id] : null,
     () => sellerAPI.getOrder(resolvedParams.id),
     {
@@ -94,9 +103,8 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   );
 
   // Fetch seller's store to get storeId
-  const { data: storeData } = useSWR(
-    user && user.role === 'SELLER' ? 'seller-store' : null,
-    () => sellerAPI.getStore()
+  const { data: storeData } = useSWR(user && user.role === 'SELLER' ? 'seller-store' : null, () =>
+    sellerAPI.getStore()
   );
 
   // Fetch shipments for this order
@@ -140,10 +148,10 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
       setUpdating(true);
       await sellerAPI.updateOrderStatus(order.id, { status: newStatus });
       await mutate();
-      toast.success('Order status updated successfully');
+      toast.success(t('updateSuccess'));
     } catch (error: any) {
       console.error('Failed to update status:', error);
-      toast.error(error?.message || 'Failed to update order status');
+      toast.error(error?.message || t('updateError'));
     } finally {
       setUpdating(false);
     }
@@ -215,9 +223,9 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 mb-4">Failed to load order details</p>
+          <p className="text-red-600 mb-4">{t('errorLoading')}</p>
           <Link href="/seller/orders" className="text-gold hover:text-gold/80">
-            Back to Orders
+            {t('backToOrders')}
           </Link>
         </div>
       </div>
@@ -229,9 +237,9 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <Package className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-          <p className="text-neutral-500 mb-4">Order not found</p>
+          <p className="text-neutral-500 mb-4">{t('orderNotFound')}</p>
           <Link href="/seller/orders" className="text-gold hover:text-gold/80">
-            Back to Orders
+            {t('backToOrders')}
           </Link>
         </div>
       </div>
@@ -240,7 +248,9 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
 
   const canUpdateStatus = !['DELIVERED', 'CANCELLED', 'REFUNDED'].includes(order.status);
   // Allow shipping for PROCESSING orders with PAID or PENDING payment (PENDING needed for test mode)
-  const canShip = order.status === 'PROCESSING' && (order.paymentStatus === 'PAID' || order.paymentStatus === 'PENDING');
+  const canShip =
+    order.status === 'PROCESSING' &&
+    (order.paymentStatus === 'PAID' || order.paymentStatus === 'PENDING');
 
   // Use seller-specific totals from backend (proportional allocation)
   const sellerTotals = (order as any).sellerTotals || {
@@ -261,11 +271,13 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
             className="text-neutral-300 hover:text-white mb-4 inline-flex items-center gap-2 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            Back to Orders
+            {t('backToOrders')}
           </Link>
           <div className="flex items-center justify-between mt-4">
             <div>
-              <h1 className="text-3xl font-bold">Order {order.orderNumber}</h1>
+              <h1 className="text-3xl font-bold">
+                {t('orderTitle', { orderNumber: order.orderNumber })}
+              </h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="text-neutral-300 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
@@ -332,18 +344,24 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-600">Your Items Subtotal</span>
-                    <span className="text-black">{formatCurrency(sellerTotals.subtotal, order.currency)}</span>
+                    <span className="text-black">
+                      {formatCurrency(sellerTotals.subtotal, order.currency)}
+                    </span>
                   </div>
                   {sellerTotals.shipping > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-neutral-600">Shipping (Your Portion)</span>
-                      <span className="text-black">{formatCurrency(sellerTotals.shipping, order.currency)}</span>
+                      <span className="text-black">
+                        {formatCurrency(sellerTotals.shipping, order.currency)}
+                      </span>
                     </div>
                   )}
                   {sellerTotals.tax > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-neutral-600">Tax (Your Portion)</span>
-                      <span className="text-black">{formatCurrency(sellerTotals.tax, order.currency)}</span>
+                      <span className="text-black">
+                        {formatCurrency(sellerTotals.tax, order.currency)}
+                      </span>
                     </div>
                   )}
                   {sellerTotals.discount > 0 && (
@@ -401,7 +419,8 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                   </p>
                   <p>{order.shippingAddress.street}</p>
                   <p>
-                    {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}
+                    {order.shippingAddress.city}, {order.shippingAddress.state}{' '}
+                    {order.shippingAddress.zipCode}
                   </p>
                   <p>{order.shippingAddress.country}</p>
                   {order.shippingAddress.phone && (
@@ -435,13 +454,17 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                   {order.delivery.estimatedDelivery && (
                     <div className="flex justify-between">
                       <span className="text-neutral-600">Estimated Delivery</span>
-                      <span className="text-black">{formatDate(order.delivery.estimatedDelivery)}</span>
+                      <span className="text-black">
+                        {formatDate(order.delivery.estimatedDelivery)}
+                      </span>
                     </div>
                   )}
                   {order.delivery.deliveredAt && (
                     <div className="flex justify-between">
                       <span className="text-neutral-600">Delivered At</span>
-                      <span className="text-green-600">{formatDate(order.delivery.deliveredAt)}</span>
+                      <span className="text-green-600">
+                        {formatDate(order.delivery.deliveredAt)}
+                      </span>
                     </div>
                   )}
                   {order.delivery.provider && (
@@ -454,7 +477,8 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                     <div className="flex justify-between">
                       <span className="text-neutral-600">Delivery Partner</span>
                       <span className="text-black">
-                        {order.delivery.deliveryPartner.firstName} {order.delivery.deliveryPartner.lastName}
+                        {order.delivery.deliveryPartner.firstName}{' '}
+                        {order.delivery.deliveryPartner.lastName}
                       </span>
                     </div>
                   )}
@@ -479,7 +503,10 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                 </div>
                 <div className="flex items-center gap-2 text-sm text-neutral-600">
                   <Mail className="w-4 h-4" />
-                  <a href={`mailto:${order.user.email}`} className="hover:text-gold transition-colors">
+                  <a
+                    href={`mailto:${order.user.email}`}
+                    className="hover:text-gold transition-colors"
+                  >
                     {order.user.email}
                   </a>
                 </div>
@@ -528,9 +555,7 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                   <Truck className="w-5 h-5 text-gold" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-black mb-1">
-                    Create Shipment
-                  </h2>
+                  <h2 className="text-lg font-semibold text-black mb-1">Create Shipment</h2>
                   <p className="text-sm text-neutral-600">
                     Generate shipping labels and tracking via DHL API
                   </p>
@@ -610,29 +635,47 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                 </div>
                 <div className="flex justify-between text-sm border-t pt-3 mt-3">
                   <span className="text-neutral-600">Order Amount (Your Portion)</span>
-                  <span className="text-black">{formatCurrency(sellerTotals.total, order.currency)}</span>
+                  <span className="text-black">
+                    {formatCurrency(sellerTotals.total, order.currency)}
+                  </span>
                 </div>
                 {sellerTotals.platformCommission !== undefined && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-600">Platform Fee ({sellerTotals.commissionRate || 10}%)</span>
-                    <span className="text-red-600">-{formatCurrency(sellerTotals.platformCommission, order.currency)}</span>
-                  </div>
-                )}
-                {sellerTotals.paymentProcessingFee !== undefined && sellerTotals.paymentProcessingFee > 0 && (
-                  <div className="flex justify-between text-sm">
                     <span className="text-neutral-600">
-                      Payment Processing Fee ({sellerTotals.paymentProcessor || 'Stripe'}: {sellerTotals.processingFeeRate || 2.9}%{' '}
-                      {order.currency === 'EUR' ? '+ €0.30' :
-                       order.currency === 'GBP' ? '+ £0.20' :
-                       '+ $0.30'})
+                      Platform Fee ({sellerTotals.commissionRate || 10}%)
                     </span>
-                    <span className="text-red-600">-{formatCurrency(sellerTotals.paymentProcessingFee, order.currency)}</span>
+                    <span className="text-red-600">
+                      -{formatCurrency(sellerTotals.platformCommission, order.currency)}
+                    </span>
                   </div>
                 )}
+                {sellerTotals.paymentProcessingFee !== undefined &&
+                  sellerTotals.paymentProcessingFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-600">
+                        Payment Processing Fee ({sellerTotals.paymentProcessor || 'Stripe'}:{' '}
+                        {sellerTotals.processingFeeRate || 2.9}%{' '}
+                        {order.currency === 'EUR'
+                          ? '+ €0.30'
+                          : order.currency === 'GBP'
+                            ? '+ £0.20'
+                            : '+ $0.30'}
+                        )
+                      </span>
+                      <span className="text-red-600">
+                        -{formatCurrency(sellerTotals.paymentProcessingFee, order.currency)}
+                      </span>
+                    </div>
+                  )}
                 <div className="flex justify-between text-lg font-bold border-t pt-3 mt-2">
                   <span className="text-black">Net Earnings</span>
                   <span className="text-green-600">
-                    {formatCurrency(sellerTotals.netEarnings !== undefined ? sellerTotals.netEarnings : sellerTotals.total, order.currency)}
+                    {formatCurrency(
+                      sellerTotals.netEarnings !== undefined
+                        ? sellerTotals.netEarnings
+                        : sellerTotals.total,
+                      order.currency
+                    )}
                   </span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2">

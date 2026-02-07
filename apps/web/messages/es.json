@@ -2559,5 +2559,32 @@
         "description": "Agregue su primer producto para comenzar a vender"
       }
     }
+  },
+  "sellerOrderDetails": {
+    "backToOrders": "Volver a Pedidos",
+    "orderTitle": "Pedido {orderNumber}",
+    "errorLoading": "Error al cargar los detalles del pedido",
+    "orderNotFound": "Pedido no encontrado",
+    "printPackingSlip": "Imprimir Albarán",
+    "markAsShipped": "Marcar como Enviado",
+    "orderStatus": "Estado del Pedido",
+    "paymentStatus": "Estado del Pago",
+    "orderDetails": "Detalles del Pedido",
+    "customerInfo": "Información del Cliente",
+    "shippingAddress": "Dirección de Envío",
+    "orderItems": "Artículos del Pedido ({count})",
+    "product": "Producto",
+    "quantity": "Cantidad",
+    "price": "Precio",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "shipping": "Envío",
+    "tax": "Impuesto",
+    "discount": "Descuento",
+    "grandTotal": "Total General",
+    "updateSuccess": "Estado del pedido actualizado con éxito",
+    "updateError": "Error al actualizar el estado del pedido",
+    "shippedSuccess": "Pedido marcado como enviado con éxito",
+    "shippedError": "Error al marcar el pedido como enviado"
   }
 }
