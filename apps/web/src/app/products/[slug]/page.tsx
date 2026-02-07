@@ -525,7 +525,10 @@ export default function ProductDetailPage() {
                 <div className="flex items-center gap-3 mb-4">
                   <div className="flex">{renderStars(4.5)}</div>
                   <span className="text-sm text-neutral-600">
-                    4.5 ({0} {0 === 1 ? t('review') : t('reviewsPlural')})
+                    {(() => {
+                      const reviewCount: number = 0;
+                      return `4.5 (${reviewCount} ${reviewCount === 1 ? t('review') : t('reviewsPlural')})`;
+                    })()}
                   </span>
                 </div>
 
