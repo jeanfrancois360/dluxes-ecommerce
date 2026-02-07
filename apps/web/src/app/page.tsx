@@ -41,7 +41,11 @@ export default function Home() {
 
   // Cart and Wishlist hooks
   const { addItem: addToCartApi } = useCart();
-  const { addToWishlist: addToWishlistApi } = useWishlist();
+  const {
+    addToWishlist: addToWishlistApi,
+    removeFromWishlist: removeFromWishlistApi,
+    isInWishlist,
+  } = useWishlist();
 
   // Get currency symbol
   const { currency } = useSelectedCurrency();
@@ -69,10 +73,41 @@ export default function Home() {
   const onSaleTransformed = useMemo(() => transformToQuickViewProducts(onSaleData), [onSaleData]);
 
   // Convert prices to selected currency
-  const featuredProducts = useCurrencyProducts(featuredTransformed);
-  const newArrivals = useCurrencyProducts(newArrivalsTransformed);
-  const trendingProducts = useCurrencyProducts(trendingTransformed);
-  const onSaleProducts = useCurrencyProducts(onSaleTransformed);
+  const featuredProductsCurrency = useCurrencyProducts(featuredTransformed);
+  const newArrivalsCurrency = useCurrencyProducts(newArrivalsTransformed);
+  const trendingProductsCurrency = useCurrencyProducts(trendingTransformed);
+  const onSaleProductsCurrency = useCurrencyProducts(onSaleTransformed);
+
+  // Add wishlist status to products
+  const featuredProducts = useMemo(
+    () =>
+      featuredProductsCurrency.map((product) => ({
+        ...product,
+        inWishlist: isInWishlist(product.id),
+      })),
+    [featuredProductsCurrency, isInWishlist]
+  );
+  const newArrivals = useMemo(
+    () =>
+      newArrivalsCurrency.map((product) => ({ ...product, inWishlist: isInWishlist(product.id) })),
+    [newArrivalsCurrency, isInWishlist]
+  );
+  const trendingProducts = useMemo(
+    () =>
+      trendingProductsCurrency.map((product) => ({
+        ...product,
+        inWishlist: isInWishlist(product.id),
+      })),
+    [trendingProductsCurrency, isInWishlist]
+  );
+  const onSaleProducts = useMemo(
+    () =>
+      onSaleProductsCurrency.map((product) => ({
+        ...product,
+        inWishlist: isInWishlist(product.id),
+      })),
+    [onSaleProductsCurrency, isInWishlist]
+  );
 
   // Fetch fresh product data for Quick View
   const { product: quickViewFullProduct, isLoading: quickViewLoading } = useProduct(
@@ -140,16 +175,26 @@ export default function Home() {
       }
       setAddingToWishlist(productId);
       try {
-        await addToWishlistApi(productId);
-        toast.success(t('toast.addedToWishlist'));
+        // Check if item is already in wishlist
+        const inWishlist = isInWishlist(productId);
+
+        if (inWishlist) {
+          // Remove from wishlist
+          await removeFromWishlistApi(productId);
+          toast.success(t('toast.removedFromWishlist'));
+        } else {
+          // Add to wishlist
+          await addToWishlistApi(productId);
+          toast.success(t('toast.addedToWishlist'));
+        }
       } catch (error: any) {
-        console.error('Failed to add to wishlist:', error);
+        console.error('Failed to update wishlist:', error);
         toast.error(t('toast.error'), error.message || t('toast.failedAddWishlist'));
       } finally {
         setAddingToWishlist(null);
       }
     },
-    [addingToWishlist, addToWishlistApi, router]
+    [addingToWishlist, addToWishlistApi, removeFromWishlistApi, isInWishlist, router, t]
   );
 
   return (
@@ -363,6 +408,10 @@ export default function Home() {
             reviews: tModal('reviews'),
             review: tModal('review'),
             save: tModal('save', { percent: 0 }),
+            new: tModal('new'),
+            sale: tModal('sale'),
+            featured: tModal('featured'),
+            bestseller: tModal('bestseller'),
           }}
         />
       </Suspense>

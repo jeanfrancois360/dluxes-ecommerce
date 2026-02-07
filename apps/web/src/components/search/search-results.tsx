@@ -193,7 +193,7 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
 
           {/* Loading State */}
           {isLoading && !data && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {[...Array(12)].map((_, i) => (
                 <div key={i} className="animate-pulse">
                   <div className="aspect-square bg-gray-200 rounded-lg mb-4" />
@@ -214,7 +214,7 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12"
+                  className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-12"
                 >
                   {data.products.map((product: Product, index: number) => (
                     <motion.div
@@ -238,7 +238,10 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
                           removeFromWishlist: tCard('removeFromWishlist'),
                           quickView: tCard('quickView'),
                           outOfStock: tCard('outOfStock'),
-                          onlyLeft: tCard('onlyLeft'),
+                          onlyLeft: tCard('onlyLeft', { count: 'COUNT_PLACEHOLDER' }).replace(
+                            'COUNT_PLACEHOLDER',
+                            '{count}'
+                          ),
                           contactForPrice: tCard('contactForPrice'),
                           inquiryRequired: tCard('inquiryRequired'),
                           contactSeller: tCard('contactSeller'),
@@ -246,6 +249,11 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
                           addToBag: tCard('addToBag'),
                           add: tCard('add'),
                           by: tCard('by'),
+                          new: tCard('new'),
+                          sale: tCard('sale'),
+                          featured: tCard('featured'),
+                          bestseller: tCard('bestseller'),
+                          limitedEdition: tCard('limitedEdition'),
                         }}
                       />
                     </motion.div>

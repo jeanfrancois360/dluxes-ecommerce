@@ -92,6 +92,7 @@ export default function ProductDetailPage() {
   const t = useTranslations('products');
   const tc = useTranslations('common');
   const tModal = useTranslations('quickViewModal');
+  const tCard = useTranslations('productCard');
 
   // Fetch product data
   const { product, isLoading, error } = useProduct(slug, true);
@@ -120,8 +121,26 @@ export default function ProductDetailPage() {
   // Cart
   const { addItem: addToCart } = useCart();
 
-  // Transform related products
-  const relatedProducts = useMemo(() => transformToQuickViewProducts(relatedData), [relatedData]);
+  // Transform related products and add wishlist status
+  const relatedProducts = useMemo(
+    () =>
+      transformToQuickViewProducts(relatedData).map((product) => ({
+        ...product,
+        inWishlist: checkIsInWishlist(product.id),
+      })),
+    [relatedData, checkIsInWishlist]
+  );
+
+  // Helper function to translate badges
+  const translateBadge = (badge: string): string => {
+    const badgeLower = badge.toLowerCase().replace(/\s+/g, '');
+    if (badgeLower === 'new') return tCard('new');
+    if (badgeLower === 'sale') return tCard('sale');
+    if (badgeLower === 'featured') return tCard('featured');
+    if (badgeLower === 'bestseller') return tCard('bestseller');
+    if (badgeLower === 'limitededition') return tCard('limitedEdition');
+    return badge; // Return original if no translation found
+  };
 
   // Get available colors and sizes from variants
   const availableColors = useMemo(() => {
@@ -292,14 +311,15 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleToggleWishlist = async (productId: string, isCurrentlyInWishlist: boolean) => {
+  const handleToggleWishlist = async (productId: string, isAdding: boolean) => {
     try {
-      if (isCurrentlyInWishlist) {
-        await removeFromWishlist(productId);
-        toast.success(t('removedFromWishlist'));
-      } else {
+      // isAdding is the NEW state (true = adding to wishlist, false = removing from wishlist)
+      if (isAdding) {
         await addToWishlist(productId);
         toast.success(t('addedToWishlist'));
+      } else {
+        await removeFromWishlist(productId);
+        toast.success(t('removedFromWishlist'));
       }
     } catch (error) {
       console.error('Failed to toggle wishlist:', error);
@@ -450,7 +470,7 @@ export default function ProductDetailPage() {
                         key={badge}
                         className="px-3 py-1 bg-gold text-black text-sm font-semibold rounded-full"
                       >
-                        {badge}
+                        {translateBadge(badge)}
                       </span>
                     ))}
                   </div>
@@ -504,7 +524,12 @@ export default function ProductDetailPage() {
                 {/* Rating - TODO: Calculate from actual reviews */}
                 <div className="flex items-center gap-3 mb-4">
                   <div className="flex">{renderStars(4.5)}</div>
-                  <span className="text-sm text-neutral-600">4.5 (0 reviews)</span>
+                  <span className="text-sm text-neutral-600">
+                    {(() => {
+                      const reviewCount: number = 0;
+                      return `4.5 (${reviewCount} ${reviewCount === 1 ? t('review') : t('reviewsPlural')})`;
+                    })()}
+                  </span>
                 </div>
 
                 {/* Price */}
@@ -1050,7 +1075,7 @@ export default function ProductDetailPage() {
                       <h3 className="text-lg font-semibold mb-4">{t('productDetails')}</h3>
                       <dl className="space-y-3">
                         <div className="flex justify-between py-2 border-b border-neutral-200">
-                          <dt className="text-neutral-600">SKU</dt>
+                          <dt className="text-neutral-600">{t('skuLabel')}</dt>
                           <dd className="font-medium">{product.sku}</dd>
                         </div>
                         {product.brand && (
@@ -1092,7 +1117,10 @@ export default function ProductDetailPage() {
                 title={t('relatedProducts')}
                 products={relatedProducts}
                 onQuickView={handleQuickView}
-                onAddToWishlist={(id) => console.log('Wishlist:', id)}
+                onAddToWishlist={async (id) => {
+                  const inWishlist = checkIsInWishlist(id);
+                  await handleToggleWishlist(id, !inWishlist);
+                }}
                 onQuickAdd={(id) => console.log('Add to cart:', id)}
                 onNavigate={handleNavigate}
                 isLoading={relatedLoading}
@@ -1125,6 +1153,10 @@ export default function ProductDetailPage() {
           reviews: tModal('reviews'),
           review: tModal('review'),
           save: tModal('save', { percent: 0 }),
+          new: tModal('new'),
+          sale: tModal('sale'),
+          featured: tModal('featured'),
+          bestseller: tModal('bestseller'),
         }}
       />
     </PageLayout>

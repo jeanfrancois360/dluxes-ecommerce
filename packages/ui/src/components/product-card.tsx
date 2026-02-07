@@ -49,6 +49,12 @@ export interface ProductCardProps {
     addToBag: string;
     add: string;
     by: string;
+    // Badge translations
+    new?: string;
+    sale?: string;
+    featured?: string;
+    bestseller?: string;
+    limitedEdition?: string;
   };
 }
 
@@ -96,7 +102,23 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
   }) => {
     const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
     const [isWishlisted, setIsWishlisted] = React.useState(inWishlist);
+
+    // Helper function to translate badges
+    const translateBadge = (badge: string): string => {
+      const badgeLower = badge.toLowerCase().replace(/\s+/g, '');
+      if (badgeLower === 'new') return translations.new || 'New';
+      if (badgeLower === 'sale') return translations.sale || 'Sale';
+      if (badgeLower === 'featured') return translations.featured || 'Featured';
+      if (badgeLower === 'bestseller') return translations.bestseller || 'Bestseller';
+      if (badgeLower === 'limitededition') return translations.limitedEdition || 'Limited Edition';
+      return badge; // Return original if no translation found
+    };
     const [isHovered, setIsHovered] = React.useState(false);
+
+    // Sync local wishlist state with prop
+    React.useEffect(() => {
+      setIsWishlisted(inWishlist);
+    }, [inWishlist]);
 
     // Check if this is an inquiry product or has no price
     const isInquiryProduct = purchaseType === 'INQUIRY' || price === null || price === undefined;
@@ -120,7 +142,9 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
 
     const handleWishlistToggle = (e: React.MouseEvent) => {
       e.stopPropagation();
+      // Optimistically update UI
       setIsWishlisted(!isWishlisted);
+      // Call the handler which will handle add/remove logic
       onAddToWishlist?.(id);
     };
 
@@ -180,7 +204,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
                   className={cn(
-                    'px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-full',
+                    'px-1.5 sm:px-2.5 md:px-3.5 py-0.5 sm:py-1 text-[8px] xs:text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wider rounded-full',
                     'backdrop-blur-md shadow-lg',
                     badge.toLowerCase() === 'new' && 'bg-black/90 text-white',
                     badge.toLowerCase() === 'sale' && 'bg-red-500/90 text-white',
@@ -190,7 +214,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                       'bg-neutral-800/90 text-white'
                   )}
                 >
-                  {badge}
+                  {translateBadge(badge)}
                 </motion.span>
               ))}
             </div>
@@ -317,9 +341,11 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
               <motion.div
                 initial={{ scale: 0, rotate: -12 }}
                 animate={{ scale: 1, rotate: 0 }}
-                className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-red-500 flex items-center justify-center shadow-xl"
+                className="w-9 h-9 sm:w-11 sm:h-11 md:w-13 md:h-13 rounded-full bg-red-500 flex items-center justify-center shadow-xl"
               >
-                <span className="text-white font-bold text-xs sm:text-sm">-{discount}%</span>
+                <span className="text-white font-bold text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
+                  -{discount}%
+                </span>
               </motion.div>
             </div>
           )}
@@ -330,9 +356,9 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
               <motion.div
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-neutral-900/95 backdrop-blur-md rounded-full shadow-xl"
+                className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-neutral-900/95 backdrop-blur-md rounded-full shadow-xl flex items-center justify-center"
               >
-                <span className="text-white font-bold text-[10px] sm:text-xs uppercase tracking-wider">
+                <span className="text-white font-bold text-[8px] xs:text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider leading-none">
                   {translations.outOfStock}
                 </span>
               </motion.div>
@@ -343,10 +369,12 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
               <motion.div
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-orange-500/95 backdrop-blur-md rounded-full shadow-xl"
+                className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-orange-500/95 backdrop-blur-md rounded-full shadow-xl flex items-center justify-center"
               >
-                <span className="text-white font-bold text-[10px] sm:text-xs uppercase tracking-wider">
-                  {translations.onlyLeft.replace('{count}', String(stockQuantity))}
+                <span className="text-white font-bold text-[8px] xs:text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider leading-none">
+                  {translations.onlyLeft
+                    ? translations.onlyLeft.replace('{count}', String(stockQuantity))
+                    : `Only ${stockQuantity} Left`}
                 </span>
               </motion.div>
             </div>

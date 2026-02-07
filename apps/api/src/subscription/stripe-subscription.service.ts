@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
@@ -19,10 +14,12 @@ export class StripeSubscriptionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsService
   ) {
     // Initialize Stripe on first use (lazy loading)
-    this.logger.log('StripeSubscriptionService initialized - Stripe will be configured on first use');
+    this.logger.log(
+      'StripeSubscriptionService initialized - Stripe will be configured on first use'
+    );
   }
 
   /**
@@ -35,7 +32,7 @@ export class StripeSubscriptionService {
       const config = await this.settingsService.getStripeConfig();
 
       let secretKey = config.secretKey;
-      let enabled = config.enabled;
+      const enabled = config.enabled;
 
       // Fallback to environment variables if settings not configured
       if (!secretKey) {
@@ -59,7 +56,9 @@ export class StripeSubscriptionService {
 
       this.stripeConfig = config;
 
-      this.logger.log(`Stripe subscription service initialized successfully [Test Mode: ${config.testMode}, Enabled: ${enabled}]`);
+      this.logger.log(
+        `Stripe subscription service initialized successfully [Test Mode: ${config.testMode}, Enabled: ${enabled}]`
+      );
     } catch (error) {
       this.logger.error('Failed to initialize Stripe:', error);
       // Try fallback to env vars
@@ -86,7 +85,9 @@ export class StripeSubscriptionService {
     }
 
     if (!this.stripe) {
-      throw new BadRequestException('Stripe not configured. Please configure Stripe in Admin Settings.');
+      throw new BadRequestException(
+        'Stripe not configured. Please configure Stripe in Admin Settings.'
+      );
     }
 
     return this.stripe;
@@ -151,7 +152,7 @@ export class StripeSubscriptionService {
   async createCheckoutSession(
     userId: string,
     planId: string,
-    billingCycle: BillingCycle,
+    billingCycle: BillingCycle
   ): Promise<{ sessionId: string; url: string }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -180,13 +181,11 @@ export class StripeSubscriptionService {
 
     // Get Stripe price ID
     const priceId =
-      billingCycle === BillingCycle.YEARLY
-        ? plan.stripePriceIdYearly
-        : plan.stripePriceIdMonthly;
+      billingCycle === BillingCycle.YEARLY ? plan.stripePriceIdYearly : plan.stripePriceIdMonthly;
 
     if (!priceId) {
       throw new BadRequestException(
-        'Plan does not have Stripe pricing configured. Please contact support.',
+        'Plan does not have Stripe pricing configured. Please contact support.'
       );
     }
 
@@ -222,9 +221,7 @@ export class StripeSubscriptionService {
       allow_promotion_codes: true,
     });
 
-    this.logger.log(
-      `Created checkout session ${session.id} for user ${userId}, plan ${plan.name}`,
-    );
+    this.logger.log(`Created checkout session ${session.id} for user ${userId}, plan ${plan.name}`);
 
     return {
       sessionId: session.id,
@@ -260,9 +257,7 @@ export class StripeSubscriptionService {
     }
 
     if (!customerId) {
-      throw new BadRequestException(
-        'No subscription found. Please subscribe to a plan first.',
-      );
+      throw new BadRequestException('No subscription found. Please subscribe to a plan first.');
     }
 
     const stripe = await this.getStripeClient();
@@ -285,7 +280,7 @@ export class StripeSubscriptionService {
    */
   async verifyAndActivateCheckout(
     userId: string,
-    sessionId: string,
+    sessionId: string
   ): Promise<{ activated: boolean; subscription: any }> {
     const stripe = await this.getStripeClient();
 
@@ -298,7 +293,9 @@ export class StripeSubscriptionService {
     const stripeSubscriptionId = session.subscription as string;
     const stripeCustomerId = session.customer as string;
 
-    this.logger.debug(`Session data: subscription=${stripeSubscriptionId}, customer=${stripeCustomerId}, status=${session.status}`);
+    this.logger.debug(
+      `Session data: subscription=${stripeSubscriptionId}, customer=${stripeCustomerId}, status=${session.status}`
+    );
 
     // Verify the session belongs to this user
     const sessionUserId = session.metadata?.userId;
@@ -360,7 +357,9 @@ export class StripeSubscriptionService {
       periodEnd.setMonth(periodEnd.getMonth() + 1);
     }
 
-    this.logger.log(`Creating/updating subscription: userId=${userId}, planId=${planId}, billingCycle=${billingCycle}`);
+    this.logger.log(
+      `Creating/updating subscription: userId=${userId}, planId=${planId}, billingCycle=${billingCycle}`
+    );
 
     // Create or update subscription
     const subscription = await this.prisma.sellerSubscription.upsert({
@@ -393,7 +392,7 @@ export class StripeSubscriptionService {
     });
 
     this.logger.log(
-      `Subscription activated via verify-checkout for user ${userId} with plan ${plan.name}`,
+      `Subscription activated via verify-checkout for user ${userId} with plan ${plan.name}`
     );
 
     return {
@@ -411,22 +410,16 @@ export class StripeSubscriptionService {
     try {
       switch (event.type) {
         case 'checkout.session.completed':
-          await this.handleCheckoutCompleted(
-            event.data.object as Stripe.Checkout.Session,
-          );
+          await this.handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
           break;
 
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
-          await this.handleSubscriptionUpdated(
-            event.data.object as Stripe.Subscription,
-          );
+          await this.handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
           break;
 
         case 'customer.subscription.deleted':
-          await this.handleSubscriptionDeleted(
-            event.data.object as Stripe.Subscription,
-          );
+          await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
           break;
 
         case 'invoice.paid':
@@ -434,9 +427,7 @@ export class StripeSubscriptionService {
           break;
 
         case 'invoice.payment_failed':
-          await this.handleInvoicePaymentFailed(
-            event.data.object as Stripe.Invoice,
-          );
+          await this.handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
           break;
 
         default:
@@ -445,7 +436,7 @@ export class StripeSubscriptionService {
     } catch (error) {
       this.logger.error(
         `Error handling webhook event ${event.type}:`,
-        error instanceof Error ? error.message : String(error),
+        error instanceof Error ? error.message : String(error)
       );
       throw error;
     }
@@ -454,9 +445,7 @@ export class StripeSubscriptionService {
   /**
    * Handle successful checkout completion
    */
-  private async handleCheckoutCompleted(
-    session: Stripe.Checkout.Session,
-  ): Promise<void> {
+  private async handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
     const { userId, planId, billingCycle } = session.metadata || {};
 
     if (!userId || !planId) {
@@ -511,23 +500,17 @@ export class StripeSubscriptionService {
       },
     });
 
-    this.logger.log(
-      `Subscription created/updated for user ${userId} with plan ${plan.name}`,
-    );
+    this.logger.log(`Subscription created/updated for user ${userId} with plan ${plan.name}`);
   }
 
   /**
    * Handle subscription updates from Stripe
    */
-  private async handleSubscriptionUpdated(
-    subscription: Stripe.Subscription,
-  ): Promise<void> {
+  private async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
     const { userId } = subscription.metadata || {};
 
     if (!userId) {
-      this.logger.warn(
-        `Missing userId in subscription metadata: ${subscription.id}`,
-      );
+      this.logger.warn(`Missing userId in subscription metadata: ${subscription.id}`);
       return;
     }
 
@@ -543,23 +526,17 @@ export class StripeSubscriptionService {
       },
     });
 
-    this.logger.log(
-      `Subscription updated for user ${userId}: status=${status}`,
-    );
+    this.logger.log(`Subscription updated for user ${userId}: status=${status}`);
   }
 
   /**
    * Handle subscription deletion
    */
-  private async handleSubscriptionDeleted(
-    subscription: Stripe.Subscription,
-  ): Promise<void> {
+  private async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
     const { userId } = subscription.metadata || {};
 
     if (!userId) {
-      this.logger.warn(
-        `Missing userId in subscription metadata: ${subscription.id}`,
-      );
+      this.logger.warn(`Missing userId in subscription metadata: ${subscription.id}`);
       return;
     }
 
@@ -594,7 +571,7 @@ export class StripeSubscriptionService {
     const stripe = await this.getStripeClient();
 
     const subscription = await stripe.subscriptions.retrieve(
-      (invoice as any).subscription as string,
+      (invoice as any).subscription as string
     );
 
     const { userId } = subscription.metadata || {};
@@ -625,15 +602,13 @@ export class StripeSubscriptionService {
   /**
    * Handle failed invoice payment
    */
-  private async handleInvoicePaymentFailed(
-    invoice: Stripe.Invoice,
-  ): Promise<void> {
+  private async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     if (!(invoice as any).subscription) return;
 
     const stripe = await this.getStripeClient();
 
     const subscription = await stripe.subscriptions.retrieve(
-      (invoice as any).subscription as string,
+      (invoice as any).subscription as string
     );
 
     const { userId } = subscription.metadata || {};
@@ -653,9 +628,7 @@ export class StripeSubscriptionService {
   /**
    * Map Stripe status to our status enum
    */
-  private mapStripeStatus(
-    stripeStatus: Stripe.Subscription.Status,
-  ): SubscriptionStatus {
+  private mapStripeStatus(stripeStatus: Stripe.Subscription.Status): SubscriptionStatus {
     switch (stripeStatus) {
       case 'active':
         return SubscriptionStatus.ACTIVE;

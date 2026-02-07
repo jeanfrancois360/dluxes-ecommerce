@@ -76,7 +76,7 @@ export const ProductCarousel = memo(function ProductCarousel({
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="flex-none w-[180px] sm:w-[220px] md:w-[260px] lg:w-[280px] animate-pulse"
+              className="flex-none w-[160px] sm:w-[220px] md:w-[260px] lg:w-[280px] animate-pulse"
             >
               <div className="bg-gray-200 rounded-xl sm:rounded-2xl aspect-[3/4]" />
               <div className="mt-2 sm:mt-3 md:mt-4 space-y-1.5 sm:space-y-2">
@@ -186,7 +186,7 @@ export const ProductCarousel = memo(function ProductCarousel({
           {products.map((product, index) => (
             <div
               key={product.id}
-              className="flex-none w-[180px] sm:w-[220px] md:w-[260px] lg:w-[280px] snap-start"
+              className="flex-none w-[160px] sm:w-[220px] md:w-[260px] lg:w-[280px] snap-start"
             >
               <ProductCard
                 id={product.id}
@@ -204,6 +204,7 @@ export const ProductCarousel = memo(function ProductCarousel({
                 inStock={product.inStock}
                 stockQuantity={product.stockQuantity}
                 lowStockThreshold={product.lowStockThreshold}
+                inWishlist={product.inWishlist}
                 priority={index < 4}
                 currencySymbol={currencySymbol}
                 onQuickView={onQuickView ? () => onQuickView(product.id) : undefined}
@@ -215,7 +216,10 @@ export const ProductCarousel = memo(function ProductCarousel({
                   removeFromWishlist: tCard('removeFromWishlist'),
                   quickView: tCard('quickView'),
                   outOfStock: tCard('outOfStock'),
-                  onlyLeft: tCard('onlyLeft'),
+                  onlyLeft: tCard('onlyLeft', { count: 'COUNT_PLACEHOLDER' }).replace(
+                    'COUNT_PLACEHOLDER',
+                    '{count}'
+                  ),
                   contactForPrice: tCard('contactForPrice'),
                   inquiryRequired: tCard('inquiryRequired'),
                   contactSeller: tCard('contactSeller'),
@@ -223,6 +227,11 @@ export const ProductCarousel = memo(function ProductCarousel({
                   addToBag: tCard('addToBag'),
                   add: tCard('add'),
                   by: tCard('by'),
+                  new: tCard('new'),
+                  sale: tCard('sale'),
+                  featured: tCard('featured'),
+                  bestseller: tCard('bestseller'),
+                  limitedEdition: tCard('limitedEdition'),
                 }}
               />
             </div>
@@ -232,7 +241,7 @@ export const ProductCarousel = memo(function ProductCarousel({
           {viewAllHref && (
             <a
               href={viewAllHref}
-              className="flex-none w-[180px] sm:w-[220px] md:w-[260px] lg:w-[280px] snap-start"
+              className="flex-none w-[160px] sm:w-[220px] md:w-[260px] lg:w-[280px] snap-start"
             >
               <div className="h-full min-h-[320px] sm:min-h-[360px] md:min-h-[380px] lg:min-h-[400px] bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl sm:rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 sm:gap-4 hover:border-[#CBB57B] hover:bg-[#CBB57B]/5 transition-all duration-300 cursor-pointer group">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-white shadow-md flex items-center justify-center group-hover:bg-[#CBB57B] transition-colors">

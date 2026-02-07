@@ -11,7 +11,6 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
-import { PageLayout } from '@/components/layout/page-layout';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { sellerAPI } from '@/lib/api/seller';
 import useSWR from 'swr';
@@ -38,7 +37,9 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   return (
-    <span className={`px-3 py-1 text-xs font-medium rounded-full border ${colors[status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+    <span
+      className={`px-3 py-1 text-xs font-medium rounded-full border ${colors[status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}
+    >
       {status}
     </span>
   );
@@ -53,7 +54,9 @@ function PaymentBadge({ status }: { status: string }) {
   };
 
   return (
-    <span className={`px-3 py-1 text-xs font-medium rounded-full border ${colors[status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+    <span
+      className={`px-3 py-1 text-xs font-medium rounded-full border ${colors[status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}
+    >
       {status}
     </span>
   );
@@ -71,13 +74,18 @@ export default function SellerOrdersPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Fetch orders from API
-  const { data: ordersResponse, error, mutate } = useSWR(
+  const {
+    data: ordersResponse,
+    error,
+    mutate,
+  } = useSWR(
     user && user.role === 'SELLER' ? ['seller-orders', statusFilter, page] : null,
-    () => sellerAPI.getOrders({
-      page,
-      limit: 50,
-      status: statusFilter || undefined,
-    }),
+    () =>
+      sellerAPI.getOrders({
+        page,
+        limit: 50,
+        status: statusFilter || undefined,
+      }),
     {
       refreshInterval: 30000, // Refresh every 30 seconds
       revalidateOnFocus: true,
@@ -104,7 +112,8 @@ export default function SellerOrdersPage() {
       return {
         id: order.id,
         orderNumber: order.orderNumber,
-        customerName: `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Unknown',
+        customerName:
+          `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Unknown',
         customerEmail: order.user.email,
         total: sellerTotal,
         status: order.status,
@@ -172,21 +181,18 @@ export default function SellerOrdersPage() {
 
   if (authLoading || (isLoading && !user)) {
     return (
-      <PageLayout showCategoryNav={false}>
-        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
-          />
-        </div>
-      </PageLayout>
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
+        />
+      </div>
     );
   }
 
   return (
-    <PageLayout showCategoryNav={false}>
-      <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -241,7 +247,9 @@ export default function SellerOrdersPage() {
             className="bg-gradient-to-br from-amber-50 via-yellow-50/50 to-white border border-amber-100 rounded-xl p-6 shadow-sm"
           >
             <p className="text-sm text-neutral-600 font-medium">Total Revenue</p>
-            <p className="text-3xl font-bold text-gold mt-2">${formatCurrencyAmount(stats.totalRevenue, 2)}</p>
+            <p className="text-3xl font-bold text-gold mt-2">
+              ${formatCurrencyAmount(stats.totalRevenue, 2)}
+            </p>
           </motion.div>
         </div>
 
@@ -294,8 +302,18 @@ export default function SellerOrdersPage() {
           {filteredOrders.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-neutral-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                <svg
+                  className="w-8 h-8 text-neutral-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                  />
                 </svg>
               </div>
               <p className="text-neutral-500">No orders found</p>
@@ -305,19 +323,38 @@ export default function SellerOrdersPage() {
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-neutral-50 to-neutral-100/50 border-b-2 border-neutral-200">
                   <tr>
-                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Order</th>
-                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Items</th>
-                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Payment</th>
-                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">
+                      Order
+                    </th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">
+                      Items
+                    </th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">
+                      Total
+                    </th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">
+                      Payment
+                    </th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-5 text-left text-xs font-semibold text-neutral-900 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
                   {filteredOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gradient-to-r hover:from-neutral-50/50 hover:to-transparent transition-all duration-200">
+                    <tr
+                      key={order.id}
+                      className="hover:bg-gradient-to-r hover:from-neutral-50/50 hover:to-transparent transition-all duration-200"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-medium text-black">{order.orderNumber}</span>
                       </td>
@@ -328,10 +365,14 @@ export default function SellerOrdersPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-neutral-700">{order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}</span>
+                        <span className="text-neutral-700">
+                          {order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-semibold text-black">${formatCurrencyAmount(order.total, 2)}</span>
+                        <span className="font-semibold text-black">
+                          ${formatCurrencyAmount(order.total, 2)}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <StatusBadge status={order.status} />
@@ -394,7 +435,8 @@ export default function SellerOrdersPage() {
               <h3 className="text-xl font-bold text-black mb-4">Update Order Status</h3>
               <div className="mb-6">
                 <p className="text-sm text-neutral-600 mb-2">
-                  Order: <span className="font-semibold text-black">{selectedOrder.orderNumber}</span>
+                  Order:{' '}
+                  <span className="font-semibold text-black">{selectedOrder.orderNumber}</span>
                 </p>
                 <p className="text-sm text-neutral-600 mb-4">
                   Current Status: <StatusBadge status={selectedOrder.status} />
@@ -402,7 +444,9 @@ export default function SellerOrdersPage() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-800">
                     <strong>Next Status:</strong>{' '}
-                    <span className="uppercase font-semibold">{getNextStatus(selectedOrder.status)}</span>
+                    <span className="uppercase font-semibold">
+                      {getNextStatus(selectedOrder.status)}
+                    </span>
                   </p>
                   <p className="text-xs text-blue-600 mt-2">
                     {getNextStatus(selectedOrder.status) === 'PROCESSING' &&
@@ -437,7 +481,6 @@ export default function SellerOrdersPage() {
           </div>
         )}
       </div>
-      </div>
-    </PageLayout>
+    </div>
   );
 }

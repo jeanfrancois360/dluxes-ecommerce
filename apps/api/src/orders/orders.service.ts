@@ -1,4 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CalculateTotalsDto, OrderCalculationResponse } from './dto/calculate-totals.dto';
@@ -29,7 +36,7 @@ export class OrdersService {
     private readonly shippingTaxService: ShippingTaxService,
     @Inject(forwardRef(() => CartService))
     private readonly cartService: CartService,
-    private readonly paymentService: PaymentService,
+    private readonly paymentService: PaymentService
   ) {
     this.inventoryService = new InventoryService(prisma);
   }
@@ -55,7 +62,7 @@ export class OrdersService {
         postalCode: address.postalCode,
         city: address.city,
       },
-      items.map(item => ({
+      items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
@@ -145,7 +152,7 @@ export class OrdersService {
       status?: string;
       sortBy?: string;
       sortOrder?: 'asc' | 'desc';
-    },
+    }
   ) {
     const { page, limit, status, sortBy = 'createdAt', sortOrder = 'desc' } = options;
 
@@ -364,11 +371,13 @@ export class OrdersService {
 
       if (existingOrder) {
         this.logger.warn(
-          `🔄 Duplicate order prevented for user ${userId} with idempotency key: ${idempotencyKey}`,
+          `🔄 Duplicate order prevented for user ${userId} with idempotency key: ${idempotencyKey}`
         );
 
         // Return existing order instead of creating duplicate
-        this.logger.log(`Returning existing order ${existingOrder.id} (idempotency key: ${idempotencyKey})`);
+        this.logger.log(
+          `Returning existing order ${existingOrder.id} (idempotency key: ${idempotencyKey})`
+        );
 
         return {
           order: existingOrder,
@@ -391,7 +400,7 @@ export class OrdersService {
 
     this.logger.log(
       `📦 Creating order in ${orderCurrency} ` +
-      `(rate: ${orderExchangeRate.toFixed(6)}, locked at: ${cart.rateLockedAt})`
+        `(rate: ${orderExchangeRate.toFixed(6)}, locked at: ${cart.rateLockedAt})`
     );
 
     // 3. Verify shipping address exists and belongs to user
@@ -424,7 +433,7 @@ export class OrdersService {
         state: shippingAddress.province || undefined,
         postalCode: shippingAddress.postalCode || undefined,
       },
-      cart.items.map(item => ({
+      cart.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
@@ -442,13 +451,13 @@ export class OrdersService {
 
     this.logger.log(
       `💰 Order totals: subtotal=${subtotal} ${orderCurrency}, ` +
-      `shipping=${shipping}, tax=${tax}, total=${total}`
+        `shipping=${shipping}, tax=${tax}, total=${total}`
     );
 
     // 7. Create order with transaction
     const order = await this.prisma.$transaction(async (prisma) => {
       // Prepare order items from cart items
-      const orderItems = cart.items.map(item => ({
+      const orderItems = cart.items.map((item) => ({
         productId: item.productId,
         variantId: item.variantId,
         name: item.name,
@@ -517,7 +526,7 @@ export class OrdersService {
 
     this.logger.log(
       `✅ Order created: ${order.orderNumber} (${order.id}) - ` +
-      `${total} ${orderCurrency} (rate: ${orderExchangeRate.toFixed(6)})`
+        `${total} ${orderCurrency} (rate: ${orderExchangeRate.toFixed(6)})`
     );
 
     // 8. Record inventory transactions
@@ -549,7 +558,8 @@ export class OrdersService {
       });
 
       if (user?.email) {
-        const customerName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
+        const customerName =
+          `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
 
         await this.emailService.sendOrderConfirmation(user.email, {
           orderNumber: order.orderNumber,
@@ -583,9 +593,7 @@ export class OrdersService {
     let clientSecret: string | null = null;
 
     try {
-      this.logger.log(
-        `💳 Creating Stripe PaymentIntent: ${total.toNumber()} ${orderCurrency}`
-      );
+      this.logger.log(`💳 Creating Stripe PaymentIntent: ${total.toNumber()} ${orderCurrency}`);
 
       const paymentIntent = await this.paymentService.createPaymentIntent(
         {
@@ -600,7 +608,7 @@ export class OrdersService {
 
       this.logger.log(
         `✅ PaymentIntent created: ${paymentIntent.paymentIntentId} - ${total.toNumber()} ${orderCurrency} ` +
-        `(rate: ${orderExchangeRate.toFixed(6)}, locked at: ${cart.rateLockedAt})`
+          `(rate: ${orderExchangeRate.toFixed(6)}, locked at: ${cart.rateLockedAt})`
       );
     } catch (paymentError) {
       this.logger.error('Error creating payment intent:', paymentError);
@@ -624,8 +632,15 @@ export class OrdersService {
    * Create new order from cart (LEGACY - kept for backwards compatibility)
    */
   async create(userId: string, createOrderDto: CreateOrderDto) {
-    const { items, shippingAddressId, billingAddressId, paymentMethod, notes, currency: orderCurrency, idempotencyKey } =
-      createOrderDto;
+    const {
+      items,
+      shippingAddressId,
+      billingAddressId,
+      paymentMethod,
+      notes,
+      currency: orderCurrency,
+      idempotencyKey,
+    } = createOrderDto;
 
     // 1. Check for duplicate order (idempotency protection)
     if (idempotencyKey) {
@@ -650,7 +665,7 @@ export class OrdersService {
 
       if (existingOrder) {
         this.logger.warn(
-          `🔄 Duplicate order prevented for user ${userId} with idempotency key: ${idempotencyKey}`,
+          `🔄 Duplicate order prevented for user ${userId} with idempotency key: ${idempotencyKey}`
         );
         this.logger.log(`Returning existing order ${existingOrder.id}`);
 
@@ -701,9 +716,7 @@ export class OrdersService {
         : product.inventory;
 
       if (availableInventory < item.quantity) {
-        throw new BadRequestException(
-          `Insufficient inventory for ${product.name}`
-        );
+        throw new BadRequestException(`Insufficient inventory for ${product.name}`);
       }
 
       const itemTotal = new Decimal(item.price).mul(item.quantity);
@@ -713,9 +726,7 @@ export class OrdersService {
         productId: item.productId,
         variantId: item.variantId,
         name: product.name,
-        sku: item.variantId
-          ? product.variants[0]?.sku || product.slug
-          : product.slug,
+        sku: item.variantId ? product.variants[0]?.sku || product.slug : product.slug,
         quantity: item.quantity,
         price: item.price,
         total: itemTotal,
@@ -740,7 +751,7 @@ export class OrdersService {
         state: shippingAddress?.province || undefined,
         postalCode: shippingAddress?.postalCode || undefined,
       },
-      orderItems.map(item => ({
+      orderItems.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
@@ -838,7 +849,10 @@ export class OrdersService {
           notes: `Order ${order.orderNumber}`,
         });
       } catch (invError) {
-        this.logger.error(`Error recording inventory transaction for product ${item.productId}:`, invError);
+        this.logger.error(
+          `Error recording inventory transaction for product ${item.productId}:`,
+          invError
+        );
         // Don't fail the order, just log the error
       }
     }
@@ -851,7 +865,8 @@ export class OrdersService {
       });
 
       if (user?.email) {
-        const customerName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
+        const customerName =
+          `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
 
         await this.emailService.sendOrderConfirmation(user.email, {
           orderNumber: order.orderNumber,
@@ -921,7 +936,9 @@ export class OrdersService {
       });
 
       if (fullOrder) {
-        const customerName = `${fullOrder.user?.firstName || ''} ${fullOrder.user?.lastName || ''}`.trim() || 'Customer';
+        const customerName =
+          `${fullOrder.user?.firstName || ''} ${fullOrder.user?.lastName || ''}`.trim() ||
+          'Customer';
 
         // Group items by store and send notification to each seller
         const storeGroups = new Map<string, typeof fullOrder.items>();
@@ -962,10 +979,12 @@ export class OrdersService {
               // Find commission for this store
               const commission = fullOrder.commissions?.find((c: any) => c.storeId === storeId);
               const commissionAmount = commission ? Number(commission.commissionAmount) : 0;
-              const commissionRate = sellerSubtotal > 0 ? (commissionAmount / sellerSubtotal) * 100 : 10;
+              const commissionRate =
+                sellerSubtotal > 0 ? (commissionAmount / sellerSubtotal) * 100 : 10;
               const netPayout = sellerSubtotal - commissionAmount;
 
-              const sellerName = `${seller.firstName || ''} ${seller.lastName || ''}`.trim() || 'Seller';
+              const sellerName =
+                `${seller.firstName || ''} ${seller.lastName || ''}`.trim() || 'Seller';
 
               await this.emailService.sendSellerOrderNotification(seller.email, {
                 sellerName,
@@ -995,7 +1014,9 @@ export class OrdersService {
                 sellerId: store.userId,
               });
 
-              this.logger.log(`Seller notification sent to ${seller.email} for store ${store.name}`);
+              this.logger.log(
+                `Seller notification sent to ${seller.email} for store ${store.name}`
+              );
             }
           }
         }
@@ -1069,8 +1090,16 @@ export class OrdersService {
     const validTransitions: Record<OrderStatus, OrderStatus[]> = {
       [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
-      [OrderStatus.PROCESSING]: [OrderStatus.PARTIALLY_SHIPPED, OrderStatus.SHIPPED, OrderStatus.CANCELLED],
-      [OrderStatus.PARTIALLY_SHIPPED]: [OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+      [OrderStatus.PROCESSING]: [
+        OrderStatus.PARTIALLY_SHIPPED,
+        OrderStatus.SHIPPED,
+        OrderStatus.CANCELLED,
+      ],
+      [OrderStatus.PARTIALLY_SHIPPED]: [
+        OrderStatus.SHIPPED,
+        OrderStatus.DELIVERED,
+        OrderStatus.CANCELLED,
+      ],
       [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
       [OrderStatus.DELIVERED]: [OrderStatus.REFUNDED], // Can't cancel delivered orders
       [OrderStatus.CANCELLED]: [], // Terminal state - no transitions allowed
@@ -1082,7 +1111,7 @@ export class OrdersService {
     if (!allowedStatuses.includes(newStatus)) {
       throw new BadRequestException(
         `Invalid status transition: cannot change from ${currentStatus} to ${newStatus}. ` +
-        `Allowed transitions: ${allowedStatuses.length > 0 ? allowedStatuses.join(', ') : 'none (terminal state)'}`,
+          `Allowed transitions: ${allowedStatuses.length > 0 ? allowedStatuses.join(', ') : 'none (terminal state)'}`
       );
     }
 
@@ -1172,13 +1201,12 @@ export class OrdersService {
       });
     };
 
-    const itemsHtml = order.items.map(item => {
-      // Extract variant info from options JSON or name
-      const variantInfo = item.variant
-        ? (item.variant.name || item.variant.colorName || '')
-        : '';
+    const itemsHtml = order.items
+      .map((item) => {
+        // Extract variant info from options JSON or name
+        const variantInfo = item.variant ? item.variant.name || item.variant.colorName || '' : '';
 
-      return `
+        return `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5;">
           <div style="display: flex; align-items: center; gap: 12px;">
@@ -1194,7 +1222,8 @@ export class OrdersService {
         <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 500;">${formatCurrency(Number(item.price) * item.quantity)}</td>
       </tr>
     `;
-    }).join('');
+      })
+      .join('');
 
     const shippingAddr = order.shippingAddress;
     const billingAddr = order.billingAddress || order.shippingAddress;
@@ -1352,23 +1381,31 @@ export class OrdersService {
             </div>
             <div class="info-section">
               <h3>Shipping Address</h3>
-              ${shippingAddr ? `
+              ${
+                shippingAddr
+                  ? `
                 <p>${shippingAddr.firstName} ${shippingAddr.lastName}</p>
                 <p>${shippingAddr.address1}</p>
                 ${shippingAddr.address2 ? `<p>${shippingAddr.address2}</p>` : ''}
                 <p>${shippingAddr.city}, ${shippingAddr.province} ${shippingAddr.postalCode}</p>
                 <p>${shippingAddr.country}</p>
-              ` : '<p>N/A</p>'}
+              `
+                  : '<p>N/A</p>'
+              }
             </div>
             <div class="info-section">
               <h3>Billing Address</h3>
-              ${billingAddr ? `
+              ${
+                billingAddr
+                  ? `
                 <p>${billingAddr.firstName} ${billingAddr.lastName}</p>
                 <p>${billingAddr.address1}</p>
                 ${billingAddr.address2 ? `<p>${billingAddr.address2}</p>` : ''}
                 <p>${billingAddr.city}, ${billingAddr.province} ${billingAddr.postalCode}</p>
                 <p>${billingAddr.country}</p>
-              ` : '<p>Same as shipping</p>'}
+              `
+                  : '<p>Same as shipping</p>'
+              }
             </div>
           </div>
 
@@ -1400,12 +1437,16 @@ export class OrdersService {
                 <span>Tax</span>
                 <span>${formatCurrency(Number(order.tax))}</span>
               </div>
-              ${order.discount && Number(order.discount) > 0 ? `
+              ${
+                order.discount && Number(order.discount) > 0
+                  ? `
                 <div class="totals-row">
                   <span>Discount</span>
                   <span>-${formatCurrency(Number(order.discount))}</span>
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
               <div class="totals-row total">
                 <span>Total</span>
                 <span class="amount">${formatCurrency(Number(order.total))}</span>
@@ -1565,9 +1606,7 @@ export class OrdersService {
       let selectedShipping = shippingOptions[0]; // Default to first option (standard)
 
       if (dto.shippingMethod) {
-        const requestedShipping = shippingOptions.find(
-          opt => opt.id === dto.shippingMethod
-        );
+        const requestedShipping = shippingOptions.find((opt) => opt.id === dto.shippingMethod);
 
         if (requestedShipping) {
           selectedShipping = requestedShipping;
@@ -1589,8 +1628,8 @@ export class OrdersService {
       );
 
       // 6. Apply coupon discount (future feature - placeholder)
-      let discount = 0;
-      let couponDetails = null;
+      const discount = 0;
+      const couponDetails = null;
 
       if (dto.couponCode) {
         // TODO: Implement coupon validation
@@ -1598,9 +1637,7 @@ export class OrdersService {
         this.logger.log(
           `Coupon code '${dto.couponCode}' provided but coupon system not yet implemented`
         );
-        warnings.push(
-          'Coupon system not yet implemented. Coupon code will be ignored.'
-        );
+        warnings.push('Coupon system not yet implemented. Coupon code will be ignored.');
       }
 
       // 7. Get currency and exchange rate
@@ -1616,13 +1653,8 @@ export class OrdersService {
             `💱 Converting prices from USD to ${targetCurrency} (rate: ${exchangeRate})`
           );
         } catch (error) {
-          this.logger.error(
-            `Failed to get exchange rate for ${targetCurrency}:`,
-            error
-          );
-          warnings.push(
-            `Could not get exchange rate for ${targetCurrency}. Using USD instead.`
-          );
+          this.logger.error(`Failed to get exchange rate for ${targetCurrency}:`, error);
+          warnings.push(`Could not get exchange rate for ${targetCurrency}. Using USD instead.`);
           // Fallback to USD if currency conversion fails
         }
       }
@@ -1652,7 +1684,7 @@ export class OrdersService {
           estimatedDays: selectedShipping.estimatedDays,
           carrier: selectedShipping.carrier,
         },
-        shippingOptions: shippingOptions.map(opt => ({
+        shippingOptions: shippingOptions.map((opt) => ({
           id: opt.id,
           name: opt.name,
           price: Math.round(convertPrice(opt.price) * 100) / 100,
@@ -1739,7 +1771,7 @@ export class OrdersService {
           }),
           400,
           90,
-          { align: 'right' },
+          { align: 'right' }
         );
 
       // === STATUS BADGE ===
@@ -1764,7 +1796,7 @@ export class OrdersService {
         .text(
           `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`,
           50,
-          addressY + 20,
+          addressY + 20
         )
         .text(order.shippingAddress.address1, 50, addressY + 35);
 
@@ -1776,7 +1808,7 @@ export class OrdersService {
         .text(
           `${order.shippingAddress.city}, ${order.shippingAddress.province} ${order.shippingAddress.postalCode}`,
           50,
-          addressY + 65,
+          addressY + 65
         )
         .text(order.shippingAddress.country, 50, addressY + 80);
 
@@ -1791,7 +1823,7 @@ export class OrdersService {
           .text(
             `${order.billingAddress.firstName} ${order.billingAddress.lastName}`,
             300,
-            addressY + 20,
+            addressY + 20
           )
           .text(order.billingAddress.address1, 300, addressY + 35);
       }
@@ -1814,7 +1846,10 @@ export class OrdersService {
         .text('Price', priceX, tableTop)
         .text('Amount', amountX, tableTop);
 
-      doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke('#ddd');
+      doc
+        .moveTo(50, tableTop + 15)
+        .lineTo(550, tableTop + 15)
+        .stroke('#ddd');
 
       // Items
       let itemY = tableTop + 25;
@@ -1842,33 +1877,28 @@ export class OrdersService {
       const totalsY = itemY + 20;
       const totalsX = 400;
 
-      doc.moveTo(50, totalsY - 10).lineTo(550, totalsY - 10).stroke('#ddd');
+      doc
+        .moveTo(50, totalsY - 10)
+        .lineTo(550, totalsY - 10)
+        .stroke('#ddd');
 
       doc
         .fontSize(10)
         .fillColor('#666')
         .text('Subtotal:', totalsX, totalsY, { align: 'right', width: 100 })
-        .text(
-          this.formatCurrency(Number(order.subtotal), order.currency),
-          totalsX + 110,
-          totalsY,
-        );
+        .text(this.formatCurrency(Number(order.subtotal), order.currency), totalsX + 110, totalsY);
 
       doc
         .text('Shipping:', totalsX, totalsY + 20, { align: 'right', width: 100 })
         .text(
           this.formatCurrency(Number(order.shipping), order.currency),
           totalsX + 110,
-          totalsY + 20,
+          totalsY + 20
         );
 
       doc
         .text('Tax:', totalsX, totalsY + 40, { align: 'right', width: 100 })
-        .text(
-          this.formatCurrency(Number(order.tax), order.currency),
-          totalsX + 110,
-          totalsY + 40,
-        );
+        .text(this.formatCurrency(Number(order.tax), order.currency), totalsX + 110, totalsY + 40);
 
       if (Number(order.discount) > 0) {
         doc
@@ -1876,11 +1906,14 @@ export class OrdersService {
           .text(
             `-${this.formatCurrency(Number(order.discount), order.currency)}`,
             totalsX + 110,
-            totalsY + 60,
+            totalsY + 60
           );
       }
 
-      doc.moveTo(totalsX, totalsY + 70).lineTo(550, totalsY + 70).stroke('#CBB57B');
+      doc
+        .moveTo(totalsX, totalsY + 70)
+        .lineTo(550, totalsY + 70)
+        .stroke('#CBB57B');
 
       doc
         .fontSize(14)
@@ -1889,7 +1922,7 @@ export class OrdersService {
         .text(
           this.formatCurrency(Number(order.total), order.currency),
           totalsX + 110,
-          totalsY + 80,
+          totalsY + 80
         );
 
       // === FOOTER ===
