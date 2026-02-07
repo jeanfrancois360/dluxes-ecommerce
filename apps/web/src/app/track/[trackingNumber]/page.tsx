@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
 import { Button } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
@@ -39,6 +40,7 @@ interface TrackingInfo {
 export default function TrackDeliveryPage() {
   const params = useParams();
   const router = useRouter();
+  const t = useTranslations('track');
   const [trackingInfo, setTrackingInfo] = useState<TrackingInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,7 +64,10 @@ export default function TrackDeliveryPage() {
       if (error.response?.status === 404) {
         setNotFound(true);
       } else {
-        toast.error('Error', error.response?.data?.message || 'Failed to fetch tracking information');
+        toast.error(
+          'Error',
+          error.response?.data?.message || 'Failed to fetch tracking information'
+        );
       }
     } finally {
       setLoading(false);
@@ -78,12 +83,20 @@ export default function TrackDeliveryPage() {
 
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; icon: any; color: string }> = {
-      PENDING_PICKUP: { label: 'Pending Pickup', icon: Clock, color: 'text-gray-500' },
-      PICKUP_SCHEDULED: { label: 'Pickup Scheduled', icon: Calendar, color: 'text-blue-500' },
-      PICKED_UP: { label: 'Picked Up', icon: Package, color: 'text-blue-600' },
-      IN_TRANSIT: { label: 'In Transit', icon: Truck, color: 'text-blue-600' },
-      OUT_FOR_DELIVERY: { label: 'Out for Delivery', icon: MapPin, color: 'text-orange-600' },
-      DELIVERED: { label: 'Delivered', icon: CheckCircle, color: 'text-green-600' },
+      PENDING_PICKUP: { label: t('statuses.pendingPickup'), icon: Clock, color: 'text-gray-500' },
+      PICKUP_SCHEDULED: {
+        label: t('statuses.pickupScheduled'),
+        icon: Calendar,
+        color: 'text-blue-500',
+      },
+      PICKED_UP: { label: t('statuses.pickedUp'), icon: Package, color: 'text-blue-600' },
+      IN_TRANSIT: { label: t('statuses.inTransit'), icon: Truck, color: 'text-blue-600' },
+      OUT_FOR_DELIVERY: {
+        label: t('statuses.outForDelivery'),
+        icon: MapPin,
+        color: 'text-orange-600',
+      },
+      DELIVERED: { label: t('statuses.delivered'), icon: CheckCircle, color: 'text-green-600' },
     };
 
     return statusMap[status] || { label: status, icon: Package, color: 'text-gray-500' };
@@ -94,10 +107,8 @@ export default function TrackDeliveryPage() {
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold tracking-tight mb-2">Track Your Delivery</h1>
-          <p className="text-muted-foreground">
-            Enter your tracking number to see real-time delivery updates
-          </p>
+          <h1 className="text-4xl font-bold tracking-tight mb-2">{t('title')}</h1>
+          <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
 
         {/* Search Bar */}
@@ -107,13 +118,13 @@ export default function TrackDeliveryPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Enter tracking number (e.g., TRK1234567890ABC)"
+                  placeholder={t('trackingPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
               </div>
-              <Button type="submit">Track</Button>
+              <Button type="submit">{t('track')}</Button>
             </form>
           </CardContent>
         </Card>
@@ -123,7 +134,7 @@ export default function TrackDeliveryPage() {
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               <Truck className="h-12 w-12 mx-auto mb-4 animate-bounce" />
-              <p>Fetching tracking information...</p>
+              <p>{t('fetchingInfo')}</p>
             </CardContent>
           </Card>
         )}
@@ -133,14 +144,12 @@ export default function TrackDeliveryPage() {
           <Card>
             <CardContent className="py-12 text-center">
               <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Tracking Number Not Found</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('trackingNotFound')}</h3>
               <p className="text-muted-foreground mb-4">
-                We couldn't find any delivery with tracking number:{' '}
+                {t('notFoundMessage')}:{' '}
                 <span className="font-mono font-medium">{params.trackingNumber}</span>
               </p>
-              <p className="text-sm text-muted-foreground">
-                Please check the tracking number and try again
-              </p>
+              <p className="text-sm text-muted-foreground">{t('checkAndRetry')}</p>
             </CardContent>
           </Card>
         )}
@@ -162,7 +171,7 @@ export default function TrackDeliveryPage() {
                   </div>
                   {trackingInfo.provider && (
                     <div className="text-right">
-                      <div className="text-sm text-muted-foreground">Delivered by</div>
+                      <div className="text-sm text-muted-foreground">{t('deliveredBy')}</div>
                       <div className="font-semibold">{trackingInfo.provider.name}</div>
                     </div>
                   )}
@@ -172,7 +181,7 @@ export default function TrackDeliveryPage() {
                 {trackingInfo.expectedDeliveryDate && (
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Expected Delivery:</span>
+                    <span className="text-muted-foreground">{t('expectedDelivery')}:</span>
                     <span className="font-medium">
                       {format(new Date(trackingInfo.expectedDeliveryDate), 'MMMM dd, yyyy')}
                     </span>
@@ -184,8 +193,8 @@ export default function TrackDeliveryPage() {
             {/* Timeline Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Delivery Progress</CardTitle>
-                <CardDescription>Track your package's journey</CardDescription>
+                <CardTitle>{t('deliveryProgress')}</CardTitle>
+                <CardDescription>{t('trackJourney')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -212,9 +221,7 @@ export default function TrackDeliveryPage() {
                             {!isLast && (
                               <div
                                 className={`w-0.5 h-12 mt-2 ${
-                                  isCompleted
-                                    ? 'bg-primary'
-                                    : 'bg-gray-200 '
+                                  isCompleted ? 'bg-primary' : 'bg-gray-200 '
                                 }`}
                               />
                             )}

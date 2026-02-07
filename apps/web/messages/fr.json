@@ -2115,5 +2115,43 @@
       "art": "Art & Objets de Collection",
       "automotive": "Automobile"
     }
+  },
+  "track": {
+    "title": "Suivre Votre Livraison",
+    "subtitle": "Entrez votre numéro de suivi pour voir les mises à jour en temps réel sur l'emplacement et le statut de votre colis",
+    "enterTrackingNumber": "Entrez le Numéro de Suivi",
+    "findInEmail": "Vous pouvez trouver votre numéro de suivi dans votre email de confirmation de commande",
+    "trackingPlaceholder": "Entrez le numéro de suivi (ex: TRK1234567890ABC)",
+    "trackPackage": "Suivre le Colis",
+    "track": "Suivre",
+    "realTimeUpdates": "Mises à Jour en Temps Réel",
+    "realTimeUpdatesDesc": "Recevez des mises à jour en direct sur l'emplacement actuel et le statut de votre colis",
+    "deliveryConfirmation": "Confirmation de Livraison",
+    "deliveryConfirmationDesc": "Recevez une confirmation avec preuve de livraison lorsque votre colis arrive",
+    "multipleCarriers": "Transporteurs Multiples",
+    "multipleCarriersDesc": "Suivez les colis de différents fournisseurs de livraison en un seul endroit",
+    "faq": "Questions Fréquemment Posées",
+    "faqQuestion1": "Où puis-je trouver mon numéro de suivi ?",
+    "faqAnswer1": "Votre numéro de suivi est inclus dans votre email de confirmation de commande et est également disponible dans votre historique de commandes.",
+    "faqQuestion2": "À quelle fréquence les informations de suivi sont-elles mises à jour ?",
+    "faqAnswer2": "Les informations de suivi sont mises à jour en temps réel lorsque votre colis se déplace dans notre réseau de livraison.",
+    "faqQuestion3": "Que faire si mon numéro de suivi ne fonctionne pas ?",
+    "faqAnswer3": "Si votre numéro de suivi ne fonctionne pas, veuillez vérifier que vous l'avez saisi correctement. Si le problème persiste, contactez notre équipe d'assistance client.",
+    "fetchingInfo": "Récupération des informations de suivi...",
+    "trackingNotFound": "Numéro de Suivi Non Trouvé",
+    "notFoundMessage": "Nous n'avons trouvé aucune livraison avec le numéro de suivi",
+    "checkAndRetry": "Veuillez vérifier le numéro de suivi et réessayer",
+    "deliveredBy": "Livré par",
+    "expectedDelivery": "Livraison Prévue",
+    "deliveryProgress": "Progression de la Livraison",
+    "trackJourney": "Suivez le parcours de votre colis",
+    "statuses": {
+      "pendingPickup": "En Attente de Ramassage",
+      "pickupScheduled": "Ramassage Programmé",
+      "pickedUp": "Ramassé",
+      "inTransit": "En Transit",
+      "outForDelivery": "En Cours de Livraison",
+      "delivered": "Livré"
+    }
   }
 }
