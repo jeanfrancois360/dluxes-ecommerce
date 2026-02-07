@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
-import { PageLayout } from '@/components/layout/page-layout';
+import PageHeader from '@/components/buyer/page-header';
 import { useAuth } from '@/hooks/use-auth';
 import { toast, standardToasts } from '@/lib/utils/toast';
 
@@ -177,7 +177,11 @@ export default function SecurityPage() {
 
     setIsSubmitting(true);
     try {
-      await changePassword(formData.currentPassword, formData.newPassword, formData.confirmPassword);
+      await changePassword(
+        formData.currentPassword,
+        formData.newPassword,
+        formData.confirmPassword
+      );
       // Reset form on success
       setFormData({
         currentPassword: '',
@@ -234,12 +238,15 @@ export default function SecurityPage() {
     setRevokingSessionId(sessionId);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/sessions/${sessionId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
 
       const data = await response.json();
 
@@ -260,14 +267,17 @@ export default function SecurityPage() {
     setIsRevokingAll(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/sessions/revoke-all-other`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({}),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/sessions/revoke-all-other`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({}),
+        }
+      );
 
       const data = await response.json();
 
@@ -293,9 +303,16 @@ export default function SecurityPage() {
     const diffDays = Math.floor(diffHours / 24);
 
     if (diffMins < 1) return t('justNow');
-    if (diffMins < 60) return diffMins > 1 ? t('minutesAgo', { count: diffMins }) : t('minuteAgo', { count: diffMins });
-    if (diffHours < 24) return diffHours > 1 ? t('hoursAgo', { count: diffHours }) : t('hourAgo', { count: diffHours });
-    if (diffDays < 7) return diffDays > 1 ? t('daysAgo', { count: diffDays }) : t('dayAgo', { count: diffDays });
+    if (diffMins < 60)
+      return diffMins > 1
+        ? t('minutesAgo', { count: diffMins })
+        : t('minuteAgo', { count: diffMins });
+    if (diffHours < 24)
+      return diffHours > 1
+        ? t('hoursAgo', { count: diffHours })
+        : t('hourAgo', { count: diffHours });
+    if (diffDays < 7)
+      return diffDays > 1 ? t('daysAgo', { count: diffDays }) : t('dayAgo', { count: diffDays });
 
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -309,19 +326,34 @@ export default function SecurityPage() {
       case 'mobile':
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+            />
           </svg>
         );
       case 'tablet':
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+            />
           </svg>
         );
       default:
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+            />
           </svg>
         );
     }
@@ -364,7 +396,7 @@ export default function SecurityPage() {
   // Loading state
   if (authLoading || !user) {
     return (
-      <PageLayout>
+      <div className="min-h-screen bg-neutral-50">
         <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
           <motion.div
             animate={{ rotate: 360 }}
@@ -372,68 +404,20 @@ export default function SecurityPage() {
             className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
           />
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout>
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-black via-neutral-900 to-black text-white overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-gold/5 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gold/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-neutral-50">
+      <PageHeader
+        title={t('title')}
+        description={t('subtitle')}
+        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'Security' }]}
+      />
 
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {/* Breadcrumbs */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 text-sm text-white/60 mb-6"
-          >
-            <Link href="/" className="hover:text-gold transition-colors">
-              Home
-            </Link>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <Link href="/account" className="hover:text-gold transition-colors">
-              Account
-            </Link>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="text-white font-medium">Security</span>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-center gap-4"
-          >
-            <div className="w-14 h-14 bg-gradient-to-br from-gold to-gold/80 rounded-2xl flex items-center justify-center shadow-lg shadow-gold/20">
-              <svg className="w-7 h-7 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">{t('title')}</h1>
-              <p className="text-lg text-white/80">{t('subtitle')}</p>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="bg-gradient-to-b from-neutral-50 to-white min-h-screen py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Sidebar */}
             <motion.div
@@ -449,7 +433,11 @@ export default function SecurityPage() {
                   {/* Password Status */}
                   <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <svg
+                        className="w-5 h-5 text-green-600"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
                         <path
                           fillRule="evenodd"
                           d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -487,10 +475,14 @@ export default function SecurityPage() {
                       </svg>
                     </div>
                     <div>
-                      <p className={`font-medium ${user.twoFactorEnabled ? 'text-green-800' : 'text-amber-800'}`}>
+                      <p
+                        className={`font-medium ${user.twoFactorEnabled ? 'text-green-800' : 'text-amber-800'}`}
+                      >
                         {t('twoFactorAuth')}
                       </p>
-                      <p className={`text-sm ${user.twoFactorEnabled ? 'text-green-600' : 'text-amber-600'}`}>
+                      <p
+                        className={`text-sm ${user.twoFactorEnabled ? 'text-green-600' : 'text-amber-600'}`}
+                      >
                         {user.twoFactorEnabled ? t('enabled') : t('notEnabled')}
                       </p>
                     </div>
@@ -517,10 +509,14 @@ export default function SecurityPage() {
                       </svg>
                     </div>
                     <div>
-                      <p className={`font-medium ${user.emailVerified ? 'text-green-800' : 'text-amber-800'}`}>
+                      <p
+                        className={`font-medium ${user.emailVerified ? 'text-green-800' : 'text-amber-800'}`}
+                      >
                         {t('emailVerified')}
                       </p>
-                      <p className={`text-sm ${user.emailVerified ? 'text-green-600' : 'text-amber-600'}`}>
+                      <p
+                        className={`text-sm ${user.emailVerified ? 'text-green-600' : 'text-amber-600'}`}
+                      >
                         {user.emailVerified ? t('emailVerifiedDesc') : t('pleaseVerifyEmail')}
                       </p>
                     </div>
@@ -674,7 +670,9 @@ export default function SecurityPage() {
                         onToggle={() => setShowNewPassword(!showNewPassword)}
                       />
                     </div>
-                    {errors.newPassword && <p className="mt-1 text-sm text-red-500">{errors.newPassword}</p>}
+                    {errors.newPassword && (
+                      <p className="mt-1 text-sm text-red-500">{errors.newPassword}</p>
+                    )}
 
                     {/* Password Strength Indicator */}
                     {formData.newPassword && (
@@ -686,10 +684,10 @@ export default function SecurityPage() {
                               passwordStrength <= 1
                                 ? 'text-red-500'
                                 : passwordStrength <= 2
-                                ? 'text-orange-500'
-                                : passwordStrength <= 3
-                                ? 'text-yellow-600'
-                                : 'text-green-500'
+                                  ? 'text-orange-500'
+                                  : passwordStrength <= 3
+                                    ? 'text-yellow-600'
+                                    : 'text-green-500'
                             }`}
                           >
                             {getStrengthText()}
@@ -719,9 +717,10 @@ export default function SecurityPage() {
                         className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none transition-colors ${
                           errors.confirmPassword
                             ? 'border-red-500 focus:border-red-500'
-                            : formData.confirmPassword && formData.confirmPassword === formData.newPassword
-                            ? 'border-green-500 focus:border-green-500'
-                            : 'border-neutral-200 focus:border-gold'
+                            : formData.confirmPassword &&
+                                formData.confirmPassword === formData.newPassword
+                              ? 'border-green-500 focus:border-green-500'
+                              : 'border-neutral-200 focus:border-gold'
                         }`}
                         placeholder={t('confirmNewPasswordPlaceholder')}
                       />
@@ -751,7 +750,9 @@ export default function SecurityPage() {
 
                   {/* Password Requirements */}
                   <div className="p-4 bg-neutral-50 rounded-xl">
-                    <p className="text-sm font-medium text-neutral-700 mb-3">{t('passwordRequirements')}</p>
+                    <p className="text-sm font-medium text-neutral-700 mb-3">
+                      {t('passwordRequirements')}
+                    </p>
                     <ul className="space-y-2 text-sm">
                       <li
                         className={`flex items-center gap-2 ${
@@ -797,7 +798,8 @@ export default function SecurityPage() {
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
-                          {/[a-z]/.test(formData.newPassword) && /[A-Z]/.test(formData.newPassword) ? (
+                          {/[a-z]/.test(formData.newPassword) &&
+                          /[A-Z]/.test(formData.newPassword) ? (
                             <path
                               fillRule="evenodd"
                               d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -843,12 +845,16 @@ export default function SecurityPage() {
                       </li>
                       <li
                         className={`flex items-center gap-2 ${
-                          /[^a-zA-Z0-9]/.test(formData.newPassword) ? 'text-green-600' : 'text-neutral-500'
+                          /[^a-zA-Z0-9]/.test(formData.newPassword)
+                            ? 'text-green-600'
+                            : 'text-neutral-500'
                         }`}
                       >
                         <svg
                           className={`w-4 h-4 ${
-                            /[^a-zA-Z0-9]/.test(formData.newPassword) ? 'text-green-500' : 'text-neutral-300'
+                            /[^a-zA-Z0-9]/.test(formData.newPassword)
+                              ? 'text-green-500'
+                              : 'text-neutral-300'
                           }`}
                           fill="currentColor"
                           viewBox="0 0 20 20"
@@ -909,7 +915,10 @@ export default function SecurityPage() {
                 <div className="mt-6 pt-6 border-t border-neutral-200 text-center">
                   <p className="text-sm text-neutral-500">
                     {t('forgotCurrentPassword')}{' '}
-                    <Link href="/auth/forgot-password" className="text-gold hover:underline font-medium">
+                    <Link
+                      href="/auth/forgot-password"
+                      className="text-gold hover:underline font-medium"
+                    >
                       {t('resetItHere')}
                     </Link>
                   </p>
@@ -969,9 +978,7 @@ export default function SecurityPage() {
                       </svg>
                     </div>
                     <p className="text-neutral-500">{t('noActiveSessions')}</p>
-                    <p className="text-sm text-neutral-400 mt-1">
-                      {t('sessionsWillAppear')}
-                    </p>
+                    <p className="text-sm text-neutral-400 mt-1">{t('sessionsWillAppear')}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -998,7 +1005,7 @@ export default function SecurityPage() {
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-black">
                                 {session.deviceInfo?.description ||
-                                 `${session.browser || 'Unknown Browser'}${session.os ? ` on ${session.os}` : ''}`}
+                                  `${session.browser || 'Unknown Browser'}${session.os ? ` on ${session.os}` : ''}`}
                               </p>
                               {session.isCurrent && (
                                 <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
@@ -1032,13 +1039,9 @@ export default function SecurityPage() {
                                 </span>
                               )}
                               {session.ipAddress && (
-                                <span className="text-neutral-400">
-                                  IP: {session.ipAddress}
-                                </span>
+                                <span className="text-neutral-400">IP: {session.ipAddress}</span>
                               )}
-                              <span>
-                                Active {formatSessionDate(session.lastActiveAt)}
-                              </span>
+                              <span>Active {formatSessionDate(session.lastActiveAt)}</span>
                             </div>
                           </div>
                         </div>
@@ -1050,7 +1053,11 @@ export default function SecurityPage() {
                           >
                             {revokingSessionId === session.id ? (
                               <span className="flex items-center gap-2">
-                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <svg
+                                  className="animate-spin w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
                                   <circle
                                     className="opacity-25"
                                     cx="12"
@@ -1091,9 +1098,7 @@ export default function SecurityPage() {
                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    <p>
-                      {t('unrecognizedSessionWarning')}
-                    </p>
+                    <p>{t('unrecognizedSessionWarning')}</p>
                   </div>
                 </div>
               </div>
@@ -1117,7 +1122,9 @@ export default function SecurityPage() {
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold font-['Poppins'] text-red-600">{t('deleteAccount')}</h2>
+                    <h2 className="text-2xl font-bold font-['Poppins'] text-red-600">
+                      {t('deleteAccount')}
+                    </h2>
                     <p className="text-neutral-500">{t('deleteAccountDesc')}</p>
                   </div>
                 </div>
@@ -1138,7 +1145,9 @@ export default function SecurityPage() {
                       />
                     </svg>
                     <div>
-                      <p className="font-semibold text-red-800 mb-1">{t('warningCannotBeUndone')}</p>
+                      <p className="font-semibold text-red-800 mb-1">
+                        {t('warningCannotBeUndone')}
+                      </p>
                       <ul className="text-sm text-red-700 space-y-1">
                         <li>{t('deleteWarning1')}</li>
                         <li>{t('deleteWarning2')}</li>
@@ -1191,9 +1200,7 @@ export default function SecurityPage() {
               </div>
             </div>
 
-            <p className="text-neutral-600 mb-4">
-              {t('enterPasswordToConfirm')}
-            </p>
+            <p className="text-neutral-600 mb-4">{t('enterPasswordToConfirm')}</p>
 
             {deleteError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
@@ -1222,9 +1229,7 @@ export default function SecurityPage() {
                   onChange={(e) => setDeleteConfirm(e.target.checked)}
                   className="mt-1 w-5 h-5 text-red-600 border-neutral-300 rounded focus:ring-red-500"
                 />
-                <span className="text-sm text-neutral-600">
-                  {t('understandDeletion')}
-                </span>
+                <span className="text-sm text-neutral-600">{t('understandDeletion')}</span>
               </label>
             </div>
 
@@ -1272,6 +1277,6 @@ export default function SecurityPage() {
           </motion.div>
         </div>
       )}
-    </PageLayout>
+    </div>
   );
 }

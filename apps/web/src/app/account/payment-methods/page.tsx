@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PageLayout } from '@/components/layout/page-layout';
+import PageHeader from '@/components/buyer/page-header';
 import { useAuth } from '@/hooks/use-auth';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import {
@@ -12,12 +12,7 @@ import {
   CARD_BRAND_COLORS,
 } from '@/lib/api/payment-methods';
 import { loadStripe, Stripe, StripeElements } from '@stripe/stripe-js';
-import {
-  Elements,
-  CardElement,
-  useStripe,
-  useElements,
-} from '@stripe/react-stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { CardBrandLogo } from '@/components/payment/card-brand-logo';
@@ -114,8 +109,18 @@ function AddCardModal({
       >
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            <svg
+              className="w-6 h-6 text-blue-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+              />
             </svg>
           </div>
           <div>
@@ -157,14 +162,22 @@ function AddCardModal({
 
           <div className="bg-blue-50 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <svg
+                className="w-5 h-5 text-blue-600 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
               </svg>
               <div>
                 <p className="text-sm font-medium text-blue-900">{t('securePayment')}</p>
-                <p className="text-xs text-blue-700 mt-1">
-                  {t('securePaymentDesc')}
-                </p>
+                <p className="text-xs text-blue-700 mt-1">{t('securePaymentDesc')}</p>
               </div>
             </div>
           </div>
@@ -186,8 +199,19 @@ function AddCardModal({
               {isLoading ? (
                 <>
                   <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                   {t('adding')}
                 </>
@@ -303,7 +327,10 @@ export default function PaymentMethodsPage() {
 
     try {
       setIsSavingNickname(true);
-      const response = await paymentMethodsApi.updateNickname(paymentMethodId, nicknameValue.trim());
+      const response = await paymentMethodsApi.updateNickname(
+        paymentMethodId,
+        nicknameValue.trim()
+      );
       if (response?.success) {
         toast.success(t('nicknameUpdated'));
         setEditingNickname(null);
@@ -338,7 +365,7 @@ export default function PaymentMethodsPage() {
 
   if (authLoading) {
     return (
-      <PageLayout>
+      <div className="min-h-screen bg-neutral-50">
         <div className="min-h-[60vh] flex items-center justify-center">
           <motion.div
             animate={{ rotate: 360 }}
@@ -346,283 +373,317 @@ export default function PaymentMethodsPage() {
             className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
           />
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout>
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-black via-neutral-900 to-black text-white overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-tr from-gold/5 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gold/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-neutral-50">
+      <PageHeader
+        title={t('title')}
+        description={t('subtitle')}
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard/buyer' },
+          { label: 'Payment Methods' },
+        ]}
+      />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 text-sm text-white/60 mb-6"
-          >
-            <Link href="/" className="hover:text-gold transition-colors">Home</Link>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <Link href="/account" className="hover:text-gold transition-colors">Account</Link>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="text-white font-medium">Payment Methods</span>
-          </motion.div>
-
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Add New Card Button */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4"
+            className="mb-8"
           >
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            <button
+              onClick={() => setShowAddCard(true)}
+              className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold font-['Poppins'] text-white mb-1">
-                {t('title')}
-              </h1>
-              <p className="text-lg text-white/80">
-                {t('subtitle')}
-              </p>
-            </div>
+              {t('addNewCard')}
+            </button>
           </motion.div>
-        </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Add New Card Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <button
-            onClick={() => setShowAddCard(true)}
-            className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2"
+          {/* Saved Cards List */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="space-y-4"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            {t('addNewCard')}
-          </button>
-        </motion.div>
-
-        {/* Saved Cards List */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="space-y-4"
-        >
-          {isLoading ? (
-            <CardListSkeleton count={3} />
-          ) : paymentMethods.length === 0 ? (
-            <div className="bg-white rounded-2xl border-2 border-neutral-100 p-12 text-center">
-              <div className="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-10 h-10 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
+            {isLoading ? (
+              <CardListSkeleton count={3} />
+            ) : paymentMethods.length === 0 ? (
+              <div className="bg-white rounded-2xl border-2 border-neutral-100 p-12 text-center">
+                <div className="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg
+                    className="w-10 h-10 text-neutral-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-black mb-2">{t('noSavedCards')}</h3>
+                <p className="text-gray-600 mb-6">{t('noSavedCardsDesc')}</p>
+                <button
+                  onClick={() => setShowAddCard(true)}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  {t('addYourFirstCard')}
+                </button>
               </div>
-              <h3 className="text-xl font-bold text-black mb-2">{t('noSavedCards')}</h3>
-              <p className="text-gray-600 mb-6">
-                {t('noSavedCardsDesc')}
-              </p>
-              <button
-                onClick={() => setShowAddCard(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                {t('addYourFirstCard')}
-              </button>
-            </div>
-          ) : (
-            paymentMethods.map((card, index) => (
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 * index }}
-                whileHover={{ scale: 1.01, y: -2 }}
-                className={`bg-white rounded-2xl border-2 p-6 transition-all ${
-                  card.isDefault
-                    ? 'border-blue-500 shadow-lg shadow-blue-100'
-                    : 'border-neutral-100 hover:border-blue-300 hover:shadow-md'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* Card Brand Logo */}
-                    <div className="flex-shrink-0">
-                      <CardBrandLogo brand={card.brand} size="md" />
-                    </div>
+            ) : (
+              paymentMethods.map((card, index) => (
+                <motion.div
+                  key={card.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 * index }}
+                  whileHover={{ scale: 1.01, y: -2 }}
+                  className={`bg-white rounded-2xl border-2 p-6 transition-all ${
+                    card.isDefault
+                      ? 'border-blue-500 shadow-lg shadow-blue-100'
+                      : 'border-neutral-100 hover:border-blue-300 hover:shadow-md'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {/* Card Brand Logo */}
+                      <div className="flex-shrink-0">
+                        <CardBrandLogo brand={card.brand} size="md" />
+                      </div>
 
-                    {/* Card Details */}
-                    <div className="flex-1">
-                      {/* Nickname editing or display */}
-                      {editingNickname === card.id ? (
-                        <div className="flex items-center gap-2 mb-1">
-                          <input
-                            type="text"
-                            value={nicknameValue}
-                            onChange={(e) => setNicknameValue(e.target.value)}
-                            placeholder={t('enterNickname')}
-                            className="px-2 py-1 border border-blue-500 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                            autoFocus
-                            maxLength={30}
-                          />
-                          <button
-                            onClick={() => handleSaveNickname(card.id)}
-                            disabled={isSavingNickname}
-                            className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
-                          >
-                            {isSavingNickname ? t('saving') : t('save')}
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="px-2 py-1 border border-neutral-300 text-xs rounded hover:bg-neutral-50"
-                          >
-                            {t('cancel')}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 mb-1">
-                          {card.nickname ? (
-                            <div className="flex items-center gap-2">
-                              <p className="font-semibold text-black">{card.nickname}</p>
-                              <button
-                                onClick={() => handleEditNickname(card.id, card.nickname)}
-                                className="text-blue-600 hover:text-blue-700"
-                                title={t('editNickname')}
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                              </button>
-                            </div>
-                          ) : (
+                      {/* Card Details */}
+                      <div className="flex-1">
+                        {/* Nickname editing or display */}
+                        {editingNickname === card.id ? (
+                          <div className="flex items-center gap-2 mb-1">
+                            <input
+                              type="text"
+                              value={nicknameValue}
+                              onChange={(e) => setNicknameValue(e.target.value)}
+                              placeholder={t('enterNickname')}
+                              className="px-2 py-1 border border-blue-500 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                              autoFocus
+                              maxLength={30}
+                            />
                             <button
-                              onClick={() => handleEditNickname(card.id)}
-                              className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
+                              onClick={() => handleSaveNickname(card.id)}
+                              disabled={isSavingNickname}
+                              className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                              </svg>
-                              {t('addNickname')}
+                              {isSavingNickname ? t('saving') : t('save')}
                             </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="px-2 py-1 border border-neutral-300 text-xs rounded hover:bg-neutral-50"
+                            >
+                              {t('cancel')}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 mb-1">
+                            {card.nickname ? (
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-black">{card.nickname}</p>
+                                <button
+                                  onClick={() => handleEditNickname(card.id, card.nickname)}
+                                  className="text-blue-600 hover:text-blue-700"
+                                  title={t('editNickname')}
+                                >
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleEditNickname(card.id)}
+                                className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 4v16m8-8H4"
+                                  />
+                                </svg>
+                                {t('addNickname')}
+                              </button>
+                            )}
+                            {card.isDefault && (
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                                {t('default')}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Card brand and number */}
+                        <p className="text-sm text-gray-700">
+                          {CARD_BRAND_LABELS[card.brand.toLowerCase()] || card.brand} ••••{' '}
+                          {card.last4}
+                        </p>
+
+                        {/* Expiry and usage stats */}
+                        <div className="flex items-center flex-wrap gap-2 mt-1">
+                          <span className="text-xs text-gray-500">
+                            {t('expires')} {card.expMonth.toString().padStart(2, '0')}/
+                            {card.expYear}
+                          </span>
+                          <CardExpiryBadge expMonth={card.expMonth} expYear={card.expYear} />
+
+                          {card.usageCount !== undefined && card.usageCount > 0 && (
+                            <>
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-xs text-gray-500">
+                                {card.usageCount === 1
+                                  ? t('usedTimes', { count: card.usageCount })
+                                  : t('usedTimesPlural', { count: card.usageCount })}
+                              </span>
+                            </>
                           )}
-                          {card.isDefault && (
-                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                              {t('default')}
-                            </span>
+                          {card.lastUsedAt && (
+                            <>
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-xs text-gray-500">
+                                {formatLastUsed(card.lastUsedAt)}
+                              </span>
+                            </>
                           )}
                         </div>
-                      )}
-
-                      {/* Card brand and number */}
-                      <p className="text-sm text-gray-700">
-                        {CARD_BRAND_LABELS[card.brand.toLowerCase()] || card.brand} •••• {card.last4}
-                      </p>
-
-                      {/* Expiry and usage stats */}
-                      <div className="flex items-center flex-wrap gap-2 mt-1">
-                        <span className="text-xs text-gray-500">
-                          {t('expires')} {card.expMonth.toString().padStart(2, '0')}/{card.expYear}
-                        </span>
-                        <CardExpiryBadge expMonth={card.expMonth} expYear={card.expYear} />
-
-                        {card.usageCount !== undefined && card.usageCount > 0 && (
-                          <>
-                            <span className="text-xs text-gray-400">•</span>
-                            <span className="text-xs text-gray-500">
-                              {card.usageCount === 1 ? t('usedTimes', { count: card.usageCount }) : t('usedTimesPlural', { count: card.usageCount })}
-                            </span>
-                          </>
-                        )}
-                        {card.lastUsedAt && (
-                          <>
-                            <span className="text-xs text-gray-400">•</span>
-                            <span className="text-xs text-gray-500">{formatLastUsed(card.lastUsedAt)}</span>
-                          </>
-                        )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    {!card.isDefault && (
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      {!card.isDefault && (
+                        <button
+                          onClick={() => handleSetDefault(card.id)}
+                          disabled={isSettingDefault === card.id}
+                          className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {isSettingDefault === card.id ? t('setting') : t('setDefault')}
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleSetDefault(card.id)}
-                        disabled={isSettingDefault === card.id}
-                        className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                        onClick={() => setShowDeleteConfirm(card.id)}
+                        className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title={t('removeCard')}
                       >
-                        {isSettingDefault === card.id ? t('setting') : t('setDefault')}
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
                       </button>
-                    )}
-                    <button
-                      onClick={() => setShowDeleteConfirm(card.id)}
-                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title={t('removeCard')}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))
-          )}
-        </motion.div>
+                </motion.div>
+              ))
+            )}
+          </motion.div>
 
-        {/* Security Note */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-8 bg-gradient-to-br from-neutral-50 to-white rounded-2xl border-2 border-neutral-100 p-6"
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-semibold text-black mb-1">{t('cardsSecure')}</h3>
-              <p className="text-sm text-gray-600">
-                {t('cardsSecureDesc')}
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Back Link */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 text-center"
-        >
-          <Link
-            href="/dashboard/buyer"
-            className="text-gray-600 hover:text-black transition-colors inline-flex items-center gap-2"
+          {/* Security Note */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-8 bg-gradient-to-br from-neutral-50 to-white rounded-2xl border-2 border-neutral-100 p-6"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            {t('backToDashboard')}
-          </Link>
-        </motion.div>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg
+                  className="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-black mb-1">{t('cardsSecure')}</h3>
+                <p className="text-sm text-gray-600">{t('cardsSecureDesc')}</p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Back Link */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mt-8 text-center"
+          >
+            <Link
+              href="/dashboard/buyer"
+              className="text-gray-600 hover:text-black transition-colors inline-flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              {t('backToDashboard')}
+            </Link>
+          </motion.div>
+        </div>
       </div>
 
       {/* Add Card Modal with Stripe Elements */}
@@ -659,14 +720,22 @@ export default function PaymentMethodsPage() {
             >
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <svg
+                    className="w-8 h-8 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 </div>
                 <h3 className="text-2xl font-bold mb-2">{t('removeCard')}?</h3>
-                <p className="text-gray-600">
-                  {t('removeCardConfirm')}
-                </p>
+                <p className="text-gray-600">{t('removeCardConfirm')}</p>
               </div>
 
               <div className="flex gap-3">
@@ -689,6 +758,6 @@ export default function PaymentMethodsPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </PageLayout>
+    </div>
   );
 }

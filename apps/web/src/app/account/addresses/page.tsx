@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PageLayout } from '@/components/layout/page-layout';
+import PageHeader from '@/components/buyer/page-header';
 import Link from 'next/link';
 import {
   useAddresses,
@@ -13,7 +13,11 @@ import {
   useSetDefaultAddress,
 } from '@/hooks/use-addresses';
 import type { Address, CreateAddressData } from '@/lib/api/addresses';
-import { validateAddressForm, type AddressFormData, type AddressValidationErrors } from '@/lib/validation/address-validation';
+import {
+  validateAddressForm,
+  type AddressFormData,
+  type AddressValidationErrors,
+} from '@/lib/validation/address-validation';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { CountrySelector } from '@/components/forms/country-selector';
 
@@ -86,10 +90,10 @@ export default function AddressesPage() {
   }, [editingAddress]);
 
   const handleInputChange = (field: keyof AddressFormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field when user starts typing
     if (validationErrors[field as keyof AddressValidationErrors]) {
-      setValidationErrors(prev => {
+      setValidationErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[field as keyof AddressValidationErrors];
         return newErrors;
@@ -165,77 +169,31 @@ export default function AddressesPage() {
   };
 
   return (
-    <PageLayout>
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-black via-neutral-900 to-black text-white overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-gold/5 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gold/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative max-w-[1200px] mx-auto px-4 lg:px-8 py-12">
-          {/* Breadcrumbs */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 text-sm text-white/60 mb-6"
+    <div className="min-h-screen bg-neutral-50">
+      <PageHeader
+        title={t('title')}
+        description={t('subtitle')}
+        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'Addresses' }]}
+        actions={
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-white text-black font-medium rounded-lg hover:bg-neutral-100 transition-colors flex items-center gap-2"
           >
-            <Link href="/" className="hover:text-gold transition-colors">Home</Link>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
-            <Link href="/account" className="hover:text-gold transition-colors">Account</Link>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="text-white font-medium">Addresses</span>
-          </motion.div>
+            {t('addAddress')}
+          </button>
+        }
+      />
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="flex items-center gap-4"
-            >
-              <div className="w-14 h-14 bg-gradient-to-br from-gold to-gold/80 rounded-2xl flex items-center justify-center shadow-lg shadow-gold/20">
-                <svg className="w-7 h-7 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">
-                  {t('title')}
-                </h1>
-                <p className="text-lg text-white/80">{t('subtitle')}</p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowAddModal(true)}
-                className="px-6 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all flex items-center gap-2 shadow-lg shadow-gold/20"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                {t('addAddress')}
-              </motion.button>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="bg-gradient-to-b from-neutral-50 to-white min-h-screen py-12">
-        <div className="max-w-[1200px] mx-auto px-4 lg:px-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl mx-auto">
           {/* Loading State */}
           {loadingAddresses && (
             <div className="grid md:grid-cols-2 gap-6">
@@ -276,8 +234,18 @@ export default function AddressesPage() {
 
                     {/* Address Icon */}
                     <div className="flex items-center gap-2 mb-4">
-                      <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <svg
+                        className="w-6 h-6 text-gold"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                        />
                       </svg>
                       <span className="text-xl font-serif font-bold text-black">
                         {address.company || `${address.firstName}'s Address`}
@@ -286,10 +254,14 @@ export default function AddressesPage() {
 
                     {/* Address Details */}
                     <div className="space-y-1 text-neutral-700 mb-6">
-                      <p className="font-semibold text-black">{address.firstName} {address.lastName}</p>
+                      <p className="font-semibold text-black">
+                        {address.firstName} {address.lastName}
+                      </p>
                       <p>{address.address1}</p>
                       {address.address2 && <p>{address.address2}</p>}
-                      <p>{address.city}, {address.province} {address.postalCode}</p>
+                      <p>
+                        {address.city}, {address.province} {address.postalCode}
+                      </p>
                       <p>{address.country}</p>
                       {address.phone && <p className="pt-2">{address.phone}</p>}
                     </div>
@@ -338,7 +310,12 @@ export default function AddressesPage() {
                   className="min-h-[320px] bg-white border-2 border-dashed border-neutral-300 rounded-xl hover:border-gold transition-all flex flex-col items-center justify-center gap-4 text-neutral-500 hover:text-gold"
                 >
                   <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                   <span className="text-lg font-semibold">{t('addNewAddress')}</span>
                 </motion.button>
@@ -373,8 +350,18 @@ export default function AddressesPage() {
                           onClick={closeModal}
                           className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
                         >
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                         </button>
                       </div>
@@ -405,12 +392,16 @@ export default function AddressesPage() {
                               value={formData.firstName}
                               onChange={(e) => handleInputChange('firstName', e.target.value)}
                               className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none ${
-                                validationErrors.firstName ? 'border-red-500 focus:border-red-500' : 'border-neutral-200 focus:border-gold'
+                                validationErrors.firstName
+                                  ? 'border-red-500 focus:border-red-500'
+                                  : 'border-neutral-200 focus:border-gold'
                               }`}
                               placeholder="John"
                             />
                             {validationErrors.firstName && (
-                              <p className="mt-1 text-sm text-red-500">{validationErrors.firstName}</p>
+                              <p className="mt-1 text-sm text-red-500">
+                                {validationErrors.firstName}
+                              </p>
                             )}
                           </div>
                           <div>
@@ -422,12 +413,16 @@ export default function AddressesPage() {
                               value={formData.lastName}
                               onChange={(e) => handleInputChange('lastName', e.target.value)}
                               className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none ${
-                                validationErrors.lastName ? 'border-red-500 focus:border-red-500' : 'border-neutral-200 focus:border-gold'
+                                validationErrors.lastName
+                                  ? 'border-red-500 focus:border-red-500'
+                                  : 'border-neutral-200 focus:border-gold'
                               }`}
                               placeholder="Doe"
                             />
                             {validationErrors.lastName && (
-                              <p className="mt-1 text-sm text-red-500">{validationErrors.lastName}</p>
+                              <p className="mt-1 text-sm text-red-500">
+                                {validationErrors.lastName}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -442,7 +437,9 @@ export default function AddressesPage() {
                             value={formData.address1}
                             onChange={(e) => handleInputChange('address1', e.target.value)}
                             className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none ${
-                              validationErrors.address1 ? 'border-red-500 focus:border-red-500' : 'border-neutral-200 focus:border-gold'
+                              validationErrors.address1
+                                ? 'border-red-500 focus:border-red-500'
+                                : 'border-neutral-200 focus:border-gold'
                             }`}
                             placeholder="123 Main St"
                           />
@@ -476,7 +473,9 @@ export default function AddressesPage() {
                               value={formData.city}
                               onChange={(e) => handleInputChange('city', e.target.value)}
                               className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none ${
-                                validationErrors.city ? 'border-red-500 focus:border-red-500' : 'border-neutral-200 focus:border-gold'
+                                validationErrors.city
+                                  ? 'border-red-500 focus:border-red-500'
+                                  : 'border-neutral-200 focus:border-gold'
                               }`}
                               placeholder="New York"
                             />
@@ -493,12 +492,16 @@ export default function AddressesPage() {
                               value={formData.province}
                               onChange={(e) => handleInputChange('province', e.target.value)}
                               className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none ${
-                                validationErrors.province ? 'border-red-500 focus:border-red-500' : 'border-neutral-200 focus:border-gold'
+                                validationErrors.province
+                                  ? 'border-red-500 focus:border-red-500'
+                                  : 'border-neutral-200 focus:border-gold'
                               }`}
                               placeholder="NY"
                             />
                             {validationErrors.province && (
-                              <p className="mt-1 text-sm text-red-500">{validationErrors.province}</p>
+                              <p className="mt-1 text-sm text-red-500">
+                                {validationErrors.province}
+                              </p>
                             )}
                           </div>
                           <div>
@@ -510,12 +513,16 @@ export default function AddressesPage() {
                               value={formData.postalCode}
                               onChange={(e) => handleInputChange('postalCode', e.target.value)}
                               className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none ${
-                                validationErrors.postalCode ? 'border-red-500 focus:border-red-500' : 'border-neutral-200 focus:border-gold'
+                                validationErrors.postalCode
+                                  ? 'border-red-500 focus:border-red-500'
+                                  : 'border-neutral-200 focus:border-gold'
                               }`}
                               placeholder="10001"
                             />
                             {validationErrors.postalCode && (
-                              <p className="mt-1 text-sm text-red-500">{validationErrors.postalCode}</p>
+                              <p className="mt-1 text-sm text-red-500">
+                                {validationErrors.postalCode}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -546,7 +553,9 @@ export default function AddressesPage() {
                             value={formData.phone}
                             onChange={(e) => handleInputChange('phone', e.target.value)}
                             className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none ${
-                              validationErrors.phone ? 'border-red-500 focus:border-red-500' : 'border-neutral-200 focus:border-gold'
+                              validationErrors.phone
+                                ? 'border-red-500 focus:border-red-500'
+                                : 'border-neutral-200 focus:border-gold'
                             }`}
                             placeholder="+1 (555) 123-4567"
                           />
@@ -575,7 +584,11 @@ export default function AddressesPage() {
                             disabled={creating || updating}
                             className="flex-1 px-6 py-4 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {creating || updating ? t('saving') : editingAddress ? t('updateAddress') : t('addAddress')}
+                            {creating || updating
+                              ? t('saving')
+                              : editingAddress
+                                ? t('updateAddress')
+                                : t('addAddress')}
                           </motion.button>
                           <motion.button
                             whileHover={{ scale: 1.02 }}
@@ -596,6 +609,6 @@ export default function AddressesPage() {
           </AnimatePresence>
         </div>
       </div>
-    </PageLayout>
+    </div>
   );
 }

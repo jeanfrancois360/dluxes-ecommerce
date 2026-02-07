@@ -15,9 +15,10 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
 import { toast, standardToasts } from '@/lib/utils/toast';
+import PageHeader from '@/components/buyer/page-header';
+import { User, Mail, Phone, Upload, Trash2 } from 'lucide-react';
 
 interface ProfileFormData {
   firstName: string;
@@ -36,7 +37,15 @@ interface FormErrors {
 export default function ProfilePage() {
   const router = useRouter();
   const t = useTranslations('account.profile');
-  const { user, isLoading: authLoading, isAuthenticated, updateProfile, uploadAvatar, deleteAvatar, refreshUser } = useAuth();
+  const {
+    user,
+    isLoading: authLoading,
+    isAuthenticated,
+    updateProfile,
+    uploadAvatar,
+    deleteAvatar,
+    refreshUser,
+  } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -197,76 +206,26 @@ export default function ProfilePage() {
   // Loading state
   if (authLoading || !user) {
     return (
-      <PageLayout>
-        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
-          />
-        </div>
-      </PageLayout>
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
+        />
+      </div>
     );
   }
 
   return (
-    <PageLayout>
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-black via-neutral-900 to-black text-white overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-gold/5 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gold/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-neutral-50">
+      <PageHeader
+        title={t('title')}
+        description={t('subtitle')}
+        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'My Profile' }]}
+      />
 
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {/* Breadcrumbs */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 text-sm text-white/60 mb-6"
-          >
-            <Link href="/" className="hover:text-gold transition-colors">
-              Home
-            </Link>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <Link href="/account" className="hover:text-gold transition-colors">
-              Account
-            </Link>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="text-white font-medium">Profile</span>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-center gap-4"
-          >
-            <div className="w-14 h-14 bg-gradient-to-br from-gold to-gold/80 rounded-2xl flex items-center justify-center shadow-lg shadow-gold/20">
-              <svg className="w-7 h-7 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold font-['Poppins'] text-white mb-1">{t('title')}</h1>
-              <p className="text-lg text-white/80">{t('subtitle')}</p>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="bg-gradient-to-b from-neutral-50 to-white min-h-screen py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Avatar Section */}
             <motion.div
@@ -284,7 +243,11 @@ export default function ProfilePage() {
                     className="w-32 h-32 rounded-full overflow-hidden bg-neutral-100 border-4 border-white shadow-xl cursor-pointer hover:opacity-90 transition-opacity relative group"
                   >
                     {user.avatar ? (
-                      <img src={user.avatar} alt={user.firstName} className="w-full h-full object-cover" />
+                      <img
+                        src={user.avatar}
+                        alt={user.firstName}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gold to-gold/80 text-black text-4xl font-bold">
                         {user.firstName?.[0]?.toUpperCase()}
@@ -294,7 +257,12 @@ export default function ProfilePage() {
 
                     {/* Overlay on hover */}
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg
+                        className="w-8 h-8 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -315,7 +283,9 @@ export default function ProfilePage() {
                   {isUploadingAvatar && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-32 h-32 rounded-full border-4 border-gold/30 border-t-gold animate-spin" />
-                      <span className="absolute text-sm font-medium text-gold">{uploadProgress}%</span>
+                      <span className="absolute text-sm font-medium text-gold">
+                        {uploadProgress}%
+                      </span>
                     </div>
                   )}
                 </div>
@@ -366,7 +336,9 @@ export default function ProfilePage() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-neutral-500">{t('role')}</span>
-                    <span className="font-medium capitalize">{user.role?.toLowerCase().replace('_', ' ')}</span>
+                    <span className="font-medium capitalize">
+                      {user.role?.toLowerCase().replace('_', ' ')}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-500">{t('memberSince')}</span>
@@ -454,7 +426,9 @@ export default function ProfilePage() {
                         }`}
                         placeholder="John"
                       />
-                      {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>}
+                      {errors.firstName && (
+                        <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>
+                      )}
                     </div>
 
                     <div>
@@ -472,7 +446,9 @@ export default function ProfilePage() {
                         }`}
                         placeholder="Doe"
                       />
-                      {errors.lastName && <p className="mt-1 text-sm text-red-500">{errors.lastName}</p>}
+                      {errors.lastName && (
+                        <p className="mt-1 text-sm text-red-500">{errors.lastName}</p>
+                      )}
                     </div>
                   </div>
 
@@ -486,7 +462,9 @@ export default function ProfilePage() {
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors ${
-                        errors.email ? 'border-red-500 focus:border-red-500' : 'border-neutral-200 focus:border-gold'
+                        errors.email
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-neutral-200 focus:border-gold'
                       }`}
                       placeholder="john@example.com"
                     />
@@ -507,13 +485,17 @@ export default function ProfilePage() {
 
                   {/* Phone Field */}
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">{t('phoneNumber')}</label>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      {t('phoneNumber')}
+                    </label>
                     <input
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
                       className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors ${
-                        errors.phone ? 'border-red-500 focus:border-red-500' : 'border-neutral-200 focus:border-gold'
+                        errors.phone
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-neutral-200 focus:border-gold'
                       }`}
                       placeholder="+1 (555) 123-4567"
                     />
@@ -611,7 +593,12 @@ export default function ProfilePage() {
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                     </Link>
                   </div>
@@ -621,6 +608,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </PageLayout>
+    </div>
   );
 }
