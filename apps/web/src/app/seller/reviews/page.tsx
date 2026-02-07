@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { sellerAPI, SellerReview, SellerReviewStats } from '@/lib/api/seller';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
   Star,
@@ -74,6 +75,7 @@ function formatDate(dateString: string) {
 export default function SellerReviewsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const t = useTranslations('sellerReviews');
   const [page, setPage] = useState(1);
   const [ratingFilter, setRatingFilter] = useState<number | undefined>(undefined);
   const limit = 10;
@@ -161,7 +163,9 @@ export default function SellerReviewsPage() {
                       <RatingBar
                         key={rating}
                         rating={rating}
-                        count={stats.ratingDistribution[rating as keyof typeof stats.ratingDistribution]}
+                        count={
+                          stats.ratingDistribution[rating as keyof typeof stats.ratingDistribution]
+                        }
                         total={stats.total}
                       />
                     ))}
@@ -199,7 +203,10 @@ export default function SellerReviewsPage() {
               </h2>
               <div className="space-y-2">
                 <button
-                  onClick={() => { setRatingFilter(undefined); setPage(1); }}
+                  onClick={() => {
+                    setRatingFilter(undefined);
+                    setPage(1);
+                  }}
                   className={`w-full px-4 py-2 rounded-lg text-left transition-colors ${
                     ratingFilter === undefined
                       ? 'bg-gold text-black font-medium'
@@ -211,7 +218,10 @@ export default function SellerReviewsPage() {
                 {[5, 4, 3, 2, 1].map((rating) => (
                   <button
                     key={rating}
-                    onClick={() => { setRatingFilter(rating); setPage(1); }}
+                    onClick={() => {
+                      setRatingFilter(rating);
+                      setPage(1);
+                    }}
                     className={`w-full px-4 py-2 rounded-lg text-left flex items-center gap-2 transition-colors ${
                       ratingFilter === rating
                         ? 'bg-gold text-black font-medium'
@@ -346,7 +356,7 @@ export default function SellerReviewsPage() {
                   <p className="text-neutral-500">
                     {ratingFilter
                       ? `No ${ratingFilter}-star reviews found`
-                      : 'Your products haven\'t received any reviews yet'}
+                      : "Your products haven't received any reviews yet"}
                   </p>
                 </div>
               )}
