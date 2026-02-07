@@ -35,6 +35,7 @@ import {
   Globe,
   ArrowRight,
 } from 'lucide-react';
+import PageHeader from '@/components/seller/page-header';
 
 // Supported currencies for payouts
 const CURRENCIES = [
@@ -226,33 +227,20 @@ export default function PayoutSettingsPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-2 text-sm text-neutral-400 mb-6">
-            <Link href="/dashboard/seller" className="hover:text-white transition-colors">
-              Dashboard
-            </Link>
-            <span>/</span>
-            <span className="text-white">Payout Settings</span>
-          </nav>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Payout Settings</h1>
-              <p className="text-neutral-300">Configure how and when you receive your earnings</p>
-            </div>
-            <Link
-              href="/seller/earnings"
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              View Earnings
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Payout Settings"
+        description="Configure how and when you receive your earnings"
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Payout Settings' }]}
+        actions={
+          <Link
+            href="/seller/earnings"
+            className="flex items-center gap-2 px-4 py-2 bg-black text-[#CBB57B] border border-[#CBB57B] rounded-lg hover:bg-neutral-900 hover:text-[#D4C794] transition-all"
+          >
+            View Earnings
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Alerts */}

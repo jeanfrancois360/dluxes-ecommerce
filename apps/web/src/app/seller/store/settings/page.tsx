@@ -15,6 +15,7 @@ import { CountrySelector } from '@/components/forms/country-selector';
 import { storesAPI } from '@/lib/api/stores';
 import useSWR from 'swr';
 import { toast } from 'sonner';
+import PageHeader from '@/components/seller/page-header';
 import { Camera, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -241,22 +242,11 @@ export default function StoreSettingsPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
-              <p className="text-neutral-300 mt-1">{t('pageSubtitle')}</p>
-            </div>
-            <Link
-              href="/dashboard/seller"
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              {t('backToDashboard')}
-            </Link>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={t('pageTitle')}
+        description={t('pageSubtitle')}
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Store Settings' }]}
+      />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Store Branding Section */}
@@ -592,7 +582,7 @@ export default function StoreSettingsPage() {
 
           <div className="p-6 border-t border-neutral-200 flex justify-end gap-4">
             <Link
-              href="/dashboard/seller"
+              href="/seller"
               className="px-6 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors"
             >
               Cancel

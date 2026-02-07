@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api/client';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useTranslations } from 'next-intl';
+import PageHeader from '@/components/seller/page-header';
+import { PlusCircle } from 'lucide-react';
 interface Product {
   id: string;
   name: string;
@@ -227,30 +229,20 @@ export default function SellerProductsPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-white to-neutral-50 border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-black">{t('pageTitle')}</h1>
-              <p className="text-neutral-600 mt-2">{t('pageSubtitle')}</p>
-            </div>
-            <Link
-              href="/seller/products/new"
-              className="inline-flex items-center gap-2 bg-gold text-white px-6 py-3 rounded-lg hover:bg-gold/90 transition-colors font-semibold"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              {t('addProduct')}
-            </Link>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={t('pageTitle')}
+        description={t('pageSubtitle')}
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Products' }]}
+        actions={
+          <Link
+            href="/seller/products/new"
+            className="inline-flex items-center gap-2 bg-black text-[#CBB57B] px-6 py-3 rounded-lg hover:bg-neutral-900 hover:text-[#D4C794] transition-all font-semibold border border-[#CBB57B]"
+          >
+            <PlusCircle className="w-5 h-5" />
+            {t('addProduct')}
+          </Link>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters and Search */}
@@ -583,10 +575,13 @@ export default function SellerProductsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-neutral-700 font-medium">
-                    {t('pagination.showing', {
+                    {t.rich('pagination.showing', {
                       from: (page - 1) * 20 + 1,
                       to: Math.min(page * 20, total),
                       total,
+                      bold: (chunks) => (
+                        <strong className="font-bold text-neutral-900">{chunks}</strong>
+                      ),
                     })}
                   </span>
                 </div>

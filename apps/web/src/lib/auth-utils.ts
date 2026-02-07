@@ -190,7 +190,7 @@ export function getAuthRedirectUrl(user: User | null): string {
       return '/admin/dashboard';
 
     case 'SELLER':
-      return '/dashboard/seller';
+      return '/seller';
 
     case 'BUYER':
     case 'CUSTOMER':

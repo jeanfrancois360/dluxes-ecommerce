@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import { sellerAPI, SellerReview, SellerReviewStats } from '@/lib/api/seller';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
+import PageHeader from '@/components/seller/page-header';
 import {
   ArrowLeft,
   Star,
@@ -122,23 +123,11 @@ export default function SellerReviewsPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Link
-            href="/dashboard/seller"
-            className="text-neutral-300 hover:text-white mb-4 inline-flex items-center gap-2 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to Dashboard
-          </Link>
-          <div className="mt-4">
-            <h1 className="text-3xl font-bold">Product Reviews</h1>
-            <p className="text-neutral-300 mt-2">
-              See what customers are saying about your products
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Product Reviews"
+        description="See what customers are saying about your products"
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Reviews' }]}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
