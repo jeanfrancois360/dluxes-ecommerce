@@ -38,7 +38,11 @@ export default function ProductsPage() {
 
   // Cart and Wishlist hooks
   const { addItem: addToCartApi } = useCart();
-  const { addToWishlist: addToWishlistApi } = useWishlist();
+  const {
+    addToWishlist: addToWishlistApi,
+    removeFromWishlist: removeFromWishlistApi,
+    isInWishlist,
+  } = useWishlist();
 
   // Get currency symbol
   const { currency } = useSelectedCurrency();
@@ -227,8 +231,18 @@ export default function ProductsPage() {
 
       setAddingToWishlist(id);
       try {
-        await addToWishlistApi(id);
-        toast.success(tc('toast.addedToWishlist'));
+        // Check if item is already in wishlist
+        const inWishlist = isInWishlist(id);
+
+        if (inWishlist) {
+          // Remove from wishlist
+          await removeFromWishlistApi(id);
+          toast.success(tc('toast.removedFromWishlist'));
+        } else {
+          // Add to wishlist
+          await addToWishlistApi(id);
+          toast.success(tc('toast.addedToWishlist'));
+        }
       } catch (error: any) {
         console.error('Failed to add to wishlist:', error);
         toast.error(tc('toast.error'), error.message || tc('toast.failedAddWishlist'));
@@ -236,7 +250,7 @@ export default function ProductsPage() {
         setAddingToWishlist(null);
       }
     },
-    [addingToWishlist, addToWishlistApi, router, tc]
+    [addingToWishlist, addToWishlistApi, removeFromWishlistApi, isInWishlist, router, tc]
   );
 
   const handleSortChange = (value: string) => {
@@ -1129,7 +1143,10 @@ export default function ProductsPage() {
             ) : (
               <>
                 <ProductGrid
-                  products={products}
+                  products={products.map((product) => ({
+                    ...product,
+                    inWishlist: isInWishlist(product.id),
+                  }))}
                   layout={layout}
                   onQuickView={handleQuickView}
                   onAddToWishlist={handleAddToWishlist}

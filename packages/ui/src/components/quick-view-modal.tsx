@@ -29,6 +29,7 @@ export interface QuickViewProduct {
   badges?: string[];
   stockQuantity?: number;
   lowStockThreshold?: number;
+  inWishlist?: boolean;
 }
 
 export interface QuickViewModalProps {
