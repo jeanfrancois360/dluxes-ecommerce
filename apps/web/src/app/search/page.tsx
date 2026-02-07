@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { SearchResults } from '@/components/search/search-results';
@@ -41,9 +42,7 @@ export default async function SearchPage(props: SearchPageProps) {
             />
           </svg>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('startYourSearch')}</h1>
-          <p className="text-gray-600 mb-6">
-            {t('enterSearchQuery')}
-          </p>
+          <p className="text-gray-600 mb-6">{t('enterSearchQuery')}</p>
         </div>
       </div>
     );
@@ -55,9 +54,9 @@ export default async function SearchPage(props: SearchPageProps) {
       <nav className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b border-gray-100">
         <ol className="flex items-center space-x-2 text-sm">
           <li>
-            <a href="/" className="text-gray-500 hover:text-[#CBB57B] transition-colors">
+            <Link href="/" className="text-gray-500 hover:text-[#CBB57B] transition-colors">
               {tc('nav.home')}
-            </a>
+            </Link>
           </li>
           <li className="text-gray-400">/</li>
           <li>

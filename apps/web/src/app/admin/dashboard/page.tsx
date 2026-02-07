@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import Link from 'next/link';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { PaymentDashboard } from '@/components/admin/payment-dashboard';
@@ -57,14 +58,26 @@ function StatCard({
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="p-3 bg-gray-100 rounded-lg">{icon}</div>
-        <div className={`flex items-center gap-1 text-sm font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+        <div
+          className={`flex items-center gap-1 text-sm font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}
+        >
           {isPositive ? (
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 10l7-7m0 0l7 7m-7-7v18"
+              />
             </svg>
           ) : (
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 14l-7 7m0 0l-7-7m7 7V3"
+              />
             </svg>
           )}
           <span>{Math.abs(change)}%</span>
@@ -97,7 +110,9 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   return (
-    <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
+    <span
+      className={`px-2 py-1 text-xs font-medium rounded-full ${colors[status] || 'bg-gray-100 text-gray-800'}`}
+    >
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
@@ -135,7 +150,12 @@ function DashboardContent() {
               change={stats?.revenueChange || 0}
               trend="up"
               icon={
-                <svg className="w-6 h-6 text-[#CBB57B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                  className="w-6 h-6 text-[#CBB57B]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -151,7 +171,12 @@ function DashboardContent() {
               change={stats?.ordersChange || 0}
               trend="up"
               icon={
-                <svg className="w-6 h-6 text-[#CBB57B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                  className="w-6 h-6 text-[#CBB57B]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -167,7 +192,12 @@ function DashboardContent() {
               change={stats?.customersChange || 0}
               trend="up"
               icon={
-                <svg className="w-6 h-6 text-[#CBB57B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                  className="w-6 h-6 text-[#CBB57B]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -183,7 +213,12 @@ function DashboardContent() {
               change={stats?.productsChange || 0}
               trend="up"
               icon={
-                <svg className="w-6 h-6 text-[#CBB57B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                  className="w-6 h-6 text-[#CBB57B]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -221,7 +256,13 @@ function DashboardContent() {
                   formatter={(value: number) => `$${value.toLocaleString()}`}
                   labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
                 />
-                <Line type="monotone" dataKey="revenue" stroke="#CBB57B" strokeWidth={2} dot={false} />
+                <Line
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#CBB57B"
+                  strokeWidth={2}
+                  dot={false}
+                />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -277,7 +318,9 @@ function DashboardContent() {
 
         {/* Customer Growth */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Growth (Last 30 Days)</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Customer Growth (Last 30 Days)
+          </h2>
           {growthLoading ? (
             <div className="h-64 bg-gray-200 rounded animate-pulse" />
           ) : (
@@ -290,10 +333,14 @@ function DashboardContent() {
                   stroke="#9ca3af"
                 />
                 <YAxis stroke="#9ca3af" />
-                <Tooltip
-                  labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
+                <Tooltip labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')} />
+                <Area
+                  type="monotone"
+                  dataKey="customers"
+                  stroke="#CBB57B"
+                  fill="#CBB57B"
+                  fillOpacity={0.3}
                 />
-                <Area type="monotone" dataKey="customers" stroke="#CBB57B" fill="#CBB57B" fillOpacity={0.3} />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -305,12 +352,12 @@ function DashboardContent() {
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
-            <a
+            <Link
               href="/admin/orders"
               className="text-sm text-[#CBB57B] hover:text-[#a89158] font-medium"
             >
               View All
-            </a>
+            </Link>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -351,11 +398,17 @@ function DashboardContent() {
                       <div className="text-sm font-medium text-gray-900">{order.orderNumber}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{order.customer?.name || 'Guest Customer'}</div>
-                      <div className="text-sm text-gray-500">{order.customer?.email || 'No email provided'}</div>
+                      <div className="text-sm text-gray-900">
+                        {order.customer?.name || 'Guest Customer'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {order.customer?.email || 'No email provided'}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">${formatCurrencyAmount(order.total, 2)}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        ${formatCurrencyAmount(order.total, 2)}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <StatusBadge status={order.status} />
@@ -381,7 +434,7 @@ function DashboardContent() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <a
+        <Link
           href="/admin/products/new"
           className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow group"
         >
@@ -396,12 +449,17 @@ function DashboardContent() {
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
           </div>
-        </a>
+        </Link>
 
-        <a
+        <Link
           href="/admin/orders"
           className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow group"
         >
@@ -424,7 +482,7 @@ function DashboardContent() {
               />
             </svg>
           </div>
-        </a>
+        </Link>
 
         <a
           href="/admin/analytics"
