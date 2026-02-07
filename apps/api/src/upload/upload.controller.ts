@@ -24,7 +24,7 @@ import { UserRole } from '@prisma/client';
  */
 @Controller('upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@Roles(UserRole.BUYER, UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
@@ -34,10 +34,7 @@ export class UploadController {
    */
   @Post('image')
   @UseInterceptors(FileInterceptor('image'))
-  async uploadImage(
-    @UploadedFile() file: Express.Multer.File,
-    @Query('folder') folder?: string
-  ) {
+  async uploadImage(@UploadedFile() file: Express.Multer.File, @Query('folder') folder?: string) {
     try {
       const data = await this.uploadService.uploadImage(file, folder || 'images');
       return {
@@ -48,7 +45,7 @@ export class UploadController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -73,7 +70,7 @@ export class UploadController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -160,10 +157,7 @@ export class UploadController {
    * @route DELETE /upload/:folder/:fileName
    */
   @Delete(':folder/:fileName')
-  async deleteFile(
-    @Param('folder') folder: string,
-    @Param('fileName') fileName: string
-  ) {
+  async deleteFile(@Param('folder') folder: string, @Param('fileName') fileName: string) {
     try {
       const data = await this.uploadService.deleteFile(fileName, folder);
       return {
@@ -173,7 +167,7 @@ export class UploadController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }

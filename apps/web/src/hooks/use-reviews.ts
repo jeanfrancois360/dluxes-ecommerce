@@ -95,21 +95,58 @@ export function useCreateReview() {
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('productId', data.productId);
-      formData.append('rating', data.rating.toString());
-      formData.append('comment', data.comment);
-      if (data.title) formData.append('title', data.title);
-      if (data.images) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+
+      // Step 1: Upload images if any
+      let imageUrls: string[] = [];
+      if (data.images && data.images.length > 0) {
+        const imageFormData = new FormData();
         data.images.forEach((image) => {
-          formData.append('images', image);
+          imageFormData.append('images', image);
         });
+        imageFormData.append('folder', 'reviews');
+
+        const uploadHeaders: HeadersInit = {};
+        if (token) {
+          uploadHeaders['Authorization'] = `Bearer ${token}`;
+        }
+
+        const uploadResponse = await fetch(`${API_BASE_URL}/upload/images`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: uploadHeaders,
+          body: imageFormData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload images');
+        }
+
+        const uploadResult = await uploadResponse.json();
+        imageUrls = uploadResult.data.map((file: any) => file.url);
+      }
+
+      // Step 2: Create review with image URLs
+      const reviewData = {
+        productId: data.productId,
+        rating: data.rating,
+        comment: data.comment,
+        ...(data.title && { title: data.title }),
+        ...(imageUrls.length > 0 && { images: imageUrls }),
+      };
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
       const response = await fetch(`${API_BASE_URL}/reviews`, {
         method: 'POST',
         credentials: 'include',
-        body: formData,
+        headers,
+        body: JSON.stringify(reviewData),
       });
 
       if (!response.ok) {
@@ -144,9 +181,17 @@ export function useMarkHelpful() {
     setError(null);
 
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/helpful`, {
         method: 'POST',
         credentials: 'include',
+        headers,
       });
 
       if (!response.ok) {
@@ -180,12 +225,19 @@ export function useReportReview() {
     setError(null);
 
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/report`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ reason }),
       });
 

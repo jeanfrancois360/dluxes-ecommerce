@@ -31,7 +31,12 @@ function ReviewsContent() {
   const [ratingFilter, setRatingFilter] = useState('');
   const [sortBy, setSortBy] = useState('createdAt-desc');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [stats, setStats] = useState<ReviewStats>({ total: 0, pending: 0, averageRating: 0, thisMonth: 0 });
+  const [stats, setStats] = useState<ReviewStats>({
+    total: 0,
+    pending: 0,
+    averageRating: 0,
+    thisMonth: 0,
+  });
   const [statsLoading, setStatsLoading] = useState(true);
 
   // Debounce search
@@ -51,14 +56,17 @@ function ReviewsContent() {
         const allReviews = await adminReviewsApi.getAll({ limit: 1000 });
         const reviewList = allReviews.reviews;
 
-        const pendingCount = reviewList.filter(r => r.status === 'pending').length;
-        const avgRating = reviewList.length > 0
-          ? reviewList.reduce((sum, r) => sum + r.rating, 0) / reviewList.length
-          : 0;
+        const pendingCount = reviewList.filter((r) => r.status === 'pending').length;
+        const avgRating =
+          reviewList.length > 0
+            ? reviewList.reduce((sum, r) => sum + r.rating, 0) / reviewList.length
+            : 0;
 
         const now = new Date();
         const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const thisMonthCount = reviewList.filter(r => new Date(r.createdAt) >= thisMonthStart).length;
+        const thisMonthCount = reviewList.filter(
+          (r) => new Date(r.createdAt) >= thisMonthStart
+        ).length;
 
         setStats({
           total: allReviews.total,
@@ -82,16 +90,19 @@ function ReviewsContent() {
     // Search filter
     if (search) {
       const searchLower = search.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.productName.toLowerCase().includes(searchLower) ||
-        r.customerName.toLowerCase().includes(searchLower) ||
-        r.comment.toLowerCase().includes(searchLower)
-      );
+      filtered = filtered.filter((r) => {
+        const customerName = `${r.user?.firstName || ''} ${r.user?.lastName || ''}`.trim();
+        return (
+          r.product?.name?.toLowerCase().includes(searchLower) ||
+          customerName.toLowerCase().includes(searchLower) ||
+          r.comment.toLowerCase().includes(searchLower)
+        );
+      });
     }
 
     // Rating filter
     if (ratingFilter) {
-      filtered = filtered.filter(r => r.rating === parseInt(ratingFilter));
+      filtered = filtered.filter((r) => r.rating === parseInt(ratingFilter));
     }
 
     // Sort
@@ -127,8 +138,10 @@ function ReviewsContent() {
     const filters: Array<{ key: string; label: string; value: string }> = [];
     if (searchInput) filters.push({ key: 'search', label: 'Search', value: `"${searchInput}"` });
     if (status) filters.push({ key: 'status', label: 'Status', value: status });
-    if (ratingFilter) filters.push({ key: 'rating', label: 'Rating', value: `${ratingFilter} stars` });
-    if (sortBy !== 'createdAt-desc') filters.push({ key: 'sort', label: 'Sort', value: sortBy.split('-')[0] });
+    if (ratingFilter)
+      filters.push({ key: 'rating', label: 'Rating', value: `${ratingFilter} stars` });
+    if (sortBy !== 'createdAt-desc')
+      filters.push({ key: 'sort', label: 'Sort', value: sortBy.split('-')[0] });
     return filters;
   }, [searchInput, status, ratingFilter, sortBy]);
 
@@ -145,10 +158,18 @@ function ReviewsContent() {
 
   const clearFilter = (key: string) => {
     switch (key) {
-      case 'search': setSearchInput(''); break;
-      case 'status': setStatus(''); break;
-      case 'rating': setRatingFilter(''); break;
-      case 'sort': setSortBy('createdAt-desc'); break;
+      case 'search':
+        setSearchInput('');
+        break;
+      case 'status':
+        setStatus('');
+        break;
+      case 'rating':
+        setRatingFilter('');
+        break;
+      case 'sort':
+        setSortBy('createdAt-desc');
+        break;
     }
     setPage(1);
   };
@@ -160,14 +181,12 @@ function ReviewsContent() {
     if (allSelected) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredReviews.map(r => r.id));
+      setSelectedIds(filteredReviews.map((r) => r.id));
     }
   };
 
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   };
 
   // Actions
@@ -262,27 +281,53 @@ function ReviewsContent() {
               </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg
+                className="w-6 h-6 text-blue-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className={`bg-white rounded-xl shadow-sm border p-6 ${stats.pending > 0 ? 'border-amber-200 bg-amber-50/30' : 'border-neutral-200'}`}>
+        <div
+          className={`bg-white rounded-xl shadow-sm border p-6 ${stats.pending > 0 ? 'border-amber-200 bg-amber-50/30' : 'border-neutral-200'}`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-sm text-neutral-600 mb-1">Pending Moderation</p>
-              <p className={`text-2xl font-bold ${stats.pending > 0 ? 'text-amber-600' : 'text-black'}`}>
+              <p
+                className={`text-2xl font-bold ${stats.pending > 0 ? 'text-amber-600' : 'text-black'}`}
+              >
                 {statsLoading ? '...' : formatNumber(stats.pending)}
               </p>
               {!statsLoading && stats.pending > 0 && (
                 <p className="text-xs text-amber-600 mt-1">Needs review</p>
               )}
             </div>
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stats.pending > 0 ? 'bg-amber-100' : 'bg-neutral-100'}`}>
-              <svg className={`w-6 h-6 ${stats.pending > 0 ? 'text-amber-600' : 'text-neutral-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div
+              className={`w-12 h-12 rounded-lg flex items-center justify-center ${stats.pending > 0 ? 'bg-amber-100' : 'bg-neutral-100'}`}
+            >
+              <svg
+                className={`w-6 h-6 ${stats.pending > 0 ? 'text-amber-600' : 'text-neutral-600'}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
           </div>
@@ -314,8 +359,18 @@ function ReviewsContent() {
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <svg
+                className="w-6 h-6 text-green-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
               </svg>
             </div>
           </div>
@@ -327,8 +382,18 @@ function ReviewsContent() {
         <div className="flex flex-wrap items-center gap-4">
           {/* Search */}
           <div className="flex-1 min-w-[250px] relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
             <input
               type="text"
@@ -343,7 +408,12 @@ function ReviewsContent() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             )}
@@ -352,7 +422,10 @@ function ReviewsContent() {
           {/* Status Filter */}
           <select
             value={status}
-            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
           >
             <option value="">All Status</option>
@@ -364,7 +437,10 @@ function ReviewsContent() {
           {/* Rating Filter */}
           <select
             value={ratingFilter}
-            onChange={(e) => { setRatingFilter(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setRatingFilter(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
           >
             <option value="">All Ratings</option>
@@ -378,7 +454,10 @@ function ReviewsContent() {
           {/* Sort By */}
           <select
             value={sortBy}
-            onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
           >
             <option value="createdAt-desc">Newest First</option>
@@ -394,7 +473,12 @@ function ReviewsContent() {
               className="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors flex items-center gap-1"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
               Clear ({activeFilterCount})
             </button>
@@ -404,12 +488,20 @@ function ReviewsContent() {
         {/* Active Filter Pills */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-neutral-200">
-            {activeFilters.map(filter => (
-              <span key={filter.key} className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
+            {activeFilters.map((filter) => (
+              <span
+                key={filter.key}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm"
+              >
                 {filter.label}: {filter.value}
                 <button onClick={() => clearFilter(filter.key)} className="hover:text-neutral-900">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </span>
@@ -431,8 +523,18 @@ function ReviewsContent() {
             </div>
           ) : filteredReviews.length === 0 ? (
             <div className="p-16 text-center">
-              <svg className="w-16 h-16 mx-auto text-neutral-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg
+                className="w-16 h-16 mx-auto text-neutral-400 mb-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
               </svg>
               <p className="text-neutral-600 font-medium">No reviews found</p>
               <p className="text-neutral-500 text-sm mt-1">Try adjusting your filters</p>
@@ -449,18 +551,35 @@ function ReviewsContent() {
                       className="w-4 h-4 rounded border-neutral-300 text-[#CBB57B] focus:ring-[#CBB57B]"
                     />
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Product</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Customer</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Rating</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Review</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">Actions</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                    Product
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                    Customer
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                    Rating
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                    Review
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                    Date
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {filteredReviews.map((review) => (
-                  <tr key={review.id} className="group transition-all duration-200 hover:bg-neutral-50">
+                  <tr
+                    key={review.id}
+                    className="group transition-all duration-200 hover:bg-neutral-50"
+                  >
                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
@@ -471,35 +590,46 @@ function ReviewsContent() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">
-                        {review.productName}
+                        {review.product?.name || 'Unknown Product'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 min-w-[32px] min-h-[32px] bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-full overflow-hidden flex items-center justify-center ring-2 ring-[#CBB57B]/30">
                           <span className="text-white font-semibold text-xs">
-                            {review.customerName.charAt(0).toUpperCase()}
+                            {(review.user?.firstName?.charAt(0) || 'A').toUpperCase()}
                           </span>
                         </div>
-                        <div className="text-sm text-black">{review.customerName}</div>
+                        <div className="text-sm text-black">
+                          {review.user?.firstName || 'Anonymous'} {review.user?.lastName || ''}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">{renderStars(review.rating)}</td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-neutral-700 max-w-xs truncate">{review.comment}</div>
+                      <div className="text-sm text-neutral-700 max-w-xs truncate">
+                        {review.comment}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${
-                        review.status === 'approved'
-                          ? 'bg-green-50 text-green-700 border border-green-200'
-                          : review.status === 'pending'
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'bg-red-50 text-red-700 border border-red-200'
-                      }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          review.status === 'approved' ? 'bg-green-600' :
-                          review.status === 'pending' ? 'bg-amber-600' : 'bg-red-600'
-                        }`}></div>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${
+                          review.status === 'approved'
+                            ? 'bg-green-50 text-green-700 border border-green-200'
+                            : review.status === 'pending'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-red-50 text-red-700 border border-red-200'
+                        }`}
+                      >
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            review.status === 'approved'
+                              ? 'bg-green-600'
+                              : review.status === 'pending'
+                                ? 'bg-amber-600'
+                                : 'bg-red-600'
+                          }`}
+                        ></div>
                         {review.status.charAt(0).toUpperCase() + review.status.slice(1)}
                       </span>
                     </td>
@@ -545,7 +675,8 @@ function ReviewsContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-neutral-700">
-                  Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} reviews
+                  Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total}{' '}
+                  reviews
                 </span>
                 <select
                   value={limit}
@@ -597,7 +728,12 @@ function ReviewsContent() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-xs font-semibold transition-all"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               Approve
             </button>
@@ -607,7 +743,12 @@ function ReviewsContent() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               Reject
             </button>
@@ -617,7 +758,12 @@ function ReviewsContent() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-xs font-semibold transition-all"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
               </svg>
               Delete
             </button>
@@ -628,7 +774,12 @@ function ReviewsContent() {
               title="Clear selection"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>

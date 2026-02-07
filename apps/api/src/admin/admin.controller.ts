@@ -29,7 +29,7 @@ import { UserRole } from '@prisma/client';
 export class AdminController {
   constructor(
     private readonly adminService: AdminService,
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService
   ) {}
 
   /**
@@ -47,7 +47,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -59,9 +59,7 @@ export class AdminController {
   @Get('analytics')
   async getAnalytics(@Query('days') days?: string) {
     try {
-      const data = await this.adminService.getAnalytics(
-        days ? parseInt(days) : 30
-      );
+      const data = await this.adminService.getAnalytics(days ? parseInt(days) : 30);
       return {
         success: true,
         data,
@@ -69,7 +67,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -97,7 +95,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -112,7 +110,7 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('search') search?: string,
-    @Query('status') status?: string,
+    @Query('status') status?: string
   ) {
     try {
       const data = await this.adminService.getAllUsers({
@@ -129,7 +127,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -146,7 +144,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -166,7 +164,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -178,7 +176,8 @@ export class AdminController {
   @Patch('users/:id')
   async updateUser(
     @Param('id') id: string,
-    @Body() body: {
+    @Body()
+    body: {
       firstName?: string;
       lastName?: string;
       email?: string;
@@ -197,7 +196,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -218,7 +217,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -239,7 +238,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -249,10 +248,7 @@ export class AdminController {
    * @route PATCH /admin/users/:id/role
    */
   @Patch('users/:id/role')
-  async updateUserRole(
-    @Param('id') id: string,
-    @Body() body: { role: UserRole }
-  ) {
+  async updateUserRole(@Param('id') id: string, @Body() body: { role: UserRole }) {
     try {
       const data = await this.adminService.updateUserRole(id, body.role);
       return {
@@ -263,7 +259,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -284,7 +280,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -314,7 +310,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -342,7 +338,74 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Update review status
+   * @route PATCH /admin/reviews/:id/status
+   */
+  @Patch('reviews/:id/status')
+  async updateReviewStatus(
+    @Param('id') id: string,
+    @Body() body: { status: 'approved' | 'rejected' }
+  ) {
+    try {
+      const isApproved = body.status === 'approved';
+      const data = await this.adminService.updateReviewStatus(id, isApproved);
+      return {
+        success: true,
+        data,
+        message: `Review ${body.status} successfully`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Bulk update review status
+   * @route POST /admin/reviews/bulk-update-status
+   */
+  @Post('reviews/bulk-update-status')
+  async bulkUpdateReviewStatus(@Body() body: { ids: string[]; status: 'approved' | 'rejected' }) {
+    try {
+      const isApproved = body.status === 'approved';
+      await this.adminService.bulkUpdateReviewStatus(body.ids, isApproved);
+      return {
+        success: true,
+        message: `${body.ids.length} review(s) ${body.status} successfully`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Delete review
+   * @route DELETE /admin/reviews/:id
+   */
+  @Delete('reviews/:id')
+  @HttpCode(HttpStatus.OK)
+  async deleteReview(@Param('id') id: string) {
+    try {
+      await this.adminService.deleteReview(id);
+      return {
+        success: true,
+        message: 'Review deleted successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -373,7 +436,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -385,9 +448,7 @@ export class AdminController {
   @Get('dashboard/revenue')
   async getDashboardRevenue(@Query('days') days?: string) {
     try {
-      const analytics = await this.adminService.getAnalytics(
-        days ? parseInt(days) : 30
-      );
+      const analytics = await this.adminService.getAnalytics(days ? parseInt(days) : 30);
 
       // Transform revenue data to expected format
       const revenueData = analytics.revenueData.map((item: any) => ({
@@ -399,7 +460,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -424,7 +485,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -451,7 +512,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -493,7 +554,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -540,7 +601,7 @@ export class AdminController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -563,11 +624,7 @@ export class AdminController {
   @Post('customers/:id/notes')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
-  async addCustomerNote(
-    @Param('id') id: string,
-    @Body() body: { content: string },
-    @Req() req,
-  ) {
+  async addCustomerNote(@Param('id') id: string, @Body() body: { content: string }, @Req() req) {
     return this.adminService.addCustomerNote(id, body.content, req.user.id);
   }
 
@@ -580,7 +637,7 @@ export class AdminController {
   async deleteCustomerNote(
     @Param('id') customerId: string,
     @Param('noteId') noteId: string,
-    @Req() req,
+    @Req() req
   ) {
     return this.adminService.deleteCustomerNote(noteId, req.user.id);
   }

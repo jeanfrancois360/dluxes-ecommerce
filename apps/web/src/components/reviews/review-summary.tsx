@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import type { ReviewSummary } from '@nextpik/shared';
 import { formatNumber } from '@/lib/utils/number-format';
+import { useTranslations } from 'next-intl';
 
 interface ReviewSummaryProps {
   summary: ReviewSummary;
@@ -10,7 +11,14 @@ interface ReviewSummaryProps {
 }
 
 export function ReviewSummaryComponent({ summary, onWriteReview }: ReviewSummaryProps) {
-  const { averageRating, totalReviews, ratingDistribution } = summary;
+  const t = useTranslations('components.reviewSummary');
+
+  // Provide default values if summary is undefined
+  const {
+    averageRating = 0,
+    totalReviews = 0,
+    ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+  } = summary || {};
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }).map((_, index) => {
@@ -70,9 +78,7 @@ export function ReviewSummaryComponent({ summary, onWriteReview }: ReviewSummary
               {formatNumber(averageRating, 1)}
             </div>
             <div className="flex justify-center mb-2">{renderStars(averageRating)}</div>
-            <p className="text-neutral-600">
-              Based on {totalReviews} {totalReviews === 1 ? 'review' : 'reviews'}
-            </p>
+            <p className="text-neutral-600">{t('basedOn', { count: totalReviews })}</p>
           </motion.div>
 
           {onWriteReview && (
@@ -82,14 +88,14 @@ export function ReviewSummaryComponent({ summary, onWriteReview }: ReviewSummary
               onClick={onWriteReview}
               className="px-8 py-3 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-colors shadow-lg"
             >
-              Write a Review
+              {t('writeReview')}
             </motion.button>
           )}
         </div>
 
         {/* Rating Distribution */}
         <div className="space-y-3">
-          <h3 className="font-semibold text-black mb-4">Rating Distribution</h3>
+          <h3 className="font-semibold text-black mb-4">{t('ratingDistribution')}</h3>
           {[5, 4, 3, 2, 1].map((stars) => {
             const percentage = getRatingPercentage(stars);
             const count = ratingDistribution[stars as keyof typeof ratingDistribution];
@@ -112,9 +118,7 @@ export function ReviewSummaryComponent({ summary, onWriteReview }: ReviewSummary
                   />
                 </div>
 
-                <div className="w-12 text-sm text-neutral-600 text-right">
-                  {count}
-                </div>
+                <div className="w-12 text-sm text-neutral-600 text-right">{count}</div>
               </div>
             );
           })}

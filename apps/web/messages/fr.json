@@ -387,7 +387,9 @@
     "confirmReportReview": "Êtes-vous sûr de vouloir signaler cet avis ?",
     "reviews_count": "({count} avis)",
     "review": "avis",
-    "reviewsPlural": "avis"
+    "reviewsPlural": "avis",
+    "reviewSubmittedSuccess": "Avis soumis avec succès ! Il sera visible après approbation.",
+    "reviewSubmitFailed": "Échec de l'envoi de l'avis. Veuillez réessayer."
   },
   "cart": {
     "shoppingCart": "Panier",
@@ -1818,6 +1820,32 @@
       "fileSizeExceeds": "La taille du fichier dépasse la limite de 5 Mo",
       "uploadFailed": "Échec du téléchargement de l'image",
       "noUrlReturned": "Échec du téléchargement de l'image - aucune URL renvoyée"
+    },
+    "reviewForm": {
+      "writeReview": "Écrire un Avis",
+      "rating": "Évaluation",
+      "reviewTitle": "Titre de l'avis (Optionnel)",
+      "yourReview": "Votre Avis",
+      "reviewPlaceholder": "Partagez votre expérience avec ce produit. Qu'avez-vous aimé ou pas aimé ? Le recommanderiez-vous à d'autres ?",
+      "minimumLength": "Minimum 20 caractères",
+      "photos": "Photos (Optionnel)",
+      "clickToUpload": "Cliquez pour télécharger",
+      "orDragDrop": "ou glissez-déposez",
+      "imageRequirements": "PNG, JPG ou WebP (max 5 Mo chacun, jusqu'à 5 images)",
+      "cancel": "Annuler",
+      "submitting": "Envoi en cours...",
+      "submitReview": "Soumettre l'Avis",
+      "pleaseSelectRating": "Veuillez sélectionner une note",
+      "reviewMinLength": "L'avis doit contenir au moins 10 caractères",
+      "reviewMaxLength": "L'avis ne doit pas dépasser 2000 caractères",
+      "titleMaxLength": "Le titre ne doit pas dépasser 100 caractères",
+      "maxImagesAllowed": "Maximum 5 images autorisées",
+      "failedToSubmit": "Échec de l'envoi de l'avis. Veuillez réessayer."
+    },
+    "reviewSummary": {
+      "basedOn": "Basé sur {count, plural, =0 {0 avis} =1 {1 avis} other {# avis}}",
+      "writeReview": "Écrire un Avis",
+      "ratingDistribution": "Répartition des Notes"
     }
   },
   "pages": {

@@ -46,8 +46,20 @@ function ReviewsSection({ productId }: { productId: string }) {
   const { reportReview } = useReportReview();
 
   const handleCreateReview = async (data: any) => {
-    await createReview(data);
-    refetch();
+    try {
+      await createReview(data);
+      toast.success(
+        t('reviewSubmittedSuccess') ||
+          'Review submitted successfully! It will be visible after approval.'
+      );
+      setShowReviewForm(false);
+      refetch();
+    } catch (error: any) {
+      toast.error(
+        error.message || t('reviewSubmitFailed') || 'Failed to submit review. Please try again.'
+      );
+      throw error; // Re-throw so ReviewForm can handle it
+    }
   };
 
   const handleMarkHelpful = async (reviewId: string) => {
