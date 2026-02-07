@@ -2534,5 +2534,30 @@
     "listProduct": "Listar un Producto",
     "viewHistory": "Ver Historial de Créditos",
     "emailSent": "Se ha enviado un correo de confirmación a su dirección de correo registrada"
+  },
+  "sellerOnboarding": {
+    "title": "Integración del Vendedor",
+    "subtitle": "Complete estos pasos para comenzar a vender en NextPik",
+    "errorTitle": "No se Puede Cargar la Integración",
+    "errorMessage": "Asegúrese de haber iniciado sesión como vendedor.",
+    "goToLogin": "Ir a Iniciar Sesión",
+    "steps": {
+      "submitted": {
+        "title": "Solicitud Enviada",
+        "description": "Su solicitud de vendedor está bajo revisión"
+      },
+      "approved": {
+        "title": "Cuenta Aprobada",
+        "description": "El administrador ha aprobado su cuenta de vendedor"
+      },
+      "credits": {
+        "title": "Comprar Créditos",
+        "description": "Obtenga créditos para activar sus productos"
+      },
+      "products": {
+        "title": "Crear Productos",
+        "description": "Agregue su primer producto para comenzar a vender"
+      }
+    }
   }
 }

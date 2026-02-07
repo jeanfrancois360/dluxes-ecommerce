@@ -12,9 +12,10 @@ import {
   AlertCircle,
   Loader2,
   Store,
-  Calendar
+  Calendar,
 } from 'lucide-react';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -24,7 +25,7 @@ const fetcher = async (url: string) => {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...(token && { Authorization: `Bearer ${token}` }),
     },
   });
   if (!res.ok) throw new Error('Failed to fetch');
@@ -70,21 +71,24 @@ const STEPS = [
 
 export default function SellerOnboardingPage() {
   const router = useRouter();
+  const t = useTranslations('sellerOnboarding');
   const [currentStep, setCurrentStep] = useState(1);
 
   // Fetch seller dashboard data
-  const { data: dashboardData, error, isLoading } = useSWR(
-    `${API_URL}/seller/dashboard`,
-    fetcher,
-    { refreshInterval: 10000, shouldRetryOnError: false }
-  );
+  const {
+    data: dashboardData,
+    error,
+    isLoading,
+  } = useSWR(`${API_URL}/seller/dashboard`, fetcher, {
+    refreshInterval: 10000,
+    shouldRetryOnError: false,
+  });
 
   // Fetch credit status
-  const { data: creditsData } = useSWR(
-    `${API_URL}/seller/credits`,
-    fetcher,
-    { refreshInterval: 10000, shouldRetryOnError: false }
-  );
+  const { data: creditsData } = useSWR(`${API_URL}/seller/credits`, fetcher, {
+    refreshInterval: 10000,
+    shouldRetryOnError: false,
+  });
 
   const store = dashboardData?.store;
   const credits = creditsData;
@@ -138,15 +142,13 @@ export default function SellerOnboardingPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4">
         <div className="text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to Load Onboarding</h2>
-          <p className="text-gray-600 mb-6">
-            Please make sure you're logged in as a seller.
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('errorTitle')}</h2>
+          <p className="text-gray-600 mb-6">{t('errorMessage')}</p>
           <button
             onClick={() => router.push('/auth/login')}
             className="px-6 py-3 bg-[#CBB57B] text-white rounded-lg font-semibold hover:bg-[#A89968] transition-colors"
           >
-            Go to Login
+            {t('goToLogin')}
           </button>
         </div>
       </div>
@@ -164,10 +166,8 @@ export default function SellerOnboardingPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">Seller Onboarding</h1>
-          <p className="text-lg text-gray-600">
-            Complete these steps to start selling on NextPik
-          </p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">{t('title')}</h1>
+          <p className="text-lg text-gray-600">{t('subtitle')}</p>
         </motion.div>
 
         {/* Progress Bar */}
@@ -274,7 +274,8 @@ export default function SellerOnboardingPage() {
                             <div>
                               <p className="font-semibold text-yellow-900">Under Review</p>
                               <p className="text-sm text-yellow-700">
-                                Your application is being reviewed by our team. Expected time: 24-48 hours.
+                                Your application is being reviewed by our team. Expected time: 24-48
+                                hours.
                               </p>
                               <p className="text-xs text-yellow-600 mt-2 flex items-center gap-2">
                                 <Calendar className="w-4 h-4" />
@@ -289,7 +290,8 @@ export default function SellerOnboardingPage() {
                             <div>
                               <p className="font-semibold text-red-900">Application Rejected</p>
                               <p className="text-sm text-red-700">
-                                Unfortunately, your seller application was not approved. Please contact support for more information.
+                                Unfortunately, your seller application was not approved. Please
+                                contact support for more information.
                               </p>
                             </div>
                           </div>
@@ -297,7 +299,9 @@ export default function SellerOnboardingPage() {
                         {store.status === 'ACTIVE' && (
                           <div className="flex items-center gap-2 text-green-600">
                             <CheckCircle className="w-5 h-5" />
-                            <span className="font-medium">Application submitted on {formatDate(store.createdAt)}</span>
+                            <span className="font-medium">
+                              Application submitted on {formatDate(store.createdAt)}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -308,7 +312,8 @@ export default function SellerOnboardingPage() {
                         <div className="flex items-center gap-2 text-green-600">
                           <CheckCircle className="w-5 h-5" />
                           <span className="font-medium">
-                            Approved on {store.verifiedAt ? formatDate(store.verifiedAt) : 'Recently'}
+                            Approved on{' '}
+                            {store.verifiedAt ? formatDate(store.verifiedAt) : 'Recently'}
                           </span>
                         </div>
                         <p className="text-sm text-gray-600">
@@ -325,7 +330,8 @@ export default function SellerOnboardingPage() {
                             <div className="flex-1">
                               <p className="font-semibold text-green-900">Credits Active</p>
                               <p className="text-sm text-green-700">
-                                You have {credits.creditsBalance} month{credits.creditsBalance !== 1 ? 's' : ''} of credits
+                                You have {credits.creditsBalance} month
+                                {credits.creditsBalance !== 1 ? 's' : ''} of credits
                               </p>
                             </div>
                             <button
@@ -338,7 +344,8 @@ export default function SellerOnboardingPage() {
                         ) : (
                           <>
                             <p className="text-sm text-gray-600">
-                              Purchase credits to activate your products and start selling. Credits are $29.99/month.
+                              Purchase credits to activate your products and start selling. Credits
+                              are $29.99/month.
                             </p>
                             <button
                               onClick={() => router.push('/seller/selling-credits')}
@@ -361,7 +368,8 @@ export default function SellerOnboardingPage() {
                             <div className="flex-1">
                               <p className="font-semibold text-green-900">Products Created</p>
                               <p className="text-sm text-green-700">
-                                You have {products.total} product{products.total !== 1 ? 's' : ''} ({products.active} active)
+                                You have {products.total} product{products.total !== 1 ? 's' : ''} (
+                                {products.active} active)
                               </p>
                             </div>
                             <button
@@ -374,7 +382,8 @@ export default function SellerOnboardingPage() {
                         ) : (
                           <>
                             <p className="text-sm text-gray-600">
-                              Create your first product to start selling. Add images, descriptions, pricing, and inventory.
+                              Create your first product to start selling. Add images, descriptions,
+                              pricing, and inventory.
                             </p>
                             <button
                               onClick={() => router.push('/seller/products/new')}
@@ -411,7 +420,8 @@ export default function SellerOnboardingPage() {
             <CheckCircle className="w-16 h-16 mx-auto mb-4" />
             <h2 className="text-3xl font-bold mb-3">Onboarding Complete! 🎉</h2>
             <p className="text-lg mb-6 opacity-90">
-              You're all set to start selling on NextPik. Manage your products, track orders, and grow your business.
+              You're all set to start selling on NextPik. Manage your products, track orders, and
+              grow your business.
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
               <button
