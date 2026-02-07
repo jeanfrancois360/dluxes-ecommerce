@@ -64,7 +64,7 @@ export function TopBar() {
       case 'SUPER_ADMIN':
         return '/admin/dashboard';
       case 'SELLER':
-        return '/seller/dashboard';
+        return '/dashboard/seller';
       case 'BUYER':
       case 'CUSTOMER':
       default:
