@@ -2534,5 +2534,30 @@
     "listProduct": "List a Product",
     "viewHistory": "View Credit History",
     "emailSent": "A confirmation email has been sent to your registered email address"
+  },
+  "sellerOnboarding": {
+    "title": "Seller Onboarding",
+    "subtitle": "Complete these steps to start selling on NextPik",
+    "errorTitle": "Unable to Load Onboarding",
+    "errorMessage": "Please make sure you're logged in as a seller.",
+    "goToLogin": "Go to Login",
+    "steps": {
+      "submitted": {
+        "title": "Application Submitted",
+        "description": "Your seller application is under review"
+      },
+      "approved": {
+        "title": "Account Approved",
+        "description": "Admin has approved your seller account"
+      },
+      "credits": {
+        "title": "Purchase Credits",
+        "description": "Get credits to activate your products"
+      },
+      "products": {
+        "title": "Create Products",
+        "description": "Add your first product to start selling"
+      }
+    }
   }
 }

@@ -2534,5 +2534,55 @@
     "listProduct": "Lister un Produit",
     "viewHistory": "Voir l'Historique des Crédits",
     "emailSent": "Un email de confirmation a été envoyé à votre adresse email enregistrée"
+  },
+  "sellerOnboarding": {
+    "title": "Intégration du Vendeur",
+    "subtitle": "Complétez ces étapes pour commencer à vendre sur NextPik",
+    "errorTitle": "Impossible de Charger l'Intégration",
+    "errorMessage": "Veuillez vous assurer d'être connecté en tant que vendeur.",
+    "goToLogin": "Aller à la Connexion",
+    "steps": {
+      "submitted": {
+        "title": "Candidature Soumise",
+        "description": "Votre demande de vendeur est en cours d'examen"
+      },
+      "approved": {
+        "title": "Compte Approuvé",
+        "description": "L'administrateur a approuvé votre compte vendeur"
+      },
+      "credits": {
+        "title": "Acheter des Crédits",
+        "description": "Obtenez des crédits pour activer vos produits"
+      },
+      "products": {
+        "title": "Créer des Produits",
+        "description": "Ajoutez votre premier produit pour commencer à vendre"
+      }
+    }
+  },
+  "sellerOnboarding": {
+    "title": "Intégration du Vendeur",
+    "subtitle": "Complétez ces étapes pour commencer à vendre sur NextPik",
+    "errorTitle": "Impossible de Charger l'Intégration",
+    "errorMessage": "Veuillez vous assurer d'être connecté en tant que vendeur.",
+    "goToLogin": "Aller à la Connexion",
+    "steps": {
+      "submitted": {
+        "title": "Candidature Soumise",
+        "description": "Votre demande de vendeur est en cours d'examen"
+      },
+      "approved": {
+        "title": "Compte Approuvé",
+        "description": "L'administrateur a approuvé votre compte vendeur"
+      },
+      "credits": {
+        "title": "Acheter des Crédits",
+        "description": "Obtenez des crédits pour activer vos produits"
+      },
+      "products": {
+        "title": "Créer des Produits",
+        "description": "Ajoutez votre premier produit pour commencer à vendre"
+      }
+    }
   }
 }
