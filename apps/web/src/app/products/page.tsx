@@ -17,7 +17,7 @@ import { useProduct } from '@/hooks/use-product';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
 import { SearchFilters } from '@/lib/api/types';
-import { CategoryBannerAd, InlineAd } from '@/components/ads';
+import { InlineAd } from '@/components/ads';
 import { ProductGridSkeleton } from '@/components/loading/skeleton';
 import { ScrollToTop } from '@/components/scroll-to-top';
 import { navigateWithLoading } from '@/lib/navigation';
@@ -38,7 +38,11 @@ export default function ProductsPage() {
 
   // Cart and Wishlist hooks
   const { addItem: addToCartApi } = useCart();
-  const { addToWishlist: addToWishlistApi } = useWishlist();
+  const {
+    addToWishlist: addToWishlistApi,
+    removeFromWishlist: removeFromWishlistApi,
+    isInWishlist,
+  } = useWishlist();
 
   // Get currency symbol
   const { currency } = useSelectedCurrency();
@@ -227,8 +231,18 @@ export default function ProductsPage() {
 
       setAddingToWishlist(id);
       try {
-        await addToWishlistApi(id);
-        toast.success(tc('toast.addedToWishlist'));
+        // Check if item is already in wishlist
+        const inWishlist = isInWishlist(id);
+
+        if (inWishlist) {
+          // Remove from wishlist
+          await removeFromWishlistApi(id);
+          toast.success(tc('toast.removedFromWishlist'));
+        } else {
+          // Add to wishlist
+          await addToWishlistApi(id);
+          toast.success(tc('toast.addedToWishlist'));
+        }
       } catch (error: any) {
         console.error('Failed to add to wishlist:', error);
         toast.error(tc('toast.error'), error.message || tc('toast.failedAddWishlist'));
@@ -236,7 +250,7 @@ export default function ProductsPage() {
         setAddingToWishlist(null);
       }
     },
-    [addingToWishlist, addToWishlistApi, router, tc]
+    [addingToWishlist, addToWishlistApi, removeFromWishlistApi, isInWishlist, router, tc]
   );
 
   const handleSortChange = (value: string) => {
@@ -284,7 +298,6 @@ export default function ProductsPage() {
     selectedCategories.length > 0 ||
     selectedBrands.length > 0 ||
     inStockOnly ||
-    onSaleOnly ||
     priceRange[0] > 0 ||
     priceRange[1] < 10000;
 
@@ -410,15 +423,6 @@ export default function ProductsPage() {
       <div className="max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-4 sm:pt-6 md:pt-8">
         <InlineAd placement="PRODUCTS_BANNER" className="mb-0" />
       </div>
-
-      {/* Category Banner Ad */}
-      {selectedCategories.length === 1 && categories && categories.length > 0 && (
-        <div className="max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-4 sm:pt-6 md:pt-8">
-          <CategoryBannerAd
-            categoryId={categories.find((c) => c.slug === selectedCategories[0])?.id}
-          />
-        </div>
-      )}
 
       {/* Filters & Content */}
       <div className="max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12">
@@ -594,55 +598,55 @@ export default function ProductsPage() {
                 </div>
               )}
 
-              {/* Availability */}
+              {/* Availability - In Stock Only */}
               <div className="pb-6 border-b border-neutral-200">
-                <h4 className="text-lg font-semibold text-black mb-4">{t('availability')}</h4>
-                <div className="space-y-3">
-                  <label className="flex items-center gap-3 cursor-pointer group hover:bg-neutral-50 -mx-3 px-3 py-2 rounded-lg transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={inStockOnly}
-                      onChange={(e) => setInStockOnly(e.target.checked)}
-                      className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 cursor-pointer"
-                    />
-                    <span className="text-neutral-800 group-hover:text-black transition-colors font-medium flex items-center gap-2">
-                      {t('inStockOnly')}
-                      {inStockOnly && (
-                        <svg
-                          className="w-4 h-4 text-green-600"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-black">{t('availability')}</h4>
+                  {inStockOnly && (
+                    <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-gold/20 text-gold text-xs font-bold rounded-full">
+                      1
                     </span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer group hover:bg-neutral-50 -mx-3 px-3 py-2 rounded-lg transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={onSaleOnly}
-                      onChange={(e) => setOnSaleOnly(e.target.checked)}
-                      className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20 cursor-pointer"
-                    />
-                    <span className="text-neutral-800 group-hover:text-black transition-colors font-medium flex items-center gap-2">
-                      {t('onSale')}
-                      {onSaleOnly && (
-                        <svg
-                          className="w-4 h-4 text-red-600"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                        </svg>
-                      )}
-                    </span>
-                  </label>
+                  )}
                 </div>
+                <label
+                  className={`flex items-center gap-3 cursor-pointer group -mx-3 px-3 py-3 rounded-xl transition-all border-2 ${
+                    inStockOnly
+                      ? 'bg-green-50 border-green-200 shadow-sm'
+                      : 'hover:bg-neutral-50 border-transparent'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={inStockOnly}
+                    onChange={(e) => setInStockOnly(e.target.checked)}
+                    className="w-5 h-5 text-green-600 border-neutral-300 rounded focus:ring-2 focus:ring-green-500/20 cursor-pointer"
+                  />
+                  <div className="flex items-center gap-2 flex-1">
+                    <svg
+                      className={`w-5 h-5 ${inStockOnly ? 'text-green-600' : 'text-neutral-400 group-hover:text-green-600'}`}
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span
+                      className={`font-semibold transition-colors ${
+                        inStockOnly ? 'text-green-700' : 'text-neutral-700 group-hover:text-black'
+                      }`}
+                    >
+                      {t('inStockOnly')}
+                    </span>
+                  </div>
+                  {inStockOnly && (
+                    <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                      Active
+                    </span>
+                  )}
+                </label>
               </div>
 
               {/* Apply Filters */}
@@ -758,7 +762,6 @@ export default function ProductsPage() {
                           selectedCategories.length,
                           selectedBrands.length,
                           inStockOnly ? 1 : 0,
-                          onSaleOnly ? 1 : 0,
                         ].reduce((a, b) => a + b, 0)}
                       </span>
                     )}
@@ -837,6 +840,68 @@ export default function ProductsPage() {
                   </select>
                 </div>
               </div>
+            </motion.div>
+
+            {/* Quick Filter - In Stock Only */}
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mb-4 sm:mb-5 md:mb-6 flex items-center gap-2 sm:gap-3 flex-wrap"
+            >
+              <span className="text-xs sm:text-sm text-neutral-600 font-semibold flex items-center gap-1.5">
+                <svg
+                  className="w-4 h-4 sm:w-5 sm:h-5 text-gold"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                  />
+                </svg>
+                Quick Filter:
+              </span>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  const newValue = !inStockOnly;
+                  setInStockOnly(newValue);
+                  updateFilters({
+                    category: selectedCategories[0],
+                    brands: selectedBrands,
+                    minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+                    maxPrice: priceRange[1] < 10000 ? priceRange[1] : undefined,
+                    inStock: newValue || undefined,
+                    onSale: onSaleOnly || undefined,
+                    page: 1,
+                  });
+                }}
+                className={`px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-1.5 sm:gap-2 ${
+                  inStockOnly
+                    ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
+                    : 'bg-white border-2 border-neutral-200 text-neutral-700 hover:border-green-500 hover:text-green-600'
+                }`}
+              >
+                <svg
+                  className={`w-4 h-4 sm:w-5 sm:h-5 ${inStockOnly ? 'text-white' : 'text-green-600'}`}
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="hidden xs:inline">{t('inStockOnly')}</span>
+                <span className="xs:hidden">In Stock</span>
+              </motion.button>
             </motion.div>
 
             {/* Active Filters */}
@@ -944,44 +1009,6 @@ export default function ProductsPage() {
                           maxPrice: priceRange[1] < 10000 ? priceRange[1] : undefined,
                           inStock: undefined,
                           onSale: onSaleOnly || undefined,
-                          page: 1,
-                        });
-                      }}
-                      className="hover:text-gold/70"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </motion.span>
-                )}
-                {onSaleOnly && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 bg-gold/10 text-gold text-xs sm:text-sm rounded-full flex items-center gap-1.5 sm:gap-2 font-medium"
-                  >
-                    {t('onSale')}
-                    <button
-                      onClick={() => {
-                        setOnSaleOnly(false);
-                        updateFilters({
-                          category: selectedCategories[0],
-                          brands: selectedBrands,
-                          minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
-                          maxPrice: priceRange[1] < 10000 ? priceRange[1] : undefined,
-                          inStock: inStockOnly || undefined,
-                          onSale: undefined,
                           page: 1,
                         });
                       }}
@@ -1129,7 +1156,10 @@ export default function ProductsPage() {
             ) : (
               <>
                 <ProductGrid
-                  products={products}
+                  products={products.map((product) => ({
+                    ...product,
+                    inWishlist: isInWishlist(product.id),
+                  }))}
                   layout={layout}
                   onQuickView={handleQuickView}
                   onAddToWishlist={handleAddToWishlist}
@@ -1354,33 +1384,55 @@ export default function ProductsPage() {
                   </div>
                 )}
 
-                {/* Availability */}
+                {/* Availability - In Stock Only */}
                 <div className="pb-6 border-b border-neutral-200">
-                  <h4 className="text-lg font-semibold text-black mb-4">{t('availability')}</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={inStockOnly}
-                        onChange={(e) => setInStockOnly(e.target.checked)}
-                        className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
-                      />
-                      <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-black">{t('availability')}</h4>
+                    {inStockOnly && (
+                      <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-gold/20 text-gold text-xs font-bold rounded-full">
+                        1
+                      </span>
+                    )}
+                  </div>
+                  <label
+                    className={`flex items-center gap-3 cursor-pointer group px-3 py-3 rounded-xl transition-all border-2 ${
+                      inStockOnly
+                        ? 'bg-green-50 border-green-200 shadow-sm'
+                        : 'hover:bg-neutral-50 border-transparent'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={inStockOnly}
+                      onChange={(e) => setInStockOnly(e.target.checked)}
+                      className="w-5 h-5 text-green-600 border-neutral-300 rounded focus:ring-2 focus:ring-green-500/20"
+                    />
+                    <div className="flex items-center gap-2 flex-1">
+                      <svg
+                        className={`w-5 h-5 ${inStockOnly ? 'text-green-600' : 'text-neutral-400 group-hover:text-green-600'}`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <span
+                        className={`font-semibold transition-colors ${
+                          inStockOnly ? 'text-green-700' : 'text-neutral-700 group-hover:text-black'
+                        }`}
+                      >
                         {t('inStockOnly')}
                       </span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={onSaleOnly}
-                        onChange={(e) => setOnSaleOnly(e.target.checked)}
-                        className="w-5 h-5 text-gold border-neutral-300 rounded focus:ring-2 focus:ring-gold/20"
-                      />
-                      <span className="text-neutral-700 group-hover:text-black transition-colors font-medium">
-                        {t('onSale')}
+                    </div>
+                    {inStockOnly && (
+                      <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                        Active
                       </span>
-                    </label>
-                  </div>
+                    )}
+                  </label>
                 </div>
               </div>
 
@@ -1461,6 +1513,10 @@ export default function ProductsPage() {
           reviews: tModal('reviews'),
           review: tModal('review'),
           save: tModal('save', { percent: 0 }),
+          new: tModal('new'),
+          sale: tModal('sale'),
+          featured: tModal('featured'),
+          bestseller: tModal('bestseller'),
         }}
       />
 

@@ -128,7 +128,7 @@ export class PayoutSchedulerService {
     });
 
     // Filter by minimum payout amount
-    return eligibleFromEscrow.filter(seller => {
+    return eligibleFromEscrow.filter((seller) => {
       const escrowTotal = seller.escrowTransactions.reduce(
         (sum, escrow) => sum + escrow.sellerAmount.toNumber(),
         0
@@ -190,7 +190,7 @@ export class PayoutSchedulerService {
     // Determine payout period
     const now = new Date();
     const periodEnd = now;
-    let periodStart = new Date(now);
+    const periodStart = new Date(now);
 
     switch (config.frequency) {
       case PayoutFrequency.DAILY:
@@ -227,7 +227,7 @@ export class PayoutSchedulerService {
       });
 
       // Link commissions to payout
-      const commissionIds = seller.commissions.map(c => c.id);
+      const commissionIds = seller.commissions.map((c) => c.id);
       if (commissionIds.length > 0) {
         await prisma.commission.updateMany({
           where: { id: { in: commissionIds } },
@@ -250,7 +250,7 @@ export class PayoutSchedulerService {
    */
   private async updateNextProcessTime(config: any) {
     const now = new Date();
-    let nextProcess = new Date(now);
+    const nextProcess = new Date(now);
 
     switch (config.frequency) {
       case PayoutFrequency.DAILY:

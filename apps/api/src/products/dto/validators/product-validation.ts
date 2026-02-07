@@ -31,7 +31,7 @@ export class RequiresPriceForInstantConstraint implements ValidatorConstraintInt
 }
 
 export function RequiresPriceForInstant(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -66,7 +66,7 @@ export class RequiresInventoryForInstantConstraint implements ValidatorConstrain
 }
 
 export function RequiresInventoryForInstant(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,

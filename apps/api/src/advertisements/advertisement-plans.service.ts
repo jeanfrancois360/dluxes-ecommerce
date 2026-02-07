@@ -225,7 +225,7 @@ export class AdvertisementPlansService {
 
     // Calculate subscription period
     const now = new Date();
-    let periodEnd = new Date(now);
+    const periodEnd = new Date(now);
 
     switch (plan.billingPeriod) {
       case PlanBillingPeriod.FREE:
@@ -262,9 +262,7 @@ export class AdvertisementPlansService {
       },
     });
 
-    this.logger.log(
-      `Seller ${sellerId} subscribed to plan '${plan.name}' (${plan.billingPeriod})`
-    );
+    this.logger.log(`Seller ${sellerId} subscribed to plan '${plan.name}' (${plan.billingPeriod})`);
 
     return subscription;
   }
@@ -272,11 +270,7 @@ export class AdvertisementPlansService {
   /**
    * Cancel subscription
    */
-  async cancelSubscription(
-    subscriptionId: string,
-    cancelledBy: string,
-    reason?: string
-  ) {
+  async cancelSubscription(subscriptionId: string, cancelledBy: string, reason?: string) {
     const subscription = await this.prisma.sellerPlanSubscription.findUnique({
       where: { id: subscriptionId },
     });
@@ -454,13 +448,13 @@ export class AdvertisementPlansService {
       const planPrice = sub.plan.price.toNumber();
       switch (sub.plan.billingPeriod) {
         case PlanBillingPeriod.WEEKLY:
-          return sum + (planPrice * 4.33);
+          return sum + planPrice * 4.33;
         case PlanBillingPeriod.MONTHLY:
           return sum + planPrice;
         case PlanBillingPeriod.QUARTERLY:
-          return sum + (planPrice / 3);
+          return sum + planPrice / 3;
         case PlanBillingPeriod.YEARLY:
-          return sum + (planPrice / 12);
+          return sum + planPrice / 12;
         default:
           return sum;
       }

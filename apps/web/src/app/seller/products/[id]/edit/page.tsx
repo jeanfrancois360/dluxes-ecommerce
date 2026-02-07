@@ -3,7 +3,6 @@
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { PageLayout } from '@/components/layout/page-layout';
 import ProductForm from '@/components/seller/ProductForm';
 import { api } from '@/lib/api/client';
 
@@ -68,26 +67,33 @@ export default function EditProductPage() {
   // Loading state
   if (isLoading) {
     return (
-      <PageLayout showCategoryNav={false}>
-        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-black mb-4"></div>
           <p className="text-neutral-600">Loading product...</p>
         </div>
-        </div>
-      </PageLayout>
+      </div>
     );
   }
 
   // Error state
   if (error || !product) {
     return (
-      <PageLayout showCategoryNav={false}>
-        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-lg shadow-sm border border-neutral-200 p-8 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-8 h-8 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <h2 className="text-xl font-bold text-black mb-2">Failed to Load Product</h2>
@@ -101,28 +107,28 @@ export default function EditProductPage() {
             Back to Products
           </button>
         </div>
-        </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout showCategoryNav={false}>
-      <div className="min-h-screen bg-neutral-50">
-        {/* Header */}
-        <div className="bg-white border-b border-neutral-200">
+    <div className="min-h-screen bg-neutral-50">
+      {/* Header */}
+      <div className="bg-white border-b border-neutral-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="flex items-center gap-4 mb-2">
               <button
                 onClick={() => router.push('/seller/products')}
                 className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                  />
                 </svg>
               </button>
               <h1 className="text-3xl font-bold text-black">Edit Product</h1>
@@ -147,7 +153,6 @@ export default function EditProductPage() {
           />
         </motion.div>
       </div>
-      </div>
-    </PageLayout>
+    </div>
   );
 }

@@ -29,6 +29,7 @@ export interface QuickViewProduct {
   badges?: string[];
   stockQuantity?: number;
   lowStockThreshold?: number;
+  inWishlist?: boolean;
 }
 
 export interface QuickViewModalProps {
@@ -51,6 +52,11 @@ export interface QuickViewModalProps {
     reviews: string;
     review: string;
     save: string;
+    // Badge translations
+    new: string;
+    sale: string;
+    featured: string;
+    bestseller: string;
   };
 }
 
@@ -77,7 +83,22 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
     reviews: 'reviews',
     review: 'review',
     save: 'Save {percent}%',
+    new: 'New',
+    sale: 'Sale',
+    featured: 'Featured',
+    bestseller: 'Bestseller',
   };
+
+  // Helper function to translate badges
+  const translateBadge = (badge: string): string => {
+    const badgeLower = badge.toLowerCase();
+    if (badgeLower === 'new') return t.new;
+    if (badgeLower === 'sale') return t.sale;
+    if (badgeLower === 'featured') return t.featured;
+    if (badgeLower === 'bestseller') return t.bestseller;
+    return badge; // Return original if no translation found
+  };
+
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const [selectedColor, setSelectedColor] = React.useState<string | null>(null);
   const [selectedSize, setSelectedSize] = React.useState<string | null>(null);
@@ -169,11 +190,11 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
           {/* Modal */}
           <div className="fixed inset-0 z-[101] overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 sm:p-6 lg:p-8">
+            <div className="flex min-h-full items-center justify-center p-2 xs:p-3 sm:p-4 md:p-6 lg:p-8">
               <motion.div
                 {...framerMotion.modal.content}
                 onClick={(e) => e.stopPropagation()}
-                className="relative w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden"
+                className="relative w-full max-w-xs xs:max-w-sm sm:max-w-2xl md:max-w-4xl lg:max-w-6xl bg-white rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl overflow-hidden"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="modal-title"
@@ -181,11 +202,11 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                 {/* Close Button */}
                 <button
                   onClick={onClose}
-                  className="absolute top-6 right-6 z-10 w-12 h-12 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-neutral-100 transition-all duration-200 group"
+                  className="absolute top-3 right-3 xs:top-4 xs:right-4 sm:top-5 sm:right-5 lg:top-6 lg:right-6 z-10 w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-neutral-100 transition-all duration-200 group"
                   aria-label="Close modal"
                 >
                   <svg
-                    className="w-6 h-6 text-neutral-700 group-hover:text-black transition-colors"
+                    className="w-4 h-4 xs:w-5 xs:h-5 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-neutral-700 group-hover:text-black transition-colors"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -200,11 +221,11 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                 </button>
 
                 {/* Modal Content */}
-                <div className="grid lg:grid-cols-2 gap-8 p-6 sm:p-8 lg:p-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 xs:gap-5 sm:gap-6 md:gap-7 lg:gap-8 p-4 xs:p-5 sm:p-6 md:p-8 lg:p-12">
                   {/* Left Side - Image Gallery */}
-                  <div className="space-y-4">
+                  <div className="space-y-2 xs:space-y-3 sm:space-y-4">
                     {/* Main Image */}
-                    <div className="relative aspect-square bg-neutral-50 rounded-2xl overflow-hidden">
+                    <div className="relative aspect-square bg-neutral-50 rounded-lg sm:rounded-xl lg:rounded-2xl overflow-hidden">
                       <AnimatePresence mode="wait">
                         <motion.img
                           key={currentImageIndex}
@@ -220,12 +241,12 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
                       {/* Badges */}
                       {product.badges && product.badges.length > 0 && (
-                        <div className="absolute top-4 left-4 flex flex-col gap-2">
+                        <div className="absolute top-2 left-2 xs:top-3 xs:left-3 sm:top-4 sm:left-4 flex flex-col gap-1.5 sm:gap-2">
                           {product.badges.map((badge) => (
                             <span
                               key={badge}
                               className={cn(
-                                'px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md shadow-lg',
+                                'px-2 py-0.5 xs:px-2.5 xs:py-1 sm:px-3 sm:py-1 md:px-4 md:py-1.5 text-[8px] xs:text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md shadow-lg',
                                 badge.toLowerCase() === 'new' && 'bg-black/90 text-white',
                                 badge.toLowerCase() === 'sale' && 'bg-red-500/90 text-white',
                                 badge.toLowerCase() === 'featured' && 'bg-gold/95 text-black',
@@ -236,7 +257,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                                 ) && 'bg-neutral-800/90 text-white'
                               )}
                             >
-                              {badge}
+                              {translateBadge(badge)}
                             </span>
                           ))}
                         </div>
@@ -244,9 +265,11 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
                       {/* Discount Badge */}
                       {discount > 0 && (
-                        <div className="absolute bottom-4 right-4">
-                          <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center shadow-xl">
-                            <span className="text-white font-bold text-sm">-{discount}%</span>
+                        <div className="absolute bottom-2 right-2 xs:bottom-3 xs:right-3 sm:bottom-4 sm:right-4">
+                          <div className="w-11 h-11 xs:w-12 xs:h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-red-500 flex items-center justify-center shadow-xl">
+                            <span className="text-white font-bold text-[10px] xs:text-xs sm:text-sm">
+                              -{discount}%
+                            </span>
                           </div>
                         </div>
                       )}
@@ -254,13 +277,13 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
                     {/* Thumbnail Gallery */}
                     {allImages.length > 1 && (
-                      <div className="grid grid-cols-5 gap-3">
+                      <div className="grid grid-cols-4 xs:grid-cols-5 gap-1.5 xs:gap-2 sm:gap-3">
                         {allImages.map((img, index) => (
                           <button
                             key={index}
                             onClick={() => setCurrentImageIndex(index)}
                             className={cn(
-                              'relative aspect-square rounded-lg overflow-hidden transition-all duration-200',
+                              'relative aspect-square rounded-md sm:rounded-lg overflow-hidden transition-all duration-200',
                               'border-2',
                               currentImageIndex === index
                                 ? 'border-gold shadow-lg scale-105'
@@ -282,7 +305,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                   <div className="flex flex-col">
                     {/* Brand */}
                     {product.brand && (
-                      <p className="text-xs uppercase tracking-[0.2em] text-neutral-500 font-semibold mb-3">
+                      <p className="text-[9px] xs:text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] text-neutral-500 font-semibold mb-2 sm:mb-3">
                         {product.brand}
                       </p>
                     )}
@@ -290,20 +313,20 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     {/* Product Name */}
                     <h2
                       id="modal-title"
-                      className="font-serif text-3xl lg:text-4xl font-bold text-black mb-4 leading-tight"
+                      className="font-serif text-xl xs:text-2xl sm:text-3xl lg:text-4xl font-bold text-black mb-3 sm:mb-4 leading-tight"
                     >
                       {product.name}
                     </h2>
 
                     {/* Rating */}
                     {product.rating && (
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                        <div className="flex items-center gap-0.5 sm:gap-1">
                           {[...Array(5)].map((_, i) => (
                             <svg
                               key={i}
                               className={cn(
-                                'w-5 h-5',
+                                'w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5',
                                 i < Math.floor(product.rating!)
                                   ? 'fill-gold text-gold'
                                   : 'fill-neutral-200 text-neutral-200'
@@ -315,7 +338,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                           ))}
                         </div>
                         {product.reviewCount && (
-                          <span className="text-sm text-neutral-500">
+                          <span className="text-xs sm:text-sm text-neutral-500">
                             ({product.reviewCount}{' '}
                             {product.reviewCount === 1 ? t.review : t.reviews})
                           </span>
@@ -324,25 +347,25 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     )}
 
                     {/* Price */}
-                    <div className="flex items-baseline gap-3 mb-6 pb-6 border-b border-neutral-200">
+                    <div className="flex flex-wrap items-baseline gap-2 sm:gap-3 mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-neutral-200">
                       <AnimatePresence mode="wait">
                         <motion.div
                           key={`${validPrice}-${validCompareAtPrice}`}
                           {...framerMotion.priceChange}
-                          className="flex items-center gap-4"
+                          className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4"
                         >
-                          <span className="font-serif text-4xl font-bold text-black">
+                          <span className="font-serif text-2xl xs:text-3xl sm:text-4xl font-bold text-black">
                             {currencySymbol}
                             {formatCurrencyAmount(validPrice, 2)}
                           </span>
                           {validCompareAtPrice && (
                             <>
-                              <span className="text-2xl text-neutral-400 line-through font-medium">
+                              <span className="text-lg xs:text-xl sm:text-2xl text-neutral-400 line-through font-medium">
                                 {currencySymbol}
                                 {formatCurrencyAmount(validCompareAtPrice, 2)}
                               </span>
                               {discount > 0 && (
-                                <span className="px-3 py-1 bg-red-100 text-red-600 text-sm font-semibold rounded-full">
+                                <span className="px-2 py-0.5 xs:px-2.5 xs:py-1 sm:px-3 sm:py-1 bg-red-100 text-red-600 text-xs sm:text-sm font-semibold rounded-full">
                                   {t.save.replace('{percent}', String(discount))}
                                 </span>
                               )}
@@ -354,25 +377,25 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
                     {/* Description */}
                     {product.description && (
-                      <p className="text-neutral-600 text-base leading-relaxed mb-8">
+                      <p className="text-neutral-600 text-sm sm:text-base leading-relaxed mb-6 sm:mb-8">
                         {product.description}
                       </p>
                     )}
 
                     {/* Color Variants */}
                     {product.variants?.colors && product.variants.colors.length > 0 && (
-                      <div className="mb-6">
-                        <label className="block text-sm font-semibold text-black mb-3">
+                      <div className="mb-4 sm:mb-6">
+                        <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
                           {t.color}
                           {selectedColor && (
-                            <span className="text-neutral-600 font-normal ml-2 capitalize">
+                            <span className="text-neutral-600 font-normal ml-1.5 sm:ml-2 capitalize text-xs sm:text-sm">
                               (
                               {product.variants.colors.find((c) => c.value === selectedColor)?.name}
                               )
                             </span>
                           )}
                         </label>
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-2 sm:gap-3">
                           {product.variants.colors.map((color) => {
                             const isLight = isLightColor(color.hex);
 
@@ -383,7 +406,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                                 whileHover={framerMotion.interactions.swatchHover}
                                 whileTap={framerMotion.interactions.swatchTap}
                                 className={cn(
-                                  'w-10 h-10 rounded-full border-2 transition-all duration-200 relative',
+                                  'w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 rounded-full border-2 transition-all duration-200 relative',
                                   selectedColor === color.value
                                     ? 'border-gold ring-2 ring-gold/20 scale-110'
                                     : isLight
@@ -402,16 +425,16 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
                     {/* Size Variants */}
                     {product.variants?.sizes && product.variants.sizes.length > 0 && (
-                      <div className="mb-8">
-                        <label className="block text-sm font-semibold text-black mb-3">
+                      <div className="mb-6 sm:mb-8">
+                        <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
                           {t.size}
                           {selectedSize && (
-                            <span className="text-neutral-600 font-normal ml-2 uppercase">
+                            <span className="text-neutral-600 font-normal ml-1.5 sm:ml-2 uppercase text-xs sm:text-sm">
                               ({product.variants.sizes.find((s) => s.value === selectedSize)?.name})
                             </span>
                           )}
                         </label>
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-2 sm:gap-3">
                           {product.variants.sizes.map((size) => (
                             <motion.button
                               key={`quickview-size-${size.value}`}
@@ -420,7 +443,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                               whileHover={size.inStock ? framerMotion.interactions.sizeHover : {}}
                               whileTap={size.inStock ? framerMotion.interactions.sizeTap : {}}
                               className={cn(
-                                'px-6 py-3 rounded-lg border-2 font-medium text-sm transition-all duration-200',
+                                'px-3 py-2 xs:px-4 xs:py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 rounded-md sm:rounded-lg border-2 font-medium text-xs sm:text-sm transition-all duration-200',
                                 selectedSize === size.value
                                   ? 'border-gold bg-gold text-black'
                                   : size.inStock
@@ -436,18 +459,18 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     )}
 
                     {/* Quantity Selector */}
-                    <div className="mb-6">
-                      <label className="block text-sm font-semibold text-black mb-3">
+                    <div className="mb-4 sm:mb-6">
+                      <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
                         {t.quantity}
                       </label>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
                         <button
                           onClick={() => setQuantity(Math.max(1, quantity - 1))}
                           disabled={quantity <= 1}
-                          className="w-12 h-12 flex items-center justify-center border-2 border-neutral-300 rounded-lg hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-neutral-300 rounded-md sm:rounded-lg hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <svg
-                            className="w-5 h-5"
+                            className="w-4 h-4 sm:w-5 sm:h-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -460,16 +483,18 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                             />
                           </svg>
                         </button>
-                        <span className="text-xl font-semibold w-12 text-center">{quantity}</span>
+                        <span className="text-lg xs:text-xl sm:text-xl font-semibold w-10 xs:w-12 text-center">
+                          {quantity}
+                        </span>
                         <button
                           onClick={() => setQuantity(quantity + 1)}
                           disabled={
                             product.stockQuantity ? quantity >= product.stockQuantity : false
                           }
-                          className="w-12 h-12 flex items-center justify-center border-2 border-neutral-300 rounded-lg hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-neutral-300 rounded-md sm:rounded-lg hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <svg
-                            className="w-5 h-5"
+                            className="w-4 h-4 sm:w-5 sm:h-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -486,12 +511,12 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     </div>
 
                     {/* Stock Status */}
-                    <div className="mb-8">
-                      <div className="flex items-center gap-2">
+                    <div className="mb-6 sm:mb-8">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         {product.inStock ? (
                           <>
-                            <div className="w-2 h-2 bg-green-500 rounded-full" />
-                            <span className="text-sm text-green-600 font-medium">
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full" />
+                            <span className="text-xs sm:text-sm text-green-600 font-medium">
                               {product.stockQuantity && product.stockQuantity > 0
                                 ? `${t.inStock} (${product.stockQuantity} ${t.available})`
                                 : t.inStock}
@@ -499,8 +524,10 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                           </>
                         ) : (
                           <>
-                            <div className="w-2 h-2 bg-red-500 rounded-full" />
-                            <span className="text-sm text-red-600 font-medium">{t.outOfStock}</span>
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full" />
+                            <span className="text-xs sm:text-sm text-red-600 font-medium">
+                              {t.outOfStock}
+                            </span>
                           </>
                         )}
                       </div>
@@ -508,28 +535,28 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                         product.stockQuantity &&
                         product.lowStockThreshold &&
                         product.stockQuantity <= product.lowStockThreshold && (
-                          <p className="text-xs text-orange-600 mt-1">
+                          <p className="text-[10px] xs:text-xs text-orange-600 mt-1">
                             {t.onlyLeftInStock.replace('{count}', String(product.stockQuantity))}
                           </p>
                         )}
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex flex-col sm:flex-row gap-4 mt-auto">
+                    <div className="flex flex-col sm:flex-row gap-2.5 xs:gap-3 sm:gap-4 mt-auto">
                       <motion.button
                         onClick={handleAddToCart}
                         whileHover={framerMotion.interactions.buttonHover}
                         whileTap={framerMotion.interactions.buttonTap}
                         disabled={!product.inStock}
                         className={cn(
-                          'flex-1 py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all duration-200',
+                          'flex-1 py-2.5 xs:py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm xs:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200',
                           product.inStock
                             ? 'bg-gradient-to-r from-black to-neutral-800 text-white hover:from-gold hover:to-accent-700 hover:text-black shadow-lg'
                             : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                         )}
                       >
                         <svg
-                          className="w-5 h-5"
+                          className="w-4 h-4 xs:w-5 xs:h-5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -548,7 +575,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                         onClick={handleViewDetails}
                         whileHover={framerMotion.interactions.buttonHover}
                         whileTap={framerMotion.interactions.buttonTap}
-                        className="flex-1 py-4 bg-white border-2 border-neutral-300 text-black rounded-xl font-bold text-base hover:border-gold hover:bg-gold/5 transition-all duration-200"
+                        className="flex-1 py-2.5 xs:py-3 sm:py-4 bg-white border-2 border-neutral-300 text-black rounded-lg sm:rounded-xl font-bold text-sm xs:text-base hover:border-gold hover:bg-gold/5 transition-all duration-200"
                       >
                         {t.viewFullDetails}
                       </motion.button>

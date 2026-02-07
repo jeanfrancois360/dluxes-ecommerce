@@ -427,6 +427,10 @@ export default function WishlistPage() {
           reviews: tModal('reviews'),
           review: tModal('review'),
           save: tModal('save', { percent: 0 }),
+          new: tModal('new'),
+          sale: tModal('sale'),
+          featured: tModal('featured'),
+          bestseller: tModal('bestseller'),
         }}
       />
     </PageLayout>

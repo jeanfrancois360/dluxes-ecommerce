@@ -9,7 +9,7 @@ export class CartService {
 
   constructor(
     private prisma: PrismaService,
-    private currencyService: CurrencyService,
+    private currencyService: CurrencyService
   ) {}
 
   /**
@@ -86,7 +86,7 @@ export class CartService {
    */
   private async calculateCartTotals(cart: any) {
     let subtotal = new Decimal(0);
-    let discount = new Decimal(0);
+    const discount = new Decimal(0);
 
     for (const item of cart.items) {
       // Use priceAtAdd (locked price) if available, fallback to price for backwards compat
@@ -165,9 +165,7 @@ export class CartService {
 
     if (currentCart.items.length === 0) {
       // 🆕 FIRST ITEM - LOCK CURRENCY AND CAPTURE EXCHANGE RATE
-      this.logger.log(
-        `🔒 Locking cart ${cartId} to currency: ${requestCurrency}`
-      );
+      this.logger.log(`🔒 Locking cart ${cartId} to currency: ${requestCurrency}`);
 
       // Get exchange rate from USD to requested currency
       exchangeRate = await this.currencyService.getExchangeRate('USD', requestCurrency);
@@ -184,14 +182,14 @@ export class CartService {
 
       this.logger.log(
         `✅ Currency locked: ${requestCurrency} at rate ${exchangeRate.toFixed(6)} ` +
-        `(1 USD = ${exchangeRate.toFixed(6)} ${requestCurrency})`
+          `(1 USD = ${exchangeRate.toFixed(6)} ${requestCurrency})`
       );
     } else {
       // ⚠️ SUBSEQUENT ITEMS - VALIDATE CURRENCY MATCHES
       if (currentCart.currency !== requestCurrency) {
         throw new BadRequestException(
           `Cannot add item. Cart is locked to ${currentCart.currency}. ` +
-          `Please clear your cart to change currency.`
+            `Please clear your cart to change currency.`
         );
       }
 
@@ -201,7 +199,7 @@ export class CartService {
 
       this.logger.log(
         `✓ Using locked currency: ${currentCart.currency} ` +
-        `(rate: ${exchangeRate.toFixed(6)}, locked at: ${currentCart.rateLockedAt})`
+          `(rate: ${exchangeRate.toFixed(6)}, locked at: ${currentCart.rateLockedAt})`
       );
     }
 
@@ -230,9 +228,7 @@ export class CartService {
       : product.price;
 
     // 💱 CONVERT PRICE TO CART'S LOCKED CURRENCY
-    const priceInCartCurrency = new Decimal(basePriceUSD)
-      .mul(exchangeRate)
-      .toDecimalPlaces(2);
+    const priceInCartCurrency = new Decimal(basePriceUSD).mul(exchangeRate).toDecimalPlaces(2);
 
     if (existingItem) {
       // Update quantity only (price is immutable once added)
@@ -251,7 +247,9 @@ export class CartService {
           productId: data.productId,
           variantId: data.variantId,
           name: product.name,
-          sku: data.variantId ? product.variants[0]?.sku || `SKU-${product.id}` : `SKU-${product.id}`,
+          sku: data.variantId
+            ? product.variants[0]?.sku || `SKU-${product.id}`
+            : `SKU-${product.id}`,
           price: priceInCartCurrency, // Current price (for backwards compat)
           priceAtAdd: priceInCartCurrency, // 🔒 LOCKED PRICE - immutable
           currencyAtAdd: cartCurrency, // 🔒 LOCKED CURRENCY - immutable
@@ -262,8 +260,8 @@ export class CartService {
 
       this.logger.log(
         `➕ Added to cart: ${product.name} - ` +
-        `$${basePriceUSD} USD → ${priceInCartCurrency} ${cartCurrency} ` +
-        `(rate: ${exchangeRate.toFixed(6)})`
+          `$${basePriceUSD} USD → ${priceInCartCurrency} ${cartCurrency} ` +
+          `(rate: ${exchangeRate.toFixed(6)})`
       );
     }
 
@@ -315,7 +313,9 @@ export class CartService {
       throw new Error('Cart item not found');
     }
 
-    const availableInventory = item.variantId ? item.variant?.inventory || 0 : item.product.inventory;
+    const availableInventory = item.variantId
+      ? item.variant?.inventory || 0
+      : item.product.inventory;
 
     if (quantity > availableInventory) {
       throw new Error(`Only ${availableInventory} items available in stock`);
@@ -468,8 +468,7 @@ export class CartService {
       });
 
       this.logger.log(
-        `Updated empty cart currency: ${upperCurrency} ` +
-        `(rate: ${exchangeRate.toFixed(6)})`
+        `Updated empty cart currency: ${upperCurrency} ` + `(rate: ${exchangeRate.toFixed(6)})`
       );
 
       return {
@@ -528,7 +527,7 @@ export class CartService {
 
     this.logger.log(
       `Force updated cart currency: ${upperCurrency} ` +
-      `(rate: ${exchangeRate.toFixed(6)}), cart cleared`
+        `(rate: ${exchangeRate.toFixed(6)}), cart cleared`
     );
 
     return {

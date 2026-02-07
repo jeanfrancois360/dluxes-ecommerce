@@ -1,4 +1,11 @@
-import { Injectable, CanActivate, ExecutionContext, ServiceUnavailableException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ServiceUnavailableException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SettingsService } from '../settings/settings.service';
 
@@ -7,10 +14,11 @@ export const IS_PUBLIC_KEY = 'isPublic';
 @Injectable()
 export class MaintenanceModeGuard implements CanActivate {
   private readonly logger = new Logger(MaintenanceModeGuard.name);
+  private hasLoggedMissingSetting = false;
 
   constructor(
     private readonly settingsService: SettingsService,
-    private readonly reflector: Reflector,
+    private readonly reflector: Reflector
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -43,7 +51,21 @@ export class MaintenanceModeGuard implements CanActivate {
       if (error instanceof ServiceUnavailableException) {
         throw error;
       }
-      // If settings check fails, allow request (fail-open for availability)
+
+      // Handle missing setting gracefully
+      if (error instanceof NotFoundException && error.message?.includes('maintenance_mode')) {
+        // Log warning only once to avoid spam
+        if (!this.hasLoggedMissingSetting) {
+          this.logger.warn(
+            'Setting "maintenance_mode" not found in database. Defaulting to maintenance mode OFF. Run database seed to add missing settings.'
+          );
+          this.hasLoggedMissingSetting = true;
+        }
+        // Default to maintenance mode OFF when setting is missing
+        return true;
+      }
+
+      // If settings check fails for other reasons, allow request (fail-open for availability)
       this.logger.error('Failed to check maintenance mode:', error);
       return true;
     }

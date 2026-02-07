@@ -357,6 +357,7 @@
     "submitInquiry": "Envía una consulta para obtener información de precios",
     "save": "Ahorra {percent}%",
     "sku": "SKU: {sku}",
+    "skuLabel": "SKU",
     "visitStore": "Visitar Tienda",
     "color": "Color",
     "size": "Talla",
@@ -384,11 +385,14 @@
     "failedAddToCart": "Error al añadir al carrito",
     "addedToCart": "{name} ha sido añadido a tu carrito",
     "confirmReportReview": "¿Estás seguro de que deseas reportar esta reseña?",
-    "reviews_count": "({count} reseñas)"
+    "reviews_count": "({count} reseñas)",
+    "review": "reseña",
+    "reviewsPlural": "reseñas"
   },
   "cart": {
     "shoppingCart": "Carrito de Compras",
     "itemsInCart": "artículo{s} en tu carrito",
+    "itemInCart": "artículo en tu carrito",
     "emptyCart": "Tu carrito está vacío",
     "addLuxuryItems": "Añade algunos artículos para comenzar",
     "orderSummary": "Resumen del Pedido",
@@ -456,7 +460,11 @@
     "viewFullDetails": "Ver Detalles Completos",
     "reviews": "reseñas",
     "review": "reseña",
-    "save": "Ahorra {percent}%"
+    "save": "Ahorra {percent}%",
+    "new": "Nuevo",
+    "sale": "Oferta",
+    "featured": "Destacado",
+    "bestseller": "Más Vendido"
   },
   "productCard": {
     "addToWishlist": "Añadir a la lista de deseos",
@@ -470,7 +478,12 @@
     "contact": "Contactar",
     "addToBag": "Añadir a la Bolsa",
     "add": "Añadir",
-    "by": "por"
+    "by": "por",
+    "new": "Nuevo",
+    "sale": "Oferta",
+    "featured": "Destacado",
+    "bestseller": "Más Vendido",
+    "limitedEdition": "Edición Limitada"
   },
   "checkout": {
     "checkout": "Pago",
@@ -1959,6 +1972,96 @@
       "failedToCancel": "Error al cancelar oferta",
       "confirmCancel": "¿Estás seguro de que quieres cancelar esta oferta urgente?",
       "failedToLoadDeals": "Error al cargar tus ofertas"
+    }
+  },
+  "ads": {
+    "sponsored": "Patrocinado",
+    "adSpace": "Espacio Publicitario",
+    "advertiseHere": "Anuncie Aquí",
+    "advertise": "Anunciar",
+    "startAdvertising": "Comenzar a Anunciar",
+    "recommended": "Recomendado",
+    "featured": "Destacado",
+    "premiumPlacement": "Ubicación Premium",
+    "dismiss": "Cerrar",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "goToSlide": "Ir a diapositiva {number}",
+    "placements": {
+      "homepageHero": {
+        "title": "Espacio Hero Premium",
+        "description": "Máxima visibilidad para tu marca"
+      },
+      "homepageFeatured": {
+        "title": "Banner Destacado",
+        "description": "Destaca tus mejores productos"
+      },
+      "homepageSidebar": {
+        "title": "Barra Lateral Inicio",
+        "description": "Presencia persistente de marca"
+      },
+      "productsBanner": {
+        "title": "Banner de Productos",
+        "description": "Alcanza compradores activos"
+      },
+      "productsInline": {
+        "title": "Promoción Integrada",
+        "description": "Ubicación nativa en feed de productos"
+      },
+      "productsSidebar": {
+        "title": "Anuncio Barra Lateral",
+        "description": "Capta la atención de navegantes"
+      },
+      "categoryBanner": {
+        "title": "Banner de Categoría",
+        "description": "Dirige categorías específicas"
+      },
+      "productDetailSidebar": {
+        "title": "Anuncio Página Producto",
+        "description": "Compradores de alta intención"
+      },
+      "checkoutUpsell": {
+        "title": "Venta Adicional Checkout",
+        "description": "Conversiones de último minuto"
+      },
+      "searchResults": {
+        "title": "Resultado Patrocinado",
+        "description": "Ubicación superior en búsqueda"
+      }
+    },
+    "hero": {
+      "title": "Espacio Publicitario Premium",
+      "description": "Muestra tu marca en nuestra ubicación más visible",
+      "dailyViews": "Vistas Diarias",
+      "avgCTR": "CTR Promedio",
+      "visibility": "Visibilidad"
+    },
+    "sidebar": {
+      "title": "Anuncio Barra Lateral",
+      "description": "Alcanza compradores navegando"
+    },
+    "checkout": {
+      "title": "Oportunidad de Venta Adicional",
+      "description": "Promociona productos en checkout",
+      "learnMore": "Más información",
+      "completeYourLook": "Completa Tu Look",
+      "addToOrder": "Agregar al Pedido"
+    },
+    "search": {
+      "title": "Espacio Resultado Patrocinado",
+      "description": "Obtén ubicación superior en resultados de búsqueda"
+    },
+    "productDetail": {
+      "title": "Anuncio Página Producto",
+      "description": "Alcanza compradores de alta intención"
+    },
+    "defaultLinkText": {
+      "discoverNow": "Descubrir Ahora",
+      "shopNow": "Comprar Ahora",
+      "learnMore": "Más Información",
+      "viewOffer": "Ver Oferta",
+      "viewDetails": "Ver Detalles",
+      "explore": "Explorar"
     }
   }
 }

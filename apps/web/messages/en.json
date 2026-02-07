@@ -357,6 +357,7 @@
     "submitInquiry": "Submit an inquiry to get pricing information",
     "save": "Save {percent}%",
     "sku": "SKU: {sku}",
+    "skuLabel": "SKU",
     "visitStore": "Visit Store",
     "color": "Color",
     "size": "Size",
@@ -384,11 +385,14 @@
     "failedAddToCart": "Failed to add item to cart",
     "addedToCart": "{name} has been added to your cart",
     "confirmReportReview": "Are you sure you want to report this review?",
-    "reviews_count": "({count} reviews)"
+    "reviews_count": "({count} reviews)",
+    "review": "review",
+    "reviewsPlural": "reviews"
   },
   "cart": {
     "shoppingCart": "Shopping Cart",
     "itemsInCart": "item{s} in your cart",
+    "itemInCart": "item in your cart",
     "emptyCart": "Your cart is empty",
     "addLuxuryItems": "Add some luxury items to get started",
     "orderSummary": "Order Summary",
@@ -456,7 +460,11 @@
     "viewFullDetails": "View Full Details",
     "reviews": "reviews",
     "review": "review",
-    "save": "Save {percent}%"
+    "save": "Save {percent}%",
+    "new": "New",
+    "sale": "Sale",
+    "featured": "Featured",
+    "bestseller": "Bestseller"
   },
   "productCard": {
     "addToWishlist": "Add to wishlist",
@@ -470,7 +478,12 @@
     "contact": "Contact",
     "addToBag": "Add to Bag",
     "add": "Add",
-    "by": "by"
+    "by": "by",
+    "new": "New",
+    "sale": "Sale",
+    "featured": "Featured",
+    "bestseller": "Bestseller",
+    "limitedEdition": "Limited Edition"
   },
   "checkout": {
     "checkout": "Checkout",
@@ -1959,6 +1972,96 @@
       "failedToCancel": "Failed to cancel deal",
       "confirmCancel": "Are you sure you want to cancel this hot deal?",
       "failedToLoadDeals": "Failed to load your deals"
+    }
+  },
+  "ads": {
+    "sponsored": "Sponsored",
+    "adSpace": "Ad Space",
+    "advertiseHere": "Advertise Here",
+    "advertise": "Advertise",
+    "startAdvertising": "Start Advertising",
+    "recommended": "Recommended",
+    "featured": "Featured",
+    "premiumPlacement": "Premium Placement",
+    "dismiss": "Dismiss",
+    "previous": "Previous",
+    "next": "Next",
+    "goToSlide": "Go to slide {number}",
+    "placements": {
+      "homepageHero": {
+        "title": "Premium Hero Space",
+        "description": "Maximum visibility for your brand"
+      },
+      "homepageFeatured": {
+        "title": "Featured Banner",
+        "description": "Highlight your best products"
+      },
+      "homepageSidebar": {
+        "title": "Homepage Sidebar",
+        "description": "Persistent brand presence"
+      },
+      "productsBanner": {
+        "title": "Products Banner",
+        "description": "Reach active shoppers"
+      },
+      "productsInline": {
+        "title": "Inline Promotion",
+        "description": "Native product feed placement"
+      },
+      "productsSidebar": {
+        "title": "Sidebar Ad",
+        "description": "Capture browsing attention"
+      },
+      "categoryBanner": {
+        "title": "Category Banner",
+        "description": "Target specific categories"
+      },
+      "productDetailSidebar": {
+        "title": "Product Page Ad",
+        "description": "High-intent shoppers"
+      },
+      "checkoutUpsell": {
+        "title": "Checkout Upsell",
+        "description": "Last-minute conversions"
+      },
+      "searchResults": {
+        "title": "Sponsored Result",
+        "description": "Top search placement"
+      }
+    },
+    "hero": {
+      "title": "Premium Ad Space",
+      "description": "Showcase your brand in our most visible placement",
+      "dailyViews": "Daily Views",
+      "avgCTR": "Avg CTR",
+      "visibility": "Visibility"
+    },
+    "sidebar": {
+      "title": "Sidebar Ad",
+      "description": "Reach browsing shoppers"
+    },
+    "checkout": {
+      "title": "Upsell Opportunity",
+      "description": "Promote products at checkout",
+      "learnMore": "Learn more",
+      "completeYourLook": "Complete Your Look",
+      "addToOrder": "Add to Order"
+    },
+    "search": {
+      "title": "Sponsored Result Space",
+      "description": "Get top placement in search results"
+    },
+    "productDetail": {
+      "title": "Product Page Ad",
+      "description": "Reach high-intent shoppers"
+    },
+    "defaultLinkText": {
+      "discoverNow": "Discover Now",
+      "shopNow": "Shop Now",
+      "learnMore": "Learn More",
+      "viewOffer": "View Offer",
+      "viewDetails": "View Details",
+      "explore": "Explore"
     }
   }
 }

@@ -6,7 +6,12 @@ import { SettingsService } from '../settings/settings.service';
 import { CurrencyService } from '../currency/currency.service';
 import { StripeSubscriptionService } from '../subscription/stripe-subscription.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
-import { PaymentStatus, PaymentTransactionStatus, PaymentMethod, WebhookStatus } from '@prisma/client';
+import {
+  PaymentStatus,
+  PaymentTransactionStatus,
+  PaymentMethod,
+  WebhookStatus,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
@@ -19,11 +24,52 @@ export class PaymentService {
 
   // Stripe-supported currencies (most common ones)
   private readonly STRIPE_SUPPORTED_CURRENCIES = [
-    'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CNY', 'INR', 'BRL', 'MXN',
-    'RWF', 'KES', 'UGX', 'TZS', 'NGN', 'GHS', 'ZAR', 'CHF', 'SEK', 'NOK',
-    'DKK', 'PLN', 'CZK', 'HUF', 'RON', 'BGN', 'HRK', 'RUB', 'TRY', 'ILS',
-    'AED', 'SAR', 'QAR', 'KWD', 'BHD', 'OMR', 'JOD', 'SGD', 'HKD', 'NZD',
-    'THB', 'PHP', 'MYR', 'IDR', 'VND', 'KRW',
+    'USD',
+    'EUR',
+    'GBP',
+    'CAD',
+    'AUD',
+    'JPY',
+    'CNY',
+    'INR',
+    'BRL',
+    'MXN',
+    'RWF',
+    'KES',
+    'UGX',
+    'TZS',
+    'NGN',
+    'GHS',
+    'ZAR',
+    'CHF',
+    'SEK',
+    'NOK',
+    'DKK',
+    'PLN',
+    'CZK',
+    'HUF',
+    'RON',
+    'BGN',
+    'HRK',
+    'RUB',
+    'TRY',
+    'ILS',
+    'AED',
+    'SAR',
+    'QAR',
+    'KWD',
+    'BHD',
+    'OMR',
+    'JOD',
+    'SGD',
+    'HKD',
+    'NZD',
+    'THB',
+    'PHP',
+    'MYR',
+    'IDR',
+    'VND',
+    'KRW',
   ];
 
   constructor(
@@ -31,7 +77,7 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
     private readonly currencyService: CurrencyService,
-    @Optional() private readonly stripeSubscriptionService?: StripeSubscriptionService,
+    @Optional() private readonly stripeSubscriptionService?: StripeSubscriptionService
   ) {
     // Initialize Stripe on first use (lazy loading)
     this.logger.log('PaymentService initialized - Stripe will be configured on first use');
@@ -52,7 +98,9 @@ export class PaymentService {
       if (!secretKey) {
         this.logger.warn('Stripe secret key not found in environment variables');
       } else {
-        this.logger.log('Stripe configured: API keys from environment, business settings from database');
+        this.logger.log(
+          'Stripe configured: API keys from environment, business settings from database'
+        );
       }
 
       if (!secretKey || secretKey === 'your-stripe-key') {
@@ -69,7 +117,9 @@ export class PaymentService {
 
       this.stripeConfig = config;
 
-      this.logger.log(`Stripe initialized successfully [Test Mode: ${config.testMode}, Enabled: ${enabled}]`);
+      this.logger.log(
+        `Stripe initialized successfully [Test Mode: ${config.testMode}, Enabled: ${enabled}]`
+      );
     } catch (error) {
       this.logger.error('Failed to initialize Stripe:', error);
       // Try fallback to env vars
@@ -96,7 +146,9 @@ export class PaymentService {
     }
 
     if (!this.stripe) {
-      throw new BadRequestException('Payment service not configured. Please configure Stripe in Admin Settings.');
+      throw new BadRequestException(
+        'Payment service not configured. Please configure Stripe in Admin Settings.'
+      );
     }
 
     return this.stripe;
@@ -191,8 +243,22 @@ export class PaymentService {
 
     // Zero-decimal currencies (no cents)
     const zeroDecimalCurrencies = [
-      'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW',
-      'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+      'BIF',
+      'CLP',
+      'DJF',
+      'GNF',
+      'JPY',
+      'KMF',
+      'KRW',
+      'MGA',
+      'PYG',
+      'RWF',
+      'UGX',
+      'VND',
+      'VUV',
+      'XAF',
+      'XOF',
+      'XPF',
     ];
 
     if (zeroDecimalCurrencies.includes(upperCurrency)) {
@@ -260,14 +326,16 @@ export class PaymentService {
   async capturePaymentWithStrategy(
     orderId: string,
     trigger: 'DELIVERY_CONFIRMED' | 'AUTO_FALLBACK' | 'MANUAL',
-    userId?: string,
+    userId?: string
   ): Promise<{ success: boolean; capturedAmount: number }> {
     try {
       // Find payment transaction for order
       const transaction = await this.prisma.paymentTransaction.findFirst({
         where: {
           orderId,
-          status: { in: [PaymentTransactionStatus.SUCCEEDED, PaymentTransactionStatus.REQUIRES_ACTION] },
+          status: {
+            in: [PaymentTransactionStatus.SUCCEEDED, PaymentTransactionStatus.REQUIRES_ACTION],
+          },
         },
       });
 
@@ -279,7 +347,7 @@ export class PaymentService {
       const stripe = await this.getStripeClient();
       const paymentIntent: any = await stripe.paymentIntents.retrieve(
         transaction.stripePaymentIntentId,
-        { expand: ['charges'] },
+        { expand: ['charges'] }
       );
 
       // Check if already captured
@@ -297,19 +365,17 @@ export class PaymentService {
       // Verify can be captured
       if (paymentIntent.status !== 'requires_capture') {
         throw new BadRequestException(
-          `Payment cannot be captured. Status: ${paymentIntent.status}`,
+          `Payment cannot be captured. Status: ${paymentIntent.status}`
         );
       }
 
       // Capture the payment
-      this.logger.log(
-        `Capturing payment ${paymentIntent.id} via ${trigger} for order ${orderId}`,
-      );
+      this.logger.log(`Capturing payment ${paymentIntent.id} via ${trigger} for order ${orderId}`);
 
       const capturedIntent = await stripe.paymentIntents.capture(paymentIntent.id);
 
       // Update transaction status
-      const metadata = transaction.metadata as any || {};
+      const metadata = (transaction.metadata as any) || {};
       await this.prisma.paymentTransaction.update({
         where: { id: transaction.id },
         data: {
@@ -335,7 +401,7 @@ export class PaymentService {
       });
 
       this.logger.log(
-        `Successfully captured ${capturedIntent.amount_received / 100} for order ${orderId}`,
+        `Successfully captured ${capturedIntent.amount_received / 100} for order ${orderId}`
       );
 
       return {
@@ -383,7 +449,13 @@ export class PaymentService {
       const existingTransaction = await this.prisma.paymentTransaction.findFirst({
         where: {
           orderId: dto.orderId,
-          status: { in: [PaymentTransactionStatus.PENDING, PaymentTransactionStatus.PROCESSING, PaymentTransactionStatus.SUCCEEDED] },
+          status: {
+            in: [
+              PaymentTransactionStatus.PENDING,
+              PaymentTransactionStatus.PROCESSING,
+              PaymentTransactionStatus.SUCCEEDED,
+            ],
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -428,7 +500,7 @@ export class PaymentService {
       }
 
       // Get Stripe config for capture method and default currency
-      const config = this.stripeConfig || await this.settingsService.getStripeConfig();
+      const config = this.stripeConfig || (await this.settingsService.getStripeConfig());
 
       // Determine currency to use (priority: dto currency > default currency)
       let paymentCurrency: string;
@@ -532,19 +604,20 @@ export class PaymentService {
     }
 
     if (!webhookSecret) {
-      throw new BadRequestException('Webhook secret not configured. Please configure in Admin Settings.');
+      throw new BadRequestException(
+        'Webhook secret not configured. Please configure in Admin Settings.'
+      );
     }
 
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(
-        rawBody,
-        signature,
-        webhookSecret,
-      );
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (error) {
-      this.logger.error('Webhook signature verification failed:', error instanceof Error ? error.message : String(error));
+      this.logger.error(
+        'Webhook signature verification failed:',
+        error instanceof Error ? error.message : String(error)
+      );
       throw new BadRequestException('Invalid signature');
     }
 
@@ -583,27 +656,45 @@ export class PaymentService {
       switch (event.type) {
         // Payment Intent Events
         case 'payment_intent.succeeded':
-          await this.handlePaymentSuccess(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
+          await this.handlePaymentSuccess(
+            event.data.object as Stripe.PaymentIntent,
+            webhookEvent.id
+          );
           break;
 
         case 'payment_intent.payment_failed':
-          await this.handlePaymentFailed(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
+          await this.handlePaymentFailed(
+            event.data.object as Stripe.PaymentIntent,
+            webhookEvent.id
+          );
           break;
 
         case 'payment_intent.processing':
-          await this.handlePaymentProcessing(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
+          await this.handlePaymentProcessing(
+            event.data.object as Stripe.PaymentIntent,
+            webhookEvent.id
+          );
           break;
 
         case 'payment_intent.canceled':
-          await this.handlePaymentCanceled(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
+          await this.handlePaymentCanceled(
+            event.data.object as Stripe.PaymentIntent,
+            webhookEvent.id
+          );
           break;
 
         case 'payment_intent.requires_action':
-          await this.handlePaymentRequiresAction(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
+          await this.handlePaymentRequiresAction(
+            event.data.object as Stripe.PaymentIntent,
+            webhookEvent.id
+          );
           break;
 
         case 'payment_intent.amount_capturable_updated':
-          await this.handleAmountCapturableUpdated(event.data.object as Stripe.PaymentIntent, webhookEvent.id);
+          await this.handleAmountCapturableUpdated(
+            event.data.object as Stripe.PaymentIntent,
+            webhookEvent.id
+          );
           break;
 
         // Charge Events
@@ -663,7 +754,7 @@ export class PaymentService {
               const sellerCreditsService = new SellerCreditsService(
                 this.prisma,
                 this.configService,
-                this, // Pass PaymentService itself
+                this // Pass PaymentService itself
               );
 
               await sellerCreditsService.processSuccessfulPurchase(session.id);
@@ -687,7 +778,7 @@ export class PaymentService {
                 this.prisma,
                 settingsService,
                 this, // Pass PaymentService itself
-                this.configService,
+                this.configService
               );
 
               await creditsService.processSuccessfulPurchase(session.id);
@@ -696,8 +787,7 @@ export class PaymentService {
               this.logger.error(`Failed to process credit package purchase:`, error);
               throw error;
             }
-          }
-          else {
+          } else {
             // Route to StripeSubscriptionService for regular subscriptions
             if (this.stripeSubscriptionService) {
               this.logger.log(`Routing ${event.type} to StripeSubscriptionService`);
@@ -747,7 +837,9 @@ export class PaymentService {
       // Calculate next retry time
       const retryAttempt = webhookEvent.processingAttempts;
       const shouldRetry = retryAttempt < this.MAX_WEBHOOK_RETRIES;
-      const nextRetryDelay = shouldRetry ? this.RETRY_DELAYS[Math.min(retryAttempt, this.RETRY_DELAYS.length - 1)] : null;
+      const nextRetryDelay = shouldRetry
+        ? this.RETRY_DELAYS[Math.min(retryAttempt, this.RETRY_DELAYS.length - 1)]
+        : null;
 
       await this.prisma.webhookEvent.update({
         where: { id: webhookEvent.id },
@@ -781,7 +873,9 @@ export class PaymentService {
 
     for (const webhook of failedWebhooks) {
       try {
-        this.logger.log(`Retrying webhook ${webhook.eventId} (attempt ${webhook.processingAttempts + 1})`);
+        this.logger.log(
+          `Retrying webhook ${webhook.eventId} (attempt ${webhook.processingAttempts + 1})`
+        );
 
         // Reconstruct the event from payload and reprocess
         const event = webhook.payload as any;
@@ -832,9 +926,7 @@ export class PaymentService {
           `stripe_fee_fixed_${currency.toLowerCase()}`
         );
 
-        const percentValue = feePercentageSetting?.value
-          ? Number(feePercentageSetting.value)
-          : 2.9;
+        const percentValue = feePercentageSetting?.value ? Number(feePercentageSetting.value) : 2.9;
         const fixedValue = feeFixedSetting?.value
           ? Number(feeFixedSetting.value)
           : this.getDefaultFixedFee(currency, 'STRIPE');
@@ -894,16 +986,19 @@ export class PaymentService {
 
       const feePercentValue = feePercentageSetting?.value
         ? Number(feePercentageSetting.value)
-        : paymentMethod === 'STRIPE' ? 2.9 : 3.49;
+        : paymentMethod === 'STRIPE'
+          ? 2.9
+          : 3.49;
 
       // Get fixed fee with smart fallback
       let feeFixedValue: number;
       let usedFallback = false;
 
       // Try to get currency-specific fee setting
-      const currencyFeeKey = paymentMethod === 'STRIPE'
-        ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
-        : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`;
+      const currencyFeeKey =
+        paymentMethod === 'STRIPE'
+          ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
+          : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`;
 
       const feeFixedSetting = await this.settingsService.getSetting(currencyFeeKey);
 
@@ -912,12 +1007,11 @@ export class PaymentService {
         feeFixedValue = Number(feeFixedSetting.value);
       } else {
         // Smart fallback: Use USD fee and convert to target currency
-        const usdFeeKey = paymentMethod === 'STRIPE'
-          ? 'stripe_fee_fixed_usd'
-          : 'paypal_fee_fixed_usd';
+        const usdFeeKey =
+          paymentMethod === 'STRIPE' ? 'stripe_fee_fixed_usd' : 'paypal_fee_fixed_usd';
 
         const usdFeeSetting = await this.settingsService.getSetting(usdFeeKey);
-        const usdFeeValue = usdFeeSetting?.value ? Number(usdFeeSetting.value) : 0.30;
+        const usdFeeValue = usdFeeSetting?.value ? Number(usdFeeSetting.value) : 0.3;
 
         try {
           // Convert USD fee to target currency
@@ -966,9 +1060,9 @@ export class PaymentService {
    */
   private getDefaultFixedFee(currency: string, paymentMethod: 'STRIPE' | 'PAYPAL'): number {
     if (paymentMethod === 'STRIPE') {
-      return currency === 'GBP' ? 0.20 : 0.30;
+      return currency === 'GBP' ? 0.2 : 0.3;
     } else {
-      return currency === 'EUR' ? 0.35 : 0.30;
+      return currency === 'EUR' ? 0.35 : 0.3;
     }
   }
 
@@ -997,21 +1091,23 @@ export class PaymentService {
 
     try {
       // Get processing fees from Stripe
-      let processingFees: { feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal } | null = null;
+      let processingFees: { feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal } | null =
+        null;
 
       if (paymentIntent.latest_charge) {
         try {
-          const chargeId = typeof paymentIntent.latest_charge === 'string'
-            ? paymentIntent.latest_charge
-            : paymentIntent.latest_charge.id;
+          const chargeId =
+            typeof paymentIntent.latest_charge === 'string'
+              ? paymentIntent.latest_charge
+              : paymentIntent.latest_charge.id;
 
           processingFees = await this.getStripeProcessingFees(chargeId);
 
           if (processingFees) {
             this.logger.log(
               `Retrieved Stripe fees for charge ${chargeId}: ` +
-              `${processingFees.feeAmount.toFixed(2)} ${paymentIntent.currency.toUpperCase()} ` +
-              `(${processingFees.feePercent.mul(100).toFixed(2)}% + ${processingFees.feeFixed.toFixed(2)})`
+                `${processingFees.feeAmount.toFixed(2)} ${paymentIntent.currency.toUpperCase()} ` +
+                `(${processingFees.feePercent.mul(100).toFixed(2)}% + ${processingFees.feeFixed.toFixed(2)})`
             );
           }
         } catch (error) {
@@ -1028,7 +1124,7 @@ export class PaymentService {
         );
         this.logger.log(
           `Using estimated Stripe fees: ${processingFees.feeAmount.toFixed(2)} ${paymentIntent.currency.toUpperCase()} ` +
-          `(will update with actual after charge completes)`
+            `(will update with actual after charge completes)`
         );
       }
 
@@ -1050,7 +1146,9 @@ export class PaymentService {
             orderId,
             userId: paymentIntent.metadata.userId || '',
             stripePaymentIntentId: paymentIntent.id,
-            stripeChargeId: paymentIntent.latest_charge ? (paymentIntent.latest_charge as string) : null,
+            stripeChargeId: paymentIntent.latest_charge
+              ? (paymentIntent.latest_charge as string)
+              : null,
             amount: grossAmount,
             currency: paymentIntent.currency.toUpperCase(),
             status: PaymentTransactionStatus.SUCCEEDED,
@@ -1072,7 +1170,9 @@ export class PaymentService {
           where: { id: transaction.id },
           data: {
             status: PaymentTransactionStatus.SUCCEEDED,
-            stripeChargeId: paymentIntent.latest_charge ? (paymentIntent.latest_charge as string) : null,
+            stripeChargeId: paymentIntent.latest_charge
+              ? (paymentIntent.latest_charge as string)
+              : null,
             // Update processing fees
             processingFeeAmount: processingFees.feeAmount,
             processingFeePercent: processingFees.feePercent,
@@ -1123,12 +1223,17 @@ export class PaymentService {
       // For now, we'll trigger it directly but wrapped in try-catch
       try {
         const { CommissionService } = await import('../commission/commission.service');
-        const { EnhancedCommissionService } = await import('../commission/enhanced-commission.service');
+        const { EnhancedCommissionService } = await import(
+          '../commission/enhanced-commission.service'
+        );
         const commissionService = new CommissionService(this.prisma, this.settingsService);
         await commissionService.calculateCommissionForTransaction(transaction.id);
         this.logger.log(`Commissions calculated for transaction ${transaction.id}`);
       } catch (commissionError) {
-        this.logger.error(`Error calculating commissions for transaction ${transaction.id}:`, commissionError);
+        this.logger.error(
+          `Error calculating commissions for transaction ${transaction.id}:`,
+          commissionError
+        );
         // Don't fail the payment if commission calculation fails
       }
 
@@ -1224,9 +1329,7 @@ export class PaymentService {
               for (const item of order.items) {
                 if (item.product.store) {
                   // Find commission for this specific item
-                  const itemCommission = commissions.find(
-                    c => c.orderItemId === item.id
-                  );
+                  const itemCommission = commissions.find((c) => c.orderItemId === item.id);
 
                   splitItems.push({
                     orderItemId: item.id,
@@ -1256,7 +1359,10 @@ export class PaymentService {
             }
           }
         } catch (escrowError) {
-          this.logger.error(`Error creating escrow for transaction ${transaction.id}:`, escrowError);
+          this.logger.error(
+            `Error creating escrow for transaction ${transaction.id}:`,
+            escrowError
+          );
           // Don't fail the payment if escrow creation fails
         }
       } else if (immediatePayoutEnabled) {
@@ -1300,21 +1406,24 @@ export class PaymentService {
             null as any, // emailService not needed for PDF generation
             null as any, // shippingTaxService not needed for PDF generation
             null as any, // cartService not needed for PDF generation
-            this,
+            this
           );
 
           const invoicePdf = await ordersService.generateInvoicePdf(orderId, order.userId);
 
           await emailService.sendPaymentConfirmationWithInvoice(order.user.email, {
             orderNumber: order.orderNumber,
-            customerName: `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer',
+            customerName:
+              `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer',
             total: Number(order.total),
             currency: order.currency,
             paidAt: new Date(),
             invoicePdf,
           });
 
-          this.logger.log(`Invoice email sent for order ${order.orderNumber} to ${order.user.email}`);
+          this.logger.log(
+            `Invoice email sent for order ${order.orderNumber} to ${order.user.email}`
+          );
         }
       } catch (emailError) {
         this.logger.error(`Failed to send invoice email for order ${orderId}:`, emailError);
@@ -1331,7 +1440,10 @@ export class PaymentService {
   /**
    * Handle payment processing state
    */
-  private async handlePaymentProcessing(paymentIntent: Stripe.PaymentIntent, webhookEventId?: string) {
+  private async handlePaymentProcessing(
+    paymentIntent: Stripe.PaymentIntent,
+    webhookEventId?: string
+  ) {
     const orderId = paymentIntent.metadata.orderId;
 
     if (!orderId) {
@@ -1413,7 +1525,9 @@ export class PaymentService {
       await this.prisma.paymentTransaction.update({
         where: { id: transaction.id },
         data: {
-          status: isFullRefund ? PaymentTransactionStatus.REFUNDED : PaymentTransactionStatus.PARTIALLY_REFUNDED,
+          status: isFullRefund
+            ? PaymentTransactionStatus.REFUNDED
+            : PaymentTransactionStatus.PARTIALLY_REFUNDED,
           refundedAmount: refundAmount,
           refundedAt: new Date(),
         },
@@ -1435,7 +1549,10 @@ export class PaymentService {
         await commissionService.cancelCommissionsForOrder(transaction.orderId);
         this.logger.log(`Cancelled commissions for refunded order ${transaction.orderId}`);
       } catch (commissionError) {
-        this.logger.error(`Error cancelling commissions for order ${transaction.orderId}:`, commissionError);
+        this.logger.error(
+          `Error cancelling commissions for order ${transaction.orderId}:`,
+          commissionError
+        );
       }
 
       this.logger.log(`Refund processed for charge ${charge.id}: ${refundAmount}`);
@@ -1451,7 +1568,10 @@ export class PaymentService {
   /**
    * Handle payment intent canceled
    */
-  private async handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent, webhookEventId?: string) {
+  private async handlePaymentCanceled(
+    paymentIntent: Stripe.PaymentIntent,
+    webhookEventId?: string
+  ) {
     const orderId = paymentIntent.metadata.orderId;
 
     if (!orderId) {
@@ -1499,7 +1619,10 @@ export class PaymentService {
   /**
    * Handle payment requires action (e.g., 3D Secure authentication)
    */
-  private async handlePaymentRequiresAction(paymentIntent: Stripe.PaymentIntent, webhookEventId?: string) {
+  private async handlePaymentRequiresAction(
+    paymentIntent: Stripe.PaymentIntent,
+    webhookEventId?: string
+  ) {
     const orderId = paymentIntent.metadata.orderId;
 
     if (!orderId) {
@@ -1528,7 +1651,10 @@ export class PaymentService {
    * Important for manual capture (escrow) scenarios
    * This event fires when payment is authorized but not yet captured
    */
-  private async handleAmountCapturableUpdated(paymentIntent: Stripe.PaymentIntent, webhookEventId?: string) {
+  private async handleAmountCapturableUpdated(
+    paymentIntent: Stripe.PaymentIntent,
+    webhookEventId?: string
+  ) {
     const orderId = paymentIntent.metadata.orderId;
 
     if (!orderId) {
@@ -1587,7 +1713,9 @@ export class PaymentService {
 
       // If payment intent exists in metadata, let payment_intent.succeeded handle it
       if (charge.payment_intent) {
-        this.logger.log(`Charge ${charge.id} has payment intent, skipping (will be handled by payment_intent event)`);
+        this.logger.log(
+          `Charge ${charge.id} has payment intent, skipping (will be handled by payment_intent event)`
+        );
         return;
       }
 
@@ -1952,7 +2080,9 @@ export class PaymentService {
       await this.prisma.paymentTransaction.update({
         where: { id: transaction.id },
         data: {
-          status: isWon ? PaymentTransactionStatus.SUCCEEDED : PaymentTransactionStatus.LOST_DISPUTE,
+          status: isWon
+            ? PaymentTransactionStatus.SUCCEEDED
+            : PaymentTransactionStatus.LOST_DISPUTE,
           metadata: {
             ...(transaction.metadata as any),
             dispute: {
@@ -2036,7 +2166,10 @@ export class PaymentService {
       throw new BadRequestException('Order not found');
     }
 
-    if (order.paymentStatus !== PaymentStatus.PAID && order.paymentStatus !== PaymentStatus.PARTIALLY_REFUNDED) {
+    if (
+      order.paymentStatus !== PaymentStatus.PAID &&
+      order.paymentStatus !== PaymentStatus.PARTIALLY_REFUNDED
+    ) {
       throw new BadRequestException('Order has not been paid or is already fully refunded');
     }
 
@@ -2072,8 +2205,12 @@ export class PaymentService {
       const refund = await this.stripe.refunds.create({
         payment_intent: transaction.stripePaymentIntentId,
         amount: amountInCents,
-        reason: reason === 'duplicate' ? 'duplicate' :
-                reason === 'fraudulent' ? 'fraudulent' : 'requested_by_customer',
+        reason:
+          reason === 'duplicate'
+            ? 'duplicate'
+            : reason === 'fraudulent'
+              ? 'fraudulent'
+              : 'requested_by_customer',
         metadata: {
           orderId,
           refundedBy: 'admin',
@@ -2086,7 +2223,9 @@ export class PaymentService {
       await this.prisma.paymentTransaction.update({
         where: { id: transaction.id },
         data: {
-          status: isFullRefund ? PaymentTransactionStatus.REFUNDED : PaymentTransactionStatus.PARTIALLY_REFUNDED,
+          status: isFullRefund
+            ? PaymentTransactionStatus.REFUNDED
+            : PaymentTransactionStatus.PARTIALLY_REFUNDED,
           refundedAmount: new Decimal(Number(transaction.refundedAmount || 0) + refundAmount),
           refundedAt: new Date(),
         },
@@ -2145,14 +2284,18 @@ export class PaymentService {
         }
       }
 
-      this.logger.log(`Refund created for order ${orderId}: $${refundAmount.toFixed(2)} (Stripe: ${refund.id})`);
+      this.logger.log(
+        `Refund created for order ${orderId}: $${refundAmount.toFixed(2)} (Stripe: ${refund.id})`
+      );
 
       return {
         success: true,
         refundId: refund.id,
         amount: refundAmount,
         isFullRefund,
-        message: isFullRefund ? 'Full refund processed successfully' : 'Partial refund processed successfully',
+        message: isFullRefund
+          ? 'Full refund processed successfully'
+          : 'Partial refund processed successfully',
       };
     } catch (error) {
       this.logger.error(`Error creating refund for order ${orderId}:`, error);
@@ -2182,71 +2325,80 @@ export class PaymentService {
     const since = new Date();
     since.setDate(since.getDate() - days);
 
-    const [totalEvents, statusCounts, eventTypeCounts, recentFailures, pendingRetries] = await Promise.all([
-      // Total webhook events
-      this.prisma.webhookEvent.count({
-        where: { createdAt: { gte: since } },
-      }),
+    const [totalEvents, statusCounts, eventTypeCounts, recentFailures, pendingRetries] =
+      await Promise.all([
+        // Total webhook events
+        this.prisma.webhookEvent.count({
+          where: { createdAt: { gte: since } },
+        }),
 
-      // Count by status
-      this.prisma.webhookEvent.groupBy({
-        by: ['status'],
-        where: { createdAt: { gte: since } },
-        _count: true,
-      }),
+        // Count by status
+        this.prisma.webhookEvent.groupBy({
+          by: ['status'],
+          where: { createdAt: { gte: since } },
+          _count: true,
+        }),
 
-      // Count by event type (top 10)
-      this.prisma.webhookEvent.groupBy({
-        by: ['eventType'],
-        where: { createdAt: { gte: since } },
-        _count: true,
-        orderBy: { _count: { eventType: 'desc' } },
-        take: 10,
-      }),
+        // Count by event type (top 10)
+        this.prisma.webhookEvent.groupBy({
+          by: ['eventType'],
+          where: { createdAt: { gte: since } },
+          _count: true,
+          orderBy: { _count: { eventType: 'desc' } },
+          take: 10,
+        }),
 
-      // Recent failures
-      this.prisma.webhookEvent.findMany({
-        where: {
-          status: WebhookStatus.FAILED,
-          createdAt: { gte: since },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-        select: {
-          id: true,
-          eventId: true,
-          eventType: true,
-          errorMessage: true,
-          processingAttempts: true,
-          createdAt: true,
-        },
-      }),
+        // Recent failures
+        this.prisma.webhookEvent.findMany({
+          where: {
+            status: WebhookStatus.FAILED,
+            createdAt: { gte: since },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          select: {
+            id: true,
+            eventId: true,
+            eventType: true,
+            errorMessage: true,
+            processingAttempts: true,
+            createdAt: true,
+          },
+        }),
 
-      // Pending retries
-      this.prisma.webhookEvent.count({
-        where: {
-          status: WebhookStatus.PENDING,
-          nextRetryAt: { lte: new Date() },
-        },
-      }),
-    ]);
+        // Pending retries
+        this.prisma.webhookEvent.count({
+          where: {
+            status: WebhookStatus.PENDING,
+            nextRetryAt: { lte: new Date() },
+          },
+        }),
+      ]);
 
     return {
       period: { days, since },
       totalEvents,
-      statusBreakdown: statusCounts.reduce((acc, item) => {
-        acc[item.status] = item._count;
-        return acc;
-      }, {} as Record<string, number>),
-      topEventTypes: eventTypeCounts.map(item => ({
+      statusBreakdown: statusCounts.reduce(
+        (acc, item) => {
+          acc[item.status] = item._count;
+          return acc;
+        },
+        {} as Record<string, number>
+      ),
+      topEventTypes: eventTypeCounts.map((item) => ({
         eventType: item.eventType,
         count: item._count,
       })),
       recentFailures,
       pendingRetries,
-      successRate: totalEvents > 0
-        ? ((statusCounts.find(s => s.status === WebhookStatus.PROCESSED)?._count || 0) / totalEvents * 100).toFixed(2)
-        : '0.00',
+      successRate:
+        totalEvents > 0
+          ? (
+              ((statusCounts.find((s) => s.status === WebhookStatus.PROCESSED)?._count || 0) /
+                totalEvents) *
+              100
+            ).toFixed(2)
+          : '0.00',
     };
   }
 
@@ -2276,12 +2428,14 @@ export class PaymentService {
   /**
    * Get recent webhook events with pagination (Admin)
    */
-  async getWebhookEvents(options: {
-    page?: number;
-    limit?: number;
-    status?: WebhookStatus;
-    eventType?: string;
-  } = {}) {
+  async getWebhookEvents(
+    options: {
+      page?: number;
+      limit?: number;
+      status?: WebhookStatus;
+      eventType?: string;
+    } = {}
+  ) {
     const page = options.page || 1;
     const limit = options.limit || 20;
     const skip = (page - 1) * limit;
@@ -2365,7 +2519,7 @@ export class PaymentService {
     const systemCurrencies = await this.currencyService.getSupportedCurrencies();
 
     // Filter to only include Stripe-supported currencies
-    const supportedCurrencies = systemCurrencies.filter(code =>
+    const supportedCurrencies = systemCurrencies.filter((code) =>
       this.STRIPE_SUPPORTED_CURRENCIES.includes(code.toUpperCase())
     );
 
@@ -2469,7 +2623,8 @@ export class PaymentService {
 
     // Get publishable key for frontend
     const config = await this.settingsService.getStripeConfig();
-    const publishableKey = config.publishableKey || this.configService.get<string>('STRIPE_PUBLISHABLE_KEY') || '';
+    const publishableKey =
+      config.publishableKey || this.configService.get<string>('STRIPE_PUBLISHABLE_KEY') || '';
 
     this.logger.log(`Created SetupIntent ${setupIntent.id} for user ${userId}`);
 
@@ -2524,7 +2679,7 @@ export class PaymentService {
 
     return {
       paymentMethods: paymentMethods.data.map((pm) => {
-        const savedMethod = savedMethods.find(sm => sm.stripePaymentMethodId === pm.id);
+        const savedMethod = savedMethods.find((sm) => sm.stripePaymentMethodId === pm.id);
         return {
           id: pm.id,
           brand: pm.card?.brand || 'unknown',
@@ -2548,11 +2703,7 @@ export class PaymentService {
    * Save payment method after successful payment
    * Called when user checks "Save card for future purchases"
    */
-  async savePaymentMethodAfterPayment(
-    paymentIntentId: string,
-    userId: string,
-    nickname?: string,
-  ) {
+  async savePaymentMethodAfterPayment(paymentIntentId: string, userId: string, nickname?: string) {
     try {
       const stripe = await this.getStripeClient();
 
@@ -2563,9 +2714,10 @@ export class PaymentService {
         throw new BadRequestException('No payment method found on payment intent');
       }
 
-      const paymentMethodId = typeof paymentIntent.payment_method === 'string'
-        ? paymentIntent.payment_method
-        : paymentIntent.payment_method.id;
+      const paymentMethodId =
+        typeof paymentIntent.payment_method === 'string'
+          ? paymentIntent.payment_method
+          : paymentIntent.payment_method.id;
 
       // Get or create customer
       const customerId = await this.getOrCreateStripeCustomer(userId);
@@ -2825,7 +2977,7 @@ export class PaymentService {
   async createPaymentIntentWithSavedMethod(
     dto: CreatePaymentIntentDto,
     userId: string,
-    paymentMethodId: string,
+    paymentMethodId: string
   ) {
     const stripe = await this.getStripeClient();
 
@@ -2846,8 +2998,8 @@ export class PaymentService {
     }
 
     // Get config and currency
-    const config = this.stripeConfig || await this.settingsService.getStripeConfig();
-    let paymentCurrency = dto.currency?.toUpperCase() || await this.getDefaultPaymentCurrency();
+    const config = this.stripeConfig || (await this.settingsService.getStripeConfig());
+    const paymentCurrency = dto.currency?.toUpperCase() || (await this.getDefaultPaymentCurrency());
     await this.validateCurrency(paymentCurrency);
 
     const currencyDetails = await this.currencyService.getRateByCode(paymentCurrency);
@@ -2897,7 +3049,7 @@ export class PaymentService {
     );
 
     // Update usage stats for this card (async, don't wait)
-    this.updateCardUsageStats(paymentMethodId).catch(err =>
+    this.updateCardUsageStats(paymentMethodId).catch((err) =>
       this.logger.warn('Failed to update card usage stats:', err)
     );
 
@@ -2986,9 +3138,10 @@ export class PaymentService {
       }),
     ]);
 
-    const successRate = totalTransactions > 0
-      ? ((successfulTransactions / totalTransactions) * 100).toFixed(2)
-      : '0.00';
+    const successRate =
+      totalTransactions > 0
+        ? ((successfulTransactions / totalTransactions) * 100).toFixed(2)
+        : '0.00';
 
     return {
       period: { days, since },
