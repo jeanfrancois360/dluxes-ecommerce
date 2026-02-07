@@ -2512,5 +2512,27 @@
       "cancelSuccess": "Suscripción cancelada con éxito",
       "cancelError": "Error al cancelar la suscripción"
     }
+  },
+  "sellerCreditsSuccess": {
+    "processing": "Procesando su compra...",
+    "errorTitle": "No se Puede Cargar el Saldo",
+    "goToDashboard": "Ir al Panel de Créditos",
+    "title": "¡Créditos Comprados!",
+    "subtitle": "Sus créditos de listado han sido agregados a su cuenta",
+    "newBalance": "Nuevo Saldo de Créditos",
+    "creditsAvailable": "crédito{count, plural, =1 {} other {s}} disponible{count, plural, =1 {} other {s}}",
+    "lifetimeCredits": "Créditos Totales",
+    "lifetimeUsed": "Usados Totales",
+    "whatCanYouDo": "¿Qué puede hacer con los créditos?",
+    "benefits": {
+      "realEstate": "Listar artículos de alto valor (Bienes Raíces: 10 créditos, Vehículos: 5 créditos)",
+      "feature": "Destacar sus listados para obtener más visibilidad",
+      "boost": "Impulsar listados a la parte superior de los resultados de búsqueda",
+      "renew": "Renovar listados vencidos",
+      "noExpiry": "Los créditos nunca expiran - úselos a su propio ritmo"
+    },
+    "listProduct": "Listar un Producto",
+    "viewHistory": "Ver Historial de Créditos",
+    "emailSent": "Se ha enviado un correo de confirmación a su dirección de correo registrada"
   }
 }

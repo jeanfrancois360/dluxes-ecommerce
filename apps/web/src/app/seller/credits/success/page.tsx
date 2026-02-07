@@ -6,10 +6,12 @@ import { motion } from 'framer-motion';
 import { CheckCircle, ArrowRight, Loader2, Coins, Package } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { creditsApi, CreditBalance } from '@/lib/api/credits';
+import { useTranslations } from 'next-intl';
 
 export default function CreditPurchaseSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('sellerCreditsSuccess');
   const sessionId = searchParams.get('session_id');
   const [isLoading, setIsLoading] = useState(true);
   const [balanceData, setBalanceData] = useState<CreditBalance | null>(null);
@@ -53,7 +55,7 @@ export default function CreditPurchaseSuccessPage() {
     const fetchBalance = async () => {
       try {
         // Wait a moment for webhook to process
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
         const balance = await creditsApi.getBalance();
         setBalanceData(balance);
@@ -75,7 +77,7 @@ export default function CreditPurchaseSuccessPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-[#CBB57B] mx-auto mb-4" />
-          <p className="text-gray-600">Processing your purchase...</p>
+          <p className="text-gray-600">{t('processing')}</p>
         </div>
       </div>
     );
@@ -88,13 +90,13 @@ export default function CreditPurchaseSuccessPage() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">⚠️</span>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Balance</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('errorTitle')}</h2>
           <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={() => router.push('/seller/credits')}
             className="px-6 py-3 bg-[#CBB57B] text-white rounded-lg font-semibold hover:bg-[#A89968] transition-colors"
           >
-            Go to Credits Dashboard
+            {t('goToDashboard')}
           </button>
         </div>
       </div>
@@ -127,7 +129,7 @@ export default function CreditPurchaseSuccessPage() {
             transition={{ delay: 0.3 }}
             className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
           >
-            Credits Purchased!
+            {t('title')}
           </motion.h1>
 
           {/* Subtitle */}
@@ -137,7 +139,7 @@ export default function CreditPurchaseSuccessPage() {
             transition={{ delay: 0.4 }}
             className="text-lg text-gray-600 mb-8"
           >
-            Your listing credits have been added to your account
+            {t('subtitle')}
           </motion.p>
 
           {/* Credit Balance */}
@@ -150,23 +152,21 @@ export default function CreditPurchaseSuccessPage() {
             >
               <div className="flex items-center justify-center gap-3 mb-4">
                 <Coins className="w-6 h-6" />
-                <h2 className="text-xl font-semibold">New Credit Balance</h2>
+                <h2 className="text-xl font-semibold">{t('newBalance')}</h2>
               </div>
-              <div className="text-5xl font-bold mb-2">
-                {balanceData.availableCredits}
-              </div>
+              <div className="text-5xl font-bold mb-2">{balanceData.availableCredits}</div>
               <div className="text-sm opacity-90">
-                credit{balanceData.availableCredits !== 1 ? 's' : ''} available
+                {t('creditsAvailable', { count: balanceData.availableCredits })}
               </div>
 
               <div className="mt-6 pt-6 border-t border-white/20">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <div className="opacity-90 mb-1">Lifetime Credits</div>
+                    <div className="opacity-90 mb-1">{t('lifetimeCredits')}</div>
                     <div className="text-lg font-semibold">{balanceData.lifetimeCredits}</div>
                   </div>
                   <div>
-                    <div className="opacity-90 mb-1">Lifetime Used</div>
+                    <div className="opacity-90 mb-1">{t('lifetimeUsed')}</div>
                     <div className="text-lg font-semibold">{balanceData.lifetimeUsed}</div>
                   </div>
                 </div>
@@ -181,13 +181,13 @@ export default function CreditPurchaseSuccessPage() {
             transition={{ delay: 0.6 }}
             className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8 text-left"
           >
-            <h3 className="font-semibold text-blue-900 mb-2">What can you do with credits?</h3>
+            <h3 className="font-semibold text-blue-900 mb-2">{t('whatCanYouDo')}</h3>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li>• List high-value items (Real Estate: 10 credits, Vehicles: 5 credits)</li>
-              <li>• Feature your listings to get more visibility</li>
-              <li>• Boost listings to the top of search results</li>
-              <li>• Renew expired listings</li>
-              <li>• Credits never expire - use them at your own pace</li>
+              <li>• {t('benefits.realEstate')}</li>
+              <li>• {t('benefits.feature')}</li>
+              <li>• {t('benefits.boost')}</li>
+              <li>• {t('benefits.renew')}</li>
+              <li>• {t('benefits.noExpiry')}</li>
             </ul>
           </motion.div>
 
@@ -203,14 +203,14 @@ export default function CreditPurchaseSuccessPage() {
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#CBB57B] text-white rounded-lg font-semibold hover:bg-[#A89968] transition-colors"
             >
               <Package className="w-4 h-4" />
-              List a Product
+              {t('listProduct')}
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={() => router.push('/seller/credits')}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-gray-700 border-2 border-gray-200 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
             >
-              View Credit History
+              {t('viewHistory')}
             </button>
           </motion.div>
         </motion.div>
@@ -222,7 +222,7 @@ export default function CreditPurchaseSuccessPage() {
           transition={{ delay: 0.8 }}
           className="mt-6 text-center text-sm text-gray-500"
         >
-          <p>A confirmation email has been sent to your registered email address</p>
+          <p>{t('emailSent')}</p>
         </motion.div>
       </div>
     </div>
