@@ -2153,5 +2153,64 @@
       "outForDelivery": "Out for Delivery",
       "delivered": "Delivered"
     }
+  },
+  "legal": {
+    "backToHome": "Back to Home",
+    "lastUpdated": "Last Updated",
+    "effective": "Effective",
+    "version": "Version",
+    "tableOfContents": "Table of Contents",
+    "printDownload": "Print / Download",
+    "jumpToSection": "Jump to Section",
+    "relatedDocuments": "Related Documents",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "sellerAgreement": "Seller Agreement",
+    "questionsAboutDocument": "Questions about this document?",
+    "questionsHelp": "If you have any questions or concerns, please contact our legal team.",
+    "contactUs": "Contact Us",
+    "quickNavigation": "Quick Navigation",
+    "documentInformation": "Document Information"
+  },
+  "terms": {
+    "pageTitle": "Terms of Service",
+    "sections": {
+      "introduction": "1. Introduction",
+      "accountSecurity": "2. Account Registration and Security",
+      "platformUsage": "3. Platform Usage",
+      "productListings": "4. Product Listings and Purchases",
+      "multiVendor": "5. Multi-Vendor Marketplace",
+      "shipping": "6. Shipping and Delivery",
+      "returns": "7. Returns, Refunds, and Cancellations",
+      "reviews": "8. Reviews and Ratings",
+      "prohibited": "9. Prohibited Activities",
+      "privacy": "10. Privacy and Data Protection",
+      "disclaimers": "11. Disclaimers and Limitations of Liability",
+      "indemnification": "12. Indemnification",
+      "disputes": "13. Dispute Resolution",
+      "platformFeatures": "14. Platform Features and Policies",
+      "contact": "15. Contact Information",
+      "acknowledgment": "16. Acknowledgment"
+    }
+  },
+  "privacy": {
+    "pageTitle": "Privacy Policy",
+    "sections": {
+      "introduction": "1. Introduction",
+      "informationWeCollect": "2. Information We Collect",
+      "howWeUse": "3. How We Use Your Information",
+      "howWeShare": "4. How We Share Your Information",
+      "dataSecurity": "5. Data Security",
+      "yourRights": "6. Your Privacy Rights and Choices",
+      "dataRetention": "7. Data Retention",
+      "childrensPrivacy": "8. Children's Privacy",
+      "internationalTransfers": "9. International Data Transfers",
+      "regionalRights": "10. Regional Privacy Rights",
+      "cookies": "11. Cookies and Tracking Technologies",
+      "changes": "12. Changes to This Privacy Policy",
+      "systemSettings": "13. System Settings and Audit Logging",
+      "contact": "14. Contact Information",
+      "acknowledgment": "15. Acknowledgment and Consent"
+    }
   }
 }
