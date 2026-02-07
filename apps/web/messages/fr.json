@@ -2439,5 +2439,78 @@
       "deleteSuccess": "Produit supprimé avec succès",
       "deleteFailed": "Échec de la suppression du produit"
     }
+  },
+  "sellerAdPlans": {
+    "pageTitle": "Plans Publicitaires",
+    "pageSubtitle": "Choisissez le plan parfait pour promouvoir vos produits et atteindre plus de clients",
+    "currentSubscription": {
+      "title": "Abonnement Actuel",
+      "featured": "⭐ En Vedette",
+      "plan": "Plan",
+      "activeAds": "Publicités Actives",
+      "impressionsUsed": "Impressions Utilisées",
+      "periodEnds": "Fin de Période",
+      "trialMessage": "🎉 Vous êtes actuellement en essai gratuit. Votre essai se termine le {date}",
+      "pastDueMessage": "⚠️ Le paiement de votre abonnement est en retard. Veuillez mettre à jour votre mode de paiement pour continuer à utiliser votre plan.",
+      "cancelledMessage": "ℹ️ Votre abonnement sera résilié le {date}. Vous pouvez toujours utiliser votre plan jusque-là.",
+      "cancelButton": "Annuler l'Abonnement"
+    },
+    "status": {
+      "ACTIVE": "ACTIF",
+      "TRIAL": "ESSAI",
+      "PAST_DUE": "EN RETARD",
+      "CANCELLED": "ANNULÉ",
+      "EXPIRED": "EXPIRÉ"
+    },
+    "billingPeriod": {
+      "monthly": "Mensuel",
+      "yearly": "Annuel",
+      "save": "Économisez 20%"
+    },
+    "planCard": {
+      "popular": "⭐ Populaire",
+      "perMonth": "/mois",
+      "billedAnnually": "Facturé annuellement à {amount}",
+      "freeTrialDays": "{days} jours d'essai gratuit",
+      "unlimited": "Illimité",
+      "activeAd": "publicité active",
+      "activeAds": "publicités actives",
+      "impressionsMonth": "impressions/mois",
+      "priorityBoost": "boost prioritaire",
+      "placementLocation": "emplacement de placement",
+      "placementLocations": "emplacements de placement",
+      "currentPlan": "Plan Actuel",
+      "alreadySubscribed": "Déjà Abonné",
+      "subscribing": "Abonnement en cours...",
+      "startFreeTrial": "Commencer l'Essai Gratuit",
+      "subscribeNow": "S'Abonner Maintenant"
+    },
+    "empty": {
+      "message": "Aucun plan publicitaire disponible pour le moment."
+    },
+    "comparison": {
+      "title": "Comparaison des Plans",
+      "feature": "Fonctionnalité",
+      "activeAds": "Publicités Actives",
+      "monthlyImpressions": "Impressions Mensuelles",
+      "priorityBoost": "Boost Prioritaire",
+      "placementLocations": "Emplacements de Placement",
+      "freeTrial": "Essai Gratuit",
+      "days": "{days} jours",
+      "unlimited": "Illimité"
+    },
+    "cancelModal": {
+      "title": "Annuler l'Abonnement ?",
+      "message": "Êtes-vous sûr de vouloir annuler votre abonnement à {planName} ? Vous continuerez à y avoir accès jusqu'au {date}.",
+      "keepButton": "Conserver l'Abonnement",
+      "cancelButton": "Oui, Annuler",
+      "cancelling": "Annulation en cours..."
+    },
+    "toast": {
+      "subscribeSuccess": "Abonnement au plan réussi !",
+      "subscribeError": "Échec de l'abonnement au plan",
+      "cancelSuccess": "Abonnement annulé avec succès",
+      "cancelError": "Échec de l'annulation de l'abonnement"
+    }
   }
 }

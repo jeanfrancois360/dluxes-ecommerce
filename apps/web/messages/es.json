@@ -2439,5 +2439,78 @@
       "deleteSuccess": "Producto eliminado con éxito",
       "deleteFailed": "Error al eliminar el producto"
     }
+  },
+  "sellerAdPlans": {
+    "pageTitle": "Planes Publicitarios",
+    "pageSubtitle": "Elija el plan perfecto para promover sus productos y llegar a más clientes",
+    "currentSubscription": {
+      "title": "Suscripción Actual",
+      "featured": "⭐ Destacado",
+      "plan": "Plan",
+      "activeAds": "Anuncios Activos",
+      "impressionsUsed": "Impresiones Utilizadas",
+      "periodEnds": "Fin del Período",
+      "trialMessage": "🎉 Actualmente está en prueba gratuita. Su prueba finaliza el {date}",
+      "pastDueMessage": "⚠️ El pago de su suscripción está vencido. Actualice su método de pago para continuar usando su plan.",
+      "cancelledMessage": "ℹ️ Su suscripción se cancelará el {date}. Puede seguir usando su plan hasta entonces.",
+      "cancelButton": "Cancelar Suscripción"
+    },
+    "status": {
+      "ACTIVE": "ACTIVO",
+      "TRIAL": "PRUEBA",
+      "PAST_DUE": "VENCIDO",
+      "CANCELLED": "CANCELADO",
+      "EXPIRED": "EXPIRADO"
+    },
+    "billingPeriod": {
+      "monthly": "Mensual",
+      "yearly": "Anual",
+      "save": "Ahorre 20%"
+    },
+    "planCard": {
+      "popular": "⭐ Popular",
+      "perMonth": "/mes",
+      "billedAnnually": "Facturado anualmente a {amount}",
+      "freeTrialDays": "{days} días de prueba gratuita",
+      "unlimited": "Ilimitado",
+      "activeAd": "anuncio activo",
+      "activeAds": "anuncios activos",
+      "impressionsMonth": "impresiones/mes",
+      "priorityBoost": "impulso prioritario",
+      "placementLocation": "ubicación de colocación",
+      "placementLocations": "ubicaciones de colocación",
+      "currentPlan": "Plan Actual",
+      "alreadySubscribed": "Ya Suscrito",
+      "subscribing": "Suscribiendo...",
+      "startFreeTrial": "Iniciar Prueba Gratuita",
+      "subscribeNow": "Suscribirse Ahora"
+    },
+    "empty": {
+      "message": "No hay planes publicitarios disponibles en este momento."
+    },
+    "comparison": {
+      "title": "Comparación de Planes",
+      "feature": "Característica",
+      "activeAds": "Anuncios Activos",
+      "monthlyImpressions": "Impresiones Mensuales",
+      "priorityBoost": "Impulso Prioritario",
+      "placementLocations": "Ubicaciones de Colocación",
+      "freeTrial": "Prueba Gratuita",
+      "days": "{days} días",
+      "unlimited": "Ilimitado"
+    },
+    "cancelModal": {
+      "title": "¿Cancelar Suscripción?",
+      "message": "¿Está seguro de que desea cancelar su suscripción a {planName}? Continuará teniendo acceso hasta el {date}.",
+      "keepButton": "Mantener Suscripción",
+      "cancelButton": "Sí, Cancelar",
+      "cancelling": "Cancelando..."
+    },
+    "toast": {
+      "subscribeSuccess": "¡Suscripción al plan exitosa!",
+      "subscribeError": "Error al suscribirse al plan",
+      "cancelSuccess": "Suscripción cancelada con éxito",
+      "cancelError": "Error al cancelar la suscripción"
+    }
   }
 }

@@ -8,10 +8,18 @@ import {
 } from '@/hooks/use-advertisements';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 export default function SellerAdvertisementPlansPage() {
+  const t = useTranslations('sellerAdPlans');
   const { plans, isLoading: plansLoading } = useAdvertisementPlans();
-  const { subscription, plan: currentPlan, isActive, isLoading: subLoading, refresh: refreshSubscription } = useMyAdSubscription();
+  const {
+    subscription,
+    plan: currentPlan,
+    isActive,
+    isLoading: subLoading,
+    refresh: refreshSubscription,
+  } = useMyAdSubscription();
   const { subscribe, cancel } = useAdPlanSubscriptionMutations();
 
   const [subscribing, setSubscribing] = useState<string | null>(null);
@@ -23,11 +31,11 @@ export default function SellerAdvertisementPlansPage() {
     try {
       setSubscribing(planSlug);
       await subscribe(planSlug, billingPeriod);
-      toast.success('Successfully subscribed to plan!');
+      toast.success(t('toast.subscribeSuccess'));
       await refreshSubscription();
     } catch (error: any) {
       console.error('Subscribe error:', error);
-      toast.error(error?.response?.data?.message || 'Failed to subscribe to plan');
+      toast.error(error?.response?.data?.message || t('toast.subscribeError'));
     } finally {
       setSubscribing(null);
     }
@@ -39,12 +47,12 @@ export default function SellerAdvertisementPlansPage() {
     try {
       setCancelling(true);
       await cancel(subscription.id);
-      toast.success('Subscription cancelled successfully');
+      toast.success(t('toast.cancelSuccess'));
       await refreshSubscription();
       setShowCancelModal(false);
     } catch (error: any) {
       console.error('Cancel error:', error);
-      toast.error(error?.response?.data?.message || 'Failed to cancel subscription');
+      toast.error(error?.response?.data?.message || t('toast.cancelError'));
     } finally {
       setCancelling(false);
     }
@@ -53,7 +61,9 @@ export default function SellerAdvertisementPlansPage() {
   const activePlans = plans.filter((p) => p.isActive);
   const featuredPlans = activePlans.filter((p) => p.isFeatured);
   const regularPlans = activePlans.filter((p) => !p.isFeatured);
-  const sortedPlans = [...featuredPlans, ...regularPlans].sort((a, b) => a.displayOrder - b.displayOrder);
+  const sortedPlans = [...featuredPlans, ...regularPlans].sort(
+    (a, b) => a.displayOrder - b.displayOrder
+  );
 
   const getStatusBadge = (status: string) => {
     const statusColors: Record<string, string> = {
@@ -65,7 +75,9 @@ export default function SellerAdvertisementPlansPage() {
     };
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[status] || 'bg-gray-100 text-gray-700'}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[status] || 'bg-gray-100 text-gray-700'}`}
+      >
         {status.replace('_', ' ')}
       </span>
     );
@@ -108,10 +120,8 @@ export default function SellerAdvertisementPlansPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Advertisement Plans</h1>
-          <p className="mt-2 text-gray-600">
-            Choose the perfect plan to promote your products and reach more customers
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('pageTitle')}</h1>
+          <p className="mt-2 text-gray-600">{t('pageSubtitle')}</p>
         </div>
 
         {/* Current Subscription Status */}
@@ -120,34 +130,44 @@ export default function SellerAdvertisementPlansPage() {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-3">
-                  <h2 className="text-xl font-semibold text-gray-900">Current Subscription</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {t('currentSubscription.title')}
+                  </h2>
                   {getStatusBadge(subscription.status)}
                   {currentPlan?.isFeatured && (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                      ⭐ Featured
+                      {t('currentSubscription.featured')}
                     </span>
                   )}
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <div>
-                    <p className="text-sm text-gray-500">Plan</p>
-                    <p className="text-lg font-semibold text-gray-900">{currentPlan?.name || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Active Ads</p>
+                    <p className="text-sm text-gray-500">{t('currentSubscription.plan')}</p>
                     <p className="text-lg font-semibold text-gray-900">
-                      {subscription.adsCreated} / {currentPlan?.maxActiveAds === -1 ? '∞' : currentPlan?.maxActiveAds}
+                      {currentPlan?.name || 'N/A'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Impressions Used</p>
+                    <p className="text-sm text-gray-500">{t('currentSubscription.activeAds')}</p>
                     <p className="text-lg font-semibold text-gray-900">
-                      {subscription.impressionsUsed.toLocaleString()} / {currentPlan?.maxImpressions ? currentPlan.maxImpressions.toLocaleString() : '∞'}
+                      {subscription.adsCreated} /{' '}
+                      {currentPlan?.maxActiveAds === -1 ? '∞' : currentPlan?.maxActiveAds}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Period Ends</p>
+                    <p className="text-sm text-gray-500">
+                      {t('currentSubscription.impressionsUsed')}
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {subscription.impressionsUsed.toLocaleString()} /{' '}
+                      {currentPlan?.maxImpressions
+                        ? currentPlan.maxImpressions.toLocaleString()
+                        : '∞'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">{t('currentSubscription.periodEnds')}</p>
                     <p className="text-lg font-semibold text-gray-900">
                       {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
                     </p>
@@ -157,8 +177,9 @@ export default function SellerAdvertisementPlansPage() {
                 {subscription.status === 'TRIAL' && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-sm text-blue-700">
-                      🎉 You&apos;re currently on a free trial. Your trial ends on{' '}
-                      <strong>{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</strong>
+                      {t('currentSubscription.trialMessage', {
+                        date: new Date(subscription.currentPeriodEnd).toLocaleDateString(),
+                      })}
                     </p>
                   </div>
                 )}
@@ -166,7 +187,7 @@ export default function SellerAdvertisementPlansPage() {
                 {subscription.status === 'PAST_DUE' && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <p className="text-sm text-red-700">
-                      ⚠️ Your subscription payment is past due. Please update your payment method to continue using your plan.
+                      {t('currentSubscription.pastDueMessage')}
                     </p>
                   </div>
                 )}
@@ -174,22 +195,24 @@ export default function SellerAdvertisementPlansPage() {
                 {subscription.cancelledAt && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <p className="text-sm text-yellow-700">
-                      ℹ️ Your subscription is set to cancel on{' '}
-                      <strong>{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</strong>.
-                      You can still use your plan until then.
+                      {t('currentSubscription.cancelledMessage', {
+                        date: new Date(subscription.currentPeriodEnd).toLocaleDateString(),
+                      })}
                     </p>
                   </div>
                 )}
               </div>
 
-              {subscription.status === 'ACTIVE' && subscription.autoRenew && !subscription.cancelledAt && (
-                <button
-                  onClick={() => setShowCancelModal(true)}
-                  className="ml-4 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
-                >
-                  Cancel Subscription
-                </button>
-              )}
+              {subscription.status === 'ACTIVE' &&
+                subscription.autoRenew &&
+                !subscription.cancelledAt && (
+                  <button
+                    onClick={() => setShowCancelModal(true)}
+                    className="ml-4 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    {t('currentSubscription.cancelButton')}
+                  </button>
+                )}
             </div>
           </div>
         )}
@@ -206,7 +229,7 @@ export default function SellerAdvertisementPlansPage() {
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                Monthly
+                {t('billingPeriod.monthly')}
               </button>
               <button
                 onClick={() => setBillingPeriod('YEARLY')}
@@ -216,9 +239,9 @@ export default function SellerAdvertisementPlansPage() {
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                Yearly
+                {t('billingPeriod.yearly')}
                 <span className="ml-1.5 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-                  Save 20%
+                  {t('billingPeriod.save')}
                 </span>
               </button>
             </div>
@@ -239,8 +262,8 @@ export default function SellerAdvertisementPlansPage() {
                   plan.isFeatured
                     ? 'border-purple-500 shadow-lg scale-105'
                     : isCurrentPlan
-                    ? 'border-blue-500'
-                    : 'border-gray-200'
+                      ? 'border-blue-500'
+                      : 'border-gray-200'
                 }`}
               >
                 <div className="p-6">
@@ -250,7 +273,7 @@ export default function SellerAdvertisementPlansPage() {
                       <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
                       {plan.isFeatured && (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                          ⭐ Popular
+                          {t('planCard.popular')}
                         </span>
                       )}
                     </div>
@@ -265,16 +288,18 @@ export default function SellerAdvertisementPlansPage() {
                       <span className="text-4xl font-bold text-gray-900">
                         {formatCurrency(price, plan.currency)}
                       </span>
-                      <span className="ml-2 text-gray-600">/month</span>
+                      <span className="ml-2 text-gray-600">{t('planCard.perMonth')}</span>
                     </div>
                     {billingPeriod === 'YEARLY' && (
                       <p className="mt-1 text-sm text-gray-500">
-                        Billed annually at {formatCurrency(yearlyTotal, plan.currency)}
+                        {t('planCard.billedAnnually', {
+                          amount: formatCurrency(yearlyTotal, plan.currency),
+                        })}
                       </p>
                     )}
                     {plan.trialDays > 0 && !isActive && (
                       <p className="mt-2 text-sm text-green-600 font-medium">
-                        {plan.trialDays} days free trial
+                        {t('planCard.freeTrialDays', { days: plan.trialDays })}
                       </p>
                     )}
                   </div>
@@ -282,35 +307,86 @@ export default function SellerAdvertisementPlansPage() {
                   {/* Features */}
                   <ul className="space-y-3 mb-6">
                     <li className="flex items-start">
-                      <svg className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg
+                        className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                       <span className="text-sm text-gray-700">
-                        <strong>{plan.maxActiveAds === -1 ? 'Unlimited' : plan.maxActiveAds}</strong> active {plan.maxActiveAds === 1 ? 'ad' : 'ads'}
+                        <strong>
+                          {plan.maxActiveAds === -1 ? t('planCard.unlimited') : plan.maxActiveAds}
+                        </strong>{' '}
+                        {plan.maxActiveAds === 1 ? t('planCard.activeAd') : t('planCard.activeAds')}
                       </span>
                     </li>
                     <li className="flex items-start">
-                      <svg className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg
+                        className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                       <span className="text-sm text-gray-700">
-                        <strong>{plan.maxImpressions ? plan.maxImpressions.toLocaleString() : 'Unlimited'}</strong> impressions/month
+                        <strong>
+                          {plan.maxImpressions
+                            ? plan.maxImpressions.toLocaleString()
+                            : t('planCard.unlimited')}
+                        </strong>{' '}
+                        {t('planCard.impressionsMonth')}
                       </span>
                     </li>
                     <li className="flex items-start">
-                      <svg className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg
+                        className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                       <span className="text-sm text-gray-700">
-                        <strong>{plan.priorityBoost}x</strong> priority boost
+                        <strong>{plan.priorityBoost}x</strong> {t('planCard.priorityBoost')}
                       </span>
                     </li>
                     <li className="flex items-start">
-                      <svg className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg
+                        className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                       <span className="text-sm text-gray-700">
-                        <strong>{plan.allowedPlacements.length}</strong> placement {plan.allowedPlacements.length === 1 ? 'location' : 'locations'}
+                        <strong>{plan.allowedPlacements.length}</strong>{' '}
+                        {plan.allowedPlacements.length === 1
+                          ? t('planCard.placementLocation')
+                          : t('planCard.placementLocations')}
                       </span>
                     </li>
                     {plan.allowedPlacements.length <= 3 && (
@@ -330,14 +406,14 @@ export default function SellerAdvertisementPlansPage() {
                       disabled
                       className="w-full px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium cursor-not-allowed"
                     >
-                      Current Plan
+                      {t('planCard.currentPlan')}
                     </button>
                   ) : isActive ? (
                     <button
                       disabled
                       className="w-full px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium cursor-not-allowed"
                     >
-                      Already Subscribed
+                      {t('planCard.alreadySubscribed')}
                     </button>
                   ) : (
                     <button
@@ -349,7 +425,11 @@ export default function SellerAdvertisementPlansPage() {
                           : 'bg-blue-600 hover:bg-blue-700 text-white'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {subscribing === plan.slug ? 'Subscribing...' : plan.trialDays > 0 ? 'Start Free Trial' : 'Subscribe Now'}
+                      {subscribing === plan.slug
+                        ? t('planCard.subscribing')
+                        : plan.trialDays > 0
+                          ? t('planCard.startFreeTrial')
+                          : t('planCard.subscribeNow')}
                     </button>
                   )}
                 </div>
@@ -360,21 +440,26 @@ export default function SellerAdvertisementPlansPage() {
 
         {sortedPlans.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No advertisement plans available at the moment.</p>
+            <p className="text-gray-500">{t('empty.message')}</p>
           </div>
         )}
 
         {/* Feature Comparison */}
         {sortedPlans.length > 0 && (
           <div className="mt-12 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Plan Comparison</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('comparison.title')}</h2>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-900">Feature</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                      {t('comparison.feature')}
+                    </th>
                     {sortedPlans.map((plan) => (
-                      <th key={plan.id} className="text-center py-3 px-4 font-semibold text-gray-900">
+                      <th
+                        key={plan.id}
+                        className="text-center py-3 px-4 font-semibold text-gray-900"
+                      >
                         {plan.name}
                       </th>
                     ))}
@@ -382,23 +467,29 @@ export default function SellerAdvertisementPlansPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   <tr>
-                    <td className="py-3 px-4 text-sm text-gray-700">Active Ads</td>
+                    <td className="py-3 px-4 text-sm text-gray-700">{t('comparison.activeAds')}</td>
                     {sortedPlans.map((plan) => (
                       <td key={plan.id} className="text-center py-3 px-4 text-sm text-gray-900">
-                        {plan.maxActiveAds === -1 ? 'Unlimited' : plan.maxActiveAds}
+                        {plan.maxActiveAds === -1 ? t('comparison.unlimited') : plan.maxActiveAds}
                       </td>
                     ))}
                   </tr>
                   <tr>
-                    <td className="py-3 px-4 text-sm text-gray-700">Monthly Impressions</td>
+                    <td className="py-3 px-4 text-sm text-gray-700">
+                      {t('comparison.monthlyImpressions')}
+                    </td>
                     {sortedPlans.map((plan) => (
                       <td key={plan.id} className="text-center py-3 px-4 text-sm text-gray-900">
-                        {plan.maxImpressions ? plan.maxImpressions.toLocaleString() : 'Unlimited'}
+                        {plan.maxImpressions
+                          ? plan.maxImpressions.toLocaleString()
+                          : t('comparison.unlimited')}
                       </td>
                     ))}
                   </tr>
                   <tr>
-                    <td className="py-3 px-4 text-sm text-gray-700">Priority Boost</td>
+                    <td className="py-3 px-4 text-sm text-gray-700">
+                      {t('comparison.priorityBoost')}
+                    </td>
                     {sortedPlans.map((plan) => (
                       <td key={plan.id} className="text-center py-3 px-4 text-sm text-gray-900">
                         {plan.priorityBoost}x
@@ -406,7 +497,9 @@ export default function SellerAdvertisementPlansPage() {
                     ))}
                   </tr>
                   <tr>
-                    <td className="py-3 px-4 text-sm text-gray-700">Placement Locations</td>
+                    <td className="py-3 px-4 text-sm text-gray-700">
+                      {t('comparison.placementLocations')}
+                    </td>
                     {sortedPlans.map((plan) => (
                       <td key={plan.id} className="text-center py-3 px-4 text-sm text-gray-900">
                         {plan.allowedPlacements.length}
@@ -414,10 +507,10 @@ export default function SellerAdvertisementPlansPage() {
                     ))}
                   </tr>
                   <tr>
-                    <td className="py-3 px-4 text-sm text-gray-700">Free Trial</td>
+                    <td className="py-3 px-4 text-sm text-gray-700">{t('comparison.freeTrial')}</td>
                     {sortedPlans.map((plan) => (
                       <td key={plan.id} className="text-center py-3 px-4 text-sm text-gray-900">
-                        {plan.trialDays > 0 ? `${plan.trialDays} days` : '—'}
+                        {plan.trialDays > 0 ? t('comparison.days', { days: plan.trialDays }) : '—'}
                       </td>
                     ))}
                   </tr>
@@ -432,13 +525,14 @@ export default function SellerAdvertisementPlansPage() {
       {showCancelModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Cancel Subscription?
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('cancelModal.title')}</h3>
             <p className="text-sm text-gray-600 mb-6">
-              Are you sure you want to cancel your subscription to <strong>{currentPlan?.name}</strong>?
-              You&apos;ll continue to have access until{' '}
-              <strong>{subscription ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'N/A'}</strong>.
+              {t('cancelModal.message', {
+                planName: currentPlan?.name || 'your plan',
+                date: subscription
+                  ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+                  : 'N/A',
+              })}
             </p>
             <div className="flex gap-3">
               <button
@@ -446,14 +540,14 @@ export default function SellerAdvertisementPlansPage() {
                 disabled={cancelling}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors disabled:opacity-50"
               >
-                Keep Subscription
+                {t('cancelModal.keepButton')}
               </button>
               <button
                 onClick={handleCancelSubscription}
                 disabled={cancelling}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50"
               >
-                {cancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                {cancelling ? t('cancelModal.cancelling') : t('cancelModal.cancelButton')}
               </button>
             </div>
           </div>

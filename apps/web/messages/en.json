@@ -2439,5 +2439,78 @@
       "deleteSuccess": "Product deleted successfully",
       "deleteFailed": "Failed to delete product"
     }
+  },
+  "sellerAdPlans": {
+    "pageTitle": "Advertisement Plans",
+    "pageSubtitle": "Choose the perfect plan to promote your products and reach more customers",
+    "currentSubscription": {
+      "title": "Current Subscription",
+      "featured": "⭐ Featured",
+      "plan": "Plan",
+      "activeAds": "Active Ads",
+      "impressionsUsed": "Impressions Used",
+      "periodEnds": "Period Ends",
+      "trialMessage": "🎉 You're currently on a free trial. Your trial ends on {date}",
+      "pastDueMessage": "⚠️ Your subscription payment is past due. Please update your payment method to continue using your plan.",
+      "cancelledMessage": "ℹ️ Your subscription is set to cancel on {date}. You can still use your plan until then.",
+      "cancelButton": "Cancel Subscription"
+    },
+    "status": {
+      "ACTIVE": "ACTIVE",
+      "TRIAL": "TRIAL",
+      "PAST_DUE": "PAST DUE",
+      "CANCELLED": "CANCELLED",
+      "EXPIRED": "EXPIRED"
+    },
+    "billingPeriod": {
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "save": "Save 20%"
+    },
+    "planCard": {
+      "popular": "⭐ Popular",
+      "perMonth": "/month",
+      "billedAnnually": "Billed annually at {amount}",
+      "freeTrialDays": "{days} days free trial",
+      "unlimited": "Unlimited",
+      "activeAd": "active ad",
+      "activeAds": "active ads",
+      "impressionsMonth": "impressions/month",
+      "priorityBoost": "priority boost",
+      "placementLocation": "placement location",
+      "placementLocations": "placement locations",
+      "currentPlan": "Current Plan",
+      "alreadySubscribed": "Already Subscribed",
+      "subscribing": "Subscribing...",
+      "startFreeTrial": "Start Free Trial",
+      "subscribeNow": "Subscribe Now"
+    },
+    "empty": {
+      "message": "No advertisement plans available at the moment."
+    },
+    "comparison": {
+      "title": "Plan Comparison",
+      "feature": "Feature",
+      "activeAds": "Active Ads",
+      "monthlyImpressions": "Monthly Impressions",
+      "priorityBoost": "Priority Boost",
+      "placementLocations": "Placement Locations",
+      "freeTrial": "Free Trial",
+      "days": "{days} days",
+      "unlimited": "Unlimited"
+    },
+    "cancelModal": {
+      "title": "Cancel Subscription?",
+      "message": "Are you sure you want to cancel your subscription to {planName}? You'll continue to have access until {date}.",
+      "keepButton": "Keep Subscription",
+      "cancelButton": "Yes, Cancel",
+      "cancelling": "Cancelling..."
+    },
+    "toast": {
+      "subscribeSuccess": "Successfully subscribed to plan!",
+      "subscribeError": "Failed to subscribe to plan",
+      "cancelSuccess": "Subscription cancelled successfully",
+      "cancelError": "Failed to cancel subscription"
+    }
   }
 }
