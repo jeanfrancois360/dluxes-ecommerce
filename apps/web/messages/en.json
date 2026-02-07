@@ -2559,5 +2559,32 @@
         "description": "Add your first product to start selling"
       }
     }
+  },
+  "sellerOrderDetails": {
+    "backToOrders": "Back to Orders",
+    "orderTitle": "Order {orderNumber}",
+    "errorLoading": "Failed to load order details",
+    "orderNotFound": "Order not found",
+    "printPackingSlip": "Print Packing Slip",
+    "markAsShipped": "Mark as Shipped",
+    "orderStatus": "Order Status",
+    "paymentStatus": "Payment Status",
+    "orderDetails": "Order Details",
+    "customerInfo": "Customer Information",
+    "shippingAddress": "Shipping Address",
+    "orderItems": "Order Items ({count})",
+    "product": "Product",
+    "quantity": "Quantity",
+    "price": "Price",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "tax": "Tax",
+    "discount": "Discount",
+    "grandTotal": "Grand Total",
+    "updateSuccess": "Order status updated successfully",
+    "updateError": "Failed to update order status",
+    "shippedSuccess": "Order marked as shipped successfully",
+    "shippedError": "Failed to mark order as shipped"
   }
 }

@@ -2584,5 +2584,32 @@
         "description": "Ajoutez votre premier produit pour commencer à vendre"
       }
     }
+  },
+  "sellerOrderDetails": {
+    "backToOrders": "Retour aux Commandes",
+    "orderTitle": "Commande {orderNumber}",
+    "errorLoading": "Échec du chargement des détails de la commande",
+    "orderNotFound": "Commande introuvable",
+    "printPackingSlip": "Imprimer le Bon de Livraison",
+    "markAsShipped": "Marquer comme Expédié",
+    "orderStatus": "Statut de la Commande",
+    "paymentStatus": "Statut du Paiement",
+    "orderDetails": "Détails de la Commande",
+    "customerInfo": "Informations Client",
+    "shippingAddress": "Adresse de Livraison",
+    "orderItems": "Articles de la Commande ({count})",
+    "product": "Produit",
+    "quantity": "Quantité",
+    "price": "Prix",
+    "total": "Total",
+    "subtotal": "Sous-total",
+    "shipping": "Livraison",
+    "tax": "Taxe",
+    "discount": "Réduction",
+    "grandTotal": "Total Général",
+    "updateSuccess": "Statut de la commande mis à jour avec succès",
+    "updateError": "Échec de la mise à jour du statut de la commande",
+    "shippedSuccess": "Commande marquée comme expédiée avec succès",
+    "shippedError": "Échec du marquage de la commande comme expédiée"
   }
 }
