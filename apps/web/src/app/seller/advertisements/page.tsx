@@ -15,6 +15,7 @@ import {
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Plus,
   Edit,
@@ -44,23 +45,29 @@ const statusColors: Record<AdStatus, string> = {
   COMPLETED: 'bg-purple-100 text-purple-700',
 };
 
-const placementLabels: Record<AdPlacement, string> = {
-  HOMEPAGE_HERO: 'Homepage Hero',
-  HOMEPAGE_FEATURED: 'Homepage Featured',
-  HOMEPAGE_SIDEBAR: 'Homepage Sidebar',
-  PRODUCTS_BANNER: 'Products Banner',
-  PRODUCTS_INLINE: 'Products Inline',
-  PRODUCTS_SIDEBAR: 'Products Sidebar',
-  CATEGORY_BANNER: 'Category Banner',
-  PRODUCT_DETAIL_SIDEBAR: 'Product Detail Sidebar',
-  CHECKOUT_UPSELL: 'Checkout Upsell',
-  SEARCH_RESULTS: 'Search Results',
-};
-
 export default function SellerAdvertisementsPage() {
+  const t = useTranslations('sellerAds');
   const { advertisements: ads, isLoading, error, refresh } = useMyAdvertisements();
   const { subscription, isActive: hasActiveSubscription } = useMyAdSubscription();
-  const { create: createAd, update: updateAd, delete: deleteAd, toggle: toggleAd } = useAdvertisementMutations();
+  const {
+    create: createAd,
+    update: updateAd,
+    delete: deleteAd,
+    toggle: toggleAd,
+  } = useAdvertisementMutations();
+
+  const placementLabels: Record<AdPlacement, string> = {
+    HOMEPAGE_HERO: t('placements.HOMEPAGE_HERO'),
+    HOMEPAGE_FEATURED: t('placements.HOMEPAGE_FEATURED'),
+    HOMEPAGE_SIDEBAR: t('placements.HOMEPAGE_SIDEBAR'),
+    PRODUCTS_BANNER: t('placements.PRODUCTS_BANNER'),
+    PRODUCTS_INLINE: t('placements.PRODUCTS_INLINE'),
+    PRODUCTS_SIDEBAR: t('placements.PRODUCTS_SIDEBAR'),
+    CATEGORY_BANNER: t('placements.CATEGORY_BANNER'),
+    PRODUCT_DETAIL_SIDEBAR: t('placements.PRODUCT_DETAIL_SIDEBAR'),
+    CHECKOUT_UPSELL: t('placements.CHECKOUT_UPSELL'),
+    SEARCH_RESULTS: t('placements.SEARCH_RESULTS'),
+  };
 
   const [showModal, setShowModal] = useState(false);
   const [editingAd, setEditingAd] = useState<AdvertisementDetail | null>(null);
@@ -71,7 +78,7 @@ export default function SellerAdvertisementsPage() {
     description: '',
     imageUrl: '',
     linkUrl: '',
-    linkText: 'Learn More',
+    linkText: t('placeholder.learnMore'),
     placement: 'PRODUCTS_SIDEBAR',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -89,7 +96,7 @@ export default function SellerAdvertisementsPage() {
       description: '',
       imageUrl: '',
       linkUrl: '',
-      linkText: 'Learn More',
+      linkText: t('placeholder.learnMore'),
       placement: (allowedPlacements[0] as AdPlacement) || 'PRODUCTS_SIDEBAR',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -99,11 +106,11 @@ export default function SellerAdvertisementsPage() {
 
   const openCreateModal = () => {
     if (!hasActiveSubscription) {
-      toast.error('Please subscribe to an advertising plan first');
+      toast.error(t('toast.subscribeFirst'));
       return;
     }
     if (!canCreateMoreAds) {
-      toast.error(`You've reached your limit of ${maxActiveAds} active ads`);
+      toast.error(t('toast.limitReached', { max: maxActiveAds }));
       return;
     }
     resetForm();
@@ -117,7 +124,7 @@ export default function SellerAdvertisementsPage() {
       description: ad.description || '',
       imageUrl: ad.imageUrl,
       linkUrl: ad.linkUrl,
-      linkText: ad.linkText || 'Learn More',
+      linkText: ad.linkText || t('placeholder.learnMore'),
       placement: ad.placement,
       startDate: ad.startDate.split('T')[0],
       endDate: ad.endDate.split('T')[0],
@@ -132,40 +139,40 @@ export default function SellerAdvertisementsPage() {
     try {
       if (editingAd) {
         await updateAd(editingAd.id, formData);
-        toast.success('Advertisement updated successfully');
+        toast.success(t('toast.updateSuccess'));
       } else {
         await createAd(formData);
-        toast.success('Advertisement created! Pending admin approval.');
+        toast.success(t('toast.createSuccess'));
       }
       setShowModal(false);
       resetForm();
       refresh();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save advertisement');
+      toast.error(error.message || t('toast.saveFailed'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this advertisement?')) return;
+    if (!confirm(t('deleteConfirm'))) return;
 
     try {
       await deleteAd(id);
-      toast.success('Advertisement deleted');
+      toast.success(t('toast.deleteSuccess'));
       refresh();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete advertisement');
+      toast.error(error.message || t('toast.deleteFailed'));
     }
   };
 
   const handleToggle = async (id: string) => {
     try {
       await toggleAd(id);
-      toast.success('Advertisement status updated');
+      toast.success(t('toast.statusUpdated'));
       refresh();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update status');
+      toast.error(error.message || t('toast.statusFailed'));
     }
   };
 
@@ -182,8 +189,8 @@ export default function SellerAdvertisementsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Advertisements</h1>
-          <p className="text-gray-500 mt-1">Create and manage your advertising campaigns</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
+          <p className="text-gray-500 mt-1">{t('pageSubtitle')}</p>
         </div>
         <button
           onClick={openCreateModal}
@@ -191,7 +198,7 @@ export default function SellerAdvertisementsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4" />
-          Create Ad
+          {t('createAd')}
         </button>
       </div>
 
@@ -200,14 +207,14 @@ export default function SellerAdvertisementsPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5" />
           <div>
-            <p className="font-medium text-amber-800">No Active Subscription</p>
-            <p className="text-sm text-amber-700 mt-1">Subscribe to an advertising plan to start creating ads.</p>
+            <p className="font-medium text-amber-800">{t('noSubscription')}</p>
+            <p className="text-sm text-amber-700 mt-1">{t('noSubscriptionDesc')}</p>
             <Link
               href="/seller/advertisement-plans"
               className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-amber-700 hover:text-amber-800"
             >
               <CreditCard className="w-4 h-4" />
-              View Plans
+              {t('viewPlans')}
             </Link>
           </div>
         </div>
@@ -217,25 +224,27 @@ export default function SellerAdvertisementsPage() {
       {hasActiveSubscription && subscription && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg border">
-            <p className="text-sm text-gray-500">Current Plan</p>
+            <p className="text-sm text-gray-500">{t('currentPlan')}</p>
             <p className="text-lg font-semibold">{subscription.plan?.name}</p>
           </div>
           <div className="bg-white p-4 rounded-lg border">
-            <p className="text-sm text-gray-500">Active Ads</p>
+            <p className="text-sm text-gray-500">{t('activeAds')}</p>
             <p className="text-lg font-semibold">
               {activeAdsCount} / {maxActiveAds === -1 ? '∞' : maxActiveAds}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg border">
-            <p className="text-sm text-gray-500">Impressions Used</p>
+            <p className="text-sm text-gray-500">{t('impressionsUsed')}</p>
             <p className="text-lg font-semibold">
               {subscription.impressionsUsed?.toLocaleString()} /{' '}
               {subscription.plan?.maxImpressions?.toLocaleString() || '∞'}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg border">
-            <p className="text-sm text-gray-500">Period Ends</p>
-            <p className="text-lg font-semibold">{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</p>
+            <p className="text-sm text-gray-500">{t('periodEnds')}</p>
+            <p className="text-lg font-semibold">
+              {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+            </p>
           </div>
         </div>
       )}
@@ -264,15 +273,18 @@ export default function SellerAdvertisementsPage() {
                       <h3 className="font-semibold text-gray-900">{ad.title}</h3>
                       <p className="text-sm text-gray-500 mt-0.5">{ad.description}</p>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[ad.status]}`}>
-                      {ad.status.replace('_', ' ')}
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[ad.status]}`}
+                    >
+                      {t(`statuses.${ad.status}`)}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {new Date(ad.startDate).toLocaleDateString()} - {new Date(ad.endDate).toLocaleDateString()}
+                      {new Date(ad.startDate).toLocaleDateString()} -{' '}
+                      {new Date(ad.endDate).toLocaleDateString()}
                     </span>
                     <span>{placementLabels[ad.placement]}</span>
                   </div>
@@ -281,15 +293,22 @@ export default function SellerAdvertisementsPage() {
                   <div className="flex items-center gap-6 mt-3">
                     <div className="flex items-center gap-1 text-sm">
                       <Eye className="w-4 h-4 text-gray-400" />
-                      <span>{ad.impressions.toLocaleString()} views</span>
+                      <span>
+                        {ad.impressions.toLocaleString()} {t('views')}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1 text-sm">
                       <MousePointer className="w-4 h-4 text-gray-400" />
-                      <span>{ad.clicks.toLocaleString()} clicks</span>
+                      <span>
+                        {ad.clicks.toLocaleString()} {t('clicks')}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1 text-sm">
                       <TrendingUp className="w-4 h-4 text-gray-400" />
-                      <span>{ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : 0}% CTR</span>
+                      <span>
+                        {ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : 0}%
+                        CTR
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -300,7 +319,7 @@ export default function SellerAdvertisementsPage() {
                     <button
                       onClick={() => handleToggle(ad.id)}
                       className="p-2 hover:bg-gray-100 rounded-lg"
-                      title={ad.status === 'ACTIVE' ? 'Pause' : 'Resume'}
+                      title={ad.status === 'ACTIVE' ? t('pause') : t('resume')}
                     >
                       {ad.status === 'ACTIVE' ? (
                         <Pause className="w-5 h-5 text-gray-600" />
@@ -309,7 +328,11 @@ export default function SellerAdvertisementsPage() {
                       )}
                     </button>
                   ) : null}
-                  <button onClick={() => openEditModal(ad)} className="p-2 hover:bg-gray-100 rounded-lg" title="Edit">
+                  <button
+                    onClick={() => openEditModal(ad)}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                    title={t('edit')}
+                  >
                     <Edit className="w-5 h-5 text-gray-600" />
                   </button>
                   <a
@@ -317,14 +340,14 @@ export default function SellerAdvertisementsPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 hover:bg-gray-100 rounded-lg"
-                    title="Preview Link"
+                    title={t('previewLink')}
                   >
                     <ExternalLink className="w-5 h-5 text-gray-600" />
                   </a>
                   <button
                     onClick={() => handleDelete(ad.id)}
                     className="p-2 hover:bg-red-50 rounded-lg"
-                    title="Delete"
+                    title={t('delete')}
                   >
                     <Trash2 className="w-5 h-5 text-red-500" />
                   </button>
@@ -336,13 +359,13 @@ export default function SellerAdvertisementsPage() {
       ) : (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 mb-4">No advertisements yet</p>
+          <p className="text-gray-500 mb-4">{t('noAdsYet')}</p>
           {hasActiveSubscription && (
             <button
               onClick={openCreateModal}
               className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
             >
-              Create Your First Ad
+              {t('createFirstAd')}
             </button>
           )}
         </div>
@@ -355,9 +378,12 @@ export default function SellerAdvertisementsPage() {
             <div className="p-6 border-b sticky top-0 bg-white">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold">
-                  {editingAd ? 'Edit Advertisement' : 'Create Advertisement'}
+                  {editingAd ? t('editAdvertisement') : t('createAdvertisement')}
                 </h2>
-                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -365,7 +391,9 @@ export default function SellerAdvertisementsPage() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Title *</label>
+                <label className="block text-sm font-medium mb-1">
+                  {t('formTitle')} {t('required')}
+                </label>
                 <input
                   type="text"
                   value={formData.title}
@@ -377,10 +405,12 @@ export default function SellerAdvertisementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
+                <label className="block text-sm font-medium mb-1">{t('formDescription')}</label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                  }
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   rows={2}
                   maxLength={200}
@@ -388,45 +418,53 @@ export default function SellerAdvertisementsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Image URL *</label>
+                <label className="block text-sm font-medium mb-1">
+                  {t('formImageUrl')} {t('required')}
+                </label>
                 <input
                   type="url"
                   value={formData.imageUrl}
                   onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
-                  placeholder="https://..."
+                  placeholder={t('placeholder.imageUrl')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Link URL *</label>
+                <label className="block text-sm font-medium mb-1">
+                  {t('formLinkUrl')} {t('required')}
+                </label>
                 <input
                   type="url"
                   value={formData.linkUrl}
                   onChange={(e) => setFormData((prev) => ({ ...prev, linkUrl: e.target.value }))}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
-                  placeholder="https://..."
+                  placeholder={t('placeholder.linkUrl')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Link Text</label>
+                <label className="block text-sm font-medium mb-1">{t('formLinkText')}</label>
                 <input
                   type="text"
                   value={formData.linkText}
                   onChange={(e) => setFormData((prev) => ({ ...prev, linkText: e.target.value }))}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Learn More"
+                  placeholder={t('placeholder.learnMore')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Placement *</label>
+                <label className="block text-sm font-medium mb-1">
+                  {t('formPlacement')} {t('required')}
+                </label>
                 <select
                   value={formData.placement}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, placement: e.target.value as AdPlacement }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, placement: e.target.value as AdPlacement }))
+                  }
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -440,17 +478,23 @@ export default function SellerAdvertisementsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Start Date *</label>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('formStartDate')} {t('required')}
+                  </label>
                   <input
                     type="date"
                     value={formData.startDate}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, startDate: e.target.value }))
+                    }
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">End Date *</label>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('formEndDate')} {t('required')}
+                  </label>
                   <input
                     type="date"
                     value={formData.endDate}
@@ -467,7 +511,7 @@ export default function SellerAdvertisementsPage() {
                   onClick={() => setShowModal(false)}
                   className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
@@ -475,7 +519,7 @@ export default function SellerAdvertisementsPage() {
                   className="flex-1 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {editingAd ? 'Update' : 'Create'}
+                  {editingAd ? t('update') : t('create')}
                 </button>
               </div>
             </form>
