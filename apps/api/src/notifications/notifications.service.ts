@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
+import { NotificationType, NotificationPriority } from '@prisma/client';
+import { CreateNotificationDto } from './dto/notification.dto';
 
 export interface EmailTemplate {
   to: string;
@@ -42,7 +44,7 @@ export class NotificationsService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService,
+    private readonly emailService: EmailService
   ) {
     this.fromEmail = this.configService.get('EMAIL_FROM', 'noreply@luxuryecommerce.com');
     this.siteName = this.configService.get('SITE_NAME', 'NextPik E-commerce');
@@ -508,9 +510,10 @@ export class NotificationsService {
                   <p style="margin: 8px 0;"><strong>Status:</strong> <span style="color: #10B981; font-weight: bold;">Ready for Payout</span></p>
                 </div>
 
-                ${isSeller
-                  ? '<p>Your payout will be processed once the admin releases it. You will receive a notification when the payout is released.</p>'
-                  : '<p>This delivery is now ready for payout release. Please review and release the payout from the admin panel.</p>'
+                ${
+                  isSeller
+                    ? '<p>Your payout will be processed once the admin releases it. You will receive a notification when the payout is released.</p>'
+                    : '<p>This delivery is now ready for payout release. Please review and release the payout from the admin panel.</p>'
                 }
               </div>
               <div class="footer">
@@ -712,5 +715,246 @@ export class NotificationsService {
 
     this.logger.warn(`Email provider '${provider}' not implemented. Email not sent.`);
     return { success: false };
+  }
+
+  // ============================================================================
+  // IN-APP NOTIFICATIONS
+  // ============================================================================
+
+  /**
+   * Create a notification for a user
+   */
+  async createNotification(dto: CreateNotificationDto) {
+    const notification = await this.prisma.notification.create({
+      data: {
+        userId: dto.userId,
+        type: dto.type,
+        title: dto.title,
+        message: dto.message,
+        link: dto.link,
+        metadata: dto.metadata || {},
+        priority: dto.priority || NotificationPriority.NORMAL,
+      },
+    });
+
+    this.logger.log(`Notification created for user ${dto.userId}: ${dto.title}`);
+    return notification;
+  }
+
+  /**
+   * Create notifications for multiple users
+   */
+  async createBulkNotifications(
+    userIds: string[],
+    notification: Omit<CreateNotificationDto, 'userId'>
+  ) {
+    const notifications = await this.prisma.notification.createMany({
+      data: userIds.map((userId) => ({
+        userId,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        link: notification.link,
+        metadata: notification.metadata || {},
+        priority: notification.priority || NotificationPriority.NORMAL,
+      })),
+    });
+
+    this.logger.log(`Created ${notifications.count} notifications`);
+    return notifications;
+  }
+
+  /**
+   * Get user's notifications with pagination
+   */
+  async getUserNotifications(
+    userId: string,
+    options: { page: number; limit: number; unreadOnly?: boolean }
+  ) {
+    const { page, limit, unreadOnly } = options;
+    const skip = (page - 1) * limit;
+
+    const where: any = { userId };
+    if (unreadOnly) {
+      where.read = false;
+    }
+
+    const [notifications, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.notification.count({ where }),
+    ]);
+
+    return {
+      notifications,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get unread notification count
+   */
+  async getUnreadCount(userId: string) {
+    const count = await this.prisma.notification.count({
+      where: { userId, read: false },
+    });
+
+    return { count };
+  }
+
+  /**
+   * Mark notification as read/unread
+   */
+  async markAsRead(userId: string, notificationId: string, read: boolean) {
+    // Verify notification belongs to user
+    const notification = await this.prisma.notification.findUnique({
+      where: { id: notificationId },
+    });
+
+    if (!notification) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    if (notification.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this notification');
+    }
+
+    return this.prisma.notification.update({
+      where: { id: notificationId },
+      data: {
+        read,
+        readAt: read ? new Date() : null,
+      },
+    });
+  }
+
+  /**
+   * Mark all notifications as read
+   */
+  async markAllAsRead(userId: string) {
+    const result = await this.prisma.notification.updateMany({
+      where: { userId, read: false },
+      data: {
+        read: true,
+        readAt: new Date(),
+      },
+    });
+
+    return { updated: result.count };
+  }
+
+  /**
+   * Delete a notification
+   */
+  async deleteNotification(userId: string, notificationId: string) {
+    // Verify notification belongs to user
+    const notification = await this.prisma.notification.findUnique({
+      where: { id: notificationId },
+    });
+
+    if (!notification) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    if (notification.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this notification');
+    }
+
+    await this.prisma.notification.delete({
+      where: { id: notificationId },
+    });
+  }
+
+  /**
+   * Delete all read notifications
+   */
+  async deleteReadNotifications(userId: string) {
+    const result = await this.prisma.notification.deleteMany({
+      where: { userId, read: true },
+    });
+
+    return { deleted: result.count };
+  }
+
+  // ============================================================================
+  // NOTIFICATION HELPERS - Called by other services
+  // ============================================================================
+
+  /**
+   * Send order placed notification to seller
+   */
+  async notifyOrderPlaced(sellerId: string, orderId: string, orderNumber: string, amount: number) {
+    await this.createNotification({
+      userId: sellerId,
+      type: NotificationType.ORDER_PLACED,
+      title: `New Order #${orderNumber}`,
+      message: `You received a new order worth $${amount.toFixed(2)}`,
+      link: `/seller/orders/${orderId}`,
+      metadata: { orderId, orderNumber, amount },
+      priority: NotificationPriority.HIGH,
+    });
+  }
+
+  /**
+   * Send low stock alert to seller
+   */
+  async notifyLowStock(sellerId: string, productId: string, productName: string, stock: number) {
+    await this.createNotification({
+      userId: sellerId,
+      type: NotificationType.LOW_STOCK_ALERT,
+      title: 'Low Stock Alert',
+      message: `${productName} is running low (${stock} remaining)`,
+      link: `/seller/products/${productId}`,
+      metadata: { productId, productName, stock },
+      priority: NotificationPriority.HIGH,
+    });
+  }
+
+  /**
+   * Send product review notification to seller
+   */
+  async notifyProductReview(
+    sellerId: string,
+    productId: string,
+    productName: string,
+    rating: number
+  ) {
+    await this.createNotification({
+      userId: sellerId,
+      type: NotificationType.PRODUCT_REVIEW,
+      title: 'New Product Review',
+      message: `${productName} received a ${rating}-star review`,
+      link: `/seller/products/${productId}`,
+      metadata: { productId, productName, rating },
+    });
+  }
+
+  /**
+   * Send payout processed notification to seller
+   */
+  async notifyPayoutProcessed(
+    sellerId: string,
+    payoutId: string,
+    amount: number,
+    currency: string
+  ) {
+    await this.createNotification({
+      userId: sellerId,
+      type: NotificationType.PAYOUT_PROCESSED,
+      title: 'Payout Processed',
+      message: `Your payout of ${currency} ${amount.toFixed(2)} has been processed`,
+      link: `/seller/payouts`,
+      metadata: { payoutId, amount, currency },
+      priority: NotificationPriority.HIGH,
+    });
   }
 }
