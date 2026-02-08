@@ -2356,8 +2356,7 @@
     "breadcrumbs": {
       "dashboard": "Tableau de Bord",
       "advertisements": "Publicités"
-    },
-    "breadcrumbs.advertisements": "Publicités"
+    }
   },
   "sellerStoreSettings": {
     "pageTitle": "Paramètres de la Boutique",
@@ -2444,8 +2443,7 @@
     "breadcrumbs": {
       "dashboard": "Tableau de Bord",
       "storeSettings": "Paramètres de la Boutique"
-    },
-    "breadcrumbs.storeSettings": "Paramètres de la Boutique"
+    }
   },
   "sellerProducts": {
     "pageTitle": "Produits",
@@ -2518,8 +2516,7 @@
     "breadcrumbs": {
       "dashboard": "Tableau de Bord",
       "products": "Produits"
-    },
-    "breadcrumbs.products": "Produits"
+    }
   },
   "sellerAdPlans": {
     "pageTitle": "Plans Publicitaires",
@@ -2596,8 +2593,7 @@
     "breadcrumbs": {
       "dashboard": "Tableau de Bord",
       "adPlans": "Plans Publicitaires"
-    },
-    "breadcrumbs.adPlans": "Plans Publicitaires"
+    }
   },
   "sellerCreditsSuccess": {
     "processing": "Traitement de votre achat...",
@@ -2648,8 +2644,7 @@
     "breadcrumbs": {
       "dashboard": "Tableau de Bord",
       "onboarding": "Intégration"
-    },
-    "breadcrumbs.onboarding": "Intégration"
+    }
   },
   "sellerOrderDetails": {
     "backToOrders": "Retour aux Commandes",
@@ -2704,8 +2699,7 @@
     "breadcrumbs": {
       "dashboard": "Tableau de Bord",
       "reviews": "Évaluations"
-    },
-    "breadcrumbs.reviews": "Évaluations"
+    }
   },
   "sellerApplicationStatus": {
     "page": {

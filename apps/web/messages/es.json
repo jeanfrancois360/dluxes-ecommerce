@@ -2356,8 +2356,7 @@
     "breadcrumbs": {
       "dashboard": "Panel",
       "advertisements": "Anuncios"
-    },
-    "breadcrumbs.advertisements": "Anuncios"
+    }
   },
   "sellerStoreSettings": {
     "pageTitle": "Configuración de la Tienda",
@@ -2444,8 +2443,7 @@
     "breadcrumbs": {
       "dashboard": "Panel",
       "storeSettings": "Configuración de la Tienda"
-    },
-    "breadcrumbs.storeSettings": "Configuración de la Tienda"
+    }
   },
   "sellerProducts": {
     "pageTitle": "Productos",
@@ -2518,8 +2516,7 @@
     "breadcrumbs": {
       "dashboard": "Panel",
       "products": "Productos"
-    },
-    "breadcrumbs.products": "Productos"
+    }
   },
   "sellerAdPlans": {
     "pageTitle": "Planes Publicitarios",
@@ -2596,8 +2593,7 @@
     "breadcrumbs": {
       "dashboard": "Panel",
       "adPlans": "Planes Publicitarios"
-    },
-    "breadcrumbs.adPlans": "Planes Publicitarios"
+    }
   },
   "sellerCreditsSuccess": {
     "processing": "Procesando su compra...",
@@ -2648,8 +2644,7 @@
     "breadcrumbs": {
       "dashboard": "Panel",
       "onboarding": "Incorporación"
-    },
-    "breadcrumbs.onboarding": "Incorporación"
+    }
   },
   "sellerOrderDetails": {
     "backToOrders": "Volver a Pedidos",
@@ -2704,8 +2699,7 @@
     "breadcrumbs": {
       "dashboard": "Panel",
       "reviews": "Reseñas"
-    },
-    "breadcrumbs.reviews": "Reseñas"
+    }
   },
   "sellerApplicationStatus": {
     "page": {
