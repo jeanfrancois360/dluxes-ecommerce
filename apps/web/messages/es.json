@@ -921,7 +921,6 @@
       "veryStrong": "Muy Fuerte",
       "passwordsMatch": "Las contraseñas coinciden",
       "passwordRequirements": "Requisitos de Contraseña:",
-      "atLeast8Chars": "Al menos 8 caracteres",
       "atLeast12Chars": "Al menos 12 caracteres",
       "uppercaseAndLowercase": "Letras mayúsculas y minúsculas",
       "atLeastOneNumber": "Al menos un número",
