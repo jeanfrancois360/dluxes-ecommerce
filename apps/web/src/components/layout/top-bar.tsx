@@ -64,7 +64,7 @@ export function TopBar() {
       case 'SUPER_ADMIN':
         return '/admin/dashboard';
       case 'SELLER':
-        return '/dashboard/seller';
+        return '/seller';
       case 'BUYER':
       case 'CUSTOMER':
       default:
@@ -387,7 +387,13 @@ export function TopBar() {
                         ? 'Admin'
                         : user.role === 'SELLER'
                           ? 'Seller'
-                          : 'Member'}
+                          : user.role === 'BUYER' || user.role === 'CUSTOMER'
+                            ? 'Buyer'
+                            : user.role === 'DELIVERY_PARTNER'
+                              ? 'Delivery Partner'
+                              : user.role === 'DELIVERY_PROVIDER_ADMIN'
+                                ? 'Delivery Admin'
+                                : 'Buyer'}
                     </span>
                   )}
                 </div>
@@ -471,9 +477,13 @@ export function TopBar() {
                                     ? 'Administrator'
                                     : user.role === 'SELLER'
                                       ? 'Seller Account'
-                                      : user.role === 'DELIVERY_PARTNER'
-                                        ? 'Delivery Partner'
-                                        : 'Member'}
+                                      : user.role === 'BUYER' || user.role === 'CUSTOMER'
+                                        ? 'Buyer Account'
+                                        : user.role === 'DELIVERY_PARTNER'
+                                          ? 'Delivery Partner'
+                                          : user.role === 'DELIVERY_PROVIDER_ADMIN'
+                                            ? 'Delivery Admin'
+                                            : 'Buyer Account'}
                                 </span>
                               </div>
                             </div>
