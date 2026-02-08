@@ -111,8 +111,8 @@ export default function SellerSecurityPage() {
     const password = formData.newPassword;
     let strength = 0;
 
-    if (password.length >= 8) strength += 1;
     if (password.length >= 12) strength += 1;
+    if (password.length >= 16) strength += 1;
     if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 1;
     if (/\d/.test(password)) strength += 1;
     if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
@@ -145,8 +145,8 @@ export default function SellerSecurityPage() {
 
     if (!formData.newPassword) {
       newErrors.newPassword = t('newPasswordRequired');
-    } else if (formData.newPassword.length < 8) {
-      newErrors.newPassword = t('passwordMinLength');
+    } else if (formData.newPassword.length < 12) {
+      newErrors.newPassword = 'Password must be at least 12 characters long';
     } else if (!/[a-z]/.test(formData.newPassword) || !/[A-Z]/.test(formData.newPassword)) {
       newErrors.newPassword = t('passwordNeedsCases');
     } else if (!/\d/.test(formData.newPassword)) {
@@ -756,17 +756,19 @@ export default function SellerSecurityPage() {
                     <ul className="space-y-2 text-sm">
                       <li
                         className={`flex items-center gap-2 ${
-                          formData.newPassword.length >= 8 ? 'text-green-600' : 'text-neutral-500'
+                          formData.newPassword.length >= 12 ? 'text-green-600' : 'text-neutral-500'
                         }`}
                       >
                         <svg
                           className={`w-4 h-4 ${
-                            formData.newPassword.length >= 8 ? 'text-green-500' : 'text-neutral-300'
+                            formData.newPassword.length >= 12
+                              ? 'text-green-500'
+                              : 'text-neutral-300'
                           }`}
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
-                          {formData.newPassword.length >= 8 ? (
+                          {formData.newPassword.length >= 12 ? (
                             <path
                               fillRule="evenodd"
                               d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -780,7 +782,7 @@ export default function SellerSecurityPage() {
                             />
                           )}
                         </svg>
-                        {t('atLeast8Chars')}
+                        At least 12 characters
                       </li>
                       <li
                         className={`flex items-center gap-2 ${
