@@ -773,7 +773,24 @@
       "invalidEmail": "Veuillez entrer une adresse email valide",
       "invalidPhone": "Veuillez entrer un numéro de téléphone valide",
       "selectImageFile": "Veuillez sélectionner un fichier image",
-      "imageUnder5MB": "Veuillez sélectionner une image de moins de 5 Mo"
+      "imageUnder5MB": "Veuillez sélectionner une image de moins de 5 Mo",
+      "validationError": "Veuillez corriger les erreurs avant d'enregistrer",
+      "notAvailable": "N/D",
+      "breadcrumbs": {
+        "dashboard": "Tableau de Bord",
+        "myProfile": "Mon Profil"
+      },
+      "placeholders": {
+        "firstName": "Jean",
+        "lastName": "Dupont",
+        "email": "jean@exemple.com",
+        "phone": "+33 1 23 45 67 89"
+      },
+      "quickLinks": {
+        "heading": "Liens Rapides",
+        "storeSettings": "Paramètres de la Boutique",
+        "storeSettingsDesc": "Gérer les informations et l'identité de votre boutique"
+      }
     },
     "orders": {
       "title": "Mes Commandes",

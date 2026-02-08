@@ -773,7 +773,24 @@
       "invalidEmail": "Por favor ingresa un email válido",
       "invalidPhone": "Por favor ingresa un número de teléfono válido",
       "selectImageFile": "Por favor selecciona un archivo de imagen",
-      "imageUnder5MB": "Por favor selecciona una imagen de menos de 5MB"
+      "imageUnder5MB": "Por favor selecciona una imagen de menos de 5MB",
+      "validationError": "Por favor corrija los errores antes de guardar",
+      "notAvailable": "N/D",
+      "breadcrumbs": {
+        "dashboard": "Panel",
+        "myProfile": "Mi Perfil"
+      },
+      "placeholders": {
+        "firstName": "Juan",
+        "lastName": "García",
+        "email": "juan@ejemplo.com",
+        "phone": "+34 912 34 56 78"
+      },
+      "quickLinks": {
+        "heading": "Enlaces Rápidos",
+        "storeSettings": "Configuración de la Tienda",
+        "storeSettingsDesc": "Gestionar la información y marca de su tienda"
+      }
     },
     "orders": {
       "title": "Mis Pedidos",

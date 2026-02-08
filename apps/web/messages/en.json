@@ -773,7 +773,24 @@
       "invalidEmail": "Please enter a valid email address",
       "invalidPhone": "Please enter a valid phone number",
       "selectImageFile": "Please select an image file",
-      "imageUnder5MB": "Please select an image under 5MB"
+      "imageUnder5MB": "Please select an image under 5MB",
+      "validationError": "Please fix the errors before saving",
+      "notAvailable": "N/A",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "myProfile": "My Profile"
+      },
+      "placeholders": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john@example.com",
+        "phone": "+1 (555) 123-4567"
+      },
+      "quickLinks": {
+        "heading": "Quick Links",
+        "storeSettings": "Store Settings",
+        "storeSettingsDesc": "Manage your store information and branding"
+      }
     },
     "orders": {
       "title": "My Orders",
