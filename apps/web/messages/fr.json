@@ -2663,5 +2663,85 @@
       "next": "Suivant",
       "page": "Page {current} sur {total}"
     }
+  },
+  "sellerApplicationStatus": {
+    "page": {
+      "title": "Statut de la Candidature Vendeur",
+      "backButton": "Retour au Tableau de Bord"
+    },
+    "loading": {
+      "loadingApplication": "Chargement de la candidature..."
+    },
+    "errors": {
+      "title": "Erreur",
+      "fetchFailed": "Échec de la récupération du statut de candidature",
+      "fetchError": "Une erreur s'est produite lors de la récupération du statut de votre candidature",
+      "tryAgain": "Réessayer"
+    },
+    "noApplication": {
+      "title": "Aucune Candidature Trouvée",
+      "description": "Vous n'avez pas encore soumis de candidature vendeur. Commencez votre parcours en tant que vendeur dès aujourd'hui!",
+      "applyButton": "Postuler pour Devenir Vendeur"
+    },
+    "status": {
+      "pending": {
+        "title": "Candidature en Cours d'Examen",
+        "description": "Votre candidature vendeur est actuellement examinée par notre équipe. Nous traitons généralement les candidatures sous 2-3 jours ouvrables.",
+        "action": "Revenez bientôt"
+      },
+      "active": {
+        "title": "Candidature Approuvée!",
+        "description": "Félicitations! Votre candidature vendeur a été approuvée. Vous pouvez maintenant accéder à votre tableau de bord vendeur et commencer à configurer votre boutique.",
+        "action": "Aller au Tableau de Bord Vendeur"
+      },
+      "rejected": {
+        "title": "Candidature Non Approuvée",
+        "description": "Malheureusement, votre candidature vendeur n'a pas été approuvée pour le moment. Vous pouvez consulter nos commentaires et postuler à nouveau lorsque vous êtes prêt.",
+        "action": "Voir les Détails"
+      },
+      "suspended": {
+        "title": "Compte Suspendu",
+        "description": "Votre compte vendeur a été temporairement suspendu. Veuillez contacter le support pour résoudre tout problème.",
+        "action": "Contacter le Support"
+      },
+      "unknown": {
+        "title": "Statut Inconnu",
+        "description": "Impossible de déterminer le statut de la candidature.",
+        "action": "Actualiser"
+      }
+    },
+    "storeInfo": {
+      "storeName": "Nom de la Boutique",
+      "status": "Statut",
+      "appliedOn": "Postulé le",
+      "approvedOn": "Approuvé le"
+    },
+    "actions": {
+      "goToDashboard": "Aller au Tableau de Bord Vendeur",
+      "refreshStatus": "Actualiser le Statut",
+      "reapply": "Postuler à Nouveau",
+      "contactSupport": "Contacter le Support"
+    },
+    "timeline": {
+      "title": "Processus d'Examen",
+      "submitted": {
+        "title": "Candidature Soumise",
+        "description": "Votre candidature a été reçue et est dans la file d'attente pour examen."
+      },
+      "underReview": {
+        "title": "En Cours d'Examen",
+        "description": "Notre équipe examine actuellement les détails de votre candidature."
+      },
+      "decision": {
+        "title": "Notification de Décision",
+        "description": "Vous recevrez un email une fois qu'une décision aura été prise (2-3 jours ouvrables)."
+      }
+    },
+    "help": {
+      "title": "Besoin d'Aide?",
+      "description": "Si vous avez des questions sur votre candidature ou besoin d'assistance, notre équipe de support est là pour vous aider.",
+      "contactSupport": "Contacter le Support",
+      "sellerGuidelines": "Directives Vendeur"
+    }
   }
 }

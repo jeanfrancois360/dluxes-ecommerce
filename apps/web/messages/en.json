@@ -2638,5 +2638,85 @@
       "next": "Next",
       "page": "Page {current} of {total}"
     }
+  },
+  "sellerApplicationStatus": {
+    "page": {
+      "title": "Seller Application Status",
+      "backButton": "Back to Dashboard"
+    },
+    "loading": {
+      "loadingApplication": "Loading application..."
+    },
+    "errors": {
+      "title": "Error",
+      "fetchFailed": "Failed to fetch application status",
+      "fetchError": "An error occurred while fetching your application status",
+      "tryAgain": "Try Again"
+    },
+    "noApplication": {
+      "title": "No Application Found",
+      "description": "You haven't submitted a seller application yet. Start your journey as a seller today!",
+      "applyButton": "Apply to Become a Seller"
+    },
+    "status": {
+      "pending": {
+        "title": "Application Under Review",
+        "description": "Your seller application is currently being reviewed by our team. We typically process applications within 2-3 business days.",
+        "action": "Check back soon"
+      },
+      "active": {
+        "title": "Application Approved!",
+        "description": "Congratulations! Your seller application has been approved. You can now access your seller dashboard and start setting up your store.",
+        "action": "Go to Seller Dashboard"
+      },
+      "rejected": {
+        "title": "Application Not Approved",
+        "description": "Unfortunately, your seller application was not approved at this time. You can review our feedback and reapply when you're ready.",
+        "action": "View Details"
+      },
+      "suspended": {
+        "title": "Account Suspended",
+        "description": "Your seller account has been temporarily suspended. Please contact support to resolve any issues.",
+        "action": "Contact Support"
+      },
+      "unknown": {
+        "title": "Unknown Status",
+        "description": "Unable to determine application status.",
+        "action": "Refresh"
+      }
+    },
+    "storeInfo": {
+      "storeName": "Store Name",
+      "status": "Status",
+      "appliedOn": "Applied On",
+      "approvedOn": "Approved On"
+    },
+    "actions": {
+      "goToDashboard": "Go to Seller Dashboard",
+      "refreshStatus": "Refresh Status",
+      "reapply": "Reapply",
+      "contactSupport": "Contact Support"
+    },
+    "timeline": {
+      "title": "Review Process",
+      "submitted": {
+        "title": "Application Submitted",
+        "description": "Your application has been received and is in the queue for review."
+      },
+      "underReview": {
+        "title": "Under Review",
+        "description": "Our team is currently reviewing your application details."
+      },
+      "decision": {
+        "title": "Decision Notification",
+        "description": "You'll receive an email once a decision has been made (2-3 business days)."
+      }
+    },
+    "help": {
+      "title": "Need Help?",
+      "description": "If you have questions about your application or need assistance, our support team is here to help.",
+      "contactSupport": "Contact Support",
+      "sellerGuidelines": "Seller Guidelines"
+    }
   }
 }
