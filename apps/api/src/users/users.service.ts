@@ -21,13 +21,19 @@ export class UsersService {
   }
 
   async findById(id: string) {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id },
       include: {
         addresses: true,
         preferences: true,
       },
     });
+
+    if (!user) return null;
+
+    // Exclude sensitive fields
+    const { password, twoFactorSecret, backupCodes, ...userWithoutSensitiveData } = user;
+    return userWithoutSensitiveData;
   }
 
   async create(data: {
@@ -51,7 +57,7 @@ export class UsersService {
   }
 
   async update(id: string, data: any) {
-    return this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id },
       data,
       include: {
@@ -59,6 +65,10 @@ export class UsersService {
         preferences: true,
       },
     });
+
+    // Exclude sensitive fields
+    const { password, twoFactorSecret, backupCodes, ...userWithoutSensitiveData } = user;
+    return userWithoutSensitiveData;
   }
 
   /**
@@ -373,7 +383,9 @@ export class UsersService {
       },
     });
 
-    return updatedUser;
+    // Exclude sensitive fields
+    const { password, twoFactorSecret, backupCodes, ...userWithoutSensitiveData } = updatedUser;
+    return userWithoutSensitiveData;
   }
 
   /**
@@ -406,6 +418,8 @@ export class UsersService {
       },
     });
 
-    return updatedUser;
+    // Exclude sensitive fields
+    const { password, twoFactorSecret, backupCodes, ...userWithoutSensitiveData } = updatedUser;
+    return userWithoutSensitiveData;
   }
 }

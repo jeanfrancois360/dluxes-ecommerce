@@ -29,6 +29,7 @@ import { SessionService } from './services/session.service';
 import { EnhancedAuthService } from './enhanced-auth.service';
 import { EmailOTPService } from './email-otp.service';
 import { GoogleOAuthService } from './google-oauth.service';
+import { UsersService } from '../users/users.service';
 import {
   RegisterDto,
   LoginDto,
@@ -59,8 +60,10 @@ export class EnhancedAuthController {
     private googleOAuthService: GoogleOAuthService,
     // Keep legacy service for any remaining methods
     private enhancedAuthService: EnhancedAuthService,
+    // Users service for fetching fresh user data
+    private usersService: UsersService,
     // Config
-    private configService: ConfigService,
+    private configService: ConfigService
   ) {}
 
   // ============================================================================
@@ -70,7 +73,10 @@ export class EnhancedAuthController {
   @Post('register')
   @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @ApiOperation({ summary: 'Register a new user' })
-  @ApiResponse({ status: 201, description: 'Registration successful, returns JWT and session token' })
+  @ApiResponse({
+    status: 201,
+    description: 'Registration successful, returns JWT and session token',
+  })
   @ApiResponse({ status: 409, description: 'Email already registered' })
   @ApiResponse({ status: 429, description: 'Rate limit exceeded (3 req/hour)' })
   async register(@Body() dto: RegisterDto, @Req() req: Request) {
@@ -98,7 +104,10 @@ export class EnhancedAuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @ApiOperation({ summary: 'Request a magic link for passwordless login' })
-  @ApiResponse({ status: 200, description: 'Magic link sent (same response whether email exists or not)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Magic link sent (same response whether email exists or not)',
+  })
   async requestMagicLink(@Body() dto: MagicLinkDto, @Req() req: Request) {
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
@@ -122,7 +131,10 @@ export class EnhancedAuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @ApiOperation({ summary: 'Request a password reset email' })
-  @ApiResponse({ status: 200, description: 'Reset email sent (same response whether email exists or not)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset email sent (same response whether email exists or not)',
+  })
   async requestPasswordReset(@Body() dto: PasswordResetRequestDto, @Req() req: Request) {
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
@@ -143,7 +155,10 @@ export class EnhancedAuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify email address using a verification token' })
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
-  @ApiResponse({ status: 401, description: 'Invalid, used, or expired token (includes canResend flag if expired)' })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid, used, or expired token (includes canResend flag if expired)',
+  })
   async verifyEmail(@Body() dto: VerifyEmailDto) {
     return this.emailVerificationService.verifyEmail(dto.token);
   }
@@ -152,7 +167,10 @@ export class EnhancedAuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @ApiOperation({ summary: 'Resend email verification link' })
-  @ApiResponse({ status: 200, description: 'Verification email sent (same response whether email exists or not)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Verification email sent (same response whether email exists or not)',
+  })
   @ApiResponse({ status: 400, description: 'Email already verified' })
   async resendVerification(@Body() dto: ResendVerificationDto) {
     return this.emailVerificationService.resendEmailVerification(dto.email);
@@ -168,8 +186,10 @@ export class EnhancedAuthController {
   @ApiOperation({ summary: 'Get current authenticated user profile' })
   @ApiResponse({ status: 200, description: 'Returns user profile (sensitive fields stripped)' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
-  getProfile(@Req() req: any) {
-    return req.user;
+  async getProfile(@Req() req: any) {
+    // Fetch fresh user data from database instead of returning stale JWT payload
+    const userId = req.user.id || req.user.userId;
+    return this.usersService.findById(userId);
   }
 
   @Post('2fa/setup')
@@ -234,19 +254,11 @@ export class EnhancedAuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Request an Email OTP for the given type' })
   @ApiResponse({ status: 200, description: 'OTP sent to registered email' })
-  async requestEmailOTP(
-    @Body() dto: { type: EmailOTPType },
-    @Req() req: any,
-  ) {
+  async requestEmailOTP(@Body() dto: { type: EmailOTPType }, @Req() req: any) {
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
 
-    return this.enhancedAuthService.requestEmailOTP(
-      req.user.id,
-      dto.type,
-      ipAddress,
-      userAgent,
-    );
+    return this.enhancedAuthService.requestEmailOTP(req.user.id, dto.type, ipAddress, userAgent);
   }
 
   @Post('email-otp/verify')
@@ -256,10 +268,7 @@ export class EnhancedAuthController {
   @ApiOperation({ summary: 'Verify an Email OTP code' })
   @ApiResponse({ status: 200, description: 'OTP verified successfully' })
   @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
-  async verifyEmailOTP(
-    @Body() dto: { code: string; type: EmailOTPType },
-    @Req() req: any,
-  ) {
+  async verifyEmailOTP(@Body() dto: { code: string; type: EmailOTPType }, @Req() req: any) {
     return this.enhancedAuthService.verifyEmailOTP(req.user.id, dto.code, dto.type);
   }
 
@@ -301,7 +310,7 @@ export class EnhancedAuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials or OTP' })
   async loginWithEmailOTP(
     @Body() dto: { email: string; password: string; otpCode: string },
-    @Req() req: Request,
+    @Req() req: Request
   ) {
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
@@ -311,7 +320,7 @@ export class EnhancedAuthController {
       dto.password,
       dto.otpCode,
       ipAddress,
-      userAgent,
+      userAgent
     );
   }
 
@@ -328,7 +337,9 @@ export class EnhancedAuthController {
 
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: 'Google OAuth callback — creates/links account and redirects to frontend' })
+  @ApiOperation({
+    summary: 'Google OAuth callback — creates/links account and redirects to frontend',
+  })
   @ApiResponse({ status: 302, description: 'Redirects to frontend callback with tokens' })
   @ApiResponse({ status: 302, description: 'Redirects to login with error on failure' })
   async googleAuthCallback(@Req() req: any, @Res() res: Response) {
@@ -375,7 +386,10 @@ export class EnhancedAuthController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List all active sessions for the current user' })
-  @ApiResponse({ status: 200, description: 'Returns sessions with device info; current session marked with isCurrent: true' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns sessions with device info; current session marked with isCurrent: true',
+  })
   async getUserSessions(@Req() req: any) {
     const sessions = await this.sessionService.getUserSessions(req.user.id);
 
@@ -410,20 +424,17 @@ export class EnhancedAuthController {
     // Get current session fingerprint
     const currentFingerprint = await this.sessionService.getCurrentSessionFingerprint(
       ipAddress,
-      userAgent,
+      userAgent
     );
 
     const allSessions = await this.sessionService.getUserSessions(req.user.id);
 
     // Find the most recent session with matching fingerprint as "current"
-    const sessionsWithFingerprint = allSessions.filter(
-      (s) => s.fingerprint === currentFingerprint,
-    );
+    const sessionsWithFingerprint = allSessions.filter((s) => s.fingerprint === currentFingerprint);
     const currentSession =
       sessionsWithFingerprint.length > 0
         ? sessionsWithFingerprint.sort(
-            (a, b) =>
-              new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime(),
+            (a, b) => new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime()
           )[0]
         : null;
 
