@@ -48,11 +48,9 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
       .slice(0, 2);
   };
 
-  // Construct user name from user object
-  const userName = review.user
-    ? `${review.user.firstName || ''} ${review.user.lastName || ''}`.trim() || 'Anonymous'
-    : 'Anonymous';
-  const userAvatar = review.user?.avatar || null;
+  // Use userName and userAvatar from review
+  const userName = review.userName || 'Anonymous';
+  const userAvatar = review.userAvatar || null;
 
   const relativeDate = formatDistanceToNow(new Date(review.createdAt), { addSuffix: true });
 
@@ -84,7 +82,7 @@ export function ReviewCard({ review, onMarkHelpful, onReport }: ReviewCardProps)
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h4 className="font-semibold text-black">{userName}</h4>
-              {review.isVerified && (
+              {review.isVerifiedPurchase && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path

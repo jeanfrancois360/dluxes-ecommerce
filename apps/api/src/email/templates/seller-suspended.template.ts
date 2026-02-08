@@ -5,6 +5,7 @@ export const sellerSuspendedTemplate = (data: {
   storeName: string;
   suspensionReason: string;
   supportUrl: string;
+  dashboardUrl: string;
 }) => {
   const content = `
     <div style="text-align: center;">

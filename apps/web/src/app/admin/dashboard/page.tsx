@@ -9,6 +9,7 @@
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { PaymentDashboard } from '@/components/admin/payment-dashboard';
@@ -20,25 +21,30 @@ import {
   useCustomerGrowth,
   useRecentOrders,
 } from '@/hooks/use-admin';
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
 import { format } from 'date-fns';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+
+// Dynamically import Recharts to avoid SSR issues
+const LineChart = dynamic(() => import('recharts').then((mod) => mod.LineChart), { ssr: false });
+const Line = dynamic(() => import('recharts').then((mod) => mod.Line), { ssr: false });
+const AreaChart = dynamic(() => import('recharts').then((mod) => mod.AreaChart), { ssr: false });
+const Area = dynamic(() => import('recharts').then((mod) => mod.Area), { ssr: false });
+const BarChart = dynamic(() => import('recharts').then((mod) => mod.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then((mod) => mod.Bar), { ssr: false });
+const PieChart = dynamic(() => import('recharts').then((mod) => mod.PieChart), { ssr: false });
+const Pie = dynamic(() => import('recharts').then((mod) => mod.Pie), { ssr: false });
+const Cell = dynamic(() => import('recharts').then((mod) => mod.Cell), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then((mod) => mod.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then((mod) => mod.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then((mod) => mod.CartesianGrid), {
+  ssr: false,
+});
+const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { ssr: false });
+const Legend = dynamic(() => import('recharts').then((mod) => mod.Legend), { ssr: false });
+const ResponsiveContainer = dynamic(
+  () => import('recharts').then((mod) => mod.ResponsiveContainer),
+  { ssr: false }
+);
 // Stat Card Component
 function StatCard({
   title,
@@ -255,8 +261,8 @@ function DashboardContent() {
                 />
                 <YAxis stroke="#9ca3af" />
                 <Tooltip
-                  formatter={(value: number) => `$${value.toLocaleString()}`}
-                  labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
+                  formatter={(value: any) => `$${Number(value).toLocaleString()}`}
+                  labelFormatter={(label: any) => format(new Date(label), 'MMM d, yyyy')}
                 />
                 <Line
                   type="monotone"
@@ -291,7 +297,7 @@ function DashboardContent() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => `${value} orders`} />
+                <Tooltip formatter={(value: any) => `${value} orders`} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -311,7 +317,7 @@ function DashboardContent() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis type="number" stroke="#9ca3af" />
                 <YAxis dataKey="name" type="category" width={120} stroke="#9ca3af" />
-                <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
                 <Bar dataKey="revenue" fill="#CBB57B" />
               </BarChart>
             </ResponsiveContainer>
@@ -333,7 +339,7 @@ function DashboardContent() {
                   stroke="#9ca3af"
                 />
                 <YAxis stroke="#9ca3af" />
-                <Tooltip labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')} />
+                <Tooltip labelFormatter={(label: any) => format(new Date(label), 'MMM d, yyyy')} />
                 <Area
                   type="monotone"
                   dataKey="customers"

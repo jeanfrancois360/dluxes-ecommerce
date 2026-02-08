@@ -640,7 +640,9 @@ function ReviewsContent() {
                                 : 'bg-red-600'
                           }`}
                         ></div>
-                        {review.status.charAt(0).toUpperCase() + review.status.slice(1)}
+                        {review.status
+                          ? review.status.charAt(0).toUpperCase() + review.status.slice(1)
+                          : 'Pending'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-700">
