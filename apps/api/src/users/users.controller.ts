@@ -1,4 +1,19 @@
-import { Controller, Get, Patch, Post, Delete, Body, Param, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -15,6 +30,52 @@ export class UsersController {
   @Patch('me')
   async updateProfile(@Request() req, @Body() body: any) {
     return this.usersService.update(req.user.userId, body);
+  }
+
+  /**
+   * Upload user avatar
+   * @route POST /users/avatar
+   */
+  @Post('avatar')
+  @UseInterceptors(FileInterceptor('avatar'))
+  async uploadAvatar(@Request() req, @UploadedFile() file: Express.Multer.File) {
+    try {
+      const userId = req.user.userId || req.user.id;
+
+      if (!file) {
+        return {
+          success: false,
+          message: 'No file provided',
+        };
+      }
+
+      const updatedUser = await this.usersService.uploadAvatar(userId, file);
+      return updatedUser;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to upload avatar',
+      };
+    }
+  }
+
+  /**
+   * Delete user avatar
+   * @route DELETE /users/avatar
+   */
+  @Delete('avatar')
+  @HttpCode(HttpStatus.OK)
+  async deleteAvatar(@Request() req) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const updatedUser = await this.usersService.deleteAvatar(userId);
+      return updatedUser;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to delete avatar',
+      };
+    }
   }
 
   /**
@@ -55,7 +116,8 @@ export class UsersController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to update notification preferences',
+        message:
+          error instanceof Error ? error.message : 'Failed to update notification preferences',
       };
     }
   }
