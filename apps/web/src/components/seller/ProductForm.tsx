@@ -20,7 +20,13 @@ import { AlertTriangle, Lock, ArrowRight, Crown } from 'lucide-react';
 import { categoriesAPI, type Category } from '@/lib/api/categories';
 import { VariantManager } from '../admin/variant-manager';
 import { StockLevelIndicator } from '../admin/stock-status-badge';
-import { RealEstateFields, VehicleFields, DigitalFields, ServiceFields, RentalFields } from '../admin/product-type-fields';
+import {
+  RealEstateFields,
+  VehicleFields,
+  DigitalFields,
+  ServiceFields,
+  RentalFields,
+} from '../admin/product-type-fields';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
 import { useCanListProductType } from '@/hooks/use-subscription';
 
@@ -78,7 +84,13 @@ interface ProductFormProps {
 }
 
 // Product Type Selector with subscription check
-function ProductTypeSelector({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function ProductTypeSelector({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
   const { canList, reasons, isLoading } = useCanListProductType(value);
   const requiresSubscription = SUBSCRIPTION_REQUIRED_TYPES.includes(value);
   const typeLabel = PRODUCT_TYPE_LABELS[value] || value;
@@ -118,7 +130,8 @@ function ProductTypeSelector({ value, onChange }: { value: string; onChange: (va
     if (!reasons.hasListingCapacity) {
       return {
         title: 'Listing Limit Reached',
-        message: 'You have reached the maximum number of listings for your plan. Upgrade to add more products.',
+        message:
+          'You have reached the maximum number of listings for your plan. Upgrade to add more products.',
         actionLabel: 'Upgrade Plan',
         actionUrl: '/seller/subscription/plans',
       };
@@ -193,15 +206,18 @@ function ProductTypeSelector({ value, onChange }: { value: string; onChange: (va
       )}
 
       {!requiresSubscription && (
-        <p className="mt-1 text-sm text-gray-500">
-          Select the type of product you're selling
-        </p>
+        <p className="mt-1 text-sm text-gray-500">Select the type of product you're selling</p>
       )}
     </div>
   );
 }
 
-export default function ProductForm({ initialData, isEdit = false, onSubmit, onCancel }: ProductFormProps) {
+export default function ProductForm({
+  initialData,
+  isEdit = false,
+  onSubmit,
+  onCancel,
+}: ProductFormProps) {
   const product = initialData;
 
   // Categories state
@@ -209,131 +225,162 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
   const [loadingCategories, setLoadingCategories] = useState(true);
 
   // Form state
-  const [formData, setFormData] = useState<any>({
-    name: product?.name || '',
-    slug: product?.slug || '',
-    sku: product?.sku || '',
-    description: product?.description || '',
-    shortDescription: (product as any)?.shortDescription || '',
-    price: product?.price || undefined,
-    compareAtPrice: product?.compareAtPrice || undefined,
-    categoryId: product?.categoryId || product?.category || '',
-    images: product?.images || [],
-    inventory: product?.inventory || product?.stock || undefined,
-    status: product?.status || 'DRAFT',
-    tags: Array.isArray(product?.tags)
-      ? product.tags.map((tag: any) => typeof tag === 'string' ? tag : tag.name).filter(Boolean)
-      : [],
-    productType: (product as any)?.productType || 'PHYSICAL',
-    purchaseType: (product as any)?.purchaseType || 'INSTANT',
-    // SEO fields
-    metaTitle: (product as any)?.metaTitle || '',
-    metaDescription: (product as any)?.metaDescription || '',
-    seoKeywords: (product as any)?.seoKeywords || '',
-    // Attributes (ensure they're string arrays)
-    badges: Array.isArray((product as any)?.badges)
-      ? (product as any).badges.map((b: any) => typeof b === 'string' ? b : b.name || String(b)).filter(Boolean)
-      : [],
-    colors: Array.isArray((product as any)?.colors) ? (product as any).colors.filter(Boolean) : [],
-    sizes: Array.isArray((product as any)?.sizes) ? (product as any).sizes.filter(Boolean) : [],
-    materials: Array.isArray((product as any)?.materials) ? (product as any).materials.filter(Boolean) : [],
-    weight: (product as any)?.weight || undefined,
-    // Real Estate Fields
-    propertyType: (product as any)?.propertyType || '',
-    bedrooms: (product as any)?.bedrooms || undefined,
-    bathrooms: (product as any)?.bathrooms || undefined,
-    squareFeet: (product as any)?.squareFeet || undefined,
-    lotSize: (product as any)?.lotSize || undefined,
-    yearBuilt: (product as any)?.yearBuilt || undefined,
-    parkingSpaces: (product as any)?.parkingSpaces || undefined,
-    amenities: Array.isArray((product as any)?.amenities)
-      ? (product as any).amenities.map((a: any) => typeof a === 'string' ? a : a.name || String(a)).filter(Boolean)
-      : [],
-    propertyAddress: (product as any)?.propertyAddress || '',
-    propertyCity: (product as any)?.propertyCity || '',
-    propertyState: (product as any)?.propertyState || '',
-    propertyCountry: (product as any)?.propertyCountry || '',
-    propertyZipCode: (product as any)?.propertyZipCode || '',
-    propertyLatitude: (product as any)?.propertyLatitude || undefined,
-    propertyLongitude: (product as any)?.propertyLongitude || undefined,
-    virtualTourUrl: (product as any)?.virtualTourUrl || '',
-    // Vehicle Fields
-    vehicleMake: (product as any)?.vehicleMake || '',
-    vehicleModel: (product as any)?.vehicleModel || '',
-    vehicleYear: (product as any)?.vehicleYear || undefined,
-    vehicleMileage: (product as any)?.vehicleMileage || undefined,
-    vehicleVIN: (product as any)?.vehicleVIN || '',
-    vehicleCondition: (product as any)?.vehicleCondition || '',
-    vehicleTransmission: (product as any)?.vehicleTransmission || '',
-    vehicleFuelType: (product as any)?.vehicleFuelType || '',
-    vehicleBodyType: (product as any)?.vehicleBodyType || '',
-    vehicleExteriorColor: (product as any)?.vehicleExteriorColor || '',
-    vehicleInteriorColor: (product as any)?.vehicleInteriorColor || '',
-    vehicleDrivetrain: (product as any)?.vehicleDrivetrain || '',
-    vehicleEngine: (product as any)?.vehicleEngine || '',
-    vehicleFeatures: Array.isArray((product as any)?.vehicleFeatures)
-      ? (product as any).vehicleFeatures.map((f: any) => typeof f === 'string' ? f : f.name || String(f)).filter(Boolean)
-      : [],
-    vehicleHistory: (product as any)?.vehicleHistory || '',
-    vehicleWarranty: (product as any)?.vehicleWarranty || '',
-    vehicleTestDriveAvailable: (product as any)?.vehicleTestDriveAvailable ?? true,
-    // Digital Fields
-    digitalFileUrl: (product as any)?.digitalFileUrl || '',
-    digitalFileSize: (product as any)?.digitalFileSize || undefined,
-    digitalFileFormat: (product as any)?.digitalFileFormat || '',
-    digitalFileName: (product as any)?.digitalFileName || '',
-    digitalVersion: (product as any)?.digitalVersion || '',
-    digitalLicenseType: (product as any)?.digitalLicenseType || '',
-    digitalDownloadLimit: (product as any)?.digitalDownloadLimit || undefined,
-    digitalPreviewUrl: (product as any)?.digitalPreviewUrl || '',
-    digitalRequirements: (product as any)?.digitalRequirements || '',
-    digitalInstructions: (product as any)?.digitalInstructions || '',
-    digitalUpdatePolicy: (product as any)?.digitalUpdatePolicy || '',
-    digitalSupportEmail: (product as any)?.digitalSupportEmail || '',
-    // Service Fields
-    serviceType: (product as any)?.serviceType || '',
-    serviceDuration: (product as any)?.serviceDuration || undefined,
-    serviceDurationUnit: (product as any)?.serviceDurationUnit || '',
-    serviceLocation: (product as any)?.serviceLocation || '',
-    serviceArea: (product as any)?.serviceArea || '',
-    serviceAvailability: (product as any)?.serviceAvailability || '',
-    serviceBookingRequired: (product as any)?.serviceBookingRequired ?? true,
-    serviceBookingLeadTime: (product as any)?.serviceBookingLeadTime || undefined,
-    serviceProviderName: (product as any)?.serviceProviderName || '',
-    serviceProviderBio: (product as any)?.serviceProviderBio || '',
-    serviceProviderImage: (product as any)?.serviceProviderImage || '',
-    serviceProviderCredentials: (product as any)?.serviceProviderCredentials || [],
-    serviceMaxClients: (product as any)?.serviceMaxClients || undefined,
-    serviceCancellationPolicy: (product as any)?.serviceCancellationPolicy || '',
-    serviceIncludes: (product as any)?.serviceIncludes || [],
-    serviceExcludes: (product as any)?.serviceExcludes || [],
-    serviceRequirements: (product as any)?.serviceRequirements || '',
-    // Rental Fields
-    rentalPeriodType: (product as any)?.rentalPeriodType || '',
-    rentalMinPeriod: (product as any)?.rentalMinPeriod || undefined,
-    rentalMaxPeriod: (product as any)?.rentalMaxPeriod || undefined,
-    rentalPriceHourly: (product as any)?.rentalPriceHourly || undefined,
-    rentalPriceDaily: (product as any)?.rentalPriceDaily || undefined,
-    rentalPriceWeekly: (product as any)?.rentalPriceWeekly || undefined,
-    rentalPriceMonthly: (product as any)?.rentalPriceMonthly || undefined,
-    rentalSecurityDeposit: (product as any)?.rentalSecurityDeposit || undefined,
-    rentalPickupLocation: (product as any)?.rentalPickupLocation || '',
-    rentalDeliveryAvailable: (product as any)?.rentalDeliveryAvailable ?? false,
-    rentalDeliveryFee: (product as any)?.rentalDeliveryFee || undefined,
-    rentalLateReturnFee: (product as any)?.rentalLateReturnFee || undefined,
-    rentalConditions: (product as any)?.rentalConditions || '',
-    rentalAvailability: (product as any)?.rentalAvailability || '',
-    rentalInsuranceRequired: (product as any)?.rentalInsuranceRequired ?? false,
-    rentalInsuranceOptions: (product as any)?.rentalInsuranceOptions || '',
-    rentalAgeRequirement: (product as any)?.rentalAgeRequirement || undefined,
-    rentalIdRequired: (product as any)?.rentalIdRequired ?? true,
-    rentalIncludes: (product as any)?.rentalIncludes || [],
-    rentalExcludes: (product as any)?.rentalExcludes || [],
-    rentalNotes: (product as any)?.rentalNotes || '',
+  const [formData, setFormData] = useState<any>(() => {
+    // Transform backend image format to frontend format on initial load
+    let initialImages: string[] = [];
+    if (product) {
+      // Priority 1: ProductImage relation (array of image objects)
+      if (Array.isArray(product.images) && product.images.length > 0) {
+        initialImages = product.images.map((img: any) => img.url);
+      }
+      // Priority 2: heroImage field (simple string)
+      else if ((product as any).heroImage) {
+        initialImages = [(product as any).heroImage];
+      }
+      // Priority 3: gallery JSON field
+      else if ((product as any).gallery && Array.isArray((product as any).gallery)) {
+        initialImages = (product as any).gallery.map((item: any) => item.url || item);
+      }
+    }
+
+    return {
+      name: product?.name || '',
+      slug: product?.slug || '',
+      sku: product?.sku || '',
+      description: product?.description || '',
+      shortDescription: (product as any)?.shortDescription || '',
+      price: product?.price || undefined,
+      compareAtPrice: product?.compareAtPrice || undefined,
+      categoryId: product?.categoryId || product?.category || '',
+      images: initialImages,
+      inventory: product?.inventory || product?.stock || undefined,
+      status: product?.status || 'DRAFT',
+      tags: Array.isArray(product?.tags)
+        ? product.tags.map((tag: any) => (typeof tag === 'string' ? tag : tag.name)).filter(Boolean)
+        : [],
+      productType: (product as any)?.productType || 'PHYSICAL',
+      purchaseType: (product as any)?.purchaseType || 'INSTANT',
+      // SEO fields
+      metaTitle: (product as any)?.metaTitle || '',
+      metaDescription: (product as any)?.metaDescription || '',
+      seoKeywords: Array.isArray((product as any)?.seoKeywords)
+        ? (product as any).seoKeywords.join(', ')
+        : (product as any)?.seoKeywords || '',
+      // Attributes (ensure they're string arrays)
+      badges: Array.isArray((product as any)?.badges)
+        ? (product as any).badges
+            .map((b: any) => (typeof b === 'string' ? b : b.name || String(b)))
+            .filter(Boolean)
+        : [],
+      colors: Array.isArray((product as any)?.colors)
+        ? (product as any).colors.filter(Boolean)
+        : [],
+      sizes: Array.isArray((product as any)?.sizes) ? (product as any).sizes.filter(Boolean) : [],
+      materials: Array.isArray((product as any)?.materials)
+        ? (product as any).materials.filter(Boolean)
+        : [],
+      weight: (product as any)?.weight || undefined,
+      // Real Estate Fields
+      propertyType: (product as any)?.propertyType || '',
+      bedrooms: (product as any)?.bedrooms || undefined,
+      bathrooms: (product as any)?.bathrooms || undefined,
+      squareFeet: (product as any)?.squareFeet || undefined,
+      lotSize: (product as any)?.lotSize || undefined,
+      yearBuilt: (product as any)?.yearBuilt || undefined,
+      parkingSpaces: (product as any)?.parkingSpaces || undefined,
+      amenities: Array.isArray((product as any)?.amenities)
+        ? (product as any).amenities
+            .map((a: any) => (typeof a === 'string' ? a : a.name || String(a)))
+            .filter(Boolean)
+        : [],
+      propertyAddress: (product as any)?.propertyAddress || '',
+      propertyCity: (product as any)?.propertyCity || '',
+      propertyState: (product as any)?.propertyState || '',
+      propertyCountry: (product as any)?.propertyCountry || '',
+      propertyZipCode: (product as any)?.propertyZipCode || '',
+      propertyLatitude: (product as any)?.propertyLatitude || undefined,
+      propertyLongitude: (product as any)?.propertyLongitude || undefined,
+      virtualTourUrl: (product as any)?.virtualTourUrl || '',
+      // Vehicle Fields
+      vehicleMake: (product as any)?.vehicleMake || '',
+      vehicleModel: (product as any)?.vehicleModel || '',
+      vehicleYear: (product as any)?.vehicleYear || undefined,
+      vehicleMileage: (product as any)?.vehicleMileage || undefined,
+      vehicleVIN: (product as any)?.vehicleVIN || '',
+      vehicleCondition: (product as any)?.vehicleCondition || '',
+      vehicleTransmission: (product as any)?.vehicleTransmission || '',
+      vehicleFuelType: (product as any)?.vehicleFuelType || '',
+      vehicleBodyType: (product as any)?.vehicleBodyType || '',
+      vehicleExteriorColor: (product as any)?.vehicleExteriorColor || '',
+      vehicleInteriorColor: (product as any)?.vehicleInteriorColor || '',
+      vehicleDrivetrain: (product as any)?.vehicleDrivetrain || '',
+      vehicleEngine: (product as any)?.vehicleEngine || '',
+      vehicleFeatures: Array.isArray((product as any)?.vehicleFeatures)
+        ? (product as any).vehicleFeatures
+            .map((f: any) => (typeof f === 'string' ? f : f.name || String(f)))
+            .filter(Boolean)
+        : [],
+      vehicleHistory: (product as any)?.vehicleHistory || '',
+      vehicleWarranty: (product as any)?.vehicleWarranty || '',
+      vehicleTestDriveAvailable: (product as any)?.vehicleTestDriveAvailable ?? true,
+      // Digital Fields
+      digitalFileUrl: (product as any)?.digitalFileUrl || '',
+      digitalFileSize: (product as any)?.digitalFileSize || undefined,
+      digitalFileFormat: (product as any)?.digitalFileFormat || '',
+      digitalFileName: (product as any)?.digitalFileName || '',
+      digitalVersion: (product as any)?.digitalVersion || '',
+      digitalLicenseType: (product as any)?.digitalLicenseType || '',
+      digitalDownloadLimit: (product as any)?.digitalDownloadLimit || undefined,
+      digitalPreviewUrl: (product as any)?.digitalPreviewUrl || '',
+      digitalRequirements: (product as any)?.digitalRequirements || '',
+      digitalInstructions: (product as any)?.digitalInstructions || '',
+      digitalUpdatePolicy: (product as any)?.digitalUpdatePolicy || '',
+      digitalSupportEmail: (product as any)?.digitalSupportEmail || '',
+      // Service Fields
+      serviceType: (product as any)?.serviceType || '',
+      serviceDuration: (product as any)?.serviceDuration || undefined,
+      serviceDurationUnit: (product as any)?.serviceDurationUnit || '',
+      serviceLocation: (product as any)?.serviceLocation || '',
+      serviceArea: (product as any)?.serviceArea || '',
+      serviceAvailability: (product as any)?.serviceAvailability || '',
+      serviceBookingRequired: (product as any)?.serviceBookingRequired ?? true,
+      serviceBookingLeadTime: (product as any)?.serviceBookingLeadTime || undefined,
+      serviceProviderName: (product as any)?.serviceProviderName || '',
+      serviceProviderBio: (product as any)?.serviceProviderBio || '',
+      serviceProviderImage: (product as any)?.serviceProviderImage || '',
+      serviceProviderCredentials: (product as any)?.serviceProviderCredentials || [],
+      serviceMaxClients: (product as any)?.serviceMaxClients || undefined,
+      serviceCancellationPolicy: (product as any)?.serviceCancellationPolicy || '',
+      serviceIncludes: (product as any)?.serviceIncludes || [],
+      serviceExcludes: (product as any)?.serviceExcludes || [],
+      serviceRequirements: (product as any)?.serviceRequirements || '',
+      // Rental Fields
+      rentalPeriodType: (product as any)?.rentalPeriodType || '',
+      rentalMinPeriod: (product as any)?.rentalMinPeriod || undefined,
+      rentalMaxPeriod: (product as any)?.rentalMaxPeriod || undefined,
+      rentalPriceHourly: (product as any)?.rentalPriceHourly || undefined,
+      rentalPriceDaily: (product as any)?.rentalPriceDaily || undefined,
+      rentalPriceWeekly: (product as any)?.rentalPriceWeekly || undefined,
+      rentalPriceMonthly: (product as any)?.rentalPriceMonthly || undefined,
+      rentalSecurityDeposit: (product as any)?.rentalSecurityDeposit || undefined,
+      rentalPickupLocation: (product as any)?.rentalPickupLocation || '',
+      rentalDeliveryAvailable: (product as any)?.rentalDeliveryAvailable ?? false,
+      rentalDeliveryFee: (product as any)?.rentalDeliveryFee || undefined,
+      rentalLateReturnFee: (product as any)?.rentalLateReturnFee || undefined,
+      rentalConditions: (product as any)?.rentalConditions || '',
+      rentalAvailability: (product as any)?.rentalAvailability || '',
+      rentalInsuranceRequired: (product as any)?.rentalInsuranceRequired ?? false,
+      rentalInsuranceOptions: (product as any)?.rentalInsuranceOptions || '',
+      rentalAgeRequirement: (product as any)?.rentalAgeRequirement || undefined,
+      rentalIdRequired: (product as any)?.rentalIdRequired ?? true,
+      rentalIncludes: (product as any)?.rentalIncludes || [],
+      rentalExcludes: (product as any)?.rentalExcludes || [],
+      rentalNotes: (product as any)?.rentalNotes || '',
+    };
   });
 
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [newTag, setNewTag] = useState('');
 
   // Fetch categories on mount
@@ -355,7 +402,21 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
   // Update form data when product prop changes (for edit mode)
   useEffect(() => {
     if (product) {
-      const imageArray = Array.isArray(product.images) ? product.images : [];
+      // Transform backend image format to frontend format (images array)
+      let imageArray: string[] = [];
+
+      // Priority 1: ProductImage relation (array of image objects)
+      if (Array.isArray(product.images) && product.images.length > 0) {
+        imageArray = product.images.map((img: any) => img.url);
+      }
+      // Priority 2: heroImage field (simple string)
+      else if ((product as any).heroImage) {
+        imageArray = [(product as any).heroImage];
+      }
+      // Priority 3: gallery JSON field
+      else if ((product as any).gallery && Array.isArray((product as any).gallery)) {
+        imageArray = (product as any).gallery.map((item: any) => item.url || item);
+      }
 
       setFormData({
         name: product.name || '',
@@ -374,7 +435,9 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
         purchaseType: (product as any)?.purchaseType || 'INSTANT',
         metaTitle: (product as any)?.metaTitle || '',
         metaDescription: (product as any)?.metaDescription || '',
-        seoKeywords: (product as any)?.seoKeywords || '',
+        seoKeywords: Array.isArray((product as any)?.seoKeywords)
+          ? (product as any).seoKeywords.join(', ')
+          : (product as any)?.seoKeywords || '',
         badges: (product as any)?.badges || [],
         colors: (product as any)?.colors || [],
         sizes: (product as any)?.sizes || [],
@@ -389,8 +452,10 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
         yearBuilt: (product as any)?.yearBuilt || undefined,
         parkingSpaces: (product as any)?.parkingSpaces || undefined,
         amenities: Array.isArray((product as any)?.amenities)
-      ? (product as any).amenities.map((a: any) => typeof a === 'string' ? a : a.name || String(a)).filter(Boolean)
-      : [],
+          ? (product as any).amenities
+              .map((a: any) => (typeof a === 'string' ? a : a.name || String(a)))
+              .filter(Boolean)
+          : [],
         propertyAddress: (product as any)?.propertyAddress || '',
         propertyCity: (product as any)?.propertyCity || '',
         propertyState: (product as any)?.propertyState || '',
@@ -413,8 +478,10 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
         vehicleDrivetrain: (product as any)?.vehicleDrivetrain || '',
         vehicleEngine: (product as any)?.vehicleEngine || '',
         vehicleFeatures: Array.isArray((product as any)?.vehicleFeatures)
-      ? (product as any).vehicleFeatures.map((f: any) => typeof f === 'string' ? f : f.name || String(f)).filter(Boolean)
-      : [],
+          ? (product as any).vehicleFeatures
+              .map((f: any) => (typeof f === 'string' ? f : f.name || String(f)))
+              .filter(Boolean)
+          : [],
         vehicleHistory: (product as any)?.vehicleHistory || '',
         vehicleWarranty: (product as any)?.vehicleWarranty || '',
         vehicleTestDriveAvailable: (product as any)?.vehicleTestDriveAvailable ?? true,
@@ -487,9 +554,8 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
       ...prev,
       name: value,
       // Auto-generate slug if it's a new product or slug hasn't been manually edited
-      slug: !product?.slug || prev.slug === generateSlug(prev.name)
-        ? generateSlug(value)
-        : prev.slug
+      slug:
+        !product?.slug || prev.slug === generateSlug(prev.name) ? generateSlug(value) : prev.slug,
     }));
   };
 
@@ -499,7 +565,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
   }, []);
 
   const validateForm = (): boolean => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     // Required field validation
     if (!formData.name?.trim()) {
@@ -537,7 +603,11 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
       }
 
       if (formData.productType === 'PHYSICAL') {
-        if (formData.inventory === undefined || formData.inventory === null || formData.inventory === '') {
+        if (
+          formData.inventory === undefined ||
+          formData.inventory === null ||
+          formData.inventory === ''
+        ) {
           newErrors.inventory = 'Stock/inventory is required for physical products';
         } else if (formData.inventory < 0) {
           newErrors.inventory = 'Stock cannot be negative';
@@ -564,7 +634,22 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
 
     setLoading(true);
     try {
-      await onSubmit(formData);
+      // Prepare data for API - clean up fields that don't exist in backend schema
+      const dataToSubmit = { ...formData };
+
+      // Remove fields that don't exist in backend or are handled separately
+      delete dataToSubmit.tags; // Tags not supported in current schema
+
+      // Convert seoKeywords from comma-separated string to array
+      if (typeof dataToSubmit.seoKeywords === 'string') {
+        dataToSubmit.seoKeywords = dataToSubmit.seoKeywords
+          .split(',')
+          .map((k: string) => k.trim())
+          .filter((k: string) => k.length > 0);
+      }
+
+      // Pass the full data including images array - parent component will handle images separately
+      await onSubmit(dataToSubmit);
     } catch (error) {
       console.error('Form submission error:', error);
     } finally {
@@ -577,7 +662,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
       setFormData((prev: any) => ({
         ...prev,
-        tags: [...prev.tags, newTag.trim()]
+        tags: [...prev.tags, newTag.trim()],
       }));
       setNewTag('');
     }
@@ -590,17 +675,16 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
       tags: prev.tags.filter((tag: any) => {
         const currentTagValue = typeof tag === 'string' ? tag : tag?.name;
         return currentTagValue !== tagValue;
-      })
+      }),
     }));
   };
-
 
   // Handle array field changes (badges, colors, sizes, materials)
   const handleArrayFieldAdd = (field: string, value: string) => {
     if (value.trim() && !formData[field].includes(value.trim())) {
       setFormData((prev: any) => ({
         ...prev,
-        [field]: [...prev[field], value.trim()]
+        [field]: [...prev[field], value.trim()],
       }));
     }
   };
@@ -608,7 +692,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
   const handleArrayFieldRemove = (field: string, value: string) => {
     setFormData((prev: any) => ({
       ...prev,
-      [field]: prev[field].filter((item: string) => item !== value)
+      [field]: prev[field].filter((item: string) => item !== value),
     }));
   };
 
@@ -634,9 +718,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               }`}
               placeholder="Enter product name"
             />
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-500">{errors.name}</p>
-            )}
+            {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
           </div>
 
           {/* Product Slug */}
@@ -654,9 +736,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               }`}
               placeholder="product-slug"
             />
-            {errors.slug && (
-              <p className="mt-1 text-sm text-red-500">{errors.slug}</p>
-            )}
+            {errors.slug && <p className="mt-1 text-sm text-red-500">{errors.slug}</p>}
             <p className="mt-1 text-sm text-gray-500">
               URL-friendly version of the name. Auto-generated from product name.
             </p>
@@ -675,9 +755,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
               placeholder="SKU-12345"
             />
-            <p className="mt-1 text-sm text-gray-500">
-              Unique identifier for inventory tracking
-            </p>
+            <p className="mt-1 text-sm text-gray-500">Unique identifier for inventory tracking</p>
           </div>
 
           {/* Product Type */}
@@ -727,9 +805,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                 ))}
               </select>
             )}
-            {errors.categoryId && (
-              <p className="mt-1 text-sm text-red-500">{errors.categoryId}</p>
-            )}
+            {errors.categoryId && <p className="mt-1 text-sm text-red-500">{errors.categoryId}</p>}
           </div>
 
           {/* Description */}
@@ -754,7 +830,10 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
 
           {/* Short Description */}
           <div>
-            <label htmlFor="shortDescription" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="shortDescription"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Short Description
             </label>
             <textarea
@@ -790,21 +869,24 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                 type="number"
                 step="0.01"
                 value={formData.price || ''}
-                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || undefined })}
+                onChange={(e) =>
+                  setFormData({ ...formData, price: parseFloat(e.target.value) || undefined })
+                }
                 className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
                   errors.price ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="0.00"
               />
             </div>
-            {errors.price && (
-              <p className="mt-1 text-sm text-red-500">{errors.price}</p>
-            )}
+            {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
           </div>
 
           {/* Compare At Price */}
           <div>
-            <label htmlFor="compareAtPrice" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="compareAtPrice"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Compare At Price
             </label>
             <div className="relative">
@@ -814,14 +896,17 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                 type="number"
                 step="0.01"
                 value={formData.compareAtPrice || ''}
-                onChange={(e) => setFormData({ ...formData, compareAtPrice: parseFloat(e.target.value) || undefined })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    compareAtPrice: parseFloat(e.target.value) || undefined,
+                  })
+                }
                 className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
                 placeholder="0.00"
               />
             </div>
-            <p className="mt-1 text-sm text-gray-500">
-              Original price to show savings
-            </p>
+            <p className="mt-1 text-sm text-gray-500">Original price to show savings</p>
           </div>
 
           {/* Stock/Inventory */}
@@ -834,23 +919,25 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                 id="inventory"
                 type="number"
                 value={formData.inventory || ''}
-                onChange={(e) => setFormData({ ...formData, inventory: parseInt(e.target.value) || undefined })}
+                onChange={(e) =>
+                  setFormData({ ...formData, inventory: parseInt(e.target.value) || undefined })
+                }
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
                   errors.inventory ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="0"
               />
-              {errors.inventory && (
-                <p className="mt-1 text-sm text-red-500">{errors.inventory}</p>
-              )}
-              {formData.inventory !== undefined && formData.inventory !== null && formData.inventory !== '' && (
-                <div className="mt-2">
-                  <StockLevelIndicator
-                    stock={formData.inventory}
-                    lowStockThreshold={INVENTORY_DEFAULTS.LOW_STOCK_THRESHOLD}
-                  />
-                </div>
-              )}
+              {errors.inventory && <p className="mt-1 text-sm text-red-500">{errors.inventory}</p>}
+              {formData.inventory !== undefined &&
+                formData.inventory !== null &&
+                formData.inventory !== '' && (
+                  <div className="mt-2">
+                    <StockLevelIndicator
+                      stock={formData.inventory}
+                      lowStockThreshold={INVENTORY_DEFAULTS.LOW_STOCK_THRESHOLD}
+                    />
+                  </div>
+                )}
             </div>
           )}
 
@@ -865,7 +952,9 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
                 type="number"
                 step="0.01"
                 value={formData.weight || ''}
-                onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || undefined })}
+                onChange={(e) =>
+                  setFormData({ ...formData, weight: parseFloat(e.target.value) || undefined })
+                }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
                 placeholder="0.00"
               />
@@ -1037,9 +1126,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
 
             {/* Materials */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Materials
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Materials</label>
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"
@@ -1090,9 +1177,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
 
             {/* Badges */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Badges
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Product Badges</label>
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"
@@ -1124,7 +1209,8 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               </div>
               <div className="flex flex-wrap gap-2">
                 {formData.badges.map((badge: any, index: number) => {
-                  const badgeValue = typeof badge === 'string' ? badge : badge?.name || String(badge);
+                  const badgeValue =
+                    typeof badge === 'string' ? badge : badge?.name || String(badge);
                   return (
                     <span
                       key={`badge-${index}-${badgeValue}`}
@@ -1154,9 +1240,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
         <div className="space-y-4">
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Product Tags
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Product Tags</label>
             <div className="flex gap-2 mb-2">
               <input
                 type="text"
@@ -1223,7 +1307,10 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
 
           {/* Meta Description */}
           <div>
-            <label htmlFor="metaDescription" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="metaDescription"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               SEO Description
             </label>
             <textarea
@@ -1253,9 +1340,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
               placeholder="keyword1, keyword2, keyword3"
             />
-            <p className="mt-1 text-sm text-gray-500">
-              Comma-separated keywords for SEO
-            </p>
+            <p className="mt-1 text-sm text-gray-500">Comma-separated keywords for SEO</p>
           </div>
         </div>
       </div>
@@ -1279,18 +1364,17 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
             <option value="ARCHIVED">Archived - Hidden from store</option>
           </select>
           <p className="mt-2 text-sm text-gray-500">
-            {formData.status === 'DRAFT' && 'This product is saved as a draft and not visible to customers.'}
+            {formData.status === 'DRAFT' &&
+              'This product is saved as a draft and not visible to customers.'}
             {formData.status === 'ACTIVE' && 'This product is published and visible in your store.'}
-            {formData.status === 'ARCHIVED' && 'This product is archived and hidden from your store.'}
+            {formData.status === 'ARCHIVED' &&
+              'This product is archived and hidden from your store.'}
           </p>
         </div>
       </div>
 
       {/* Product Variants */}
-      <VariantManager
-        productId={product?.id}
-        productPrice={formData.price}
-      />
+      <VariantManager productId={product?.id} productPrice={formData.price} />
 
       {/* Form Actions */}
       <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
@@ -1310,7 +1394,7 @@ export default function ProductForm({ initialData, isEdit = false, onSubmit, onC
           {loading && (
             <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
           )}
-          {loading ? 'Saving...' : (isEdit ? 'Update Product' : 'Create Product')}
+          {loading ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
         </button>
       </div>
     </form>

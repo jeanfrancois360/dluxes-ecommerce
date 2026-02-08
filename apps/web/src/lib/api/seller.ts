@@ -402,6 +402,9 @@ export const sellerAPI = {
   updateProduct: (id: string, data: any) =>
     api.patch<SellerProduct>(`/seller/products/${id}`, data),
 
+  addImages: (productId: string, images: string[]) =>
+    api.post(`/products/${productId}/images`, { images }),
+
   deleteProduct: (id: string) => api.delete(`/seller/products/${id}`),
 
   // Orders

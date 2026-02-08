@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { UpdateProductDto } from '../products/dto/update-product.dto';
 
 @Controller('seller')
 export class SellerController {
@@ -35,7 +36,8 @@ export class SellerController {
   @HttpCode(HttpStatus.CREATED)
   async applyToBecomeSeller(
     @Req() req: any,
-    @Body() data: {
+    @Body()
+    data: {
       storeName: string;
       storeDescription?: string;
       businessType: string;
@@ -125,12 +127,12 @@ export class SellerController {
   getLowStockProducts(
     @Req() req: any,
     @Query('threshold') threshold?: string,
-    @Query('limit') limit?: string,
+    @Query('limit') limit?: string
   ) {
     return this.sellerService.getLowStockProducts(
       req.user.userId,
       threshold ? parseInt(threshold) : 10,
-      limit ? parseInt(limit) : 10,
+      limit ? parseInt(limit) : 10
     );
   }
 
@@ -161,7 +163,7 @@ export class SellerController {
   @Patch('products/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  updateProduct(@Req() req: any, @Param('id') id: string, @Body() data: any) {
+  updateProduct(@Req() req: any, @Param('id') id: string, @Body() data: UpdateProductDto) {
     return this.sellerService.updateProduct(req.user.userId, id, data);
   }
 
@@ -181,10 +183,7 @@ export class SellerController {
   @Patch('products/bulk/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  bulkUpdateStatus(
-    @Req() req: any,
-    @Body() data: { productIds: string[]; status: string },
-  ) {
+  bulkUpdateStatus(@Req() req: any, @Body() data: { productIds: string[]; status: string }) {
     return this.sellerService.bulkUpdateStatus(req.user.userId, data.productIds, data.status);
   }
 
@@ -241,7 +240,7 @@ export class SellerController {
   updateOrderStatus(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() data: { status: string; notes?: string },
+    @Body() data: { status: string; notes?: string }
   ) {
     return this.sellerService.updateOrderStatus(req.user.userId, id, data.status, data.notes);
   }
@@ -255,7 +254,7 @@ export class SellerController {
   updateShippingInfo(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() data: { trackingNumber?: string; carrier?: string; notes?: string },
+    @Body() data: { trackingNumber?: string; carrier?: string; notes?: string }
   ) {
     return this.sellerService.updateShippingInfo(req.user.userId, id, data);
   }
@@ -271,12 +270,13 @@ export class SellerController {
   confirmShipment(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() data: {
+    @Body()
+    data: {
       trackingNumber: string;
       dhlServiceType?: string;
       packageWeight?: string;
       packageDimensions?: string;
-    },
+    }
   ) {
     return this.sellerService.confirmShipment(req.user.userId, id, data);
   }
@@ -340,7 +340,7 @@ export class SellerController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('rating') rating?: string,
-    @Query('productId') productId?: string,
+    @Query('productId') productId?: string
   ) {
     return this.sellerService.getMyReviews(req.user.userId, {
       page: page ? parseInt(page) : 1,

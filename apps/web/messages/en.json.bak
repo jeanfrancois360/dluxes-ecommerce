@@ -1,0 +1,4996 @@
+{
+  "common": {
+    "nav": {
+      "home": "Home",
+      "shop": "Shop",
+      "stores": "Stores",
+      "hotDeals": "Hot Deals",
+      "contact": "Contact",
+      "search": "Search",
+      "wishlist": "Wishlist",
+      "cart": "Shopping Cart",
+      "account": "Account",
+      "signIn": "Sign In",
+      "register": "Register",
+      "signOut": "Sign Out",
+      "profile": "Profile",
+      "myOrders": "My Orders",
+      "myDashboard": "My Dashboard",
+      "adminDashboard": "Admin Dashboard",
+      "sellerDashboard": "Seller Dashboard",
+      "myProducts": "My Products",
+      "myInquiries": "My Inquiries",
+      "myReviews": "My Reviews",
+      "myDownloads": "My Downloads",
+      "myReturns": "My Returns",
+      "paymentMethods": "Payment Methods",
+      "notifications": "Notifications",
+      "platformSubscription": "Platform Subscription",
+      "featurePlans": "Feature Plans",
+      "inquiries": "Inquiries",
+      "products": "Products",
+      "orders": "Orders",
+      "settings": "Settings",
+      "welcomeBack": "Welcome Back, {firstName}!",
+      "welcomeBackGeneric": "Welcome Back!"
+    },
+    "buttons": {
+      "shopNow": "Shop Now",
+      "browseCollections": "Browse Collections",
+      "viewAll": "View All",
+      "addToCart": "Add to Cart",
+      "addToWishlist": "Add to Wishlist",
+      "subscribe": "Subscribe",
+      "quickView": "Quick View",
+      "learnMore": "Learn More",
+      "submit": "Submit",
+      "cancel": "Cancel",
+      "save": "Save",
+      "delete": "Delete",
+      "edit": "Edit",
+      "close": "Close",
+      "back": "Back",
+      "next": "Next",
+      "previous": "Previous",
+      "loading": "Loading...",
+      "change": "Change",
+      "continueShopping": "Continue Shopping",
+      "proceedToCheckout": "Proceed to Checkout",
+      "goToLogin": "Go to Login",
+      "goToDashboard": "Go to Dashboard",
+      "backToLogin": "Back to login",
+      "backToHome": "Back to home",
+      "tryDifferentEmail": "Try a different email",
+      "createOne": "Create one",
+      "continueWithGoogle": "Continue with Google"
+    },
+    "footer": {
+      "joinCommunity": "Join Our Exclusive Community",
+      "newsletterDescription": "Subscribe to receive updates on new arrivals, special offers, and design inspiration.",
+      "emailPlaceholder": "Enter your email address",
+      "thankYouSubscribe": "Thank you for subscribing! Check your email for exclusive offers.",
+      "shop": "Shop",
+      "allProducts": "All Products",
+      "allStores": "All Stores",
+      "searchProducts": "Search Products",
+      "wishlist": "Wishlist",
+      "becomeSeller": "Become a Seller",
+      "myAccount": "My Account",
+      "myOrders": "My Orders",
+      "myReviews": "My Reviews",
+      "following": "Following",
+      "notifications": "Notifications",
+      "customerService": "Customer Service",
+      "contactUs": "Contact Us",
+      "trackOrder": "Track Order",
+      "helpCenter": "Help Center",
+      "returns": "Returns",
+      "inquiries": "Inquiries",
+      "company": "Company",
+      "aboutUs": "About Us",
+      "sellerPortal": "Seller Portal",
+      "adminPortal": "Admin Portal",
+      "advertisementPlans": "Advertisement Plans",
+      "legal": "Legal",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service",
+      "sellerAgreement": "Seller Agreement",
+      "securePayment": "Secure Payment",
+      "sslEncrypted": "SSL Encrypted",
+      "freeShipping": "Free Shipping",
+      "onOrdersOver": "On orders over $200",
+      "easyReturns": "Easy Returns",
+      "thirtyDayGuarantee": "30-day guarantee",
+      "support247": "24/7 Support",
+      "alwaysHereToHelp": "Always here to help",
+      "followUs": "Follow Us",
+      "weAccept": "We Accept",
+      "allRightsReserved": "All rights reserved.",
+      "platformDescription": "A robust and scalable e-commerce platform built for performance, clarity, and usability."
+    },
+    "promo": {
+      "springCollection": "Exclusive Spring Collection Now Live",
+      "freeShipping": "Free Worldwide Shipping on Orders Over $100",
+      "newArrivals": "New Arrivals: Limited Edition Pieces"
+    },
+    "home": {
+      "welcomeTag": "Welcome to NextPik",
+      "heroTitle": "Your Modern",
+      "heroTitleHighlight": "Shopping Platform",
+      "heroDescription": "Browse quality products from trusted sellers across multiple categories",
+      "featuredProducts": "Featured Products",
+      "newArrivals": "New Arrivals",
+      "trendingNow": "Trending Now",
+      "onSale": "On Sale",
+      "stayUpdated": "Stay Updated",
+      "subscribeDescription": "Subscribe for special offers, new arrivals, and personalized recommendations",
+      "enterEmail": "Enter your email"
+    },
+    "toast": {
+      "addedToCart": "Item has been added to your cart",
+      "addedToWishlist": "Item has been added to your wishlist",
+      "loginRequired": "Please login to add items to wishlist",
+      "failedAddCart": "Failed to add item to cart",
+      "failedAddWishlist": "Failed to add item to wishlist",
+      "error": "Error",
+      "success": "Success"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Sign in to access your luxury collection",
+      "emailLabel": "Email Address",
+      "passwordLabel": "Password",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "signingIn": "Signing in...",
+      "orContinueWith": "Or continue with",
+      "magicLinkInstead": "Send me a magic link instead",
+      "enterVerificationCode": "Enter Verification Code",
+      "enter6DigitCode": "Enter the 6-digit code from your authenticator app",
+      "useDifferentMethod": "Use a different method",
+      "cantAccessAuthenticator": "Can't access authenticator app? Get code via email",
+      "dontHaveAccount": "Don't have an account?",
+      "bySigningIn": "By signing in, you agree to our",
+      "and": "and",
+      "enterBothFields": "Please enter both email and password",
+      "invalidEmail": "Please enter a valid email address",
+      "enter2FACode": "Please enter your 2FA code to continue",
+      "welcomeBackRedirect": "Welcome back! Redirecting to your dashboard...",
+      "verifySignIn": "Verify & Sign In"
+    },
+    "register": {
+      "chooseAccountType": "Choose Account Type",
+      "createAccount": "Create Account",
+      "selectHowToJoin": "Select how you want to join our platform",
+      "joinExclusive": "Join our exclusive luxury collection",
+      "buyerAccount": "Buyer Account",
+      "buyerDescription": "Shop luxury products from verified sellers",
+      "buyerBenefit1": "Browse exclusive luxury collections",
+      "buyerBenefit2": "Secure checkout and payments",
+      "buyerBenefit3": "Order tracking and history",
+      "buyerBenefit4": "Wishlist and favorites",
+      "sellerAccount": "Seller Account",
+      "sellerDescription": "Sell your luxury products to a global audience",
+      "sellerBenefit1": "Create your own luxury store",
+      "sellerBenefit2": "List unlimited products",
+      "sellerBenefit3": "Analytics and insights",
+      "sellerBenefit4": "Secure seller dashboard",
+      "continueAsBuyer": "Continue as Buyer",
+      "continueAsSeller": "Continue as Seller",
+      "alreadyHaveAccount": "Already have an account?",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "confirmPassword": "Confirm Password",
+      "storeInfoOptional": "Store Information (Optional)",
+      "instantStoreActivation": "Instant Store Activation",
+      "storeActivationMessage": "Your store will be activated immediately upon registration. You can start listing products right away!",
+      "storeNameOptional": "Store Name (Optional)",
+      "storeNamePlaceholder": "e.g., Luxury Fashion Boutique",
+      "storeDescriptionOptional": "Store Description (Optional)",
+      "storeDescriptionPlaceholder": "Tell us about your store and the products you plan to sell...",
+      "characters": "/500 characters",
+      "agreeToTerms": "I agree to the",
+      "asWellAs": ", as well as the",
+      "createBuyerAccount": "Create Buyer Account",
+      "createSellerAccount": "Create Seller Account",
+      "creatingAccount": "Creating account...",
+      "backToAccountType": "← Back to account type",
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required",
+      "emailRequired": "Email is required",
+      "invalidEmailFormat": "Invalid email format",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "mustAcceptTerms": "You must accept the terms",
+      "fillAllFields": "Please fill in all required fields correctly",
+      "welcomeToNextPik": "Welcome to NextPik!",
+      "accountCreatedSuccess": "Your account has been created successfully",
+      "storeCreated": "Store Created!",
+      "accountCreated": "Account Created!",
+      "storeReadyMessage": "Your store is ready! You can now start listing your luxury products.",
+      "welcomeExploreMessage": "Welcome to NextPik! Start exploring exclusive luxury collections."
+    },
+    "forgotPassword": {
+      "title": "Forgot Password?",
+      "subtitle": "No worries, we'll send you reset instructions",
+      "enterEmailForReset": "Enter your email address and we'll send you a link to reset your password",
+      "sendingResetLink": "Sending reset link...",
+      "checkYourEmail": "Check Your Email",
+      "sentResetLink": "We've sent you a password reset link",
+      "ifAccountExists": "If an account exists for",
+      "willReceiveLink": "you will receive a password reset link shortly.",
+      "linkExpires1Hour": "The link will expire in 1 hour for security.",
+      "didntReceiveEmail": "Didn't receive the email?",
+      "checkSpam": "Check your spam folder",
+      "verifyEmailCorrect": "Verify the email address is correct",
+      "waitFewMinutes": "Wait a few minutes and check again",
+      "enterYourEmail": "Please enter your email address",
+      "sendResetLink": "Send Reset Link"
+    },
+    "resetPassword": {
+      "title": "Set New Password",
+      "subtitle": "Create a strong password for your account",
+      "newPassword": "New Password",
+      "mustBeDifferent": "Your new password must be different from previously used passwords",
+      "resettingPassword": "Resetting password...",
+      "passwordReset": "Password Reset!",
+      "passwordUpdated": "Your password has been successfully updated",
+      "resetComplete": "Password Reset Complete!",
+      "canSignInNow": "You can now sign in with your new password.",
+      "invalidToken": "Invalid or missing reset token",
+      "resetPasswordButton": "Reset Password"
+    },
+    "verifyEmail": {
+      "verifyingTitle": "Verifying Your Email",
+      "verifyingSubtitle": "Please wait while we verify your email address...",
+      "verifyingMessage": "Verifying your email address...",
+      "onlyTakesMoment": "This should only take a moment",
+      "emailVerified": "Email Verified!",
+      "successfullyVerified": "Your email has been successfully verified",
+      "verifiedSuccess": "Email verified successfully! Redirecting to login...",
+      "canSignIn": "You can now sign in to your account",
+      "redirectingToLogin": "Redirecting to login page...",
+      "linkExpired": "Link Expired",
+      "linkHasExpired": "Your verification link has expired",
+      "linksExpire24h": "Verification links expire after 24 hours for security reasons",
+      "enterYourEmail": "Enter your email",
+      "verificationSent": "Verification email sent! Please check your inbox.",
+      "sending": "Sending...",
+      "verificationFailed": "Verification Failed",
+      "couldntVerify": "We couldn't verify your email",
+      "resendLink": "Resend verification link",
+      "verifyYourEmail": "Verify Your Email",
+      "unableToVerify": "Unable to verify your email. The link may be invalid or expired.",
+      "emailVerification": "Email Verification",
+      "unableToResend": "Unable to resend verification email. Please try again.",
+      "resendVerification": "Resend Verification",
+      "or": "or",
+      "returnHome": "return home"
+    },
+    "magicLink": {
+      "title": "Sign In with Magic Link",
+      "subtitle": "No password needed - we'll email you a secure link",
+      "description": "Enter your email and we'll send you a secure link to sign in instantly",
+      "whyMagicLinks": "Why use magic links?",
+      "noPasswords": "No passwords to remember or type",
+      "moreSecure": "More secure than traditional passwords",
+      "oneClick": "Sign in with just one click",
+      "sendMagicLink": "Send Magic Link",
+      "sendingMagicLink": "Sending magic link...",
+      "signInWithPassword": "Sign in with password instead",
+      "verifying": "Verifying...",
+      "pleaseWait": "Please wait while we sign you in",
+      "authenticating": "Authenticating your magic link...",
+      "successfullySignedIn": "Successfully signed in!",
+      "welcomeBack": "Welcome Back!",
+      "successfullySignedInSubtitle": "You've been successfully signed in",
+      "redirectingToDashboard": "Redirecting you to your dashboard...",
+      "checkYourEmail": "Check Your Email",
+      "sentMagicLink": "We've sent you a magic link",
+      "sentMagicLinkTo": "We've sent a magic link to",
+      "clickLinkToSignIn": "Click the link in your email to sign in instantly. The link will expire in 15 minutes.",
+      "checkSpamFolder": "Check your spam or junk folder",
+      "correctEmail": "Make sure you entered the correct email",
+      "emailMayTakeTime": "The email might take a few minutes to arrive",
+      "magicLinkSent": "Magic link sent! Check your email.",
+      "couldntSendLink": "We couldn't send the link. Please try again.",
+      "magicLinkRequest": "Magic Link Request",
+      "invalidOrExpired": "This link is invalid or has expired. Please request a new one.",
+      "magicLinkVerification": "Magic Link Verification"
+    },
+    "callback": {
+      "signingYouIn": "Signing you in...",
+      "missingAuthData": "Missing authentication data. Please try signing in again.",
+      "failedToProcess": "Failed to process authentication data. Please try signing in again.",
+      "signInFailed": "Sign-in failed",
+      "backToLogin": "Back to Login"
+    }
+  },
+  "products": {
+    "featuredCollection": "Featured Collection",
+    "productCatalog": "Product Catalog",
+    "browseCollection": "Browse our extensive collection of quality products from trusted sellers",
+    "authenticProducts": "Authentic Products",
+    "freeShipping": "Free Shipping",
+    "securePayment": "Secure Payment",
+    "filters": "Filters",
+    "categories": "Categories",
+    "priceRange": "Price Range",
+    "minPrice": "Min Price",
+    "maxPrice": "Max Price",
+    "brands": "Brands",
+    "availability": "Availability",
+    "inStockOnly": "In Stock Only",
+    "onSale": "On Sale",
+    "applyFilters": "Apply Filters",
+    "applying": "Applying...",
+    "clearAll": "Clear All",
+    "gridView": "Grid View",
+    "listView": "List View",
+    "gridLayout": "Grid layout",
+    "listLayout": "List layout",
+    "productCount": "product",
+    "productsCount": "products",
+    "pageOf": "Page {page} of {totalPages}",
+    "activeFilters": "Active filters:",
+    "relevance": "Relevance",
+    "bestSelling": "Best Selling",
+    "highestRated": "Highest Rated",
+    "newestFirst": "Newest First",
+    "priceLowToHigh": "Price: Low to High",
+    "priceHighToLow": "Price: High to Low",
+    "unableToLoad": "Unable to Load Products",
+    "networkError": "Unable to connect to the server. Please ensure the API is running on http://localhost:4000 and try again.",
+    "errorCode": "Error code: {status}",
+    "tryAgain": "Try Again",
+    "goHome": "Go Home",
+    "noProductsFound": "No Products Found",
+    "noProductsMessage": "We couldn't find any products matching your criteria. Try adjusting your filters or search terms.",
+    "clearAllFilters": "Clear All Filters",
+    "viewAllProducts": "View All Products",
+    "noCategoriesAvailable": "No categories available",
+    "inStock": "In Stock",
+    "inStockQuantity": "In Stock ({quantity} available)",
+    "outOfStock": "Out of Stock",
+    "contactForPrice": "Contact for Price",
+    "submitInquiry": "Submit an inquiry to get pricing information",
+    "save": "Save {percent}%",
+    "sku": "SKU: {sku}",
+    "skuLabel": "SKU",
+    "visitStore": "Visit Store",
+    "color": "Color",
+    "size": "Size",
+    "quantity": "Quantity",
+    "addToCart": "Add to Cart",
+    "tags": "Tags:",
+    "scheduleViewing": "Schedule a Viewing",
+    "scheduleTestDrive": "Schedule a Test Drive",
+    "requestServiceQuote": "Request Service Quote",
+    "requestRentalInfo": "Request Rental Information",
+    "contactAboutProduct": "Contact About This Product",
+    "agentWillContact": "Our agent will contact you soon!",
+    "salesTeamWillContact": "Our sales team will contact you soon!",
+    "weWillContact": "We will contact you soon!",
+    "description": "Description",
+    "specifications": "Specifications",
+    "reviews": "Reviews",
+    "productDetails": "Product Details",
+    "brand": "Brand",
+    "category": "Category",
+    "relatedProducts": "Related Products",
+    "removedFromWishlist": "Removed from wishlist",
+    "addedToWishlist": "Added to wishlist",
+    "failedUpdateWishlist": "Failed to update wishlist",
+    "failedAddToCart": "Failed to add item to cart",
+    "addedToCart": "{name} has been added to your cart",
+    "confirmReportReview": "Are you sure you want to report this review?",
+    "reviews_count": "({count} reviews)",
+    "review": "review",
+    "reviewsPlural": "reviews",
+    "reviewSubmittedSuccess": "Review submitted successfully! It will be visible after approval.",
+    "reviewSubmitFailed": "Failed to submit review. Please try again."
+  },
+  "cart": {
+    "shoppingCart": "Shopping Cart",
+    "itemsInCart": "item{s} in your cart",
+    "itemInCart": "item in your cart",
+    "emptyCart": "Your cart is empty",
+    "addLuxuryItems": "Add some luxury items to get started",
+    "orderSummary": "Order Summary",
+    "subtotalItems": "Subtotal ({count} items)",
+    "shipping": "Shipping",
+    "calculatedAtCheckout": "Calculated at checkout",
+    "tax": "Tax",
+    "subtotal": "Subtotal",
+    "taxesAndShipping": "Taxes and shipping at checkout",
+    "freeShippingAvailable": "Free shipping available!",
+    "addMoreForFreeShipping": "Add {amount} more to qualify for free shipping.",
+    "qualifyForFreeShipping": "You qualify for free shipping!",
+    "processing": "Processing...",
+    "secureCheckout": "Secure Checkout",
+    "moneyBackGuarantee": "Money-Back Guarantee",
+    "freeReturns": "Free Returns",
+    "support247": "24/7 Support",
+    "each": "each",
+    "failedUpdateQuantity": "Failed to update quantity",
+    "itemRemoved": "Item removed from cart",
+    "failedRemoveItem": "Failed to remove item",
+    "free": "Free",
+    "enterCode": "Enter code",
+    "apply": "Apply",
+    "haveCode": "Have a coupon code?"
+  },
+  "wishlist": {
+    "myWishlist": "My Wishlist",
+    "item": "item",
+    "items": "items",
+    "totalValue": "Total value:",
+    "addAllToCart": "Add All to Cart",
+    "clearAll": "Clear All",
+    "recentlyAdded": "Recently Added",
+    "priceLowToHigh": "Price: Low to High",
+    "priceHighToLow": "Price: High to Low",
+    "allItems": "All Items",
+    "inStock": "In Stock",
+    "outOfStock": "Out of Stock",
+    "emptyWishlist": "Your wishlist is empty",
+    "startAddingItems": "Start adding items you love",
+    "browseProducts": "Browse Products",
+    "shareWishlist": "Share Your Wishlist",
+    "letFriendsKnow": "Let friends and family know what you love",
+    "shareViaEmail": "Share via Email",
+    "copyLink": "Copy Link",
+    "itemRemoved": "Item removed from wishlist",
+    "failedRemove": "Failed to remove from wishlist",
+    "wishlistCleared": "Wishlist cleared successfully",
+    "failedClear": "Failed to clear wishlist",
+    "noItemsAvailable": "No items available to add to cart",
+    "itemsAddedToCart": "{count} item{s} added to cart",
+    "failedAddItems": "Failed to add items to cart",
+    "confirmClear": "Are you sure you want to clear your entire wishlist?"
+  },
+  "quickViewModal": {
+    "color": "Color",
+    "size": "Size",
+    "quantity": "Quantity",
+    "inStock": "In Stock",
+    "available": "available",
+    "outOfStock": "Out of Stock",
+    "onlyLeftInStock": "Only {count} left in stock!",
+    "addToCart": "Add to Cart",
+    "viewFullDetails": "View Full Details",
+    "reviews": "reviews",
+    "review": "review",
+    "save": "Save {percent}%",
+    "new": "New",
+    "sale": "Sale",
+    "featured": "Featured",
+    "bestseller": "Bestseller"
+  },
+  "productCard": {
+    "addToWishlist": "Add to wishlist",
+    "removeFromWishlist": "Remove from wishlist",
+    "quickView": "Quick View",
+    "outOfStock": "Out of Stock",
+    "onlyLeft": "Only {count} Left",
+    "contactForPrice": "Contact for Price",
+    "inquiryRequired": "Inquiry Required",
+    "contactSeller": "Contact Seller",
+    "contact": "Contact",
+    "addToBag": "Add to Bag",
+    "add": "Add",
+    "by": "by",
+    "new": "New",
+    "sale": "Sale",
+    "featured": "Featured",
+    "bestseller": "Bestseller",
+    "limitedEdition": "Limited Edition"
+  },
+  "checkout": {
+    "checkout": "Checkout",
+    "completeSecurely": "Complete your purchase securely",
+    "useSavedAddress": "Use a Saved Address",
+    "enterNewAddress": "Enter a new address",
+    "default": "Default",
+    "continueToShipping": "Continue to Shipping Method",
+    "loadingPayment": "Loading payment system...",
+    "initializingPayment": "Initializing secure payment...",
+    "preparingOrder": "Preparing your order and payment details",
+    "processingOrder": "Processing Your Order",
+    "pleaseWait": "Please wait while we complete your purchase...",
+    "doNotClose": "Do not close this window or press the back button",
+    "reviewYourOrder": "Review Your Order",
+    "loginRequired": "Please login to continue with checkout",
+    "emptyCartRedirect": "Your cart is empty. Please add items before checkout",
+    "usingSavedAddress": "Using saved address",
+    "addressSaved": "Shipping address saved successfully",
+    "selectValidShipping": "Please select a valid shipping method",
+    "paymentFailed": "Payment failed. Please try again.",
+    "failedCompleteOrder": "Failed to complete order. Please contact support.",
+    "failedInitCheckout": "Failed to initialize checkout. Please try again.",
+    "couldNotLoadShipping": "Could not load shipping options. Using default rates.",
+    "failedSaveAddress": "Failed to save shipping address"
+  },
+  "search": {
+    "startYourSearch": "Start Your Search",
+    "enterSearchQuery": "Enter a search query to find luxury products, brands, and collections"
+  },
+  "stores": {
+    "discoverStores": "Discover Amazing Stores",
+    "storeDirectory": "Store Directory",
+    "exploreCollection": "Explore our curated collection of verified sellers offering premium products",
+    "searchPlaceholder": "Search stores by name...",
+    "loadingStores": "Loading stores...",
+    "storesFound": "stores found",
+    "verifiedOnly": "Verified Only",
+    "verified": "Verified",
+    "totalStores": "Total Stores",
+    "verifiedSellers": "Verified Sellers",
+    "products": "Products",
+    "totalSales": "Total Sales",
+    "failedToLoad": "Failed to load stores",
+    "tryAgainLater": "Please try again later.",
+    "noStoresFound": "No stores found",
+    "noStoresMatch": "No stores match \"{query}\". Try a different search term.",
+    "noStoresAvailable": "There are no stores available at the moment. Check back later!",
+    "productsCount": "products",
+    "salesCount": "sales"
+  },
+  "contact": {
+    "getInTouch": "Get in Touch",
+    "hereToHelp": "We're here to help bring your vision to life",
+    "sendMessage": "Send Us a Message",
+    "fullName": "Full Name",
+    "emailAddress": "Email Address",
+    "phoneOptional": "Phone Number (Optional)",
+    "subject": "Subject",
+    "generalInquiry": "General Inquiry",
+    "designConsultation": "Design Consultation",
+    "orderSupport": "Order Support",
+    "wholesaleInquiry": "Wholesale Inquiry",
+    "message": "Message",
+    "sendMessageButton": "Send Message",
+    "messageSent": "Message Sent!",
+    "thankYouResponse": "Thank you! We'll get back to you within 24 hours.",
+    "contactInfo": "Contact Information",
+    "phone": "Phone",
+    "email": "Email",
+    "respondWithin24h": "We'll respond within 24 hours",
+    "showroom": "Showroom",
+    "showroomHours": "Showroom Hours",
+    "mondayFriday": "Monday - Friday",
+    "saturday": "Saturday",
+    "sunday": "Sunday",
+    "interactiveMap": "Interactive Map",
+    "faq": "Frequently Asked Questions",
+    "faqDesignConsultation": "Do you offer design consultations?",
+    "faqDesignConsultationAnswer": "Yes! Our expert designers are available for both in-person and virtual consultations. Book an appointment to discuss your project.",
+    "faqReturnPolicy": "What is your return policy?",
+    "faqReturnPolicyAnswer": "We offer a 30-day return policy on most items. Products must be in original condition with all packaging.",
+    "faqShipInternationally": "Do you ship internationally?",
+    "faqShipInternationallyAnswer": "Yes, we ship to over 50 countries worldwide. Shipping costs and delivery times vary by location."
+  },
+  "help": {
+    "howCanWeHelp": "How Can We Help?",
+    "findAnswers": "Find answers to common questions or contact our support team",
+    "searchPlaceholder": "Search for help articles...",
+    "categoriesTitle": "Categories",
+    "ordersShipping": "Orders & Shipping",
+    "returnsExchanges": "Returns & Exchanges",
+    "productsPricing": "Products & Pricing",
+    "accountPayment": "Account & Payment",
+    "stillNeedHelp": "Still need help?",
+    "supportTeam247": "Our support team is here 24/7",
+    "contactSupport": "Contact Support",
+    "faqCount": "{count} frequently asked questions",
+    "didntFind": "Didn't find what you're looking for?",
+    "customerSupport247": "Our customer support team is available 24/7 to assist you",
+    "contactUs": "Contact Us",
+    "liveChat": "Live Chat",
+    "available247": "Available 24/7",
+    "faq": {
+      "shippingTime": "How long does shipping take?",
+      "shippingTimeAnswer": "Standard shipping takes 5-7 business days. Express shipping (2-3 business days) and overnight options are also available at checkout.",
+      "shipInternationally": "Do you ship internationally?",
+      "shipInternationallyAnswer": "Yes! We ship to over 50 countries worldwide. International shipping times vary by location, typically 7-14 business days. Customs duties may apply.",
+      "trackOrder": "Can I track my order?",
+      "trackOrderAnswer": "Absolutely! Once your order ships, you'll receive a tracking number via email. You can also track your order from your account dashboard.",
+      "damagedItem": "What if my item arrives damaged?",
+      "damagedItemAnswer": "We're sorry if that happens! Contact us within 48 hours with photos of the damage, and we'll arrange a replacement or full refund immediately.",
+      "returnPolicy": "What is your return policy?",
+      "returnPolicyAnswer": "We offer a 30-day return policy for most items. Products must be in original condition with all packaging and tags intact.",
+      "initiateReturn": "How do I initiate a return?",
+      "initiateReturnAnswer": "Log into your account, go to your order history, and select \"Return Item\". Follow the prompts to print your prepaid return label.",
+      "freeReturns": "Are returns free?",
+      "freeReturnsAnswer": "Yes! We provide free return shipping on all domestic orders. International returns may require shipping fees.",
+      "refundTime": "How long does it take to receive my refund?",
+      "refundTimeAnswer": "Once we receive your return, refunds are processed within 3-5 business days. The funds will appear in your original payment method.",
+      "authentic": "Are your products authentic?",
+      "authenticAnswer": "Yes, 100%! We source directly from authorized manufacturers and distributors. Every item comes with a certificate of authenticity.",
+      "priceMatch": "Do you offer price matching?",
+      "priceMatchAnswer": "Yes, we offer price matching on identical items from authorized retailers. Contact our support team with proof of the lower price.",
+      "notifyRestock": "Can I get notified when an out-of-stock item is available?",
+      "notifyRestockAnswer": "Absolutely! Click \"Notify Me\" on any product page, and we'll email you as soon as it's back in stock.",
+      "giftWrapping": "Do you offer gift wrapping?",
+      "giftWrappingAnswer": "Yes! Select the gift wrapping option at checkout for $15. We'll include a personalized message card and premium packaging.",
+      "paymentSafe": "Is it safe to save my payment information?",
+      "paymentSafeAnswer": "Yes! We use industry-standard encryption (SSL) to protect your data. Your payment information is securely stored and never shared.",
+      "paymentMethods": "What payment methods do you accept?",
+      "paymentMethodsAnswer": "We accept Visa, Mastercard, American Express, PayPal, Apple Pay, Google Pay, and Affirm for financing options.",
+      "resetPassword": "How do I reset my password?",
+      "resetPasswordAnswer": "Click \"Forgot Password\" on the login page. Enter your email, and we'll send you a secure link to reset your password.",
+      "changeAddress": "Can I change my shipping address after ordering?",
+      "changeAddressAnswer": "If your order hasn't shipped yet, you can update the address in your account. Contact support immediately if you need help."
+    }
+  },
+  "about": {
+    "ourStory": "Our Story",
+    "craftingSince": "Crafting extraordinary living spaces since 2024",
+    "ourMission": "Our Mission",
+    "missionText1": "At Luxury, we believe that your home should be a reflection of your unique style and aspirations. Our mission is to provide exceptional furniture and decor that transforms living spaces into extraordinary sanctuaries.",
+    "missionText2": "Every piece in our collection is carefully curated with meticulous attention to detail, quality craftsmanship, and timeless design. We partner with world-renowned designers and artisans to bring you furniture that stands the test of time.",
+    "ourValues": "Our Values",
+    "valuesPrinciples": "The principles that guide everything we do",
+    "qualityFirst": "Quality First",
+    "qualityFirstDesc": "We never compromise on quality. Every product undergoes rigorous quality control to ensure it meets our exacting standards.",
+    "sustainableDesign": "Sustainable Design",
+    "sustainableDesignDesc": "We are committed to sustainability, using eco-friendly materials and ethical manufacturing practices.",
+    "customerDelight": "Customer Delight",
+    "customerDelightDesc": "Your satisfaction is our priority. From browsing to delivery, we ensure an exceptional experience at every touchpoint.",
+    "meetOurTeam": "Meet Our Team",
+    "teamSubtitle": "Passionate experts dedicated to your perfect space",
+    "founderCEO": "Founder & CEO",
+    "designDirector": "Design Director",
+    "headOfCuration": "Head of Curation",
+    "customerExperience": "Customer Experience"
+  },
+  "hotDeals": {
+    "title": "Hot Deals",
+    "subtitle": "Emergency services marketplace - Post your urgent needs and get help fast. Only $1 per post!",
+    "postHotDeal": "Post a Hot Deal ($1)",
+    "postDeal": "Post a Hot Deal",
+    "searchByCity": "Search by city...",
+    "allCategories": "All Categories",
+    "search": "Search",
+    "clear": "Clear",
+    "viewMyDeals": "View My Deals →",
+    "noDealsFound": "No Hot Deals Found",
+    "noDealsMatch": "No hot deals match your filters. Try adjusting your search.",
+    "beFirstToPost": "Be the first to post a hot deal in your area!",
+    "responses": "responses",
+    "viewDetails": "View Details →",
+    "timeLeft": "{hours}h {minutes}m left",
+    "minutesLeft": "{minutes}m left",
+    "expired": "Expired",
+    "failedToLoad": "Failed to load hot deals"
+  },
+  "trackOrder": {
+    "title": "Track Your Order",
+    "subtitle": "Enter your order number and email to track your shipment",
+    "orderNumber": "Order Number",
+    "emailAddress": "Email Address",
+    "trackButton": "Track Order",
+    "tracking": "Tracking Order...",
+    "orderNumberRequired": "Order number is required",
+    "emailRequired": "Email address is required",
+    "invalidEmail": "Please enter a valid email address",
+    "whereToFind": "Where to find your order number?",
+    "whereToFindDesc": "Your order number can be found in the confirmation email we sent you after your purchase. It looks like: #ORD-123456",
+    "trackingYourOrder": "Tracking your order...",
+    "orderNotFound": "Order Not Found",
+    "orderNotFoundDesc": "We couldn't find an order with that number. Please check and try again.",
+    "invalidCredentials": "The email address doesn't match our records.",
+    "unableToConnect": "Unable to connect. Please check your internet connection.",
+    "orderTitle": "Order {orderNumber}",
+    "placedOn": "Placed on",
+    "estimatedDelivery": "Estimated Delivery",
+    "trackWithCarrier": "Track with Carrier",
+    "trackingNumber": "Tracking Number",
+    "trackPackageDesc": "Track your package directly with the shipping carrier",
+    "trackAnother": "Track Another Order",
+    "viewFullDetails": "View Full Order Details",
+    "signInForDetails": "Sign In for More Details",
+    "readyToTrack": "Ready to Track Your Order?",
+    "enterDetailsAbove": "Enter your order details above to see real-time tracking information",
+    "needHelp": "Need help with your order?",
+    "emailSupport": "Email Support",
+    "callUs": "Call Us"
+  },
+  "checkoutSuccess": {
+    "thankYou": "Thank You for Your Order!",
+    "orderPlaced": "Your order has been placed successfully",
+    "orderNumber": "Order number:",
+    "orderDetails": "Order Details",
+    "quantity": "Quantity: {quantity}",
+    "total": "Total",
+    "shippingAddress": "Shipping Address",
+    "viewAllOrders": "View All Orders",
+    "continueShopping": "Continue Shopping",
+    "backToHome": "Back to Home",
+    "youMightAlsoLike": "You Might Also Like",
+    "orderNotFound": "Order Not Found",
+    "couldNotFind": "We could not find your order details",
+    "noOrderId": "No order ID provided",
+    "loadingOrder": "Loading order details..."
+  },
+  "checkoutCancel": {
+    "checkoutCancelled": "Checkout Cancelled",
+    "processCancelled": "Your checkout process has been cancelled",
+    "cartPreserved": "Don't worry! Your cart has been preserved and is waiting for you.",
+    "returnToCart": "Return to Cart",
+    "continueShopping": "Continue Shopping",
+    "whyHappened": "Why did this happen?",
+    "reason1": "You clicked the back button or cancelled the checkout process",
+    "reason2": "The payment window was closed before completing the transaction",
+    "reason3": "There was a technical issue during the checkout process",
+    "youMightAlsoLike": "You Might Also Like",
+    "needAssistance": "Need assistance? We're here to help!",
+    "visitHelpCenter": "Visit Help Center",
+    "contactSupport": "Contact Support"
+  },
+  "account": {
+    "breadcrumb": {
+      "home": "Home",
+      "account": "Account"
+    },
+    "redirect": {
+      "redirecting": "Redirecting to your dashboard..."
+    },
+    "profile": {
+      "title": "Edit Profile",
+      "subtitle": "Manage your personal information",
+      "profilePhoto": "Profile Photo",
+      "changePhoto": "Change Photo",
+      "removePhoto": "Remove Photo",
+      "uploading": "Uploading...",
+      "photoFormats": "JPG, PNG or GIF. Max 5MB.",
+      "confirmRemoveAvatar": "Are you sure you want to remove your avatar?",
+      "accountInfo": "Account Info",
+      "role": "Role",
+      "memberSince": "Member Since",
+      "emailVerified": "Email Verified",
+      "twoFAEnabled": "2FA Enabled",
+      "yes": "Yes",
+      "no": "No",
+      "personalInfo": "Personal Information",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "emailAddress": "Email Address",
+      "phoneNumber": "Phone Number",
+      "emailChangeWarning": "Changing your email will require re-verification",
+      "saveChanges": "Save Changes",
+      "saving": "Saving...",
+      "reset": "Reset",
+      "security": "Security",
+      "securitySettings": "Security Settings",
+      "securitySettingsDesc": "Change password, 2FA, and more",
+      "firstNameRequired": "First name is required",
+      "firstNameMinLength": "First name must be at least 2 characters",
+      "lastNameRequired": "Last name is required",
+      "lastNameMinLength": "Last name must be at least 2 characters",
+      "emailRequired": "Email is required",
+      "invalidEmail": "Please enter a valid email address",
+      "invalidPhone": "Please enter a valid phone number",
+      "selectImageFile": "Please select an image file",
+      "imageUnder5MB": "Please select an image under 5MB",
+      "validationError": "Please fix the errors before saving",
+      "notAvailable": "N/A",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "myProfile": "My Profile"
+      },
+      "placeholders": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john@example.com",
+        "phone": "+1 (555) 123-4567"
+      },
+      "quickLinks": {
+        "heading": "Quick Links",
+        "storeSettings": "Store Settings",
+        "storeSettingsDesc": "Manage your store information and branding"
+      }
+    },
+    "orders": {
+      "title": "My Orders",
+      "subtitle": "Track and manage your orders",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "orders": "My Orders"
+      },
+      "searchPlaceholder": "Search by order number...",
+      "allStatus": "All Status",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded",
+      "mostRecent": "Most Recent",
+      "oldestFirst": "Oldest First",
+      "failedToLoad": "Failed to Load Orders",
+      "tryAgain": "Try Again",
+      "noOrdersYet": "No Orders Yet",
+      "noOrdersMatch": "No orders match your search criteria.",
+      "startShopping": "Start shopping to see your orders here.",
+      "browseProducts": "Browse Products",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "addresses": {
+      "title": "Saved Addresses",
+      "subtitle": "Manage your shipping addresses",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "addresses": "Addresses"
+      },
+      "addAddress": "Add Address",
+      "addNewAddress": "Add New Address",
+      "editAddress": "Edit Address",
+      "default": "Default",
+      "setDefault": "Set Default",
+      "setting": "Setting...",
+      "deleting": "Deleting...",
+      "companyOptional": "Company (Optional)",
+      "companyPlaceholder": "Company name",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "streetAddress": "Street Address",
+      "aptSuiteOptional": "Apartment, Suite, etc. (Optional)",
+      "city": "City",
+      "stateProvince": "State/Province",
+      "postalCode": "Postal Code",
+      "country": "Country",
+      "phoneNumber": "Phone Number",
+      "selectCountry": "Select your country",
+      "setAsDefault": "Set as default address",
+      "updateAddress": "Update Address",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirmDelete": "Are you sure you want to delete this address?",
+      "addressUpdated": "Address updated successfully",
+      "addressAdded": "Address added successfully",
+      "addressDeleted": "Address deleted successfully",
+      "defaultUpdated": "Default address updated",
+      "failedSave": "Failed to save address",
+      "failedDelete": "Failed to delete address",
+      "failedSetDefault": "Failed to set default address"
+    },
+    "security": {
+      "title": "Security",
+      "subtitle": "Manage your account security settings",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "security": "Security"
+      },
+      "securityStatus": "Security Status",
+      "passwordSet": "Password Set",
+      "passwordSetDesc": "Your account has a password",
+      "twoFactorAuth": "Two-Factor Auth",
+      "enabled": "Enabled",
+      "notEnabled": "Not enabled",
+      "emailVerified": "Email Verified",
+      "emailVerifiedDesc": "Your email is verified",
+      "pleaseVerifyEmail": "Please verify your email",
+      "quickLinks": "Quick Links",
+      "editProfile": "Edit Profile",
+      "addresses": "Addresses",
+      "changePassword": "Change Password",
+      "changePasswordDesc": "Update your password to keep your account secure",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmNewPassword": "Confirm New Password",
+      "enterCurrentPassword": "Enter your current password",
+      "enterNewPassword": "Enter your new password",
+      "confirmNewPasswordPlaceholder": "Confirm your new password",
+      "passwordStrength": "Password strength",
+      "weak": "Weak",
+      "fair": "Fair",
+      "good": "Good",
+      "strong": "Strong",
+      "veryStrong": "Very Strong",
+      "passwordsMatch": "Passwords match",
+      "passwordRequirements": "Password Requirements:",
+      "atLeast12Chars": "At least 12 characters",
+      "uppercaseAndLowercase": "Uppercase and lowercase letters",
+      "atLeastOneNumber": "At least one number",
+      "specialCharRecommended": "Special character (recommended)",
+      "updatingPassword": "Updating Password...",
+      "updatePassword": "Update Password",
+      "forgotCurrentPassword": "Forgot your current password?",
+      "resetItHere": "Reset it here",
+      "currentPasswordRequired": "Current password is required",
+      "newPasswordRequired": "New password is required",
+      "passwordMinLength": "Password must be at least 12 characters long",
+      "passwordNeedsCases": "Password must contain uppercase and lowercase letters",
+      "passwordNeedsNumber": "Password must contain at least one number",
+      "passwordMustBeDifferent": "New password must be different from current password",
+      "pleaseConfirmPassword": "Please confirm your new password",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "activeSessions": "Active Sessions",
+      "activeSessionsDesc": "Manage devices where you're logged in",
+      "logOutAllOther": "Log Out All Other",
+      "revoking": "Revoking...",
+      "currentDevice": "Current Device",
+      "logOut": "Log Out",
+      "noActiveSessions": "No active sessions found",
+      "sessionsWillAppear": "Sessions will appear here when you log in from different devices",
+      "unrecognizedSessionWarning": "If you see a session you don't recognize, log it out immediately and consider changing your password for security.",
+      "deviceLoggedOut": "Device logged out successfully",
+      "allOtherLoggedOut": "All other devices logged out successfully",
+      "failedRevokeSession": "Failed to revoke session",
+      "failedRevokeSessions": "Failed to revoke sessions",
+      "deleteAccount": "Delete Account",
+      "deleteAccountDesc": "Permanently delete your account and all data",
+      "warningCannotBeUndone": "Warning: This action cannot be undone",
+      "deleteWarning1": "Your account and profile information will be deleted",
+      "deleteWarning2": "Your order history will be anonymized",
+      "deleteWarning3": "Your wishlist and saved items will be removed",
+      "deleteWarning4": "You will lose access to any pending orders",
+      "deleteMyAccount": "Delete My Account",
+      "confirmAccountDeletion": "Confirm Account Deletion",
+      "thisActionIsPermanent": "This action is permanent",
+      "enterPasswordToConfirm": "Please enter your password to confirm you want to delete your account.",
+      "enterYourPassword": "Enter your password",
+      "yourPassword": "Your password",
+      "understandDeletion": "I understand that deleting my account is permanent and cannot be undone.",
+      "enterPasswordAndConfirm": "Please enter your password and confirm deletion",
+      "accountDeleted": "Your account has been successfully deleted",
+      "failedDeleteAccount": "Failed to delete account",
+      "errorDeletingAccount": "An error occurred while deleting your account",
+      "deletingAccount": "Deleting...",
+      "justNow": "Just now",
+      "minuteAgo": "{count} minute ago",
+      "minutesAgo": "{count} minutes ago",
+      "hourAgo": "{count} hour ago",
+      "hoursAgo": "{count} hours ago",
+      "dayAgo": "{count} day ago",
+      "daysAgo": "{count} days ago",
+      "cancel": "Cancel"
+    },
+    "notifications": {
+      "title": "Notification Preferences",
+      "subtitle": "Control how and when we contact you",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "notifications": "Notifications"
+      },
+      "allNotifications": "All Notifications",
+      "masterToggle": "Master toggle for all notifications",
+      "allDisabled": "All notifications are currently disabled",
+      "orderNotifications": "Order Notifications",
+      "orderNotificationsDesc": "Updates about your orders",
+      "orderConfirmation": "Order Confirmation",
+      "orderConfirmationDesc": "Receive confirmation when you place an order",
+      "shippingUpdates": "Shipping Updates",
+      "shippingUpdatesDesc": "Get notified when your order ships",
+      "deliveryConfirmation": "Delivery Confirmation",
+      "deliveryConfirmationDesc": "Know when your order has been delivered",
+      "paymentReceipts": "Payment Receipts",
+      "paymentReceiptsDesc": "Receive payment confirmation emails",
+      "refundNotifications": "Refund Notifications",
+      "refundNotificationsDesc": "Get notified when refunds are processed",
+      "marketingPromotions": "Marketing & Promotions",
+      "marketingPromotionsDesc": "Special offers and deals",
+      "newsletter": "Newsletter",
+      "newsletterDesc": "Weekly newsletter with latest updates and tips",
+      "promotionalEmails": "Promotional Emails",
+      "promotionalEmailsDesc": "Sales, discounts, and special offers",
+      "priceDropAlerts": "Price Drop Alerts",
+      "priceDropAlertsDesc": "Get notified when items in your wishlist go on sale",
+      "backInStock": "Back in Stock",
+      "backInStockDesc": "Alerts when out-of-stock items become available",
+      "accountSecurity": "Account & Security",
+      "accountSecurityDesc": "Important account notifications",
+      "securityAlerts": "Security Alerts",
+      "securityAlertsDesc": "Suspicious activity, login attempts, and password changes",
+      "reviewReminders": "Review Reminders",
+      "reviewRemindersDesc": "Reminders to review products you've purchased",
+      "pushNotifications": "Push Notifications",
+      "pushNotificationsDesc": "Mobile and browser notifications",
+      "orderUpdates": "Order Updates",
+      "orderUpdatesDesc": "Real-time updates about your orders",
+      "promotionalAlerts": "Promotional Alerts",
+      "promotionalAlertsDesc": "Flash sales and limited-time offers",
+      "pushPriceDrops": "Price Drop Alerts",
+      "pushPriceDropsDesc": "Instant notifications when prices drop",
+      "pushBackInStock": "Back in Stock",
+      "pushBackInStockDesc": "Be the first to know when items return",
+      "pushSecurityAlerts": "Security Alerts",
+      "pushSecurityAlertsDesc": "Important security notifications",
+      "aboutNotifications": "About notifications",
+      "aboutNotificationsDesc": "We respect your inbox. Security alerts are always sent regardless of your preferences to keep your account safe. You can unsubscribe from marketing emails at any time.",
+      "preferenceUpdated": "Preference updated successfully",
+      "failedUpdate": "Failed to update preference",
+      "failedLoad": "Failed to load notification preferences"
+    },
+    "reviews": {
+      "title": "My Reviews",
+      "subtitle": "Manage your product reviews and ratings",
+      "totalReviews": "Total Reviews",
+      "averageRating": "Average Rating",
+      "published": "Published",
+      "pending": "Pending",
+      "pendingReview": "Pending Review",
+      "noReviewsYet": "No Reviews Yet",
+      "noReviewsDesc": "You haven't written any reviews yet. After receiving your orders, you can share your experience with other shoppers.",
+      "viewOrders": "View Orders",
+      "viewProduct": "View Product",
+      "deleteReview": "Delete Review?",
+      "deleteReviewConfirm": "Are you sure you want to delete this review? This action cannot be undone.",
+      "reviewDeleted": "Your review has been deleted",
+      "failedDeleteReview": "Failed to delete review",
+      "failedLoadReviews": "Failed to load your reviews",
+      "verifiedPurchase": "Verified Purchase",
+      "foundHelpful": "{count} found helpful",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting..."
+    },
+    "paymentMethods": {
+      "title": "Payment Methods",
+      "subtitle": "Manage your saved cards for faster checkout",
+      "addNewCard": "Add New Card",
+      "addYourFirstCard": "Add Your First Card",
+      "noSavedCards": "No Saved Cards",
+      "noSavedCardsDesc": "Add a card to save it for faster checkout next time",
+      "cardInformation": "Card Information",
+      "addCard": "Add Card",
+      "adding": "Adding...",
+      "securePayment": "Secure Payment",
+      "securePaymentDesc": "Your card information is encrypted and securely processed by Stripe.",
+      "setDefault": "Set Default",
+      "setting": "Setting...",
+      "removeCard": "Remove Card",
+      "removeCardConfirm": "Are you sure you want to remove this card? You can always add it again later.",
+      "removing": "Removing...",
+      "default": "Default",
+      "expires": "Expires",
+      "addNickname": "Add nickname",
+      "enterNickname": "Enter card nickname",
+      "saving": "Saving...",
+      "save": "Save",
+      "cancel": "Cancel",
+      "editNickname": "Edit nickname",
+      "neverUsed": "Never used",
+      "usedToday": "Used today",
+      "usedYesterday": "Used yesterday",
+      "usedDaysAgo": "Used {count} days ago",
+      "usedWeeksAgo": "Used {count} weeks ago",
+      "usedMonthsAgo": "Used {count} months ago",
+      "usedTimes": "Used {count} time",
+      "usedTimesPlural": "Used {count} times",
+      "cardsSecure": "Your Cards are Secure",
+      "cardsSecureDesc": "All card information is encrypted and securely stored by Stripe. We never store your full card number on our servers. Your payment data is protected by industry-leading security standards.",
+      "backToDashboard": "Back to Dashboard",
+      "cardSaved": "Your card has been saved successfully",
+      "cardRemoved": "Your card has been removed",
+      "defaultUpdated": "Your default payment method has been updated",
+      "nicknameUpdated": "Card nickname updated",
+      "failedAddCard": "Failed to add card",
+      "failedRemoveCard": "Failed to remove card",
+      "failedSetDefault": "Failed to update default",
+      "failedUpdateNickname": "Failed to update nickname",
+      "failedLoadMethods": "Failed to load payment methods",
+      "enterNicknameError": "Please enter a nickname"
+    },
+    "following": {
+      "title": "Following",
+      "storesYouFollow": "{count} store you follow",
+      "storesYouFollowPlural": "{count} stores you follow",
+      "storesYouLove": "Stores you love, all in one place",
+      "signInRequired": "Sign in required",
+      "signInToView": "Please sign in to view your followed stores.",
+      "signIn": "Sign In",
+      "backToDashboard": "Back to Dashboard",
+      "noStoresFollowed": "No stores followed yet",
+      "startExploring": "Start exploring stores and follow your favorites to see them here!",
+      "browseStores": "Browse Stores",
+      "followingSince": "Following since",
+      "unfollow": "Unfollow",
+      "unfollowing": "Unfollowing...",
+      "unfollowed": "Unfollowed {name}",
+      "failedUnfollow": "Failed to unfollow store",
+      "failedLoadStores": "Failed to load stores",
+      "tryAgainLater": "Please try again later.",
+      "onVacation": "On Vacation",
+      "verified": "Verified",
+      "products": "products"
+    },
+    "inquiries": {
+      "title": "My Inquiries",
+      "subtitle": "Track your property and vehicle inquiries",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "inquiries": "Inquiries"
+      },
+      "total": "Total",
+      "active": "Active",
+      "converted": "Converted",
+      "all": "All",
+      "noInquiriesYet": "No Inquiries Yet",
+      "noInquiriesDesc": "You haven't submitted any inquiries for properties or vehicles yet.",
+      "noInquiriesMatch": "No inquiries match this filter.",
+      "browsePropertiesVehicles": "Browse Properties & Vehicles",
+      "failedToLoad": "Failed to Load Inquiries",
+      "tryAgain": "Try Again",
+      "yourInquiry": "Your Inquiry",
+      "message": "Message",
+      "preferredContact": "Preferred Contact",
+      "preferredTime": "Preferred Time",
+      "preApprovedFinancing": "Pre-approved for financing",
+      "interestedInTradeIn": "Interested in trade-in",
+      "statusHistory": "Status History",
+      "inquirySubmitted": "Inquiry Submitted",
+      "sellerResponded": "Seller Responded",
+      "currentStatus": "Current status",
+      "submitted": "Submitted",
+      "responded": "Responded",
+      "viewing": "Viewing",
+      "testDrive": "Test Drive",
+      "viewProperty": "View Property",
+      "viewVehicle": "View Vehicle",
+      "contactSeller": "Contact Seller",
+      "property": "Property",
+      "vehicle": "Vehicle",
+      "unknownProduct": "Unknown Product",
+      "new": "New",
+      "contacted": "Contacted",
+      "viewingScheduled": "Viewing Scheduled",
+      "testDriveScheduled": "Test Drive Scheduled",
+      "negotiating": "Negotiating",
+      "closed": "Closed",
+      "spam": "Spam"
+    },
+    "downloads": {
+      "title": "My Downloads",
+      "subtitle": "Access your purchased digital products",
+      "breadcrumb": "My Downloads",
+      "unknownSize": "Unknown size",
+      "license": "{type} License",
+      "downloadsCount": "Downloads: {used} / {limit}",
+      "stats": {
+        "totalFiles": "Total Files",
+        "orders": "Orders",
+        "available": "Available"
+      },
+      "empty": {
+        "title": "No Downloads Yet",
+        "description": "You haven't purchased any digital products yet. Browse our collection of digital products to get started.",
+        "browseButton": "Browse Digital Products"
+      },
+      "order": {
+        "label": "Order",
+        "purchased": "Purchased"
+      },
+      "button": {
+        "download": "Download",
+        "downloading": "Downloading..."
+      },
+      "toast": {
+        "loadError": "Failed to load your downloads",
+        "downloadLimit": "You have reached the download limit for this file",
+        "downloading": "Downloading {fileName}",
+        "downloadLinkError": "Could not get download link",
+        "downloadError": "An error occurred while starting download"
+      }
+    },
+    "returns": {
+      "title": "Returns & Refunds",
+      "subtitle": "Track your return requests and refunds",
+      "breadcrumb": "Returns & Refunds",
+      "stats": {
+        "totalRequests": "Total Requests",
+        "inProgress": "In Progress",
+        "refunded": "Refunded",
+        "totalRefunded": "Total Refunded"
+      },
+      "empty": {
+        "title": "No Return Requests",
+        "description": "You haven't submitted any return requests yet. If you need to return a product, visit your order details page.",
+        "viewOrders": "View My Orders"
+      },
+      "sections": {
+        "active": "Active Requests",
+        "completed": "Completed"
+      },
+      "requestedOn": "Requested on {date}",
+      "refundedOn": "Refunded on {date}",
+      "closedOn": "Closed on {date}",
+      "cancel": "Cancel",
+      "cancelling": "Cancelling...",
+      "quantity": "Qty: {qty}",
+      "reason": "Reason",
+      "description": "Description",
+      "resolutionNote": "Resolution Note",
+      "resolution": "Resolution",
+      "refundAmount": "Refund Amount",
+      "policy": {
+        "title": "Return Policy",
+        "rule1": "Returns must be requested within 30 days of delivery",
+        "rule2": "Items must be in original condition with tags attached",
+        "rule3": "Refunds are processed within 5-7 business days after we receive the item",
+        "rule4": "Digital products and personalized items are non-refundable"
+      },
+      "needHelp": "Need help? Contact support",
+      "toast": {
+        "loadError": "Failed to load return requests",
+        "cancelled": "Return request has been cancelled",
+        "cancelError": "Failed to cancel return request"
+      }
+    },
+    "orderDetail": {
+      "breadcrumb": {
+        "orders": "Orders"
+      },
+      "placedOn": "Placed on {date}",
+      "error": {
+        "title": "Order Not Found",
+        "description": "The order you are looking for does not exist",
+        "backToOrders": "Back to Orders"
+      },
+      "shipmentTracking": {
+        "title": "Shipment Tracking",
+        "shipmentCount": "{count} shipment(s) for this order"
+      },
+      "timeline": {
+        "title": "Order Timeline"
+      },
+      "items": {
+        "title": "Order Items",
+        "variant": "Variant: {details}",
+        "quantity": "Quantity: {qty} × {price}",
+        "writeReview": "Write Review",
+        "reviewed": "Reviewed"
+      },
+      "digitalDownloads": {
+        "title": "Digital Downloads",
+        "subtitle": "Download your digital products",
+        "downloadsUsed": "{used}/{limit} downloads used",
+        "downloading": "Downloading...",
+        "download": "Download",
+        "viewAll": "View all downloads"
+      },
+      "summary": {
+        "title": "Order Summary",
+        "subtotal": "Subtotal",
+        "shipping": "Shipping",
+        "tax": "Tax",
+        "total": "Total"
+      },
+      "shippingAddress": "Shipping Address",
+      "paymentMethod": "Payment Method",
+      "creditCardFallback": "Credit Card",
+      "actions": {
+        "reorder": "Reorder",
+        "addingToCart": "Adding to Cart...",
+        "downloadInvoice": "Download Invoice",
+        "cancelOrder": "Cancel Order",
+        "cancelling": "Cancelling...",
+        "requestReturn": "Request Return",
+        "requestReturnDays": "Request Return ({days} days left)",
+        "returnNotAvailable": "Return Not Available",
+        "contactSupport": "Contact Support",
+        "backToOrders": "Back to Orders"
+      },
+      "cancelModal": {
+        "title": "Cancel Order?",
+        "description": "Are you sure you want to cancel order {orderNumber}? This action cannot be undone.",
+        "keepOrder": "Keep Order",
+        "yesCancel": "Yes, Cancel",
+        "cancelling": "Cancelling..."
+      },
+      "returnModal": {
+        "title": "Request Return",
+        "orderLabel": "Order #{orderNumber}",
+        "selectItem": "Which item do you want to return?",
+        "allItems": "All items in this order",
+        "reasonLabel": "Reason for return",
+        "detailsLabel": "Additional details (optional)",
+        "detailsPlaceholder": "Please provide any additional details about your return request...",
+        "policy": {
+          "title": "Return Policy",
+          "rule1": "Returns must be requested within 30 days of delivery",
+          "rule2": "Items must be unused and in original packaging",
+          "rule3": "Refunds are processed within 5-7 business days",
+          "rule4": "Shipping costs may apply for non-defective returns"
+        },
+        "cancel": "Cancel",
+        "submit": "Submit Request",
+        "submitting": "Submitting..."
+      },
+      "toast": {
+        "reorderSuccess": "{count} item(s) added to your cart",
+        "reorderError": "Failed to reorder",
+        "reorderException": "An error occurred while reordering",
+        "downloadLimit": "You have reached the download limit for this file",
+        "downloading": "Downloading {fileName}",
+        "downloadLinkError": "Could not get download link",
+        "downloadError": "An error occurred while starting download",
+        "reviewSuccess": "Thank you for your review!",
+        "reviewError": "Failed to submit review. Please try again.",
+        "cancelError": "Failed to cancel order. Please contact support.",
+        "returnSuccess": "Return request submitted. We will review your request and get back to you soon",
+        "returnError": "Failed to submit return request. Please try again."
+      }
+    }
+  },
+  "components": {
+    "checkoutStepper": {
+      "shippingDetails": "Shipping Details",
+      "paymentInfo": "Payment Info",
+      "reviewOrder": "Review Order",
+      "step": "Step",
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "pending": "Pending"
+    },
+    "orderCard": {
+      "orderNumber": "Order Number",
+      "item": "item",
+      "items": "items",
+      "orderDate": "Order Date",
+      "total": "Total",
+      "viewDetails": "View Details"
+    },
+    "orderStatusBadge": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded"
+    },
+    "orderProgressTracker": {
+      "orderPlaced": "Order Placed",
+      "confirmed": "Confirmed",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "orderCancelled": "Order Cancelled",
+      "orderRefunded": "Order Refunded",
+      "cancelledMessage": "This order has been cancelled and will not be processed.",
+      "refundedMessage": "This order has been refunded. The amount will be returned to your payment method."
+    },
+    "orderSummary": {
+      "orderSummary": "Order Summary",
+      "subtotal": "Subtotal",
+      "shipping": "Shipping",
+      "tax": "Tax",
+      "taxEstimated": "Tax (estimated)",
+      "discount": "Discount",
+      "total": "Total",
+      "promoCode": "Promo Code",
+      "enterPromoCode": "Enter promo code",
+      "enterCode": "Enter code",
+      "apply": "Apply",
+      "remove": "Remove",
+      "pleaseEnterPromoCode": "Please enter a promo code",
+      "havePromoCode": "Have a promo code?",
+      "addPromoCode": "Add Promo Code",
+      "code": "Code",
+      "discountApplied": "Discount applied!",
+      "calculatedAtNextStep": "Calculated at next step",
+      "free": "Free",
+      "qty": "Qty",
+      "item": "item",
+      "items": "items"
+    },
+    "searchBar": {
+      "placeholder": "Search luxury items, brands, or collections...",
+      "searching": "Searching...",
+      "noResults": "No results found",
+      "tryDifferentKeywords": "Try different keywords"
+    },
+    "wishlistButton": {
+      "addToWishlist": "Add to wishlist",
+      "removeFromWishlist": "Remove from wishlist",
+      "loginRequired": "Please login to add to wishlist"
+    },
+    "filtersSidebar": {
+      "categories": "Categories",
+      "priceRange": "Price Range",
+      "brands": "Brands",
+      "ratings": "Ratings",
+      "availability": "Availability",
+      "clearAll": "Clear All",
+      "apply": "Apply Filters",
+      "inStock": "In Stock",
+      "outOfStock": "Out of Stock",
+      "all": "All",
+      "andUp": "& Up"
+    },
+    "reviewForm": {
+      "writeReview": "Write a Review",
+      "rating": "Rating",
+      "reviewTitle": "Review Title (Optional)",
+      "yourReview": "Your Review",
+      "reviewPlaceholder": "Share your experience with this product. What did you like or dislike? Would you recommend it to others?",
+      "minimumLength": "Minimum 20 characters",
+      "photos": "Photos (Optional)",
+      "clickToUpload": "Click to upload",
+      "orDragDrop": "or drag and drop",
+      "imageRequirements": "PNG, JPG or WebP (max 5MB each, up to 5 images)",
+      "cancel": "Cancel",
+      "submitting": "Submitting...",
+      "submitReview": "Submit Review",
+      "pleaseSelectRating": "Please select a rating",
+      "reviewMinLength": "Review must be at least 10 characters",
+      "reviewMaxLength": "Review must not exceed 2000 characters",
+      "titleMaxLength": "Title must not exceed 100 characters",
+      "maxImagesAllowed": "Maximum 5 images allowed",
+      "failedToSubmit": "Failed to submit review. Please try again."
+    },
+    "whatsappChat": {
+      "defaultMessage": "Hello! I am interested in your products.",
+      "chatWithUs": "Chat with us on WhatsApp",
+      "repliesInstantly": "Typically replies instantly",
+      "welcomeMessage": "Hi there! 👋",
+      "howCanWeHelp": "How can we help you today?",
+      "justNow": "Just now",
+      "typePlaceholder": "Type your message...",
+      "sendMessage": "Send message",
+      "quickMessages": "Quick messages:",
+      "productInquiry": "Product inquiry",
+      "orderStatus": "Order status",
+      "customerSupport": "Customer support",
+      "openChat": "Open WhatsApp chat",
+      "closeChat": "Close chat"
+    },
+    "productCard": {
+      "viewProduct": "View {name}",
+      "removeFromWishlist": "Remove from wishlist",
+      "addToWishlist": "Add to wishlist",
+      "viewImage": "View image {number}",
+      "quickView": "Quick View",
+      "outOfStock": "Out of Stock",
+      "onlyLeft": "Only {count} Left",
+      "contactForPrice": "Contact for Price",
+      "inquiryRequired": "Inquiry Required",
+      "by": "by {storeName}",
+      "contactSeller": "Contact Seller",
+      "addToBag": "Add to Bag",
+      "filters": "Filters"
+    },
+    "quickCardSelector": {
+      "addFirstCard": "Add Your First Card",
+      "saveCardsForCheckout": "Save cards for faster checkout",
+      "quickSelect": "Quick Select",
+      "addNew": "Add New",
+      "brandCard": "{brand} Card",
+      "default": "Default",
+      "scrollToSeeMore": "Scroll to see more cards"
+    },
+    "shippingMethod": {
+      "shippingMethod": "Shipping Method",
+      "selectPreferred": "Select your preferred shipping option",
+      "standardShipping": "Standard Shipping",
+      "expressShipping": "Express Shipping",
+      "nextDayDelivery": "Next Day Delivery",
+      "deliveredViaUsps": "Delivered via USPS or UPS",
+      "deliveredViaFedex": "Delivered via FedEx or UPS",
+      "deliveredViaFedexOvernight": "Delivered via FedEx overnight",
+      "deliveredVia": "Delivered via {carrier}",
+      "businessDays": "{days} business days",
+      "businessDay": "{days} business day",
+      "free": "Free",
+      "estDelivery": "Est. delivery: {date}",
+      "addMoreForFreeShipping": "Add {amount} more to qualify for free shipping!",
+      "freeShippingAvailable": "Free shipping available on orders over {amount}",
+      "qualifyForFreeShipping": "You qualify for free shipping!",
+      "orderMeetsMinimum": "Your order meets the {amount} minimum for complimentary delivery",
+      "ordersInsured": "All orders are insured and require signature upon delivery",
+      "back": "Back",
+      "processing": "Processing...",
+      "continueToPayment": "Continue to Payment"
+    },
+    "reviewsList": {
+      "noRatingReviews": "No {rating}-star reviews yet",
+      "noReviews": "No reviews yet",
+      "adjustFilters": "Try adjusting your filters to see more reviews",
+      "beFirst": "Be the first to share your experience with this product!",
+      "allReviews": "All Reviews",
+      "sortBy": "Sort by:",
+      "mostRecent": "Most Recent",
+      "highestRated": "Highest Rated",
+      "lowestRated": "Lowest Rated",
+      "mostHelpful": "Most Helpful"
+    },
+    "wishlistItem": {
+      "recentlyAdded": "Recently added",
+      "save": "Save {percent}%",
+      "outOfStock": "Out of Stock",
+      "quickView": "Quick view",
+      "removeFromWishlist": "Remove from wishlist",
+      "inStock": "In Stock ({count})",
+      "added": "Added {date}",
+      "addToCart": "Add to Cart",
+      "viewDetails": "View details"
+    },
+    "reviewCard": {
+      "verifiedPurchase": "Verified Purchase",
+      "reportReview": "Report review",
+      "showLess": "Show less",
+      "readMore": "Read more",
+      "reviewImage": "Review image {number}",
+      "helpful": "Helpful",
+      "helpfulWithCount": "Helpful ({count})"
+    },
+    "sessionTimeoutModal": {
+      "sessionExpiring": "Session Expiring Soon",
+      "expiringMessage": "Your session will expire due to inactivity",
+      "stayLoggedIn": "Stay Logged In",
+      "extending": "Extending...",
+      "logOutNow": "Log Out Now",
+      "infoMessage": "Click \"Stay Logged In\" to continue your session, or you'll be automatically logged out for security."
+    },
+    "productInquiryForm": {
+      "contactAboutProduct": "Contact About This Product",
+      "fillFormDescription": "Fill out the form below and we'll get back to you as soon as possible.",
+      "inquirySubmitted": "Inquiry Submitted!",
+      "thankYouMessage": "Thank you for your interest. We'll contact you shortly with more information.",
+      "submissionFailed": "Submission Failed",
+      "yourName": "Your Name *",
+      "namePlaceholder": "John Doe",
+      "emailAddress": "Email Address *",
+      "emailPlaceholder": "john@example.com",
+      "phoneOptional": "Phone Number (Optional)",
+      "phonePlaceholder": "+1 (555) 123-4567",
+      "message": "Message *",
+      "messagePlaceholder": "Please let me know more about this product...",
+      "charactersCount": "{count}/1000 characters",
+      "submitting": "Submitting...",
+      "submitInquiry": "Submit Inquiry",
+      "cancel": "Cancel",
+      "privacyNote": "By submitting this form, you agree to be contacted by our team regarding this product. We typically respond within 24 hours.",
+      "defaultMessage": "I am interested in {productName}. Please provide more details.",
+      "failedToSubmit": "Failed to submit inquiry. Please try again.",
+      "errorOccurred": "An error occurred. Please try again later."
+    },
+    "addressForm": {
+      "usingSavedAddress": "Using saved address",
+      "savedAddressNote": "This address is already saved. Click \"Continue to Shipping\" to proceed.",
+      "contactInformation": "Contact Information",
+      "readOnly": "(Read-only)",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "companyOptional": "Company (Optional)",
+      "shippingAddress": "Shipping Address",
+      "addressLine1": "Address Line 1",
+      "addressLine2Optional": "Address Line 2 (Optional)",
+      "city": "City",
+      "selectState": "Select State",
+      "postalCode": "Postal Code",
+      "selectCountry": "Select your country",
+      "phoneNumber": "Phone Number",
+      "saveAsDefault": "Save this address as my default shipping address",
+      "back": "Back",
+      "processing": "Processing...",
+      "saveAndContinue": "Save & Continue to Shipping",
+      "continueToShipping": "Continue to Shipping",
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required",
+      "addressRequired": "Address is required",
+      "cityRequired": "City is required",
+      "stateRequired": "State/Province is required",
+      "postalCodeRequired": "Postal code is required",
+      "invalidPostalCode": "Invalid US postal code (e.g., 12345 or 12345-6789)",
+      "countryRequired": "Country is required",
+      "phoneRequired": "Phone number is required",
+      "invalidPhone": "Invalid phone number format"
+    },
+    "currencySelector": {
+      "currencyLocked": "Currency Locked",
+      "cartLockedTo": "Your cart is locked to {currency} with {count} item.",
+      "cartLockedToPlural": "Your cart is locked to {currency} with {count} items.",
+      "clearCartToChange": "Clear your cart to change currency.",
+      "rate": "Rate: 1 USD = {rate} {currency}",
+      "selectCurrency": "Select currency",
+      "changeCurrency": "Change Currency?",
+      "cartWillBeCleared": "Your cart will be cleared",
+      "yourCartIs": "You have {count} item in your cart.",
+      "yourCartIsPlural": "You have {count} items in your cart.",
+      "changingTo": "Changing to {currency} will clear your cart and unlock the currency.",
+      "cancel": "Cancel",
+      "clearCartAndContinue": "Clear Cart & Continue"
+    },
+    "stockStatusBadge": {
+      "outOfStock": "Out of Stock",
+      "lowStock": "Low Stock",
+      "inStock": "In Stock",
+      "stockLevel": "Stock Level",
+      "units": "units",
+      "lowStockWarning": "Low stock - consider restocking",
+      "outOfStockWarning": "Out of stock - restock immediately"
+    },
+    "adminHeader": {
+      "search": "Search",
+      "searchPlaceholder": "Search products, orders, customers...",
+      "viewWebsite": "View Website",
+      "notifications": "Notifications",
+      "unread": "{count} unread",
+      "viewAllNotifications": "View all notifications",
+      "dashboard": "Dashboard",
+      "settings": "Settings",
+      "logout": "Logout",
+      "quickActions": "Quick Actions",
+      "products": "Products",
+      "orders": "Orders",
+      "customers": "Customers",
+      "searchFor": "Search for \"{query}\"",
+      "pressEnterToSearch": "Press Enter to search"
+    },
+    "orderBreakdown": {
+      "multiVendorBreakdown": "Multi-Vendor Order Breakdown",
+      "item": "item",
+      "items": "items",
+      "orderAmount": "Order Amount",
+      "platformCommission": "Platform Commission",
+      "sellerNetPayout": "Seller Net Payout",
+      "totalPlatformCommission": "Total Platform Commission",
+      "orderSummary": "Order Summary",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "shipping": "Shipping",
+      "total": "Total"
+    },
+    "countrySelector": {
+      "selectCountry": "Select a country",
+      "searchPlaceholder": "Search countries...",
+      "noCountriesFound": "No countries found",
+      "tryDifferentSearch": "Try a different search term",
+      "popularCountries": "Popular Countries",
+      "allCountries": "All Countries",
+      "result": "{count} result",
+      "results": "{count} results"
+    },
+    "activityFeed": {
+      "recentActivity": "Recent Activity",
+      "activity": "activity",
+      "activities": "activities",
+      "noRecentActivity": "No recent activity",
+      "activityWillAppear": "Activity will appear here as you manage your store"
+    },
+    "cardExpiryBadge": {
+      "expired": "Expired",
+      "expiresInDays": "Expires in {days} days"
+    },
+    "inventoryAdjustmentModal": {
+      "purchaseReceive": "Purchase/Receive",
+      "sale": "Sale",
+      "adjustment": "Adjustment",
+      "return": "Return",
+      "damageLoss": "Damage/Loss",
+      "adjustInventory": "Adjust Inventory",
+      "updateStockLevels": "Update stock levels for {itemName}",
+      "currentStock": "Current Stock",
+      "newStock": "New Stock",
+      "units": "units",
+      "transactionType": "Transaction Type",
+      "quantity": "Quantity",
+      "enterQuantity": "Enter quantity",
+      "reason": "Reason",
+      "reasonPlaceholder": "e.g., New shipment received",
+      "notes": "Notes",
+      "notesPlaceholder": "Additional notes (optional)",
+      "cancel": "Cancel",
+      "adjustInventoryButton": "Adjust Inventory",
+      "validQuantityError": "Please enter a valid quantity",
+      "negativeStockError": "Adjustment would result in negative stock",
+      "productIdError": "Product ID is required",
+      "successMessage": "Inventory adjusted successfully",
+      "failedMessage": "Failed to adjust inventory"
+    },
+    "bulkInventoryModal": {
+      "bulkInventoryAdjustment": "Bulk Inventory Adjustment",
+      "updateStockLevelsPlural": "Update stock levels for {count} selected products",
+      "selectedProducts": "Selected Products",
+      "unitsEach": "units each",
+      "transactionType": "Transaction Type",
+      "quantityPerProduct": "Quantity per Product",
+      "enterQuantity": "Enter quantity",
+      "amountDeductedFrom": "This amount will be deducted from each selected product",
+      "amountAddedTo": "This amount will be added to each selected product",
+      "reason": "Reason",
+      "reasonPlaceholder": "e.g., Monthly inventory restock",
+      "warning": "Warning:",
+      "deductionWarning": "This will deduct {quantity} units from each selected product. Products with insufficient stock will fail.",
+      "cancel": "Cancel",
+      "updateProducts": "Update {count} Products",
+      "validQuantityError": "Please enter a valid quantity",
+      "noProductsError": "No products selected",
+      "successMessage": "Successfully updated inventory for {count} products",
+      "partialSuccess": "Updated {successCount} products, but {failureCount} failed. Check console for details.",
+      "failedMessage": "Failed to update inventory",
+      "purchase": "Purchase",
+      "restock": "Restock"
+    },
+    "inventoryHistoryModal": {
+      "inventoryHistory": "Inventory History",
+      "transactionHistory": "Transaction history for {productName}",
+      "productTransactionHistory": "Product transaction history",
+      "noTransactions": "No inventory transactions yet",
+      "purchase": "Purchase",
+      "sale": "Sale",
+      "adjustment": "Adjustment",
+      "return": "Return",
+      "damage": "Damage",
+      "restock": "Restock",
+      "by": "by {firstName} {lastName}",
+      "showing": "Showing {start} - {end} of {total}",
+      "previous": "Previous",
+      "next": "Next",
+      "failedToLoad": "Failed to load inventory history"
+    },
+    "markAsShippedModal": {
+      "markAsShipped": "Mark as Shipped",
+      "createShipmentInfo": "Create shipment and add tracking information",
+      "itemsToShip": "Items to Ship ({selected}/{total} selected)",
+      "quantity": "Quantity:",
+      "generateTracking": "Generate tracking via DHL API",
+      "autoGenerateDescription": "Automatically create shipping label and get tracking number from DHL",
+      "carrier": "Carrier",
+      "serviceType": "Service Type",
+      "dhlExpress": "DHL Express Worldwide",
+      "dhlStandard": "DHL Standard",
+      "dhlEconomy": "DHL Economy Select",
+      "packageDimensions": "Package Dimensions (cm)",
+      "length": "Length",
+      "width": "Width",
+      "height": "Height",
+      "dimensionsHelper": "Enter dimensions in centimeters (L × W × H)",
+      "packageWeight": "Package Weight (kg)",
+      "trackingNumber": "Tracking Number",
+      "enterTrackingNumber": "Enter tracking number",
+      "trackingUrl": "Tracking URL (Optional)",
+      "estimatedDelivery": "Estimated Delivery",
+      "shippingCost": "Shipping Cost ({currency})",
+      "notes": "Notes (Optional)",
+      "notesPlaceholder": "Add any additional notes about this shipment...",
+      "partialShipment": "Partial Shipment",
+      "partialShipmentWarning": "You're only shipping {selected} of {total} items. The remaining items can be shipped separately later.",
+      "cancel": "Cancel",
+      "generateAndCreate": "Generate & Create Shipment",
+      "createShipment": "Create Shipment",
+      "generatingTracking": "Generating Tracking...",
+      "creatingShipment": "Creating Shipment...",
+      "selectItemError": "Please select at least one item to ship",
+      "trackingNumberError": "Please enter a tracking number",
+      "carrierError": "Please select a carrier",
+      "weightError": "Please enter package weight",
+      "dimensionsError": "Please enter package dimensions (L x W x H)",
+      "shipmentCreated": "Shipment created! Tracking: {trackingNumber}",
+      "shipmentCreatedSimple": "Shipment {shipmentNumber} created successfully",
+      "failedToCreate": "Failed to create shipment"
+    },
+    "shipmentCard": {
+      "carrier": "Carrier",
+      "trackingNumber": "Tracking Number",
+      "trackPackage": "Track Package",
+      "itemsInShipment": "Items in this shipment ({count})",
+      "estDelivery": "Est. Delivery",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "shippingCost": "Shipping Cost",
+      "weight": "Weight",
+      "notes": "Notes",
+      "trackingTimeline": "Tracking Timeline ({count} events)"
+    },
+    "revenueChart": {
+      "revenueOverview": "Revenue Overview",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "noRevenueData": "No revenue data available",
+      "dataWillAppear": "Data will appear here once you start receiving orders",
+      "revenue": "Revenue",
+      "orders": "Orders",
+      "week": "Week {week}"
+    },
+    "orderStatusDonut": {
+      "orderStatus": "Order Status",
+      "pending": "Pending",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "totalOrders": "Total Orders",
+      "noOrders": "No orders yet",
+      "orderBreakdown": "Order breakdown will appear here"
+    },
+    "packingSlip": {
+      "packingSlip": "Packing Slip",
+      "shipTo": "Ship To",
+      "orderDetails": "Order Details",
+      "orderDate": "Order Date:",
+      "orderStatus": "Order Status:",
+      "tracking": "Tracking:",
+      "items": "Items",
+      "item": "Item",
+      "qty": "Qty",
+      "price": "Price",
+      "total": "Total",
+      "subtotal": "Subtotal:",
+      "orderNotes": "Order Notes",
+      "thankYou": "Thank you for your order!",
+      "printedOn": "Printed on {date}",
+      "packingChecklist": "Packing Checklist",
+      "customer": "Customer",
+      "phone": "Phone:",
+      "noShippingAddress": "No shipping address provided"
+    },
+    "productActionButton": {
+      "physicalProduct": "Physical Product",
+      "realEstate": "Real Estate",
+      "vehicle": "Vehicle",
+      "service": "Service",
+      "rental": "Rental",
+      "digitalProduct": "Digital Product",
+      "outOfStock": "Out of Stock",
+      "contactSeller": "Contact Seller",
+      "addToCart": "Add to Cart",
+      "requiresContact": "This {productType} requires seller contact",
+      "currentlyUnavailable": "Currently unavailable"
+    },
+    "imageUpload": {
+      "uploading": "Uploading...",
+      "dropImageHere": "Drop your image here, or",
+      "browse": "browse",
+      "fileRequirements": "JPEG, PNG, WebP, or GIF (max 5MB)",
+      "or": "OR",
+      "hideUrlInput": "Hide URL input",
+      "useImageUrl": "Use image URL instead",
+      "urlPlaceholder": "https://example.com/image.jpg",
+      "add": "Add",
+      "changeImage": "Change image",
+      "recommended": "Recommended: 1200 x 1200 pixels for best quality",
+      "invalidFileType": "Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.",
+      "fileSizeExceeds": "File size exceeds 5MB limit",
+      "uploadFailed": "Failed to upload image",
+      "noUrlReturned": "Failed to upload image - no URL returned"
+    },
+    "reviewSummary": {
+      "basedOn": "Based on {count, plural, =0 {0 reviews} =1 {1 review} other {# reviews}}",
+      "writeReview": "Write a Review",
+      "ratingDistribution": "Rating Distribution"
+    }
+  },
+  "pages": {
+    "hotDeals": {
+      "title": "Hot Deals",
+      "subtitle": "Emergency services marketplace - Post your urgent needs and get help fast. Only $1 per post!",
+      "postDeal": "Post a Hot Deal ($1)",
+      "postDealShort": "Post a Hot Deal",
+      "searchPlaceholder": "Search by city...",
+      "allCategories": "All Categories",
+      "search": "Search",
+      "clear": "Clear",
+      "viewDetails": "View Details →",
+      "viewMyDeals": "View My Deals →",
+      "responses": "responses",
+      "response": "response",
+      "expired": "Expired",
+      "hoursLeft": "{hours}h {minutes}m left",
+      "minutesLeft": "{minutes}m left",
+      "noDealsFound": "No Hot Deals Found",
+      "noDealsMatch": "No hot deals match your filters. Try adjusting your search.",
+      "beFirstToPost": "Be the first to post a hot deal in your area!",
+      "previous": "Previous",
+      "next": "Next",
+      "pageOf": "Page {page} of {totalPages}",
+      "failedToLoad": "Failed to load hot deals",
+      "tryAgain": "Try Again"
+    },
+    "hotDealsNew": {
+      "title": "Post a Hot Deal",
+      "subtitle": "Get help fast - post your urgent service request",
+      "serviceRequestDetails": "Service Request Details",
+      "contactInformation": "Contact Information",
+      "location": "Location",
+      "title_label": "Title",
+      "titleRequired": "Title is required",
+      "titleMin": "Title must be at least 10 characters",
+      "titleMax": "Title cannot exceed 100 characters",
+      "titlePlaceholder": "e.g., Need emergency plumber for leaky pipe",
+      "description": "Description",
+      "descriptionRequired": "Description is required",
+      "descriptionMin": "Description must be at least 20 characters",
+      "descriptionMax": "Description cannot exceed 500 characters",
+      "descriptionPlaceholder": "Describe what you need help with, including any specific requirements or time constraints...",
+      "category": "Category",
+      "categoryRequired": "Category is required",
+      "selectCategory": "Select a category",
+      "urgencyLevel": "Urgency Level",
+      "normal": "Normal",
+      "normalDesc": "Standard urgency",
+      "urgent": "Urgent",
+      "urgentDesc": "Need help soon",
+      "emergency": "Emergency",
+      "emergencyDesc": "Need help ASAP",
+      "contactName": "Contact Name",
+      "contactNameRequired": "Contact name is required",
+      "phone": "Phone",
+      "phoneRequired": "Phone number is required",
+      "phoneInvalid": "Please enter a valid phone number",
+      "phonePlaceholder": "+1234567890",
+      "email": "Email",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Please enter a valid email",
+      "preferredContact": "Preferred Contact Method",
+      "phoneOption": "Phone",
+      "emailOption": "Email",
+      "bothOption": "Both",
+      "city": "City",
+      "cityRequired": "City is required",
+      "cityPlaceholder": "New York",
+      "state": "State",
+      "statePlaceholder": "NY",
+      "zipCode": "ZIP Code",
+      "zipInvalid": "Invalid ZIP code format",
+      "zipPlaceholder": "10001",
+      "oneTimeFee": "$1.00 One-time Fee",
+      "feeDescription": "Your hot deal will be active for 24 hours and visible to all service providers in your area.",
+      "cancel": "Cancel",
+      "continueToPayment": "Continue to Payment",
+      "completePayment": "Complete Payment",
+      "postingFee": "Hot Deal Posting Fee",
+      "activeFor24Hours": "Your deal will be active for 24 hours",
+      "cardDetails": "Card Details",
+      "goBack": "Go Back",
+      "payAmount": "Pay $1.00",
+      "securePayment": "Secure payment powered by Stripe. Your card details are never stored on our servers.",
+      "dealCreated": "Deal created! Please complete payment to publish.",
+      "failedToCreate": "Failed to create hot deal",
+      "processingPayment": "Processing Payment...",
+      "pleaseWait": "Please wait while we process your payment.",
+      "paymentFailed": "Payment failed",
+      "hotDealPublished": "Hot Deal Published!",
+      "nowLive": "Your hot deal is now live and will be visible for 24 hours.",
+      "viewHotDeals": "View Hot Deals"
+    },
+    "hotDealsDetail": {
+      "backToHotDeals": "Back to Hot Deals",
+      "description": "Description",
+      "contactInformation": "Contact Information",
+      "preferred": "Preferred",
+      "logInToSee": "Log in to see contact information and respond to this hot deal.",
+      "logInToContinue": "Log In to Continue",
+      "respondToRequest": "Respond to This Request",
+      "sendYourResponse": "Send Your Response",
+      "yourMessage": "Your Message",
+      "messageRequired": "Message is required",
+      "messageMin": "Message must be at least 20 characters",
+      "messageMax": "Message cannot exceed 500 characters",
+      "messagePlaceholder": "Introduce yourself and explain how you can help...",
+      "yourContactInfo": "Your Contact Info (optional)",
+      "contactPlaceholder": "Phone: xxx-xxx-xxxx, Email: your@email.com",
+      "cancel": "Cancel",
+      "sendResponse": "Send Response",
+      "responseSent": "Response sent successfully!",
+      "failedToSend": "Failed to send response",
+      "alreadyResponded": "You have already responded to this hot deal.",
+      "responses": "Responses ({count})",
+      "contactInfo": "Contact Info:",
+      "postedBy": "Posted by",
+      "markAsFulfilled": "Mark as Fulfilled",
+      "markWhenFound": "Mark when you've found help for your request",
+      "markedFulfilled": "Hot deal marked as fulfilled!",
+      "failedToMark": "Failed to mark as fulfilled",
+      "hoursRemaining": "{hours}h {minutes}m remaining",
+      "minutesRemaining": "{minutes}m remaining",
+      "expired": "Expired",
+      "willExpire": "This deal will expire automatically",
+      "notFound": "Hot Deal Not Found",
+      "mayBeRemoved": "This hot deal may have been removed or expired.",
+      "failedToLoad": "Failed to load hot deal"
+    },
+    "hotDealsMyDeals": {
+      "title": "My Hot Deals",
+      "subtitle": "Manage your service requests",
+      "postNewDeal": "Post New Deal",
+      "pendingPayment": "Pending Payment ({count})",
+      "activeDeals": "Active Deals ({count})",
+      "pastDeals": "Past Deals ({count})",
+      "noDealsYet": "No Hot Deals Yet",
+      "noDealsDescription": "You haven't posted any hot deals. Start by posting your first service request!",
+      "postFirstDeal": "Post Your First Hot Deal",
+      "view": "View",
+      "fulfill": "Fulfill",
+      "cancel": "Cancel",
+      "posted": "Posted {date}",
+      "hoursLeft": "{hours}h {minutes}m left",
+      "minutesLeft": "{minutes}m left",
+      "responses": "responses",
+      "markedFulfilled": "Hot deal marked as fulfilled!",
+      "failedToMark": "Failed to mark as fulfilled",
+      "dealCancelled": "Hot deal cancelled",
+      "failedToCancel": "Failed to cancel deal",
+      "confirmCancel": "Are you sure you want to cancel this hot deal?",
+      "failedToLoadDeals": "Failed to load your deals"
+    }
+  },
+  "ads": {
+    "sponsored": "Sponsored",
+    "adSpace": "Ad Space",
+    "advertiseHere": "Advertise Here",
+    "advertise": "Advertise",
+    "startAdvertising": "Start Advertising",
+    "recommended": "Recommended",
+    "featured": "Featured",
+    "premiumPlacement": "Premium Placement",
+    "dismiss": "Dismiss",
+    "previous": "Previous",
+    "next": "Next",
+    "goToSlide": "Go to slide {number}",
+    "placements": {
+      "homepageHero": {
+        "title": "Premium Hero Space",
+        "description": "Maximum visibility for your brand"
+      },
+      "homepageFeatured": {
+        "title": "Featured Banner",
+        "description": "Highlight your best products"
+      },
+      "homepageSidebar": {
+        "title": "Homepage Sidebar",
+        "description": "Persistent brand presence"
+      },
+      "productsBanner": {
+        "title": "Products Banner",
+        "description": "Reach active shoppers"
+      },
+      "productsInline": {
+        "title": "Inline Promotion",
+        "description": "Native product feed placement"
+      },
+      "productsSidebar": {
+        "title": "Sidebar Ad",
+        "description": "Capture browsing attention"
+      },
+      "categoryBanner": {
+        "title": "Category Banner",
+        "description": "Target specific categories"
+      },
+      "productDetailSidebar": {
+        "title": "Product Page Ad",
+        "description": "High-intent shoppers"
+      },
+      "checkoutUpsell": {
+        "title": "Checkout Upsell",
+        "description": "Last-minute conversions"
+      },
+      "searchResults": {
+        "title": "Sponsored Result",
+        "description": "Top search placement"
+      }
+    },
+    "hero": {
+      "title": "Premium Ad Space",
+      "description": "Showcase your brand in our most visible placement",
+      "dailyViews": "Daily Views",
+      "avgCTR": "Avg CTR",
+      "visibility": "Visibility"
+    },
+    "sidebar": {
+      "title": "Sidebar Ad",
+      "description": "Reach browsing shoppers"
+    },
+    "checkout": {
+      "title": "Upsell Opportunity",
+      "description": "Promote products at checkout",
+      "learnMore": "Learn more",
+      "completeYourLook": "Complete Your Look",
+      "addToOrder": "Add to Order"
+    },
+    "search": {
+      "title": "Sponsored Result Space",
+      "description": "Get top placement in search results"
+    },
+    "productDetail": {
+      "title": "Product Page Ad",
+      "description": "Reach high-intent shoppers"
+    },
+    "defaultLinkText": {
+      "discoverNow": "Discover Now",
+      "shopNow": "Shop Now",
+      "learnMore": "Learn More",
+      "viewOffer": "View Offer",
+      "viewDetails": "View Details",
+      "explore": "Explore"
+    }
+  },
+  "becomeSeller": {
+    "title": "Become a Seller",
+    "subtitle": "Join our luxury marketplace and reach millions of premium customers worldwide",
+    "globalReach": "Global Reach",
+    "globalReachDesc": "Access millions of premium customers worldwide",
+    "competitiveFees": "Competitive Fees",
+    "competitiveFeesDesc": "Low commission rates with transparent pricing",
+    "easySetup": "Easy Setup",
+    "easySetupDesc": "Get started quickly with our intuitive tools",
+    "sellerApplication": "Seller Application",
+    "completeForm": "Complete the form below to apply for a seller account",
+    "storeInformation": "Store Information",
+    "storeName": "Store Name",
+    "storeNamePlaceholder": "My Luxury Store",
+    "storeDescription": "Store Description",
+    "storeDescriptionPlaceholder": "Tell us about your store and the products you'll sell...",
+    "businessInformation": "Business Information",
+    "businessType": "Business Type",
+    "individual": "Individual/Sole Proprietor",
+    "business": "Business/Company",
+    "llc": "LLC",
+    "corporation": "Corporation",
+    "businessName": "Business Name",
+    "businessNamePlaceholder": "ABC Company LLC",
+    "taxId": "Tax ID/EIN",
+    "phone": "Phone",
+    "phonePlaceholder": "+1 (555) 123-4567",
+    "website": "Website",
+    "websitePlaceholder": "https://www.example.com",
+    "productCategories": "Product Categories",
+    "selectCategories": "Select the categories that best describe your products",
+    "expectedVolume": "Expected Monthly Sales Volume",
+    "volumeUnder1000": "Under $1,000",
+    "volume1000to5000": "$1,000 - $5,000",
+    "volume5000to10000": "$5,000 - $10,000",
+    "volume10000to50000": "$10,000 - $50,000",
+    "volumeOver50000": "Over $50,000",
+    "submitButton": "Submit Application",
+    "submitting": "Submitting...",
+    "applicationSubmitted": "Application submitted successfully! We will review your application and get back to you soon.",
+    "applicationFailed": "Failed to submit application. Please try again.",
+    "categories": {
+      "fashion": "Fashion & Apparel",
+      "jewelry": "Jewelry & Watches",
+      "home": "Home & Decor",
+      "beauty": "Beauty & Cosmetics",
+      "electronics": "Electronics",
+      "sports": "Sports & Outdoors",
+      "art": "Art & Collectibles",
+      "automotive": "Automotive"
+    }
+  },
+  "track": {
+    "title": "Track Your Delivery",
+    "subtitle": "Enter your tracking number to see real-time updates on your package's location and delivery status",
+    "enterTrackingNumber": "Enter Tracking Number",
+    "findInEmail": "You can find your tracking number in your order confirmation email",
+    "trackingPlaceholder": "Enter tracking number (e.g., TRK1234567890ABC)",
+    "trackPackage": "Track Package",
+    "track": "Track",
+    "realTimeUpdates": "Real-Time Updates",
+    "realTimeUpdatesDesc": "Get live updates on your package's current location and status",
+    "deliveryConfirmation": "Delivery Confirmation",
+    "deliveryConfirmationDesc": "Receive confirmation with proof of delivery when your package arrives",
+    "multipleCarriers": "Multiple Carriers",
+    "multipleCarriersDesc": "Track packages from various delivery providers in one place",
+    "faq": "Frequently Asked Questions",
+    "faqQuestion1": "Where can I find my tracking number?",
+    "faqAnswer1": "Your tracking number is included in your order confirmation email and is also available in your order history.",
+    "faqQuestion2": "How often is tracking information updated?",
+    "faqAnswer2": "Tracking information is updated in real-time as your package moves through our delivery network.",
+    "faqQuestion3": "What if my tracking number doesn't work?",
+    "faqAnswer3": "If your tracking number isn't working, please check that you've entered it correctly. If the problem persists, contact our customer support team.",
+    "fetchingInfo": "Fetching tracking information...",
+    "trackingNotFound": "Tracking Number Not Found",
+    "notFoundMessage": "We couldn't find any delivery with tracking number",
+    "checkAndRetry": "Please check the tracking number and try again",
+    "deliveredBy": "Delivered by",
+    "expectedDelivery": "Expected Delivery",
+    "deliveryProgress": "Delivery Progress",
+    "trackJourney": "Track your package's journey",
+    "statuses": {
+      "pendingPickup": "Pending Pickup",
+      "pickupScheduled": "Pickup Scheduled",
+      "pickedUp": "Picked Up",
+      "inTransit": "In Transit",
+      "outForDelivery": "Out for Delivery",
+      "delivered": "Delivered"
+    }
+  },
+  "legal": {
+    "backToHome": "Back to Home",
+    "lastUpdated": "Last Updated",
+    "effective": "Effective",
+    "version": "Version",
+    "tableOfContents": "Table of Contents",
+    "printDownload": "Print / Download",
+    "jumpToSection": "Jump to Section",
+    "relatedDocuments": "Related Documents",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "sellerAgreement": "Seller Agreement",
+    "questionsAboutDocument": "Questions about this document?",
+    "questionsHelp": "If you have any questions or concerns, please contact our legal team.",
+    "contactUs": "Contact Us",
+    "quickNavigation": "Quick Navigation",
+    "documentInformation": "Document Information"
+  },
+  "terms": {
+    "pageTitle": "Terms of Service",
+    "sections": {
+      "introduction": "1. Introduction",
+      "accountSecurity": "2. Account Registration and Security",
+      "platformUsage": "3. Platform Usage",
+      "productListings": "4. Product Listings and Purchases",
+      "multiVendor": "5. Multi-Vendor Marketplace",
+      "shipping": "6. Shipping and Delivery",
+      "returns": "7. Returns, Refunds, and Cancellations",
+      "reviews": "8. Reviews and Ratings",
+      "prohibited": "9. Prohibited Activities",
+      "privacy": "10. Privacy and Data Protection",
+      "disclaimers": "11. Disclaimers and Limitations of Liability",
+      "indemnification": "12. Indemnification",
+      "disputes": "13. Dispute Resolution",
+      "platformFeatures": "14. Platform Features and Policies",
+      "contact": "15. Contact Information",
+      "acknowledgment": "16. Acknowledgment"
+    }
+  },
+  "privacy": {
+    "pageTitle": "Privacy Policy",
+    "sections": {
+      "introduction": "1. Introduction",
+      "informationWeCollect": "2. Information We Collect",
+      "howWeUse": "3. How We Use Your Information",
+      "howWeShare": "4. How We Share Your Information",
+      "dataSecurity": "5. Data Security",
+      "yourRights": "6. Your Privacy Rights and Choices",
+      "dataRetention": "7. Data Retention",
+      "childrensPrivacy": "8. Children's Privacy",
+      "internationalTransfers": "9. International Data Transfers",
+      "regionalRights": "10. Regional Privacy Rights",
+      "cookies": "11. Cookies and Tracking Technologies",
+      "changes": "12. Changes to This Privacy Policy",
+      "systemSettings": "13. System Settings and Audit Logging",
+      "contact": "14. Contact Information",
+      "acknowledgment": "15. Acknowledgment and Consent"
+    }
+  },
+  "sellerOrders": {
+    "pageTitle": "Orders",
+    "pageSubtitle": "Manage orders for your products",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "orders": "Orders"
+    },
+    "stats": {
+      "totalOrders": "Total Orders",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "totalRevenue": "Total Revenue"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by order number or customer...",
+      "allStatus": "All Status",
+      "allPaymentStatus": "All Payment Status"
+    },
+    "status": {
+      "PENDING": "Pending",
+      "PROCESSING": "Processing",
+      "SHIPPED": "Shipped",
+      "DELIVERED": "Delivered",
+      "CANCELLED": "Cancelled"
+    },
+    "paymentStatus": {
+      "PAID": "Paid",
+      "PENDING": "Pending",
+      "FAILED": "Failed",
+      "REFUNDED": "Refunded"
+    },
+    "table": {
+      "orderNumber": "Order #",
+      "customer": "Customer",
+      "items": "Items",
+      "total": "Total",
+      "status": "Status",
+      "payment": "Payment",
+      "date": "Date",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No Orders Yet",
+      "description": "Orders for your products will appear here"
+    },
+    "updateStatus": {
+      "title": "Update Order Status",
+      "selectNew": "Select New Status",
+      "updating": "Updating...",
+      "confirm": "Confirm Update",
+      "success": "Order status updated successfully!",
+      "error": "Failed to update order status"
+    },
+    "unknown": "Unknown"
+  },
+  "sellerEarnings": {
+    "pageTitle": "Earnings & Payouts",
+    "pageSubtitle": "Track your earnings, commissions, and payout history",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "earnings": "Earnings"
+    },
+    "refresh": "Refresh",
+    "summary": {
+      "totalEarnings": "Total Earnings",
+      "pending": "Pending",
+      "availableForPayout": "Available for Payout",
+      "paidOut": "Paid Out",
+      "orders": "orders",
+      "ordersAwaitingConfirmation": "orders awaiting confirmation",
+      "confirmedOrders": "confirmed orders",
+      "paidOrders": "paid orders"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "commissionHistory": "Commission History",
+      "payoutHistory": "Payout History"
+    },
+    "commissionStatus": {
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "PAID": "Paid",
+      "CANCELLED": "Cancelled"
+    },
+    "payoutStatus": {
+      "PENDING": "Pending",
+      "PROCESSING": "Processing",
+      "COMPLETED": "Completed",
+      "FAILED": "Failed"
+    },
+    "table": {
+      "orderNumber": "Order #",
+      "date": "Date",
+      "grossAmount": "Gross Amount",
+      "commission": "Commission",
+      "platformFee": "Platform Fee",
+      "netEarnings": "Net Earnings",
+      "status": "Status",
+      "amount": "Amount",
+      "method": "Method",
+      "transactionId": "Transaction ID",
+      "processedAt": "Processed At",
+      "commissions": "Commissions"
+    },
+    "paymentMethod": {
+      "bankTransfer": "Bank Transfer"
+    },
+    "empty": {
+      "noCommissions": "No commission records found",
+      "noPayouts": "No payout records found"
+    }
+  },
+  "sellerAds": {
+    "pageTitle": "My Advertisements",
+    "pageSubtitle": "Create and manage your advertising campaigns",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "advertisements": "Advertisements"
+    },
+    "createAd": "Create Ad",
+    "loading": "Loading...",
+    "noSubscription": "No Active Subscription",
+    "noSubscriptionDesc": "Subscribe to an advertising plan to start creating ads.",
+    "viewPlans": "View Plans",
+    "currentPlan": "Current Plan",
+    "activeAds": "Active Ads",
+    "impressionsUsed": "Impressions Used",
+    "periodEnds": "Period Ends",
+    "noAdsYet": "No advertisements yet",
+    "createFirstAd": "Create Your First Ad",
+    "editAdvertisement": "Edit Advertisement",
+    "createAdvertisement": "Create Advertisement",
+    "views": "views",
+    "clicks": "clicks",
+    "pause": "Pause",
+    "resume": "Resume",
+    "edit": "Edit",
+    "previewLink": "Preview Link",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure you want to delete this advertisement?",
+    "formTitle": "Title",
+    "formDescription": "Description",
+    "formImageUrl": "Image URL",
+    "formLinkUrl": "Link URL",
+    "formLinkText": "Link Text",
+    "formPlacement": "Placement",
+    "formStartDate": "Start Date",
+    "formEndDate": "End Date",
+    "cancel": "Cancel",
+    "update": "Update",
+    "create": "Create",
+    "required": "*",
+    "placeholder": {
+      "learnMore": "Learn More",
+      "imageUrl": "https://...",
+      "linkUrl": "https://..."
+    },
+    "toast": {
+      "subscribeFirst": "Please subscribe to an advertising plan first",
+      "limitReached": "You've reached your limit of {max} active ads",
+      "updateSuccess": "Advertisement updated successfully",
+      "createSuccess": "Advertisement created! Pending admin approval.",
+      "saveFailed": "Failed to save advertisement",
+      "deleteSuccess": "Advertisement deleted",
+      "deleteFailed": "Failed to delete advertisement",
+      "statusUpdated": "Advertisement status updated",
+      "statusFailed": "Failed to update status"
+    },
+    "statuses": {
+      "DRAFT": "Draft",
+      "PENDING_APPROVAL": "Pending Approval",
+      "APPROVED": "Approved",
+      "ACTIVE": "Active",
+      "PAUSED": "Paused",
+      "REJECTED": "Rejected",
+      "EXPIRED": "Expired",
+      "COMPLETED": "Completed"
+    },
+    "placements": {
+      "HOMEPAGE_HERO": "Homepage Hero",
+      "HOMEPAGE_FEATURED": "Homepage Featured",
+      "HOMEPAGE_SIDEBAR": "Homepage Sidebar",
+      "PRODUCTS_BANNER": "Products Banner",
+      "PRODUCTS_INLINE": "Products Inline",
+      "PRODUCTS_SIDEBAR": "Products Sidebar",
+      "CATEGORY_BANNER": "Category Banner",
+      "PRODUCT_DETAIL_SIDEBAR": "Product Detail Sidebar",
+      "CHECKOUT_UPSELL": "Checkout Upsell",
+      "SEARCH_RESULTS": "Search Results"
+    }
+  },
+  "sellerStoreSettings": {
+    "pageTitle": "Store Settings",
+    "pageSubtitle": "Manage your store information and configuration",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "storeSettings": "Store Settings"
+    },
+    "backToDashboard": "Back to Dashboard",
+    "loading": "Loading...",
+    "errorLoading": "Failed to load store settings",
+    "retry": "Retry",
+    "save": "Save Changes",
+    "saving": "Saving...",
+    "branding": {
+      "title": "Store Branding",
+      "subtitle": "Upload your store logo and banner image",
+      "banner": "Store Banner",
+      "logo": "Store Logo",
+      "changeBanner": "Change Banner",
+      "uploadBanner": "Click to upload banner",
+      "bannerRecommended": "Recommended: 1200x300px, max 10MB",
+      "uploading": "Uploading...",
+      "upload": "Upload",
+      "uploadLogo": "Upload your store logo",
+      "logoRecommended": "Recommended size: 200x200px",
+      "logoMaxSize": "Maximum file size: 5MB",
+      "logoFormats": "Formats: JPG, PNG, GIF, WebP",
+      "bannerAlt": "Store Banner",
+      "logoAlt": "Store Logo"
+    },
+    "storeInfo": {
+      "title": "Store Information",
+      "subtitle": "Update your store details and contact information",
+      "basicInfo": "Basic Information",
+      "contactInfo": "Contact Information",
+      "addressInfo": "Address Information",
+      "legalInfo": "Legal & Policies"
+    },
+    "fields": {
+      "storeName": "Store Name",
+      "storeSlug": "Store Slug",
+      "slugUrl": "URL: /stores/{slug}",
+      "description": "Description",
+      "email": "Email",
+      "phone": "Phone Number",
+      "website": "Website (Optional)",
+      "address1": "Address Line 1",
+      "address2": "Address Line 2 (Optional)",
+      "city": "City",
+      "province": "State/Province",
+      "postalCode": "Postal Code",
+      "country": "Country",
+      "taxId": "Tax ID / VAT Number (Optional)",
+      "returnPolicy": "Return Policy",
+      "shippingPolicy": "Shipping Policy",
+      "termsConditions": "Terms & Conditions",
+      "required": "*"
+    },
+    "placeholders": {
+      "storeName": "My Luxury Store",
+      "storeSlug": "my-luxury-store",
+      "description": "Describe your store and products...",
+      "email": "store@example.com",
+      "phone": "+1 (555) 000-0000",
+      "website": "https://mystore.com",
+      "address1": "123 Main Street",
+      "address2": "Suite 100",
+      "city": "New York",
+      "province": "NY",
+      "postalCode": "10001",
+      "taxId": "12-3456789",
+      "returnPolicy": "Outline your return policy here...",
+      "shippingPolicy": "Describe your shipping methods and timeframes...",
+      "termsConditions": "Specify your store's terms and conditions..."
+    },
+    "toast": {
+      "uploadImage": "Please upload an image file",
+      "logoTooLarge": "Logo must be less than 5MB",
+      "logoSuccess": "Logo uploaded successfully!",
+      "logoFailed": "Failed to upload logo",
+      "bannerTooLarge": "Banner must be less than 10MB",
+      "bannerSuccess": "Banner uploaded successfully!",
+      "bannerFailed": "Failed to upload banner",
+      "saveSuccess": "Store settings updated successfully!",
+      "saveFailed": "Failed to update settings"
+    }
+  },
+  "sellerProducts": {
+    "pageTitle": "Products",
+    "pageSubtitle": "Manage your product inventory",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "products": "Products"
+    },
+    "addProduct": "Add Product",
+    "searchPlaceholder": "Search by name or SKU...",
+    "allStatus": "All Status",
+    "sort": {
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "nameAZ": "Name (A-Z)",
+      "nameZA": "Name (Z-A)",
+      "priceLowHigh": "Price (Low-High)",
+      "priceHighLow": "Price (High-Low)",
+      "stockLowHigh": "Stock (Low-High)",
+      "stockHighLow": "Stock (High-Low)"
+    },
+    "statuses": {
+      "ACTIVE": "Active",
+      "DRAFT": "Draft",
+      "OUT_OF_STOCK": "Out of Stock",
+      "ARCHIVED": "Archived"
+    },
+    "bulkActions": {
+      "selected": "{count} products selected",
+      "activate": "Activate",
+      "draft": "Draft",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "export": "Export CSV"
+    },
+    "table": {
+      "image": "Image",
+      "product": "Product",
+      "sku": "SKU",
+      "category": "Category",
+      "price": "Price",
+      "stock": "Stock",
+      "status": "Status",
+      "views": "Views",
+      "actions": "Actions",
+      "edit": "Edit",
+      "delete": "Delete",
+      "noCategory": "N/A",
+      "inStock": "In Stock",
+      "outOfStock": "Out of Stock"
+    },
+    "empty": {
+      "title": "No products found",
+      "subtitle": "Try adjusting your filters",
+      "action": "Get started by adding your first product"
+    },
+    "exportCSV": "Export to CSV",
+    "pagination": {
+      "showing": "Showing <bold>{from}</bold> to <bold>{to}</bold> of <bold>{total}</bold> products",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "alerts": {
+      "bulkUpdateSuccess": "{count} products updated successfully",
+      "bulkUpdateFailed": "Failed to update products",
+      "bulkDeleteConfirm": "Are you sure you want to delete {count} products? This action cannot be undone.",
+      "bulkDeleteSuccess": "{count} products deleted successfully",
+      "bulkDeleteFailed": "Failed to delete products",
+      "deleteConfirm": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+      "deleteSuccess": "Product deleted successfully",
+      "deleteFailed": "Failed to delete product"
+    }
+  },
+  "sellerProductsNew": {
+    "pageTitle": "Add New Product",
+    "pageSubtitle": "Create a new product for your store",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "products": "Products",
+      "new": "New Product"
+    },
+    "loading": {
+      "title": "Checking subscription limits...",
+      "message": "Please wait while we verify your account"
+    },
+    "listingInfo": {
+      "using": "Using",
+      "of": "of",
+      "listings": "listings",
+      "unlimited": "∞"
+    },
+    "limitReached": {
+      "title": "Listing Limit Reached",
+      "yourCurrentPlan": "Your Current Plan: {planName}",
+      "activeListings": "Active Listings",
+      "availableCredits": "Available Credits",
+      "allowedProductTypes": "Allowed Product Types:",
+      "whyCantCreate": "Why can't I create a listing?",
+      "needSubscription": "You need an active platform subscription to list products",
+      "reachedLimit": "You've reached your maximum active listings limit",
+      "planDoesntInclude": "Your plan doesn't include {productType} product listings",
+      "requiresHigherTier": "This product type requires a higher subscription tier",
+      "backToProducts": "Back to Products",
+      "purchaseCredits": "Purchase Credits",
+      "upgradePlan": "Upgrade Plan"
+    },
+    "reasons": {
+      "noSubscription": "You need a platform subscription to create products",
+      "noCapacity": "You have reached your listing limit",
+      "typeNotAllowed": "Your plan doesn't support {productType} listings",
+      "tierTooLow": "Your plan tier is too low for this product type",
+      "cannotCreate": "Cannot create listing"
+    },
+    "banner": {
+      "usingCapacity": "You're using {percentage}% of your listing capacity",
+      "considerUpgrade": "Consider upgrading your plan to add more products.",
+      "viewPlans": "View Plans"
+    },
+    "errors": {
+      "titles": {
+        "subscriptionRequired": "Subscription Required",
+        "typeNotAvailable": "Product Type Not Available",
+        "upgradeRequired": "Upgrade Required",
+        "limitReached": "Listing Limit Reached",
+        "cannotList": "Cannot Create Listing",
+        "planUpgradeRequired": "Plan Upgrade Required",
+        "storeNotActive": "Store Not Active",
+        "createFailed": "Failed to Create Product",
+        "default": "Error"
+      },
+      "messages": {
+        "needSubscription": "You need an active subscription to list this type of product.",
+        "planDoesntSupport": "Your current plan doesn't support this product type. Upgrade to unlock this feature.",
+        "reachedLimit": "You've reached the maximum number of listings for your plan.",
+        "storeNotApproved": "Your store must be approved before you can add products.",
+        "genericError": "There was a problem creating your product. Please try again.",
+        "unexpectedError": "An unexpected error occurred"
+      },
+      "actions": {
+        "getSubscription": "Get Subscription",
+        "viewPlans": "View Plans",
+        "upgradePlan": "Upgrade Plan",
+        "contactSupport": "Contact Support",
+        "learnMore": "Learn More",
+        "viewStoreStatus": "View Store Status"
+      }
+    },
+    "modal": {
+      "close": "Close"
+    },
+    "form": {
+      "cancelConfirm": "Are you sure you want to cancel? All unsaved changes will be lost."
+    }
+  },
+  "sellerProductsEdit": {
+    "pageTitle": "Edit Product",
+    "pageSubtitle": "Update your product information",
+    "loading": {
+      "message": "Loading product..."
+    },
+    "error": {
+      "title": "Failed to Load Product",
+      "notFound": "Product not found or you do not have permission to edit it.",
+      "backToProducts": "Back to Products"
+    },
+    "success": {
+      "productUpdated": "Product updated successfully!",
+      "imagesFailed": "Product updated but failed to save images"
+    },
+    "form": {
+      "cancelConfirm": "Are you sure you want to cancel? All unsaved changes will be lost."
+    }
+  },
+  "sellerAdPlans": {
+    "pageTitle": "Advertisement Plans",
+    "pageSubtitle": "Choose the perfect plan to promote your products and reach more customers",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "adPlans": "Advertisement Plans"
+    },
+    "currentSubscription": {
+      "title": "Current Subscription",
+      "featured": "⭐ Featured",
+      "plan": "Plan",
+      "activeAds": "Active Ads",
+      "impressionsUsed": "Impressions Used",
+      "periodEnds": "Period Ends",
+      "trialMessage": "🎉 You're currently on a free trial. Your trial ends on {date}",
+      "pastDueMessage": "⚠️ Your subscription payment is past due. Please update your payment method to continue using your plan.",
+      "cancelledMessage": "ℹ️ Your subscription is set to cancel on {date}. You can still use your plan until then.",
+      "cancelButton": "Cancel Subscription"
+    },
+    "status": {
+      "ACTIVE": "ACTIVE",
+      "TRIAL": "TRIAL",
+      "PAST_DUE": "PAST DUE",
+      "CANCELLED": "CANCELLED",
+      "EXPIRED": "EXPIRED"
+    },
+    "billingPeriod": {
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "save": "Save 20%"
+    },
+    "planCard": {
+      "popular": "⭐ Popular",
+      "perMonth": "/month",
+      "billedAnnually": "Billed annually at {amount}",
+      "freeTrialDays": "{days} days free trial",
+      "unlimited": "Unlimited",
+      "activeAd": "active ad",
+      "activeAds": "active ads",
+      "impressionsMonth": "impressions/month",
+      "priorityBoost": "priority boost",
+      "placementLocation": "placement location",
+      "placementLocations": "placement locations",
+      "currentPlan": "Current Plan",
+      "alreadySubscribed": "Already Subscribed",
+      "subscribing": "Subscribing...",
+      "startFreeTrial": "Start Free Trial",
+      "subscribeNow": "Subscribe Now"
+    },
+    "empty": {
+      "message": "No advertisement plans available at the moment."
+    },
+    "comparison": {
+      "title": "Plan Comparison",
+      "feature": "Feature",
+      "activeAds": "Active Ads",
+      "monthlyImpressions": "Monthly Impressions",
+      "priorityBoost": "Priority Boost",
+      "placementLocations": "Placement Locations",
+      "freeTrial": "Free Trial",
+      "days": "{days} days",
+      "unlimited": "Unlimited"
+    },
+    "cancelModal": {
+      "title": "Cancel Subscription?",
+      "message": "Are you sure you want to cancel your subscription to {planName}? You'll continue to have access until {date}.",
+      "keepButton": "Keep Subscription",
+      "cancelButton": "Yes, Cancel",
+      "cancelling": "Cancelling..."
+    },
+    "toast": {
+      "subscribeSuccess": "Successfully subscribed to plan!",
+      "subscribeError": "Failed to subscribe to plan",
+      "cancelSuccess": "Subscription cancelled successfully",
+      "cancelError": "Failed to cancel subscription"
+    }
+  },
+  "sellerCreditsSuccess": {
+    "processing": "Processing your purchase...",
+    "errorTitle": "Unable to Load Balance",
+    "goToDashboard": "Go to Credits Dashboard",
+    "title": "Credits Purchased!",
+    "subtitle": "Your listing credits have been added to your account",
+    "newBalance": "New Credit Balance",
+    "creditsAvailable": "credit{count, plural, =1 {} other {s}} available",
+    "lifetimeCredits": "Lifetime Credits",
+    "lifetimeUsed": "Lifetime Used",
+    "whatCanYouDo": "What can you do with credits?",
+    "benefits": {
+      "realEstate": "List high-value items (Real Estate: 10 credits, Vehicles: 5 credits)",
+      "feature": "Feature your listings to get more visibility",
+      "boost": "Boost listings to the top of search results",
+      "renew": "Renew expired listings",
+      "noExpiry": "Credits never expire - use them at your own pace"
+    },
+    "listProduct": "List a Product",
+    "viewHistory": "View Credit History",
+    "emailSent": "A confirmation email has been sent to your registered email address"
+  },
+  "sellerOnboarding": {
+    "title": "Seller Onboarding",
+    "subtitle": "Complete these steps to start selling on NextPik",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "onboarding": "Onboarding"
+    },
+    "errorTitle": "Unable to Load Onboarding",
+    "errorMessage": "Please make sure you're logged in as a seller.",
+    "goToLogin": "Go to Login",
+    "steps": {
+      "submitted": {
+        "title": "Application Submitted",
+        "description": "Your seller application is under review"
+      },
+      "approved": {
+        "title": "Account Approved",
+        "description": "Admin has approved your seller account"
+      },
+      "credits": {
+        "title": "Purchase Credits",
+        "description": "Get credits to activate your products"
+      },
+      "products": {
+        "title": "Create Products",
+        "description": "Add your first product to start selling"
+      }
+    }
+  },
+  "sellerOrderDetails": {
+    "backToOrders": "Back to Orders",
+    "orderTitle": "Order {orderNumber}",
+    "errorLoading": "Failed to load order details",
+    "orderNotFound": "Order not found",
+    "printPackingSlip": "Print Packing Slip",
+    "markAsShipped": "Mark as Shipped",
+    "orderStatus": "Order Status",
+    "paymentStatus": "Payment Status",
+    "orderDetails": "Order Details",
+    "customerInfo": "Customer Information",
+    "shippingAddress": "Shipping Address",
+    "orderItems": "Order Items ({count})",
+    "product": "Product",
+    "quantity": "Quantity",
+    "price": "Price",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "tax": "Tax",
+    "discount": "Discount",
+    "grandTotal": "Grand Total",
+    "updateSuccess": "Order status updated successfully",
+    "updateError": "Failed to update order status",
+    "shippedSuccess": "Order marked as shipped successfully",
+    "shippedError": "Failed to mark order as shipped"
+  },
+  "sellerReviews": {
+    "title": "Product Reviews",
+    "subtitle": "See what customers are saying about your products",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "reviews": "Reviews"
+    },
+    "backToDashboard": "Back to Dashboard",
+    "stats": {
+      "averageRating": "Average Rating",
+      "totalReviews": "Total Reviews",
+      "ratingDistribution": "Rating Distribution"
+    },
+    "filters": {
+      "allRatings": "All Ratings",
+      "stars": "{count} Stars"
+    },
+    "noReviews": "No reviews yet",
+    "noReviewsDesc": "Reviews from customers will appear here",
+    "reviewBy": "Review by",
+    "verified": "Verified Purchase",
+    "helpful": "Helpful",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    }
+  },
+  "sellerApplicationStatus": {
+    "page": {
+      "title": "Seller Application Status",
+      "backButton": "Back to Dashboard"
+    },
+    "loading": {
+      "loadingApplication": "Loading application..."
+    },
+    "errors": {
+      "title": "Error",
+      "fetchFailed": "Failed to fetch application status",
+      "fetchError": "An error occurred while fetching your application status",
+      "tryAgain": "Try Again"
+    },
+    "noApplication": {
+      "title": "No Application Found",
+      "description": "You haven't submitted a seller application yet. Start your journey as a seller today!",
+      "applyButton": "Apply to Become a Seller"
+    },
+    "status": {
+      "pending": {
+        "title": "Application Under Review",
+        "description": "Your seller application is currently being reviewed by our team. We typically process applications within 2-3 business days.",
+        "action": "Check back soon"
+      },
+      "active": {
+        "title": "Application Approved!",
+        "description": "Congratulations! Your seller application has been approved. You can now access your seller dashboard and start setting up your store.",
+        "action": "Go to Seller Dashboard"
+      },
+      "rejected": {
+        "title": "Application Not Approved",
+        "description": "Unfortunately, your seller application was not approved at this time. You can review our feedback and reapply when you're ready.",
+        "action": "View Details"
+      },
+      "suspended": {
+        "title": "Account Suspended",
+        "description": "Your seller account has been temporarily suspended. Please contact support to resolve any issues.",
+        "action": "Contact Support"
+      },
+      "unknown": {
+        "title": "Unknown Status",
+        "description": "Unable to determine application status.",
+        "action": "Refresh"
+      }
+    },
+    "storeInfo": {
+      "storeName": "Store Name",
+      "status": "Status",
+      "appliedOn": "Applied On",
+      "approvedOn": "Approved On"
+    },
+    "actions": {
+      "goToDashboard": "Go to Seller Dashboard",
+      "refreshStatus": "Refresh Status",
+      "reapply": "Reapply",
+      "contactSupport": "Contact Support"
+    },
+    "timeline": {
+      "title": "Review Process",
+      "submitted": {
+        "title": "Application Submitted",
+        "description": "Your application has been received and is in the queue for review."
+      },
+      "underReview": {
+        "title": "Under Review",
+        "description": "Our team is currently reviewing your application details."
+      },
+      "decision": {
+        "title": "Decision Notification",
+        "description": "You'll receive an email once a decision has been made (2-3 business days)."
+      }
+    },
+    "help": {
+      "title": "Need Help?",
+      "description": "If you have questions about your application or need assistance, our support team is here to help.",
+      "contactSupport": "Contact Support",
+      "sellerGuidelines": "Seller Guidelines"
+    }
+  },
+  "sellerInquiries": {
+    "pageTitle": "Inquiries",
+    "pageSubtitle": "Manage inquiries from potential buyers",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "inquiries": "Inquiries"
+    },
+    "stats": {
+      "total": "Total",
+      "new": "New",
+      "contacted": "Contacted",
+      "scheduled": "Scheduled",
+      "converted": "Converted"
+    },
+    "filter": {
+      "label": "Filter:",
+      "all": "All",
+      "new": "New",
+      "contacted": "Contacted",
+      "viewingScheduled": "Viewing Scheduled",
+      "negotiating": "Negotiating",
+      "converted": "Converted",
+      "closed": "Closed"
+    },
+    "status": {
+      "NEW": "New",
+      "CONTACTED": "Contacted",
+      "VIEWING_SCHEDULED": "Viewing Scheduled",
+      "TEST_DRIVE_SCHEDULED": "Test Drive Scheduled",
+      "NEGOTIATING": "Negotiating",
+      "CONVERTED": "Converted",
+      "CLOSED": "Closed",
+      "SPAM": "Spam"
+    },
+    "badges": {
+      "preApproved": "Pre-approved",
+      "preApprovedFull": "Pre-approved for Mortgage",
+      "requestedViewing": "Requested Viewing:"
+    },
+    "time": {
+      "justNow": "Just now",
+      "hoursAgo": "{hours}h ago",
+      "daysAgo": "{days}d ago"
+    },
+    "empty": {
+      "title": "No inquiries found",
+      "description": "Inquiries from potential buyers will appear here"
+    },
+    "actions": {
+      "viewDetails": "View Details",
+      "reply": "Reply",
+      "call": "Call",
+      "updateStatus": "Update Status",
+      "sendEmail": "Send Email"
+    },
+    "detailModal": {
+      "title": "Inquiry Details",
+      "buyerInfo": "Buyer Information",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "preferredContact": "Preferred Contact",
+      "bestTime": "Best Time",
+      "message": "Message",
+      "yourNotes": "Your Notes"
+    },
+    "updateModal": {
+      "title": "Update Inquiry Status",
+      "newStatus": "New Status",
+      "notes": "Notes (Optional)",
+      "notesPlaceholder": "Add notes about this inquiry...",
+      "cancel": "Cancel",
+      "update": "Update Status",
+      "updating": "Updating..."
+    }
+  },
+  "sellerDashboard": {
+    "pageTitle": "Dashboard",
+    "pageSubtitle": "Welcome back! Here's an overview of your seller performance.",
+    "sections": {
+      "keyMetrics": "Key Metrics",
+      "quickActions": "Quick Actions",
+      "recentActivity": "Recent Activity"
+    },
+    "stats": {
+      "totalProducts": "Total Products",
+      "activeProducts": "{count} active",
+      "activeOrders": "Active Orders",
+      "pendingOrders": "{count} pending",
+      "totalRevenue": "Total Revenue",
+      "earned": "${amount} earned",
+      "totalSales": "Total Sales",
+      "allTime": "All time"
+    },
+    "quickActions": {
+      "addProduct": {
+        "title": "Add New Product",
+        "description": "Create and list a new product"
+      },
+      "viewOrders": {
+        "title": "View Orders",
+        "description": "Manage your orders and fulfillment"
+      },
+      "manageReviews": {
+        "title": "Manage Reviews",
+        "description": "Respond to customer reviews"
+      },
+      "checkEarnings": {
+        "title": "Check Earnings",
+        "description": "View earnings and payouts"
+      },
+      "storeSettings": {
+        "title": "Store Settings",
+        "description": "Update your store information"
+      },
+      "advertisements": {
+        "title": "Advertisements",
+        "description": "Promote your products"
+      }
+    },
+    "tabs": {
+      "recentOrders": "Recent Orders",
+      "recentReviews": "Recent Reviews",
+      "recentInquiries": "Recent Inquiries"
+    },
+    "activityTypes": {
+      "order": "order",
+      "review": "review",
+      "inquiry": "inquiry",
+      "product": "product"
+    },
+    "empty": {
+      "noRecentActivity": "No recent activity",
+      "noRecentReviews": "No recent reviews",
+      "noRecentInquiries": "No recent inquiries"
+    },
+    "onboarding": {
+      "title": "Grow Your Business",
+      "description": "Complete your onboarding to unlock all features",
+      "button": "View Onboarding"
+    }
+  },
+  "sellerPayoutSettings": {
+    "pageTitle": "Payout Settings",
+    "pageSubtitle": "Configure how and when you receive your earnings",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "payoutSettings": "Payout Settings"
+    },
+    "viewEarnings": "View Earnings",
+    "alerts": {
+      "error": "Error",
+      "success": "Success",
+      "updateSuccess": "Payout settings updated successfully!"
+    },
+    "balances": {
+      "available": "Available Balance",
+      "availableDesc": "Ready for payout",
+      "pending": "Pending Balance",
+      "pendingDesc": "In escrow, awaiting release",
+      "nextPayout": "Next Payout",
+      "nextPayoutDesc": "Based on your schedule"
+    },
+    "payoutMethod": {
+      "title": "Payout Method",
+      "bankTransfer": {
+        "label": "Bank Transfer",
+        "description": "Direct deposit to your bank"
+      },
+      "paypal": {
+        "label": "PayPal",
+        "description": "Send to PayPal account"
+      },
+      "stripe": {
+        "label": "Stripe",
+        "description": "Via Stripe Connect"
+      },
+      "paypalEmail": "PayPal Email",
+      "paypalEmailPlaceholder": "your-paypal@email.com"
+    },
+    "bankDetails": {
+      "title": "Bank Account Details",
+      "accountHolderName": "Account Holder Name",
+      "accountHolderPlaceholder": "John Doe",
+      "bankCountry": "Bank Country",
+      "bankName": "Bank Name",
+      "bankNamePlaceholder": "Bank of America",
+      "branchName": "Branch Name",
+      "branchPlaceholder": "Main Street Branch",
+      "accountNumber": "Account Number",
+      "accountNumberCurrent": "(Current: {number})",
+      "accountNumberPlaceholder": "Enter to update",
+      "routingNumber": "Routing Number",
+      "routingNumberCurrent": "(Current: {number})",
+      "routingNumberPlaceholder": "Enter to update",
+      "swiftCode": "SWIFT/BIC Code",
+      "swiftPlaceholder": "For international transfers",
+      "iban": "IBAN",
+      "ibanCurrent": "(Current: {iban})",
+      "ibanPlaceholder": "Enter to update",
+      "securityTitle": "Your information is secure",
+      "securityDesc": "Bank account details are encrypted and stored securely. We never share your financial information with third parties.",
+      "required": "*"
+    },
+    "schedule": {
+      "title": "Payout Schedule",
+      "frequency": "Payout Frequency",
+      "weekly": "Weekly",
+      "biweekly": "Bi-weekly",
+      "monthly": "Monthly",
+      "payoutDay": "Payout Day",
+      "dayOfMonth": "Day of Month",
+      "currency": "Payout Currency",
+      "minAmount": "Minimum Payout Amount",
+      "minAmountDesc": "Minimum $10, maximum $10,000",
+      "automaticTitle": "Automatic Payouts",
+      "automaticDesc": "Automatically transfer funds when threshold is met"
+    },
+    "daysOfWeek": {
+      "sunday": "Sunday",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday"
+    },
+    "buttons": {
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "reset": "Reset"
+    },
+    "recentPayouts": {
+      "title": "Recent Payouts",
+      "viewAll": "View All",
+      "empty": "No payouts yet",
+      "status": {
+        "COMPLETED": "COMPLETED",
+        "PENDING": "PENDING",
+        "PROCESSING": "PROCESSING",
+        "FAILED": "FAILED"
+      }
+    },
+    "help": {
+      "title": "Need Help?",
+      "bankTransfer": "Bank Transfer:",
+      "bankTransferDesc": "Takes 3-5 business days",
+      "paypal": "PayPal:",
+      "paypalDesc": "Usually instant",
+      "minimum": "Minimum:",
+      "minimumDesc": "Payouts occur only when your balance exceeds the minimum",
+      "learnMore": "Learn more about payouts"
+    },
+    "verification": {
+      "verified": "Store Verified",
+      "verifiedDesc": "Your store is verified and eligible for payouts.",
+      "pending": "Verification Pending",
+      "pendingDesc": "Complete verification to enable payouts."
+    }
+  },
+  "sellerVacationMode": {
+    "pageTitle": "Vacation Mode",
+    "pageSubtitleActive": "Your store is currently on vacation",
+    "pageSubtitleInactive": "Take a break without losing your store",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "vacationMode": "Vacation Mode"
+    },
+    "buttons": {
+      "endVacation": "End Vacation",
+      "startVacation": "Start Vacation",
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "reset": "Reset"
+    },
+    "alerts": {
+      "error": "Error",
+      "success": "Success",
+      "autoEndMessage": "Your vacation mode was automatically ended because the end date was reached."
+    },
+    "statusCards": {
+      "daysOnVacation": "Days on Vacation",
+      "since": "Since {date}",
+      "endDate": "End Date",
+      "noEndDate": "No end date set",
+      "daysRemaining": "{days} day remaining",
+      "daysRemainingPlural": "{days} days remaining",
+      "products": "Products",
+      "hidden": "Hidden",
+      "visible": "Visible",
+      "hiddenDesc": "Products hidden from search",
+      "visibleDesc": "Products still visible with vacation banner"
+    },
+    "vacationMessage": {
+      "title": "Vacation Message",
+      "messageLabel": "Message for Visitors",
+      "messagePlaceholder": "Hi! We're currently on vacation and won't be able to ship orders. We'll be back soon!",
+      "characterCount": "{count}/500 characters",
+      "autoReplyLabel": "Auto-Reply for Inquiries",
+      "autoReplyPlaceholder": "Thank you for your inquiry. We're currently on vacation and will respond when we return.",
+      "autoReplyDesc": "This message will be sent automatically to any new inquiries"
+    },
+    "schedule": {
+      "title": "Vacation Schedule",
+      "endDateLabel": "End Date (Optional)",
+      "endDateDesc": "Vacation mode will automatically end on this date",
+      "notSet": "Not set"
+    },
+    "productVisibility": {
+      "title": "Product Visibility",
+      "hideLabel": "Hide Products from Search",
+      "hideDesc": "When enabled, your products won't appear in search results during vacation",
+      "infoTitle": "What happens to your products?",
+      "infoItems": {
+        "item1": "Products remain on your store page with a vacation banner",
+        "item2": "Direct links to products still work",
+        "item3": "Customers can still view but not purchase (if orders are disabled)",
+        "item4": "Products will be hidden from search results"
+      }
+    },
+    "status": {
+      "onVacation": "On Vacation",
+      "storeActive": "Store Active",
+      "onVacationDesc": "Your store is showing the vacation message to visitors.",
+      "storeActiveDesc": "Your store is open and accepting orders normally."
+    },
+    "quickLinks": {
+      "title": "Quick Links",
+      "dashboard": "Dashboard",
+      "storeSettings": "Store Settings",
+      "pendingOrders": "Pending Orders"
+    },
+    "tips": {
+      "title": "Tips for Vacation Mode",
+      "beforeLeaving": "Before leaving:",
+      "beforeLeavingDesc": "Ship all pending orders",
+      "setEndDate": "Set an end date:",
+      "setEndDateDesc": "So you don't forget to reactivate",
+      "friendlyMessage": "Write a friendly message:",
+      "friendlyMessageDesc": "Let customers know when you'll be back",
+      "checkInquiries": "Check inquiries:",
+      "checkInquiriesDesc": "Respond to any urgent messages before leaving"
+    }
+  },
+  "sellerNav": {
+    "sellerPortal": "Seller Portal",
+    "groups": {
+      "dashboard": "Dashboard",
+      "productsInventory": "Products & Inventory",
+      "ordersCustomers": "Orders & Customers",
+      "marketingGrowth": "Marketing & Growth",
+      "earningsPayments": "Earnings & Payments",
+      "subscription": "Subscription",
+      "accountSettings": "Account & Settings"
+    },
+    "items": {
+      "overview": "Overview",
+      "onboarding": "Onboarding",
+      "products": "Products",
+      "addProduct": "Add Product",
+      "reviews": "Reviews",
+      "orders": "Orders",
+      "inquiries": "Inquiries",
+      "advertisements": "Advertisements",
+      "adPlans": "Ad Plans",
+      "earnings": "Earnings",
+      "payoutSettings": "Payout Settings",
+      "plan": "Plan",
+      "sellingCredits": "Selling Credits",
+      "myProfile": "My Profile",
+      "security": "Security",
+      "storeSettings": "Store Settings",
+      "vacationMode": "Vacation Mode"
+    },
+    "topbar": {
+      "sellerDashboard": "Seller Dashboard",
+      "visitStore": "Visit Store",
+      "storeSettings": "Store Settings",
+      "language": "Language",
+      "notifications": "Notifications",
+      "noNotifications": "No new notifications",
+      "myProfile": "My Profile",
+      "visitWebsite": "Visit Website",
+      "logout": "Logout"
+    }
+  },
+  "sellerSubscription": {
+    "pageTitle": "My Subscription",
+    "pageSubtitle": "Manage your subscription and view usage",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "subscription": "Subscription"
+    },
+    "loading": "Loading subscription...",
+    "currentPlan": "Current Plan",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "renewsOn": "Renews on",
+    "usage": {
+      "listings": "Listings",
+      "credits": "Credits",
+      "featured": "Featured",
+      "duration": "Duration",
+      "of": "of",
+      "available": "available",
+      "daysPerListing": "days/listing",
+      "unlimited": "∞"
+    },
+    "actions": {
+      "upgradePlan": "Upgrade Plan",
+      "changePlan": "Change Plan",
+      "viewPlans": "View available plans and features",
+      "buyCredits": "Buy Credits",
+      "purchaseCredits": "Purchase additional listing credits"
+    }
+  },
+  "sellerSellingCredits": {
+    "pageTitle": "Platform Subscription",
+    "pageSubtitle": "Manage your monthly subscription to keep your products active",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "sellingCredits": "Selling Credits"
+    },
+    "errors": {
+      "authRequired": "Authentication Required",
+      "loginPrompt": "Please log in as a seller to view your selling credits.",
+      "fetchBalance": "Please log in as a seller to view credits",
+      "purchaseCanceled": "Purchase canceled",
+      "monthsRange": "Please select between 1 and 12 months",
+      "loginRequired": "Please log in to purchase credits",
+      "checkoutFailed": "Failed to start checkout",
+      "noCheckoutUrl": "No checkout URL received"
+    },
+    "actions": {
+      "goToLogin": "Go to Login",
+      "purchaseNow": "Purchase Credits Now",
+      "purchase": "Purchase",
+      "processing": "Processing..."
+    },
+    "balance": {
+      "title": "Credit Balance",
+      "current": "Current Balance",
+      "month": "month",
+      "months": "months",
+      "available": "Available Credits",
+      "of": "of",
+      "expiresOn": "Expires On",
+      "noExpiry": "No expiry",
+      "inDays": "in {days} days",
+      "lastDeducted": "Last Deducted",
+      "never": "Never",
+      "status": "Status",
+      "statusActive": "Active",
+      "statusGrace": "Grace Period",
+      "statusDepleted": "Depleted",
+      "daysLeft": "{days} days left"
+    },
+    "grace": {
+      "title": "Your credits have been depleted!",
+      "message": "Your products are currently inactive. You have",
+      "day": "day",
+      "days": "days",
+      "remaining": "remaining in your grace period before they are permanently suspended."
+    },
+    "purchase": {
+      "title": "Purchase Credits",
+      "selectMonths": "Select number of months (${price}/month)",
+      "month": "month",
+      "months": "months",
+      "pricePerMonth": "Price per month",
+      "selectedMonths": "Selected months",
+      "total": "Total",
+      "buttonText": "Purchase {months} Month - ${total}",
+      "buttonTextPlural": "Purchase {months} Months - ${total}",
+      "accountNotApproved": "Your account must be approved before purchasing credits"
+    },
+    "history": {
+      "title": "Transaction History",
+      "types": {
+        "purchase": "Purchase",
+        "deduction": "Deduction",
+        "refund": "Refund",
+        "adjustment": "Adjustment",
+        "bonus": "Bonus"
+      },
+      "description": {
+        "fallback": "{type} transaction"
+      }
+    },
+    "loading": "Loading..."
+  },
+  "sellerSubscriptionSuccess": {
+    "title": "Subscription Activated!",
+    "subtitle": "Welcome to your new subscription plan",
+    "status": {
+      "waiting": "Processing your payment...",
+      "verifying": "Verifying with Stripe...",
+      "polling": "Activating your subscription...",
+      "pleaseWait": "This may take a few moments. Please don't close this page."
+    },
+    "timeout": {
+      "title": "Subscription Activation Pending",
+      "message": "Your payment was successful, but your subscription is still being activated. This can happen when our servers are busy. Please wait a few minutes and check your",
+      "linkText": "subscription page",
+      "contact": "If your subscription doesn't update within 15 minutes, please contact support."
+    },
+    "steps": {
+      "title": "What happens next?",
+      "step1": {
+        "title": "Subscription Confirmed",
+        "description": "Your payment has been processed successfully and your subscription is now active."
+      },
+      "step2": {
+        "title": "Full Access Enabled",
+        "description": "You now have access to all features included in your plan. Start listing products right away!"
+      },
+      "step3": {
+        "title": "Confirmation Email Sent",
+        "description": "Check your inbox for a detailed confirmation email with your invoice and plan details."
+      }
+    },
+    "details": {
+      "title": "Your Subscription Details",
+      "plan": "Plan",
+      "billingCycle": "Billing Cycle",
+      "status": "Status",
+      "sessionId": "Session ID"
+    },
+    "actions": {
+      "viewDetails": "View Subscription Details",
+      "goToDashboard": "Go to Dashboard"
+    },
+    "help": {
+      "question": "Need help getting started?",
+      "linkText": "View Getting Started Guide"
+    }
+  },
+  "buyerDashboard": {
+    "pageTitle": "Dashboard",
+    "welcomeBack": "Welcome back, {name}! Track your orders, manage your wishlist, and explore new products.",
+    "yourActivity": "Your Activity",
+    "quickActions": "Quick Actions",
+    "recentOrders": "Recent Orders",
+    "viewAll": "View all",
+    "stats": {
+      "totalOrders": "Total Orders",
+      "activeOrders": "Active Orders",
+      "totalSpent": "Total Spent",
+      "wishlistItems": "Wishlist Items",
+      "active": "{count} active",
+      "inProgress": "In progress",
+      "allTime": "All time",
+      "savedForLater": "Saved for later"
+    },
+    "actions": {
+      "browseProducts": "Browse Products",
+      "browseProductsDesc": "Discover new luxury items",
+      "myOrders": "My Orders",
+      "myOrdersDesc": "Track your orders and deliveries",
+      "myWishlist": "My Wishlist",
+      "myWishlistDesc": "View saved items",
+      "myProfile": "My Profile",
+      "myProfileDesc": "Update your account information",
+      "addresses": "Addresses",
+      "addressesDesc": "Manage shipping addresses",
+      "paymentMethods": "Payment Methods",
+      "paymentMethodsDesc": "Manage your payment options",
+      "myReviews": "My Reviews",
+      "myReviewsDesc": "View and manage your reviews",
+      "followingStores": "Following Stores",
+      "followingStoresDesc": "See stores you follow",
+      "myInquiries": "My Inquiries",
+      "myInquiriesDesc": "View product inquiries"
+    },
+    "orders": {
+      "noOrders": "No orders yet",
+      "noOrdersDesc": "Start shopping to see your orders here",
+      "startShopping": "Start Shopping",
+      "more": "+{count} more"
+    },
+    "sellerCTA": {
+      "title": "Start Selling on NextPik",
+      "description": "Join our marketplace and reach millions of customers worldwide. Turn your passion into profit.",
+      "button": "Become a Seller"
+    }
+  },
+  "adminDashboard": {
+    "pageTitle": "Dashboard",
+    "stats": {
+      "totalRevenue": "Total Revenue",
+      "totalOrders": "Total Orders",
+      "totalCustomers": "Total Customers",
+      "totalProducts": "Total Products"
+    },
+    "charts": {
+      "revenue": "Revenue (Last 30 Days)",
+      "orders": "Orders by Status",
+      "topProducts": "Top Products by Revenue",
+      "customerGrowth": "Customer Growth (Last 30 Days)"
+    },
+    "recentOrders": {
+      "title": "Recent Orders",
+      "viewAll": "View All",
+      "guestCustomer": "Guest Customer",
+      "noEmail": "No email provided",
+      "noOrders": "No recent orders",
+      "view": "View"
+    },
+    "table": {
+      "order": "Order",
+      "customer": "Customer",
+      "total": "Total",
+      "status": "Status",
+      "date": "Date",
+      "actions": "Actions"
+    },
+    "quickActions": {
+      "addProduct": {
+        "title": "Add Product",
+        "description": "Create a new product listing"
+      },
+      "processOrders": {
+        "title": "Process Orders",
+        "description": "Manage pending orders"
+      },
+      "viewAnalytics": {
+        "title": "View Analytics",
+        "description": "Detailed sales reports"
+      }
+    }
+  },
+  "adminSettings": {
+    "pageTitle": "Settings",
+    "pageDescription": "Configure and manage your platform settings",
+    "searchPlaceholder": "Search settings...",
+    "buttons": {
+      "viewHistory": "View History",
+      "hideHistory": "Hide History",
+      "close": "Close"
+    },
+    "tabs": {
+      "overview": {
+        "label": "Overview",
+        "description": "Settings status dashboard"
+      },
+      "general": {
+        "label": "General",
+        "description": "Basic platform settings"
+      },
+      "payment": {
+        "label": "Payment",
+        "description": "Payment & escrow configuration"
+      },
+      "commission": {
+        "label": "Commission",
+        "description": "Commission rates & structure"
+      },
+      "currency": {
+        "label": "Currency",
+        "description": "Multi-currency support"
+      },
+      "inventory": {
+        "label": "Inventory",
+        "description": "Stock & inventory management"
+      },
+      "tax": {
+        "label": "Tax",
+        "description": "Tax calculation & rates"
+      },
+      "shipping": {
+        "label": "Shipping Rates",
+        "description": "Shipping cost calculator & pricing"
+      },
+      "delivery": {
+        "label": "Fulfillment",
+        "description": "Order fulfillment & delivery partners"
+      },
+      "security": {
+        "label": "Security",
+        "description": "Authentication & security"
+      },
+      "notifications": {
+        "label": "Notifications",
+        "description": "Email & SMS notifications"
+      },
+      "seo": {
+        "label": "SEO",
+        "description": "Search engine optimization"
+      }
+    },
+    "auditLog": {
+      "title": "Change History",
+      "description": "Track all configuration changes and modifications"
+    }
+  },
+  "adminCustomers": {
+    "pageTitle": "Customers",
+    "pageDescription": "Manage customer accounts",
+    "buttons": {
+      "export": "Export",
+      "email": "Email",
+      "suspend": "Suspend",
+      "activate": "Activate",
+      "delete": "Delete",
+      "view": "View",
+      "clearSelection": "Clear selection"
+    },
+    "stats": {
+      "totalCustomers": "Total Customers",
+      "newThisMonth": "New This Month",
+      "vipCustomers": "VIP Customers",
+      "totalRevenue": "Total Revenue",
+      "growth": "{percent}% growth",
+      "vipThreshold": "$1000+ spent"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by name, email, or phone...",
+      "allRoles": "All Roles",
+      "allStatus": "All Status",
+      "allSegments": "All Segments",
+      "roles": {
+        "customers": "Customers",
+        "sellers": "Sellers",
+        "deliveryPartners": "Delivery Partners",
+        "admins": "Admins"
+      },
+      "status": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "inactive": "Inactive"
+      },
+      "segments": {
+        "vip": "VIP ($1000+)",
+        "regular": "Regular",
+        "new": "New (30 days)",
+        "atRisk": "At Risk (90+ days)"
+      },
+      "sortBy": {
+        "newestFirst": "Newest First",
+        "oldestFirst": "Oldest First",
+        "highestSpend": "Highest Spend",
+        "lowestSpend": "Lowest Spend",
+        "mostOrders": "Most Orders",
+        "recentActivity": "Recent Activity",
+        "nameAZ": "Name: A-Z",
+        "nameZA": "Name: Z-A"
+      },
+      "clear": "Clear ({count})",
+      "activePills": {
+        "search": "Search: \"{query}\"",
+        "role": "Role: {role}",
+        "status": "Status: {status}",
+        "segment": "Segment: {segment}",
+        "sort": "Sort: {sort}"
+      }
+    },
+    "table": {
+      "headers": {
+        "customer": "Customer",
+        "email": "Email",
+        "orders": "Orders",
+        "totalSpent": "Total Spent",
+        "status": "Status",
+        "joinDate": "Join Date",
+        "actions": "Actions"
+      },
+      "vipBadge": "VIP",
+      "noCustomers": "No customers found",
+      "loading": "Loading customers..."
+    },
+    "pagination": {
+      "showing": "Showing {from} to {to} of {total} customers",
+      "perPage": {
+        "10": "10 per page",
+        "25": "25 per page",
+        "50": "50 per page",
+        "100": "100 per page"
+      },
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "bulkActions": {
+      "selected": "{count} customer selected",
+      "selectedPlural": "{count} customers selected"
+    },
+    "modals": {
+      "delete": {
+        "title": "Delete Customer",
+        "message": "Are you sure you want to delete {name}? This action cannot be undone and will permanently remove all customer data.",
+        "confirm": "Delete",
+        "cancel": "Cancel",
+        "processing": "Processing..."
+      },
+      "suspend": {
+        "title": "Suspend Customer",
+        "message": "Are you sure you want to suspend {name}? They will not be able to log in or place orders until reactivated.",
+        "confirm": "Suspend",
+        "cancel": "Cancel",
+        "processing": "Processing..."
+      },
+      "bulkSuspend": {
+        "title": "Suspend Multiple Customers",
+        "message": "Are you sure you want to suspend {count} customer? They will not be able to log in or place orders until reactivated.",
+        "messagePlural": "Are you sure you want to suspend {count} customers? They will not be able to log in or place orders until reactivated.",
+        "confirm": "Suspend {count} Customer",
+        "confirmPlural": "Suspend {count} Customers",
+        "cancel": "Cancel",
+        "processing": "Processing..."
+      }
+    },
+    "toasts": {
+      "deleteSuccess": "Customer deleted successfully",
+      "deleteFailed": "Failed to delete customer",
+      "suspendSuccess": "Customer suspended successfully",
+      "suspendFailed": "Failed to suspend customer",
+      "activateSuccess": "Customer activated successfully",
+      "activateFailed": "Failed to activate customer",
+      "bulkSuspendSuccess": "{count} customers suspended successfully",
+      "bulkSuspendFailed": "Failed to suspend customers",
+      "bulkActivateSuccess": "{count} customers activated successfully",
+      "bulkActivateFailed": "Failed to activate customers"
+    },
+    "export": {
+      "filename": "customers.csv",
+      "selectedFilename": "customers-selected-{count}.csv",
+      "headers": {
+        "name": "Name",
+        "email": "Email",
+        "totalOrders": "Total Orders",
+        "totalSpent": "Total Spent",
+        "status": "Status",
+        "joinDate": "Join Date"
+      }
+    }
+  },
+  "adminOrders": {
+    "pageTitle": "Orders",
+    "pageDescription": "Manage customer orders",
+    "buttons": {
+      "export": "Export",
+      "view": "View",
+      "clearSelection": "Clear selection",
+      "printInvoices": "Print Invoices"
+    },
+    "stats": {
+      "totalOrders": "Total Orders",
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "totalRevenue": "Total Revenue",
+      "awaitingAction": "Awaiting action"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by order #, customer name, or email...",
+      "allStatus": "All Status",
+      "allPayments": "All Payments",
+      "allTime": "All Time",
+      "status": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "processing": "Processing",
+        "shipped": "Shipped",
+        "delivered": "Delivered",
+        "cancelled": "Cancelled"
+      },
+      "payment": {
+        "paid": "Paid",
+        "pending": "Pending",
+        "failed": "Failed",
+        "refunded": "Refunded"
+      },
+      "dateRange": {
+        "today": "Today",
+        "7days": "Last 7 Days",
+        "30days": "Last 30 Days"
+      },
+      "sortBy": {
+        "newestFirst": "Newest First",
+        "oldestFirst": "Oldest First",
+        "amountHighToLow": "Amount: High to Low",
+        "amountLowToHigh": "Amount: Low to High"
+      },
+      "clear": "Clear ({count})",
+      "activePills": {
+        "search": "Search: \"{query}\"",
+        "status": "Status: {status}",
+        "payment": "Payment: {payment}",
+        "date": "Date: {date}",
+        "sort": "Sort: {sort}"
+      }
+    },
+    "table": {
+      "headers": {
+        "order": "Order",
+        "customer": "Customer",
+        "items": "Items",
+        "total": "Total",
+        "payment": "Payment",
+        "status": "Status",
+        "date": "Date",
+        "actions": "Actions"
+      },
+      "itemCount": "{count} item",
+      "itemCountPlural": "{count} items",
+      "guestCustomer": "Guest Customer",
+      "noEmail": "No email provided",
+      "noOrders": "No orders found",
+      "tryAdjusting": "Try adjusting your filters",
+      "loading": "Loading orders..."
+    },
+    "pagination": {
+      "showing": "Showing {from} to {to} of {total} orders",
+      "perPage": {
+        "10": "10 per page",
+        "25": "25 per page",
+        "50": "50 per page",
+        "100": "100 per page"
+      },
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "bulkActions": {
+      "selected": "{count} order selected",
+      "selectedPlural": "{count} orders selected"
+    },
+    "modals": {
+      "printInvoices": {
+        "comingSoon": "Print invoices feature coming soon"
+      }
+    },
+    "toasts": {
+      "exportSuccess": "Orders exported successfully",
+      "exportFailed": "Failed to export orders"
+    },
+    "export": {
+      "filename": "orders.csv",
+      "selectedFilename": "orders-selected-{count}.csv",
+      "headers": {
+        "orderNumber": "Order Number",
+        "customer": "Customer",
+        "email": "Email",
+        "items": "Items",
+        "total": "Total",
+        "status": "Status",
+        "payment": "Payment",
+        "date": "Date"
+      }
+    }
+  },
+  "sellerSubscriptionPlans": {
+    "pageTitle": "Choose Your Plan",
+    "pageSubtitle": "Unlock premium features to grow your business. All paid plans include a 14-day free trial.",
+    "badge": "SUBSCRIPTION PLANS",
+    "breadcrumbs": {
+      "backToDashboard": "Back to Dashboard"
+    },
+    "loading": "Loading subscription plans...",
+    "errors": {
+      "fetchPlans": "Failed to fetch subscription plans",
+      "noCheckoutUrl": "No checkout URL received",
+      "initiateFailed": "Failed to initiate upgrade"
+    },
+    "currentPlan": {
+      "label": "Current Plan:",
+      "current": "Current",
+      "currentPlanButton": "Current Plan"
+    },
+    "billing": {
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "yearlyDiscount": "-20%",
+      "year": "year",
+      "month": "month",
+      "billedYearly": "billed yearly"
+    },
+    "planTiers": {
+      "taglines": {
+        "FREE": "Get started for free",
+        "STARTER": "Perfect for growing sellers",
+        "PROFESSIONAL": "For serious businesses",
+        "BUSINESS": "Unlimited potential"
+      }
+    },
+    "badges": {
+      "mostPopular": "Most Popular",
+      "enterprise": "Enterprise"
+    },
+    "planCard": {
+      "free": "Free",
+      "freeForever": "Free Forever",
+      "getStarted": "Get Started",
+      "upgrade": "Upgrade",
+      "processing": "Processing...",
+      "listings": "Listings",
+      "creditsPerMonth": "Credits/mo",
+      "productTypes": "Product Types",
+      "features": "Features",
+      "moreFeatures": "+{count} more features",
+      "physicalOnly": "Physical products only"
+    },
+    "productTypes": {
+      "SERVICE": "Services",
+      "RENTAL": "Rentals",
+      "VEHICLE": "Vehicles",
+      "REAL_ESTATE": "Real Estate"
+    },
+    "toasts": {
+      "freePlanActive": "Free plan is already active for your account",
+      "alreadySubscribed": "You are already subscribed to this plan",
+      "redirecting": "Redirecting to checkout..."
+    },
+    "helpSection": {
+      "title": "Need help choosing the right plan?",
+      "subtitle": "Compare features or contact our team for personalized recommendations.",
+      "comparePlans": "Compare Plans",
+      "contactSales": "Contact Sales"
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "subtitle": "Everything you need to know about our plans",
+      "questions": {
+        "changePlan": {
+          "q": "Can I change my plan later?",
+          "a": "Yes, you can upgrade or downgrade your plan at any time. Changes will be prorated based on your billing cycle."
+        },
+        "paymentMethods": {
+          "q": "What payment methods do you accept?",
+          "a": "We accept all major credit cards (Visa, Mastercard, American Express), debit cards, and various local payment methods through Stripe."
+        },
+        "freeTrial": {
+          "q": "Is there a free trial?",
+          "a": "Yes! All paid plans come with a 14-day free trial. No credit card required to start."
+        },
+        "productTypes": {
+          "q": "What product types can I list?",
+          "a": "Free accounts can list physical products. Higher tier plans unlock Services, Rentals, Vehicles, and Real Estate listings."
+        },
+        "refunds": {
+          "q": "Do you offer refunds?",
+          "a": "Yes, we offer a 30-day money-back guarantee on all paid plans. Contact support for assistance."
+        }
+      }
+    },
+    "bottomCta": {
+      "message": "Have more questions? We're here to help.",
+      "linkText": "Visit Help Center"
+    }
+  },
+  "adminProducts": {
+    "pageTitle": "Products",
+    "pageDescription": "Manage your product catalog",
+    "header": {
+      "exportButton": "Export",
+      "addProductButton": "Add Product"
+    },
+    "stats": {
+      "totalProducts": "Total Products",
+      "activeProducts": "Active Products",
+      "outOfStock": "Out of Stock",
+      "lowStock": "Low Stock",
+      "totalValue": "Total Value",
+      "needsAttention": "Needs attention",
+      "units": "{count} units"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by name, SKU, or description...",
+      "loading": "Loading...",
+      "allCategories": "All Categories",
+      "allStatus": "All Status",
+      "allStock": "All Stock",
+      "inStock": "In Stock",
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock",
+      "clear": "Clear ({count})"
+    },
+    "sorting": {
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "priceHighToLow": "Price: High to Low",
+      "priceLowToHigh": "Price: Low to High",
+      "stockLowToHigh": "Stock: Low to High",
+      "stockHighToLow": "Stock: High to Low",
+      "nameAZ": "Name: A-Z",
+      "nameZA": "Name: Z-A"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "DRAFT": "Draft",
+      "ARCHIVED": "Archived",
+      "OUT_OF_STOCK": "Out of Stock"
+    },
+    "activeFilters": {
+      "search": "Search",
+      "category": "Category",
+      "status": "Status",
+      "stock": "Stock",
+      "sort": "Sort",
+      "inStock": "In Stock",
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock"
+    },
+    "table": {
+      "loading": "Loading products...",
+      "noProducts": "No products found",
+      "noProductsDescription": "Try adjusting your filters or add a new product",
+      "headers": {
+        "product": "Product",
+        "sku": "SKU",
+        "category": "Category",
+        "price": "Price",
+        "stock": "Stock",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "na": "N/A"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "view": "View"
+    },
+    "pagination": {
+      "showing": "Showing {start} to {end} of {total} products",
+      "perPage": "{count} per page",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "bulk": {
+      "selected": "{count} product selected",
+      "selectedPlural": "{count} products selected",
+      "export": "Export",
+      "activate": "Activate",
+      "archive": "Archive",
+      "adjustStock": "Adjust Stock",
+      "delete": "Delete",
+      "clearSelection": "Clear selection"
+    },
+    "confirmations": {
+      "deleteProduct": "Are you sure you want to delete this product?",
+      "deleteBulk": "Are you sure you want to delete {count} products?"
+    },
+    "toasts": {
+      "productDeleted": "Product deleted",
+      "productsDeleted": "{count} products deleted",
+      "productsUpdated": "{count} products updated",
+      "deleteError": "Failed to delete product",
+      "bulkDeleteError": "Failed to delete products",
+      "bulkUpdateError": "Failed to update products"
+    }
+  },
+  "adminSellers": {
+    "pageTitle": "Seller Management",
+    "pageDescription": "Manage seller applications and accounts",
+    "buttons": {
+      "refresh": "Refresh",
+      "view": "View",
+      "approve": "Approve",
+      "reject": "Reject",
+      "suspend": "Suspend",
+      "reactivate": "Reactivate"
+    },
+    "stats": {
+      "totalSellers": "Total Sellers",
+      "pendingApproval": "Pending Approval",
+      "activeSellers": "Active Sellers",
+      "paidSubscriptions": "Paid Subscriptions"
+    },
+    "tabs": {
+      "all": "All",
+      "pending": "Pending",
+      "active": "Active",
+      "suspended": "Suspended",
+      "rejected": "Rejected"
+    },
+    "filters": {
+      "searchPlaceholder": "Search sellers..."
+    },
+    "table": {
+      "headers": {
+        "store": "Store",
+        "owner": "Owner",
+        "status": "Status",
+        "subscription": "Subscription",
+        "applied": "Applied",
+        "actions": "Actions"
+      },
+      "subscription": {
+        "months": "{count} months",
+        "month": "{count} month",
+        "expired": "Expired",
+        "low": "Low"
+      },
+      "emptyState": {
+        "noSellers": "No sellers found",
+        "searchTip": "Try adjusting your search",
+        "noApplications": "Applications will appear here"
+      }
+    },
+    "statusBadges": {
+      "PENDING": "PENDING",
+      "ACTIVE": "ACTIVE",
+      "SUSPENDED": "SUSPENDED",
+      "REJECTED": "REJECTED",
+      "INACTIVE": "INACTIVE"
+    },
+    "modals": {
+      "approve": {
+        "title": "Approve Seller Application",
+        "description": "Are you sure you want to approve {storeName}?",
+        "willAutomatically": "This will automatically:",
+        "actions": {
+          "approveAccount": "Approve the seller account",
+          "approveStore": "Approve their store",
+          "allowProducts": "Allow product creation (with credits)",
+          "sendEmail": "Send approval email notification"
+        },
+        "warning": "They'll need to purchase credits before publishing products.",
+        "confirmButton": "Approve",
+        "confirmButtonLoading": "Approving...",
+        "cancelButton": "Cancel"
+      },
+      "reject": {
+        "title": "Reject Seller Application",
+        "description": "Are you sure you want to reject {storeName}?",
+        "reasonLabel": "Rejection Reason",
+        "reasonRequired": "*",
+        "reasonPlaceholder": "Provide a clear reason for rejection...",
+        "warning": "This action will prevent the seller from creating products. They can reapply later.",
+        "confirmButton": "Confirm Rejection",
+        "confirmButtonLoading": "Rejecting...",
+        "cancelButton": "Cancel"
+      },
+      "suspend": {
+        "title": "Suspend Seller",
+        "description": "Are you sure you want to suspend {storeName}?",
+        "reasonLabel": "Suspension Reason",
+        "reasonRequired": "*",
+        "reasonPlaceholder": "Provide a reason for suspension...",
+        "warning": "This will immediately suspend the store and archive all active products.",
+        "confirmButton": "Confirm Suspension",
+        "confirmButtonLoading": "Suspending...",
+        "cancelButton": "Cancel"
+      }
+    },
+    "toasts": {
+      "dataRefreshed": "Data refreshed",
+      "approveSuccess": "{storeName} approved successfully!",
+      "approveFailed": "Failed to approve seller",
+      "rejectSuccess": "{storeName} rejected",
+      "rejectFailed": "Failed to reject seller",
+      "rejectNoteRequired": "Rejection note is required",
+      "suspendSuccess": "{storeName} suspended",
+      "suspendFailed": "Failed to suspend seller",
+      "suspendNoteRequired": "Suspension note is required",
+      "reactivateSuccess": "Seller reactivated",
+      "reactivateFailed": "Failed to reactivate seller"
+    }
+  },
+  "adminAnalytics": {
+    "pageTitle": "Analytics",
+    "pageDescription": "Detailed sales and performance metrics",
+    "dateRange": {
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "last90": "Last 90 days",
+      "lastYear": "Last year",
+      "custom": "Custom range"
+    },
+    "buttons": {
+      "exportReport": "Export Report"
+    },
+    "customRange": {
+      "startDate": "Start Date",
+      "endDate": "End Date"
+    },
+    "metrics": {
+      "totalRevenue": "Total Revenue",
+      "totalOrders": "Total Orders",
+      "newCustomers": "New Customers",
+      "conversionRate": "Conversion Rate",
+      "avgOrderValue": "Avg Order Value"
+    },
+    "charts": {
+      "salesByCategory": "Sales by Category",
+      "ordersByCategory": "Orders by Category"
+    },
+    "table": {
+      "title": "Top Selling Products",
+      "headers": {
+        "product": "Product",
+        "category": "Category",
+        "sales": "Sales",
+        "orders": "Orders",
+        "revenue": "Revenue"
+      }
+    }
+  },
+  "adminCategories": {
+    "pageTitle": "Categories",
+    "pageSubtitle": "Organize your products into categories",
+    "addCategory": "Add Category",
+    "stats": {
+      "totalCategories": "Total Categories",
+      "active": "Active",
+      "withProducts": "With Products",
+      "emptyCategories": "Empty Categories"
+    },
+    "filters": {
+      "searchPlaceholder": "Search categories...",
+      "allStatus": "All Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "allLevels": "All Levels",
+      "rootLevel": "Root Level",
+      "hasParent": "Has Parent",
+      "clear": "Clear",
+      "searchLabel": "Search:",
+      "statusLabel": "Status:",
+      "levelLabel": "Level:"
+    },
+    "form": {
+      "createTitle": "Create New Category",
+      "editTitle": "Edit Category",
+      "editSubtitle": "Update category details and settings",
+      "name": "Name",
+      "slug": "Slug",
+      "autoGenerated": "(auto-generated)",
+      "description": "Description",
+      "parentCategory": "Parent Category",
+      "noneTopLevel": "None (Top Level)",
+      "visibilityOptions": "Visibility Options",
+      "showInMegaMenu": "Show in Mega Menu",
+      "megaMenuHelp": "(Shop/Collections dropdown)",
+      "showInCategoryBar": "Show in Category Bar",
+      "categoryBarHelp": "(Filter pills: All Products, Watches, etc.)",
+      "showInSidebar": "Show in Sidebar",
+      "showOnHomepage": "Show on Homepage",
+      "showInFooter": "Show in Footer",
+      "featured": "Featured",
+      "namePlaceholder": "e.g., Watches",
+      "slugPlaceholder": "e.g., watches",
+      "descriptionPlaceholder": "Optional description for this category",
+      "updateCategory": "Update Category",
+      "createCategory": "Create Category",
+      "cancel": "Cancel"
+    },
+    "table": {
+      "name": "Name",
+      "slug": "Slug",
+      "products": "Products",
+      "visibility": "Visibility",
+      "actions": "Actions",
+      "subcategories": "subcategories",
+      "subcategory": "subcategory",
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "editCategory": "Edit category",
+      "deleteCategory": "Delete category",
+      "hasDependencies": "Has dependencies:",
+      "products_other": "products",
+      "product": "product"
+    },
+    "visibility": {
+      "menu": "Menu",
+      "catBar": "Cat Bar",
+      "sidebar": "Sidebar",
+      "footer": "Footer",
+      "home": "Home",
+      "featured": "⭐ Featured"
+    },
+    "empty": {
+      "noCategories": "No categories found",
+      "tryAdjusting": "Try adjusting your filters",
+      "clickToCreate": "Click \"Add Category\" to create your first category"
+    },
+    "loading": "Loading categories...",
+    "delete": {
+      "confirmTitle": "Are you sure you want to delete \"{name}\"?",
+      "warningHas": "This category has:",
+      "mustDeleteFirst": "You must delete or reassign them first.",
+      "cannotUndo": "This action cannot be undone.",
+      "cannotDeleteWithSubcategories": "Cannot delete category with {count} {count, plural, one {subcategory} other {subcategories}}. Please delete or reassign them first.",
+      "cannotDeleteWithProducts": "Cannot delete category with {count} {count, plural, one {product} other {products}}. Please reassign or delete the products first."
+    },
+    "toast": {
+      "categoryCreated": "Category created successfully",
+      "categoryUpdated": "Category updated successfully",
+      "categoryDeleted": "Category deleted successfully",
+      "visibilityUpdated": "Visibility updated",
+      "errorSave": "Failed to save category",
+      "errorDelete": "Failed to delete category",
+      "errorVisibility": "Failed to update visibility",
+      "slugExists": "A category with this slug already exists. Please use a different name or slug.",
+      "alreadyExists": "A category with these details already exists.",
+      "fieldExists": "A category with this {field} already exists.",
+      "databaseConstraint": "Failed to save category due to a database constraint."
+    }
+  },
+  "adminReviews": {
+    "title": "Reviews Management",
+    "subtitle": "Moderate customer reviews",
+    "stats": {
+      "totalReviews": "Total Reviews",
+      "pendingModeration": "Pending Moderation",
+      "averageRating": "Average Rating",
+      "thisMonth": "This Month",
+      "needsReview": "Needs review"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by product, customer, or content...",
+      "allStatus": "All Status",
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "allRatings": "All Ratings",
+      "fiveStars": "5 Stars",
+      "fourStars": "4 Stars",
+      "threeStars": "3 Stars",
+      "twoStars": "2 Stars",
+      "oneStar": "1 Star",
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "highestRating": "Highest Rating",
+      "lowestRating": "Lowest Rating",
+      "clear": "Clear",
+      "search": "Search",
+      "status": "Status",
+      "rating": "Rating",
+      "sort": "Sort",
+      "stars": "stars"
+    },
+    "table": {
+      "product": "Product",
+      "customer": "Customer",
+      "rating": "Rating",
+      "review": "Review",
+      "status": "Status",
+      "date": "Date",
+      "actions": "Actions",
+      "unknownProduct": "Unknown Product",
+      "anonymous": "Anonymous"
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "delete": "Delete",
+      "bulkApprove": "Approve",
+      "bulkReject": "Reject",
+      "bulkDelete": "Delete"
+    },
+    "pagination": {
+      "showing": "Showing {start} to {end} of {total} reviews",
+      "perPage10": "10 per page",
+      "perPage25": "25 per page",
+      "perPage50": "50 per page",
+      "perPage100": "100 per page",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "bulk": {
+      "selected": "{count} review selected",
+      "selectedPlural": "{count} reviews selected"
+    },
+    "messages": {
+      "loadingReviews": "Loading reviews...",
+      "noReviewsFound": "No reviews found",
+      "tryAdjustingFilters": "Try adjusting your filters",
+      "reviewApproved": "Review approved successfully",
+      "reviewRejected": "Review rejected successfully",
+      "reviewDeleted": "Review deleted successfully",
+      "reviewsApproved": "{count} reviews approved",
+      "reviewsRejected": "{count} reviews rejected",
+      "reviewsDeleted": "{count} reviews deleted",
+      "failedToUpdate": "Failed to update review",
+      "failedToApprove": "Failed to approve reviews",
+      "failedToReject": "Failed to reject reviews",
+      "failedToDelete": "Failed to delete reviews",
+      "confirmDelete": "Are you sure you want to delete this review?",
+      "confirmBulkDelete": "Are you sure you want to delete {count} reviews?"
+    }
+  },
+  "adminCommissions": {
+    "pageTitle": "Commission Overrides",
+    "pageDescription": "Manage seller-specific commission rates",
+    "addOverride": "Add Override",
+    "stats": {
+      "totalOverrides": "Total Overrides",
+      "active": "active",
+      "inactive": "inactive",
+      "averageRate": "Average Rate",
+      "percentageOverrides": "Percentage overrides",
+      "lowestRate": "Lowest Rate",
+      "bestSellerRate": "Best seller rate",
+      "highestRate": "Highest Rate",
+      "maximumOverride": "Maximum override",
+      "expiringSoon": "Expiring Soon",
+      "within30Days": "Within 30 days"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by seller name, email, or notes...",
+      "allStatuses": "All Statuses",
+      "active": "Active",
+      "inactive": "Inactive",
+      "allTypes": "All Types",
+      "percentage": "Percentage",
+      "fixed": "Fixed",
+      "allCategories": "All Categories",
+      "noCategory": "No Category",
+      "sortBy": "Sort by",
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "rateHigh": "Rate (High)",
+      "rateLow": "Rate (Low)",
+      "sellerName": "Seller Name",
+      "activeFilters": "Active filters:",
+      "search": "Search",
+      "status": "Status",
+      "type": "Type",
+      "category": "Category",
+      "none": "None",
+      "clearAll": "Clear all"
+    },
+    "table": {
+      "title": "Commission Overrides",
+      "description": "Seller-specific commission rates that override default rules",
+      "headers": {
+        "seller": "Seller",
+        "rate": "Rate",
+        "type": "Type",
+        "category": "Category",
+        "orderRange": "Order Range",
+        "validity": "Validity",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "all": "All",
+      "any": "Any",
+      "from": "From",
+      "until": "Until",
+      "always": "Always",
+      "active": "Active",
+      "inactive": "Inactive",
+      "loading": "Loading commission overrides...",
+      "noResults": "No commission overrides found"
+    },
+    "bulkActions": {
+      "selected": "selected",
+      "clearSelection": "Clear selection",
+      "export": "Export",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "delete": "Delete",
+      "confirmActivate": "Activate {count} commission overrides?",
+      "confirmDeactivate": "Deactivate {count} commission overrides?",
+      "confirmDelete": "Delete {count} commission overrides? This cannot be undone.",
+      "exportSuccess": "Exporting {count} commission overrides",
+      "activateSuccess": "Activated {count} overrides",
+      "deactivateSuccess": "Deactivated {count} overrides",
+      "deleteSuccess": "Deleted {count} overrides ({failed} failed)"
+    },
+    "dialog": {
+      "createTitle": "Create Commission Override",
+      "editTitle": "Edit Commission Override",
+      "description": "Set a custom commission rate for a specific seller",
+      "sellerEmail": "Seller Email",
+      "sellerEmailPlaceholder": "seller@example.com",
+      "type": "Type",
+      "typePercentage": "Percentage",
+      "typeFixed": "Fixed Amount",
+      "ratePercent": "Rate (%)",
+      "rateAmount": "Amount ($)",
+      "ratePlaceholderPercent": "5.00",
+      "ratePlaceholderAmount": "10.00",
+      "category": "Category (Optional)",
+      "allCategories": "All categories",
+      "minOrderValue": "Min Order Value ($)",
+      "minOrderPlaceholder": "0.00",
+      "maxOrderValue": "Max Order Value ($)",
+      "maxOrderPlaceholder": "Unlimited",
+      "validFrom": "Valid From",
+      "validUntil": "Valid Until",
+      "notes": "Notes",
+      "notesPlaceholder": "Reason for custom rate...",
+      "cancel": "Cancel",
+      "createOverride": "Create Override",
+      "updateOverride": "Update Override",
+      "required": "*"
+    },
+    "toast": {
+      "loadError": "Failed to load commission overrides",
+      "findSellerError": "Failed to find seller",
+      "invalidSellerEmail": "Please provide a valid seller email",
+      "createSuccess": "Commission override created successfully",
+      "updateSuccess": "Commission override updated successfully",
+      "saveError": "Failed to save commission override",
+      "deleteConfirm": "Are you sure you want to delete this commission override?",
+      "deleteSuccess": "Commission override deleted successfully",
+      "deleteError": "Failed to delete commission override"
+    }
+  },
+  "adminCurrencies": {
+    "pageTitle": "Currency Management",
+    "pageDescription": "Manage exchange rates and currency settings for the platform",
+    "buttons": {
+      "addCurrency": "Add Currency",
+      "clearSelection": "Clear selection",
+      "export": "Export",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "delete": "Delete",
+      "clearAll": "Clear all",
+      "cancel": "Cancel"
+    },
+    "stats": {
+      "totalCurrencies": "Total Currencies",
+      "allCurrencies": "All currencies",
+      "active": "Active",
+      "availableForUse": "Available for use",
+      "inactive": "Inactive",
+      "disabledCurrencies": "Disabled currencies",
+      "recentlyUpdated": "Recently Updated",
+      "last24Hours": "Last 24 hours",
+      "baseCurrency": "Base Currency",
+      "usDollar": "US Dollar"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by code, name, or symbol...",
+      "statusLabel": "Status",
+      "allStatuses": "All Statuses",
+      "active": "Active",
+      "inactive": "Inactive",
+      "sortBy": "Sort by",
+      "sortNameAZ": "Name (A-Z)",
+      "sortCodeAZ": "Code (A-Z)",
+      "sortRateHigh": "Rate (High)",
+      "sortRateLow": "Rate (Low)",
+      "sortLastUpdated": "Last Updated",
+      "activeFilters": "Active filters:",
+      "search": "Search",
+      "status": "Status"
+    },
+    "table": {
+      "title": "All Currencies",
+      "headers": {
+        "currency": "Currency",
+        "code": "Code",
+        "symbol": "Symbol",
+        "exchangeRate": "Exchange Rate",
+        "status": "Status",
+        "lastUpdated": "Last Updated",
+        "actions": "Actions"
+      },
+      "baseCurrency": "Base Currency",
+      "active": "Active",
+      "inactive": "Inactive",
+      "exchangeRateFormat": "1 USD = {rate} {code}",
+      "loading": "Loading currencies...",
+      "error": "Failed to load currencies",
+      "noResults": "No currencies found",
+      "selected": "{count} selected"
+    },
+    "actions": {
+      "toggleActiveSuccess": "{name} has been {status}",
+      "activated": "activated",
+      "deactivated": "deactivated",
+      "toggleActiveFailed": "Failed to toggle currency status",
+      "deleteBaseError": "USD is the base currency and cannot be deleted",
+      "deleteConfirm": "Are you sure you want to delete {name}? This action cannot be undone.",
+      "deleteSuccess": "{name} has been deleted",
+      "deleteFailed": "Failed to delete currency",
+      "bulkExportSuccess": "Exporting {count} currencies",
+      "bulkActivateConfirm": "Activate {count} currencies?",
+      "bulkActivateSuccess": "Activated {success} currencies ({failed} failed)",
+      "bulkDeactivateConfirm": "Deactivate {count} currencies?",
+      "bulkDeactivateSuccess": "Deactivated {success} currencies ({failed} failed)",
+      "bulkDeleteConfirm": "Delete {count} currencies? This cannot be undone.",
+      "bulkDeleteSuccess": "Deleted {success} currencies ({failed} failed)"
+    },
+    "modal": {
+      "addTitle": "Add New Currency",
+      "editTitle": "Edit Currency",
+      "addDescription": "Add a new currency to the platform",
+      "editDescription": "Update currency settings and exchange rate",
+      "fields": {
+        "currencyCode": "Currency Code",
+        "currencyCodePlaceholder": "USD",
+        "currencyCodeHelp": "ISO 4217 code (3 letters)",
+        "currencyName": "Currency Name",
+        "currencyNamePlaceholder": "US Dollar",
+        "symbol": "Symbol",
+        "symbolPlaceholder": "$",
+        "rate": "Exchange Rate (to USD)",
+        "ratePlaceholder": "1.0",
+        "rateHelp": "1 USD = {rate} {code}",
+        "rateHelpEmpty": "1 USD = {rate} ...",
+        "decimalDigits": "Decimal Places",
+        "position": "Symbol Position",
+        "positionBefore": "Before ({symbol}100)",
+        "positionAfter": "After (100{symbol})",
+        "isActive": "Activate this currency immediately",
+        "required": "*"
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "adding": "Adding...",
+        "updating": "Updating...",
+        "addCurrency": "Add Currency",
+        "updateCurrency": "Update Currency"
+      },
+      "success": {
+        "added": "{name} has been added successfully",
+        "updated": "{name} has been updated successfully"
+      },
+      "error": {
+        "add": "Failed to add currency",
+        "edit": "Failed to update currency"
+      }
+    }
+  },
+  "adminSubscriptions": {
+    "heroTitle": "Feature Plans Dashboard",
+    "heroDescription": "Manage seller feature plans that unlock premium product types (SERVICE, INQUIRY, REAL_ESTATE)",
+    "stats": {
+      "activeFeaturePlans": "Active Feature Plans",
+      "monthlyRevenue": "Monthly Revenue",
+      "totalFeaturePlans": "Total Feature Plans",
+      "churnRate": "Churn Rate"
+    },
+    "sellerPlans": {
+      "title": "Seller Feature Plans",
+      "activeSubscribers": "Active Subscribers",
+      "subscribersDescription": "Sellers with feature plans",
+      "viewAll": "View all"
+    },
+    "advertisementPlans": {
+      "title": "Advertisement Subscriptions",
+      "activeCampaigns": "Active Ad Campaigns",
+      "campaignsDescription": "Running advertisements",
+      "viewAll": "View all"
+    },
+    "quickActions": {
+      "manageFeaturePlans": {
+        "title": "Manage Feature Plans",
+        "description": "Edit tiers, pricing, and product types"
+      },
+      "adCampaigns": {
+        "title": "Ad Campaigns",
+        "description": "Monitor performance"
+      },
+      "sellerFeaturePlans": {
+        "title": "Seller Feature Plans",
+        "description": "View active subscriptions"
+      }
+    },
+    "errors": {
+      "loadStatistics": "Failed to load subscription statistics"
+    }
+  },
+  "adminPayouts": {
+    "title": "Payout Management",
+    "description": "Manage seller payouts and schedule automated payments",
+    "buttons": {
+      "processAll": "Process All Payouts",
+      "processing": "Processing..."
+    },
+    "stats": {
+      "totalPayouts": "Total Payouts",
+      "transactions": "{count} transactions",
+      "pending": "Pending",
+      "pendingCount": "{count} pending",
+      "processing": "Processing",
+      "inProgress": "{count} in progress",
+      "completed": "Completed",
+      "paidOut": "{count} paid out",
+      "failed": "Failed",
+      "needsAttention": "Needs attention"
+    },
+    "schedule": {
+      "title": "Payout Schedule",
+      "description": "Current automated payout configuration",
+      "frequency": "Frequency",
+      "minAmount": "Min Amount",
+      "holdPeriod": "Hold Period",
+      "nextRun": "Next Run",
+      "days": "{count} days",
+      "notScheduled": "Not scheduled"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by seller, store, or reference...",
+      "statusLabel": "Status",
+      "allStatuses": "All Statuses",
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "paymentMethod": "Payment Method",
+      "allMethods": "All Methods",
+      "sortBy": "Sort by",
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "amountHigh": "Amount (High)",
+      "amountLow": "Amount (Low)",
+      "activeFilters": "Active filters:",
+      "search": "Search",
+      "status": "Status",
+      "method": "Method",
+      "clearAll": "Clear all"
+    },
+    "table": {
+      "title": "Payout History",
+      "description": "All seller payouts and their status",
+      "headers": {
+        "sellerStore": "Seller/Store",
+        "amount": "Amount",
+        "period": "Period",
+        "commissions": "Commissions",
+        "method": "Method",
+        "status": "Status",
+        "scheduled": "Scheduled",
+        "actions": "Actions"
+      },
+      "loading": "Loading payouts...",
+      "noResults": "No payouts found",
+      "selected": "{count} selected"
+    },
+    "actions": {
+      "complete": "Complete",
+      "fail": "Fail",
+      "retry": "Retry",
+      "clearSelection": "Clear selection",
+      "export": "Export",
+      "printReport": "Print Report"
+    },
+    "bulk": {
+      "exportSuccess": "Exporting {count} payouts",
+      "completeConfirm": "Mark {count} payouts as completed?",
+      "notPendingError": "Selected payouts are not pending",
+      "completeIndividually": "Please complete payouts individually with payment references",
+      "failPrompt": "Enter reason for failing {count} payouts:",
+      "failSuccess": "Failed {success} payouts ({failed} errors)"
+    },
+    "toast": {
+      "loadFailed": "Failed to load payouts",
+      "processSuccess": "Processed {successful} payouts successfully ({failed} failed)",
+      "processFailed": "Failed to process payouts",
+      "triggerSuccess": "Payout triggered successfully",
+      "triggerFailed": "Failed to trigger payout",
+      "completeSuccess": "Payout marked as completed",
+      "completeFailed": "Failed to complete payout",
+      "failSuccess": "Payout marked as failed",
+      "failFailed": "Failed to update payout"
+    },
+    "dialog": {
+      "complete": {
+        "title": "Complete Payout",
+        "description": "Mark this payout as completed after transferring funds to the seller",
+        "seller": "Seller:",
+        "amount": "Amount:",
+        "referenceLabel": "Payment Reference *",
+        "referencePlaceholder": "BANK-TXN-12345",
+        "proofLabel": "Payment Proof (URL)",
+        "proofPlaceholder": "https://...",
+        "cancel": "Cancel",
+        "confirm": "Mark as Completed"
+      },
+      "processAllConfirm": "Process all pending payouts now?",
+      "failPrompt": "Enter reason for failure:"
+    },
+    "status": {
+      "pending": "PENDING",
+      "processing": "PROCESSING",
+      "completed": "COMPLETED",
+      "failed": "FAILED",
+      "cancelled": "CANCELLED"
+    }
+  },
+  "adminAdvertisements": {
+    "pageTitle": "Advertisements",
+    "pageDescription": "Manage and approve advertisements",
+    "filters": {
+      "all": "all",
+      "pending": "pending",
+      "active": "active",
+      "rejected": "rejected"
+    },
+    "table": {
+      "headers": {
+        "ad": "Ad",
+        "placement": "Placement",
+        "pricing": "Pricing",
+        "status": "Status",
+        "performance": "Performance",
+        "actions": "Actions"
+      },
+      "performance": {
+        "impressions": "{count} impressions",
+        "clicks": "{count} clicks",
+        "ctr": "{rate}% CTR"
+      }
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "pause": "Pause",
+      "resume": "Resume",
+      "analytics": "Analytics",
+      "delete": "Delete"
+    },
+    "modal": {
+      "title": "Advertisement Analytics",
+      "metrics": {
+        "impressions": "Impressions",
+        "clicks": "Clicks",
+        "conversions": "Conversions",
+        "ctr": "CTR",
+        "conversionRate": "Conversion Rate"
+      },
+      "close": "Close"
+    },
+    "messages": {
+      "loading": "Loading advertisements...",
+      "noAds": "No advertisements found",
+      "deleteConfirm": "Are you sure you want to delete this advertisement?",
+      "fetchError": "Failed to fetch advertisements",
+      "approveSuccess": "Advertisement approved",
+      "rejectSuccess": "Advertisement rejected",
+      "updateError": "Failed to update advertisement",
+      "toggleSuccess": "Advertisement {status}",
+      "activated": "activated",
+      "deactivated": "deactivated",
+      "toggleError": "Failed to toggle advertisement",
+      "deleteSuccess": "Advertisement deleted",
+      "deleteError": "Failed to delete advertisement",
+      "analyticsError": "Failed to load analytics"
+    }
+  },
+  "adminAdvertisementPlans": {
+    "header": {
+      "title": "Advertisement Plans",
+      "subtitle": "Manage subscription plans for seller advertising",
+      "createButton": "Create Plan"
+    },
+    "loading": "Loading advertisement plans...",
+    "error": "Failed to load advertisement plans. Please try again.",
+    "statistics": {
+      "totalPlans": "Total Plans",
+      "activeSubscriptions": "Active Subscriptions",
+      "totalRevenue": "Total Revenue",
+      "impressionsServed": "Impressions Served"
+    },
+    "plan": {
+      "featured": "Featured",
+      "active": "Active",
+      "inactive": "Inactive",
+      "perMonth": "month",
+      "perYear": "year",
+      "unlimited": "Unlimited",
+      "activeAds": "active ads",
+      "impressions": "impressions",
+      "priorityBoost": "Priority boost: {boost}",
+      "placements": "{count} placements",
+      "dayTrial": "{days} day trial",
+      "editButton": "Edit",
+      "deleteButton": "Delete"
+    },
+    "empty": {
+      "message": "No advertisement plans yet",
+      "createButton": "Create First Plan"
+    },
+    "modal": {
+      "createTitle": "Create Plan",
+      "editTitle": "Edit Plan",
+      "closeButton": "Close"
+    },
+    "form": {
+      "name": "Name",
+      "slug": "Slug",
+      "description": "Description",
+      "price": "Price",
+      "currency": "Currency",
+      "billingPeriod": "Billing Period",
+      "billingMonthly": "Monthly",
+      "billingYearly": "Yearly",
+      "maxActiveAds": "Max Active Ads",
+      "maxActiveAdsHelp": "-1 for unlimited",
+      "maxImpressions": "Max Impressions",
+      "maxImpressionsHelp": "0 for unlimited",
+      "priorityBoost": "Priority Boost",
+      "trialDays": "Trial Days",
+      "displayOrder": "Display Order",
+      "allowedPlacements": "Allowed Placements",
+      "isActive": "Active",
+      "isFeatured": "Mark as Featured",
+      "cancelButton": "Cancel",
+      "createButton": "Create Plan",
+      "updateButton": "Update Plan",
+      "submitting": "Saving..."
+    },
+    "placements": {
+      "HOMEPAGE_HERO": "HOMEPAGE HERO",
+      "HOMEPAGE_FEATURED": "HOMEPAGE FEATURED",
+      "HOMEPAGE_SIDEBAR": "HOMEPAGE SIDEBAR",
+      "PRODUCTS_BANNER": "PRODUCTS BANNER",
+      "PRODUCTS_INLINE": "PRODUCTS INLINE",
+      "PRODUCTS_SIDEBAR": "PRODUCTS SIDEBAR",
+      "CATEGORY_BANNER": "CATEGORY BANNER",
+      "PRODUCT_DETAIL_SIDEBAR": "PRODUCT DETAIL SIDEBAR",
+      "CHECKOUT_UPSELL": "CHECKOUT UPSELL",
+      "SEARCH_RESULTS": "SEARCH RESULTS"
+    },
+    "messages": {
+      "deleteConfirm": "Are you sure you want to delete this plan?",
+      "planUpdated": "Plan updated successfully",
+      "planCreated": "Plan created successfully",
+      "planDeleted": "Plan deleted successfully",
+      "saveFailed": "Failed to save plan",
+      "deleteFailed": "Failed to delete plan"
+    }
+  }
+}
