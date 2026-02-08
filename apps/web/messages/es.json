@@ -2638,5 +2638,85 @@
       "next": "Siguiente",
       "page": "Página {current} de {total}"
     }
+  },
+  "sellerApplicationStatus": {
+    "page": {
+      "title": "Estado de la Solicitud de Vendedor",
+      "backButton": "Volver al Panel"
+    },
+    "loading": {
+      "loadingApplication": "Cargando solicitud..."
+    },
+    "errors": {
+      "title": "Error",
+      "fetchFailed": "Error al obtener el estado de la solicitud",
+      "fetchError": "Ocurrió un error al obtener el estado de su solicitud",
+      "tryAgain": "Intentar de Nuevo"
+    },
+    "noApplication": {
+      "title": "No se Encontró Solicitud",
+      "description": "Aún no has enviado una solicitud de vendedor. ¡Comienza tu viaje como vendedor hoy!",
+      "applyButton": "Solicitar ser Vendedor"
+    },
+    "status": {
+      "pending": {
+        "title": "Solicitud en Revisión",
+        "description": "Su solicitud de vendedor está siendo revisada actualmente por nuestro equipo. Normalmente procesamos las solicitudes en 2-3 días hábiles.",
+        "action": "Vuelva pronto"
+      },
+      "active": {
+        "title": "¡Solicitud Aprobada!",
+        "description": "¡Felicitaciones! Su solicitud de vendedor ha sido aprobada. Ahora puede acceder a su panel de vendedor y comenzar a configurar su tienda.",
+        "action": "Ir al Panel de Vendedor"
+      },
+      "rejected": {
+        "title": "Solicitud No Aprobada",
+        "description": "Desafortunadamente, su solicitud de vendedor no fue aprobada en este momento. Puede revisar nuestros comentarios y volver a solicitar cuando esté listo.",
+        "action": "Ver Detalles"
+      },
+      "suspended": {
+        "title": "Cuenta Suspendida",
+        "description": "Su cuenta de vendedor ha sido suspendida temporalmente. Por favor, contacte a soporte para resolver cualquier problema.",
+        "action": "Contactar Soporte"
+      },
+      "unknown": {
+        "title": "Estado Desconocido",
+        "description": "No se puede determinar el estado de la solicitud.",
+        "action": "Actualizar"
+      }
+    },
+    "storeInfo": {
+      "storeName": "Nombre de la Tienda",
+      "status": "Estado",
+      "appliedOn": "Solicitado el",
+      "approvedOn": "Aprobado el"
+    },
+    "actions": {
+      "goToDashboard": "Ir al Panel de Vendedor",
+      "refreshStatus": "Actualizar Estado",
+      "reapply": "Volver a Solicitar",
+      "contactSupport": "Contactar Soporte"
+    },
+    "timeline": {
+      "title": "Proceso de Revisión",
+      "submitted": {
+        "title": "Solicitud Enviada",
+        "description": "Su solicitud ha sido recibida y está en la cola para revisión."
+      },
+      "underReview": {
+        "title": "En Revisión",
+        "description": "Nuestro equipo está revisando actualmente los detalles de su solicitud."
+      },
+      "decision": {
+        "title": "Notificación de Decisión",
+        "description": "Recibirá un correo electrónico una vez que se haya tomado una decisión (2-3 días hábiles)."
+      }
+    },
+    "help": {
+      "title": "¿Necesita Ayuda?",
+      "description": "Si tiene preguntas sobre su solicitud o necesita asistencia, nuestro equipo de soporte está aquí para ayudarlo.",
+      "contactSupport": "Contactar Soporte",
+      "sellerGuidelines": "Guías para Vendedores"
+    }
   }
 }
