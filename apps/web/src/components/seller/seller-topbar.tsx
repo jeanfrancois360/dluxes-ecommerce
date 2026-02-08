@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { useSellerDashboard } from '@/hooks/use-seller-dashboard';
+import { useCurrencyRates, useSelectedCurrency } from '@/hooks/use-currency';
+import { useLocale, languages, type LanguageOption } from '@/contexts/locale-context';
 import {
   User,
   Settings,
@@ -17,6 +19,9 @@ import {
   Store,
   Menu,
   X,
+  Globe,
+  DollarSign,
+  Check,
 } from 'lucide-react';
 
 interface SellerTopbarProps {
@@ -33,8 +38,17 @@ export default function SellerTopbar({
   const { summary } = useSellerDashboard();
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const languageRef = useRef<HTMLDivElement>(null);
+  const currencyRef = useRef<HTMLDivElement>(null);
+
+  // Language and currency hooks
+  const { language, setLanguage } = useLocale();
+  const { currencies, isLoading: currenciesLoading } = useCurrencyRates();
+  const { currency, selectedCurrency, setSelectedCurrency } = useSelectedCurrency();
 
   // Get user initials for avatar
   const getUserInitials = () => {
@@ -81,11 +95,29 @@ export default function SellerTopbar({
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setNotificationOpen(false);
       }
+      if (languageRef.current && !languageRef.current.contains(event.target as Node)) {
+        setLanguageOpen(false);
+      }
+      if (currencyRef.current && !currencyRef.current.contains(event.target as Node)) {
+        setCurrencyOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Handle language change
+  const handleLanguageChange = (lang: LanguageOption['code']) => {
+    setLanguage(lang);
+    setLanguageOpen(false);
+  };
+
+  // Handle currency change
+  const handleCurrencyChange = (currencyCode: string) => {
+    setSelectedCurrency(currencyCode);
+    setCurrencyOpen(false);
+  };
 
   return (
     <div className="fixed top-0 left-0 right-0 lg:left-64 z-40 bg-white border-b border-neutral-200 shadow-sm">
@@ -136,6 +168,120 @@ export default function SellerTopbar({
 
         {/* Right Section: Actions & User Menu */}
         <div className="flex items-center gap-2">
+          {/* Language Selector */}
+          <div className="relative" ref={languageRef}>
+            <button
+              onClick={() => setLanguageOpen(!languageOpen)}
+              className="relative p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+              aria-label="Language"
+            >
+              <Globe className="w-5 h-5 text-neutral-700" />
+            </button>
+
+            {/* Language Dropdown */}
+            <AnimatePresence>
+              {languageOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-neutral-200 overflow-hidden"
+                >
+                  <div className="p-2 border-b border-neutral-200 bg-neutral-50">
+                    <h3 className="text-xs font-semibold text-neutral-600 uppercase px-2">
+                      Language
+                    </h3>
+                  </div>
+                  <div className="py-1">
+                    {languages.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => handleLanguageChange(lang.code)}
+                        className={`w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-neutral-50 transition-colors ${
+                          language === lang.code ? 'bg-neutral-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{lang.flag}</span>
+                          <span className="font-medium text-neutral-900">{lang.name}</span>
+                        </div>
+                        {language === lang.code && <Check className="w-4 h-4 text-[#CBB57B]" />}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Currency Selector */}
+          <div className="relative" ref={currencyRef}>
+            <button
+              onClick={() => setCurrencyOpen(!currencyOpen)}
+              className="relative p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+              aria-label="Currency"
+            >
+              <DollarSign className="w-5 h-5 text-neutral-700" />
+            </button>
+
+            {/* Currency Dropdown */}
+            <AnimatePresence>
+              {currencyOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 overflow-hidden"
+                >
+                  <div className="p-2 border-b border-neutral-200 bg-neutral-50">
+                    <h3 className="text-xs font-semibold text-neutral-600 uppercase px-2">
+                      Currency
+                    </h3>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {currenciesLoading ? (
+                      <div className="p-8 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CBB57B] mx-auto"></div>
+                      </div>
+                    ) : currencies.length === 0 ? (
+                      <div className="p-8 text-center text-neutral-500">
+                        <DollarSign className="w-12 h-12 mx-auto mb-2 text-neutral-300" />
+                        <p className="text-sm">No currencies available</p>
+                      </div>
+                    ) : (
+                      currencies.map((curr) => (
+                        <button
+                          key={curr.currencyCode}
+                          onClick={() => handleCurrencyChange(curr.currencyCode)}
+                          className={`w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 transition-colors ${
+                            selectedCurrency === curr.currencyCode ? 'bg-neutral-50' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-semibold text-neutral-700 w-8">
+                              {curr.symbol}
+                            </span>
+                            <div className="text-left">
+                              <p className="text-sm font-medium text-neutral-900">
+                                {curr.currencyCode}
+                              </p>
+                              <p className="text-xs text-neutral-500">{curr.currencyName}</p>
+                            </div>
+                          </div>
+                          {selectedCurrency === curr.currencyCode && (
+                            <Check className="w-4 h-4 text-[#CBB57B]" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>
             <button
