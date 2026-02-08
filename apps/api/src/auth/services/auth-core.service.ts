@@ -14,6 +14,7 @@ import { SessionService } from './session.service';
 import { EmailVerificationService } from './email-verification.service';
 import { TwoFactorService } from './two-factor.service';
 import { LoggerService } from '../../logger/logger.service';
+import { SettingsService } from '../../settings/settings.service';
 import { RegisterDto, LoginDto } from '../dto/auth.dto';
 
 // Custom TooManyRequestsException for compatibility
@@ -36,6 +37,7 @@ export class AuthCoreService {
     private emailVerificationService: EmailVerificationService,
     private twoFactorService: TwoFactorService,
     private logger: LoggerService,
+    private settingsService: SettingsService
   ) {}
 
   /**
@@ -49,7 +51,7 @@ export class AuthCoreService {
 
     if (existingUser) {
       throw new ConflictException(
-        'This email is already registered. Please log in instead, or use "Forgot Password" if you need to reset your password.',
+        'This email is already registered. Please log in instead, or use "Forgot Password" if you need to reset your password.'
       );
     }
 
@@ -77,7 +79,7 @@ export class AuthCoreService {
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictException(
-          'This email is already registered. Please log in instead, or use "Forgot Password" if you need to reset your password.',
+          'This email is already registered. Please log in instead, or use "Forgot Password" if you need to reset your password.'
         );
       }
       throw err;
@@ -124,7 +126,7 @@ export class AuthCoreService {
       user.id,
       ipAddress,
       userAgent,
-      false,
+      false
     );
 
     // Generate JWT
@@ -167,46 +169,81 @@ export class AuthCoreService {
         email: dto.email,
       });
       throw new UnauthorizedException(
-        'Invalid email or password. Please check your credentials and try again.',
+        'Invalid email or password. Please check your credentials and try again.'
       );
     }
 
     // Check if account is suspended
     if (user.isSuspended) {
       throw new UnauthorizedException(
-        'Your account has been suspended. Please contact support for assistance.',
+        'Your account has been suspended. Please contact support for assistance.'
       );
     }
 
     if (!user.isActive) {
       throw new UnauthorizedException(
-        'Your account is inactive. Please contact support to reactivate your account.',
+        'Your account is inactive. Please contact support to reactivate your account.'
       );
     }
 
-    // Check if email is verified (skip in development mode)
-    if (!user.emailVerified && process.env.NODE_ENV !== 'development') {
-      throw new UnauthorizedException(
-        'Email not verified. Please check your inbox for the verification link, or request a new one.',
-      );
+    // Check if email verification is required (system setting)
+    const emailVerificationRequired = await this.settingsService.getSetting(
+      'email_verification_required'
+    );
+    const gracePeriodDays = await this.settingsService.getSetting(
+      'email_verification_grace_period_days'
+    );
+
+    if (emailVerificationRequired && !user.emailVerified) {
+      // Skip verification check for OAuth users (already verified)
+      if (user.authProvider !== 'GOOGLE') {
+        // Check if user is still in grace period
+        const accountAge = Date.now() - user.createdAt.getTime();
+        const gracePeriodMs = (gracePeriodDays || 0) * 24 * 60 * 60 * 1000;
+
+        if (accountAge > gracePeriodMs) {
+          await this.recordLoginAttempt(
+            user.id,
+            dto.email,
+            ipAddress,
+            userAgent,
+            false,
+            'email_not_verified'
+          );
+          throw new UnauthorizedException({
+            message:
+              'Email not verified. Please check your inbox for the verification link, or request a new one.',
+            code: 'EMAIL_NOT_VERIFIED',
+            canResend: true,
+            email: user.email,
+          });
+        }
+      }
     }
 
     // Verify password
     if (!user.password) {
       throw new UnauthorizedException(
-        'This account uses passwordless login. Please use the magic link option or reset your password.',
+        'This account uses passwordless login. Please use the magic link option or reset your password.'
       );
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
 
     if (!isPasswordValid) {
-      await this.recordLoginAttempt(user.id, dto.email, ipAddress, userAgent, false, 'invalid_password');
+      await this.recordLoginAttempt(
+        user.id,
+        dto.email,
+        ipAddress,
+        userAgent,
+        false,
+        'invalid_password'
+      );
       this.logger.logSuspiciousActivity('Failed login - invalid password', user.id, ipAddress, {
         email: dto.email,
       });
       throw new UnauthorizedException(
-        'Invalid email or password. Please check your credentials and try again.',
+        'Invalid email or password. Please check your credentials and try again.'
       );
     }
 
@@ -226,14 +263,14 @@ export class AuthCoreService {
         is2FAValid = await this.twoFactorService.verifyBackupCode(user.id, dto.backupCode);
         if (!is2FAValid) {
           throw new UnauthorizedException(
-            'Invalid backup code. Please try another backup code or use your authenticator app.',
+            'Invalid backup code. Please try another backup code or use your authenticator app.'
           );
         }
       } else {
         is2FAValid = await this.twoFactorService.verify2FA(user.id, dto.twoFactorCode!);
         if (!is2FAValid) {
           throw new UnauthorizedException(
-            'Invalid 2FA code. Please check your authenticator app and try again.',
+            'Invalid 2FA code. Please check your authenticator app and try again.'
           );
         }
       }
@@ -256,7 +293,7 @@ export class AuthCoreService {
       user.id,
       ipAddress,
       userAgent,
-      dto.rememberMe || false,
+      dto.rememberMe || false
     );
 
     // Generate JWT
@@ -296,11 +333,11 @@ export class AuthCoreService {
     if (failedAttempts.length >= this.MAX_LOGIN_ATTEMPTS) {
       const oldestAttempt = failedAttempts[0];
       const timeRemaining = Math.ceil(
-        (oldestAttempt.createdAt.getTime() + this.LOCKOUT_DURATION - Date.now()) / 1000 / 60,
+        (oldestAttempt.createdAt.getTime() + this.LOCKOUT_DURATION - Date.now()) / 1000 / 60
       );
 
       throw new TooManyRequestsException(
-        `Too many failed login attempts. Please try again in ${timeRemaining} minutes.`,
+        `Too many failed login attempts. Please try again in ${timeRemaining} minutes.`
       );
     }
   }
@@ -314,7 +351,7 @@ export class AuthCoreService {
     ipAddress: string,
     userAgent: string,
     success: boolean,
-    reason?: string,
+    reason?: string
   ) {
     await this.prisma.loginAttempt.create({
       data: {

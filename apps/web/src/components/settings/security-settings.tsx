@@ -6,7 +6,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
 import { Button } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
-import { AlertCircle, Loader2, Shield, Lock, Upload, X, Plus, Key, Clock, AlertTriangle } from 'lucide-react';
+import {
+  AlertCircle,
+  Loader2,
+  Shield,
+  Lock,
+  Upload,
+  X,
+  Plus,
+  Key,
+  Clock,
+  AlertTriangle,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { securitySettingsSchema, type SecuritySettings } from '@/lib/validations/settings';
@@ -15,8 +26,13 @@ import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './s
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 const COMMON_FILE_TYPES = [
-  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-  'application/pdf', 'video/mp4', 'application/zip'
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+  'video/mp4',
+  'application/zip',
 ];
 
 export function SecuritySettingsSection() {
@@ -29,6 +45,8 @@ export function SecuritySettingsSection() {
     resolver: zodResolver(securitySettingsSchema),
     defaultValues: {
       '2fa_required_for_admin': true,
+      email_verification_required: false,
+      email_verification_grace_period_days: 7,
       session_timeout_minutes: 30,
       max_login_attempts: 5,
       password_min_length: 8,
@@ -89,7 +107,11 @@ export function SecuritySettingsSection() {
       toast.error('At least one file type must be allowed');
       return;
     }
-    form.setValue('allowed_file_types', current.filter(t => t !== type), { shouldDirty: true });
+    form.setValue(
+      'allowed_file_types',
+      current.filter((t) => t !== type),
+      { shouldDirty: true }
+    );
   };
 
   if (loading) {
@@ -116,7 +138,9 @@ export function SecuritySettingsSection() {
           label="Require 2FA for Admins"
           description="Enforce two-factor authentication for all administrator accounts"
           checked={form.watch('2fa_required_for_admin')}
-          onCheckedChange={(checked) => form.setValue('2fa_required_for_admin', checked, { shouldDirty: true })}
+          onCheckedChange={(checked) =>
+            form.setValue('2fa_required_for_admin', checked, { shouldDirty: true })
+          }
           tooltip="When enabled, all admin users must set up 2FA before accessing the admin panel"
         />
 
@@ -124,14 +148,43 @@ export function SecuritySettingsSection() {
           <div className="flex items-start gap-3 p-4 bg-green-50 /30 border border-green-200 rounded-lg">
             <Shield className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-green-900 ">
-                Enhanced Security Enabled
-              </p>
+              <p className="text-sm font-medium text-green-900 ">Enhanced Security Enabled</p>
               <p className="text-xs text-green-700 mt-1">
                 Two-factor authentication is required for all admin accounts.
               </p>
             </div>
           </div>
+        )}
+
+        <SettingsToggle
+          label="Require Email Verification"
+          description="Block login for users with unverified emails (excludes OAuth users)"
+          checked={form.watch('email_verification_required')}
+          onCheckedChange={(checked) =>
+            form.setValue('email_verification_required', checked, { shouldDirty: true })
+          }
+          tooltip="When enabled, users must verify their email address before they can log in"
+        />
+
+        {form.watch('email_verification_required') && (
+          <SettingsField
+            label="Grace Period (Days)"
+            id="email_verification_grace_period_days"
+            required
+            tooltip="Days after registration before enforcing email verification"
+            helperText="Set to 0 for immediate enforcement"
+            error={form.formState.errors.email_verification_grace_period_days?.message}
+          >
+            <Input
+              id="email_verification_grace_period_days"
+              type="number"
+              min={0}
+              max={30}
+              {...form.register('email_verification_grace_period_days', { valueAsNumber: true })}
+              placeholder="7"
+              className={`w-32 ${form.formState.errors.email_verification_grace_period_days ? 'border-red-500' : ''}`}
+            />
+          </SettingsField>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -214,7 +267,9 @@ export function SecuritySettingsSection() {
               label="Require Special Characters"
               description="Passwords must contain at least one special character (!@#$%^&*)"
               checked={form.watch('password_require_special_chars')}
-              onCheckedChange={(checked) => form.setValue('password_require_special_chars', checked, { shouldDirty: true })}
+              onCheckedChange={(checked) =>
+                form.setValue('password_require_special_chars', checked, { shouldDirty: true })
+              }
               tooltip="Enabling this increases password complexity and security"
               className="w-full"
             />
@@ -225,9 +280,7 @@ export function SecuritySettingsSection() {
           <div className="flex items-start gap-3 p-4 bg-amber-50 /30 border border-amber-200 rounded-lg">
             <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-900 ">
-                Weak Password Policy
-              </p>
+              <p className="text-sm font-medium text-amber-900 ">Weak Password Policy</p>
               <p className="text-xs text-amber-700 mt-1">
                 Passwords shorter than 8 characters are vulnerable to brute-force attacks.
               </p>
@@ -313,19 +366,19 @@ export function SecuritySettingsSection() {
 
             {/* Quick add common types */}
             <div>
-              <p className="text-xs text-slate-600 mb-2">
-                Quick add common types:
-              </p>
+              <p className="text-xs text-slate-600 mb-2">Quick add common types:</p>
               <div className="flex flex-wrap gap-2">
                 {COMMON_FILE_TYPES.filter(
-                  t => !form.watch('allowed_file_types')?.includes(t)
+                  (t) => !form.watch('allowed_file_types')?.includes(t)
                 ).map((type) => (
                   <button
                     key={type}
                     type="button"
                     onClick={() => {
                       const current = form.watch('allowed_file_types') || [];
-                      form.setValue('allowed_file_types', [...current, type], { shouldDirty: true });
+                      form.setValue('allowed_file_types', [...current, type], {
+                        shouldDirty: true,
+                      });
                     }}
                     className="text-xs px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 :bg-slate-700 transition-colors font-medium"
                   >

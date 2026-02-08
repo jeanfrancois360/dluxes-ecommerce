@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, OTPInput, Button } from '@nextpik/ui';
 import { initiateGoogleAuth } from '@/lib/api/auth';
+import { api } from '@/lib/api/client';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { showAuthError } from '@/lib/utils/auth-errors';
 import { useTranslations } from 'next-intl';
@@ -24,6 +25,9 @@ export default function LoginPage() {
   const [show2FA, setShow2FA] = useState(false);
   const [otpValue, setOtpValue] = useState('');
   const [localError, setLocalError] = useState('');
+  const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [resending, setResending] = useState(false);
   const t = useTranslations('auth.login');
   const tc = useTranslations('common');
 
@@ -73,8 +77,36 @@ export default function LoginPage() {
       }
       // Auth context handles redirect
     } catch (err: any) {
-      // Use enhanced auth error handler with actionable links
-      showAuthError(err, router);
+      // Check if error is email verification required
+      const errorData = err?.response?.data;
+
+      if (errorData?.code === 'EMAIL_NOT_VERIFIED' && errorData?.canResend) {
+        // Show inline verification prompt
+        setShowVerificationPrompt(true);
+        setVerificationEmail(errorData.email || email);
+        toast.error(errorData.message, {
+          duration: 8000,
+          action: {
+            label: t('resendVerification'),
+            onClick: () => handleResendVerification(errorData.email || email),
+          },
+        });
+      } else {
+        // Use enhanced auth error handler with actionable links
+        showAuthError(err, router);
+      }
+    }
+  };
+
+  const handleResendVerification = async (emailToVerify: string) => {
+    try {
+      setResending(true);
+      await api.post('/auth/email/resend-verification', { email: emailToVerify });
+      toast.success(t('verificationEmailSent'));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || t('failedToResend'));
+    } finally {
+      setResending(false);
     }
   };
 
@@ -87,10 +119,7 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthLayout
-      title={t('title')}
-      subtitle={t('subtitle')}
-    >
+    <AuthLayout title={t('title')} subtitle={t('subtitle')}>
       <form onSubmit={handleLogin} className="space-y-6">
         {!show2FA ? (
           <>
@@ -141,12 +170,27 @@ export default function LoginPage() {
               >
                 {showPassword ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                    />
                   </svg>
                 ) : (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
                   </svg>
                 )}
               </button>
@@ -204,12 +248,26 @@ export default function LoginPage() {
               className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white border-2 border-neutral-200 rounded-lg hover:border-gold hover:shadow-md transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                />
               </svg>
-              <span className="font-medium text-neutral-700">{tc('buttons.continueWithGoogle')}</span>
+              <span className="font-medium text-neutral-700">
+                {tc('buttons.continueWithGoogle')}
+              </span>
             </motion.button>
 
             {/* Magic Link */}
@@ -219,7 +277,12 @@ export default function LoginPage() {
                 className="text-sm text-neutral-600 hover:text-gold transition-colors inline-flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
                 </svg>
                 {t('magicLinkInstead')}
               </Link>
@@ -234,21 +297,27 @@ export default function LoginPage() {
           >
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gold/10 rounded-full mb-4">
-                <svg className="w-8 h-8 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <svg
+                  className="w-8 h-8 text-gold"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-black mb-2">{t('enterVerificationCode')}</h3>
-              <p className="text-sm text-neutral-600">
-                {t('enter6DigitCode')}
-              </p>
+              <h3 className="text-lg font-semibold text-black mb-2">
+                {t('enterVerificationCode')}
+              </h3>
+              <p className="text-sm text-neutral-600">{t('enter6DigitCode')}</p>
             </div>
 
-            <OTPInput
-              length={6}
-              value={otpValue}
-              onChange={setOtpValue}
-            />
+            <OTPInput length={6} value={otpValue} onChange={setOtpValue} />
 
             <Button
               type="submit"
@@ -276,6 +345,55 @@ export default function LoginPage() {
           </motion.div>
         )}
 
+        {/* Email Verification Prompt - Show when email not verified */}
+        {showVerificationPrompt && !show2FA && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 p-6 bg-amber-50 border-2 border-amber-500 rounded-lg"
+          >
+            <div className="flex items-start gap-4">
+              <svg
+                className="w-6 h-6 text-amber-600 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-900 mb-2">
+                  {t('emailVerificationRequired')}
+                </h3>
+                <p className="text-sm text-amber-800 mb-4">
+                  {t('pleaseVerifyEmail')} <span className="font-medium">{verificationEmail}</span>.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleResendVerification(verificationEmail)}
+                    disabled={resending}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {resending ? t('sending') : t('resendVerificationEmail')}
+                  </button>
+                  <Link
+                    href="/auth/verify-email"
+                    className="px-4 py-2 border border-amber-600 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-sm font-medium text-center"
+                  >
+                    {t('enterVerificationCode')}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Sign Up Link - Mobile-friendly touch target */}
         <div className="text-center pt-4 border-t border-neutral-200">
           <p className="text-sm text-neutral-600">
@@ -293,11 +411,17 @@ export default function LoginPage() {
         <div className="text-center pt-4 border-t border-neutral-200">
           <p className="text-xs text-neutral-500">
             {t('bySigningIn')}{' '}
-            <Link href="/terms" className="text-gold hover:text-accent-700 transition-colors inline-block py-1 px-1">
+            <Link
+              href="/terms"
+              className="text-gold hover:text-accent-700 transition-colors inline-block py-1 px-1"
+            >
               {tc('footer.termsOfService')}
-            </Link>
-            {' '}{t('and')}{' '}
-            <Link href="/privacy" className="text-gold hover:text-accent-700 transition-colors inline-block py-1 px-1">
+            </Link>{' '}
+            {t('and')}{' '}
+            <Link
+              href="/privacy"
+              className="text-gold hover:text-accent-700 transition-colors inline-block py-1 px-1"
+            >
               {tc('footer.privacyPolicy')}
             </Link>
           </p>
