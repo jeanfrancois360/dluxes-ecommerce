@@ -187,19 +187,22 @@ export class AuthCoreService {
     }
 
     // Check if email verification is required (system setting)
-    const emailVerificationRequired = await this.settingsService.getSetting(
+    const emailVerificationRequiredSetting = await this.settingsService.getSetting(
       'email_verification_required'
     );
-    const gracePeriodDays = await this.settingsService.getSetting(
+    const gracePeriodDaysSetting = await this.settingsService.getSetting(
       'email_verification_grace_period_days'
     );
+
+    const emailVerificationRequired = Boolean(emailVerificationRequiredSetting.value);
+    const gracePeriodDays = Number(gracePeriodDaysSetting.value || 0);
 
     if (emailVerificationRequired && !user.emailVerified) {
       // Skip verification check for OAuth users (already verified)
       if (user.authProvider !== 'GOOGLE') {
         // Check if user is still in grace period
         const accountAge = Date.now() - user.createdAt.getTime();
-        const gracePeriodMs = (gracePeriodDays || 0) * 24 * 60 * 60 * 1000;
+        const gracePeriodMs = gracePeriodDays * 24 * 60 * 60 * 1000;
 
         if (accountAge > gracePeriodMs) {
           await this.recordLoginAttempt(
