@@ -5,6 +5,7 @@ import useSWR, { mutate } from 'swr';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Users,
   Clock,
@@ -85,7 +86,7 @@ function StatsCard({
 }
 
 // Status Badge Component
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, t }: { status: string; t: any }) {
   const colors: Record<string, string> = {
     PENDING: 'bg-yellow-50 text-yellow-700 border-yellow-200',
     ACTIVE: 'bg-green-50 text-green-700 border-green-200',
@@ -107,12 +108,13 @@ function StatusBadge({ status }: { status: string }) {
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide border ${colors[status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}
     >
       <div className={`w-1.5 h-1.5 rounded-full ${dotColors[status] || 'bg-gray-600'}`}></div>
-      {status}
+      {t(`statusBadges.${status}`)}
     </span>
   );
 }
 
 export default function AdminSellersPage() {
+  const t = useTranslations('adminSellers');
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeller, setSelectedSeller] = useState<any>(null);
@@ -124,11 +126,9 @@ export default function AdminSellersPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch stats
-  const { data: stats, error: statsError } = useSWR(
-    `${API_URL}/admin/sellers/stats`,
-    fetcher,
-    { refreshInterval: 30000 }
-  );
+  const { data: stats, error: statsError } = useSWR(`${API_URL}/admin/sellers/stats`, fetcher, {
+    refreshInterval: 30000,
+  });
 
   // Fetch sellers based on active tab
   const statusFilter = activeTab === 'all' ? '' : `&status=${activeTab.toUpperCase()}`;
@@ -146,7 +146,7 @@ export default function AdminSellersPage() {
   const refreshData = () => {
     mutate(`${API_URL}/admin/sellers/stats`);
     mutate(`${API_URL}/admin/sellers?page=1&limit=50${statusFilter}${searchFilter}`);
-    toast.success('Data refreshed');
+    toast.success(t('toasts.dataRefreshed'));
   };
 
   // Approve seller
@@ -155,28 +155,25 @@ export default function AdminSellersPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `${API_URL}/admin/sellers/${selectedSeller.storeId}/approve`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const res = await fetch(`${API_URL}/admin/sellers/${selectedSeller.storeId}/approve`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to approve seller');
       }
 
-      toast.success(`${selectedSeller.storeName} approved successfully!`);
+      toast.success(t('toasts.approveSuccess', { storeName: selectedSeller.storeName }));
       setShowApproveModal(false);
       setSelectedSeller(null);
       refreshData();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to approve seller');
+      toast.error(error.message || t('toasts.approveFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -185,36 +182,33 @@ export default function AdminSellersPage() {
   // Reject seller
   const handleReject = async () => {
     if (!selectedSeller || !rejectionNote.trim()) {
-      toast.error('Rejection note is required');
+      toast.error(t('toasts.rejectNoteRequired'));
       return;
     }
 
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `${API_URL}/admin/sellers/${selectedSeller.storeId}/reject`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ rejectionNote }),
-        }
-      );
+      const res = await fetch(`${API_URL}/admin/sellers/${selectedSeller.storeId}/reject`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rejectionNote }),
+      });
 
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to reject seller');
       }
 
-      toast.success(`${selectedSeller.storeName} rejected`);
+      toast.success(t('toasts.rejectSuccess', { storeName: selectedSeller.storeName }));
       setShowRejectModal(false);
       setSelectedSeller(null);
       setRejectionNote('');
       refreshData();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to reject seller');
+      toast.error(error.message || t('toasts.rejectFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -223,36 +217,33 @@ export default function AdminSellersPage() {
   // Suspend seller
   const handleSuspend = async () => {
     if (!selectedSeller || !suspensionNote.trim()) {
-      toast.error('Suspension note is required');
+      toast.error(t('toasts.suspendNoteRequired'));
       return;
     }
 
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `${API_URL}/admin/sellers/${selectedSeller.storeId}/suspend`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ suspensionNote }),
-        }
-      );
+      const res = await fetch(`${API_URL}/admin/sellers/${selectedSeller.storeId}/suspend`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ suspensionNote }),
+      });
 
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to suspend seller');
       }
 
-      toast.success(`${selectedSeller.storeName} suspended`);
+      toast.success(t('toasts.suspendSuccess', { storeName: selectedSeller.storeName }));
       setShowSuspendModal(false);
       setSelectedSeller(null);
       setSuspensionNote('');
       refreshData();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to suspend seller');
+      toast.error(error.message || t('toasts.suspendFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -264,24 +255,22 @@ export default function AdminSellersPage() {
         {/* Page Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-black">Seller Management</h1>
-            <p className="text-neutral-600 mt-1">
-              Manage seller applications and accounts
-            </p>
+            <h1 className="text-2xl font-bold text-black">{t('pageTitle')}</h1>
+            <p className="text-neutral-600 mt-1">{t('pageDescription')}</p>
           </div>
           <button
             onClick={refreshData}
             className="px-4 py-2.5 bg-white border border-neutral-300 text-black rounded-lg hover:border-[#CBB57B] hover:text-[#CBB57B] transition-all flex items-center gap-2 shadow-sm font-medium"
           >
             <RefreshCw className="w-4 h-4" />
-            Refresh
+            {t('buttons.refresh')}
           </button>
         </div>
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatsCard
-              title="Total Sellers"
+              title={t('stats.totalSellers')}
               value={stats.total || 0}
               icon={Users}
               color="from-blue-50 to-white"
@@ -289,7 +278,7 @@ export default function AdminSellersPage() {
               iconColor="text-blue-600"
             />
             <StatsCard
-              title="Pending Approval"
+              title={t('stats.pendingApproval')}
               value={stats.pending || 0}
               icon={Clock}
               color="from-yellow-50 to-white"
@@ -297,7 +286,7 @@ export default function AdminSellersPage() {
               iconColor="text-yellow-600"
             />
             <StatsCard
-              title="Active Sellers"
+              title={t('stats.activeSellers')}
               value={stats.active || 0}
               icon={CheckCircle}
               color="from-green-50 to-white"
@@ -305,7 +294,7 @@ export default function AdminSellersPage() {
               iconColor="text-green-600"
             />
             <StatsCard
-              title="Paid Subscriptions"
+              title={t('stats.paidSubscriptions')}
               value={stats.activeWithCredits || 0}
               icon={AlertTriangle}
               color="from-purple-50 to-white"
@@ -322,11 +311,11 @@ export default function AdminSellersPage() {
               {/* Tabs */}
               <div className="flex space-x-1 bg-neutral-100 p-1 rounded-lg">
                 {[
-                  { key: 'all', label: 'All' },
-                  { key: 'pending', label: 'Pending', count: stats?.pending },
-                  { key: 'active', label: 'Active' },
-                  { key: 'suspended', label: 'Suspended' },
-                  { key: 'rejected', label: 'Rejected' },
+                  { key: 'all', label: t('tabs.all') },
+                  { key: 'pending', label: t('tabs.pending'), count: stats?.pending },
+                  { key: 'active', label: t('tabs.active') },
+                  { key: 'suspended', label: t('tabs.suspended') },
+                  { key: 'rejected', label: t('tabs.rejected') },
                 ].map((tab) => (
                   <button
                     key={tab.key}
@@ -352,7 +341,7 @@ export default function AdminSellersPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
                 <Input
                   type="text"
-                  placeholder="Search sellers..."
+                  placeholder={t('filters.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 w-full bg-white border border-neutral-300 text-black placeholder-neutral-400 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
@@ -367,22 +356,22 @@ export default function AdminSellersPage() {
               <thead>
                 <tr className="border-b border-neutral-200 bg-neutral-50">
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Store
+                    {t('table.headers.store')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Owner
+                    {t('table.headers.owner')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Status
+                    {t('table.headers.status')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Subscription
+                    {t('table.headers.subscription')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Applied
+                    {t('table.headers.applied')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Actions
+                    {t('table.headers.actions')}
                   </th>
                 </tr>
               </thead>
@@ -392,11 +381,13 @@ export default function AdminSellersPage() {
                     <td colSpan={6} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <Users className="w-16 h-16 text-neutral-400 mb-4" />
-                        <p className="text-neutral-600 font-medium text-lg">No sellers found</p>
+                        <p className="text-neutral-600 font-medium text-lg">
+                          {t('table.emptyState.noSellers')}
+                        </p>
                         <p className="text-neutral-400 text-sm mt-1">
                           {searchTerm
-                            ? 'Try adjusting your search'
-                            : 'Applications will appear here'}
+                            ? t('table.emptyState.searchTip')
+                            : t('table.emptyState.noApplications')}
                         </p>
                       </div>
                     </td>
@@ -420,9 +411,7 @@ export default function AdminSellersPage() {
                             <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">
                               {seller.storeName}
                             </div>
-                            <div className="text-sm text-neutral-500">
-                              {seller.storeEmail}
-                            </div>
+                            <div className="text-sm text-neutral-500">{seller.storeEmail}</div>
                           </div>
                         </div>
                       </td>
@@ -431,27 +420,30 @@ export default function AdminSellersPage() {
                           <div className="text-sm font-medium text-black">
                             {seller.owner.firstName} {seller.owner.lastName}
                           </div>
-                          <div className="text-sm text-neutral-500">
-                            {seller.owner.email}
-                          </div>
+                          <div className="text-sm text-neutral-500">{seller.owner.email}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={seller.status} />
+                        <StatusBadge status={seller.status} t={t} />
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-black">
-                            {seller.creditsBalance} {seller.creditsBalance === 1 ? 'month' : 'months'}
+                            {t(
+                              seller.creditsBalance === 1
+                                ? 'table.subscription.month'
+                                : 'table.subscription.months',
+                              { count: seller.creditsBalance }
+                            )}
                           </span>
                           {seller.creditsBalance === 0 && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 border border-red-200 rounded text-xs font-semibold">
-                              Expired
+                              {t('table.subscription.expired')}
                             </span>
                           )}
                           {seller.creditsBalance > 0 && seller.creditsBalance <= 2 && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 border border-orange-200 rounded text-xs font-semibold">
-                              Low
+                              {t('table.subscription.low')}
                             </span>
                           )}
                         </div>
@@ -469,11 +461,26 @@ export default function AdminSellersPage() {
                             href={`/admin/sellers/${seller.storeId}`}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#CBB57B]/20 hover:bg-[#CBB57B]/30 border border-[#CBB57B]/30 text-[#CBB57B] rounded-lg text-xs font-semibold transition-all hover:scale-105"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            <svg
+                              className="w-3.5 h-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                              />
                             </svg>
-                            View
+                            {t('buttons.view')}
                           </Link>
                           {seller.status === 'PENDING' && (
                             <>
@@ -485,7 +492,7 @@ export default function AdminSellersPage() {
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 border border-green-200 text-green-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
                               >
                                 <CheckCircle className="w-3.5 h-3.5" />
-                                Approve
+                                {t('buttons.approve')}
                               </button>
                               <button
                                 onClick={() => {
@@ -495,7 +502,7 @@ export default function AdminSellersPage() {
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 border border-red-200 text-red-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
                               >
                                 <XCircle className="w-3.5 h-3.5" />
-                                Reject
+                                {t('buttons.reject')}
                               </button>
                             </>
                           )}
@@ -508,7 +515,7 @@ export default function AdminSellersPage() {
                               className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 border border-orange-200 text-orange-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
                             >
                               <AlertTriangle className="w-3.5 h-3.5" />
-                              Suspend
+                              {t('buttons.suspend')}
                             </button>
                           )}
                           {seller.status === 'SUSPENDED' && (
@@ -527,16 +534,16 @@ export default function AdminSellersPage() {
 
                                   if (!res.ok) throw new Error('Failed to reactivate');
 
-                                  toast.success('Seller reactivated');
+                                  toast.success(t('toasts.reactivateSuccess'));
                                   refreshData();
                                 } catch (error) {
-                                  toast.error('Failed to reactivate seller');
+                                  toast.error(t('toasts.reactivateFailed'));
                                 }
                               }}
                               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
                             >
                               <RefreshCw className="w-3.5 h-3.5" />
-                              Reactivate
+                              {t('buttons.reactivate')}
                             </button>
                           )}
                         </div>
@@ -554,23 +561,21 @@ export default function AdminSellersPage() {
       <Dialog open={showApproveModal} onOpenChange={setShowApproveModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Approve Seller Application</DialogTitle>
+            <DialogTitle>{t('modals.approve.title')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to approve <strong>{selectedSeller?.storeName}</strong>?
+              {t('modals.approve.description', { storeName: selectedSeller?.storeName })}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-3">
-            <p className="text-sm text-gray-600">This will automatically:</p>
+            <p className="text-sm text-gray-600">{t('modals.approve.willAutomatically')}</p>
             <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-              <li>Approve the seller account</li>
-              <li>Approve their store</li>
-              <li>Allow product creation (with credits)</li>
-              <li>Send approval email notification</li>
+              <li>{t('modals.approve.actions.approveAccount')}</li>
+              <li>{t('modals.approve.actions.approveStore')}</li>
+              <li>{t('modals.approve.actions.allowProducts')}</li>
+              <li>{t('modals.approve.actions.sendEmail')}</li>
             </ul>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
-              <p className="text-sm text-yellow-800">
-                ⚠️ They'll need to purchase credits before publishing products.
-              </p>
+              <p className="text-sm text-yellow-800">⚠️ {t('modals.approve.warning')}</p>
             </div>
           </div>
           <DialogFooter>
@@ -579,14 +584,16 @@ export default function AdminSellersPage() {
               onClick={() => setShowApproveModal(false)}
               disabled={isLoading}
             >
-              Cancel
+              {t('modals.approve.cancelButton')}
             </Button>
             <Button
               onClick={handleApprove}
               disabled={isLoading}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
-              {isLoading ? 'Approving...' : 'Approve'}
+              {isLoading
+                ? t('modals.approve.confirmButtonLoading')
+                : t('modals.approve.confirmButton')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -596,19 +603,20 @@ export default function AdminSellersPage() {
       <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Seller Application</DialogTitle>
+            <DialogTitle>{t('modals.reject.title')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to reject <strong>{selectedSeller?.storeName}</strong>?
+              {t('modals.reject.description', { storeName: selectedSeller?.storeName })}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <div>
               <Label htmlFor="rejectionNote">
-                Rejection Reason <span className="text-red-500">*</span>
+                {t('modals.reject.reasonLabel')}{' '}
+                <span className="text-red-500">{t('modals.reject.reasonRequired')}</span>
               </Label>
               <Textarea
                 id="rejectionNote"
-                placeholder="Provide a clear reason for rejection..."
+                placeholder={t('modals.reject.reasonPlaceholder')}
                 value={rejectionNote}
                 onChange={(e) => setRejectionNote(e.target.value)}
                 rows={4}
@@ -616,9 +624,7 @@ export default function AdminSellersPage() {
               />
             </div>
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800">
-                This action will prevent the seller from creating products. They can reapply later.
-              </p>
+              <p className="text-sm text-red-800">{t('modals.reject.warning')}</p>
             </div>
           </div>
           <DialogFooter>
@@ -630,14 +636,16 @@ export default function AdminSellersPage() {
               }}
               disabled={isLoading}
             >
-              Cancel
+              {t('modals.reject.cancelButton')}
             </Button>
             <Button
               onClick={handleReject}
               disabled={isLoading || !rejectionNote.trim()}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {isLoading ? 'Rejecting...' : 'Confirm Rejection'}
+              {isLoading
+                ? t('modals.reject.confirmButtonLoading')
+                : t('modals.reject.confirmButton')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -647,19 +655,20 @@ export default function AdminSellersPage() {
       <Dialog open={showSuspendModal} onOpenChange={setShowSuspendModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Suspend Seller</DialogTitle>
+            <DialogTitle>{t('modals.suspend.title')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to suspend <strong>{selectedSeller?.storeName}</strong>?
+              {t('modals.suspend.description', { storeName: selectedSeller?.storeName })}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <div>
               <Label htmlFor="suspensionNote">
-                Suspension Reason <span className="text-red-500">*</span>
+                {t('modals.suspend.reasonLabel')}{' '}
+                <span className="text-red-500">{t('modals.suspend.reasonRequired')}</span>
               </Label>
               <Textarea
                 id="suspensionNote"
-                placeholder="Provide a reason for suspension..."
+                placeholder={t('modals.suspend.reasonPlaceholder')}
                 value={suspensionNote}
                 onChange={(e) => setSuspensionNote(e.target.value)}
                 rows={4}
@@ -667,9 +676,7 @@ export default function AdminSellersPage() {
               />
             </div>
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-              <p className="text-sm text-orange-800">
-                This will immediately suspend the store and archive all active products.
-              </p>
+              <p className="text-sm text-orange-800">{t('modals.suspend.warning')}</p>
             </div>
           </div>
           <DialogFooter>
@@ -681,14 +688,16 @@ export default function AdminSellersPage() {
               }}
               disabled={isLoading}
             >
-              Cancel
+              {t('modals.suspend.cancelButton')}
             </Button>
             <Button
               onClick={handleSuspend}
               disabled={isLoading || !suspensionNote.trim()}
               className="bg-orange-600 hover:bg-orange-700 text-white"
             >
-              {isLoading ? 'Suspending...' : 'Confirm Suspension'}
+              {isLoading
+                ? t('modals.suspend.confirmButtonLoading')
+                : t('modals.suspend.confirmButton')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   storesAPI,
   PayoutSettingsResponse,
@@ -83,6 +84,7 @@ function formatDate(dateString: string) {
 export default function PayoutSettingsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const t = useTranslations('sellerPayoutSettings');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -201,7 +203,7 @@ export default function PayoutSettingsPage() {
       if (!dataToSend.bankIban) delete dataToSend.bankIban;
 
       await storesAPI.updatePayoutSettings(dataToSend);
-      setSuccess('Payout settings updated successfully!');
+      setSuccess(t('alerts.updateSuccess'));
 
       // Refresh settings to get updated data
       await fetchSettings();
@@ -228,15 +230,18 @@ export default function PayoutSettingsPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <PageHeader
-        title="Payout Settings"
-        description="Configure how and when you receive your earnings"
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Payout Settings' }]}
+        title={t('pageTitle')}
+        description={t('pageSubtitle')}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.payoutSettings') },
+        ]}
         actions={
           <Link
             href="/seller/earnings"
             className="flex items-center gap-2 px-4 py-2 bg-black text-[#CBB57B] border border-[#CBB57B] rounded-lg hover:bg-neutral-900 hover:text-[#D4C794] transition-all"
           >
-            View Earnings
+            {t('viewEarnings')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { useRouter } from 'next/navigation';
@@ -43,15 +44,8 @@ const tierIcons: Record<string, React.ReactNode> = {
   BUSINESS: <Building2 className="w-6 h-6" />,
 };
 
-// Product type labels
-const productTypeLabels: Record<string, string> = {
-  SERVICE: 'Services',
-  RENTAL: 'Rentals',
-  VEHICLE: 'Vehicles',
-  REAL_ESTATE: 'Real Estate',
-};
-
 export default function SellerPlansPage() {
+  const t = useTranslations('sellerSubscriptionPlans');
   const router = useRouter();
   const [plans, setPlans] = useState<PlanDisplay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,7 +97,7 @@ export default function SellerPlansPage() {
       setPlans(transformedPlans);
     } catch (error) {
       console.error('Error fetching subscription plans:', error);
-      toast.error('Failed to fetch subscription plans');
+      toast.error(t('errors.fetchPlans'));
     } finally {
       setLoading(false);
     }
@@ -111,12 +105,12 @@ export default function SellerPlansPage() {
 
   const getTagline = (tier: string): string => {
     const taglines: Record<string, string> = {
-      FREE: 'Get started for free',
-      STARTER: 'Perfect for growing sellers',
-      PROFESSIONAL: 'For serious businesses',
-      BUSINESS: 'Unlimited potential',
+      FREE: t('taglines.FREE'),
+      STARTER: t('taglines.STARTER'),
+      PROFESSIONAL: t('taglines.PROFESSIONAL'),
+      BUSINESS: t('taglines.BUSINESS'),
     };
-    return taglines[tier] || 'Subscription plan';
+    return taglines[tier] || t('taglines.default');
   };
 
   const handleUpgrade = async (planId: string, planName: string, price: number, tier: string) => {
@@ -125,14 +119,14 @@ export default function SellerPlansPage() {
 
       // Handle FREE plan separately
       if (price === 0) {
-        toast.info('Free plan is already active for your account');
+        toast.info(t('toasts.freePlanActive'));
         setCheckoutLoading(null);
         return;
       }
 
       // Check if user is trying to select their current plan
       if (tier === currentTier) {
-        toast.info('You are already subscribed to this plan');
+        toast.info(t('toasts.alreadySubscribed'));
         setCheckoutLoading(null);
         return;
       }
@@ -142,16 +136,15 @@ export default function SellerPlansPage() {
 
       // Redirect to Stripe checkout
       if (url) {
-        toast.success('Redirecting to checkout...');
+        toast.success(t('toasts.redirecting'));
         window.location.href = url;
       } else {
         throw new Error('No checkout URL received');
       }
     } catch (error: any) {
       console.error('Error initiating upgrade:', error);
-      const message =
-        error?.response?.data?.message || error?.message || 'Failed to initiate upgrade';
-      toast.error('Error', message);
+      const message = error?.response?.data?.message || error?.message || t('errors.upgrade');
+      toast.error(t('errors.title'), message);
       setCheckoutLoading(null);
     }
   };
@@ -172,7 +165,7 @@ export default function SellerPlansPage() {
             <div className="absolute inset-0 rounded-full border-4 border-neutral-200"></div>
             <div className="absolute inset-0 rounded-full border-4 border-[#CBB57B] border-t-transparent animate-spin"></div>
           </div>
-          <p className="text-gray-600 font-medium">Loading subscription plans...</p>
+          <p className="text-gray-600 font-medium">{t('loading')}</p>
         </div>
       </div>
     );
@@ -187,7 +180,7 @@ export default function SellerPlansPage() {
           className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ChevronLeft className="w-5 h-5" />
-          <span className="font-medium">Back to Dashboard</span>
+          <span className="font-medium">{t('backToDashboard')}</span>
         </Link>
       </div>
 
@@ -200,19 +193,16 @@ export default function SellerPlansPage() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#CBB57B]/10 text-[#9a8a5c] rounded-full text-sm font-semibold mb-6">
             <Crown className="w-4 h-4" />
-            SUBSCRIPTION PLANS
+            {t('header.badge')}
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Choose Your Plan</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-            Unlock premium features to grow your business. All paid plans include a 14-day free
-            trial.
-          </p>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">{t('header.title')}</h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">{t('header.subtitle')}</p>
 
           {/* Current Plan Badge */}
           {currentPlan && !subLoading && (
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-full text-sm mb-8">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              Current Plan: <span className="font-semibold">{currentPlan.name}</span>
+              {t('currentPlanBadge')}: <span className="font-semibold">{currentPlan.name}</span>
             </div>
           )}
 
@@ -226,7 +216,7 @@ export default function SellerPlansPage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Monthly
+              {t('billing.monthly')}
             </button>
             <button
               onClick={() => setSelectedInterval('YEARLY')}
@@ -236,9 +226,9 @@ export default function SellerPlansPage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Yearly
+              {t('billing.yearly')}
               <span className="absolute -top-2.5 -right-3 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                -20%
+                {t('billing.discount')}
               </span>
             </button>
           </div>
@@ -274,7 +264,11 @@ export default function SellerPlansPage() {
                       plan.isPopular ? 'bg-[#CBB57B] text-black' : 'bg-neutral-900 text-white'
                     } px-3 py-1 rounded-full font-semibold text-xs`}
                   >
-                    {plan.badge}
+                    {plan.badge === 'Most Popular'
+                      ? t('badges.mostPopular')
+                      : plan.badge === 'Enterprise'
+                        ? t('badges.enterprise')
+                        : plan.badge}
                   </div>
                 )}
                 {isCurrent && !plan.badge && (
@@ -306,17 +300,19 @@ export default function SellerPlansPage() {
                   <div className="mb-6">
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-bold text-gray-900">
-                        {currentPrice === 0 ? 'Free' : formatCurrencyAmount(currentPrice)}
+                        {currentPrice === 0
+                          ? t('planCard.free')
+                          : formatCurrencyAmount(currentPrice)}
                       </span>
                       {currentPrice > 0 && (
                         <span className="text-gray-500 text-sm">
-                          /{selectedInterval === 'YEARLY' ? 'year' : 'month'}
+                          /{selectedInterval === 'YEARLY' ? t('billing.year') : t('billing.month')}
                         </span>
                       )}
                     </div>
                     {selectedInterval === 'YEARLY' && currentPrice > 0 && (
                       <p className="text-sm text-gray-500 mt-1">
-                        {formatCurrencyAmount(monthlyEquivalent)}/month billed yearly
+                        {formatCurrencyAmount(monthlyEquivalent)}/{t('billing.monthBilledYearly')}
                       </p>
                     )}
                   </div>
@@ -338,18 +334,18 @@ export default function SellerPlansPage() {
                     {checkoutLoading === plan.id ? (
                       <>
                         <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        Processing...
+                        {t('planCard.processing')}
                       </>
                     ) : isCurrent ? (
                       <>
                         <Check className="w-5 h-5" />
-                        Current Plan
+                        {t('planCard.currentPlan')}
                       </>
                     ) : currentPrice === 0 ? (
-                      'Free Forever'
+                      t('planCard.freeForever')
                     ) : (
                       <>
-                        {isUpgrade ? 'Upgrade' : 'Get Started'}
+                        {isUpgrade ? t('planCard.upgrade') : t('planCard.getStarted')}
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -361,18 +357,18 @@ export default function SellerPlansPage() {
                       <p className="text-2xl font-bold text-gray-900">
                         {plan.maxActiveListings === -1 ? '∞' : plan.maxActiveListings}
                       </p>
-                      <p className="text-xs text-gray-500">Listings</p>
+                      <p className="text-xs text-gray-500">{t('planCard.listings')}</p>
                     </div>
                     <div className="bg-neutral-50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-gray-900">{plan.monthlyCredits}</p>
-                      <p className="text-xs text-gray-500">Credits/mo</p>
+                      <p className="text-xs text-gray-500">{t('planCard.creditsPerMonth')}</p>
                     </div>
                   </div>
 
                   {/* Allowed Product Types */}
                   <div className="mb-6">
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                      Product Types
+                      {t('planCard.productTypes')}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {plan.allowedProductTypes.length > 0 ? (
@@ -381,11 +377,11 @@ export default function SellerPlansPage() {
                             key={type}
                             className="px-2 py-1 bg-[#CBB57B]/10 text-[#9a8a5c] rounded text-xs font-medium"
                           >
-                            {productTypeLabels[type] || type}
+                            {t(`productTypes.${type}`) || type}
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-gray-400">Physical products only</span>
+                        <span className="text-xs text-gray-400">{t('planCard.physicalOnly')}</span>
                       )}
                     </div>
                   </div>
@@ -393,7 +389,7 @@ export default function SellerPlansPage() {
                   {/* Features */}
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                      Features
+                      {t('planCard.features')}
                     </p>
                     <ul className="space-y-2">
                       {plan.features.slice(0, 5).map((feature, idx) => (
@@ -450,31 +446,31 @@ export default function SellerPlansPage() {
           className="max-w-3xl mx-auto"
         >
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Frequently Asked Questions</h2>
-            <p className="text-gray-600">Everything you need to know about our plans</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">{t('helpSection.title')}</h2>
+            <p className="text-gray-600">{t('helpSection.subtitle')}</p>
           </div>
 
           <div className="space-y-4">
             {[
               {
-                q: 'Can I change my plan later?',
-                a: 'Yes, you can upgrade or downgrade your plan at any time. Changes will be prorated based on your billing cycle.',
+                q: t('helpSection.faq.q1'),
+                a: t('helpSection.faq.a1'),
               },
               {
-                q: 'What payment methods do you accept?',
-                a: 'We accept all major credit cards (Visa, Mastercard, American Express), debit cards, and various local payment methods through Stripe.',
+                q: t('helpSection.faq.q2'),
+                a: t('helpSection.faq.a2'),
               },
               {
-                q: 'Is there a free trial?',
-                a: 'Yes! All paid plans come with a 14-day free trial. No credit card required to start.',
+                q: t('helpSection.faq.q3'),
+                a: t('helpSection.faq.a3'),
               },
               {
-                q: 'What product types can I list?',
-                a: 'Free accounts can list physical products. Higher tier plans unlock Services, Rentals, Vehicles, and Real Estate listings.',
+                q: t('helpSection.faq.q4'),
+                a: t('helpSection.faq.a4'),
               },
               {
-                q: 'Do you offer refunds?',
-                a: 'Yes, we offer a 30-day money-back guarantee on all paid plans. Contact support for assistance.',
+                q: t('helpSection.faq.q5'),
+                a: t('helpSection.faq.a5'),
               },
             ].map((faq, idx) => (
               <motion.div
@@ -501,12 +497,12 @@ export default function SellerPlansPage() {
           transition={{ delay: 1 }}
           className="mt-16 text-center"
         >
-          <p className="text-gray-500 mb-4">Have more questions? We&apos;re here to help.</p>
+          <p className="text-gray-500 mb-4">{t('helpSection.cta.message')}</p>
           <Link
             href="/help"
             className="text-[#CBB57B] hover:text-[#b9a369] font-semibold inline-flex items-center gap-1 transition-colors"
           >
-            Visit Help Center
+            {t('helpSection.cta.linkText')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </motion.div>

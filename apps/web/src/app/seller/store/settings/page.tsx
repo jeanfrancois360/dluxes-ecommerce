@@ -245,7 +245,10 @@ export default function StoreSettingsPage() {
       <PageHeader
         title={t('pageTitle')}
         description={t('pageSubtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Store Settings' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.storeSettings') },
+        ]}
       />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useTranslations } from 'next-intl';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -92,6 +93,7 @@ interface PayoutScheduleConfig {
 }
 
 function PayoutsContent() {
+  const t = useTranslations('adminPayouts');
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [schedule, setSchedule] = useState<PayoutScheduleConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,7 @@ function PayoutsContent() {
       }
     } catch (error) {
       console.error('Error fetching payouts:', error);
-      toast.error('Failed to load payouts');
+      toast.error(t('toast.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -258,7 +260,7 @@ function PayoutsContent() {
   };
 
   const handleProcessAll = async () => {
-    if (!confirm('Process all pending payouts now?')) return;
+    if (!confirm(t('dialog.processAllConfirm'))) return;
 
     setProcessing(true);
     try {
@@ -272,15 +274,15 @@ function PayoutsContent() {
       if (response.ok) {
         const result = await response.json();
         toast.success(
-          `Processed ${result.successful} payouts successfully (${result.failed} failed)`
+          t('toast.processSuccess', { successful: result.successful, failed: result.failed })
         );
         fetchPayouts();
       } else {
-        toast.error('Failed to process payouts');
+        toast.error(t('toast.processFailed'));
       }
     } catch (error) {
       console.error('Error processing payouts:', error);
-      toast.error('Failed to process payouts');
+      toast.error(t('toast.processFailed'));
     } finally {
       setProcessing(false);
     }
@@ -296,14 +298,14 @@ function PayoutsContent() {
       });
 
       if (response.ok) {
-        toast.success('Payout triggered successfully');
+        toast.success(t('toast.triggerSuccess'));
         fetchPayouts();
       } else {
-        toast.error('Failed to trigger payout');
+        toast.error(t('toast.triggerFailed'));
       }
     } catch (error) {
       console.error('Error triggering payout:', error);
-      toast.error('Failed to trigger payout');
+      toast.error(t('toast.triggerFailed'));
     }
   };
 
@@ -311,33 +313,36 @@ function PayoutsContent() {
     if (!completeDialog.payout) return;
 
     try {
-      const response = await fetch(`${API_URL}/payouts/admin/${completeDialog.payout.id}/complete`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          paymentReference: completeDialog.reference,
-          paymentProof: completeDialog.proof || undefined,
-        }),
-      });
+      const response = await fetch(
+        `${API_URL}/payouts/admin/${completeDialog.payout.id}/complete`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            paymentReference: completeDialog.reference,
+            paymentProof: completeDialog.proof || undefined,
+          }),
+        }
+      );
 
       if (response.ok) {
-        toast.success('Payout marked as completed');
+        toast.success(t('toast.completeSuccess'));
         setCompleteDialog({ open: false, payout: null, reference: '', proof: '' });
         fetchPayouts();
       } else {
-        toast.error('Failed to complete payout');
+        toast.error(t('toast.completeFailed'));
       }
     } catch (error) {
       console.error('Error completing payout:', error);
-      toast.error('Failed to complete payout');
+      toast.error(t('toast.completeFailed'));
     }
   };
 
   const handleFailPayout = async (payoutId: string) => {
-    const reason = prompt('Enter reason for failure:');
+    const reason = prompt(t('dialog.failPrompt'));
     if (!reason) return;
 
     try {
@@ -351,41 +356,41 @@ function PayoutsContent() {
       });
 
       if (response.ok) {
-        toast.success('Payout marked as failed');
+        toast.success(t('toast.failSuccess'));
         fetchPayouts();
       } else {
-        toast.error('Failed to update payout');
+        toast.error(t('toast.failFailed'));
       }
     } catch (error) {
       console.error('Error failing payout:', error);
-      toast.error('Failed to update payout');
+      toast.error(t('toast.failFailed'));
     }
   };
 
   // Bulk actions
   const handleBulkExport = () => {
-    toast.success(`Exporting ${selectedIds.size} payouts`);
+    toast.success(t('bulk.exportSuccess', { count: selectedIds.size }));
     setSelectedIds(new Set());
   };
 
   const handleBulkComplete = async () => {
-    if (!confirm(`Mark ${selectedIds.size} payouts as completed?`)) return;
+    if (!confirm(t('bulk.completeConfirm', { count: selectedIds.size }))) return;
 
     const eligiblePayouts = filteredPayouts.filter(
       (p) => selectedIds.has(p.id) && p.status === 'PENDING'
     );
 
     if (eligiblePayouts.length === 0) {
-      toast.error('Selected payouts are not pending');
+      toast.error(t('bulk.notPendingError'));
       return;
     }
 
-    toast.success('Please complete payouts individually with payment references');
+    toast.success(t('bulk.completeIndividually'));
     setSelectedIds(new Set());
   };
 
   const handleBulkFail = async () => {
-    const reason = prompt(`Enter reason for failing ${selectedIds.size} payouts:`);
+    const reason = prompt(t('bulk.failPrompt', { count: selectedIds.size }));
     if (!reason) return;
 
     let success = 0;
@@ -414,7 +419,7 @@ function PayoutsContent() {
       }
     }
 
-    toast.success(`Failed ${success} payouts (${failed} errors)`);
+    toast.success(t('bulk.failSuccess', { success, failed }));
     setSelectedIds(new Set());
     fetchPayouts();
   };
@@ -434,7 +439,7 @@ function PayoutsContent() {
     return (
       <Badge variant={config.variant as any} className="gap-1">
         <Icon className="h-3 w-3" />
-        {status}
+        {t(`status.${status.toLowerCase()}` as any)}
       </Badge>
     );
   };
@@ -443,14 +448,12 @@ function PayoutsContent() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payout Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage seller payouts and schedule automated payments
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground mt-2">{t('description')}</p>
         </div>
         <Button onClick={handleProcessAll} disabled={processing}>
           <DollarSign className="h-4 w-4 mr-2" />
-          {processing ? 'Processing...' : 'Process All Payouts'}
+          {processing ? t('buttons.processing') : t('buttons.processAll')}
         </Button>
       </div>
 
@@ -458,12 +461,14 @@ function PayoutsContent() {
       <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Payouts</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.totalPayouts')}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${formatCurrencyAmount(stats.total, 2)}</div>
-            <p className="text-xs text-muted-foreground">{payouts.length} transactions</p>
+            <p className="text-xs text-muted-foreground">
+              {t('stats.transactions', { count: payouts.length })}
+            </p>
           </CardContent>
         </Card>
 
@@ -472,7 +477,7 @@ function PayoutsContent() {
             <CardTitle
               className={`text-sm font-medium ${stats.pendingCount > 0 ? 'text-amber-700' : ''}`}
             >
-              Pending
+              {t('stats.pending')}
             </CardTitle>
             <Clock
               className={`h-4 w-4 ${stats.pendingCount > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
@@ -485,43 +490,45 @@ function PayoutsContent() {
             <p
               className={`text-xs ${stats.pendingCount > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}
             >
-              {stats.pendingCount} pending
+              {t('stats.pendingCount', { count: stats.pendingCount })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Processing</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.processing')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
               ${formatCurrencyAmount(stats.processing, 2)}
             </div>
-            <p className="text-xs text-muted-foreground">{stats.processingCount} in progress</p>
+            <p className="text-xs text-muted-foreground">
+              {t('stats.inProgress', { count: stats.processingCount })}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.completed')}</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
               ${formatCurrencyAmount(stats.completed, 2)}
             </div>
-            <p className="text-xs text-muted-foreground">{stats.completedCount} paid out</p>
+            <p className="text-xs text-muted-foreground">
+              {t('stats.paidOut', { count: stats.completedCount })}
+            </p>
           </CardContent>
         </Card>
 
         <Card className={stats.failed > 0 ? 'border-red-200 bg-red-50' : ''}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle
-              className={`text-sm font-medium ${stats.failed > 0 ? 'text-red-700' : ''}`}
-            >
-              Failed
+            <CardTitle className={`text-sm font-medium ${stats.failed > 0 ? 'text-red-700' : ''}`}>
+              {t('stats.failed')}
             </CardTitle>
             <AlertTriangle
               className={`h-4 w-4 ${stats.failed > 0 ? 'text-red-500' : 'text-muted-foreground'}`}
@@ -531,10 +538,8 @@ function PayoutsContent() {
             <div className={`text-2xl font-bold ${stats.failed > 0 ? 'text-red-700' : ''}`}>
               {stats.failed}
             </div>
-            <p
-              className={`text-xs ${stats.failed > 0 ? 'text-red-600' : 'text-muted-foreground'}`}
-            >
-              Needs attention
+            <p className={`text-xs ${stats.failed > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+              {t('stats.needsAttention')}
             </p>
           </CardContent>
         </Card>
@@ -544,28 +549,30 @@ function PayoutsContent() {
       {schedule && (
         <Card>
           <CardHeader>
-            <CardTitle>Payout Schedule</CardTitle>
-            <CardDescription>Current automated payout configuration</CardDescription>
+            <CardTitle>{t('schedule.title')}</CardTitle>
+            <CardDescription>{t('schedule.description')}</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <div className="text-sm text-muted-foreground">Frequency</div>
+              <div className="text-sm text-muted-foreground">{t('schedule.frequency')}</div>
               <div className="font-medium">{schedule.frequency}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Min Amount</div>
+              <div className="text-sm text-muted-foreground">{t('schedule.minAmount')}</div>
               <div className="font-medium">${schedule.minPayoutAmount}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Hold Period</div>
-              <div className="font-medium">{schedule.holdPeriodDays} days</div>
+              <div className="text-sm text-muted-foreground">{t('schedule.holdPeriod')}</div>
+              <div className="font-medium">
+                {t('schedule.days', { count: schedule.holdPeriodDays })}
+              </div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Next Run</div>
+              <div className="text-sm text-muted-foreground">{t('schedule.nextRun')}</div>
               <div className="font-medium">
                 {schedule.nextProcessAt
                   ? new Date(schedule.nextProcessAt).toLocaleDateString()
-                  : 'Not scheduled'}
+                  : t('schedule.notScheduled')}
               </div>
             </div>
           </CardContent>
@@ -580,7 +587,7 @@ function PayoutsContent() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search by seller, store, or reference..."
+                placeholder={t('filters.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -591,25 +598,25 @@ function PayoutsContent() {
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t('filters.statusLabel')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="PENDING">Pending</SelectItem>
-              <SelectItem value="PROCESSING">Processing</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-              <SelectItem value="FAILED">Failed</SelectItem>
-              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
+              <SelectItem value="PENDING">{t('filters.pending')}</SelectItem>
+              <SelectItem value="PROCESSING">{t('filters.processing')}</SelectItem>
+              <SelectItem value="COMPLETED">{t('filters.completed')}</SelectItem>
+              <SelectItem value="FAILED">{t('filters.failed')}</SelectItem>
+              <SelectItem value="CANCELLED">{t('filters.cancelled')}</SelectItem>
             </SelectContent>
           </Select>
 
           {/* Method Filter */}
           <Select value={methodFilter} onValueChange={setMethodFilter}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Payment Method" />
+              <SelectValue placeholder={t('filters.paymentMethod')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Methods</SelectItem>
+              <SelectItem value="all">{t('filters.allMethods')}</SelectItem>
               {paymentMethods.map((method) => (
                 <SelectItem key={method} value={method}>
                   {method}
@@ -621,13 +628,13 @@ function PayoutsContent() {
           {/* Sort */}
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Sort by" />
+              <SelectValue placeholder={t('filters.sortBy')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="oldest">Oldest First</SelectItem>
-              <SelectItem value="amount_high">Amount (High)</SelectItem>
-              <SelectItem value="amount_low">Amount (Low)</SelectItem>
+              <SelectItem value="newest">{t('filters.newestFirst')}</SelectItem>
+              <SelectItem value="oldest">{t('filters.oldestFirst')}</SelectItem>
+              <SelectItem value="amount_high">{t('filters.amountHigh')}</SelectItem>
+              <SelectItem value="amount_low">{t('filters.amountLow')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -635,10 +642,10 @@ function PayoutsContent() {
         {/* Active Filter Pills */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
+            <span className="text-sm text-muted-foreground">{t('filters.activeFilters')}</span>
             {debouncedSearch && (
               <Badge variant="secondary" className="gap-1">
-                Search: {debouncedSearch}
+                {t('filters.search')}: {debouncedSearch}
                 <button onClick={() => setSearchQuery('')} className="ml-1 hover:text-destructive">
                   <X className="h-3 w-3" />
                 </button>
@@ -646,7 +653,7 @@ function PayoutsContent() {
             )}
             {statusFilter !== 'all' && (
               <Badge variant="secondary" className="gap-1">
-                Status: {statusFilter}
+                {t('filters.status')}: {statusFilter}
                 <button
                   onClick={() => setStatusFilter('all')}
                   className="ml-1 hover:text-destructive"
@@ -657,7 +664,7 @@ function PayoutsContent() {
             )}
             {methodFilter !== 'all' && (
               <Badge variant="secondary" className="gap-1">
-                Method: {methodFilter}
+                {t('filters.method')}: {methodFilter}
                 <button
                   onClick={() => setMethodFilter('all')}
                   className="ml-1 hover:text-destructive"
@@ -667,7 +674,7 @@ function PayoutsContent() {
               </Badge>
             )}
             <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-              Clear all
+              {t('filters.clearAll')}
             </Button>
           </div>
         )}
@@ -676,8 +683,8 @@ function PayoutsContent() {
       {/* Payouts Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Payout History</CardTitle>
-          <CardDescription>All seller payouts and their status</CardDescription>
+          <CardTitle>{t('table.title')}</CardTitle>
+          <CardDescription>{t('table.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -694,27 +701,27 @@ function PayoutsContent() {
                       className="w-4 h-4 rounded border-neutral-300"
                     />
                   </TableHead>
-                  <TableHead>Seller/Store</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Commissions</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Scheduled</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('table.headers.sellerStore')}</TableHead>
+                  <TableHead>{t('table.headers.amount')}</TableHead>
+                  <TableHead>{t('table.headers.period')}</TableHead>
+                  <TableHead>{t('table.headers.commissions')}</TableHead>
+                  <TableHead>{t('table.headers.method')}</TableHead>
+                  <TableHead>{t('table.headers.status')}</TableHead>
+                  <TableHead>{t('table.headers.scheduled')}</TableHead>
+                  <TableHead>{t('table.headers.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-8">
-                      Loading payouts...
+                      {t('table.loading')}
                     </TableCell>
                   </TableRow>
                 ) : filteredPayouts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                      No payouts found
+                      {t('table.noResults')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -765,7 +772,7 @@ function PayoutsContent() {
                                 })
                               }
                             >
-                              Complete
+                              {t('actions.complete')}
                             </Button>
                           )}
                           {(payout.status === 'PENDING' || payout.status === 'PROCESSING') && (
@@ -774,7 +781,7 @@ function PayoutsContent() {
                               variant="destructive"
                               onClick={() => handleFailPayout(payout.id)}
                             >
-                              Fail
+                              {t('actions.fail')}
                             </Button>
                           )}
                           {payout.status === 'FAILED' && (
@@ -783,7 +790,7 @@ function PayoutsContent() {
                               variant="outline"
                               onClick={() => handleTriggerSeller(payout.sellerId)}
                             >
-                              Retry
+                              {t('actions.retry')}
                             </Button>
                           )}
                         </div>
@@ -801,24 +808,24 @@ function PayoutsContent() {
       {selectedIds.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 flex items-center justify-between z-50">
           <div className="flex items-center gap-4">
-            <span className="font-medium">{selectedIds.size} selected</span>
+            <span className="font-medium">{t('table.selected', { count: selectedIds.size })}</span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSelectedIds(new Set())}
               className="text-white hover:text-white hover:bg-slate-800"
             >
-              Clear selection
+              {t('actions.clearSelection')}
             </Button>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={handleBulkExport} className="gap-2">
               <Download className="h-4 w-4" />
-              Export
+              {t('actions.export')}
             </Button>
             <Button variant="secondary" size="sm" onClick={handleBulkComplete} className="gap-2">
               <Printer className="h-4 w-4" />
-              Print Report
+              {t('actions.printReport')}
             </Button>
             <Button
               size="sm"
@@ -826,11 +833,11 @@ function PayoutsContent() {
               className="bg-green-600 hover:bg-green-700 gap-2"
             >
               <CheckCircle className="h-4 w-4" />
-              Complete
+              {t('actions.complete')}
             </Button>
             <Button variant="destructive" size="sm" onClick={handleBulkFail} className="gap-2">
               <XCircle className="h-4 w-4" />
-              Fail
+              {t('actions.fail')}
             </Button>
           </div>
         </div>
@@ -843,21 +850,23 @@ function PayoutsContent() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Complete Payout</DialogTitle>
-            <DialogDescription>
-              Mark this payout as completed after transferring funds to the seller
-            </DialogDescription>
+            <DialogTitle>{t('dialog.complete.title')}</DialogTitle>
+            <DialogDescription>{t('dialog.complete.description')}</DialogDescription>
           </DialogHeader>
 
           {completeDialog.payout && (
             <div className="space-y-4">
               <div className="rounded-lg border p-4 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Seller:</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t('dialog.complete.seller')}
+                  </span>
                   <span className="font-medium">{completeDialog.payout.seller.email}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Amount:</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t('dialog.complete.amount')}
+                  </span>
                   <span className="font-medium">
                     ${formatCurrencyAmount(completeDialog.payout.amount, 2)}{' '}
                     {completeDialog.payout.currency}
@@ -866,10 +875,10 @@ function PayoutsContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reference">Payment Reference *</Label>
+                <Label htmlFor="reference">{t('dialog.complete.referenceLabel')}</Label>
                 <Input
                   id="reference"
-                  placeholder="BANK-TXN-12345"
+                  placeholder={t('dialog.complete.referencePlaceholder')}
                   value={completeDialog.reference}
                   onChange={(e) =>
                     setCompleteDialog({ ...completeDialog, reference: e.target.value })
@@ -878,10 +887,10 @@ function PayoutsContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="proof">Payment Proof (URL)</Label>
+                <Label htmlFor="proof">{t('dialog.complete.proofLabel')}</Label>
                 <Input
                   id="proof"
-                  placeholder="https://..."
+                  placeholder={t('dialog.complete.proofPlaceholder')}
                   value={completeDialog.proof}
                   onChange={(e) => setCompleteDialog({ ...completeDialog, proof: e.target.value })}
                 />
@@ -896,10 +905,10 @@ function PayoutsContent() {
                 setCompleteDialog({ open: false, payout: null, reference: '', proof: '' })
               }
             >
-              Cancel
+              {t('dialog.complete.cancel')}
             </Button>
             <Button onClick={handleCompletePayout} disabled={!completeDialog.reference}>
-              Mark as Completed
+              {t('dialog.complete.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

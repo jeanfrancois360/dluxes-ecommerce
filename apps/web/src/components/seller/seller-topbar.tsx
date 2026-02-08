@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/use-auth';
 import { useSellerDashboard } from '@/hooks/use-seller-dashboard';
 import { useLocale, languages, type LanguageOption } from '@/contexts/locale-context';
@@ -34,6 +35,7 @@ export default function SellerTopbar({
   const router = useRouter();
   const { user, logout } = useAuth();
   const { summary } = useSellerDashboard();
+  const t = useTranslations('sellerNav');
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -129,7 +131,9 @@ export default function SellerTopbar({
           </button>
 
           {/* Page Title (optional - can be dynamic per page) */}
-          <h1 className="hidden lg:block text-lg font-semibold text-black">Seller Dashboard</h1>
+          <h1 className="hidden lg:block text-lg font-semibold text-black">
+            {t('topbar.sellerDashboard')}
+          </h1>
         </div>
 
         {/* Center Section: Quick Links (hidden on mobile) */}
@@ -140,14 +144,14 @@ export default function SellerTopbar({
             className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-[#CBB57B] transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
-            <span>Visit Store</span>
+            <span>{t('topbar.visitStore')}</span>
           </Link>
           <Link
             href="/seller/store/settings"
             className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-[#CBB57B] transition-colors"
           >
             <Store className="w-4 h-4" />
-            <span>Store Settings</span>
+            <span>{t('topbar.storeSettings')}</span>
           </Link>
         </div>
 
@@ -175,7 +179,7 @@ export default function SellerTopbar({
                 >
                   <div className="p-2 border-b border-neutral-200 bg-neutral-50">
                     <h3 className="text-xs font-semibold text-neutral-600 uppercase px-2">
-                      Language
+                      {t('topbar.language')}
                     </h3>
                   </div>
                   <div className="py-1">
@@ -223,12 +227,12 @@ export default function SellerTopbar({
                   className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-neutral-200 overflow-hidden"
                 >
                   <div className="p-4 border-b border-neutral-200">
-                    <h3 className="font-semibold text-black">Notifications</h3>
+                    <h3 className="font-semibold text-black">{t('topbar.notifications')}</h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     <div className="p-8 text-center text-neutral-500">
                       <Bell className="w-12 h-12 mx-auto mb-2 text-neutral-300" />
-                      <p className="text-sm">No new notifications</p>
+                      <p className="text-sm">{t('topbar.noNotifications')}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -297,7 +301,7 @@ export default function SellerTopbar({
                       onClick={() => setAccountOpen(false)}
                     >
                       <User className="w-4 h-4" />
-                      <span>My Profile</span>
+                      <span>{t('topbar.myProfile')}</span>
                     </Link>
                     <Link
                       href="/seller/store/settings"
@@ -305,7 +309,7 @@ export default function SellerTopbar({
                       onClick={() => setAccountOpen(false)}
                     >
                       <Settings className="w-4 h-4" />
-                      <span>Store Settings</span>
+                      <span>{t('topbar.storeSettings')}</span>
                     </Link>
                     <Link
                       href="/"
@@ -314,7 +318,7 @@ export default function SellerTopbar({
                       onClick={() => setAccountOpen(false)}
                     >
                       <ExternalLink className="w-4 h-4" />
-                      <span>Visit Website</span>
+                      <span>{t('topbar.visitWebsite')}</span>
                     </Link>
                   </div>
 
@@ -325,7 +329,7 @@ export default function SellerTopbar({
                       className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
-                      <span>Logout</span>
+                      <span>{t('topbar.logout')}</span>
                     </button>
                   </div>
                 </motion.div>

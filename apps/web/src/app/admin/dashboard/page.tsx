@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
@@ -119,6 +120,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function DashboardContent() {
+  const t = useTranslations('adminDashboard');
   const { stats, loading: statsLoading } = useDashboardStats();
   const { data: revenueData, loading: revenueLoading } = useRevenueData(30);
   const { data: ordersByStatus, loading: ordersLoading } = useOrdersByStatus();
@@ -145,7 +147,7 @@ function DashboardContent() {
         ) : (
           <>
             <StatCard
-              title="Total Revenue"
+              title={t('stats.totalRevenue')}
               value={`$${(stats?.totalRevenue || 0).toLocaleString()}`}
               change={stats?.revenueChange || 0}
               trend="up"
@@ -166,7 +168,7 @@ function DashboardContent() {
               }
             />
             <StatCard
-              title="Total Orders"
+              title={t('stats.totalOrders')}
               value={(stats?.totalOrders || 0).toLocaleString()}
               change={stats?.ordersChange || 0}
               trend="up"
@@ -187,7 +189,7 @@ function DashboardContent() {
               }
             />
             <StatCard
-              title="Total Customers"
+              title={t('stats.totalCustomers')}
               value={(stats?.totalCustomers || 0).toLocaleString()}
               change={stats?.customersChange || 0}
               trend="up"
@@ -208,7 +210,7 @@ function DashboardContent() {
               }
             />
             <StatCard
-              title="Total Products"
+              title={t('stats.totalProducts')}
               value={(stats?.totalProducts || 0).toLocaleString()}
               change={stats?.productsChange || 0}
               trend="up"
@@ -239,7 +241,7 @@ function DashboardContent() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Chart */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Revenue (Last 30 Days)</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('charts.revenue')}</h2>
           {revenueLoading ? (
             <div className="h-64 bg-gray-200 rounded animate-pulse" />
           ) : (
@@ -270,7 +272,7 @@ function DashboardContent() {
 
         {/* Orders by Status */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Orders by Status</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('charts.orders')}</h2>
           {ordersLoading ? (
             <div className="h-64 bg-gray-200 rounded animate-pulse" />
           ) : (
@@ -300,7 +302,7 @@ function DashboardContent() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Products */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Products by Revenue</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('charts.topProducts')}</h2>
           {productsLoading ? (
             <div className="h-64 bg-gray-200 rounded animate-pulse" />
           ) : (
@@ -318,9 +320,7 @@ function DashboardContent() {
 
         {/* Customer Growth */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Customer Growth (Last 30 Days)
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('charts.customerGrowth')}</h2>
           {growthLoading ? (
             <div className="h-64 bg-gray-200 rounded animate-pulse" />
           ) : (
@@ -351,12 +351,12 @@ function DashboardContent() {
       <div className="bg-white rounded-lg shadow">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t('recentOrders.title')}</h2>
             <Link
               href="/admin/orders"
               className="text-sm text-[#CBB57B] hover:text-[#a89158] font-medium"
             >
-              View All
+              {t('recentOrders.viewAll')}
             </Link>
           </div>
         </div>
@@ -372,22 +372,22 @@ function DashboardContent() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Order
+                    {t('table.order')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
+                    {t('table.customer')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total
+                    {t('table.total')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    {t('table.status')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
+                    {t('table.date')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
+                    {t('table.actions')}
                   </th>
                 </tr>
               </thead>
@@ -399,10 +399,10 @@ function DashboardContent() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {order.customer?.name || 'Guest Customer'}
+                        {order.customer?.name || t('recentOrders.guestCustomer')}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {order.customer?.email || 'No email provided'}
+                        {order.customer?.email || t('recentOrders.noEmail')}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -421,7 +421,7 @@ function DashboardContent() {
                         href={`/admin/orders/${order.id}`}
                         className="text-[#CBB57B] hover:text-[#a89158] font-medium"
                       >
-                        View
+                        {t('recentOrders.view')}
                       </a>
                     </td>
                   </tr>
@@ -440,8 +440,10 @@ function DashboardContent() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Product</h3>
-              <p className="text-sm text-gray-600">Create a new product listing</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {t('quickActions.addProduct.title')}
+              </h3>
+              <p className="text-sm text-gray-600">{t('quickActions.addProduct.description')}</p>
             </div>
             <svg
               className="w-8 h-8 text-[#CBB57B] group-hover:scale-110 transition-transform"
@@ -465,8 +467,10 @@ function DashboardContent() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Process Orders</h3>
-              <p className="text-sm text-gray-600">Manage pending orders</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {t('quickActions.processOrders.title')}
+              </h3>
+              <p className="text-sm text-gray-600">{t('quickActions.processOrders.description')}</p>
             </div>
             <svg
               className="w-8 h-8 text-[#CBB57B] group-hover:scale-110 transition-transform"
@@ -490,8 +494,10 @@ function DashboardContent() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">View Analytics</h3>
-              <p className="text-sm text-gray-600">Detailed sales reports</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {t('quickActions.viewAnalytics.title')}
+              </h3>
+              <p className="text-sm text-gray-600">{t('quickActions.viewAnalytics.description')}</p>
             </div>
             <svg
               className="w-8 h-8 text-[#CBB57B] group-hover:scale-110 transition-transform"

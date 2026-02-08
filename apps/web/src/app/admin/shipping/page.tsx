@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import {
@@ -62,6 +63,7 @@ interface ShippingRate {
 }
 
 function ShippingZonesContent() {
+  const t = useTranslations('adminShipping');
   const [zones, setZones] = useState<ShippingZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -96,7 +98,7 @@ function ShippingZonesContent() {
       }
     } catch (error) {
       console.error('Error fetching zones:', error);
-      toast.error('Failed to load shipping zones');
+      toast.error(t('toast.loadError'));
     } finally {
       setLoading(false);
     }
@@ -110,7 +112,7 @@ function ShippingZonesContent() {
         name: formData.name,
         code: formData.code,
         description: formData.description || undefined,
-        countries: formData.countries.split(',').map(c => c.trim()),
+        countries: formData.countries.split(',').map((c) => c.trim()),
         baseFee: parseFloat(formData.baseFee),
         perKgFee: formData.perKgFee ? parseFloat(formData.perKgFee) : undefined,
         freeShippingThreshold: formData.freeShippingThreshold
@@ -134,26 +136,22 @@ function ShippingZonesContent() {
       });
 
       if (response.ok) {
-        toast.success(
-          editingZone
-            ? 'Shipping zone updated successfully'
-            : 'Shipping zone created successfully'
-        );
+        toast.success(editingZone ? t('toast.updateSuccess') : t('toast.createSuccess'));
         setDialogOpen(false);
         resetForm();
         fetchZones();
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Failed to save shipping zone');
+        toast.error(error.message || t('toast.saveError'));
       }
     } catch (error) {
       console.error('Error saving zone:', error);
-      toast.error('Failed to save shipping zone');
+      toast.error(t('toast.saveError'));
     }
   };
 
   const handleDelete = async (code: string) => {
-    if (!confirm('Are you sure you want to delete this shipping zone?')) return;
+    if (!confirm(t('toast.deleteConfirm'))) return;
 
     try {
       const response = await fetch(`${API_URL}/shipping/zones/${code}`, {
@@ -164,14 +162,14 @@ function ShippingZonesContent() {
       });
 
       if (response.ok) {
-        toast.success('Shipping zone deleted successfully');
+        toast.success(t('toast.deleteSuccess'));
         fetchZones();
       } else {
-        toast.error('Failed to delete shipping zone');
+        toast.error(t('toast.deleteError'));
       }
     } catch (error) {
       console.error('Error deleting zone:', error);
-      toast.error('Failed to delete shipping zone');
+      toast.error(t('toast.deleteError'));
     }
   };
 
@@ -210,14 +208,17 @@ function ShippingZonesContent() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Shipping Zones</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage regional shipping rates and delivery options
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground mt-2">{t('pageDescription')}</p>
         </div>
-        <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+        <Button
+          onClick={() => {
+            resetForm();
+            setDialogOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4 mr-2" />
-          Add Zone
+          {t('buttons.addZone')}
         </Button>
       </div>
 
@@ -225,42 +226,46 @@ function ShippingZonesContent() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Zones</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.totalZones')}</CardTitle>
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{zones.length}</div>
             <p className="text-xs text-muted-foreground">
-              {zones.filter(z => z.isActive).length} active
+              {zones.filter((z) => z.isActive).length} {t('stats.active')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Countries Covered</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.countriesCovered')}</CardTitle>
             <Truck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {new Set(zones.flatMap(z => z.countries)).size}
+              {new Set(zones.flatMap((z) => z.countries)).size}
             </div>
-            <p className="text-xs text-muted-foreground">Unique countries</p>
+            <p className="text-xs text-muted-foreground">{t('stats.uniqueCountries')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Base Fee</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.avgBaseFee')}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${zones.length > 0
-                ? formatCurrencyAmount(zones.reduce((sum, z) => sum + Number(z.baseFee), 0) / zones.length, 2)
+              $
+              {zones.length > 0
+                ? formatCurrencyAmount(
+                    zones.reduce((sum, z) => sum + Number(z.baseFee), 0) / zones.length,
+                    2
+                  )
                 : '0.00'}
             </div>
-            <p className="text-xs text-muted-foreground">Across all zones</p>
+            <p className="text-xs text-muted-foreground">{t('stats.acrossAllZones')}</p>
           </CardContent>
         </Card>
       </div>
@@ -268,30 +273,28 @@ function ShippingZonesContent() {
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Shipping Zones</CardTitle>
-          <CardDescription>
-            Configure shipping zones and rates for different regions
-          </CardDescription>
+          <CardTitle>{t('table.title')}</CardTitle>
+          <CardDescription>{t('table.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name / Code</TableHead>
-                  <TableHead>Countries</TableHead>
-                  <TableHead>Base Fee</TableHead>
-                  <TableHead>Free Shipping</TableHead>
-                  <TableHead>Delivery Time</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('table.headers.nameCode')}</TableHead>
+                  <TableHead>{t('table.headers.countries')}</TableHead>
+                  <TableHead>{t('table.headers.baseFee')}</TableHead>
+                  <TableHead>{t('table.headers.freeShipping')}</TableHead>
+                  <TableHead>{t('table.headers.deliveryTime')}</TableHead>
+                  <TableHead>{t('table.headers.status')}</TableHead>
+                  <TableHead>{t('table.headers.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {zones.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      No shipping zones found
+                      {t('table.noZonesFound')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -315,40 +318,34 @@ function ShippingZonesContent() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">${formatCurrencyAmount(zone.baseFee, 2)}</TableCell>
+                      <TableCell className="font-medium">
+                        ${formatCurrencyAmount(zone.baseFee, 2)}
+                      </TableCell>
                       <TableCell>
                         {zone.freeShippingThreshold ? (
                           <span className="text-sm">
                             ${formatCurrencyAmount(zone.freeShippingThreshold, 2)}+
                           </span>
                         ) : (
-                          <span className="text-muted-foreground">None</span>
+                          <span className="text-muted-foreground">{t('table.none')}</span>
                         )}
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
-                          {zone.minDeliveryDays}-{zone.maxDeliveryDays} days
+                          {zone.minDeliveryDays}-{zone.maxDeliveryDays} {t('table.days')}
                         </span>
                       </TableCell>
                       <TableCell>
                         <Badge variant={zone.isActive ? 'default' : 'secondary'}>
-                          {zone.isActive ? 'Active' : 'Inactive'}
+                          {zone.isActive ? t('table.active') : t('table.inactive')}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEdit(zone)}
-                          >
+                          <Button size="sm" variant="ghost" onClick={() => handleEdit(zone)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(zone.code)}
-                          >
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(zone.code)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -367,20 +364,20 @@ function ShippingZonesContent() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingZone ? 'Edit Shipping Zone' : 'Create Shipping Zone'}
+              {editingZone ? t('dialog.editTitle') : t('dialog.createTitle')}
             </DialogTitle>
-            <DialogDescription>
-              Configure shipping rates and delivery options for a region
-            </DialogDescription>
+            <DialogDescription>{t('dialog.description')}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Zone Name *</Label>
+                <Label htmlFor="name">
+                  {t('dialog.zoneName')} {t('dialog.required')}
+                </Label>
                 <Input
                   id="name"
-                  placeholder="North America"
+                  placeholder={t('placeholders.zoneName')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -388,10 +385,12 @@ function ShippingZonesContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="code">Zone Code *</Label>
+                <Label htmlFor="code">
+                  {t('dialog.zoneCode')} {t('dialog.required')}
+                </Label>
                 <Input
                   id="code"
-                  placeholder="NA"
+                  placeholder={t('placeholders.zoneCode')}
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                   required
@@ -400,10 +399,12 @@ function ShippingZonesContent() {
               </div>
 
               <div className="col-span-2 space-y-2">
-                <Label htmlFor="countries">Countries (comma-separated) *</Label>
+                <Label htmlFor="countries">
+                  {t('dialog.countries')} {t('dialog.required')}
+                </Label>
                 <Input
                   id="countries"
-                  placeholder="US, CA, MX"
+                  placeholder={t('placeholders.countries')}
                   value={formData.countries}
                   onChange={(e) => setFormData({ ...formData, countries: e.target.value })}
                   required
@@ -411,12 +412,14 @@ function ShippingZonesContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="baseFee">Base Fee ($) *</Label>
+                <Label htmlFor="baseFee">
+                  {t('dialog.baseFee')} {t('dialog.required')}
+                </Label>
                 <Input
                   id="baseFee"
                   type="number"
                   step="0.01"
-                  placeholder="15.00"
+                  placeholder={t('placeholders.baseFee')}
                   value={formData.baseFee}
                   onChange={(e) => setFormData({ ...formData, baseFee: e.target.value })}
                   required
@@ -424,24 +427,24 @@ function ShippingZonesContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="perKgFee">Per Kg Fee ($)</Label>
+                <Label htmlFor="perKgFee">{t('dialog.perKgFee')}</Label>
                 <Input
                   id="perKgFee"
                   type="number"
                   step="0.01"
-                  placeholder="5.00"
+                  placeholder={t('placeholders.perKgFee')}
                   value={formData.perKgFee}
                   onChange={(e) => setFormData({ ...formData, perKgFee: e.target.value })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="freeShippingThreshold">Free Shipping Threshold ($)</Label>
+                <Label htmlFor="freeShippingThreshold">{t('dialog.freeShippingThreshold')}</Label>
                 <Input
                   id="freeShippingThreshold"
                   type="number"
                   step="0.01"
-                  placeholder="200.00"
+                  placeholder={t('placeholders.freeShippingThreshold')}
                   value={formData.freeShippingThreshold}
                   onChange={(e) =>
                     setFormData({ ...formData, freeShippingThreshold: e.target.value })
@@ -450,11 +453,13 @@ function ShippingZonesContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="minDeliveryDays">Min Delivery Days *</Label>
+                <Label htmlFor="minDeliveryDays">
+                  {t('dialog.minDeliveryDays')} {t('dialog.required')}
+                </Label>
                 <Input
                   id="minDeliveryDays"
                   type="number"
-                  placeholder="3"
+                  placeholder={t('placeholders.minDeliveryDays')}
                   value={formData.minDeliveryDays}
                   onChange={(e) => setFormData({ ...formData, minDeliveryDays: e.target.value })}
                   required
@@ -462,11 +467,13 @@ function ShippingZonesContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="maxDeliveryDays">Max Delivery Days *</Label>
+                <Label htmlFor="maxDeliveryDays">
+                  {t('dialog.maxDeliveryDays')} {t('dialog.required')}
+                </Label>
                 <Input
                   id="maxDeliveryDays"
                   type="number"
-                  placeholder="7"
+                  placeholder={t('placeholders.maxDeliveryDays')}
                   value={formData.maxDeliveryDays}
                   onChange={(e) => setFormData({ ...formData, maxDeliveryDays: e.target.value })}
                   required
@@ -475,10 +482,10 @@ function ShippingZonesContent() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t('dialog.descriptionField')}</Label>
               <Input
                 id="description"
-                placeholder="Shipping to North American countries"
+                placeholder={t('placeholders.description')}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
@@ -486,10 +493,10 @@ function ShippingZonesContent() {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
+                {t('buttons.cancel')}
               </Button>
               <Button type="submit">
-                {editingZone ? 'Update Zone' : 'Create Zone'}
+                {editingZone ? t('buttons.updateZone') : t('buttons.createZone')}
               </Button>
             </DialogFooter>
           </form>

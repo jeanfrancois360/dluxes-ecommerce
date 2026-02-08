@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { api } from '@/lib/api/client';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import PageHeader from '@/components/seller/page-header';
@@ -73,7 +74,15 @@ interface Payout {
 
 type TabType = 'overview' | 'commissions' | 'payouts';
 
-function StatusBadge({ status, type }: { status: string; type: 'commission' | 'payout' }) {
+function StatusBadge({
+  status,
+  type,
+  t,
+}: {
+  status: string;
+  type: 'commission' | 'payout';
+  t: any;
+}) {
   const colors: Record<string, string> = {
     // Commission statuses
     PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -86,11 +95,19 @@ function StatusBadge({ status, type }: { status: string; type: 'commission' | 'p
     FAILED: 'bg-red-100 text-red-800 border-red-300',
   };
 
+  const getStatusLabel = () => {
+    if (type === 'commission') {
+      return t(`commissionStatus.${status}`);
+    } else {
+      return t(`payoutStatus.${status}`);
+    }
+  };
+
   return (
     <span
       className={`px-3 py-1 text-xs font-medium rounded-full border ${colors[status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}
     >
-      {status}
+      {getStatusLabel()}
     </span>
   );
 }
@@ -116,6 +133,7 @@ function formatDateTime(dateString: string) {
 export default function SellerEarningsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const t = useTranslations('sellerEarnings');
 
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isLoading, setIsLoading] = useState(true);
@@ -236,9 +254,12 @@ export default function SellerEarningsPage() {
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
       <PageHeader
-        title="Earnings & Payouts"
-        description="Track your earnings, commissions, and payout history"
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Earnings' }]}
+        title={t('pageTitle')}
+        description={t('pageSubtitle')}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.earnings') },
+        ]}
         actions={
           <button
             onClick={handleRefresh}
@@ -246,7 +267,7 @@ export default function SellerEarningsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-black text-[#CBB57B] rounded-lg hover:bg-neutral-900 hover:text-[#D4C794] transition-all border border-[#CBB57B]"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('refresh')}
           </button>
         }
       />
@@ -272,11 +293,13 @@ export default function SellerEarningsPage() {
               </div>
               <TrendingUp className="w-5 h-5 text-green-500" />
             </div>
-            <p className="text-sm text-neutral-500 mb-1">Total Earnings</p>
+            <p className="text-sm text-neutral-500 mb-1">{t('summary.totalEarnings')}</p>
             <p className="text-2xl font-bold text-black">
               {formatCurrencyAmount(summary?.total.amount || 0)}
             </p>
-            <p className="text-xs text-neutral-400 mt-1">{summary?.total.count || 0} orders</p>
+            <p className="text-xs text-neutral-400 mt-1">
+              {summary?.total.count || 0} {t('summary.orders')}
+            </p>
           </motion.div>
 
           {/* Pending */}
@@ -291,12 +314,12 @@ export default function SellerEarningsPage() {
                 <Clock className="w-6 h-6 text-yellow-600" />
               </div>
             </div>
-            <p className="text-sm text-neutral-500 mb-1">Pending</p>
+            <p className="text-sm text-neutral-500 mb-1">{t('summary.pending')}</p>
             <p className="text-2xl font-bold text-black">
               {formatCurrencyAmount(summary?.pending.amount || 0)}
             </p>
             <p className="text-xs text-neutral-400 mt-1">
-              {summary?.pending.count || 0} orders awaiting confirmation
+              {summary?.pending.count || 0} {t('summary.ordersAwaitingConfirmation')}
             </p>
           </motion.div>
 
@@ -312,12 +335,12 @@ export default function SellerEarningsPage() {
                 <Wallet className="w-6 h-6 text-blue-600" />
               </div>
             </div>
-            <p className="text-sm text-neutral-500 mb-1">Available for Payout</p>
+            <p className="text-sm text-neutral-500 mb-1">{t('summary.availableForPayout')}</p>
             <p className="text-2xl font-bold text-black">
               {formatCurrencyAmount(summary?.confirmed.amount || 0)}
             </p>
             <p className="text-xs text-neutral-400 mt-1">
-              {summary?.confirmed.count || 0} confirmed orders
+              {summary?.confirmed.count || 0} {t('summary.confirmedOrders')}
             </p>
           </motion.div>
 
@@ -333,20 +356,22 @@ export default function SellerEarningsPage() {
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
             </div>
-            <p className="text-sm text-neutral-500 mb-1">Paid Out</p>
+            <p className="text-sm text-neutral-500 mb-1">{t('summary.paidOut')}</p>
             <p className="text-2xl font-bold text-black">
               {formatCurrencyAmount(summary?.paid.amount || 0)}
             </p>
-            <p className="text-xs text-neutral-400 mt-1">{summary?.paid.count || 0} paid orders</p>
+            <p className="text-xs text-neutral-400 mt-1">
+              {summary?.paid.count || 0} {t('summary.paidOrders')}
+            </p>
           </motion.div>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-neutral-200">
           {[
-            { id: 'overview', label: 'Overview', icon: TrendingUp },
-            { id: 'commissions', label: 'Commission History', icon: Package },
-            { id: 'payouts', label: 'Payout History', icon: CreditCard },
+            { id: 'overview', label: t('tabs.overview'), icon: TrendingUp },
+            { id: 'commissions', label: t('tabs.commissionHistory'), icon: Package },
+            { id: 'payouts', label: t('tabs.payoutHistory'), icon: CreditCard },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -369,12 +394,12 @@ export default function SellerEarningsPage() {
             {/* Recent Commissions */}
             <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Recent Commissions</h3>
+                <h3 className="text-lg font-semibold">{t('overview.recentCommissions')}</h3>
                 <button
                   onClick={() => setActiveTab('commissions')}
                   className="text-sm text-gold hover:text-gold/80"
                 >
-                  View All
+                  {t('overview.viewAll')}
                 </button>
               </div>
               <div className="space-y-4">
@@ -393,12 +418,14 @@ export default function SellerEarningsPage() {
                       <p className="font-semibold text-green-600">
                         +{formatCurrencyAmount(commission.commissionAmount)}
                       </p>
-                      <StatusBadge status={commission.status} type="commission" />
+                      <StatusBadge status={commission.status} type="commission" t={t} />
                     </div>
                   </div>
                 ))}
                 {commissions.length === 0 && (
-                  <p className="text-center text-neutral-500 py-8">No commissions yet</p>
+                  <p className="text-center text-neutral-500 py-8">
+                    {t('overview.noCommissionsYet')}
+                  </p>
                 )}
               </div>
             </div>
@@ -406,12 +433,12 @@ export default function SellerEarningsPage() {
             {/* Recent Payouts */}
             <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Recent Payouts</h3>
+                <h3 className="text-lg font-semibold">{t('overview.recentPayouts')}</h3>
                 <button
                   onClick={() => setActiveTab('payouts')}
                   className="text-sm text-gold hover:text-gold/80"
                 >
-                  View All
+                  {t('overview.viewAll')}
                 </button>
               </div>
               <div className="space-y-4">
@@ -423,19 +450,20 @@ export default function SellerEarningsPage() {
                     <div>
                       <p className="font-medium text-black">Payout #{payout.id.slice(0, 8)}</p>
                       <p className="text-sm text-neutral-500">
-                        {formatDate(payout.createdAt)} • {payout._count?.commissions || 0} orders
+                        {formatDate(payout.createdAt)} • {payout._count?.commissions || 0}{' '}
+                        {t('summary.orders')}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-black">
                         {formatCurrencyAmount(payout.amount)}
                       </p>
-                      <StatusBadge status={payout.status} type="payout" />
+                      <StatusBadge status={payout.status} type="payout" t={t} />
                     </div>
                   </div>
                 ))}
                 {payouts.length === 0 && (
-                  <p className="text-center text-neutral-500 py-8">No payouts yet</p>
+                  <p className="text-center text-neutral-500 py-8">{t('overview.noPayoutsYet')}</p>
                 )}
               </div>
             </div>
@@ -448,7 +476,7 @@ export default function SellerEarningsPage() {
             <div className="p-4 border-b border-neutral-100 flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-neutral-500" />
-                <span className="text-sm text-neutral-500">Filter:</span>
+                <span className="text-sm text-neutral-500">{t('commissionHistory.filter')}</span>
               </div>
               <select
                 value={commissionStatus}
@@ -458,11 +486,11 @@ export default function SellerEarningsPage() {
                 }}
                 className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold"
               >
-                <option value="">All Status</option>
-                <option value="PENDING">Pending</option>
-                <option value="CONFIRMED">Confirmed</option>
-                <option value="PAID">Paid</option>
-                <option value="CANCELLED">Cancelled</option>
+                <option value="">{t('commissionHistory.allStatus')}</option>
+                <option value="PENDING">{t('commissionStatus.PENDING')}</option>
+                <option value="CONFIRMED">{t('commissionStatus.CONFIRMED')}</option>
+                <option value="PAID">{t('commissionStatus.PAID')}</option>
+                <option value="CANCELLED">{t('commissionStatus.CANCELLED')}</option>
               </select>
             </div>
 
@@ -472,22 +500,22 @@ export default function SellerEarningsPage() {
                 <thead className="bg-neutral-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Order
+                      {t('commissionHistory.order')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Date
+                      {t('commissionHistory.date')}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Gross Amount
+                      {t('commissionHistory.grossAmount')}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Commission Rate
+                      {t('commissionHistory.commissionRate')}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Your Earnings
+                      {t('commissionHistory.yourEarnings')}
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Status
+                      {t('commissionHistory.status')}
                     </th>
                   </tr>
                 </thead>
@@ -514,14 +542,14 @@ export default function SellerEarningsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <StatusBadge status={commission.status} type="commission" />
+                        <StatusBadge status={commission.status} type="commission" t={t} />
                       </td>
                     </tr>
                   ))}
                   {commissions.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-6 py-12 text-center text-neutral-500">
-                        No commissions found
+                        {t('commissionHistory.noCommissionsFound')}
                       </td>
                     </tr>
                   )}
@@ -533,8 +561,11 @@ export default function SellerEarningsPage() {
             {commissionTotalPages > 1 && (
               <div className="p-4 border-t border-neutral-100 flex items-center justify-between">
                 <p className="text-sm text-neutral-500">
-                  Showing {(commissionPage - 1) * pageSize + 1} -{' '}
-                  {Math.min(commissionPage * pageSize, commissionTotal)} of {commissionTotal}
+                  {t('pagination.showing', {
+                    start: (commissionPage - 1) * pageSize + 1,
+                    end: Math.min(commissionPage * pageSize, commissionTotal),
+                    total: commissionTotal,
+                  })}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -545,7 +576,10 @@ export default function SellerEarningsPage() {
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <span className="px-3 py-2 text-sm">
-                    Page {commissionPage} of {commissionTotalPages}
+                    {t('pagination.page', {
+                      current: commissionPage,
+                      total: commissionTotalPages,
+                    })}
                   </span>
                   <button
                     onClick={() => setCommissionPage((p) => Math.min(commissionTotalPages, p + 1))}
@@ -568,25 +602,25 @@ export default function SellerEarningsPage() {
                 <thead className="bg-neutral-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Payout ID
+                      {t('payoutHistory.payoutId')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Date
+                      {t('payoutHistory.date')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Method
+                      {t('payoutHistory.method')}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Orders
+                      {t('payoutHistory.orders')}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Amount
+                      {t('payoutHistory.amount')}
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Status
+                      {t('payoutHistory.status')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Transaction ID
+                      {t('payoutHistory.transactionId')}
                     </th>
                   </tr>
                 </thead>
@@ -602,7 +636,9 @@ export default function SellerEarningsPage() {
                         {formatDateTime(payout.createdAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className="capitalize">{payout.method || 'Bank Transfer'}</span>
+                        <span className="capitalize">
+                          {payout.method || t('payoutHistory.bankTransfer')}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                         {payout._count?.commissions || 0}
@@ -613,7 +649,7 @@ export default function SellerEarningsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <StatusBadge status={payout.status} type="payout" />
+                        <StatusBadge status={payout.status} type="payout" t={t} />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500 font-mono">
                         {payout.transactionId || '-'}
@@ -623,7 +659,7 @@ export default function SellerEarningsPage() {
                   {payouts.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-6 py-12 text-center text-neutral-500">
-                        No payouts yet
+                        {t('payoutHistory.noPayoutsYet')}
                       </td>
                     </tr>
                   )}
@@ -635,8 +671,11 @@ export default function SellerEarningsPage() {
             {payoutTotalPages > 1 && (
               <div className="p-4 border-t border-neutral-100 flex items-center justify-between">
                 <p className="text-sm text-neutral-500">
-                  Showing {(payoutPage - 1) * pageSize + 1} -{' '}
-                  {Math.min(payoutPage * pageSize, payoutTotal)} of {payoutTotal}
+                  {t('pagination.showing', {
+                    start: (payoutPage - 1) * pageSize + 1,
+                    end: Math.min(payoutPage * pageSize, payoutTotal),
+                    total: payoutTotal,
+                  })}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -647,7 +686,10 @@ export default function SellerEarningsPage() {
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <span className="px-3 py-2 text-sm">
-                    Page {payoutPage} of {payoutTotalPages}
+                    {t('pagination.page', {
+                      current: payoutPage,
+                      total: payoutTotalPages,
+                    })}
                   </span>
                   <button
                     onClick={() => setPayoutPage((p) => Math.min(payoutTotalPages, p + 1))}
@@ -664,23 +706,18 @@ export default function SellerEarningsPage() {
 
         {/* Info Card */}
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-2xl p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">About Earnings & Payouts</h3>
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">{t('info.title')}</h3>
           <div className="space-y-2 text-sm text-blue-800">
             <p>
-              <strong>Pending:</strong> Earnings from orders that are still being processed or in
-              escrow.
+              <strong>{t('summary.pending')}:</strong> {t('info.pendingDescription')}
             </p>
             <p>
-              <strong>Confirmed:</strong> Earnings ready for payout after order delivery
-              confirmation.
+              <strong>{t('commissionStatus.CONFIRMED')}:</strong> {t('info.confirmedDescription')}
             </p>
             <p>
-              <strong>Paid:</strong> Earnings that have been transferred to your account.
+              <strong>{t('summary.paidOut')}:</strong> {t('info.paidDescription')}
             </p>
-            <p className="mt-4">
-              Payouts are processed automatically according to the platform's payout schedule.
-              Contact support if you have questions about your earnings.
-            </p>
+            <p className="mt-4">{t('info.payoutSchedule')}</p>
           </div>
         </div>
       </div>

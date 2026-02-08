@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import {
@@ -102,6 +103,7 @@ interface EscrowStatistics {
 }
 
 function EscrowManagementContent() {
+  const t = useTranslations('adminEscrow');
   const [escrows, setEscrows] = useState<EscrowTransaction[]>([]);
   const [statistics, setStatistics] = useState<EscrowStatistics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,7 +139,7 @@ function EscrowManagementContent() {
       }
     } catch (error) {
       console.error('Error fetching escrows:', error);
-      toast.error('Failed to load escrow transactions');
+      toast.error(t('toast.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -176,17 +178,17 @@ function EscrowManagementContent() {
       });
 
       if (response.ok) {
-        toast.success('Escrow funds released to seller');
+        toast.success(t('toast.releaseSuccess'));
         setActionDialog({ open: false, action: null });
         fetchEscrows();
         fetchStatistics();
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Failed to release escrow');
+        toast.error(error.message || t('toast.releaseFailed'));
       }
     } catch (error) {
       console.error('Error releasing escrow:', error);
-      toast.error('Failed to release escrow');
+      toast.error(t('toast.releaseFailed'));
     }
   };
 
@@ -206,27 +208,31 @@ function EscrowManagementContent() {
       });
 
       if (response.ok) {
-        toast.success('Escrow funds refunded to buyer');
+        toast.success(t('toast.refundSuccess'));
         setActionDialog({ open: false, action: null, reason: '' });
         fetchEscrows();
         fetchStatistics();
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Failed to refund escrow');
+        toast.error(error.message || t('toast.refundFailed'));
       }
     } catch (error) {
       console.error('Error refunding escrow:', error);
-      toast.error('Failed to refund escrow');
+      toast.error(t('toast.refundFailed'));
     }
   };
 
   const getStatusBadge = (status: EscrowStatus) => {
-    const variants: Record<EscrowStatus, { variant: any; icon: any }> = {
-      HELD: { variant: 'secondary', icon: Clock },
-      PENDING_RELEASE: { variant: 'default', icon: AlertCircle },
-      RELEASED: { variant: 'default', icon: CheckCircle },
-      REFUNDED: { variant: 'destructive', icon: XCircle },
-      DISPUTED: { variant: 'destructive', icon: AlertCircle },
+    const variants: Record<EscrowStatus, { variant: any; icon: any; label: string }> = {
+      HELD: { variant: 'secondary', icon: Clock, label: t('statusBadges.held') },
+      PENDING_RELEASE: {
+        variant: 'default',
+        icon: AlertCircle,
+        label: t('statusBadges.pendingRelease'),
+      },
+      RELEASED: { variant: 'default', icon: CheckCircle, label: t('statusBadges.released') },
+      REFUNDED: { variant: 'destructive', icon: XCircle, label: t('statusBadges.refunded') },
+      DISPUTED: { variant: 'destructive', icon: AlertCircle, label: t('statusBadges.disputed') },
     };
 
     const config = variants[status];
@@ -235,7 +241,7 @@ function EscrowManagementContent() {
     return (
       <Badge variant={config.variant as any} className="gap-1">
         <Icon className="h-3 w-3" />
-        {status.replace('_', ' ')}
+        {config.label}
       </Badge>
     );
   };
@@ -251,10 +257,8 @@ function EscrowManagementContent() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Escrow Management</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage escrow transactions and release funds to sellers
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
+        <p className="text-muted-foreground mt-2">{t('pageDescription')}</p>
       </div>
 
       {/* Statistics Cards */}
@@ -262,22 +266,20 @@ function EscrowManagementContent() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Held</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('stats.held')}</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                ${statistics.held.amount.toLocaleString()}
-              </div>
+              <div className="text-2xl font-bold">${statistics.held.amount.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                {statistics.held.count} transactions
+                {t('stats.heldCount', { count: statistics.held.count })}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Release</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('stats.pendingRelease')}</CardTitle>
               <AlertCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -285,14 +287,14 @@ function EscrowManagementContent() {
                 ${statistics.pendingRelease.amount.toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">
-                {statistics.pendingRelease.count} transactions
+                {t('stats.pendingReleaseCount', { count: statistics.pendingRelease.count })}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Released</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('stats.released')}</CardTitle>
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -300,14 +302,14 @@ function EscrowManagementContent() {
                 ${statistics.released.amount.toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">
-                {statistics.released.count} transactions
+                {t('stats.releasedCount', { count: statistics.released.count })}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Refunded</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('stats.refunded')}</CardTitle>
               <XCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -315,25 +317,26 @@ function EscrowManagementContent() {
                 ${statistics.refunded.amount.toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">
-                {statistics.refunded.count} transactions
+                {t('stats.refundedCount', { count: statistics.refunded.count })}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Platform Fee</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('stats.platformFee')}</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${(
+                $
+                {(
                   statistics.held.platformFee +
                   statistics.pendingRelease.platformFee +
                   statistics.released.platformFee
                 ).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">Total commission</p>
+              <p className="text-xs text-muted-foreground">{t('stats.totalCommission')}</p>
             </CardContent>
           </Card>
         </div>
@@ -342,30 +345,28 @@ function EscrowManagementContent() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Escrow Transactions</CardTitle>
-          <CardDescription>
-            View and manage all escrow transactions
-          </CardDescription>
+          <CardTitle>{t('filters.title')}</CardTitle>
+          <CardDescription>{t('filters.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-4">
             <Input
-              placeholder="Search by order number, seller, or store..."
+              placeholder={t('filters.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="max-w-sm"
             />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
+                <SelectValue placeholder={t('filters.filterByStatus')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="HELD">Held</SelectItem>
-                <SelectItem value="PENDING_RELEASE">Pending Release</SelectItem>
-                <SelectItem value="RELEASED">Released</SelectItem>
-                <SelectItem value="REFUNDED">Refunded</SelectItem>
-                <SelectItem value="DISPUTED">Disputed</SelectItem>
+                <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
+                <SelectItem value="HELD">{t('filters.held')}</SelectItem>
+                <SelectItem value="PENDING_RELEASE">{t('filters.pendingRelease')}</SelectItem>
+                <SelectItem value="RELEASED">{t('filters.released')}</SelectItem>
+                <SelectItem value="REFUNDED">{t('filters.refunded')}</SelectItem>
+                <SelectItem value="DISPUTED">{t('filters.disputed')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -375,50 +376,42 @@ function EscrowManagementContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Seller/Store</TableHead>
-                  <TableHead>Total Amount</TableHead>
-                  <TableHead>Platform Fee</TableHead>
-                  <TableHead>Seller Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('table.headers.order')}</TableHead>
+                  <TableHead>{t('table.headers.sellerStore')}</TableHead>
+                  <TableHead>{t('table.headers.totalAmount')}</TableHead>
+                  <TableHead>{t('table.headers.platformFee')}</TableHead>
+                  <TableHead>{t('table.headers.sellerAmount')}</TableHead>
+                  <TableHead>{t('table.headers.status')}</TableHead>
+                  <TableHead>{t('table.headers.created')}</TableHead>
+                  <TableHead>{t('table.headers.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredEscrows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center text-muted-foreground">
-                      No escrow transactions found
+                      {t('table.noResults')}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredEscrows.map((escrow) => (
                     <TableRow key={escrow.id}>
-                      <TableCell className="font-medium">
-                        {escrow.order.orderNumber}
-                      </TableCell>
+                      <TableCell className="font-medium">{escrow.order.orderNumber}</TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">{escrow.store.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {escrow.seller.email}
-                          </div>
+                          <div className="text-sm text-muted-foreground">{escrow.seller.email}</div>
                         </div>
                       </TableCell>
                       <TableCell>
                         ${formatCurrencyAmount(escrow.totalAmount, 2)} {escrow.currency}
                       </TableCell>
-                      <TableCell>
-                        ${formatCurrencyAmount(escrow.platformFee, 2)}
-                      </TableCell>
+                      <TableCell>${formatCurrencyAmount(escrow.platformFee, 2)}</TableCell>
                       <TableCell className="font-medium">
                         ${formatCurrencyAmount(escrow.sellerAmount, 2)}
                       </TableCell>
                       <TableCell>{getStatusBadge(escrow.status)}</TableCell>
-                      <TableCell>
-                        {new Date(escrow.createdAt).toLocaleDateString()}
-                      </TableCell>
+                      <TableCell>{new Date(escrow.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           {(escrow.status === 'HELD' || escrow.status === 'PENDING_RELEASE') && (
@@ -431,7 +424,7 @@ function EscrowManagementContent() {
                                   setActionDialog({ open: true, action: 'release' });
                                 }}
                               >
-                                Release
+                                {t('table.releaseButton')}
                               </Button>
                               <Button
                                 size="sm"
@@ -441,7 +434,7 @@ function EscrowManagementContent() {
                                   setActionDialog({ open: true, action: 'refund', reason: '' });
                                 }}
                               >
-                                Refund
+                                {t('table.refundButton')}
                               </Button>
                             </>
                           )}
@@ -457,16 +450,21 @@ function EscrowManagementContent() {
       </Card>
 
       {/* Action Dialog */}
-      <Dialog open={actionDialog.open} onOpenChange={(open) => setActionDialog({ open, action: null })}>
+      <Dialog
+        open={actionDialog.open}
+        onOpenChange={(open) => setActionDialog({ open, action: null })}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionDialog.action === 'release' ? 'Release Escrow' : 'Refund Escrow'}
+              {actionDialog.action === 'release'
+                ? t('dialog.releaseTitle')
+                : t('dialog.refundTitle')}
             </DialogTitle>
             <DialogDescription>
               {actionDialog.action === 'release'
-                ? 'This will release the funds to the seller. This action cannot be undone.'
-                : 'This will refund the funds to the buyer. This action cannot be undone.'}
+                ? t('dialog.releaseDescription')
+                : t('dialog.refundDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -474,32 +472,32 @@ function EscrowManagementContent() {
             <div className="space-y-4">
               <div className="rounded-lg border p-4 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Order:</span>
+                  <span className="text-sm text-muted-foreground">{t('dialog.orderLabel')}</span>
                   <span className="font-medium">{selectedEscrow.order.orderNumber}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Seller:</span>
+                  <span className="text-sm text-muted-foreground">{t('dialog.sellerLabel')}</span>
                   <span className="font-medium">{selectedEscrow.seller.email}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Amount:</span>
+                  <span className="text-sm text-muted-foreground">{t('dialog.amountLabel')}</span>
                   <span className="font-medium">
-                    ${actionDialog.action === 'release'
+                    $
+                    {actionDialog.action === 'release'
                       ? formatCurrencyAmount(selectedEscrow.sellerAmount, 2)
-                      : formatCurrencyAmount(selectedEscrow.totalAmount, 2)} {selectedEscrow.currency}
+                      : formatCurrencyAmount(selectedEscrow.totalAmount, 2)}{' '}
+                    {selectedEscrow.currency}
                   </span>
                 </div>
               </div>
 
               {actionDialog.action === 'refund' && (
                 <div>
-                  <label className="text-sm font-medium">Refund Reason</label>
+                  <label className="text-sm font-medium">{t('dialog.refundReasonLabel')}</label>
                   <Input
-                    placeholder="Enter reason for refund..."
+                    placeholder={t('dialog.refundReasonPlaceholder')}
                     value={actionDialog.reason || ''}
-                    onChange={(e) =>
-                      setActionDialog({ ...actionDialog, reason: e.target.value })
-                    }
+                    onChange={(e) => setActionDialog({ ...actionDialog, reason: e.target.value })}
                     className="mt-2"
                   />
                 </div>
@@ -512,14 +510,16 @@ function EscrowManagementContent() {
               variant="outline"
               onClick={() => setActionDialog({ open: false, action: null })}
             >
-              Cancel
+              {t('dialog.cancelButton')}
             </Button>
             <Button
               variant={actionDialog.action === 'release' ? 'default' : 'destructive'}
               onClick={actionDialog.action === 'release' ? handleReleaseEscrow : handleRefundEscrow}
               disabled={actionDialog.action === 'refund' && !actionDialog.reason}
             >
-              {actionDialog.action === 'release' ? 'Release Funds' : 'Refund to Buyer'}
+              {actionDialog.action === 'release'
+                ? t('dialog.releaseFundsButton')
+                : t('dialog.refundToBuyerButton')}
             </Button>
           </DialogFooter>
         </DialogContent>

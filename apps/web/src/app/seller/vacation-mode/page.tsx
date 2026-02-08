@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { storesAPI, VacationStatusResponse, UpdateVacationModeDto } from '@/lib/api/stores';
 import {
   Palmtree,
@@ -34,6 +35,7 @@ import PageHeader from '@/components/seller/page-header';
 export default function VacationModePage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const t = useTranslations('sellerVacationMode');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -79,7 +81,7 @@ export default function VacationModePage() {
 
       // Show message if auto-end was triggered
       if (response.autoEndTriggered) {
-        setSuccess('Your vacation mode was automatically ended because the end date was reached.');
+        setSuccess(t('alerts.autoEndMessage'));
       }
     } catch (err: any) {
       console.error('Failed to fetch vacation status:', err);
@@ -176,13 +178,12 @@ export default function VacationModePage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <PageHeader
-        title="Vacation Mode"
-        description={
-          formData.vacationMode
-            ? 'Your store is currently on vacation'
-            : 'Take a break without losing your store'
-        }
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Vacation Mode' }]}
+        title={t('pageTitle')}
+        description={formData.vacationMode ? t('pageSubtitleActive') : t('pageSubtitleInactive')}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.vacationMode') },
+        ]}
         actions={
           <button
             onClick={handleToggleVacation}
@@ -196,12 +197,12 @@ export default function VacationModePage() {
             {formData.vacationMode ? (
               <>
                 <PowerOff className="w-5 h-5" />
-                End Vacation
+                {t('buttons.endVacation')}
               </>
             ) : (
               <>
                 <Power className="w-5 h-5" />
-                Start Vacation
+                {t('buttons.startVacation')}
               </>
             )}
           </button>
@@ -218,7 +219,7 @@ export default function VacationModePage() {
           >
             <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-red-700 font-medium">Error</p>
+              <p className="text-red-700 font-medium">{t('alerts.error')}</p>
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           </motion.div>
@@ -232,7 +233,7 @@ export default function VacationModePage() {
           >
             <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-green-700 font-medium">Success</p>
+              <p className="text-green-700 font-medium">{t('alerts.success')}</p>
               <p className="text-green-600 text-sm">{success}</p>
             </div>
           </motion.div>

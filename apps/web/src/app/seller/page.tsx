@@ -13,6 +13,7 @@ import {
   Megaphone,
   TrendingUp,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import StatCard from '@/components/seller/stat-card';
 import QuickActionCard from '@/components/seller/quick-action-card';
 import PageHeader from '@/components/seller/page-header';
@@ -20,42 +21,43 @@ import { useSellerDashboard } from '@/hooks/use-seller-dashboard';
 
 export default function SellerDashboardPage() {
   const { summary, isLoading } = useSellerDashboard();
+  const t = useTranslations('sellerDashboard');
   const [activeTab, setActiveTab] = useState<'orders' | 'reviews' | 'inquiries'>('orders');
 
   const quickActions = [
     {
-      title: 'Add New Product',
-      description: 'Create and list a new product',
+      title: t('quickActions.addProduct.title'),
+      description: t('quickActions.addProduct.description'),
       icon: PlusCircle,
       href: '/seller/products/new',
     },
     {
-      title: 'View Orders',
-      description: 'Manage your orders and fulfillment',
+      title: t('quickActions.viewOrders.title'),
+      description: t('quickActions.viewOrders.description'),
       icon: ShoppingCart,
       href: '/seller/orders',
     },
     {
-      title: 'Manage Reviews',
-      description: 'Respond to customer reviews',
+      title: t('quickActions.manageReviews.title'),
+      description: t('quickActions.manageReviews.description'),
       icon: Star,
       href: '/seller/reviews',
     },
     {
-      title: 'Check Earnings',
-      description: 'View earnings and payouts',
+      title: t('quickActions.checkEarnings.title'),
+      description: t('quickActions.checkEarnings.description'),
       icon: DollarSign,
       href: '/seller/earnings',
     },
     {
-      title: 'Store Settings',
-      description: 'Update your store information',
+      title: t('quickActions.storeSettings.title'),
+      description: t('quickActions.storeSettings.description'),
       icon: Settings,
       href: '/seller/store/settings',
     },
     {
-      title: 'Advertisements',
-      description: 'Promote your products',
+      title: t('quickActions.advertisements.title'),
+      description: t('quickActions.advertisements.description'),
       icon: Megaphone,
       href: '/seller/advertisements',
     },
@@ -64,35 +66,34 @@ export default function SellerDashboardPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <PageHeader
-        title="Dashboard"
-        description="Welcome back! Here's an overview of your seller performance."
-      />
+      <PageHeader title={t('pageTitle')} description={t('pageSubtitle')} />
 
       {/* Content */}
       <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Key Metrics */}
         <section>
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Key Metrics</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+            {t('sections.keyMetrics')}
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
-              title="Total Products"
+              title={t('stats.totalProducts')}
               value={summary?.products.total || 0}
               icon={Package}
-              subtitle={`${summary?.products.active || 0} active`}
+              subtitle={t('stats.activeProducts', { count: summary?.products.active || 0 })}
               isLoading={isLoading}
               index={0}
             />
             <StatCard
-              title="Active Orders"
+              title={t('stats.activeOrders')}
               value={summary?.orders.total || 0}
               icon={ShoppingCart}
-              subtitle={`${summary?.orders.pending || 0} pending`}
+              subtitle={t('stats.pendingOrders', { count: summary?.orders.pending || 0 })}
               isLoading={isLoading}
               index={1}
             />
             <StatCard
-              title="Total Revenue"
+              title={t('stats.totalRevenue')}
               value={
                 summary?.orders.totalRevenue
                   ? `$${summary.orders.totalRevenue.toFixed(2)}`
@@ -101,17 +102,17 @@ export default function SellerDashboardPage() {
               icon={DollarSign}
               subtitle={
                 summary?.payouts.totalEarnings
-                  ? `$${summary.payouts.totalEarnings.toFixed(2)} earned`
+                  ? t('stats.earned', { amount: summary.payouts.totalEarnings.toFixed(2) })
                   : undefined
               }
               isLoading={isLoading}
               index={2}
             />
             <StatCard
-              title="Total Sales"
+              title={t('stats.totalSales')}
               value={summary?.store.totalSales || 0}
               icon={Eye}
-              subtitle="All time"
+              subtitle={t('stats.allTime')}
               isLoading={isLoading}
               index={3}
             />
@@ -120,7 +121,7 @@ export default function SellerDashboardPage() {
 
         {/* Quick Actions */}
         <section>
-          <h2 className="text-lg font-semibold text-black mb-4">Quick Actions</h2>
+          <h2 className="text-lg font-semibold text-black mb-4">{t('sections.quickActions')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {quickActions.map((action, index) => (
               <QuickActionCard key={action.title} {...action} index={index} />
@@ -132,16 +133,16 @@ export default function SellerDashboardPage() {
         <section>
           <div className="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
             <div className="border-b border-neutral-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-black">Recent Activity</h2>
+              <h2 className="text-lg font-semibold text-black">{t('sections.recentActivity')}</h2>
             </div>
 
             {/* Tabs */}
             <div className="border-b border-neutral-200">
               <nav className="flex gap-8 px-6" aria-label="Tabs">
                 {[
-                  { id: 'orders', label: 'Recent Orders' },
-                  { id: 'reviews', label: 'Recent Reviews' },
-                  { id: 'inquiries', label: 'Recent Inquiries' },
+                  { id: 'orders', label: t('tabs.recentOrders') },
+                  { id: 'reviews', label: t('tabs.recentReviews') },
+                  { id: 'inquiries', label: t('tabs.recentInquiries') },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -206,24 +207,30 @@ export default function SellerDashboardPage() {
                                     }
                                   `}
                                 >
-                                  {activity.type}
+                                  {t(`activityTypes.${activity.type}`)}
                                 </span>
                               </div>
                             </motion.div>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-neutral-600 text-center py-8">No recent activity</p>
+                        <p className="text-neutral-600 text-center py-8">
+                          {t('empty.noRecentActivity')}
+                        </p>
                       )}
                     </>
                   )}
 
                   {activeTab === 'reviews' && (
-                    <p className="text-neutral-600 text-center py-8">No recent reviews</p>
+                    <p className="text-neutral-600 text-center py-8">
+                      {t('empty.noRecentReviews')}
+                    </p>
                   )}
 
                   {activeTab === 'inquiries' && (
-                    <p className="text-neutral-600 text-center py-8">No recent inquiries</p>
+                    <p className="text-neutral-600 text-center py-8">
+                      {t('empty.noRecentInquiries')}
+                    </p>
                   )}
                 </div>
               )}
@@ -242,11 +249,9 @@ export default function SellerDashboardPage() {
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-neutral-900 mb-1">
-                    Grow Your Business
+                    {t('onboarding.title')}
                   </h3>
-                  <p className="text-sm text-neutral-600">
-                    Complete your onboarding to unlock all features
-                  </p>
+                  <p className="text-sm text-neutral-600">{t('onboarding.description')}</p>
                 </div>
                 <TrendingUp className="w-6 h-6 text-[#CBB57B]" />
               </div>
@@ -255,7 +260,7 @@ export default function SellerDashboardPage() {
                 href="/seller/onboarding"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-black text-[#CBB57B] rounded-lg hover:bg-neutral-900 hover:text-[#D4C794] transition-all duration-200 border border-[#CBB57B]"
               >
-                View Onboarding
+                {t('onboarding.button')}
               </a>
             </motion.div>
           </section>

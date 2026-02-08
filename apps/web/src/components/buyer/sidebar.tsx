@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -38,58 +39,59 @@ interface BuyerSidebarProps {
   onNavigate?: () => void;
 }
 
-const navigationGroups: NavGroup[] = [
-  {
-    title: 'Dashboard',
-    items: [{ name: 'Overview', href: '/dashboard/buyer', icon: LayoutDashboard }],
-  },
-  {
-    title: 'Shopping',
-    items: [
-      { name: 'Browse Products', href: '/products', icon: ShoppingBag },
-      { name: 'Wishlist', href: '/wishlist', icon: Heart },
-      { name: 'Cart', href: '/cart', icon: ShoppingCart },
-    ],
-  },
-  {
-    title: 'Orders',
-    items: [
-      { name: 'My Orders', href: '/account/orders', icon: Package },
-      { name: 'Order History', href: '/account/orders?status=delivered', icon: History },
-      { name: 'Returns', href: '/account/returns', icon: RotateCcw },
-    ],
-  },
-  {
-    title: 'Account',
-    items: [
-      { name: 'Profile', href: '/account/profile', icon: User },
-      { name: 'Addresses', href: '/account/addresses', icon: MapPin },
-      { name: 'Payment Methods', href: '/account/payment-methods', icon: CreditCard },
-    ],
-  },
-  {
-    title: 'Activity',
-    items: [
-      { name: 'Reviews', href: '/account/reviews', icon: Star },
-      { name: 'Following Stores', href: '/account/following', icon: Store },
-      { name: 'Downloads', href: '/account/downloads', icon: Download },
-    ],
-  },
-  {
-    title: 'Communication',
-    items: [
-      { name: 'Messages', href: '/account/messages', icon: MessageSquare },
-      { name: 'Notifications', href: '/account/notifications', icon: Bell },
-    ],
-  },
-  {
-    title: 'Settings',
-    items: [{ name: 'Preferences', href: '/account/security', icon: Settings }],
-  },
-];
-
 export default function BuyerSidebar({ onNavigate }: BuyerSidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations('buyerNav');
+
+  const navigationGroups: NavGroup[] = [
+    {
+      title: t('groups.dashboard'),
+      items: [{ name: t('items.overview'), href: '/dashboard/buyer', icon: LayoutDashboard }],
+    },
+    {
+      title: t('groups.shopping'),
+      items: [
+        { name: t('items.browseProducts'), href: '/products', icon: ShoppingBag },
+        { name: t('items.wishlist'), href: '/wishlist', icon: Heart },
+        { name: t('items.cart'), href: '/cart', icon: ShoppingCart },
+      ],
+    },
+    {
+      title: t('groups.orders'),
+      items: [
+        { name: t('items.myOrders'), href: '/account/orders', icon: Package },
+        { name: t('items.orderHistory'), href: '/account/orders?status=delivered', icon: History },
+        { name: t('items.returns'), href: '/account/returns', icon: RotateCcw },
+      ],
+    },
+    {
+      title: t('groups.account'),
+      items: [
+        { name: t('items.profile'), href: '/account/profile', icon: User },
+        { name: t('items.addresses'), href: '/account/addresses', icon: MapPin },
+        { name: t('items.paymentMethods'), href: '/account/payment-methods', icon: CreditCard },
+      ],
+    },
+    {
+      title: t('groups.activity'),
+      items: [
+        { name: t('items.reviews'), href: '/account/reviews', icon: Star },
+        { name: t('items.followingStores'), href: '/account/following', icon: Store },
+        { name: t('items.downloads'), href: '/account/downloads', icon: Download },
+      ],
+    },
+    {
+      title: t('groups.communication'),
+      items: [
+        { name: t('items.messages'), href: '/account/messages', icon: MessageSquare },
+        { name: t('items.notifications'), href: '/account/notifications', icon: Bell },
+      ],
+    },
+    {
+      title: t('groups.settings'),
+      items: [{ name: t('items.preferences'), href: '/account/security', icon: Settings }],
+    },
+  ];
 
   const handleNavigate = () => {
     if (onNavigate) {
@@ -119,7 +121,7 @@ export default function BuyerSidebar({ onNavigate }: BuyerSidebarProps) {
             <span className="text-xl font-bold text-black group-hover:text-[#CBB57B] transition-colors block leading-tight">
               NextPik
             </span>
-            <span className="text-xs font-medium text-[#CBB57B] block">Buyer Portal</span>
+            <span className="text-xs font-medium text-[#CBB57B] block">{t('portalTitle')}</span>
           </div>
         </Link>
       </div>

@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { sellerAPI, type Inquiry, type InquiryStatus, type InquiryStats } from '@/lib/api/seller';
 import useSWR from 'swr';
 import PageHeader from '@/components/seller/page-header';
@@ -28,30 +29,30 @@ import {
   Eye,
 } from 'lucide-react';
 
-function InquiryStatusBadge({ status }: { status: InquiryStatus }) {
-  const config: Record<InquiryStatus, { bg: string; text: string; label: string }> = {
-    NEW: { bg: 'bg-[#CBB57B]/10', text: 'text-[#A89968]', label: 'New' },
-    CONTACTED: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Contacted' },
+function InquiryStatusBadge({ status, t }: { status: InquiryStatus; t: any }) {
+  const config: Record<InquiryStatus, { bg: string; text: string }> = {
+    NEW: { bg: 'bg-[#CBB57B]/10', text: 'text-[#A89968]' },
+    CONTACTED: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
     VIEWING_SCHEDULED: {
       bg: 'bg-neutral-100',
       text: 'text-neutral-800',
-      label: 'Viewing Scheduled',
     },
     TEST_DRIVE_SCHEDULED: {
       bg: 'bg-neutral-100',
       text: 'text-neutral-800',
-      label: 'Test Drive Scheduled',
     },
-    NEGOTIATING: { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Negotiating' },
-    CONVERTED: { bg: 'bg-green-100', text: 'text-green-800', label: 'Converted' },
-    CLOSED: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Closed' },
-    SPAM: { bg: 'bg-red-100', text: 'text-red-800', label: 'Spam' },
+    NEGOTIATING: { bg: 'bg-orange-100', text: 'text-orange-800' },
+    CONVERTED: { bg: 'bg-green-100', text: 'text-green-800' },
+    CLOSED: { bg: 'bg-gray-100', text: 'text-gray-800' },
+    SPAM: { bg: 'bg-red-100', text: 'text-red-800' },
   };
 
-  const { bg, text, label } = config[status] || config.NEW;
+  const { bg, text } = config[status] || config.NEW;
 
   return (
-    <span className={`px-3 py-1 text-xs font-medium rounded-full ${bg} ${text}`}>{label}</span>
+    <span className={`px-3 py-1 text-xs font-medium rounded-full ${bg} ${text}`}>
+      {t(`status.${status}`)}
+    </span>
   );
 }
 
@@ -65,22 +66,23 @@ function formatDate(dateString: string) {
   });
 }
 
-function formatRelativeTime(dateString: string) {
+function formatRelativeTime(dateString: string, t: any) {
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffHours < 1) return 'Just now';
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffHours < 1) return t('time.justNow');
+  if (diffHours < 24) return t('time.hoursAgo', { hours: diffHours });
+  if (diffDays < 7) return t('time.daysAgo', { days: diffDays });
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export default function SellerInquiriesPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const t = useTranslations('sellerInquiries');
   const [statusFilter, setStatusFilter] = useState<InquiryStatus | ''>('');
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -181,9 +183,12 @@ export default function SellerInquiriesPage() {
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
       <PageHeader
-        title="Inquiries"
-        description="Manage inquiries from potential buyers"
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Inquiries' }]}
+        title={t('pageTitle')}
+        description={t('pageSubtitle')}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.inquiries') },
+        ]}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -194,7 +199,7 @@ export default function SellerInquiriesPage() {
             animate={{ opacity: 1, y: 0 }}
             className="bg-white border border-neutral-200 rounded-xl p-4 shadow-sm"
           >
-            <p className="text-sm text-neutral-600 font-medium">Total</p>
+            <p className="text-sm text-neutral-600 font-medium">{t('stats.total')}</p>
             <p className="text-2xl font-bold text-neutral-900 mt-1">{stats.total}</p>
           </motion.div>
           <motion.div
@@ -203,7 +208,7 @@ export default function SellerInquiriesPage() {
             transition={{ delay: 0.05 }}
             className="bg-[#CBB57B]/10 border border-[#CBB57B]/30 rounded-xl p-4 shadow-sm"
           >
-            <p className="text-sm text-[#A89968] font-medium">New</p>
+            <p className="text-sm text-[#A89968] font-medium">{t('stats.new')}</p>
             <p className="text-2xl font-bold text-[#A89968] mt-1">{stats.new}</p>
           </motion.div>
           <motion.div
@@ -212,7 +217,7 @@ export default function SellerInquiriesPage() {
             transition={{ delay: 0.1 }}
             className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 shadow-sm"
           >
-            <p className="text-sm text-yellow-700 font-medium">Contacted</p>
+            <p className="text-sm text-yellow-700 font-medium">{t('stats.contacted')}</p>
             <p className="text-2xl font-bold text-yellow-700 mt-1">{stats.contacted}</p>
           </motion.div>
           <motion.div
@@ -221,7 +226,7 @@ export default function SellerInquiriesPage() {
             transition={{ delay: 0.15 }}
             className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 shadow-sm"
           >
-            <p className="text-sm text-neutral-700 font-medium">Scheduled</p>
+            <p className="text-sm text-neutral-700 font-medium">{t('stats.scheduled')}</p>
             <p className="text-2xl font-bold text-neutral-700 mt-1">{stats.scheduled}</p>
           </motion.div>
           <motion.div
@@ -230,7 +235,7 @@ export default function SellerInquiriesPage() {
             transition={{ delay: 0.2 }}
             className="bg-green-50 border border-green-200 rounded-xl p-4 shadow-sm"
           >
-            <p className="text-sm text-green-700 font-medium">Converted</p>
+            <p className="text-sm text-green-700 font-medium">{t('stats.converted')}</p>
             <p className="text-2xl font-bold text-green-700 mt-1">{stats.converted}</p>
           </motion.div>
         </div>
@@ -238,15 +243,15 @@ export default function SellerInquiriesPage() {
         {/* Filters */}
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4 mb-6">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-neutral-600">Filter:</span>
+            <span className="text-sm font-medium text-neutral-600">{t('filter.label')}</span>
             {[
-              { value: '', label: 'All' },
-              { value: 'NEW', label: 'New' },
-              { value: 'CONTACTED', label: 'Contacted' },
-              { value: 'VIEWING_SCHEDULED', label: 'Viewing Scheduled' },
-              { value: 'NEGOTIATING', label: 'Negotiating' },
-              { value: 'CONVERTED', label: 'Converted' },
-              { value: 'CLOSED', label: 'Closed' },
+              { value: '', label: t('filter.all') },
+              { value: 'NEW', label: t('filter.new') },
+              { value: 'CONTACTED', label: t('filter.contacted') },
+              { value: 'VIEWING_SCHEDULED', label: t('filter.viewingScheduled') },
+              { value: 'NEGOTIATING', label: t('filter.negotiating') },
+              { value: 'CONVERTED', label: t('filter.converted') },
+              { value: 'CLOSED', label: t('filter.closed') },
             ].map((filter) => (
               <button
                 key={filter.value}
@@ -268,10 +273,8 @@ export default function SellerInquiriesPage() {
           {inquiries.length === 0 ? (
             <div className="text-center py-16">
               <MessageSquare className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
-              <p className="text-neutral-500 text-lg">No inquiries found</p>
-              <p className="text-neutral-400 text-sm mt-1">
-                Inquiries from potential buyers will appear here
-              </p>
+              <p className="text-neutral-500 text-lg">{t('empty.title')}</p>
+              <p className="text-neutral-400 text-sm mt-1">{t('empty.description')}</p>
             </div>
           ) : (
             <div className="divide-y divide-neutral-200">
@@ -309,10 +312,10 @@ export default function SellerInquiriesPage() {
                             {inquiry.product?.name || 'Unknown Product'}
                           </Link>
                           <div className="flex items-center gap-2 mt-1">
-                            <InquiryStatusBadge status={inquiry.status} />
+                            <InquiryStatusBadge status={inquiry.status} t={t} />
                             {inquiry.preApproved && (
                               <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">
-                                Pre-approved
+                                {t('badges.preApproved')}
                               </span>
                             )}
                             {inquiry.scheduledViewing && (
@@ -324,7 +327,7 @@ export default function SellerInquiriesPage() {
                           </div>
                         </div>
                         <span className="text-sm text-neutral-500 whitespace-nowrap">
-                          {formatRelativeTime(inquiry.createdAt)}
+                          {formatRelativeTime(inquiry.createdAt, t)}
                         </span>
                       </div>
 
@@ -358,14 +361,14 @@ export default function SellerInquiriesPage() {
                           className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1"
                         >
                           <Eye className="w-4 h-4" />
-                          View Details
+                          {t('actions.viewDetails')}
                         </button>
                         <a
                           href={`mailto:${inquiry.buyerEmail}?subject=Re: ${inquiry.product?.name}`}
                           className="px-3 py-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors flex items-center gap-1"
                         >
                           <Mail className="w-4 h-4" />
-                          Reply
+                          {t('actions.reply')}
                         </a>
                         {inquiry.buyerPhone && (
                           <a
@@ -373,7 +376,7 @@ export default function SellerInquiriesPage() {
                             className="px-3 py-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors flex items-center gap-1"
                           >
                             <Phone className="w-4 h-4" />
-                            Call
+                            {t('actions.call')}
                           </a>
                         )}
                       </div>
@@ -398,7 +401,7 @@ export default function SellerInquiriesPage() {
             <div className="p-6 border-b border-neutral-200">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-black">Inquiry Details</h3>
+                  <h3 className="text-xl font-bold text-black">{t('detailModal.title')}</h3>
                   <p className="text-sm text-neutral-600 mt-1">{selectedInquiry.product?.name}</p>
                 </div>
                 <button
@@ -417,7 +420,7 @@ export default function SellerInquiriesPage() {
             <div className="p-6 space-y-6">
               {/* Status */}
               <div className="flex items-center justify-between">
-                <InquiryStatusBadge status={selectedInquiry.status} />
+                <InquiryStatusBadge status={selectedInquiry.status} t={t} />
                 <span className="text-sm text-neutral-500">
                   {formatDate(selectedInquiry.createdAt)}
                 </span>
@@ -427,15 +430,15 @@ export default function SellerInquiriesPage() {
               <div className="bg-neutral-50 rounded-xl p-4">
                 <h4 className="font-semibold text-black mb-3 flex items-center gap-2">
                   <User className="w-5 h-5" />
-                  Buyer Information
+                  {t('detailModal.buyerInfo')}
                 </h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-neutral-500">Name</p>
+                    <p className="text-neutral-500">{t('detailModal.name')}</p>
                     <p className="font-medium text-black">{selectedInquiry.buyerName}</p>
                   </div>
                   <div>
-                    <p className="text-neutral-500">Email</p>
+                    <p className="text-neutral-500">{t('detailModal.email')}</p>
                     <a
                       href={`mailto:${selectedInquiry.buyerEmail}`}
                       className="font-medium text-blue-600 hover:underline"
@@ -445,7 +448,7 @@ export default function SellerInquiriesPage() {
                   </div>
                   {selectedInquiry.buyerPhone && (
                     <div>
-                      <p className="text-neutral-500">Phone</p>
+                      <p className="text-neutral-500">{t('detailModal.phone')}</p>
                       <a
                         href={`tel:${selectedInquiry.buyerPhone}`}
                         className="font-medium text-blue-600 hover:underline"
@@ -456,7 +459,7 @@ export default function SellerInquiriesPage() {
                   )}
                   {selectedInquiry.preferredContact && (
                     <div>
-                      <p className="text-neutral-500">Preferred Contact</p>
+                      <p className="text-neutral-500">{t('detailModal.preferredContact')}</p>
                       <p className="font-medium text-black capitalize">
                         {selectedInquiry.preferredContact}
                       </p>
@@ -464,7 +467,7 @@ export default function SellerInquiriesPage() {
                   )}
                   {selectedInquiry.preferredTime && (
                     <div>
-                      <p className="text-neutral-500">Best Time</p>
+                      <p className="text-neutral-500">{t('detailModal.bestTime')}</p>
                       <p className="font-medium text-black capitalize">
                         {selectedInquiry.preferredTime}
                       </p>
@@ -479,14 +482,14 @@ export default function SellerInquiriesPage() {
                   {selectedInquiry.preApproved && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg">
                       <CheckCircle className="w-5 h-5" />
-                      <span className="font-medium">Pre-approved for Mortgage</span>
+                      <span className="font-medium">{t('badges.preApprovedFull')}</span>
                     </div>
                   )}
                   {selectedInquiry.scheduledViewing && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg">
                       <Calendar className="w-5 h-5" />
                       <span className="font-medium">
-                        Requested Viewing:{' '}
+                        {t('badges.requestedViewing')}{' '}
                         {new Date(selectedInquiry.scheduledViewing).toLocaleDateString()}
                       </span>
                     </div>
@@ -498,7 +501,7 @@ export default function SellerInquiriesPage() {
               <div>
                 <h4 className="font-semibold text-black mb-2 flex items-center gap-2">
                   <MessageSquare className="w-5 h-5" />
-                  Message
+                  {t('detailModal.message')}
                 </h4>
                 <div className="bg-neutral-50 rounded-xl p-4">
                   <p className="text-neutral-700 whitespace-pre-wrap">{selectedInquiry.message}</p>
@@ -508,7 +511,7 @@ export default function SellerInquiriesPage() {
               {/* Seller Notes */}
               {selectedInquiry.sellerNotes && (
                 <div>
-                  <h4 className="font-semibold text-black mb-2">Your Notes</h4>
+                  <h4 className="font-semibold text-black mb-2">{t('detailModal.yourNotes')}</h4>
                   <div className="bg-yellow-50 rounded-xl p-4">
                     <p className="text-yellow-800 whitespace-pre-wrap">
                       {selectedInquiry.sellerNotes}
@@ -530,13 +533,13 @@ export default function SellerInquiriesPage() {
                 }}
                 className="flex-1 px-4 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors"
               >
-                Update Status
+                {t('actions.updateStatus')}
               </button>
               <a
                 href={`mailto:${selectedInquiry.buyerEmail}?subject=Re: ${selectedInquiry.product?.name}`}
                 className="flex-1 px-4 py-3 border-2 border-neutral-300 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-50 transition-colors text-center"
               >
-                Send Email
+                {t('actions.sendEmail')}
               </a>
             </div>
           </motion.div>
@@ -551,38 +554,38 @@ export default function SellerInquiriesPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-xl shadow-xl max-w-md w-full p-6"
           >
-            <h3 className="text-xl font-bold text-black mb-4">Update Inquiry Status</h3>
+            <h3 className="text-xl font-bold text-black mb-4">{t('updateModal.title')}</h3>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  New Status
+                  {t('updateModal.newStatus')}
                 </label>
                 <select
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value as InquiryStatus)}
                   className="w-full px-4 py-2.5 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 >
-                  <option value="NEW">New</option>
-                  <option value="CONTACTED">Contacted</option>
-                  <option value="VIEWING_SCHEDULED">Viewing Scheduled</option>
-                  <option value="TEST_DRIVE_SCHEDULED">Test Drive Scheduled</option>
-                  <option value="NEGOTIATING">Negotiating</option>
-                  <option value="CONVERTED">Converted</option>
-                  <option value="CLOSED">Closed</option>
-                  <option value="SPAM">Spam</option>
+                  <option value="NEW">{t('status.NEW')}</option>
+                  <option value="CONTACTED">{t('status.CONTACTED')}</option>
+                  <option value="VIEWING_SCHEDULED">{t('status.VIEWING_SCHEDULED')}</option>
+                  <option value="TEST_DRIVE_SCHEDULED">{t('status.TEST_DRIVE_SCHEDULED')}</option>
+                  <option value="NEGOTIATING">{t('status.NEGOTIATING')}</option>
+                  <option value="CONVERTED">{t('status.CONVERTED')}</option>
+                  <option value="CLOSED">{t('status.CLOSED')}</option>
+                  <option value="SPAM">{t('status.SPAM')}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Notes (Optional)
+                  {t('updateModal.notes')}
                 </label>
                 <textarea
                   value={sellerNotes}
                   onChange={(e) => setSellerNotes(e.target.value)}
                   rows={3}
-                  placeholder="Add notes about this inquiry..."
+                  placeholder={t('updateModal.notesPlaceholder')}
                   className="w-full px-4 py-2.5 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
                 />
               </div>
@@ -594,14 +597,14 @@ export default function SellerInquiriesPage() {
                 disabled={updating}
                 className="flex-1 px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
               >
-                Cancel
+                {t('updateModal.cancel')}
               </button>
               <button
                 onClick={handleUpdateStatus}
                 disabled={updating}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {updating ? 'Updating...' : 'Update Status'}
+                {updating ? t('updateModal.updating') : t('updateModal.update')}
               </button>
             </div>
           </motion.div>

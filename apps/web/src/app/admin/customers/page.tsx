@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useTranslations } from 'next-intl';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -32,6 +33,8 @@ function ConfirmationModal({
   confirmVariant = 'danger',
   loading = false,
 }: ConfirmationModalProps) {
+  const t = useTranslations('adminCustomers.modals');
+
   if (!isOpen) return null;
 
   return (
@@ -46,7 +49,12 @@ function ConfirmationModal({
             className="text-neutral-400 hover:text-neutral-600 transition-colors disabled:opacity-50"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -63,7 +71,7 @@ function ConfirmationModal({
             disabled={loading}
             className="px-4 py-2 border border-neutral-300 text-black rounded-lg hover:bg-neutral-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Cancel
+            {t('delete.cancel')}
           </button>
           <button
             onClick={onConfirm}
@@ -74,7 +82,7 @@ function ConfirmationModal({
                 : 'bg-orange-600 text-white hover:bg-orange-700'
             }`}
           >
-            {loading ? 'Processing...' : confirmText}
+            {loading ? t('delete.processing') : confirmText}
           </button>
         </div>
       </div>
@@ -83,6 +91,7 @@ function ConfirmationModal({
 }
 
 function CustomersContent() {
+  const t = useTranslations('adminCustomers');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [searchInput, setSearchInput] = useState('');
@@ -93,8 +102,16 @@ function CustomersContent() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Modal states
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, customerId: '', customerName: '' });
-  const [suspendModal, setSuspendModal] = useState({ isOpen: false, customerId: '', customerName: '' });
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    customerId: '',
+    customerName: '',
+  });
+  const [suspendModal, setSuspendModal] = useState({
+    isOpen: false,
+    customerId: '',
+    customerName: '',
+  });
   const [bulkSuspendModal, setBulkSuspendModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -121,14 +138,12 @@ function CustomersContent() {
     if (allSelected) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(customers.map(c => c.id));
+      setSelectedIds(customers.map((c) => c.id));
     }
   };
 
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   };
 
   const openDeleteModal = (id: string, name: string) => {
@@ -139,11 +154,11 @@ function CustomersContent() {
     setActionLoading(true);
     try {
       await adminCustomersApi.delete(deleteModal.customerId);
-      toast.success('Customer deleted successfully');
+      toast.success(t('toasts.deleteSuccess'));
       setDeleteModal({ isOpen: false, customerId: '', customerName: '' });
       refetch();
     } catch (error) {
-      toast.error('Failed to delete customer');
+      toast.error(t('toasts.deleteFailed'));
     } finally {
       setActionLoading(false);
     }
@@ -157,11 +172,11 @@ function CustomersContent() {
     setActionLoading(true);
     try {
       await adminCustomersApi.suspend(suspendModal.customerId);
-      toast.success('Customer suspended successfully');
+      toast.success(t('toasts.suspendSuccess'));
       setSuspendModal({ isOpen: false, customerId: '', customerName: '' });
       refetch();
     } catch (error) {
-      toast.error('Failed to suspend customer');
+      toast.error(t('toasts.suspendFailed'));
     } finally {
       setActionLoading(false);
     }
@@ -170,23 +185,23 @@ function CustomersContent() {
   const handleActivate = async (id: string) => {
     try {
       await adminCustomersApi.activate(id);
-      toast.success('Customer activated successfully');
+      toast.success(t('toasts.activateSuccess'));
       refetch();
     } catch (error) {
-      toast.error('Failed to activate customer');
+      toast.error(t('toasts.activateFailed'));
     }
   };
 
   const handleBulkSuspend = async () => {
     setActionLoading(true);
     try {
-      await Promise.all(selectedIds.map(id => adminCustomersApi.suspend(id)));
-      toast.success(`${selectedIds.length} customers suspended successfully`);
+      await Promise.all(selectedIds.map((id) => adminCustomersApi.suspend(id)));
+      toast.success(t('toasts.bulkSuspendSuccess', { count: selectedIds.length }));
       setSelectedIds([]);
       setBulkSuspendModal(false);
       refetch();
     } catch (error) {
-      toast.error('Failed to suspend customers');
+      toast.error(t('toasts.bulkSuspendFailed'));
     } finally {
       setActionLoading(false);
     }
@@ -194,27 +209,34 @@ function CustomersContent() {
 
   const handleBulkActivate = async () => {
     try {
-      await Promise.all(selectedIds.map(id => adminCustomersApi.activate(id)));
-      toast.success(`${selectedIds.length} customers activated successfully`);
+      await Promise.all(selectedIds.map((id) => adminCustomersApi.activate(id)));
+      toast.success(t('toasts.bulkActivateSuccess', { count: selectedIds.length }));
       setSelectedIds([]);
       refetch();
     } catch (error) {
-      toast.error('Failed to activate customers');
+      toast.error(t('toasts.bulkActivateFailed'));
     }
   };
 
   const handleBulkEmail = () => {
     const emails = customers
-      .filter(c => selectedIds.includes(c.id))
-      .map(c => c.email)
+      .filter((c) => selectedIds.includes(c.id))
+      .map((c) => c.email)
       .join(',');
     window.open(`mailto:${emails}`);
   };
 
   const handleBulkExport = () => {
-    const selectedCustomers = customers.filter(c => selectedIds.includes(c.id));
+    const selectedCustomers = customers.filter((c) => selectedIds.includes(c.id));
     const csv = [
-      ['Name', 'Email', 'Total Orders', 'Total Spent', 'Status', 'Join Date'],
+      [
+        t('export.headers.name'),
+        t('export.headers.email'),
+        t('export.headers.totalOrders'),
+        t('export.headers.totalSpent'),
+        t('export.headers.status'),
+        t('export.headers.joinDate'),
+      ],
       ...selectedCustomers.map((c) => [
         c.name,
         c.email,
@@ -231,7 +253,7 @@ function CustomersContent() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `customers-selected-${selectedIds.length}.csv`;
+    a.download = t('export.selectedFilename', { count: selectedIds.length });
     a.click();
   };
 
@@ -245,11 +267,24 @@ function CustomersContent() {
   };
 
   const hasActiveFilters = searchInput || status || role || segment || sortBy !== 'createdAt-desc';
-  const activeFilterCount = [searchInput, status, role, segment, sortBy !== 'createdAt-desc'].filter(Boolean).length;
+  const activeFilterCount = [
+    searchInput,
+    status,
+    role,
+    segment,
+    sortBy !== 'createdAt-desc',
+  ].filter(Boolean).length;
 
   const handleExport = () => {
     const csv = [
-      ['Name', 'Email', 'Total Orders', 'Total Spent', 'Status', 'Join Date'],
+      [
+        t('export.headers.name'),
+        t('export.headers.email'),
+        t('export.headers.totalOrders'),
+        t('export.headers.totalSpent'),
+        t('export.headers.status'),
+        t('export.headers.joinDate'),
+      ],
       ...customers.map((c) => [
         c.name,
         c.email,
@@ -266,7 +301,7 @@ function CustomersContent() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'customers.csv';
+    a.download = t('export.filename');
     a.click();
   };
 
@@ -274,15 +309,20 @@ function CustomersContent() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-neutral-600">Manage customer accounts</p>
+        <p className="text-neutral-600">{t('pageDescription')}</p>
         <button
           onClick={handleExport}
           className="px-4 py-2.5 bg-white border border-neutral-300 text-black rounded-lg hover:border-[#CBB57B] hover:text-[#CBB57B] transition-all flex items-center gap-2 shadow-sm font-medium"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
           </svg>
-          Export
+          {t('buttons.export')}
         </button>
       </div>
 
@@ -291,14 +331,24 @@ function CustomersContent() {
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">Total Customers</p>
+              <p className="text-sm text-neutral-600 mb-1">{t('stats.totalCustomers')}</p>
               <p className="text-2xl font-bold text-black">
                 {statsLoading ? '...' : formatNumber(stats.total)}
               </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              <svg
+                className="w-6 h-6 text-blue-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
               </svg>
             </div>
           </div>
@@ -307,19 +357,32 @@ function CustomersContent() {
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">New This Month</p>
+              <p className="text-sm text-neutral-600 mb-1">{t('stats.newThisMonth')}</p>
               <p className="text-2xl font-bold text-black">
                 {statsLoading ? '...' : formatNumber(stats.newThisMonth)}
               </p>
               {!statsLoading && (
                 <p className="text-xs text-green-600 mt-1">
-                  {stats.growthPercent > 0 ? '+' : ''}{stats.growthPercent}% growth
+                  {t('stats.growth', {
+                    percent:
+                      stats.growthPercent > 0 ? `+${stats.growthPercent}` : stats.growthPercent,
+                  })}
                 </p>
               )}
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              <svg
+                className="w-6 h-6 text-green-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                />
               </svg>
             </div>
           </div>
@@ -328,17 +391,27 @@ function CustomersContent() {
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">VIP Customers</p>
+              <p className="text-sm text-neutral-600 mb-1">{t('stats.vipCustomers')}</p>
               <p className="text-2xl font-bold text-black">
                 {statsLoading ? '...' : formatNumber(stats.vipCount)}
               </p>
               {!statsLoading && (
-                <p className="text-xs text-amber-600 mt-1">$1000+ spent</p>
+                <p className="text-xs text-amber-600 mt-1">{t('stats.vipThreshold')}</p>
               )}
             </div>
             <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              <svg
+                className="w-6 h-6 text-amber-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                />
               </svg>
             </div>
           </div>
@@ -347,14 +420,24 @@ function CustomersContent() {
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">Total Revenue</p>
+              <p className="text-sm text-neutral-600 mb-1">{t('stats.totalRevenue')}</p>
               <p className="text-2xl font-bold text-black">
                 {statsLoading ? '...' : `$${formatCurrencyAmount(stats.totalRevenue, 0)}`}
               </p>
             </div>
             <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-6 h-6 text-emerald-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
           </div>
@@ -366,12 +449,22 @@ function CustomersContent() {
         <div className="flex flex-wrap items-center gap-4">
           {/* Search */}
           <div className="flex-1 min-w-[250px] relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
             <input
               type="text"
-              placeholder="Search by name, email, or phone..."
+              placeholder={t('filters.searchPlaceholder')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-10 pr-10 py-2 bg-white border border-neutral-300 text-black placeholder-neutral-400 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
@@ -382,7 +475,12 @@ function CustomersContent() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             )}
@@ -391,55 +489,67 @@ function CustomersContent() {
           {/* Role Filter */}
           <select
             value={role}
-            onChange={(e) => { setRole(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setRole(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
           >
-            <option value="">All Roles</option>
-            <option value="BUYER">Customers</option>
-            <option value="SELLER">Sellers</option>
-            <option value="DELIVERY_PARTNER">Delivery Partners</option>
-            <option value="ADMIN">Admins</option>
+            <option value="">{t('filters.allRoles')}</option>
+            <option value="BUYER">{t('filters.roles.customers')}</option>
+            <option value="SELLER">{t('filters.roles.sellers')}</option>
+            <option value="DELIVERY_PARTNER">{t('filters.roles.deliveryPartners')}</option>
+            <option value="ADMIN">{t('filters.roles.admins')}</option>
           </select>
 
           {/* Status Filter */}
           <select
             value={status}
-            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
           >
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-            <option value="inactive">Inactive</option>
+            <option value="">{t('filters.allStatus')}</option>
+            <option value="active">{t('filters.status.active')}</option>
+            <option value="suspended">{t('filters.status.suspended')}</option>
+            <option value="inactive">{t('filters.status.inactive')}</option>
           </select>
 
           {/* Segment Filter */}
           <select
             value={segment}
-            onChange={(e) => { setSegment(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSegment(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
           >
-            <option value="">All Segments</option>
-            <option value="vip">VIP ($1000+)</option>
-            <option value="regular">Regular</option>
-            <option value="new">New (30 days)</option>
-            <option value="at-risk">At Risk (90+ days)</option>
+            <option value="">{t('filters.allSegments')}</option>
+            <option value="vip">{t('filters.segments.vip')}</option>
+            <option value="regular">{t('filters.segments.regular')}</option>
+            <option value="new">{t('filters.segments.new')}</option>
+            <option value="at-risk">{t('filters.segments.atRisk')}</option>
           </select>
 
           {/* Sort By */}
           <select
             value={sortBy}
-            onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
           >
-            <option value="createdAt-desc">Newest First</option>
-            <option value="createdAt-asc">Oldest First</option>
-            <option value="totalSpent-desc">Highest Spend</option>
-            <option value="totalSpent-asc">Lowest Spend</option>
-            <option value="orderCount-desc">Most Orders</option>
-            <option value="lastLoginAt-desc">Recent Activity</option>
-            <option value="name-asc">Name: A-Z</option>
-            <option value="name-desc">Name: Z-A</option>
+            <option value="createdAt-desc">{t('filters.sortBy.newestFirst')}</option>
+            <option value="createdAt-asc">{t('filters.sortBy.oldestFirst')}</option>
+            <option value="totalSpent-desc">{t('filters.sortBy.highestSpend')}</option>
+            <option value="totalSpent-asc">{t('filters.sortBy.lowestSpend')}</option>
+            <option value="orderCount-desc">{t('filters.sortBy.mostOrders')}</option>
+            <option value="lastLoginAt-desc">{t('filters.sortBy.recentActivity')}</option>
+            <option value="name-asc">{t('filters.sortBy.nameAZ')}</option>
+            <option value="name-desc">{t('filters.sortBy.nameZA')}</option>
           </select>
 
           {/* Clear Filters */}
@@ -449,9 +559,14 @@ function CustomersContent() {
               className="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors flex items-center gap-1"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
-              Clear ({activeFilterCount})
+              {t('filters.clear', { count: activeFilterCount })}
             </button>
           )}
         </div>
@@ -461,50 +576,103 @@ function CustomersContent() {
           <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-neutral-200">
             {searchInput && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
-                Search: "{searchInput}"
+                {t('filters.activePills.search', { query: searchInput })}
                 <button onClick={() => setSearchInput('')} className="hover:text-neutral-900">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </span>
             )}
             {role && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
-                Role: {role === 'BUYER' ? 'Customers' : role === 'SELLER' ? 'Sellers' : role === 'DELIVERY_PARTNER' ? 'Delivery Partners' : 'Admins'}
+                {t('filters.activePills.role', {
+                  role:
+                    role === 'BUYER'
+                      ? t('filters.roles.customers')
+                      : role === 'SELLER'
+                        ? t('filters.roles.sellers')
+                        : role === 'DELIVERY_PARTNER'
+                          ? t('filters.roles.deliveryPartners')
+                          : t('filters.roles.admins'),
+                })}
                 <button onClick={() => setRole('')} className="hover:text-neutral-900">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </span>
             )}
             {status && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
-                Status: {status.charAt(0).toUpperCase() + status.slice(1)}
+                {t('filters.activePills.status', {
+                  status:
+                    status === 'active'
+                      ? t('filters.status.active')
+                      : status === 'suspended'
+                        ? t('filters.status.suspended')
+                        : t('filters.status.inactive'),
+                })}
                 <button onClick={() => setStatus('')} className="hover:text-neutral-900">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </span>
             )}
             {segment && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
-                Segment: {segment === 'vip' ? 'VIP' : segment === 'new' ? 'New' : segment === 'at-risk' ? 'At Risk' : 'Regular'}
+                {t('filters.activePills.segment', {
+                  segment:
+                    segment === 'vip'
+                      ? t('filters.segments.vip')
+                      : segment === 'new'
+                        ? t('filters.segments.new')
+                        : segment === 'at-risk'
+                          ? t('filters.segments.atRisk')
+                          : t('filters.segments.regular'),
+                })}
                 <button onClick={() => setSegment('')} className="hover:text-neutral-900">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </span>
             )}
             {sortBy !== 'createdAt-desc' && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
-                Sort: {sortBy.split('-')[0] === 'createdAt' ? 'Created' : sortBy.split('-')[0] === 'totalSpent' ? 'Spend' : sortBy.split('-')[0] === 'orderCount' ? 'Orders' : sortBy.split('-')[0] === 'lastLoginAt' ? 'Activity' : 'Name'}
-                <button onClick={() => setSortBy('createdAt-desc')} className="hover:text-neutral-900">
+                {t('filters.activePills.sort', { sort: sortBy })}
+                <button
+                  onClick={() => setSortBy('createdAt-desc')}
+                  className="hover:text-neutral-900"
+                >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </span>
@@ -521,14 +689,24 @@ function CustomersContent() {
                 <div className="absolute inset-0 rounded-full border-4 border-neutral-200"></div>
                 <div className="absolute inset-0 rounded-full border-4 border-[#CBB57B] border-t-transparent animate-spin"></div>
               </div>
-              <p className="mt-4 text-neutral-600 font-medium">Loading customers...</p>
+              <p className="mt-4 text-neutral-600 font-medium">{t('table.loading')}</p>
             </div>
           ) : customers.length === 0 ? (
             <div className="p-16 text-center">
-              <svg className="w-16 h-16 mx-auto text-neutral-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              <svg
+                className="w-16 h-16 mx-auto text-neutral-400 mb-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
               </svg>
-              <p className="text-neutral-600 font-medium">No customers found</p>
+              <p className="text-neutral-600 font-medium">{t('table.noCustomers')}</p>
             </div>
           ) : (
             <table className="w-full">
@@ -543,31 +721,34 @@ function CustomersContent() {
                     />
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Customer
+                    {t('table.headers.customer')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Email
+                    {t('table.headers.email')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Orders
+                    {t('table.headers.orders')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Total Spent
+                    {t('table.headers.totalSpent')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Status
+                    {t('table.headers.status')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Join Date
+                    {t('table.headers.joinDate')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Actions
+                    {t('table.headers.actions')}
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {customers.map((customer) => (
-                  <tr key={customer.id} className="group transition-all duration-200 hover:bg-neutral-50">
+                  <tr
+                    key={customer.id}
+                    className="group transition-all duration-200 hover:bg-neutral-50"
+                  >
                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
@@ -584,20 +765,34 @@ function CustomersContent() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">{customer.name}</div>
+                          <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">
+                            {customer.name}
+                          </div>
                           {customer.totalSpent >= 1000 && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded text-xs font-semibold">
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                                />
                               </svg>
-                              VIP
+                              {t('table.vipBadge')}
                             </span>
                           )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-700">{customer.email}</td>
-                    <td className="px-6 py-4 text-sm text-neutral-800 font-bold">{customer.totalOrders}</td>
+                    <td className="px-6 py-4 text-sm text-neutral-800 font-bold">
+                      {customer.totalOrders}
+                    </td>
                     <td className="px-6 py-4 text-sm font-bold text-black">
                       ${formatCurrencyAmount(customer.totalSpent, 2)}
                     </td>
@@ -609,7 +804,9 @@ function CustomersContent() {
                             : 'bg-red-100 text-red-800 border border-red-200'
                         }`}
                       >
-                        <div className={`w-1.5 h-1.5 rounded-full ${customer.status === 'active' ? 'bg-green-600' : 'bg-red-600'}`}></div>
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full ${customer.status === 'active' ? 'bg-green-600' : 'bg-red-600'}`}
+                        ></div>
                         {customer.status}
                       </span>
                     </td>
@@ -622,41 +819,86 @@ function CustomersContent() {
                           href={`/admin/customers/${customer.id}`}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#CBB57B]/20 hover:bg-[#CBB57B]/30 border border-[#CBB57B]/30 text-[#CBB57B] rounded-lg text-xs font-semibold transition-all hover:scale-105"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                            />
                           </svg>
-                          View
+                          {t('buttons.view')}
                         </Link>
                         {customer.status === 'active' ? (
                           <button
                             onClick={() => openSuspendModal(customer.id, customer.name)}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 border border-orange-200 text-orange-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            <svg
+                              className="w-3.5 h-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                              />
                             </svg>
-                            Suspend
+                            {t('buttons.suspend')}
                           </button>
                         ) : (
                           <button
                             onClick={() => handleActivate(customer.id)}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 border border-green-200 text-green-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg
+                              className="w-3.5 h-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
                             </svg>
-                            Activate
+                            {t('buttons.activate')}
                           </button>
                         )}
                         <button
                           onClick={() => openDeleteModal(customer.id, customer.name)}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 border border-red-200 text-red-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
                           </svg>
-                          Delete
+                          {t('buttons.delete')}
                         </button>
                       </div>
                     </td>
@@ -672,17 +914,21 @@ function CustomersContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-neutral-700">
-                  Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} customers
+                  {t('pagination.showing', {
+                    from: (page - 1) * limit + 1,
+                    to: Math.min(page * limit, total),
+                    total,
+                  })}
                 </span>
                 <select
                   value={limit}
                   onChange={(e) => setLimit(Number(e.target.value))}
                   className="ml-4 px-3 py-1.5 border border-neutral-300 bg-white text-black rounded-lg text-sm focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
                 >
-                  <option value="10">10 per page</option>
-                  <option value="25">25 per page</option>
-                  <option value="50">50 per page</option>
-                  <option value="100">100 per page</option>
+                  <option value="10">{t('pagination.perPage.10')}</option>
+                  <option value="25">{t('pagination.perPage.25')}</option>
+                  <option value="50">{t('pagination.perPage.50')}</option>
+                  <option value="100">{t('pagination.perPage.100')}</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
@@ -691,17 +937,17 @@ function CustomersContent() {
                   disabled={page === 1}
                   className="px-4 py-2 border border-neutral-300 bg-white text-black rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-[#CBB57B] transition-all"
                 >
-                  Previous
+                  {t('pagination.previous')}
                 </button>
                 <span className="text-sm text-neutral-700 font-medium px-3">
-                  Page {page} of {pages}
+                  {t('pagination.page', { current: page, total: pages })}
                 </span>
                 <button
                   onClick={() => setPage(Math.min(pages, page + 1))}
                   disabled={page === pages}
                   className="px-4 py-2 border border-neutral-300 bg-white text-black rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-[#CBB57B] transition-all"
                 >
-                  Next
+                  {t('pagination.next')}
                 </button>
               </div>
             </div>
@@ -714,9 +960,9 @@ function CustomersContent() {
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, customerId: '', customerName: '' })}
         onConfirm={handleDelete}
-        title="Delete Customer"
-        message={`Are you sure you want to delete ${deleteModal.customerName}? This action cannot be undone and will permanently remove all customer data.`}
-        confirmText="Delete"
+        title={t('modals.delete.title')}
+        message={t('modals.delete.message', { name: deleteModal.customerName })}
+        confirmText={t('modals.delete.confirm')}
         confirmVariant="danger"
         loading={actionLoading}
       />
@@ -726,9 +972,9 @@ function CustomersContent() {
         isOpen={suspendModal.isOpen}
         onClose={() => setSuspendModal({ isOpen: false, customerId: '', customerName: '' })}
         onConfirm={handleSuspend}
-        title="Suspend Customer"
-        message={`Are you sure you want to suspend ${suspendModal.customerName}? They will not be able to log in or place orders until reactivated.`}
-        confirmText="Suspend"
+        title={t('modals.suspend.title')}
+        message={t('modals.suspend.message', { name: suspendModal.customerName })}
+        confirmText={t('modals.suspend.confirm')}
         confirmVariant="warning"
         loading={actionLoading}
       />
@@ -738,9 +984,17 @@ function CustomersContent() {
         isOpen={bulkSuspendModal}
         onClose={() => setBulkSuspendModal(false)}
         onConfirm={handleBulkSuspend}
-        title="Suspend Multiple Customers"
-        message={`Are you sure you want to suspend ${selectedIds.length} customer${selectedIds.length > 1 ? 's' : ''}? They will not be able to log in or place orders until reactivated.`}
-        confirmText={`Suspend ${selectedIds.length} Customer${selectedIds.length > 1 ? 's' : ''}`}
+        title={t('modals.bulkSuspend.title')}
+        message={
+          selectedIds.length > 1
+            ? t('modals.bulkSuspend.messagePlural', { count: selectedIds.length })
+            : t('modals.bulkSuspend.message', { count: selectedIds.length })
+        }
+        confirmText={
+          selectedIds.length > 1
+            ? t('modals.bulkSuspend.confirmPlural', { count: selectedIds.length })
+            : t('modals.bulkSuspend.confirm', { count: selectedIds.length })
+        }
         confirmVariant="warning"
         loading={actionLoading}
       />
@@ -750,7 +1004,9 @@ function CustomersContent() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
           <div className="bg-slate-900 text-white rounded-lg px-6 py-3 flex items-center gap-4 shadow-xl">
             <span className="font-medium text-sm">
-              {selectedIds.length} customer{selectedIds.length > 1 ? 's' : ''} selected
+              {selectedIds.length > 1
+                ? t('bulkActions.selectedPlural', { count: selectedIds.length })
+                : t('bulkActions.selected', { count: selectedIds.length })}
             </span>
 
             <div className="h-4 w-px bg-slate-600" />
@@ -760,9 +1016,14 @@ function CustomersContent() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
               </svg>
-              Email
+              {t('buttons.email')}
             </button>
 
             <button
@@ -770,9 +1031,14 @@ function CustomersContent() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
-              Export
+              {t('buttons.export')}
             </button>
 
             <button
@@ -780,18 +1046,28 @@ function CustomersContent() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                />
               </svg>
-              Suspend
+              {t('buttons.suspend')}
             </button>
 
             <button
               onClick={() => setSelectedIds([])}
               className="flex items-center gap-1.5 px-2 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
-              title="Clear selection"
+              title={t('buttons.clearSelection')}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>

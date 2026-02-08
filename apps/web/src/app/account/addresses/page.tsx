@@ -173,7 +173,10 @@ export default function AddressesPage() {
       <PageHeader
         title={t('title')}
         description={t('subtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'Addresses' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/dashboard/buyer' },
+          { label: t('breadcrumbs.addresses') },
+        ]}
         actions={
           <button
             onClick={() => setShowAddModal(true)}

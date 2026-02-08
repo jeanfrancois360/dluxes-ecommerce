@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import {
@@ -84,6 +85,7 @@ interface Category {
 }
 
 function CommissionOverridesContent() {
+  const t = useTranslations('adminCommissions');
   const [overrides, setOverrides] = useState<SellerCommissionOverride[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,7 @@ function CommissionOverridesContent() {
       }
     } catch (error) {
       console.error('Error fetching overrides:', error);
-      toast.error('Failed to load commission overrides');
+      toast.error(t('toast.loadError'));
     } finally {
       setLoading(false);
     }
@@ -207,9 +209,7 @@ function CommissionOverridesContent() {
 
     // Status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter((o) =>
-        statusFilter === 'active' ? o.isActive : !o.isActive
-      );
+      filtered = filtered.filter((o) => (statusFilter === 'active' ? o.isActive : !o.isActive));
     }
 
     // Type filter
@@ -229,9 +229,7 @@ function CommissionOverridesContent() {
     // Sort
     switch (sortBy) {
       case 'oldest':
-        filtered.sort(
-          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
+        filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         break;
       case 'rate_high':
         filtered.sort((a, b) => Number(b.commissionRate) - Number(a.commissionRate));
@@ -248,9 +246,7 @@ function CommissionOverridesContent() {
         break;
       case 'newest':
       default:
-        filtered.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
     return filtered;
@@ -291,28 +287,28 @@ function CommissionOverridesContent() {
 
   // Bulk actions
   const handleBulkExport = () => {
-    toast.success(`Exporting ${selectedIds.size} commission overrides`);
+    toast.success(t('bulkActions.exportSuccess', { count: selectedIds.size }));
     setSelectedIds(new Set());
   };
 
   const handleBulkActivate = async () => {
-    if (!confirm(`Activate ${selectedIds.size} commission overrides?`)) return;
+    if (!confirm(t('bulkActions.confirmActivate', { count: selectedIds.size }))) return;
     // Implement bulk activate
-    toast.success(`Activated ${selectedIds.size} overrides`);
+    toast.success(t('bulkActions.activateSuccess', { count: selectedIds.size }));
     setSelectedIds(new Set());
     fetchOverrides();
   };
 
   const handleBulkDeactivate = async () => {
-    if (!confirm(`Deactivate ${selectedIds.size} commission overrides?`)) return;
+    if (!confirm(t('bulkActions.confirmDeactivate', { count: selectedIds.size }))) return;
     // Implement bulk deactivate
-    toast.success(`Deactivated ${selectedIds.size} overrides`);
+    toast.success(t('bulkActions.deactivateSuccess', { count: selectedIds.size }));
     setSelectedIds(new Set());
     fetchOverrides();
   };
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Delete ${selectedIds.size} commission overrides? This cannot be undone.`)) return;
+    if (!confirm(t('bulkActions.confirmDelete', { count: selectedIds.size }))) return;
 
     let success = 0;
     let failed = 0;
@@ -338,7 +334,7 @@ function CommissionOverridesContent() {
       }
     }
 
-    toast.success(`Deleted ${success} overrides (${failed} failed)`);
+    toast.success(t('bulkActions.deleteSuccess', { count: success, failed }));
     setSelectedIds(new Set());
     fetchOverrides();
   };
@@ -362,13 +358,13 @@ function CommissionOverridesContent() {
           }
         }
       } catch (error) {
-        toast.error('Failed to find seller');
+        toast.error(t('toast.findSellerError'));
         return;
       }
     }
 
     if (!sellerId) {
-      toast.error('Please provide a valid seller email');
+      toast.error(t('toast.invalidSellerEmail'));
       return;
     }
 
@@ -400,26 +396,22 @@ function CommissionOverridesContent() {
       });
 
       if (response.ok) {
-        toast.success(
-          editingOverride
-            ? 'Commission override updated successfully'
-            : 'Commission override created successfully'
-        );
+        toast.success(editingOverride ? t('toast.updateSuccess') : t('toast.createSuccess'));
         setDialogOpen(false);
         resetForm();
         fetchOverrides();
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Failed to save commission override');
+        toast.error(error.message || t('toast.saveError'));
       }
     } catch (error) {
       console.error('Error saving override:', error);
-      toast.error('Failed to save commission override');
+      toast.error(t('toast.saveError'));
     }
   };
 
   const handleDelete = async (sellerId: string) => {
-    if (!confirm('Are you sure you want to delete this commission override?')) return;
+    if (!confirm(t('toast.deleteConfirm'))) return;
 
     try {
       const response = await fetch(`/api/admin/commission/overrides/${sellerId}`, {
@@ -430,14 +422,14 @@ function CommissionOverridesContent() {
       });
 
       if (response.ok) {
-        toast.success('Commission override deleted successfully');
+        toast.success(t('toast.deleteSuccess'));
         fetchOverrides();
       } else {
-        toast.error('Failed to delete commission override');
+        toast.error(t('toast.deleteError'));
       }
     } catch (error) {
       console.error('Error deleting override:', error);
-      toast.error('Failed to delete commission override');
+      toast.error(t('toast.deleteError'));
     }
   };
 
@@ -478,10 +470,8 @@ function CommissionOverridesContent() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Commission Overrides</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage seller-specific commission rates
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground mt-2">{t('pageDescription')}</p>
         </div>
         <Button
           onClick={() => {
@@ -490,7 +480,7 @@ function CommissionOverridesContent() {
           }}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Override
+          {t('addOverride')}
         </Button>
       </div>
 
@@ -498,49 +488,49 @@ function CommissionOverridesContent() {
       <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Overrides</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.totalOverrides')}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.active} active, {stats.inactive} inactive
+              {stats.active} {t('stats.active')}, {stats.inactive} {t('stats.inactive')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.averageRate')}</CardTitle>
             <Percent className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatNumber(stats.avgRate, 1)}%</div>
-            <p className="text-xs text-muted-foreground">Percentage overrides</p>
+            <p className="text-xs text-muted-foreground">{t('stats.percentageOverrides')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lowest Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.lowestRate')}</CardTitle>
             <TrendingDown className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
               {formatNumber(stats.lowestRate, 1)}%
             </div>
-            <p className="text-xs text-muted-foreground">Best seller rate</p>
+            <p className="text-xs text-muted-foreground">{t('stats.bestSellerRate')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Highest Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.highestRate')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatNumber(stats.highestRate, 1)}%</div>
-            <p className="text-xs text-muted-foreground">Maximum override</p>
+            <p className="text-xs text-muted-foreground">{t('stats.maximumOverride')}</p>
           </CardContent>
         </Card>
 
@@ -549,22 +539,20 @@ function CommissionOverridesContent() {
             <CardTitle
               className={`text-sm font-medium ${stats.expiringSoon > 0 ? 'text-amber-700' : ''}`}
             >
-              Expiring Soon
+              {t('stats.expiringSoon')}
             </CardTitle>
             <Clock
               className={`h-4 w-4 ${stats.expiringSoon > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
             />
           </CardHeader>
           <CardContent>
-            <div
-              className={`text-2xl font-bold ${stats.expiringSoon > 0 ? 'text-amber-700' : ''}`}
-            >
+            <div className={`text-2xl font-bold ${stats.expiringSoon > 0 ? 'text-amber-700' : ''}`}>
               {stats.expiringSoon}
             </div>
             <p
               className={`text-xs ${stats.expiringSoon > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}
             >
-              Within 30 days
+              {t('stats.within30Days')}
             </p>
           </CardContent>
         </Card>
@@ -578,7 +566,7 @@ function CommissionOverridesContent() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search by seller name, email, or notes..."
+                placeholder={t('filters.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -589,35 +577,35 @@ function CommissionOverridesContent() {
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t('filters.status')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
+              <SelectItem value="active">{t('filters.active')}</SelectItem>
+              <SelectItem value="inactive">{t('filters.inactive')}</SelectItem>
             </SelectContent>
           </Select>
 
           {/* Type Filter */}
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Type" />
+              <SelectValue placeholder={t('filters.type')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="PERCENTAGE">Percentage</SelectItem>
-              <SelectItem value="FIXED">Fixed</SelectItem>
+              <SelectItem value="all">{t('filters.allTypes')}</SelectItem>
+              <SelectItem value="PERCENTAGE">{t('filters.percentage')}</SelectItem>
+              <SelectItem value="FIXED">{t('filters.fixed')}</SelectItem>
             </SelectContent>
           </Select>
 
           {/* Category Filter */}
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Category" />
+              <SelectValue placeholder={t('filters.category')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="none">No Category</SelectItem>
+              <SelectItem value="all">{t('filters.allCategories')}</SelectItem>
+              <SelectItem value="none">{t('filters.noCategory')}</SelectItem>
               {categories.map((category) => (
                 <SelectItem key={category.id} value={category.id}>
                   {category.name}
@@ -629,14 +617,14 @@ function CommissionOverridesContent() {
           {/* Sort */}
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Sort by" />
+              <SelectValue placeholder={t('filters.sortBy')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="oldest">Oldest First</SelectItem>
-              <SelectItem value="rate_high">Rate (High)</SelectItem>
-              <SelectItem value="rate_low">Rate (Low)</SelectItem>
-              <SelectItem value="seller">Seller Name</SelectItem>
+              <SelectItem value="newest">{t('filters.newestFirst')}</SelectItem>
+              <SelectItem value="oldest">{t('filters.oldestFirst')}</SelectItem>
+              <SelectItem value="rate_high">{t('filters.rateHigh')}</SelectItem>
+              <SelectItem value="rate_low">{t('filters.rateLow')}</SelectItem>
+              <SelectItem value="seller">{t('filters.sellerName')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -644,10 +632,10 @@ function CommissionOverridesContent() {
         {/* Active Filter Pills */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
+            <span className="text-sm text-muted-foreground">{t('filters.activeFilters')}</span>
             {debouncedSearch && (
               <Badge variant="secondary" className="gap-1">
-                Search: {debouncedSearch}
+                {t('filters.search')}: {debouncedSearch}
                 <button onClick={() => setSearchQuery('')} className="ml-1 hover:text-destructive">
                   <X className="h-3 w-3" />
                 </button>
@@ -655,7 +643,7 @@ function CommissionOverridesContent() {
             )}
             {statusFilter !== 'all' && (
               <Badge variant="secondary" className="gap-1">
-                Status: {statusFilter}
+                {t('filters.status')}: {statusFilter}
                 <button
                   onClick={() => setStatusFilter('all')}
                   className="ml-1 hover:text-destructive"
@@ -666,7 +654,7 @@ function CommissionOverridesContent() {
             )}
             {typeFilter !== 'all' && (
               <Badge variant="secondary" className="gap-1">
-                Type: {typeFilter}
+                {t('filters.type')}: {typeFilter}
                 <button
                   onClick={() => setTypeFilter('all')}
                   className="ml-1 hover:text-destructive"
@@ -677,9 +665,9 @@ function CommissionOverridesContent() {
             )}
             {categoryFilter !== 'all' && (
               <Badge variant="secondary" className="gap-1">
-                Category:{' '}
+                {t('filters.category')}:{' '}
                 {categoryFilter === 'none'
-                  ? 'None'
+                  ? t('filters.none')
                   : categories.find((c) => c.id === categoryFilter)?.name || categoryFilter}
                 <button
                   onClick={() => setCategoryFilter('all')}
@@ -690,7 +678,7 @@ function CommissionOverridesContent() {
               </Badge>
             )}
             <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-              Clear all
+              {t('filters.clearAll')}
             </Button>
           </div>
         )}
@@ -699,10 +687,8 @@ function CommissionOverridesContent() {
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Commission Overrides</CardTitle>
-          <CardDescription>
-            Seller-specific commission rates that override default rules
-          </CardDescription>
+          <CardTitle>{t('table.title')}</CardTitle>
+          <CardDescription>{t('table.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -720,27 +706,27 @@ function CommissionOverridesContent() {
                       className="w-4 h-4 rounded border-neutral-300"
                     />
                   </TableHead>
-                  <TableHead>Seller</TableHead>
-                  <TableHead>Rate</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Order Range</TableHead>
-                  <TableHead>Validity</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('table.headers.seller')}</TableHead>
+                  <TableHead>{t('table.headers.rate')}</TableHead>
+                  <TableHead>{t('table.headers.type')}</TableHead>
+                  <TableHead>{t('table.headers.category')}</TableHead>
+                  <TableHead>{t('table.headers.orderRange')}</TableHead>
+                  <TableHead>{t('table.headers.validity')}</TableHead>
+                  <TableHead>{t('table.headers.status')}</TableHead>
+                  <TableHead>{t('table.headers.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-8">
-                      Loading commission overrides...
+                      {t('table.loading')}
                     </TableCell>
                   </TableRow>
                 ) : filteredOverrides.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                      No commission overrides found
+                      {t('table.noResults')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -781,44 +767,45 @@ function CommissionOverridesContent() {
                       </TableCell>
                       <TableCell>
                         {override.category?.name || (
-                          <span className="text-muted-foreground">All</span>
+                          <span className="text-muted-foreground">{t('table.all')}</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {override.minOrderValue || override.maxOrderValue ? (
                           <span className="text-sm">
-                            ${override.minOrderValue || '0'} - $
-                            {override.maxOrderValue || '∞'}
+                            ${override.minOrderValue || '0'} - ${override.maxOrderValue || '∞'}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground">Any</span>
+                          <span className="text-muted-foreground">{t('table.any')}</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {override.validFrom || override.validUntil ? (
                           <div className="text-sm">
                             {override.validFrom && (
-                              <div>From: {new Date(override.validFrom).toLocaleDateString()}</div>
+                              <div>
+                                {t('table.from')}:{' '}
+                                {new Date(override.validFrom).toLocaleDateString()}
+                              </div>
                             )}
                             {override.validUntil && (
                               <div
                                 className={
-                                  new Date(override.validUntil) < new Date()
-                                    ? 'text-red-500'
-                                    : ''
+                                  new Date(override.validUntil) < new Date() ? 'text-red-500' : ''
                                 }
                               >
-                                Until: {new Date(override.validUntil).toLocaleDateString()}
+                                {t('table.until')}:{' '}
+                                {new Date(override.validUntil).toLocaleDateString()}
                               </div>
                             )}
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">Always</span>
+                          <span className="text-muted-foreground">{t('table.always')}</span>
                         )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={override.isActive ? 'default' : 'secondary'}>
-                          {override.isActive ? 'Active' : 'Inactive'}
+                          {override.isActive ? t('table.active') : t('table.inactive')}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -848,39 +835,36 @@ function CommissionOverridesContent() {
       {selectedIds.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 flex items-center justify-between z-50">
           <div className="flex items-center gap-4">
-            <span className="font-medium">{selectedIds.size} selected</span>
+            <span className="font-medium">
+              {selectedIds.size} {t('bulkActions.selected')}
+            </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSelectedIds(new Set())}
               className="text-white hover:text-white hover:bg-slate-800"
             >
-              Clear selection
+              {t('bulkActions.clearSelection')}
             </Button>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={handleBulkExport} className="gap-2">
               <Download className="h-4 w-4" />
-              Export
+              {t('bulkActions.export')}
             </Button>
             <Button
               size="sm"
               onClick={handleBulkActivate}
               className="bg-green-600 hover:bg-green-700 gap-2"
             >
-              Activate
+              {t('bulkActions.activate')}
             </Button>
             <Button variant="secondary" size="sm" onClick={handleBulkDeactivate} className="gap-2">
-              Deactivate
+              {t('bulkActions.deactivate')}
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleBulkDelete}
-              className="gap-2"
-            >
+            <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
               <Trash2 className="h-4 w-4" />
-              Delete
+              {t('bulkActions.delete')}
             </Button>
           </div>
         </div>
@@ -891,21 +875,21 @@ function CommissionOverridesContent() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingOverride ? 'Edit Commission Override' : 'Create Commission Override'}
+              {editingOverride ? t('dialog.editTitle') : t('dialog.createTitle')}
             </DialogTitle>
-            <DialogDescription>
-              Set a custom commission rate for a specific seller
-            </DialogDescription>
+            <DialogDescription>{t('dialog.description')}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="sellerEmail">Seller Email *</Label>
+                <Label htmlFor="sellerEmail">
+                  {t('dialog.sellerEmail')} {t('dialog.required')}
+                </Label>
                 <Input
                   id="sellerEmail"
                   type="email"
-                  placeholder="seller@example.com"
+                  placeholder={t('dialog.sellerEmailPlaceholder')}
                   value={formData.sellerEmail}
                   onChange={(e) => setFormData({ ...formData, sellerEmail: e.target.value })}
                   required
@@ -914,7 +898,9 @@ function CommissionOverridesContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="commissionType">Type *</Label>
+                <Label htmlFor="commissionType">
+                  {t('dialog.type')} {t('dialog.required')}
+                </Label>
                 <Select
                   value={formData.commissionType}
                   onValueChange={(value: any) =>
@@ -925,21 +911,28 @@ function CommissionOverridesContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PERCENTAGE">Percentage</SelectItem>
-                    <SelectItem value="FIXED">Fixed Amount</SelectItem>
+                    <SelectItem value="PERCENTAGE">{t('dialog.typePercentage')}</SelectItem>
+                    <SelectItem value="FIXED">{t('dialog.typeFixed')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="commissionRate">
-                  {formData.commissionType === 'PERCENTAGE' ? 'Rate (%)' : 'Amount ($)'} *
+                  {formData.commissionType === 'PERCENTAGE'
+                    ? t('dialog.ratePercent')
+                    : t('dialog.rateAmount')}{' '}
+                  {t('dialog.required')}
                 </Label>
                 <Input
                   id="commissionRate"
                   type="number"
                   step="0.01"
-                  placeholder={formData.commissionType === 'PERCENTAGE' ? '5.00' : '10.00'}
+                  placeholder={
+                    formData.commissionType === 'PERCENTAGE'
+                      ? t('dialog.ratePlaceholderPercent')
+                      : t('dialog.ratePlaceholderAmount')
+                  }
                   value={formData.commissionRate}
                   onChange={(e) => setFormData({ ...formData, commissionRate: e.target.value })}
                   required
@@ -947,16 +940,16 @@ function CommissionOverridesContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="categoryId">Category (Optional)</Label>
+                <Label htmlFor="categoryId">{t('dialog.category')}</Label>
                 <Select
                   value={formData.categoryId}
                   onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="All categories" />
+                    <SelectValue placeholder={t('dialog.allCategories')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="">{t('filters.allCategories')}</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
@@ -967,31 +960,31 @@ function CommissionOverridesContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="minOrderValue">Min Order Value ($)</Label>
+                <Label htmlFor="minOrderValue">{t('dialog.minOrderValue')}</Label>
                 <Input
                   id="minOrderValue"
                   type="number"
                   step="0.01"
-                  placeholder="0.00"
+                  placeholder={t('dialog.minOrderPlaceholder')}
                   value={formData.minOrderValue}
                   onChange={(e) => setFormData({ ...formData, minOrderValue: e.target.value })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="maxOrderValue">Max Order Value ($)</Label>
+                <Label htmlFor="maxOrderValue">{t('dialog.maxOrderValue')}</Label>
                 <Input
                   id="maxOrderValue"
                   type="number"
                   step="0.01"
-                  placeholder="Unlimited"
+                  placeholder={t('dialog.maxOrderPlaceholder')}
                   value={formData.maxOrderValue}
                   onChange={(e) => setFormData({ ...formData, maxOrderValue: e.target.value })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="validFrom">Valid From</Label>
+                <Label htmlFor="validFrom">{t('dialog.validFrom')}</Label>
                 <Input
                   id="validFrom"
                   type="date"
@@ -1001,7 +994,7 @@ function CommissionOverridesContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="validUntil">Valid Until</Label>
+                <Label htmlFor="validUntil">{t('dialog.validUntil')}</Label>
                 <Input
                   id="validUntil"
                   type="date"
@@ -1012,10 +1005,10 @@ function CommissionOverridesContent() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">{t('dialog.notes')}</Label>
               <Input
                 id="notes"
-                placeholder="Reason for custom rate..."
+                placeholder={t('dialog.notesPlaceholder')}
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               />
@@ -1023,10 +1016,10 @@ function CommissionOverridesContent() {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
+                {t('dialog.cancel')}
               </Button>
               <Button type="submit">
-                {editingOverride ? 'Update Override' : 'Create Override'}
+                {editingOverride ? t('dialog.updateOverride') : t('dialog.createOverride')}
               </Button>
             </DialogFooter>
           </form>

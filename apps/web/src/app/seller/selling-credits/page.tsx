@@ -19,6 +19,7 @@ import {
   MinusCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/seller/page-header';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
@@ -75,6 +76,7 @@ const TRANSACTION_COLORS = {
 };
 
 export default function SellingCreditsPage() {
+  const t = useTranslations('sellerSellingCredits');
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedMonths, setSelectedMonths] = useState(1);
@@ -91,7 +93,7 @@ export default function SellingCreditsPage() {
     shouldRetryOnError: false,
     onError: (err) => {
       console.error('Failed to fetch balance:', err);
-      toast.error('Please log in as a seller to view credits');
+      toast.error(t('errors.fetchBalance'));
     },
   });
 
@@ -124,10 +126,10 @@ export default function SellingCreditsPage() {
   // Handle canceled purchase
   useEffect(() => {
     if (searchParams.get('canceled') === 'true') {
-      toast.error('Purchase canceled');
+      toast.error(t('errors.purchaseCanceled'));
       router.replace('/seller/selling-credits');
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, t]);
 
   // Calculate days remaining
   const getDaysRemaining = (date: string | null) => {
@@ -148,13 +150,13 @@ export default function SellingCreditsPage() {
   // Handle purchase
   const handlePurchase = async () => {
     if (selectedMonths < 1 || selectedMonths > 12) {
-      toast.error('Please select between 1 and 12 months');
+      toast.error(t('errors.monthsRange'));
       return;
     }
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
-      toast.error('Please log in to purchase credits');
+      toast.error(t('errors.loginRequired'));
       router.push('/auth/login');
       return;
     }
@@ -184,11 +186,11 @@ export default function SellingCreditsPage() {
         window.location.href = sessionUrl;
       } else {
         console.error('Invalid response structure:', response);
-        throw new Error('No checkout URL received');
+        throw new Error(t('errors.noCheckoutUrl'));
       }
     } catch (error: any) {
       console.error('Purchase error:', error);
-      toast.error(error.message || 'Failed to start checkout');
+      toast.error(error.message || t('errors.checkoutFailed'));
       setIsPurchasing(false);
     }
   };
@@ -199,15 +201,13 @@ export default function SellingCreditsPage() {
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center max-w-md">
           <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
-          <p className="text-gray-600 mb-6">
-            Please log in as a seller to view your selling credits.
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('errors.authRequired')}</h2>
+          <p className="text-gray-600 mb-6">{t('errors.loginPrompt')}</p>
           <button
             onClick={() => router.push('/auth/login')}
             className="px-6 py-3 bg-[#CBB57B] text-white rounded-lg font-semibold hover:bg-[#A89968] transition-colors"
           >
-            Go to Login
+            {t('actions.goToLogin')}
           </button>
         </div>
       </div>
@@ -218,7 +218,10 @@ export default function SellingCreditsPage() {
   if (!balance) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#CBB57B]" />
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#CBB57B] mx-auto mb-2" />
+          <p className="text-gray-600">{t('loading')}</p>
+        </div>
       </div>
     );
   }
@@ -240,9 +243,12 @@ export default function SellingCreditsPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <PageHeader
-        title="Platform Subscription"
-        description="Manage your monthly subscription to keep your products active"
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Selling Credits' }]}
+        title={t('pageTitle')}
+        description={t('pageSubtitle')}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.sellingCredits') },
+        ]}
       />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -260,15 +266,13 @@ export default function SellingCreditsPage() {
                   <AlertTriangle className="w-8 h-8 text-red-600 animate-pulse" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-red-900 mb-1">
-                    Your credits have been depleted!
-                  </h3>
+                  <h3 className="text-lg font-bold text-red-900 mb-1">{t('grace.title')}</h3>
                   <p className="text-red-700 mb-3">
-                    Your products are currently inactive. You have{' '}
+                    {t('grace.message')}{' '}
                     <span className="font-bold">
-                      {graceDays} day{graceDays !== 1 ? 's' : ''}
+                      {graceDays} {graceDays !== 1 ? t('grace.days') : t('grace.day')}
                     </span>{' '}
-                    remaining in your grace period before they are permanently suspended.
+                    {t('grace.remaining')}
                   </p>
                   <button
                     onClick={() => {
@@ -277,7 +281,7 @@ export default function SellingCreditsPage() {
                     }}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                   >
-                    Purchase Credits Now <ArrowRight className="w-4 h-4" />
+                    {t('actions.purchaseNow')} <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -295,10 +299,10 @@ export default function SellingCreditsPage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <CreditCard className="w-8 h-8" />
-              <h2 className="text-2xl font-bold">Credit Balance</h2>
+              <h2 className="text-2xl font-bold">{t('balance.title')}</h2>
             </div>
             <div className="text-right">
-              <div className="text-sm opacity-90">Current Balance</div>
+              <div className="text-sm opacity-90">{t('balance.current')}</div>
               <motion.div
                 key={balance.creditsBalance}
                 initial={{ scale: 1.2, opacity: 0 }}
@@ -308,7 +312,7 @@ export default function SellingCreditsPage() {
                 {balance.creditsBalance}
               </motion.div>
               <div className="text-sm opacity-90">
-                month{balance.creditsBalance !== 1 ? 's' : ''}
+                {balance.creditsBalance !== 1 ? t('balance.months') : t('balance.month')}
               </div>
             </div>
           </div>
@@ -316,9 +320,10 @@ export default function SellingCreditsPage() {
           {/* Progress Bar */}
           <div className="mb-6">
             <div className="flex justify-between text-sm mb-2 opacity-90">
-              <span>Available Credits</span>
+              <span>{t('balance.available')}</span>
               <span>
-                {balance.creditsBalance} of {maxMonths} months ({progressPercent.toFixed(0)}%)
+                {balance.creditsBalance} {t('balance.of')} {maxMonths} {t('balance.months')} (
+                {progressPercent.toFixed(0)}%)
               </span>
             </div>
             <div className="h-3 bg-white/20 rounded-full overflow-hidden">
@@ -336,40 +341,48 @@ export default function SellingCreditsPage() {
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Calendar className="w-4 h-4" />
-                <span className="text-sm opacity-90">Expires On</span>
+                <span className="text-sm opacity-90">{t('balance.expiresOn')}</span>
               </div>
               <div className="text-lg font-semibold">
-                {balance.creditsExpiresAt ? formatDate(balance.creditsExpiresAt) : 'No expiry'}
+                {balance.creditsExpiresAt
+                  ? formatDate(balance.creditsExpiresAt)
+                  : t('balance.noExpiry')}
               </div>
               {expiryDays !== null && expiryDays > 0 && (
-                <div className="text-sm opacity-75">in {expiryDays} days</div>
+                <div className="text-sm opacity-75">
+                  {t('balance.inDays', { days: expiryDays })}
+                </div>
               )}
             </div>
 
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Clock className="w-4 h-4" />
-                <span className="text-sm opacity-90">Last Deducted</span>
+                <span className="text-sm opacity-90">{t('balance.lastDeducted')}</span>
               </div>
               <div className="text-lg font-semibold">
-                {balance.creditsLastDeducted ? formatDate(balance.creditsLastDeducted) : 'Never'}
+                {balance.creditsLastDeducted
+                  ? formatDate(balance.creditsLastDeducted)
+                  : t('balance.never')}
               </div>
             </div>
 
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
               <div className="flex items-center gap-2 mb-1">
                 <CheckCircle className="w-4 h-4" />
-                <span className="text-sm opacity-90">Status</span>
+                <span className="text-sm opacity-90">{t('balance.status')}</span>
               </div>
               <div className="text-lg font-semibold">
                 {balance.isInGracePeriod
-                  ? 'Grace Period'
+                  ? t('balance.statusGrace')
                   : balance.creditsBalance > 0
-                    ? 'Active'
-                    : 'Depleted'}
+                    ? t('balance.statusActive')
+                    : t('balance.statusDepleted')}
               </div>
               {balance.isInGracePeriod && graceDays !== null && (
-                <div className="text-sm opacity-75">{graceDays} days left</div>
+                <div className="text-sm opacity-75">
+                  {t('balance.daysLeft', { days: graceDays })}
+                </div>
               )}
             </div>
           </div>
@@ -383,12 +396,12 @@ export default function SellingCreditsPage() {
           transition={{ delay: 0.2 }}
           className="bg-white rounded-2xl shadow-xl p-8"
         >
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Purchase Credits</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('purchase.title')}</h2>
 
           {/* Month Selection Grid */}
           <div className="mb-8">
             <label className="block text-sm font-medium text-gray-700 mb-4">
-              Select number of months (${price.toFixed(2)}/month)
+              {t('purchase.selectMonths', { price: price.toFixed(2) })}
             </label>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((months) => (
@@ -407,7 +420,9 @@ export default function SellingCreditsPage() {
                   `}
                 >
                   {months}
-                  <div className="text-xs mt-1 opacity-75">{months === 1 ? 'month' : 'months'}</div>
+                  <div className="text-xs mt-1 opacity-75">
+                    {months === 1 ? t('purchase.month') : t('purchase.months')}
+                  </div>
                   {selectedMonths === months && (
                     <motion.div
                       layoutId="selected-month"
@@ -424,16 +439,16 @@ export default function SellingCreditsPage() {
           {/* Price Calculation */}
           <div className="bg-gray-50 rounded-xl p-6 mb-6">
             <div className="flex justify-between items-center text-lg mb-2">
-              <span className="text-gray-600">Price per month</span>
+              <span className="text-gray-600">{t('purchase.pricePerMonth')}</span>
               <span className="font-semibold">${price.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center text-lg mb-2">
-              <span className="text-gray-600">Selected months</span>
+              <span className="text-gray-600">{t('purchase.selectedMonths')}</span>
               <span className="font-semibold">× {selectedMonths}</span>
             </div>
             <div className="border-t border-gray-300 my-3" />
             <div className="flex justify-between items-center text-2xl">
-              <span className="font-bold text-gray-900">Total</span>
+              <span className="font-bold text-gray-900">{t('purchase.total')}</span>
               <span className="font-bold text-[#CBB57B]">${totalPrice.toFixed(2)}</span>
             </div>
           </div>
@@ -455,13 +470,20 @@ export default function SellingCreditsPage() {
             {isPurchasing ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Processing...
+                {t('actions.processing')}
               </>
             ) : (
               <>
                 <CreditCard className="w-5 h-5" />
-                Purchase {selectedMonths} Month{selectedMonths > 1 ? 's' : ''} - $
-                {totalPrice.toFixed(2)}
+                {selectedMonths > 1
+                  ? t('purchase.buttonTextPlural', {
+                      months: selectedMonths,
+                      total: totalPrice.toFixed(2),
+                    })
+                  : t('purchase.buttonText', {
+                      months: selectedMonths,
+                      total: totalPrice.toFixed(2),
+                    })}
                 <ArrowRight className="w-5 h-5" />
               </>
             )}
@@ -469,7 +491,7 @@ export default function SellingCreditsPage() {
 
           {!balance.canPurchase && (
             <p className="text-sm text-red-600 text-center mt-3">
-              Your account must be approved before purchasing credits
+              {t('purchase.accountNotApproved')}
             </p>
           )}
         </motion.div>
@@ -482,7 +504,7 @@ export default function SellingCreditsPage() {
             transition={{ delay: 0.3 }}
             className="bg-white rounded-2xl shadow-xl p-8"
           >
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Transaction History</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('history.title')}</h2>
 
             <div className="space-y-4">
               {history.transactions.map((transaction) => {
@@ -508,11 +530,13 @@ export default function SellingCreditsPage() {
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <h3 className="font-semibold text-gray-900">
-                              {transaction.type.charAt(0) + transaction.type.slice(1).toLowerCase()}
+                              {t(`history.types.${transaction.type.toLowerCase()}`)}
                             </h3>
                             <p className="text-sm text-gray-600 mt-1">
                               {transaction.description ||
-                                `${transaction.type.toLowerCase()} transaction`}
+                                t('history.description.fallback', {
+                                  type: transaction.type.toLowerCase(),
+                                })}
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
                               {formatDate(transaction.createdAt)}

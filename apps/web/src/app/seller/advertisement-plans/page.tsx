@@ -121,7 +121,10 @@ export default function SellerAdvertisementPlansPage() {
       <PageHeader
         title={t('pageTitle')}
         description={t('pageSubtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Advertisement Plans' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.adPlans') },
+        ]}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

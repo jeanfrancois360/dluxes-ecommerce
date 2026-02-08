@@ -8,6 +8,7 @@ import { Lock, AlertCircle, Crown, Package, Loader2, X, ArrowRight } from 'lucid
 import ProductForm from '@/components/seller/ProductForm';
 import { api, APIError } from '@/lib/api/client';
 import { useMySubscription, useCanListProductType } from '@/hooks/use-subscription';
+import { useTranslations } from 'next-intl';
 
 // Error modal state type
 interface ErrorModalState {
@@ -21,7 +22,10 @@ interface ErrorModalState {
 }
 
 // Parse API error into user-friendly format
-function parseProductError(error: any): {
+function parseProductError(
+  error: any,
+  t: any
+): {
   title: string;
   message: string;
   action?: { label: string; href: string };
@@ -31,11 +35,11 @@ function parseProductError(error: any): {
 
   if (errorData?.userMessage) {
     return {
-      title: getErrorTitle(errorData.code),
+      title: getErrorTitle(errorData.code, t),
       message: errorData.userMessage,
       action: errorData.actionUrl
         ? {
-            label: getActionLabel(errorData.action),
+            label: getActionLabel(errorData.action, t),
             href: errorData.actionUrl,
           }
         : undefined,
@@ -43,14 +47,14 @@ function parseProductError(error: any): {
   }
 
   // Fallback: parse the error message string
-  const errorMessage = error?.message || error?.toString() || 'An unexpected error occurred';
+  const errorMessage = error?.message || error?.toString() || t('errors.messages.unexpectedError');
 
   // Check for common error patterns
   if (errorMessage.includes('subscription') || errorMessage.includes('credits')) {
     return {
-      title: 'Subscription Required',
-      message: 'You need an active subscription to list this type of product.',
-      action: { label: 'Get Subscription', href: '/seller/selling-credits' },
+      title: t('errors.titles.subscriptionRequired'),
+      message: t('errors.messages.needSubscription'),
+      action: { label: t('errors.actions.getSubscription'), href: '/seller/selling-credits' },
     };
   }
 
@@ -62,18 +66,17 @@ function parseProductError(error: any): {
       errorMessage.includes('RENTAL'))
   ) {
     return {
-      title: 'Plan Upgrade Required',
-      message:
-        "Your current plan doesn't support this product type. Upgrade to unlock this feature.",
-      action: { label: 'View Plans', href: '/seller/subscription/plans' },
+      title: t('errors.titles.planUpgradeRequired'),
+      message: t('errors.messages.planDoesntSupport'),
+      action: { label: t('errors.actions.viewPlans'), href: '/seller/subscription/plans' },
     };
   }
 
   if (errorMessage.includes('listing') && errorMessage.includes('limit')) {
     return {
-      title: 'Listing Limit Reached',
-      message: "You've reached the maximum number of listings for your plan.",
-      action: { label: 'Upgrade Plan', href: '/seller/subscription/plans' },
+      title: t('errors.titles.limitReached'),
+      message: t('errors.messages.reachedLimit'),
+      action: { label: t('errors.actions.upgradePlan'), href: '/seller/subscription/plans' },
     };
   }
 
@@ -82,44 +85,42 @@ function parseProductError(error: any): {
     (errorMessage.includes('approved') || errorMessage.includes('ACTIVE'))
   ) {
     return {
-      title: 'Store Not Active',
-      message: 'Your store must be approved before you can add products.',
-      action: { label: 'View Store Status', href: '/seller/dashboard' },
+      title: t('errors.titles.storeNotActive'),
+      message: t('errors.messages.storeNotApproved'),
+      action: { label: t('errors.actions.viewStoreStatus'), href: '/seller/dashboard' },
     };
   }
 
   // Default error
   return {
-    title: 'Failed to Create Product',
-    message:
-      errorMessage.length > 200
-        ? 'There was a problem creating your product. Please try again.'
-        : errorMessage,
+    title: t('errors.titles.createFailed'),
+    message: errorMessage.length > 200 ? t('errors.messages.genericError') : errorMessage,
   };
 }
 
-function getErrorTitle(code: string): string {
+function getErrorTitle(code: string, t: any): string {
   const titles: Record<string, string> = {
-    NO_SUBSCRIPTION: 'Subscription Required',
-    PRODUCT_TYPE_NOT_ALLOWED: 'Product Type Not Available',
-    TIER_UPGRADE_REQUIRED: 'Upgrade Required',
-    LISTING_LIMIT_REACHED: 'Listing Limit Reached',
-    CANNOT_LIST_PRODUCT: 'Cannot Create Listing',
+    NO_SUBSCRIPTION: t('errors.titles.subscriptionRequired'),
+    PRODUCT_TYPE_NOT_ALLOWED: t('errors.titles.typeNotAvailable'),
+    TIER_UPGRADE_REQUIRED: t('errors.titles.upgradeRequired'),
+    LISTING_LIMIT_REACHED: t('errors.titles.limitReached'),
+    CANNOT_LIST_PRODUCT: t('errors.titles.cannotList'),
   };
-  return titles[code] || 'Error';
+  return titles[code] || t('errors.titles.default');
 }
 
-function getActionLabel(action: string): string {
+function getActionLabel(action: string, t: any): string {
   const labels: Record<string, string> = {
-    subscribe: 'Get Subscription',
-    upgrade: 'Upgrade Plan',
-    contact: 'Contact Support',
+    subscribe: t('errors.actions.getSubscription'),
+    upgrade: t('errors.actions.upgradePlan'),
+    contact: t('errors.actions.contactSupport'),
   };
-  return labels[action] || 'Learn More';
+  return labels[action] || t('errors.actions.learnMore');
 }
 
 export default function NewProductPage() {
   const router = useRouter();
+  const t = useTranslations('sellerProductsNew');
   const [selectedProductType, setSelectedProductType] = useState('PHYSICAL');
   const [isCheckingLimits, setIsCheckingLimits] = useState(true);
   const [canCreate, setCanCreate] = useState<any>(null);
@@ -154,7 +155,7 @@ export default function NewProductPage() {
       router.push('/seller/products?success=created');
     } catch (error: any) {
       console.error('Failed to create product:', error);
-      const parsed = parseProductError(error);
+      const parsed = parseProductError(error, t);
       setErrorModal({
         isOpen: true,
         title: parsed.title,
@@ -165,7 +166,7 @@ export default function NewProductPage() {
   };
 
   const handleCancel = () => {
-    if (confirm('Are you sure you want to cancel? All unsaved changes will be lost.')) {
+    if (confirm(t('form.cancelConfirm'))) {
       router.push('/seller/products');
     }
   };
@@ -180,7 +181,7 @@ export default function NewProductPage() {
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-[#CBB57B] animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Checking subscription limits...</p>
+          <p className="text-gray-600">{t('loading.title')}</p>
         </div>
       </div>
     );
@@ -190,14 +191,14 @@ export default function NewProductPage() {
   if (canCreate && !canCreate.allowed) {
     const { reasons } = canCreate;
     const reason = !reasons.hasMonthlyCredits
-      ? 'You need a platform subscription to create products'
+      ? t('reasons.noSubscription')
       : !reasons.hasListingCapacity
-        ? 'You have reached your listing limit'
+        ? t('reasons.noCapacity')
         : !reasons.productTypeAllowed
-          ? `Your plan doesn't support ${selectedProductType} listings`
+          ? t('reasons.typeNotAllowed', { productType: selectedProductType })
           : !reasons.meetsTierRequirement
-            ? 'Your plan tier is too low for this product type'
-            : 'Cannot create listing';
+            ? t('reasons.tierTooLow')
+            : t('reasons.cannotCreate');
 
     return (
       <div className="min-h-screen bg-neutral-50 py-12">
@@ -214,7 +215,7 @@ export default function NewProductPage() {
               </div>
 
               {/* Title */}
-              <h1 className="text-3xl font-bold text-gray-900 mb-3">Listing Limit Reached</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-3">{t('limitReached.title')}</h1>
               <p className="text-lg text-gray-600 mb-6">{reason}</p>
 
               {/* Current Plan Info */}
@@ -222,14 +223,18 @@ export default function NewProductPage() {
                 <div className="bg-gray-50 rounded-xl p-6 mb-6 text-left">
                   <div className="flex items-center gap-3 mb-4">
                     <Crown className="w-5 h-5 text-[#CBB57B]" />
-                    <h3 className="font-semibold text-gray-900">Your Current Plan: {plan.name}</h3>
+                    <h3 className="font-semibold text-gray-900">
+                      {t('limitReached.yourCurrentPlan', { planName: plan.name })}
+                    </h3>
                   </div>
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Active Listings</span>
+                      <span className="text-gray-600">{t('limitReached.activeListings')}</span>
                       <span className="font-semibold text-gray-900">
                         {subscription.activeListingsCount} /{' '}
-                        {plan.maxActiveListings === -1 ? '∞' : plan.maxActiveListings}
+                        {plan.maxActiveListings === -1
+                          ? t('listingInfo.unlimited')
+                          : plan.maxActiveListings}
                       </span>
                     </div>
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -244,7 +249,7 @@ export default function NewProductPage() {
                       />
                     </div>
                     <div className="flex justify-between text-sm pt-2">
-                      <span className="text-gray-600">Available Credits</span>
+                      <span className="text-gray-600">{t('limitReached.availableCredits')}</span>
                       <span className="font-semibold text-gray-900">
                         {subscription.creditsAllocated - subscription.creditsUsed}
                       </span>
@@ -252,7 +257,9 @@ export default function NewProductPage() {
 
                     {plan.allowedProductTypes && (
                       <div className="pt-2">
-                        <span className="text-sm text-gray-600">Allowed Product Types:</span>
+                        <span className="text-sm text-gray-600">
+                          {t('limitReached.allowedProductTypes')}
+                        </span>
                         <div className="flex flex-wrap gap-2 mt-2">
                           {(plan.allowedProductTypes as string[]).map((type) => (
                             <span
@@ -274,19 +281,19 @@ export default function NewProductPage() {
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-blue-900">
-                    <p className="font-semibold mb-2">Why can't I create a listing?</p>
+                    <p className="font-semibold mb-2">{t('limitReached.whyCantCreate')}</p>
                     <ul className="space-y-1 list-disc list-inside">
-                      {!reasons.hasMonthlyCredits && (
-                        <li>You need an active platform subscription to list products</li>
-                      )}
-                      {!reasons.hasListingCapacity && (
-                        <li>You've reached your maximum active listings limit</li>
-                      )}
+                      {!reasons.hasMonthlyCredits && <li>{t('limitReached.needSubscription')}</li>}
+                      {!reasons.hasListingCapacity && <li>{t('limitReached.reachedLimit')}</li>}
                       {!reasons.productTypeAllowed && (
-                        <li>Your plan doesn't include {selectedProductType} product listings</li>
+                        <li>
+                          {t('limitReached.planDoesntInclude', {
+                            productType: selectedProductType,
+                          })}
+                        </li>
                       )}
                       {!reasons.meetsTierRequirement && (
-                        <li>This product type requires a higher subscription tier</li>
+                        <li>{t('limitReached.requiresHigherTier')}</li>
                       )}
                     </ul>
                   </div>
@@ -299,7 +306,7 @@ export default function NewProductPage() {
                   href="/seller/products"
                   className="px-6 py-3 border-2 border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Back to Products
+                  {t('limitReached.backToProducts')}
                 </Link>
                 <Link
                   href={
@@ -309,7 +316,9 @@ export default function NewProductPage() {
                   }
                   className="px-6 py-3 bg-[#CBB57B] text-black rounded-xl font-semibold hover:bg-[#b9a369] transition-colors shadow-md"
                 >
-                  {!reasons.hasMonthlyCredits ? 'Purchase Credits' : 'Upgrade Plan'}
+                  {!reasons.hasMonthlyCredits
+                    ? t('limitReached.purchaseCredits')
+                    : t('limitReached.upgradePlan')}
                 </Link>
               </div>
             </div>
@@ -341,21 +350,23 @@ export default function NewProductPage() {
                     />
                   </svg>
                 </button>
-                <h1 className="text-3xl font-bold text-black">Add New Product</h1>
+                <h1 className="text-3xl font-bold text-black">{t('pageTitle')}</h1>
               </div>
               <div className="ml-14 flex items-center justify-between">
-                <p className="text-neutral-600">Create a new product for your store</p>
+                <p className="text-neutral-600">{t('pageSubtitle')}</p>
                 {subscription && plan && (
                   <div className="flex items-center gap-2 text-sm">
                     <Package className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-600">
-                      Using{' '}
+                      {t('listingInfo.using')}{' '}
                       <strong className="text-gray-900">{subscription.activeListingsCount}</strong>{' '}
-                      of{' '}
+                      {t('listingInfo.of')}{' '}
                       <strong className="text-gray-900">
-                        {plan.maxActiveListings === -1 ? '∞' : plan.maxActiveListings}
+                        {plan.maxActiveListings === -1
+                          ? t('listingInfo.unlimited')
+                          : plan.maxActiveListings}
                       </strong>{' '}
-                      listings
+                      {t('listingInfo.listings')}
                     </span>
                   </div>
                 )}
@@ -375,19 +386,19 @@ export default function NewProductPage() {
                   <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-amber-900">
-                      You're using{' '}
-                      {Math.round(
-                        (subscription.activeListingsCount / plan.maxActiveListings) * 100
-                      )}
-                      % of your listing capacity
+                      {t('banner.usingCapacity', {
+                        percentage: Math.round(
+                          (subscription.activeListingsCount / plan.maxActiveListings) * 100
+                        ),
+                      })}
                     </p>
                     <p className="text-sm text-amber-800 mt-1">
-                      Consider upgrading your plan to add more products.{' '}
+                      {t('banner.considerUpgrade')}{' '}
                       <Link
                         href="/seller/subscription/plans"
                         className="font-semibold underline hover:text-amber-900"
                       >
-                        View Plans
+                        {t('banner.viewPlans')}
                       </Link>
                     </p>
                   </div>
@@ -454,7 +465,7 @@ export default function NewProductPage() {
                   onClick={closeErrorModal}
                   className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  Close
+                  {t('modal.close')}
                 </button>
                 {errorModal.action && (
                   <Link

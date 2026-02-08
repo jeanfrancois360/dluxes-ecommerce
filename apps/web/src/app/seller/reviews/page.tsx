@@ -124,9 +124,12 @@ export default function SellerReviewsPage() {
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
       <PageHeader
-        title="Product Reviews"
-        description="See what customers are saying about your products"
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Reviews' }]}
+        title={t('title')}
+        description={t('subtitle')}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.reviews') },
+        ]}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

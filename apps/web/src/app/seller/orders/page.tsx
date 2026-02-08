@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { sellerAPI } from '@/lib/api/seller';
 import useSWR from 'swr';
@@ -66,6 +67,7 @@ function PaymentBadge({ status }: { status: string }) {
 export default function SellerOrdersPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const t = useTranslations('sellerOrders');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
@@ -114,7 +116,7 @@ export default function SellerOrdersPage() {
         id: order.id,
         orderNumber: order.orderNumber,
         customerName:
-          `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Unknown',
+          `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || t('unknown'),
         customerEmail: order.user.email,
         total: sellerTotal,
         status: order.status,
@@ -159,10 +161,10 @@ export default function SellerOrdersPage() {
       setSelectedOrder(null);
 
       // Show success toast (assuming toast is set up)
-      alert('Order status updated successfully!');
+      alert(t('updateStatus.success'));
     } catch (error: any) {
       console.error('Failed to update order status:', error);
-      alert(error?.response?.data?.message || 'Failed to update order status');
+      alert(error?.response?.data?.message || t('updateStatus.error'));
     } finally {
       setUpdatingStatus(false);
     }
@@ -196,9 +198,12 @@ export default function SellerOrdersPage() {
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
       <PageHeader
-        title="Orders"
-        description="Manage orders for your products"
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Orders' }]}
+        title={t('pageTitle')}
+        description={t('pageSubtitle')}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.orders') },
+        ]}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -209,7 +214,7 @@ export default function SellerOrdersPage() {
             animate={{ opacity: 1, y: 0 }}
             className="bg-gradient-to-br from-neutral-50 via-neutral-50/50 to-white border border-neutral-100 rounded-xl p-6 shadow-sm"
           >
-            <p className="text-sm text-neutral-600 font-medium">Total Orders</p>
+            <p className="text-sm text-neutral-600 font-medium">{t('stats.totalOrders')}</p>
             <p className="text-3xl font-bold text-neutral-900 mt-2">{stats.totalOrders}</p>
           </motion.div>
           <motion.div
@@ -218,7 +223,7 @@ export default function SellerOrdersPage() {
             transition={{ delay: 0.1 }}
             className="bg-gradient-to-br from-blue-50 via-blue-50/50 to-white border border-blue-100 rounded-xl p-6 shadow-sm"
           >
-            <p className="text-sm text-neutral-600 font-medium">Processing</p>
+            <p className="text-sm text-neutral-600 font-medium">{t('stats.processing')}</p>
             <p className="text-3xl font-bold text-blue-600 mt-2">{stats.processing}</p>
           </motion.div>
           <motion.div
@@ -227,7 +232,7 @@ export default function SellerOrdersPage() {
             transition={{ delay: 0.2 }}
             className="bg-gradient-to-br from-purple-50 via-purple-50/50 to-white border border-purple-100 rounded-xl p-6 shadow-sm"
           >
-            <p className="text-sm text-neutral-600 font-medium">Shipped</p>
+            <p className="text-sm text-neutral-600 font-medium">{t('stats.shipped')}</p>
             <p className="text-3xl font-bold text-purple-600 mt-2">{stats.shipped}</p>
           </motion.div>
           <motion.div
@@ -236,7 +241,7 @@ export default function SellerOrdersPage() {
             transition={{ delay: 0.3 }}
             className="bg-gradient-to-br from-amber-50 via-yellow-50/50 to-white border border-amber-100 rounded-xl p-6 shadow-sm"
           >
-            <p className="text-sm text-neutral-600 font-medium">Total Revenue</p>
+            <p className="text-sm text-neutral-600 font-medium">{t('stats.totalRevenue')}</p>
             <p className="text-3xl font-bold text-gold mt-2">
               ${formatCurrencyAmount(stats.totalRevenue, 2)}
             </p>
@@ -249,7 +254,7 @@ export default function SellerOrdersPage() {
             <div>
               <input
                 type="text"
-                placeholder="Search by order number or customer..."
+                placeholder={t('filters.searchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black placeholder-neutral-500 rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all font-medium"
@@ -261,12 +266,12 @@ export default function SellerOrdersPage() {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-4 py-2.5 bg-white border-2 border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all font-medium cursor-pointer"
               >
-                <option value="">All Status</option>
-                <option value="PENDING">Pending</option>
-                <option value="PROCESSING">Processing</option>
-                <option value="SHIPPED">Shipped</option>
-                <option value="DELIVERED">Delivered</option>
-                <option value="CANCELLED">Cancelled</option>
+                <option value="">{t('filters.allStatus')}</option>
+                <option value="PENDING">{t('status.PENDING')}</option>
+                <option value="PROCESSING">{t('status.PROCESSING')}</option>
+                <option value="SHIPPED">{t('status.SHIPPED')}</option>
+                <option value="DELIVERED">{t('status.DELIVERED')}</option>
+                <option value="CANCELLED">{t('status.CANCELLED')}</option>
               </select>
             </div>
             <div>
@@ -464,7 +469,7 @@ export default function SellerOrdersPage() {
                   disabled={updatingStatus}
                   className="flex-1 px-4 py-2 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {updatingStatus ? 'Updating...' : 'Confirm Update'}
+                  {updatingStatus ? t('updateStatus.updating') : t('updateStatus.confirm')}
                 </button>
               </div>
             </motion.div>

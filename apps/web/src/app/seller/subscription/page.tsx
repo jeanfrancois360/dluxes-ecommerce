@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useMySubscription, useCreditBalance } from '@/hooks/use-subscription';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { format } from 'date-fns';
@@ -9,6 +10,7 @@ import Link from 'next/link';
 import PageHeader from '@/components/seller/page-header';
 
 export default function SellerSubscriptionPage() {
+  const t = useTranslations('sellerSubscription');
   const { subscription, plan, tier, isActive, isLoading: subLoading } = useMySubscription();
   const { availableCredits, isLoading: creditsLoading } = useCreditBalance();
 
@@ -22,7 +24,7 @@ export default function SellerSubscriptionPage() {
             <div className="absolute inset-0 rounded-full border-4 border-neutral-200"></div>
             <div className="absolute inset-0 rounded-full border-4 border-[#CBB57B] border-t-transparent animate-spin"></div>
           </div>
-          <p className="text-gray-600 font-medium">Loading subscription...</p>
+          <p className="text-gray-600 font-medium">{t('loading')}</p>
         </div>
       </div>
     );
@@ -40,9 +42,12 @@ export default function SellerSubscriptionPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <PageHeader
-        title="My Subscription"
-        description="Manage your subscription and view usage"
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Subscription' }]}
+        title={t('pageTitle')}
+        description={t('pageSubtitle')}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.subscription') },
+        ]}
       />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -55,7 +60,7 @@ export default function SellerSubscriptionPage() {
                   <Crown className="w-8 h-8 text-[#CBB57B]" />
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Current Plan</p>
+                  <p className="text-gray-400 text-sm">{t('currentPlan')}</p>
                   <h2 className="text-2xl font-bold">{plan?.name || 'Free'}</h2>
                 </div>
               </div>
@@ -68,12 +73,12 @@ export default function SellerSubscriptionPage() {
                 <span
                   className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-400' : 'bg-gray-400'}`}
                 />
-                {isActive ? 'Active' : 'Inactive'}
+                {isActive ? t('status.active') : t('status.inactive')}
               </span>
             </div>
             {subscription && (
               <p className="text-gray-400 text-sm mt-4">
-                Renews on {format(new Date(subscription.currentPeriodEnd), 'MMMM d, yyyy')}
+                {t('renewsOn')} {format(new Date(subscription.currentPeriodEnd), 'MMMM d, yyyy')}
               </p>
             )}
           </div>
@@ -84,13 +89,16 @@ export default function SellerSubscriptionPage() {
               {/* Active Listings */}
               <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-blue-700 uppercase">Listings</p>
+                  <p className="text-xs font-semibold text-blue-700 uppercase">
+                    {t('usage.listings')}
+                  </p>
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
                   {subscription?.activeListingsCount || 0}
                 </p>
                 <p className="text-sm text-gray-600">
-                  of {plan?.maxActiveListings === -1 ? '∞' : plan?.maxActiveListings}
+                  {t('usage.of')}{' '}
+                  {plan?.maxActiveListings === -1 ? t('usage.unlimited') : plan?.maxActiveListings}
                 </p>
                 <div className="mt-2 h-1.5 bg-blue-200 rounded-full overflow-hidden">
                   <div
@@ -103,11 +111,13 @@ export default function SellerSubscriptionPage() {
               {/* Credits */}
               <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-purple-700 uppercase">Credits</p>
+                  <p className="text-xs font-semibold text-purple-700 uppercase">
+                    {t('usage.credits')}
+                  </p>
                   <Zap className="w-4 h-4 text-purple-600" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">{availableCredits}</p>
-                <p className="text-sm text-gray-600">available</p>
+                <p className="text-sm text-gray-600">{t('usage.available')}</p>
                 <div className="mt-2 h-1.5 bg-purple-200 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-purple-500 rounded-full"
@@ -119,13 +129,17 @@ export default function SellerSubscriptionPage() {
               {/* Featured Slots */}
               <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-amber-700 uppercase">Featured</p>
+                  <p className="text-xs font-semibold text-amber-700 uppercase">
+                    {t('usage.featured')}
+                  </p>
                   <Star className="w-4 h-4 text-amber-600 fill-amber-600" />
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
                   {subscription?.featuredSlotsUsed || 0}
                 </p>
-                <p className="text-sm text-gray-600">of {plan?.featuredSlotsPerMonth || 0}</p>
+                <p className="text-sm text-gray-600">
+                  {t('usage.of')} {plan?.featuredSlotsPerMonth || 0}
+                </p>
                 <div className="mt-2 h-1.5 bg-amber-200 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-amber-500 rounded-full"
@@ -137,12 +151,14 @@ export default function SellerSubscriptionPage() {
               {/* Listing Duration */}
               <div className="p-4 bg-green-50 rounded-xl border border-green-100">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-green-700 uppercase">Duration</p>
+                  <p className="text-xs font-semibold text-green-700 uppercase">
+                    {t('usage.duration')}
+                  </p>
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
                   {plan?.listingDurationDays || 30}
                 </p>
-                <p className="text-sm text-gray-600">days/listing</p>
+                <p className="text-sm text-gray-600">{t('usage.daysPerListing')}</p>
               </div>
             </div>
           </div>
@@ -156,9 +172,9 @@ export default function SellerSubscriptionPage() {
           >
             <div>
               <h3 className="font-semibold text-gray-900 group-hover:text-[#CBB57B] transition-colors">
-                {tier === 'FREE' ? 'Upgrade Plan' : 'Change Plan'}
+                {tier === 'FREE' ? t('actions.upgradePlan') : t('actions.changePlan')}
               </h3>
-              <p className="text-sm text-gray-500">View available plans and features</p>
+              <p className="text-sm text-gray-500">{t('actions.viewPlans')}</p>
             </div>
             <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-[#CBB57B] group-hover:translate-x-1 transition-all" />
           </Link>
@@ -169,9 +185,9 @@ export default function SellerSubscriptionPage() {
           >
             <div>
               <h3 className="font-semibold text-gray-900 group-hover:text-[#CBB57B] transition-colors">
-                Buy Credits
+                {t('actions.buyCredits')}
               </h3>
-              <p className="text-sm text-gray-500">Purchase additional listing credits</p>
+              <p className="text-sm text-gray-500">{t('actions.purchaseCredits')}</p>
             </div>
             <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-[#CBB57B] group-hover:translate-x-1 transition-all" />
           </Link>
