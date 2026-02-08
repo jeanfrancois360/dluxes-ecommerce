@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * Profile Edit Page
+ * Seller Profile Page
  *
- * Allows users to edit their profile information including:
+ * Allows sellers to edit their personal profile information including:
  * - First name, Last name
  * - Email (with verification note)
  * - Phone number
@@ -17,7 +17,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/use-auth';
 import { toast, standardToasts } from '@/lib/utils/toast';
-import PageHeader from '@/components/buyer/page-header';
+import PageHeader from '@/components/seller/page-header';
 import { User, Mail, Phone, Upload, Trash2 } from 'lucide-react';
 
 interface ProfileFormData {
@@ -34,7 +34,7 @@ interface FormErrors {
   phone?: string;
 }
 
-export default function ProfilePage() {
+export default function SellerProfilePage() {
   const router = useRouter();
   const t = useTranslations('account.profile');
   const {
@@ -88,7 +88,7 @@ export default function ProfilePage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && isInitialized && !isAuthenticated) {
-      router.push('/auth/login?redirect=/account/profile');
+      router.push('/auth/login?redirect=/seller/profile');
     }
   }, [authLoading, isInitialized, isAuthenticated, router]);
 
@@ -222,7 +222,7 @@ export default function ProfilePage() {
       <PageHeader
         title={t('title')}
         description={t('subtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'My Profile' }]}
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'My Profile' }]}
       />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8">
@@ -559,12 +559,12 @@ export default function ProfilePage() {
                   </div>
                 </form>
 
-                {/* Security Link */}
+                {/* Security and Store Settings Links */}
                 <div className="mt-8 pt-8 border-t border-neutral-200">
-                  <h3 className="text-lg font-bold font-['Poppins'] mb-4">{t('security')}</h3>
+                  <h3 className="text-lg font-bold font-['Poppins'] mb-4">Quick Links</h3>
                   <div className="space-y-3">
                     <Link
-                      href="/account/security"
+                      href="/seller/security"
                       className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors group"
                     >
                       <div className="flex items-center gap-3">
@@ -586,6 +586,48 @@ export default function ProfilePage() {
                         <div>
                           <p className="font-medium text-neutral-800">{t('securitySettings')}</p>
                           <p className="text-sm text-neutral-500">{t('securitySettingsDesc')}</p>
+                        </div>
+                      </div>
+                      <svg
+                        className="w-5 h-5 text-neutral-400 group-hover:text-gold group-hover:translate-x-1 transition-all"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </Link>
+
+                    <Link
+                      href="/seller/store/settings"
+                      className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-neutral-200 rounded-lg flex items-center justify-center group-hover:bg-gold/20 transition-colors">
+                          <svg
+                            className="w-5 h-5 text-neutral-600 group-hover:text-gold transition-colors"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                            />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-neutral-800">Store Settings</p>
+                          <p className="text-sm text-neutral-500">
+                            Manage your store information and branding
+                          </p>
                         </div>
                       </div>
                       <svg

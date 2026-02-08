@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * Security Settings Page
+ * Seller Security Settings Page
  *
- * Allows users to manage security settings:
+ * Allows sellers to manage security settings:
  * - Change password
  * - Two-factor authentication status
- * - Active sessions (future)
+ * - Active sessions
  */
 
 import { useState, useEffect } from 'react';
@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
-import PageHeader from '@/components/buyer/page-header';
+import PageHeader from '@/components/seller/page-header';
 import { useAuth } from '@/hooks/use-auth';
 import { toast, standardToasts } from '@/lib/utils/toast';
 
@@ -50,7 +50,7 @@ interface FormErrors {
   confirmPassword?: string;
 }
 
-export default function SecurityPage() {
+export default function SellerSecurityPage() {
   const router = useRouter();
   const {
     user,
@@ -102,7 +102,7 @@ export default function SecurityPage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && isInitialized && !isAuthenticated) {
-      router.push('/auth/login?redirect=/account/security');
+      router.push('/auth/login?redirect=/seller/security');
     }
   }, [authLoading, isInitialized, isAuthenticated, router]);
 
@@ -419,7 +419,7 @@ export default function SecurityPage() {
       <PageHeader
         title={t('title')}
         description={t('subtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'Security' }]}
+        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Security' }]}
       />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8">
@@ -540,7 +540,7 @@ export default function SecurityPage() {
                 <h3 className="text-lg font-bold font-['Poppins'] mb-4">{t('quickLinks')}</h3>
                 <div className="space-y-2">
                   <Link
-                    href="/account/profile"
+                    href="/seller/profile"
                     className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-colors group"
                   >
                     <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center group-hover:bg-gold/20 transition-colors">
@@ -563,7 +563,7 @@ export default function SecurityPage() {
                     </span>
                   </Link>
                   <Link
-                    href="/account/addresses"
+                    href="/seller/store/settings"
                     className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-colors group"
                   >
                     <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center group-hover:bg-gold/20 transition-colors">
@@ -577,30 +577,24 @@ export default function SecurityPage() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                         />
                       </svg>
                     </div>
                     <span className="font-medium text-neutral-700 group-hover:text-gold transition-colors">
-                      {t('addresses')}
+                      Store Settings
                     </span>
                   </Link>
                 </div>
               </motion.div>
             </motion.div>
 
-            {/* Main Content */}
+            {/* Main Content - continuing in next part due to length */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="lg:col-span-2"
+              className="lg:col-span-2 space-y-8"
             >
               {/* Change Password Card */}
               <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-8">
@@ -931,8 +925,8 @@ export default function SecurityPage() {
                 </div>
               </div>
 
-              {/* Active Sessions Card */}
-              <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-8 mt-8">
+              {/* Active Sessions Card - Due to length limit, continuing with abbreviated version */}
+              <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -1110,7 +1104,7 @@ export default function SecurityPage() {
               </div>
 
               {/* Delete Account Card */}
-              <div className="bg-white rounded-2xl shadow-lg border border-red-200 p-8 mt-8">
+              <div className="bg-white rounded-2xl shadow-lg border border-red-200 p-8">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
                     <svg
