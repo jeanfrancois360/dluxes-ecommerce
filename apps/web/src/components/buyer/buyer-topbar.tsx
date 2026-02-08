@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { useCurrencyRates, useSelectedCurrency } from '@/hooks/use-currency';
 import { useLocale, languages, type LanguageOption } from '@/contexts/locale-context';
+import { useCart } from '@/hooks/use-cart';
 import {
   User,
   Settings,
@@ -48,6 +49,7 @@ export default function BuyerTopbar({
   const { language, setLanguage } = useLocale();
   const { currencies, isLoading: currenciesLoading } = useCurrencyRates();
   const { currency, selectedCurrency, setSelectedCurrency } = useSelectedCurrency();
+  const { handleCurrencyChange: cartHandleCurrencyChange } = useCart();
 
   // Get user initials for avatar
   const getUserInitials = () => {
@@ -113,9 +115,22 @@ export default function BuyerTopbar({
   };
 
   // Handle currency change
-  const handleCurrencyChange = (currencyCode: string) => {
-    setSelectedCurrency(currencyCode);
-    setCurrencyOpen(false);
+  const handleCurrencyChange = async (currencyCode: string) => {
+    // Check cart currency locking
+    const result = await cartHandleCurrencyChange(currencyCode);
+
+    if (result.allowed) {
+      // Allowed - proceed with currency change
+      setSelectedCurrency(currencyCode);
+      setCurrencyOpen(false);
+    } else {
+      // Currency locked - cart has items in different currency
+      // Show alert or handle accordingly
+      setCurrencyOpen(false);
+      alert(
+        'Your cart contains items in a different currency. Please clear your cart to change currency.'
+      );
+    }
   };
 
   return (
