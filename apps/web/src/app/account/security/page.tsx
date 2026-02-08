@@ -52,7 +52,13 @@ interface FormErrors {
 
 export default function SecurityPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading, isAuthenticated, changePassword } = useAuth();
+  const {
+    user,
+    isLoading: authLoading,
+    isAuthenticated,
+    isInitialized,
+    changePassword,
+  } = useAuth();
   const t = useTranslations('account.security');
 
   const [formData, setFormData] = useState<PasswordFormData>({
@@ -95,10 +101,10 @@ export default function SecurityPage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (!authLoading && isInitialized && !isAuthenticated) {
       router.push('/auth/login?redirect=/account/security');
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isInitialized, isAuthenticated, router]);
 
   // Calculate password strength
   useEffect(() => {

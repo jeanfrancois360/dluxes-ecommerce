@@ -18,6 +18,8 @@ import {
   CheckCircle,
   Plane,
   Receipt,
+  User,
+  Shield,
 } from 'lucide-react';
 
 interface NavItem {
@@ -80,8 +82,10 @@ const navigationGroups: NavGroup[] = [
     ],
   },
   {
-    title: 'Settings',
+    title: 'Account & Settings',
     items: [
+      { name: 'My Profile', href: '/seller/profile', icon: User },
+      { name: 'Security', href: '/seller/security', icon: Shield },
       { name: 'Store Settings', href: '/seller/store/settings', icon: Settings },
       { name: 'Vacation Mode', href: '/seller/vacation-mode', icon: Plane },
     ],
@@ -102,20 +106,20 @@ export default function SellerSidebar({ onNavigate }: SellerSidebarProps) {
       {/* Logo Section */}
       <div className="px-6 py-6 border-b border-neutral-200">
         <Link href="/seller" className="flex items-center gap-3 group" onClick={handleNavigate}>
-          <div className="relative w-10 h-10">
+          <div className="relative w-12 h-12">
             <Image
               src="/logo-icon.svg"
               alt="NextPik"
-              width={40}
-              height={40}
+              width={48}
+              height={48}
               className="object-contain"
             />
           </div>
           <div>
-            <span className="text-xl font-bold text-black group-hover:text-[#CBB57B] transition-colors block">
+            <span className="text-xl font-bold text-black group-hover:text-[#CBB57B] transition-colors block leading-tight">
               NextPik
             </span>
-            <span className="text-xs font-medium text-[#CBB57B]">Seller Portal</span>
+            <span className="text-xs font-medium text-[#CBB57B] block">Seller Portal</span>
           </div>
         </Link>
       </div>

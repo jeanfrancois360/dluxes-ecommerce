@@ -292,12 +292,12 @@ export default function SellerTopbar({
                   {/* Menu Items */}
                   <div className="py-2">
                     <Link
-                      href="/account"
+                      href="/seller/profile"
                       className="flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-[#CBB57B] transition-colors"
                       onClick={() => setAccountOpen(false)}
                     >
                       <User className="w-4 h-4" />
-                      <span>My Account</span>
+                      <span>My Profile</span>
                     </Link>
                     <Link
                       href="/seller/store/settings"

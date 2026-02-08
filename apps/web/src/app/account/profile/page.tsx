@@ -41,6 +41,7 @@ export default function ProfilePage() {
     user,
     isLoading: authLoading,
     isAuthenticated,
+    isInitialized,
     updateProfile,
     uploadAvatar,
     deleteAvatar,
@@ -86,10 +87,10 @@ export default function ProfilePage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (!authLoading && isInitialized && !isAuthenticated) {
       router.push('/auth/login?redirect=/account/profile');
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isInitialized, isAuthenticated, router]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
