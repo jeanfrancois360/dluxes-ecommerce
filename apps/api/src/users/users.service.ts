@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { UploadService } from '../upload/upload.service';
 import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private uploadService: UploadService
+  ) {}
 
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
@@ -79,30 +83,33 @@ export class UsersService {
   /**
    * Update notification preferences for a user
    */
-  async updateNotificationPreferences(userId: string, data: {
-    // Master toggles
-    notifications?: boolean;
-    newsletter?: boolean;
+  async updateNotificationPreferences(
+    userId: string,
+    data: {
+      // Master toggles
+      notifications?: boolean;
+      newsletter?: boolean;
 
-    // Email preferences
-    emailOrderConfirmation?: boolean;
-    emailOrderShipped?: boolean;
-    emailOrderDelivered?: boolean;
-    emailPaymentReceipt?: boolean;
-    emailRefundProcessed?: boolean;
-    emailPromotions?: boolean;
-    emailPriceDrops?: boolean;
-    emailBackInStock?: boolean;
-    emailReviewReminder?: boolean;
-    emailSecurityAlerts?: boolean;
+      // Email preferences
+      emailOrderConfirmation?: boolean;
+      emailOrderShipped?: boolean;
+      emailOrderDelivered?: boolean;
+      emailPaymentReceipt?: boolean;
+      emailRefundProcessed?: boolean;
+      emailPromotions?: boolean;
+      emailPriceDrops?: boolean;
+      emailBackInStock?: boolean;
+      emailReviewReminder?: boolean;
+      emailSecurityAlerts?: boolean;
 
-    // Push preferences
-    pushOrderUpdates?: boolean;
-    pushPromotions?: boolean;
-    pushPriceDrops?: boolean;
-    pushBackInStock?: boolean;
-    pushSecurityAlerts?: boolean;
-  }) {
+      // Push preferences
+      pushOrderUpdates?: boolean;
+      pushPromotions?: boolean;
+      pushPriceDrops?: boolean;
+      pushBackInStock?: boolean;
+      pushSecurityAlerts?: boolean;
+    }
+  ) {
     // Filter out undefined values
     const updateData: Record<string, boolean> = {};
     const allowedFields = [
@@ -240,16 +247,19 @@ export class UsersService {
   /**
    * Create a new session for a user
    */
-  async createSession(userId: string, data: {
-    token: string;
-    deviceName?: string;
-    deviceType?: string;
-    browser?: string;
-    os?: string;
-    ipAddress?: string;
-    location?: string;
-    expiresAt: Date;
-  }) {
+  async createSession(
+    userId: string,
+    data: {
+      token: string;
+      deviceName?: string;
+      deviceType?: string;
+      browser?: string;
+      os?: string;
+      ipAddress?: string;
+      location?: string;
+      expiresAt: Date;
+    }
+  ) {
     return this.prisma.userSession.create({
       data: {
         userId,
@@ -344,5 +354,58 @@ export class UsersService {
     } catch {
       // Session might not exist, ignore error
     }
+  }
+
+  /**
+   * Upload user avatar
+   */
+  async uploadAvatar(userId: string, file: Express.Multer.File) {
+    // Upload file using upload service
+    const uploadResult = await this.uploadService.uploadImage(file, 'avatars');
+
+    // Update user avatar in database
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatar: uploadResult.url },
+      include: {
+        addresses: true,
+        preferences: true,
+      },
+    });
+
+    return updatedUser;
+  }
+
+  /**
+   * Delete user avatar
+   */
+  async deleteAvatar(userId: string) {
+    // Get current user to find avatar URL
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatar: true },
+    });
+
+    // If user has an avatar, try to delete the file
+    if (user?.avatar) {
+      try {
+        await this.uploadService.deleteFileByUrl(user.avatar);
+      } catch (error) {
+        // Log error but don't fail - avatar might have been deleted already
+        console.error('Failed to delete avatar file:', error);
+      }
+    }
+
+    // Update user to remove avatar URL
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatar: null },
+      include: {
+        addresses: true,
+        preferences: true,
+      },
+    });
+
+    return updatedUser;
   }
 }
