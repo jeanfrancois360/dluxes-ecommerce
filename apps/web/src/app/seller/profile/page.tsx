@@ -133,7 +133,7 @@ export default function SellerProfilePage() {
     e.preventDefault();
 
     if (!validateForm()) {
-      standardToasts.generic.validationError('Please fix the errors before saving');
+      standardToasts.generic.validationError(t('validationError'));
       return;
     }
 
@@ -222,7 +222,10 @@ export default function SellerProfilePage() {
       <PageHeader
         title={t('title')}
         description={t('subtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'My Profile' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.myProfile') },
+        ]}
       />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8">
@@ -349,7 +352,7 @@ export default function SellerProfilePage() {
                             month: 'short',
                             year: 'numeric',
                           })
-                        : 'N/A'}
+                        : t('notAvailable')}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -425,7 +428,7 @@ export default function SellerProfilePage() {
                             ? 'border-red-500 focus:border-red-500'
                             : 'border-neutral-200 focus:border-gold'
                         }`}
-                        placeholder="John"
+                        placeholder={t('placeholders.firstName')}
                       />
                       {errors.firstName && (
                         <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>
@@ -445,7 +448,7 @@ export default function SellerProfilePage() {
                             ? 'border-red-500 focus:border-red-500'
                             : 'border-neutral-200 focus:border-gold'
                         }`}
-                        placeholder="Doe"
+                        placeholder={t('placeholders.lastName')}
                       />
                       {errors.lastName && (
                         <p className="mt-1 text-sm text-red-500">{errors.lastName}</p>
@@ -467,7 +470,7 @@ export default function SellerProfilePage() {
                           ? 'border-red-500 focus:border-red-500'
                           : 'border-neutral-200 focus:border-gold'
                       }`}
-                      placeholder="john@example.com"
+                      placeholder={t('placeholders.email')}
                     />
                     {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
                     {formData.email !== user.email && (
@@ -498,7 +501,7 @@ export default function SellerProfilePage() {
                           ? 'border-red-500 focus:border-red-500'
                           : 'border-neutral-200 focus:border-gold'
                       }`}
-                      placeholder="+1 (555) 123-4567"
+                      placeholder={t('placeholders.phone')}
                     />
                     {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
                   </div>
@@ -561,7 +564,9 @@ export default function SellerProfilePage() {
 
                 {/* Security and Store Settings Links */}
                 <div className="mt-8 pt-8 border-t border-neutral-200">
-                  <h3 className="text-lg font-bold font-['Poppins'] mb-4">Quick Links</h3>
+                  <h3 className="text-lg font-bold font-['Poppins'] mb-4">
+                    {t('quickLinks.heading')}
+                  </h3>
                   <div className="space-y-3">
                     <Link
                       href="/seller/security"
@@ -624,9 +629,11 @@ export default function SellerProfilePage() {
                           </svg>
                         </div>
                         <div>
-                          <p className="font-medium text-neutral-800">Store Settings</p>
+                          <p className="font-medium text-neutral-800">
+                            {t('quickLinks.storeSettings')}
+                          </p>
                           <p className="text-sm text-neutral-500">
-                            Manage your store information and branding
+                            {t('quickLinks.storeSettingsDesc')}
                           </p>
                         </div>
                       </div>
