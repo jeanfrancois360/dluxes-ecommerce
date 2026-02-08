@@ -18,7 +18,7 @@ export const authAPI = {
   updateProfile: (data: ProfileUpdateData) => api.patch('/users/me', data),
 
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
-    api.post('/auth/change-password', data),
+    api.post('/auth/password/change', data),
 
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
 
