@@ -191,7 +191,10 @@ export default function SellerAdvertisementsPage() {
       <PageHeader
         title={t('pageTitle')}
         description={t('pageSubtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Advertisements' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.advertisements') },
+        ]}
         actions={
           <button
             onClick={openCreateModal}

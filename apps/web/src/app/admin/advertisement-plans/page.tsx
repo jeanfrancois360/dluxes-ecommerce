@@ -22,8 +22,10 @@ import {
   Eye,
   Loader2,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export default function AdminAdvertisementPlansPage() {
+  const t = useTranslations('adminAdvertisementPlans');
   const { plans, isLoading, error, refresh } = useAdminAdPlans();
   const { statistics } = useAdminAdStatistics();
   const { createPlan, updatePlan, deletePlan } = useAdminAdPlanMutations();
@@ -116,30 +118,30 @@ export default function AdminAdvertisementPlansPage() {
     try {
       if (editingPlan) {
         await updatePlan(editingPlan.slug, formData);
-        toast.success('Plan updated successfully');
+        toast.success(t('messages.planUpdated'));
       } else {
         await createPlan(formData);
-        toast.success('Plan created successfully');
+        toast.success(t('messages.planCreated'));
       }
       setShowModal(false);
       resetForm();
       refresh();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save plan');
+      toast.error(error.message || t('messages.saveFailed'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (slug: string) => {
-    if (!confirm('Are you sure you want to delete this plan?')) return;
+    if (!confirm(t('messages.deleteConfirm'))) return;
 
     try {
       await deletePlan(slug);
-      toast.success('Plan deleted successfully');
+      toast.success(t('messages.planDeleted'));
       refresh();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete plan');
+      toast.error(error.message || t('messages.deleteFailed'));
     }
   };
 
@@ -161,11 +163,7 @@ export default function AdminAdvertisementPlansPage() {
   }
 
   if (error) {
-    return (
-      <div className="p-6 text-center text-red-500">
-        Failed to load advertisement plans. Please try again.
-      </div>
-    );
+    return <div className="p-6 text-center text-red-500">{t('error')}</div>;
   }
 
   return (
@@ -173,15 +171,15 @@ export default function AdminAdvertisementPlansPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Advertisement Plans</h1>
-          <p className="text-gray-500 mt-1">Manage subscription plans for seller advertising</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('header.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('header.subtitle')}</p>
         </div>
         <button
           onClick={openCreateModal}
           className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Create Plan
+          {t('header.createButton')}
         </button>
       </div>
 
@@ -194,7 +192,7 @@ export default function AdminAdvertisementPlansPage() {
                 <TrendingUp className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Plans</p>
+                <p className="text-sm text-gray-500">{t('statistics.totalPlans')}</p>
                 <p className="text-xl font-semibold">{statistics.totalPlans}</p>
               </div>
             </div>
@@ -205,7 +203,7 @@ export default function AdminAdvertisementPlansPage() {
                 <Users className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Active Subscriptions</p>
+                <p className="text-sm text-gray-500">{t('statistics.activeSubscriptions')}</p>
                 <p className="text-xl font-semibold">{statistics.activeSubscriptions}</p>
               </div>
             </div>
@@ -216,8 +214,10 @@ export default function AdminAdvertisementPlansPage() {
                 <DollarSign className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Revenue</p>
-                <p className="text-xl font-semibold">${formatCurrencyAmount(statistics.totalRevenue)}</p>
+                <p className="text-sm text-gray-500">{t('statistics.totalRevenue')}</p>
+                <p className="text-xl font-semibold">
+                  ${formatCurrencyAmount(statistics.totalRevenue)}
+                </p>
               </div>
             </div>
           </div>
@@ -227,8 +227,10 @@ export default function AdminAdvertisementPlansPage() {
                 <Eye className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Impressions Served</p>
-                <p className="text-xl font-semibold">{statistics.impressionsServed?.toLocaleString()}</p>
+                <p className="text-sm text-gray-500">{t('statistics.impressionsServed')}</p>
+                <p className="text-xl font-semibold">
+                  {statistics.impressionsServed?.toLocaleString()}
+                </p>
               </div>
             </div>
           </div>
@@ -246,7 +248,7 @@ export default function AdminAdvertisementPlansPage() {
           >
             {plan.isFeatured && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded-full">
-                Featured
+                {t('plan.featured')}
               </div>
             )}
 
@@ -257,36 +259,42 @@ export default function AdminAdvertisementPlansPage() {
                   plan.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                 }`}
               >
-                {plan.isActive ? 'Active' : 'Inactive'}
+                {plan.isActive ? t('plan.active') : t('plan.inactive')}
               </span>
             </div>
 
             <div className="mb-4">
               <span className="text-3xl font-bold">${plan.price}</span>
-              <span className="text-gray-500">/{plan.billingPeriod.toLowerCase()}</span>
+              <span className="text-gray-500">
+                /{plan.billingPeriod === 'MONTHLY' ? t('plan.perMonth') : t('plan.perYear')}
+              </span>
             </div>
 
             <ul className="space-y-2 mb-4 text-sm">
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                {plan.maxActiveAds === -1 ? 'Unlimited' : plan.maxActiveAds} active ads
+                {plan.maxActiveAds === -1 ? t('plan.unlimited') : plan.maxActiveAds}{' '}
+                {t('plan.activeAds')}
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                {plan.maxImpressions ? plan.maxImpressions.toLocaleString() : 'Unlimited'} impressions
+                {plan.maxImpressions
+                  ? plan.maxImpressions.toLocaleString()
+                  : t('plan.unlimited')}{' '}
+                {t('plan.impressions')}
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                Priority boost: {plan.priorityBoost}
+                {t('plan.priorityBoost', { boost: plan.priorityBoost })}
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                {plan.allowedPlacements?.length || 0} placements
+                {t('plan.placements', { count: plan.allowedPlacements?.length || 0 })}
               </li>
               {plan.trialDays > 0 && (
                 <li className="flex items-center gap-2">
                   <Star className="w-4 h-4 text-yellow-500" />
-                  {plan.trialDays} day trial
+                  {t('plan.dayTrial', { days: plan.trialDays })}
                 </li>
               )}
             </ul>
@@ -297,7 +305,7 @@ export default function AdminAdvertisementPlansPage() {
                 className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm border rounded-lg hover:bg-gray-50"
               >
                 <Edit className="w-4 h-4" />
-                Edit
+                {t('plan.editButton')}
               </button>
               <button
                 onClick={() => handleDelete(plan.slug)}
@@ -312,12 +320,12 @@ export default function AdminAdvertisementPlansPage() {
 
       {plans.length === 0 && (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 mb-4">No advertisement plans yet</p>
+          <p className="text-gray-500 mb-4">{t('empty.message')}</p>
           <button
             onClick={openCreateModal}
             className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
           >
-            Create First Plan
+            {t('empty.createButton')}
           </button>
         </div>
       )}
@@ -328,8 +336,13 @@ export default function AdminAdvertisementPlansPage() {
           <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b sticky top-0 bg-white">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">{editingPlan ? 'Edit Plan' : 'Create Plan'}</h2>
-                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <h2 className="text-xl font-semibold">
+                  {editingPlan ? t('modal.editTitle') : t('modal.createTitle')}
+                </h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -339,7 +352,7 @@ export default function AdminAdvertisementPlansPage() {
               {/* Basic Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Name</label>
+                  <label className="block text-sm font-medium mb-1">{t('form.name')}</label>
                   <input
                     type="text"
                     value={formData.name}
@@ -349,7 +362,7 @@ export default function AdminAdvertisementPlansPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Slug</label>
+                  <label className="block text-sm font-medium mb-1">{t('form.slug')}</label>
                   <input
                     type="text"
                     value={formData.slug}
@@ -362,10 +375,12 @@ export default function AdminAdvertisementPlansPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
+                <label className="block text-sm font-medium mb-1">{t('form.description')}</label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                  }
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   rows={2}
                 />
@@ -374,18 +389,20 @@ export default function AdminAdvertisementPlansPage() {
               {/* Pricing */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Price</label>
+                  <label className="block text-sm font-medium mb-1">{t('form.price')}</label>
                   <input
                     type="number"
                     value={formData.price}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, price: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, price: Number(e.target.value) }))
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                     min="0"
                     step="0.01"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Currency</label>
+                  <label className="block text-sm font-medium mb-1">{t('form.currency')}</label>
                   <select
                     value={formData.currency}
                     onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
@@ -397,14 +414,18 @@ export default function AdminAdvertisementPlansPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Billing Period</label>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('form.billingPeriod')}
+                  </label>
                   <select
                     value={formData.billingPeriod}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, billingPeriod: e.target.value as any }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, billingPeriod: e.target.value as any }))
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                   >
-                    <option value="MONTHLY">Monthly</option>
-                    <option value="YEARLY">Yearly</option>
+                    <option value="MONTHLY">{t('form.billingMonthly')}</option>
+                    <option value="YEARLY">{t('form.billingYearly')}</option>
                   </select>
                 </div>
               </div>
@@ -412,33 +433,43 @@ export default function AdminAdvertisementPlansPage() {
               {/* Limits */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Max Active Ads</label>
+                  <label className="block text-sm font-medium mb-1">{t('form.maxActiveAds')}</label>
                   <input
                     type="number"
                     value={formData.maxActiveAds}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, maxActiveAds: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, maxActiveAds: Number(e.target.value) }))
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                     min="-1"
                   />
-                  <p className="text-xs text-gray-500 mt-1">-1 for unlimited</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('form.maxActiveAdsHelp')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Max Impressions</label>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('form.maxImpressions')}
+                  </label>
                   <input
                     type="number"
                     value={formData.maxImpressions}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, maxImpressions: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, maxImpressions: Number(e.target.value) }))
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                     min="0"
                   />
-                  <p className="text-xs text-gray-500 mt-1">0 for unlimited</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('form.maxImpressionsHelp')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Priority Boost</label>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('form.priorityBoost')}
+                  </label>
                   <input
                     type="number"
                     value={formData.priorityBoost}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, priorityBoost: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, priorityBoost: Number(e.target.value) }))
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                     min="0"
                     max="10"
@@ -449,21 +480,25 @@ export default function AdminAdvertisementPlansPage() {
               {/* Trial & Display */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Trial Days</label>
+                  <label className="block text-sm font-medium mb-1">{t('form.trialDays')}</label>
                   <input
                     type="number"
                     value={formData.trialDays}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, trialDays: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, trialDays: Number(e.target.value) }))
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                     min="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Display Order</label>
+                  <label className="block text-sm font-medium mb-1">{t('form.displayOrder')}</label>
                   <input
                     type="number"
                     value={formData.displayOrder}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, displayOrder: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, displayOrder: Number(e.target.value) }))
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                     min="0"
                   />
@@ -472,7 +507,9 @@ export default function AdminAdvertisementPlansPage() {
 
               {/* Allowed Placements */}
               <div>
-                <label className="block text-sm font-medium mb-2">Allowed Placements</label>
+                <label className="block text-sm font-medium mb-2">
+                  {t('form.allowedPlacements')}
+                </label>
                 <div className="grid grid-cols-2 gap-2">
                   {allPlacements.map((placement) => (
                     <label
@@ -485,7 +522,7 @@ export default function AdminAdvertisementPlansPage() {
                         onChange={() => togglePlacement(placement)}
                         className="rounded text-blue-500"
                       />
-                      <span className="text-sm">{placement.replace(/_/g, ' ')}</span>
+                      <span className="text-sm">{t(`placements.${placement}` as any)}</span>
                     </label>
                   ))}
                 </div>
@@ -497,19 +534,23 @@ export default function AdminAdvertisementPlansPage() {
                   <input
                     type="checkbox"
                     checked={formData.isActive}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, isActive: e.target.checked }))
+                    }
                     className="rounded text-blue-500"
                   />
-                  <span className="text-sm font-medium">Active</span>
+                  <span className="text-sm font-medium">{t('form.isActive')}</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={formData.isFeatured}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, isFeatured: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, isFeatured: e.target.checked }))
+                    }
                     className="rounded text-blue-500"
                   />
-                  <span className="text-sm font-medium">Mark as Featured</span>
+                  <span className="text-sm font-medium">{t('form.isFeatured')}</span>
                 </label>
               </div>
 
@@ -520,7 +561,7 @@ export default function AdminAdvertisementPlansPage() {
                   onClick={() => setShowModal(false)}
                   className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('form.cancelButton')}
                 </button>
                 <button
                   type="submit"
@@ -528,7 +569,7 @@ export default function AdminAdvertisementPlansPage() {
                   className="flex-1 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {editingPlan ? 'Update Plan' : 'Create Plan'}
+                  {editingPlan ? t('form.updateButton') : t('form.createButton')}
                 </button>
               </div>
             </form>

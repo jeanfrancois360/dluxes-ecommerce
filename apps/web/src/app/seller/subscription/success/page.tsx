@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { subscriptionApi } from '@/lib/api/subscription';
@@ -11,6 +12,7 @@ const MAX_POLL_ATTEMPTS = 15; // Max 30 seconds of polling (reduced since we hav
 const INITIAL_DELAY_MS = 1000; // Wait 1 second before first check
 
 export default function SubscriptionSuccessPage() {
+  const t = useTranslations('sellerSubscriptionSuccess');
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -202,7 +204,7 @@ export default function SubscriptionSuccessPage() {
               transition={{ delay: 0.3 }}
               className="text-4xl font-bold text-black mb-3 relative z-10"
             >
-              Subscription Activated!
+              {t('title')}
             </motion.h1>
 
             <motion.p
@@ -211,7 +213,7 @@ export default function SubscriptionSuccessPage() {
               transition={{ delay: 0.4 }}
               className="text-lg text-black/70 relative z-10"
             >
-              Welcome to your new subscription plan
+              {t('subtitle')}
             </motion.p>
           </div>
 
@@ -224,13 +226,11 @@ export default function SubscriptionSuccessPage() {
                   <div className="absolute inset-0 rounded-full border-4 border-[#CBB57B] border-t-transparent animate-spin"></div>
                 </div>
                 <p className="text-gray-900 font-semibold text-lg">
-                  {pollingStatus === 'waiting' && 'Processing your payment...'}
-                  {pollingStatus === 'verifying' && 'Verifying with Stripe...'}
-                  {pollingStatus === 'polling' && 'Activating your subscription...'}
+                  {pollingStatus === 'waiting' && t('status.waiting')}
+                  {pollingStatus === 'verifying' && t('status.verifying')}
+                  {pollingStatus === 'polling' && t('status.polling')}
                 </p>
-                <p className="text-gray-500 text-sm mt-2">
-                  This may take a few moments. Please don&apos;t close this page.
-                </p>
+                <p className="text-gray-500 text-sm mt-2">{t('status.pleaseWait')}</p>
               </div>
             ) : (
               <>
@@ -256,22 +256,15 @@ export default function SubscriptionSuccessPage() {
                         />
                       </svg>
                       <div>
-                        <h4 className="font-semibold text-amber-800">
-                          Subscription Activation Pending
-                        </h4>
+                        <h4 className="font-semibold text-amber-800">{t('timeout.title')}</h4>
                         <p className="text-sm text-amber-700 mt-1">
-                          Your payment was successful, but your subscription is still being
-                          activated. This can happen when our servers are busy. Please wait a few
-                          minutes and check your{' '}
+                          {t('timeout.message')}{' '}
                           <a href="/seller/subscription" className="underline font-medium">
-                            subscription page
+                            {t('timeout.linkText')}
                           </a>{' '}
                           to see your updated plan.
                         </p>
-                        <p className="text-sm text-amber-700 mt-2">
-                          If your subscription doesn&apos;t update within 15 minutes, please contact
-                          support.
-                        </p>
+                        <p className="text-sm text-amber-700 mt-2">{t('timeout.contact')}</p>
                       </div>
                     </div>
                   </motion.div>
@@ -279,7 +272,7 @@ export default function SubscriptionSuccessPage() {
 
                 {/* What's Next */}
                 <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">What happens next?</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('steps.title')}</h2>
                   <div className="space-y-4">
                     <motion.div
                       initial={{ opacity: 0, x: -20 }}
@@ -291,11 +284,10 @@ export default function SubscriptionSuccessPage() {
                         1
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900 mb-1">Subscription Confirmed</h3>
-                        <p className="text-gray-600 text-sm">
-                          Your payment has been processed successfully and your subscription is now
-                          active.
-                        </p>
+                        <h3 className="font-semibold text-gray-900 mb-1">
+                          {t('steps.step1.title')}
+                        </h3>
+                        <p className="text-gray-600 text-sm">{t('steps.step1.description')}</p>
                       </div>
                     </motion.div>
 
@@ -309,11 +301,10 @@ export default function SubscriptionSuccessPage() {
                         2
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900 mb-1">Full Access Enabled</h3>
-                        <p className="text-gray-600 text-sm">
-                          You now have access to all features included in your plan. Start listing
-                          products right away!
-                        </p>
+                        <h3 className="font-semibold text-gray-900 mb-1">
+                          {t('steps.step2.title')}
+                        </h3>
+                        <p className="text-gray-600 text-sm">{t('steps.step2.description')}</p>
                       </div>
                     </motion.div>
 
@@ -328,12 +319,9 @@ export default function SubscriptionSuccessPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1">
-                          Confirmation Email Sent
+                          {t('steps.step3.title')}
                         </h3>
-                        <p className="text-gray-600 text-sm">
-                          Check your inbox for a detailed confirmation email with your invoice and
-                          plan details.
-                        </p>
+                        <p className="text-gray-600 text-sm">{t('steps.step3.description')}</p>
                       </div>
                     </motion.div>
                   </div>
@@ -361,30 +349,30 @@ export default function SubscriptionSuccessPage() {
                           d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                         />
                       </svg>
-                      Your Subscription Details
+                      {t('details.title')}
                     </h3>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-neutral-400">Plan</p>
+                        <p className="text-neutral-400">{t('details.plan')}</p>
                         <p className="font-semibold text-[#CBB57B] text-lg">
                           {subscriptionData.plan?.name || 'N/A'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-neutral-400">Billing Cycle</p>
+                        <p className="text-neutral-400">{t('details.billingCycle')}</p>
                         <p className="font-semibold text-white">
                           {subscriptionData.subscription?.billingCycle || 'N/A'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-neutral-400">Status</p>
+                        <p className="text-neutral-400">{t('details.status')}</p>
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
                           <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
                           {subscriptionData.subscription?.status || 'Active'}
                         </span>
                       </div>
                       <div>
-                        <p className="text-neutral-400">Session ID</p>
+                        <p className="text-neutral-400">{t('details.sessionId')}</p>
                         <p className="font-mono text-xs text-neutral-500 truncate">
                           {sessionId || 'N/A'}
                         </p>
@@ -404,13 +392,13 @@ export default function SubscriptionSuccessPage() {
                     onClick={handleContinue}
                     className="flex-1 bg-[#CBB57B] text-black px-8 py-4 rounded-xl font-bold text-lg hover:bg-[#b9a369] transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                   >
-                    View Subscription Details
+                    {t('actions.viewDetails')}
                   </button>
                   <button
                     onClick={handleDashboard}
                     className="flex-1 bg-neutral-900 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-neutral-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 border border-neutral-800"
                   >
-                    Go to Dashboard
+                    {t('actions.goToDashboard')}
                   </button>
                 </motion.div>
 
@@ -421,12 +409,12 @@ export default function SubscriptionSuccessPage() {
                   transition={{ delay: 1 }}
                   className="mt-8 pt-8 border-t border-neutral-200 text-center"
                 >
-                  <p className="text-sm text-gray-600 mb-2">Need help getting started?</p>
+                  <p className="text-sm text-gray-600 mb-2">{t('help.question')}</p>
                   <a
                     href="/help"
                     className="text-[#CBB57B] hover:text-[#b9a369] font-semibold text-sm inline-flex items-center gap-1 transition-colors"
                   >
-                    View Getting Started Guide
+                    {t('help.linkText')}
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"

@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
   Package,
@@ -23,13 +24,13 @@ import {
 } from 'lucide-react';
 
 interface NavItem {
-  name: string;
+  nameKey: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
 interface NavGroup {
-  title: string;
+  titleKey: string;
   items: NavItem[];
 }
 
@@ -39,61 +40,62 @@ interface SellerSidebarProps {
 
 const navigationGroups: NavGroup[] = [
   {
-    title: 'Dashboard',
+    titleKey: 'dashboard',
     items: [
-      { name: 'Overview', href: '/seller', icon: LayoutDashboard },
-      { name: 'Onboarding', href: '/seller/onboarding', icon: CheckCircle },
+      { nameKey: 'overview', href: '/seller', icon: LayoutDashboard },
+      { nameKey: 'onboarding', href: '/seller/onboarding', icon: CheckCircle },
     ],
   },
   {
-    title: 'Products & Inventory',
+    titleKey: 'productsInventory',
     items: [
-      { name: 'Products', href: '/seller/products', icon: Package },
-      { name: 'Add Product', href: '/seller/products/new', icon: PlusCircle },
-      { name: 'Reviews', href: '/seller/reviews', icon: Star },
+      { nameKey: 'products', href: '/seller/products', icon: Package },
+      { nameKey: 'addProduct', href: '/seller/products/new', icon: PlusCircle },
+      { nameKey: 'reviews', href: '/seller/reviews', icon: Star },
     ],
   },
   {
-    title: 'Orders & Customers',
+    titleKey: 'ordersCustomers',
     items: [
-      { name: 'Orders', href: '/seller/orders', icon: ShoppingCart },
-      { name: 'Inquiries', href: '/seller/inquiries', icon: MessageSquare },
+      { nameKey: 'orders', href: '/seller/orders', icon: ShoppingCart },
+      { nameKey: 'inquiries', href: '/seller/inquiries', icon: MessageSquare },
     ],
   },
   {
-    title: 'Marketing & Growth',
+    titleKey: 'marketingGrowth',
     items: [
-      { name: 'Advertisements', href: '/seller/advertisements', icon: Megaphone },
-      { name: 'Ad Plans', href: '/seller/advertisement-plans', icon: Receipt },
+      { nameKey: 'advertisements', href: '/seller/advertisements', icon: Megaphone },
+      { nameKey: 'adPlans', href: '/seller/advertisement-plans', icon: Receipt },
     ],
   },
   {
-    title: 'Earnings & Payments',
+    titleKey: 'earningsPayments',
     items: [
-      { name: 'Earnings', href: '/seller/earnings', icon: DollarSign },
-      { name: 'Payout Settings', href: '/seller/payout-settings', icon: CreditCard },
+      { nameKey: 'earnings', href: '/seller/earnings', icon: DollarSign },
+      { nameKey: 'payoutSettings', href: '/seller/payout-settings', icon: CreditCard },
     ],
   },
   {
-    title: 'Subscription',
+    titleKey: 'subscription',
     items: [
-      { name: 'Plan', href: '/seller/subscription', icon: CreditCard },
-      { name: 'Selling Credits', href: '/seller/selling-credits', icon: DollarSign },
+      { nameKey: 'plan', href: '/seller/subscription', icon: CreditCard },
+      { nameKey: 'sellingCredits', href: '/seller/selling-credits', icon: DollarSign },
     ],
   },
   {
-    title: 'Account & Settings',
+    titleKey: 'accountSettings',
     items: [
-      { name: 'My Profile', href: '/seller/profile', icon: User },
-      { name: 'Security', href: '/seller/security', icon: Shield },
-      { name: 'Store Settings', href: '/seller/store/settings', icon: Settings },
-      { name: 'Vacation Mode', href: '/seller/vacation-mode', icon: Plane },
+      { nameKey: 'myProfile', href: '/seller/profile', icon: User },
+      { nameKey: 'security', href: '/seller/security', icon: Shield },
+      { nameKey: 'storeSettings', href: '/seller/store/settings', icon: Settings },
+      { nameKey: 'vacationMode', href: '/seller/vacation-mode', icon: Plane },
     ],
   },
 ];
 
 export default function SellerSidebar({ onNavigate }: SellerSidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations('sellerNav');
 
   const handleNavigate = () => {
     if (onNavigate) {
@@ -119,7 +121,7 @@ export default function SellerSidebar({ onNavigate }: SellerSidebarProps) {
             <span className="text-xl font-bold text-black group-hover:text-[#CBB57B] transition-colors block leading-tight">
               NextPik
             </span>
-            <span className="text-xs font-medium text-[#CBB57B] block">Seller Portal</span>
+            <span className="text-xs font-medium text-[#CBB57B] block">{t('sellerPortal')}</span>
           </div>
         </Link>
       </div>
@@ -127,9 +129,9 @@ export default function SellerSidebar({ onNavigate }: SellerSidebarProps) {
       {/* Navigation */}
       <nav className="px-3 py-4 space-y-6">
         {navigationGroups.map((group) => (
-          <div key={group.title}>
+          <div key={group.titleKey}>
             <h3 className="px-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-              {group.title}
+              {t(`groups.${group.titleKey}`)}
             </h3>
             <div className="space-y-1">
               {group.items.map((item) => {
@@ -140,7 +142,7 @@ export default function SellerSidebar({ onNavigate }: SellerSidebarProps) {
 
                 return (
                   <Link
-                    key={item.name}
+                    key={item.nameKey}
                     href={item.href}
                     onClick={handleNavigate}
                     className="relative block"
@@ -164,7 +166,7 @@ export default function SellerSidebar({ onNavigate }: SellerSidebarProps) {
                       `}
                     >
                       <Icon className="w-5 h-5 flex-shrink-0" />
-                      <span className="text-sm">{item.name}</span>
+                      <span className="text-sm">{t(`items.${item.nameKey}`)}</span>
                     </div>
                   </Link>
                 );

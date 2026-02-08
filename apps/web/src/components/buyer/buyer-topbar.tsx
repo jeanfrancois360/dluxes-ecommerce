@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/use-auth';
 import { useCurrencyRates, useSelectedCurrency } from '@/hooks/use-currency';
 import { useLocale, languages, type LanguageOption } from '@/contexts/locale-context';
@@ -36,6 +37,7 @@ export default function BuyerTopbar({
 }: BuyerTopbarProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const t = useTranslations('buyerNav.topbar');
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -127,9 +129,7 @@ export default function BuyerTopbar({
       // Currency locked - cart has items in different currency
       // Show alert or handle accordingly
       setCurrencyOpen(false);
-      alert(
-        'Your cart contains items in a different currency. Please clear your cart to change currency.'
-      );
+      alert(t('alerts.currencyLocked'));
     }
   };
 
@@ -142,7 +142,7 @@ export default function BuyerTopbar({
           <button
             onClick={onMobileMenuToggle}
             className="lg:hidden p-2 rounded-lg hover:bg-neutral-100 transition-colors"
-            aria-label="Toggle menu"
+            aria-label={t('ariaLabels.toggleMenu')}
           >
             <motion.div
               initial={false}
@@ -158,7 +158,7 @@ export default function BuyerTopbar({
           </button>
 
           {/* Page Title (optional - can be dynamic per page) */}
-          <h1 className="hidden lg:block text-lg font-semibold text-black">Buyer Dashboard</h1>
+          <h1 className="hidden lg:block text-lg font-semibold text-black">{t('title')}</h1>
         </div>
 
         {/* Center Section: Quick Links (hidden on mobile) */}
@@ -168,14 +168,14 @@ export default function BuyerTopbar({
             className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-[#CBB57B] transition-colors"
           >
             <Heart className="w-4 h-4" />
-            <span>Wishlist</span>
+            <span>{t('quickLinks.wishlist')}</span>
           </Link>
           <Link
             href="/cart"
             className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-[#CBB57B] transition-colors"
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>Cart</span>
+            <span>{t('quickLinks.cart')}</span>
           </Link>
         </div>
 
@@ -186,7 +186,7 @@ export default function BuyerTopbar({
             <button
               onClick={() => setLanguageOpen(!languageOpen)}
               className="relative p-2 rounded-lg hover:bg-neutral-100 transition-colors"
-              aria-label="Language"
+              aria-label={t('ariaLabels.language')}
             >
               <Globe className="w-5 h-5 text-neutral-700" />
             </button>
@@ -203,7 +203,7 @@ export default function BuyerTopbar({
                 >
                   <div className="p-2 border-b border-neutral-200 bg-neutral-50">
                     <h3 className="text-xs font-semibold text-neutral-600 uppercase px-2">
-                      Language
+                      {t('language')}
                     </h3>
                   </div>
                   <div className="py-1">
@@ -233,7 +233,7 @@ export default function BuyerTopbar({
             <button
               onClick={() => setCurrencyOpen(!currencyOpen)}
               className="relative p-2 rounded-lg hover:bg-neutral-100 transition-colors"
-              aria-label="Currency"
+              aria-label={t('ariaLabels.currency')}
             >
               <DollarSign className="w-5 h-5 text-neutral-700" />
             </button>
@@ -250,7 +250,7 @@ export default function BuyerTopbar({
                 >
                   <div className="p-2 border-b border-neutral-200 bg-neutral-50">
                     <h3 className="text-xs font-semibold text-neutral-600 uppercase px-2">
-                      Currency
+                      {t('currency')}
                     </h3>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
@@ -261,7 +261,7 @@ export default function BuyerTopbar({
                     ) : currencies.length === 0 ? (
                       <div className="p-8 text-center text-neutral-500">
                         <DollarSign className="w-12 h-12 mx-auto mb-2 text-neutral-300" />
-                        <p className="text-sm">No currencies available</p>
+                        <p className="text-sm">{t('currencyDropdown.noCurrencies')}</p>
                       </div>
                     ) : (
                       currencies.map((curr) => (
@@ -300,7 +300,7 @@ export default function BuyerTopbar({
             <button
               onClick={() => setNotificationOpen(!notificationOpen)}
               className="relative p-2 rounded-lg hover:bg-neutral-100 transition-colors"
-              aria-label="Notifications"
+              aria-label={t('ariaLabels.notifications')}
             >
               <Bell className="w-5 h-5 text-neutral-700" />
               {/* Notification badge */}
@@ -318,12 +318,12 @@ export default function BuyerTopbar({
                   className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-neutral-200 overflow-hidden"
                 >
                   <div className="p-4 border-b border-neutral-200">
-                    <h3 className="font-semibold text-black">Notifications</h3>
+                    <h3 className="font-semibold text-black">{t('notifications.title')}</h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     <div className="p-8 text-center text-neutral-500">
                       <Bell className="w-12 h-12 mx-auto mb-2 text-neutral-300" />
-                      <p className="text-sm">No new notifications</p>
+                      <p className="text-sm">{t('notifications.noNotifications')}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -335,7 +335,7 @@ export default function BuyerTopbar({
           <Link
             href="/account/messages"
             className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
-            aria-label="Messages"
+            aria-label={t('ariaLabels.messages')}
           >
             <MessageSquare className="w-5 h-5 text-neutral-700" />
           </Link>
@@ -392,7 +392,7 @@ export default function BuyerTopbar({
                       onClick={() => setAccountOpen(false)}
                     >
                       <User className="w-4 h-4" />
-                      <span>My Profile</span>
+                      <span>{t('userMenu.myProfile')}</span>
                     </Link>
                     <Link
                       href="/account/orders"
@@ -400,7 +400,7 @@ export default function BuyerTopbar({
                       onClick={() => setAccountOpen(false)}
                     >
                       <Package className="w-4 h-4" />
-                      <span>My Orders</span>
+                      <span>{t('userMenu.myOrders')}</span>
                     </Link>
                     <Link
                       href="/account/security"
@@ -408,7 +408,7 @@ export default function BuyerTopbar({
                       onClick={() => setAccountOpen(false)}
                     >
                       <Settings className="w-4 h-4" />
-                      <span>Settings</span>
+                      <span>{t('userMenu.settings')}</span>
                     </Link>
                   </div>
 
@@ -419,7 +419,7 @@ export default function BuyerTopbar({
                       className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
-                      <span>Logout</span>
+                      <span>{t('userMenu.logout')}</span>
                     </button>
                   </div>
                 </motion.div>

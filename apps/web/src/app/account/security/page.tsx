@@ -146,7 +146,7 @@ export default function SecurityPage() {
     if (!formData.newPassword) {
       newErrors.newPassword = t('newPasswordRequired');
     } else if (formData.newPassword.length < 12) {
-      newErrors.newPassword = 'Password must be at least 12 characters long';
+      newErrors.newPassword = t('passwordMinLength');
     } else if (!/[a-z]/.test(formData.newPassword) || !/[A-Z]/.test(formData.newPassword)) {
       newErrors.newPassword = t('passwordNeedsCases');
     } else if (!/\d/.test(formData.newPassword)) {
@@ -419,7 +419,10 @@ export default function SecurityPage() {
       <PageHeader
         title={t('title')}
         description={t('subtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'Security' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/dashboard/buyer' },
+          { label: t('breadcrumbs.security') },
+        ]}
       />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8">
@@ -788,7 +791,7 @@ export default function SecurityPage() {
                             />
                           )}
                         </svg>
-                        At least 12 characters
+                        {t('atLeast12Chars')}
                       </li>
                       <li
                         className={`flex items-center gap-2 ${

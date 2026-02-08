@@ -185,7 +185,10 @@ export default function MyInquiriesPage() {
       <PageHeader
         title={t('title')}
         description={t('subtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'Inquiries' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/dashboard/buyer' },
+          { label: t('breadcrumbs.inquiries') },
+        ]}
       />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8">

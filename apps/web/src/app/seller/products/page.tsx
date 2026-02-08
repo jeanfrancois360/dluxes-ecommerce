@@ -232,7 +232,10 @@ export default function SellerProductsPage() {
       <PageHeader
         title={t('pageTitle')}
         description={t('pageSubtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Products' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.products') },
+        ]}
         actions={
           <Link
             href="/seller/products/new"

@@ -15,6 +15,7 @@ import { adminReviewsApi } from '@/lib/api/admin';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { format } from 'date-fns';
 import { formatNumber } from '@/lib/utils/number-format';
+import { useTranslations } from 'next-intl';
 
 interface ReviewStats {
   total: number;
@@ -24,6 +25,7 @@ interface ReviewStats {
 }
 
 function ReviewsContent() {
+  const t = useTranslations('adminReviews');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [searchInput, setSearchInput] = useState('');
@@ -136,14 +138,19 @@ function ReviewsContent() {
   // Active filters
   const activeFilters = useMemo(() => {
     const filters: Array<{ key: string; label: string; value: string }> = [];
-    if (searchInput) filters.push({ key: 'search', label: 'Search', value: `"${searchInput}"` });
-    if (status) filters.push({ key: 'status', label: 'Status', value: status });
+    if (searchInput)
+      filters.push({ key: 'search', label: t('filters.search'), value: `"${searchInput}"` });
+    if (status) filters.push({ key: 'status', label: t('filters.status'), value: status });
     if (ratingFilter)
-      filters.push({ key: 'rating', label: 'Rating', value: `${ratingFilter} stars` });
+      filters.push({
+        key: 'rating',
+        label: t('filters.rating'),
+        value: `${ratingFilter} ${t('filters.stars')}`,
+      });
     if (sortBy !== 'createdAt-desc')
-      filters.push({ key: 'sort', label: 'Sort', value: sortBy.split('-')[0] });
+      filters.push({ key: 'sort', label: t('filters.sort'), value: sortBy.split('-')[0] });
     return filters;
-  }, [searchInput, status, ratingFilter, sortBy]);
+  }, [searchInput, status, ratingFilter, sortBy, t]);
 
   const hasActiveFilters = activeFilters.length > 0;
   const activeFilterCount = activeFilters.length;
@@ -193,57 +200,59 @@ function ReviewsContent() {
   const handleStatusUpdate = async (id: string, newStatus: 'approved' | 'rejected') => {
     try {
       await adminReviewsApi.updateStatus(id, newStatus);
-      toast.success(`Review ${newStatus} successfully`);
+      toast.success(
+        newStatus === 'approved' ? t('messages.reviewApproved') : t('messages.reviewRejected')
+      );
       refetch();
     } catch (error) {
-      toast.error('Failed to update review');
+      toast.error(t('messages.failedToUpdate'));
     }
   };
 
   const handleBulkApprove = async () => {
     try {
       await adminReviewsApi.bulkUpdateStatus(selectedIds, 'approved');
-      toast.success(`${selectedIds.length} reviews approved`);
+      toast.success(t('messages.reviewsApproved', { count: selectedIds.length }));
       setSelectedIds([]);
       refetch();
     } catch (error) {
-      toast.error('Failed to approve reviews');
+      toast.error(t('messages.failedToApprove'));
     }
   };
 
   const handleBulkReject = async () => {
     try {
       await adminReviewsApi.bulkUpdateStatus(selectedIds, 'rejected');
-      toast.success(`${selectedIds.length} reviews rejected`);
+      toast.success(t('messages.reviewsRejected', { count: selectedIds.length }));
       setSelectedIds([]);
       refetch();
     } catch (error) {
-      toast.error('Failed to reject reviews');
+      toast.error(t('messages.failedToReject'));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this review?')) return;
+    if (!confirm(t('messages.confirmDelete'))) return;
     try {
       await adminReviewsApi.delete(id);
-      toast.success('Review deleted successfully');
+      toast.success(t('messages.reviewDeleted'));
       refetch();
     } catch (error) {
-      toast.error('Failed to delete review');
+      toast.error(t('messages.failedToDelete'));
     }
   };
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Are you sure you want to delete ${selectedIds.length} reviews?`)) return;
+    if (!confirm(t('messages.confirmBulkDelete', { count: selectedIds.length }))) return;
     try {
       for (const id of selectedIds) {
         await adminReviewsApi.delete(id);
       }
-      toast.success(`${selectedIds.length} reviews deleted`);
+      toast.success(t('messages.reviewsDeleted', { count: selectedIds.length }));
       setSelectedIds([]);
       refetch();
     } catch (error) {
-      toast.error('Failed to delete reviews');
+      toast.error(t('messages.failedToDelete'));
     }
   };
 
@@ -267,7 +276,7 @@ function ReviewsContent() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-neutral-600">Moderate customer reviews</p>
+        <p className="text-neutral-600">{t('subtitle')}</p>
       </div>
 
       {/* Stats Cards */}
@@ -275,7 +284,7 @@ function ReviewsContent() {
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">Total Reviews</p>
+              <p className="text-sm text-neutral-600 mb-1">{t('stats.totalReviews')}</p>
               <p className="text-2xl font-bold text-black">
                 {statsLoading ? '...' : formatNumber(stats.total)}
               </p>
@@ -303,14 +312,14 @@ function ReviewsContent() {
         >
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">Pending Moderation</p>
+              <p className="text-sm text-neutral-600 mb-1">{t('stats.pendingModeration')}</p>
               <p
                 className={`text-2xl font-bold ${stats.pending > 0 ? 'text-amber-600' : 'text-black'}`}
               >
                 {statsLoading ? '...' : formatNumber(stats.pending)}
               </p>
               {!statsLoading && stats.pending > 0 && (
-                <p className="text-xs text-amber-600 mt-1">Needs review</p>
+                <p className="text-xs text-amber-600 mt-1">{t('stats.needsReview')}</p>
               )}
             </div>
             <div
@@ -336,7 +345,7 @@ function ReviewsContent() {
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">Average Rating</p>
+              <p className="text-sm text-neutral-600 mb-1">{t('stats.averageRating')}</p>
               <p className="text-2xl font-bold text-black">
                 {statsLoading ? '...' : `${stats.averageRating.toFixed(1)} `}
                 <span className="text-amber-500">★</span>
@@ -353,7 +362,7 @@ function ReviewsContent() {
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">This Month</p>
+              <p className="text-sm text-neutral-600 mb-1">{t('stats.thisMonth')}</p>
               <p className="text-2xl font-bold text-black">
                 {statsLoading ? '...' : formatNumber(stats.thisMonth)}
               </p>
@@ -397,7 +406,7 @@ function ReviewsContent() {
             </svg>
             <input
               type="text"
-              placeholder="Search by product, customer, or content..."
+              placeholder={t('filters.searchPlaceholder')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-10 pr-10 py-2 bg-white border border-neutral-300 text-black placeholder-neutral-400 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
@@ -428,10 +437,10 @@ function ReviewsContent() {
             }}
             className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
           >
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
+            <option value="">{t('filters.allStatus')}</option>
+            <option value="pending">{t('filters.pending')}</option>
+            <option value="approved">{t('filters.approved')}</option>
+            <option value="rejected">{t('filters.rejected')}</option>
           </select>
 
           {/* Rating Filter */}
@@ -443,12 +452,12 @@ function ReviewsContent() {
             }}
             className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
           >
-            <option value="">All Ratings</option>
-            <option value="5">5 Stars</option>
-            <option value="4">4 Stars</option>
-            <option value="3">3 Stars</option>
-            <option value="2">2 Stars</option>
-            <option value="1">1 Star</option>
+            <option value="">{t('filters.allRatings')}</option>
+            <option value="5">{t('filters.fiveStars')}</option>
+            <option value="4">{t('filters.fourStars')}</option>
+            <option value="3">{t('filters.threeStars')}</option>
+            <option value="2">{t('filters.twoStars')}</option>
+            <option value="1">{t('filters.oneStar')}</option>
           </select>
 
           {/* Sort By */}
@@ -460,10 +469,10 @@ function ReviewsContent() {
             }}
             className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
           >
-            <option value="createdAt-desc">Newest First</option>
-            <option value="createdAt-asc">Oldest First</option>
-            <option value="rating-desc">Highest Rating</option>
-            <option value="rating-asc">Lowest Rating</option>
+            <option value="createdAt-desc">{t('filters.newestFirst')}</option>
+            <option value="createdAt-asc">{t('filters.oldestFirst')}</option>
+            <option value="rating-desc">{t('filters.highestRating')}</option>
+            <option value="rating-asc">{t('filters.lowestRating')}</option>
           </select>
 
           {/* Clear Filters */}
@@ -480,7 +489,7 @@ function ReviewsContent() {
                   d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
-              Clear ({activeFilterCount})
+              {t('filters.clear')} ({activeFilterCount})
             </button>
           )}
         </div>
@@ -519,7 +528,7 @@ function ReviewsContent() {
                 <div className="absolute inset-0 rounded-full border-4 border-neutral-200"></div>
                 <div className="absolute inset-0 rounded-full border-4 border-[#CBB57B] border-t-transparent animate-spin"></div>
               </div>
-              <p className="mt-4 text-neutral-600 font-medium">Loading reviews...</p>
+              <p className="mt-4 text-neutral-600 font-medium">{t('messages.loadingReviews')}</p>
             </div>
           ) : filteredReviews.length === 0 ? (
             <div className="p-16 text-center">
@@ -536,8 +545,8 @@ function ReviewsContent() {
                   d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                 />
               </svg>
-              <p className="text-neutral-600 font-medium">No reviews found</p>
-              <p className="text-neutral-500 text-sm mt-1">Try adjusting your filters</p>
+              <p className="text-neutral-600 font-medium">{t('messages.noReviewsFound')}</p>
+              <p className="text-neutral-500 text-sm mt-1">{t('messages.tryAdjustingFilters')}</p>
             </div>
           ) : (
             <table className="w-full">
@@ -552,25 +561,25 @@ function ReviewsContent() {
                     />
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Product
+                    {t('table.product')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Customer
+                    {t('table.customer')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Rating
+                    {t('table.rating')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Review
+                    {t('table.review')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Status
+                    {t('table.status')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Date
+                    {t('table.date')}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    Actions
+                    {t('table.actions')}
                   </th>
                 </tr>
               </thead>
@@ -590,7 +599,7 @@ function ReviewsContent() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">
-                        {review.product?.name || 'Unknown Product'}
+                        {review.product?.name || t('table.unknownProduct')}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -601,7 +610,8 @@ function ReviewsContent() {
                           </span>
                         </div>
                         <div className="text-sm text-black">
-                          {review.user?.firstName || 'Anonymous'} {review.user?.lastName || ''}
+                          {review.user?.firstName || t('table.anonymous')}{' '}
+                          {review.user?.lastName || ''}
                         </div>
                       </div>
                     </td>
@@ -643,7 +653,7 @@ function ReviewsContent() {
                             onClick={() => handleStatusUpdate(review.id, 'approved')}
                             className="flex items-center gap-1 px-2 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded text-xs font-medium transition-colors"
                           >
-                            Approve
+                            {t('actions.approve')}
                           </button>
                         )}
                         {review.status !== 'rejected' && (
@@ -651,14 +661,14 @@ function ReviewsContent() {
                             onClick={() => handleStatusUpdate(review.id, 'rejected')}
                             className="flex items-center gap-1 px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium transition-colors"
                           >
-                            Reject
+                            {t('actions.reject')}
                           </button>
                         )}
                         <button
                           onClick={() => handleDelete(review.id)}
                           className="flex items-center gap-1 px-2 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded text-xs font-medium transition-colors"
                         >
-                          Delete
+                          {t('actions.delete')}
                         </button>
                       </div>
                     </td>
@@ -675,18 +685,21 @@ function ReviewsContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-neutral-700">
-                  Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total}{' '}
-                  reviews
+                  {t('pagination.showing', {
+                    start: (page - 1) * limit + 1,
+                    end: Math.min(page * limit, total),
+                    total,
+                  })}
                 </span>
                 <select
                   value={limit}
                   onChange={(e) => setLimit(Number(e.target.value))}
                   className="ml-4 px-3 py-1.5 border border-neutral-300 bg-white text-black rounded-lg text-sm focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
                 >
-                  <option value="10">10 per page</option>
-                  <option value="25">25 per page</option>
-                  <option value="50">50 per page</option>
-                  <option value="100">100 per page</option>
+                  <option value="10">{t('pagination.perPage10')}</option>
+                  <option value="25">{t('pagination.perPage25')}</option>
+                  <option value="50">{t('pagination.perPage50')}</option>
+                  <option value="100">{t('pagination.perPage100')}</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
@@ -695,17 +708,17 @@ function ReviewsContent() {
                   disabled={page === 1}
                   className="px-4 py-2 border border-neutral-300 bg-white text-black rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-[#CBB57B] transition-all"
                 >
-                  Previous
+                  {t('pagination.previous')}
                 </button>
                 <span className="text-sm text-neutral-700 font-medium px-3">
-                  Page {page} of {pages}
+                  {t('pagination.page', { current: page, total: pages })}
                 </span>
                 <button
                   onClick={() => setPage(Math.min(pages, page + 1))}
                   disabled={page === pages}
                   className="px-4 py-2 border border-neutral-300 bg-white text-black rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-[#CBB57B] transition-all"
                 >
-                  Next
+                  {t('pagination.next')}
                 </button>
               </div>
             </div>
@@ -718,7 +731,9 @@ function ReviewsContent() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
           <div className="bg-slate-900 text-white rounded-lg px-6 py-3 flex items-center gap-4 shadow-xl">
             <span className="font-medium text-sm">
-              {selectedIds.length} review{selectedIds.length > 1 ? 's' : ''} selected
+              {selectedIds.length > 1
+                ? t('bulk.selectedPlural', { count: selectedIds.length })
+                : t('bulk.selected', { count: selectedIds.length })}
             </span>
 
             <div className="h-4 w-px bg-slate-600" />
@@ -735,7 +750,7 @@ function ReviewsContent() {
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              Approve
+              {t('actions.bulkApprove')}
             </button>
 
             <button
@@ -750,7 +765,7 @@ function ReviewsContent() {
                   d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              Reject
+              {t('actions.bulkReject')}
             </button>
 
             <button
@@ -765,7 +780,7 @@ function ReviewsContent() {
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                 />
               </svg>
-              Delete
+              {t('actions.bulkDelete')}
             </button>
 
             <button

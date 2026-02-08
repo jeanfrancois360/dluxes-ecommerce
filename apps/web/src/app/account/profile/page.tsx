@@ -133,7 +133,7 @@ export default function ProfilePage() {
     e.preventDefault();
 
     if (!validateForm()) {
-      standardToasts.generic.validationError('Please fix the errors before saving');
+      standardToasts.generic.validationError(t('validationError'));
       return;
     }
 
@@ -222,7 +222,10 @@ export default function ProfilePage() {
       <PageHeader
         title={t('title')}
         description={t('subtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'My Profile' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/dashboard/buyer' },
+          { label: t('breadcrumbs.myProfile') },
+        ]}
       />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8">
@@ -349,7 +352,7 @@ export default function ProfilePage() {
                             month: 'short',
                             year: 'numeric',
                           })
-                        : 'N/A'}
+                        : t('notAvailable')}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -425,7 +428,7 @@ export default function ProfilePage() {
                             ? 'border-red-500 focus:border-red-500'
                             : 'border-neutral-200 focus:border-gold'
                         }`}
-                        placeholder="John"
+                        placeholder={t('placeholders.firstName')}
                       />
                       {errors.firstName && (
                         <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>
@@ -445,7 +448,7 @@ export default function ProfilePage() {
                             ? 'border-red-500 focus:border-red-500'
                             : 'border-neutral-200 focus:border-gold'
                         }`}
-                        placeholder="Doe"
+                        placeholder={t('placeholders.lastName')}
                       />
                       {errors.lastName && (
                         <p className="mt-1 text-sm text-red-500">{errors.lastName}</p>
@@ -467,7 +470,7 @@ export default function ProfilePage() {
                           ? 'border-red-500 focus:border-red-500'
                           : 'border-neutral-200 focus:border-gold'
                       }`}
-                      placeholder="john@example.com"
+                      placeholder={t('placeholders.email')}
                     />
                     {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
                     {formData.email !== user.email && (
@@ -498,7 +501,7 @@ export default function ProfilePage() {
                           ? 'border-red-500 focus:border-red-500'
                           : 'border-neutral-200 focus:border-gold'
                       }`}
-                      placeholder="+1 (555) 123-4567"
+                      placeholder={t('placeholders.phone')}
                     />
                     {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
                   </div>

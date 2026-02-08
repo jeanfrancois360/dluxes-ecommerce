@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { adminAdvertisementsApi, type Advertisement } from '@/lib/api/admin';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 function AdvertisementsContent() {
+  const t = useTranslations('adminAdvertisements');
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'rejected'>('all');
@@ -25,7 +27,7 @@ function AdvertisementsContent() {
       }
       setAds(data || []);
     } catch (error) {
-      toast.error('Failed to fetch advertisements');
+      toast.error(t('messages.fetchError'));
     } finally {
       setLoading(false);
     }
@@ -38,31 +40,32 @@ function AdvertisementsContent() {
   const handleApprove = async (id: string, approved: boolean) => {
     try {
       await adminAdvertisementsApi.approve(id, approved);
-      toast.success(approved ? 'Advertisement approved' : 'Advertisement rejected');
+      toast.success(approved ? t('messages.approveSuccess') : t('messages.rejectSuccess'));
       fetchAds();
     } catch (error) {
-      toast.error('Failed to update advertisement');
+      toast.error(t('messages.updateError'));
     }
   };
 
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
       await adminAdvertisementsApi.toggle(id, isActive);
-      toast.success(`Advertisement ${isActive ? 'activated' : 'deactivated'}`);
+      const status = isActive ? t('messages.activated') : t('messages.deactivated');
+      toast.success(t('messages.toggleSuccess', { status }));
       fetchAds();
     } catch (error) {
-      toast.error('Failed to toggle advertisement');
+      toast.error(t('messages.toggleError'));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this advertisement?')) return;
+    if (!confirm(t('messages.deleteConfirm'))) return;
     try {
       await adminAdvertisementsApi.delete(id);
-      toast.success('Advertisement deleted');
+      toast.success(t('messages.deleteSuccess'));
       fetchAds();
     } catch (error) {
-      toast.error('Failed to delete advertisement');
+      toast.error(t('messages.deleteError'));
     }
   };
 
@@ -72,7 +75,7 @@ function AdvertisementsContent() {
       setSelectedAd({ ...ad, ...analytics });
       setShowModal(true);
     } catch (error) {
-      toast.error('Failed to load analytics');
+      toast.error(t('messages.analyticsError'));
     }
   };
 
@@ -91,8 +94,8 @@ function AdvertisementsContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Advertisements</h1>
-          <p className="text-gray-600 mt-1">Manage and approve advertisements</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
+          <p className="text-gray-600 mt-1">{t('pageDescription')}</p>
         </div>
         <div className="flex items-center gap-2">
           {(['all', 'pending', 'active', 'rejected'] as const).map((f) => (
@@ -105,7 +108,7 @@ function AdvertisementsContent() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {f}
+              {t(`filters.${f}`)}
             </button>
           ))}
         </div>
@@ -118,18 +121,30 @@ function AdvertisementsContent() {
           </div>
         ) : ads.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-gray-500">No advertisements found</p>
+            <p className="text-gray-500">{t('messages.noAds')}</p>
           </div>
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ad</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Placement</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pricing</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.ad')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.placement')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.pricing')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.status')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.performance')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.actions')}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -155,22 +170,28 @@ function AdvertisementsContent() {
                   <td className="px-6 py-4 text-sm text-gray-900">{ad.placement}</td>
                   <td className="px-6 py-4">
                     <div className="text-sm">
-                      <div className="font-medium">${formatCurrencyAmount(Number(ad.price), 2)}</div>
+                      <div className="font-medium">
+                        ${formatCurrencyAmount(Number(ad.price), 2)}
+                      </div>
                       <div className="text-gray-500">{ad.pricingModel}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(ad.status)}`}>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(ad.status)}`}
+                    >
                       {ad.status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm">
-                      <div>{ad.impressions} impressions</div>
-                      <div>{ad.clicks} clicks</div>
+                      <div>{t('table.performance.impressions', { count: ad.impressions })}</div>
+                      <div>{t('table.performance.clicks', { count: ad.clicks })}</div>
                       {ad.impressions > 0 && (
                         <div className="text-gray-500">
-                          {formatNumber((ad.clicks / ad.impressions) * 100, 1)}% CTR
+                          {t('table.performance.ctr', {
+                            rate: formatNumber((ad.clicks / ad.impressions) * 100, 1),
+                          })}
                         </div>
                       )}
                     </div>
@@ -183,13 +204,13 @@ function AdvertisementsContent() {
                             onClick={() => handleApprove(ad.id, true)}
                             className="text-green-600 hover:text-green-800 text-sm font-medium"
                           >
-                            Approve
+                            {t('actions.approve')}
                           </button>
                           <button
                             onClick={() => handleApprove(ad.id, false)}
                             className="text-red-600 hover:text-red-800 text-sm font-medium"
                           >
-                            Reject
+                            {t('actions.reject')}
                           </button>
                         </>
                       )}
@@ -198,20 +219,20 @@ function AdvertisementsContent() {
                           onClick={() => handleToggle(ad.id, !ad.isActive)}
                           className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                         >
-                          {ad.isActive ? 'Pause' : 'Resume'}
+                          {ad.isActive ? t('actions.pause') : t('actions.resume')}
                         </button>
                       )}
                       <button
                         onClick={() => viewAnalytics(ad)}
                         className="text-[#CBB57B] hover:text-[#a89158] text-sm font-medium"
                       >
-                        Analytics
+                        {t('actions.analytics')}
                       </button>
                       <button
                         onClick={() => handleDelete(ad.id)}
                         className="text-red-600 hover:text-red-800 text-sm font-medium"
                       >
-                        Delete
+                        {t('actions.delete')}
                       </button>
                     </div>
                   </td>
@@ -226,10 +247,14 @@ function AdvertisementsContent() {
       {showModal && selectedAd && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg">
-            <h2 className="text-xl font-bold mb-4">Advertisement Analytics</h2>
+            <h2 className="text-xl font-bold mb-4">{t('modal.title')}</h2>
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <img src={selectedAd.imageUrl} alt={selectedAd.title} className="w-24 h-16 object-cover rounded" />
+                <img
+                  src={selectedAd.imageUrl}
+                  alt={selectedAd.title}
+                  className="w-24 h-16 object-cover rounded"
+                />
                 <div>
                   <h3 className="font-medium">{selectedAd.title}</h3>
                   <p className="text-sm text-gray-500">{selectedAd.placement}</p>
@@ -238,15 +263,15 @@ function AdvertisementsContent() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold">{selectedAd.impressions}</div>
-                  <div className="text-sm text-gray-500">Impressions</div>
+                  <div className="text-sm text-gray-500">{t('modal.metrics.impressions')}</div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold">{selectedAd.clicks}</div>
-                  <div className="text-sm text-gray-500">Clicks</div>
+                  <div className="text-sm text-gray-500">{t('modal.metrics.clicks')}</div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold">{selectedAd.conversions}</div>
-                  <div className="text-sm text-gray-500">Conversions</div>
+                  <div className="text-sm text-gray-500">{t('modal.metrics.conversions')}</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -254,17 +279,19 @@ function AdvertisementsContent() {
                   <div className="text-xl font-bold">
                     {selectedAd.impressions > 0
                       ? formatNumber((selectedAd.clicks / selectedAd.impressions) * 100, 2)
-                      : 0}%
+                      : 0}
+                    %
                   </div>
-                  <div className="text-sm text-gray-500">CTR</div>
+                  <div className="text-sm text-gray-500">{t('modal.metrics.ctr')}</div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
                   <div className="text-xl font-bold">
                     {selectedAd.clicks > 0
                       ? formatNumber((selectedAd.conversions / selectedAd.clicks) * 100, 2)
-                      : 0}%
+                      : 0}
+                    %
                   </div>
-                  <div className="text-sm text-gray-500">Conversion Rate</div>
+                  <div className="text-sm text-gray-500">{t('modal.metrics.conversionRate')}</div>
                 </div>
               </div>
             </div>
@@ -272,7 +299,7 @@ function AdvertisementsContent() {
               onClick={() => setShowModal(false)}
               className="mt-6 w-full py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
             >
-              Close
+              {t('modal.close')}
             </button>
           </div>
         </div>

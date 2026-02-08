@@ -3,10 +3,12 @@
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import ProductForm from '@/components/seller/ProductForm';
 import { api } from '@/lib/api/client';
 
 export default function EditProductPage() {
+  const t = useTranslations('sellerProductsEdit');
   const router = useRouter();
   const params = useParams();
   const productId = params.id as string;
@@ -29,7 +31,7 @@ export default function EditProductPage() {
       setProduct(response);
     } catch (err: any) {
       console.error('Failed to fetch product:', err);
-      const errorMessage = err.response?.data?.message || 'Failed to load product';
+      const errorMessage = err.response?.data?.message || t('error.notFound');
       setError(errorMessage);
 
       // If product not found or unauthorized, redirect after showing error
@@ -45,10 +47,26 @@ export default function EditProductPage() {
 
   const handleSubmit = async (formData: any) => {
     try {
-      const response = await api.patch(`/seller/products/${productId}`, formData);
+      const images = formData.images || [];
+
+      // Remove images from the product data (handled separately, just like admin)
+      const { images: _, ...productData } = formData;
+
+      // Update the product
+      const response = await api.patch(`/seller/products/${productId}`, productData);
+
+      // Save images if any were provided (same as admin approach)
+      if (images.length > 0 && productId) {
+        try {
+          await api.post(`/products/${productId}/images`, { images });
+        } catch (imgError) {
+          console.error('Failed to save images:', imgError);
+          alert(t('success.imagesFailed'));
+        }
+      }
 
       // Show success message
-      alert('Product updated successfully!');
+      alert(t('success.productUpdated'));
 
       // Redirect to products list
       router.push('/seller/products');
@@ -59,7 +77,7 @@ export default function EditProductPage() {
   };
 
   const handleCancel = () => {
-    if (confirm('Are you sure you want to cancel? All unsaved changes will be lost.')) {
+    if (confirm(t('form.cancelConfirm'))) {
       router.push('/seller/products');
     }
   };
@@ -70,7 +88,7 @@ export default function EditProductPage() {
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-neutral-200 border-t-black mb-4"></div>
-          <p className="text-neutral-600">Loading product...</p>
+          <p className="text-neutral-600">{t('loading.message')}</p>
         </div>
       </div>
     );
@@ -96,15 +114,13 @@ export default function EditProductPage() {
               />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-black mb-2">Failed to Load Product</h2>
-          <p className="text-neutral-600 mb-6">
-            {error || 'Product not found or you do not have permission to edit it.'}
-          </p>
+          <h2 className="text-xl font-bold text-black mb-2">{t('error.title')}</h2>
+          <p className="text-neutral-600 mb-6">{error || t('error.notFound')}</p>
           <button
             onClick={() => router.push('/seller/products')}
             className="px-6 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors"
           >
-            Back to Products
+            {t('error.backToProducts')}
           </button>
         </div>
       </div>
@@ -131,9 +147,9 @@ export default function EditProductPage() {
                   />
                 </svg>
               </button>
-              <h1 className="text-3xl font-bold text-black">Edit Product</h1>
+              <h1 className="text-3xl font-bold text-black">{t('pageTitle')}</h1>
             </div>
-            <p className="text-neutral-600 ml-14">Update your product information</p>
+            <p className="text-neutral-600 ml-14">{t('pageSubtitle')}</p>
           </motion.div>
         </div>
       </div>

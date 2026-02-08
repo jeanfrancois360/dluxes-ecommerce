@@ -173,7 +173,10 @@ export default function NotificationPreferencesPage() {
       <PageHeader
         title={t('title')}
         description={t('subtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard/buyer' }, { label: 'Notifications' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/dashboard/buyer' },
+          { label: t('breadcrumbs.notifications') },
+        ]}
       />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8">

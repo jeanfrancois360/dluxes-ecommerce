@@ -163,7 +163,10 @@ export default function SellerOnboardingPage() {
       <PageHeader
         title={t('title')}
         description={t('subtitle')}
-        breadcrumbs={[{ label: 'Dashboard', href: '/seller' }, { label: 'Onboarding' }]}
+        breadcrumbs={[
+          { label: t('breadcrumbs.dashboard'), href: '/seller' },
+          { label: t('breadcrumbs.onboarding') },
+        ]}
       />
 
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

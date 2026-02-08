@@ -8,6 +8,7 @@ import useSWR from 'swr';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useTranslations } from 'next-intl';
 import {
   Card,
   CardContent,
@@ -51,6 +52,7 @@ import {
 } from 'lucide-react';
 
 function CurrenciesContent() {
+  const t = useTranslations('adminCurrencies');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCurrency, setEditingCurrency] = useState<CurrencyRate | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -81,9 +83,7 @@ function CurrenciesContent() {
     const active = currencies.filter((c) => c.isActive).length;
     const inactive = currencies.filter((c) => !c.isActive).length;
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentlyUpdated = currencies.filter(
-      (c) => new Date(c.lastUpdated) > oneDayAgo
-    ).length;
+    const recentlyUpdated = currencies.filter((c) => new Date(c.lastUpdated) > oneDayAgo).length;
 
     return { total: currencies.length, active, inactive, recentlyUpdated };
   }, [currencies]);
@@ -107,9 +107,7 @@ function CurrenciesContent() {
 
     // Status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter((c) =>
-        statusFilter === 'active' ? c.isActive : !c.isActive
-      );
+      filtered = filtered.filter((c) => (statusFilter === 'active' ? c.isActive : !c.isActive));
     }
 
     // Sort
@@ -166,33 +164,30 @@ function CurrenciesContent() {
   const handleToggleActive = async (currency: CurrencyRate) => {
     try {
       await currencyAdminApi.toggleActive(currency.currencyCode);
-      toast.success(
-        `${currency.currencyName} has been ${currency.isActive ? 'deactivated' : 'activated'}`
-      );
+      const status = currency.isActive ? t('actions.deactivated') : t('actions.activated');
+      toast.success(t('actions.toggleActiveSuccess', { name: currency.currencyName, status }));
       mutate();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to toggle currency status');
+      toast.error(error.message || t('actions.toggleActiveFailed'));
     }
   };
 
   const handleDelete = async (currency: CurrencyRate) => {
     if (currency.currencyCode === 'USD') {
-      toast.error('USD is the base currency and cannot be deleted');
+      toast.error(t('actions.deleteBaseError'));
       return;
     }
 
-    const confirmed = confirm(
-      `Are you sure you want to delete ${currency.currencyName}? This action cannot be undone.`
-    );
+    const confirmed = confirm(t('actions.deleteConfirm', { name: currency.currencyName }));
     if (!confirmed) return;
 
     try {
       setDeletingId(currency.id);
       await currencyAdminApi.deleteRate(currency.currencyCode);
-      toast.success(`${currency.currencyName} has been deleted`);
+      toast.success(t('actions.deleteSuccess', { name: currency.currencyName }));
       mutate();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete currency');
+      toast.error(error.message || t('actions.deleteFailed'));
     } finally {
       setDeletingId(null);
     }
@@ -210,12 +205,12 @@ function CurrenciesContent() {
 
   // Bulk actions
   const handleBulkExport = () => {
-    toast.success(`Exporting ${selectedIds.size} currencies`);
+    toast.success(t('actions.bulkExportSuccess', { count: selectedIds.size }));
     setSelectedIds(new Set());
   };
 
   const handleBulkActivate = async () => {
-    if (!confirm(`Activate ${selectedIds.size} currencies?`)) return;
+    if (!confirm(t('actions.bulkActivateConfirm', { count: selectedIds.size }))) return;
 
     let success = 0;
     let failed = 0;
@@ -232,13 +227,13 @@ function CurrenciesContent() {
       }
     }
 
-    toast.success(`Activated ${success} currencies (${failed} failed)`);
+    toast.success(t('actions.bulkActivateSuccess', { success, failed }));
     setSelectedIds(new Set());
     mutate();
   };
 
   const handleBulkDeactivate = async () => {
-    if (!confirm(`Deactivate ${selectedIds.size} currencies?`)) return;
+    if (!confirm(t('actions.bulkDeactivateConfirm', { count: selectedIds.size }))) return;
 
     let success = 0;
     let failed = 0;
@@ -255,13 +250,13 @@ function CurrenciesContent() {
       }
     }
 
-    toast.success(`Deactivated ${success} currencies (${failed} failed)`);
+    toast.success(t('actions.bulkDeactivateSuccess', { success, failed }));
     setSelectedIds(new Set());
     mutate();
   };
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Delete ${selectedIds.size} currencies? This cannot be undone.`)) return;
+    if (!confirm(t('actions.bulkDeleteConfirm', { count: selectedIds.size }))) return;
 
     let success = 0;
     let failed = 0;
@@ -278,7 +273,7 @@ function CurrenciesContent() {
       }
     }
 
-    toast.success(`Deleted ${success} currencies (${failed} failed)`);
+    toast.success(t('actions.bulkDeleteSuccess', { success, failed }));
     setSelectedIds(new Set());
     mutate();
   };
@@ -287,14 +282,12 @@ function CurrenciesContent() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Currency Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage exchange rates and currency settings for the platform
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground mt-2">{t('pageDescription')}</p>
         </div>
         <Button onClick={() => setIsAddModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Currency
+          {t('buttons.addCurrency')}
         </Button>
       </div>
 
@@ -302,23 +295,23 @@ function CurrenciesContent() {
       <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Currencies</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.totalCurrencies')}</CardTitle>
             <Globe className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">All currencies</p>
+            <p className="text-xs text-muted-foreground">{t('stats.allCurrencies')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.active')}</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <p className="text-xs text-muted-foreground">Available for use</p>
+            <p className="text-xs text-muted-foreground">{t('stats.availableForUse')}</p>
           </CardContent>
         </Card>
 
@@ -327,7 +320,7 @@ function CurrenciesContent() {
             <CardTitle
               className={`text-sm font-medium ${stats.inactive > 0 ? 'text-amber-700' : ''}`}
             >
-              Inactive
+              {t('stats.inactive')}
             </CardTitle>
             <XCircle
               className={`h-4 w-4 ${stats.inactive > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
@@ -340,30 +333,30 @@ function CurrenciesContent() {
             <p
               className={`text-xs ${stats.inactive > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}
             >
-              Disabled currencies
+              {t('stats.disabledCurrencies')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Recently Updated</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.recentlyUpdated')}</CardTitle>
             <Clock className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{stats.recentlyUpdated}</div>
-            <p className="text-xs text-muted-foreground">Last 24 hours</p>
+            <p className="text-xs text-muted-foreground">{t('stats.last24Hours')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Base Currency</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.baseCurrency')}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">USD</div>
-            <p className="text-xs text-muted-foreground">US Dollar</p>
+            <p className="text-xs text-muted-foreground">{t('stats.usDollar')}</p>
           </CardContent>
         </Card>
       </div>
@@ -376,7 +369,7 @@ function CurrenciesContent() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search by code, name, or symbol..."
+                placeholder={t('filters.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -387,26 +380,26 @@ function CurrenciesContent() {
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t('filters.statusLabel')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
+              <SelectItem value="active">{t('filters.active')}</SelectItem>
+              <SelectItem value="inactive">{t('filters.inactive')}</SelectItem>
             </SelectContent>
           </Select>
 
           {/* Sort */}
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Sort by" />
+              <SelectValue placeholder={t('filters.sortBy')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="name">Name (A-Z)</SelectItem>
-              <SelectItem value="code">Code (A-Z)</SelectItem>
-              <SelectItem value="rate_high">Rate (High)</SelectItem>
-              <SelectItem value="rate_low">Rate (Low)</SelectItem>
-              <SelectItem value="updated">Last Updated</SelectItem>
+              <SelectItem value="name">{t('filters.sortNameAZ')}</SelectItem>
+              <SelectItem value="code">{t('filters.sortCodeAZ')}</SelectItem>
+              <SelectItem value="rate_high">{t('filters.sortRateHigh')}</SelectItem>
+              <SelectItem value="rate_low">{t('filters.sortRateLow')}</SelectItem>
+              <SelectItem value="updated">{t('filters.sortLastUpdated')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -414,10 +407,10 @@ function CurrenciesContent() {
         {/* Active Filter Pills */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
+            <span className="text-sm text-muted-foreground">{t('filters.activeFilters')}</span>
             {debouncedSearch && (
               <Badge variant="secondary" className="gap-1">
-                Search: {debouncedSearch}
+                {t('filters.search')}: {debouncedSearch}
                 <button onClick={() => setSearchQuery('')} className="ml-1 hover:text-destructive">
                   <X className="h-3 w-3" />
                 </button>
@@ -425,7 +418,7 @@ function CurrenciesContent() {
             )}
             {statusFilter !== 'all' && (
               <Badge variant="secondary" className="gap-1">
-                Status: {statusFilter}
+                {t('filters.status')}: {statusFilter}
                 <button
                   onClick={() => setStatusFilter('all')}
                   className="ml-1 hover:text-destructive"
@@ -435,7 +428,7 @@ function CurrenciesContent() {
               </Badge>
             )}
             <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-              Clear all
+              {t('buttons.clearAll')}
             </Button>
           </div>
         )}
@@ -444,7 +437,7 @@ function CurrenciesContent() {
       {/* Currencies Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Currencies</CardTitle>
+          <CardTitle>{t('table.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -462,32 +455,32 @@ function CurrenciesContent() {
                       className="w-4 h-4 rounded border-neutral-300"
                     />
                   </TableHead>
-                  <TableHead>Currency</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Symbol</TableHead>
-                  <TableHead>Exchange Rate</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('table.headers.currency')}</TableHead>
+                  <TableHead>{t('table.headers.code')}</TableHead>
+                  <TableHead>{t('table.headers.symbol')}</TableHead>
+                  <TableHead>{t('table.headers.exchangeRate')}</TableHead>
+                  <TableHead>{t('table.headers.status')}</TableHead>
+                  <TableHead>{t('table.headers.lastUpdated')}</TableHead>
+                  <TableHead className="text-right">{t('table.headers.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
-                      Loading currencies...
+                      {t('table.loading')}
                     </TableCell>
                   </TableRow>
                 ) : error ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-red-500">
-                      Failed to load currencies
+                      {t('table.error')}
                     </TableCell>
                   </TableRow>
                 ) : filteredCurrencies.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                      No currencies found
+                      {t('table.noResults')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -513,7 +506,7 @@ function CurrenciesContent() {
                             <div className="font-medium">{currency.currencyName}</div>
                             {currency.currencyCode === 'USD' && (
                               <span className="text-xs text-amber-600 font-medium">
-                                Base Currency
+                                {t('table.baseCurrency')}
                               </span>
                             )}
                           </div>
@@ -525,16 +518,20 @@ function CurrenciesContent() {
                       <TableCell>{currency.symbol}</TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{formatCurrencyAmount(currency.rate, 6)}</div>
+                          <div className="font-medium">
+                            {formatCurrencyAmount(currency.rate, 6)}
+                          </div>
                           <div className="text-xs text-muted-foreground">
-                            1 USD = {formatNumber(currency.rate, currency.decimalDigits)}{' '}
-                            {currency.currencyCode}
+                            {t('table.exchangeRateFormat', {
+                              rate: formatNumber(currency.rate, currency.decimalDigits),
+                              code: currency.currencyCode,
+                            })}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={currency.isActive ? 'default' : 'secondary'}>
-                          {currency.isActive ? 'Active' : 'Inactive'}
+                          {currency.isActive ? t('table.active') : t('table.inactive')}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -590,20 +587,20 @@ function CurrenciesContent() {
       {selectedIds.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 flex items-center justify-between z-50">
           <div className="flex items-center gap-4">
-            <span className="font-medium">{selectedIds.size} selected</span>
+            <span className="font-medium">{t('table.selected', { count: selectedIds.size })}</span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSelectedIds(new Set())}
               className="text-white hover:text-white hover:bg-slate-800"
             >
-              Clear selection
+              {t('buttons.clearSelection')}
             </Button>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={handleBulkExport} className="gap-2">
               <Download className="h-4 w-4" />
-              Export
+              {t('buttons.export')}
             </Button>
             <Button
               size="sm"
@@ -611,15 +608,15 @@ function CurrenciesContent() {
               className="bg-green-600 hover:bg-green-700 gap-2"
             >
               <CheckCircle className="h-4 w-4" />
-              Activate
+              {t('buttons.activate')}
             </Button>
             <Button variant="secondary" size="sm" onClick={handleBulkDeactivate} className="gap-2">
               <XCircle className="h-4 w-4" />
-              Deactivate
+              {t('buttons.deactivate')}
             </Button>
             <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
               <Trash2 className="h-4 w-4" />
-              Delete
+              {t('buttons.delete')}
             </Button>
           </div>
         </div>
@@ -654,13 +651,8 @@ interface CurrencyFormModalProps {
   currency?: CurrencyRate | null;
 }
 
-function CurrencyFormModal({
-  isOpen,
-  onClose,
-  onSuccess,
-  mode,
-  currency,
-}: CurrencyFormModalProps) {
+function CurrencyFormModal({ isOpen, onClose, onSuccess, mode, currency }: CurrencyFormModalProps) {
+  const t = useTranslations('adminCurrencies');
   const [formData, setFormData] = useState({
     currencyCode: '',
     currencyName: '',
@@ -704,18 +696,17 @@ function CurrencyFormModal({
     try {
       if (mode === 'add') {
         await currencyAdminApi.createRate(formData);
-        toast.success(`${formData.currencyName} has been added successfully`);
+        toast.success(t('modal.success.added', { name: formData.currencyName }));
       } else if (currency) {
         // Exclude currencyCode from update payload (it's in the URL)
         const { currencyCode, ...updateData } = formData;
         await currencyAdminApi.updateRate(currency.currencyCode, updateData);
-        toast.success(
-          `${formData.currencyName} has been updated successfully`
-        );
+        toast.success(t('modal.success.updated', { name: formData.currencyName }));
       }
       onSuccess();
     } catch (error: any) {
-      toast.error(error.message || `Failed to ${mode} currency`);
+      const errorKey = mode === 'add' ? 'modal.error.add' : 'modal.error.edit';
+      toast.error(error.message || t(errorKey));
     } finally {
       setIsSubmitting(false);
     }
@@ -725,75 +716,81 @@ function CurrencyFormModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>
-            {mode === 'add' ? 'Add New Currency' : 'Edit Currency'}
-          </DialogTitle>
+          <DialogTitle>{mode === 'add' ? t('modal.addTitle') : t('modal.editTitle')}</DialogTitle>
           <DialogDescription>
-            {mode === 'add'
-              ? 'Add a new currency to the platform'
-              : 'Update currency settings and exchange rate'}
+            {mode === 'add' ? t('modal.addDescription') : t('modal.editDescription')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="currencyCode">Currency Code *</Label>
+              <Label htmlFor="currencyCode">
+                {t('modal.fields.currencyCode')} {t('modal.fields.required')}
+              </Label>
               <Input
                 id="currencyCode"
                 value={formData.currencyCode}
                 onChange={(e) =>
                   setFormData({ ...formData, currencyCode: e.target.value.toUpperCase() })
                 }
-                placeholder="USD"
+                placeholder={t('modal.fields.currencyCodePlaceholder')}
                 maxLength={3}
                 required
                 disabled={mode === 'edit'}
               />
-              <p className="text-xs text-muted-foreground">ISO 4217 code (3 letters)</p>
+              <p className="text-xs text-muted-foreground">{t('modal.fields.currencyCodeHelp')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="currencyName">Currency Name *</Label>
+              <Label htmlFor="currencyName">
+                {t('modal.fields.currencyName')} {t('modal.fields.required')}
+              </Label>
               <Input
                 id="currencyName"
                 value={formData.currencyName}
                 onChange={(e) => setFormData({ ...formData, currencyName: e.target.value })}
-                placeholder="US Dollar"
+                placeholder={t('modal.fields.currencyNamePlaceholder')}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="symbol">Symbol *</Label>
+              <Label htmlFor="symbol">
+                {t('modal.fields.symbol')} {t('modal.fields.required')}
+              </Label>
               <Input
                 id="symbol"
                 value={formData.symbol}
                 onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
-                placeholder="$"
+                placeholder={t('modal.fields.symbolPlaceholder')}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="rate">Exchange Rate (to USD) *</Label>
+              <Label htmlFor="rate">
+                {t('modal.fields.rate')} {t('modal.fields.required')}
+              </Label>
               <Input
                 id="rate"
                 type="number"
                 step="0.000001"
                 value={formData.rate}
                 onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) })}
-                placeholder="1.0"
+                placeholder={t('modal.fields.ratePlaceholder')}
                 min={0}
                 required
               />
               <p className="text-xs text-muted-foreground">
-                1 USD = {formData.rate} {formData.currencyCode || '...'}
+                {formData.currencyCode
+                  ? t('modal.fields.rateHelp', { rate: formData.rate, code: formData.currencyCode })
+                  : t('modal.fields.rateHelpEmpty', { rate: formData.rate })}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="decimalDigits">Decimal Places</Label>
+              <Label htmlFor="decimalDigits">{t('modal.fields.decimalDigits')}</Label>
               <Select
                 value={formData.decimalDigits.toString()}
                 onValueChange={(value) =>
@@ -812,7 +809,7 @@ function CurrencyFormModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="position">Symbol Position</Label>
+              <Label htmlFor="position">{t('modal.fields.position')}</Label>
               <Select
                 value={formData.position}
                 onValueChange={(value: 'before' | 'after') =>
@@ -823,8 +820,12 @@ function CurrencyFormModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="before">Before ({formData.symbol}100)</SelectItem>
-                  <SelectItem value="after">After (100{formData.symbol})</SelectItem>
+                  <SelectItem value="before">
+                    {t('modal.fields.positionBefore', { symbol: formData.symbol })}
+                  </SelectItem>
+                  <SelectItem value="after">
+                    {t('modal.fields.positionAfter', { symbol: formData.symbol })}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -835,26 +836,24 @@ function CurrencyFormModal({
               type="checkbox"
               id="isActive"
               checked={formData.isActive}
-              onChange={(e) =>
-                setFormData({ ...formData, isActive: e.target.checked })
-              }
+              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
               className="w-4 h-4 rounded border-neutral-300"
             />
-            <Label htmlFor="isActive">Activate this currency immediately</Label>
+            <Label htmlFor="isActive">{t('modal.fields.isActive')}</Label>
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('modal.buttons.cancel')}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting
                 ? mode === 'add'
-                  ? 'Adding...'
-                  : 'Updating...'
+                  ? t('modal.buttons.adding')
+                  : t('modal.buttons.updating')
                 : mode === 'add'
-                  ? 'Add Currency'
-                  : 'Update Currency'}
+                  ? t('modal.buttons.addCurrency')
+                  : t('modal.buttons.updateCurrency')}
             </Button>
           </DialogFooter>
         </form>

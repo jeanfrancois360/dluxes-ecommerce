@@ -1,4 +1,30 @@
 {
+  "adminNav": {
+    "dashboard": "Dashboard",
+    "products": "Products",
+    "orders": "Orders",
+    "customers": "Customers",
+    "sellerManagement": "Seller Management",
+    "categories": "Categories",
+    "currencies": "Currencies",
+    "subscriptions": "Subscriptions",
+    "subscriptionPlans": "Subscription Plans",
+    "adSubscriptions": "Ad Subscriptions",
+    "sellerSubscriptions": "Seller Subscriptions",
+    "escrow": "Escrow",
+    "commissions": "Commissions",
+    "shipping": "Shipping",
+    "payouts": "Payouts",
+    "deliveryProviders": "Delivery Providers",
+    "deliveries": "Deliveries",
+    "deliveryPayouts": "Delivery Payouts",
+    "advertisements": "Advertisements",
+    "reviews": "Reviews",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "viewWebsite": "View Website",
+    "logout": "Logout"
+  },
   "common": {
     "nav": {
       "home": "Home",
@@ -795,6 +821,10 @@
     "orders": {
       "title": "My Orders",
       "subtitle": "Track and manage your orders",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "orders": "My Orders"
+      },
       "searchPlaceholder": "Search by order number...",
       "allStatus": "All Status",
       "pending": "Pending",
@@ -818,6 +848,10 @@
     "addresses": {
       "title": "Saved Addresses",
       "subtitle": "Manage your shipping addresses",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "addresses": "Addresses"
+      },
       "addAddress": "Add Address",
       "addNewAddress": "Add New Address",
       "editAddress": "Edit Address",
@@ -855,6 +889,10 @@
     "security": {
       "title": "Security",
       "subtitle": "Manage your account security settings",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "security": "Security"
+      },
       "securityStatus": "Security Status",
       "passwordSet": "Password Set",
       "passwordSetDesc": "Your account has a password",
@@ -883,7 +921,7 @@
       "veryStrong": "Very Strong",
       "passwordsMatch": "Passwords match",
       "passwordRequirements": "Password Requirements:",
-      "atLeast8Chars": "At least 8 characters",
+      "atLeast12Chars": "At least 12 characters",
       "uppercaseAndLowercase": "Uppercase and lowercase letters",
       "atLeastOneNumber": "At least one number",
       "specialCharRecommended": "Special character (recommended)",
@@ -893,7 +931,7 @@
       "resetItHere": "Reset it here",
       "currentPasswordRequired": "Current password is required",
       "newPasswordRequired": "New password is required",
-      "passwordMinLength": "Password must be at least 8 characters",
+      "passwordMinLength": "Password must be at least 12 characters long",
       "passwordNeedsCases": "Password must contain uppercase and lowercase letters",
       "passwordNeedsNumber": "Password must contain at least one number",
       "passwordMustBeDifferent": "New password must be different from current password",
@@ -943,6 +981,10 @@
     "notifications": {
       "title": "Notification Preferences",
       "subtitle": "Control how and when we contact you",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "notifications": "Notifications"
+      },
       "allNotifications": "All Notifications",
       "masterToggle": "Master toggle for all notifications",
       "allDisabled": "All notifications are currently disabled",
@@ -1088,6 +1130,10 @@
     "inquiries": {
       "title": "My Inquiries",
       "subtitle": "Track your property and vehicle inquiries",
+      "breadcrumbs": {
+        "dashboard": "Dashboard",
+        "inquiries": "Inquiries"
+      },
       "total": "Total",
       "active": "Active",
       "converted": "Converted",
@@ -1387,28 +1433,24 @@
     },
     "reviewForm": {
       "writeReview": "Write a Review",
-      "reviewFor": "Review for",
-      "yourRating": "Your Rating",
-      "selectRating": "Select your rating",
-      "reviewTitle": "Review Title",
-      "reviewTitlePlaceholder": "Summarize your experience (optional)",
+      "rating": "Rating",
+      "reviewTitle": "Review Title (Optional)",
       "yourReview": "Your Review",
-      "yourReviewPlaceholder": "Share your thoughts about this product...",
-      "addPhotos": "Add Photos",
-      "addPhotosOptional": "Add Photos (Optional)",
-      "dragDropPhotos": "Drag & drop photos here or click to browse",
-      "maxPhotos": "Maximum 5 images, 5MB each",
-      "submit": "Submit Review",
-      "submitting": "Submitting...",
+      "reviewPlaceholder": "Share your experience with this product. What did you like or dislike? Would you recommend it to others?",
+      "minimumLength": "Minimum 20 characters",
+      "photos": "Photos (Optional)",
+      "clickToUpload": "Click to upload",
+      "orDragDrop": "or drag and drop",
+      "imageRequirements": "PNG, JPG or WebP (max 5MB each, up to 5 images)",
       "cancel": "Cancel",
+      "submitting": "Submitting...",
+      "submitReview": "Submit Review",
       "pleaseSelectRating": "Please select a rating",
       "reviewMinLength": "Review must be at least 10 characters",
-      "reviewMaxLength": "Review must be less than 2000 characters",
-      "titleMaxLength": "Title must be less than 100 characters",
+      "reviewMaxLength": "Review must not exceed 2000 characters",
+      "titleMaxLength": "Title must not exceed 100 characters",
       "maxImagesAllowed": "Maximum 5 images allowed",
-      "imageTooLarge": "Each image must be less than 5MB",
-      "failedToSubmit": "Failed to submit review. Please try again.",
-      "characters": "{count} characters"
+      "failedToSubmit": "Failed to submit review. Please try again."
     },
     "whatsappChat": {
       "defaultMessage": "Hello! I am interested in your products.",
@@ -1838,27 +1880,6 @@
       "uploadFailed": "Failed to upload image",
       "noUrlReturned": "Failed to upload image - no URL returned"
     },
-    "reviewForm": {
-      "writeReview": "Write a Review",
-      "rating": "Rating",
-      "reviewTitle": "Review Title (Optional)",
-      "yourReview": "Your Review",
-      "reviewPlaceholder": "Share your experience with this product. What did you like or dislike? Would you recommend it to others?",
-      "minimumLength": "Minimum 20 characters",
-      "photos": "Photos (Optional)",
-      "clickToUpload": "Click to upload",
-      "orDragDrop": "or drag and drop",
-      "imageRequirements": "PNG, JPG or WebP (max 5MB each, up to 5 images)",
-      "cancel": "Cancel",
-      "submitting": "Submitting...",
-      "submitReview": "Submit Review",
-      "pleaseSelectRating": "Please select a rating",
-      "reviewMinLength": "Review must be at least 10 characters",
-      "reviewMaxLength": "Review must not exceed 2000 characters",
-      "titleMaxLength": "Title must not exceed 100 characters",
-      "maxImagesAllowed": "Maximum 5 images allowed",
-      "failedToSubmit": "Failed to submit review. Please try again."
-    },
     "reviewSummary": {
       "basedOn": "Based on {count, plural, =0 {0 reviews} =1 {1 review} other {# reviews}}",
       "writeReview": "Write a Review",
@@ -2258,9 +2279,125 @@
       "acknowledgment": "15. Acknowledgment and Consent"
     }
   },
+  "sellerOrders": {
+    "pageTitle": "Orders",
+    "pageSubtitle": "Manage orders for your products",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "orders": "Orders"
+    },
+    "stats": {
+      "totalOrders": "Total Orders",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "totalRevenue": "Total Revenue"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by order number or customer...",
+      "allStatus": "All Status",
+      "allPaymentStatus": "All Payment Status"
+    },
+    "status": {
+      "PENDING": "Pending",
+      "PROCESSING": "Processing",
+      "SHIPPED": "Shipped",
+      "DELIVERED": "Delivered",
+      "CANCELLED": "Cancelled"
+    },
+    "paymentStatus": {
+      "PAID": "Paid",
+      "PENDING": "Pending",
+      "FAILED": "Failed",
+      "REFUNDED": "Refunded"
+    },
+    "table": {
+      "orderNumber": "Order #",
+      "customer": "Customer",
+      "items": "Items",
+      "total": "Total",
+      "status": "Status",
+      "payment": "Payment",
+      "date": "Date",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No Orders Yet",
+      "description": "Orders for your products will appear here"
+    },
+    "updateStatus": {
+      "title": "Update Order Status",
+      "selectNew": "Select New Status",
+      "updating": "Updating...",
+      "confirm": "Confirm Update",
+      "success": "Order status updated successfully!",
+      "error": "Failed to update order status"
+    },
+    "unknown": "Unknown"
+  },
+  "sellerEarnings": {
+    "pageTitle": "Earnings & Payouts",
+    "pageSubtitle": "Track your earnings, commissions, and payout history",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "earnings": "Earnings"
+    },
+    "refresh": "Refresh",
+    "summary": {
+      "totalEarnings": "Total Earnings",
+      "pending": "Pending",
+      "availableForPayout": "Available for Payout",
+      "paidOut": "Paid Out",
+      "orders": "orders",
+      "ordersAwaitingConfirmation": "orders awaiting confirmation",
+      "confirmedOrders": "confirmed orders",
+      "paidOrders": "paid orders"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "commissionHistory": "Commission History",
+      "payoutHistory": "Payout History"
+    },
+    "commissionStatus": {
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "PAID": "Paid",
+      "CANCELLED": "Cancelled"
+    },
+    "payoutStatus": {
+      "PENDING": "Pending",
+      "PROCESSING": "Processing",
+      "COMPLETED": "Completed",
+      "FAILED": "Failed"
+    },
+    "table": {
+      "orderNumber": "Order #",
+      "date": "Date",
+      "grossAmount": "Gross Amount",
+      "commission": "Commission",
+      "platformFee": "Platform Fee",
+      "netEarnings": "Net Earnings",
+      "status": "Status",
+      "amount": "Amount",
+      "method": "Method",
+      "transactionId": "Transaction ID",
+      "processedAt": "Processed At",
+      "commissions": "Commissions"
+    },
+    "paymentMethod": {
+      "bankTransfer": "Bank Transfer"
+    },
+    "empty": {
+      "noCommissions": "No commission records found",
+      "noPayouts": "No payout records found"
+    }
+  },
   "sellerAds": {
     "pageTitle": "My Advertisements",
     "pageSubtitle": "Create and manage your advertising campaigns",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "advertisements": "Advertisements"
+    },
     "createAd": "Create Ad",
     "loading": "Loading...",
     "noSubscription": "No Active Subscription",
@@ -2336,6 +2473,10 @@
   "sellerStoreSettings": {
     "pageTitle": "Store Settings",
     "pageSubtitle": "Manage your store information and configuration",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "storeSettings": "Store Settings"
+    },
     "backToDashboard": "Back to Dashboard",
     "loading": "Loading...",
     "errorLoading": "Failed to load store settings",
@@ -2419,6 +2560,10 @@
   "sellerProducts": {
     "pageTitle": "Products",
     "pageSubtitle": "Manage your product inventory",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "products": "Products"
+    },
     "addProduct": "Add Product",
     "searchPlaceholder": "Search by name or SKU...",
     "allStatus": "All Status",
@@ -2485,9 +2630,113 @@
       "deleteFailed": "Failed to delete product"
     }
   },
+  "sellerProductsNew": {
+    "pageTitle": "Add New Product",
+    "pageSubtitle": "Create a new product for your store",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "products": "Products",
+      "new": "New Product"
+    },
+    "loading": {
+      "title": "Checking subscription limits...",
+      "message": "Please wait while we verify your account"
+    },
+    "listingInfo": {
+      "using": "Using",
+      "of": "of",
+      "listings": "listings",
+      "unlimited": "∞"
+    },
+    "limitReached": {
+      "title": "Listing Limit Reached",
+      "yourCurrentPlan": "Your Current Plan: {planName}",
+      "activeListings": "Active Listings",
+      "availableCredits": "Available Credits",
+      "allowedProductTypes": "Allowed Product Types:",
+      "whyCantCreate": "Why can't I create a listing?",
+      "needSubscription": "You need an active platform subscription to list products",
+      "reachedLimit": "You've reached your maximum active listings limit",
+      "planDoesntInclude": "Your plan doesn't include {productType} product listings",
+      "requiresHigherTier": "This product type requires a higher subscription tier",
+      "backToProducts": "Back to Products",
+      "purchaseCredits": "Purchase Credits",
+      "upgradePlan": "Upgrade Plan"
+    },
+    "reasons": {
+      "noSubscription": "You need a platform subscription to create products",
+      "noCapacity": "You have reached your listing limit",
+      "typeNotAllowed": "Your plan doesn't support {productType} listings",
+      "tierTooLow": "Your plan tier is too low for this product type",
+      "cannotCreate": "Cannot create listing"
+    },
+    "banner": {
+      "usingCapacity": "You're using {percentage}% of your listing capacity",
+      "considerUpgrade": "Consider upgrading your plan to add more products.",
+      "viewPlans": "View Plans"
+    },
+    "errors": {
+      "titles": {
+        "subscriptionRequired": "Subscription Required",
+        "typeNotAvailable": "Product Type Not Available",
+        "upgradeRequired": "Upgrade Required",
+        "limitReached": "Listing Limit Reached",
+        "cannotList": "Cannot Create Listing",
+        "planUpgradeRequired": "Plan Upgrade Required",
+        "storeNotActive": "Store Not Active",
+        "createFailed": "Failed to Create Product",
+        "default": "Error"
+      },
+      "messages": {
+        "needSubscription": "You need an active subscription to list this type of product.",
+        "planDoesntSupport": "Your current plan doesn't support this product type. Upgrade to unlock this feature.",
+        "reachedLimit": "You've reached the maximum number of listings for your plan.",
+        "storeNotApproved": "Your store must be approved before you can add products.",
+        "genericError": "There was a problem creating your product. Please try again.",
+        "unexpectedError": "An unexpected error occurred"
+      },
+      "actions": {
+        "getSubscription": "Get Subscription",
+        "viewPlans": "View Plans",
+        "upgradePlan": "Upgrade Plan",
+        "contactSupport": "Contact Support",
+        "learnMore": "Learn More",
+        "viewStoreStatus": "View Store Status"
+      }
+    },
+    "modal": {
+      "close": "Close"
+    },
+    "form": {
+      "cancelConfirm": "Are you sure you want to cancel? All unsaved changes will be lost."
+    }
+  },
+  "sellerProductsEdit": {
+    "pageTitle": "Edit Product",
+    "pageSubtitle": "Update your product information",
+    "loading": {
+      "message": "Loading product..."
+    },
+    "error": {
+      "title": "Failed to Load Product",
+      "notFound": "Product not found or you do not have permission to edit it.",
+      "backToProducts": "Back to Products"
+    },
+    "success": {
+      "productUpdated": "Product updated successfully!",
+      "imagesFailed": "Product updated but failed to save images"
+    },
+    "form": {
+      "cancelConfirm": "Are you sure you want to cancel? All unsaved changes will be lost."
+    }
+  },
   "sellerAdPlans": {
     "pageTitle": "Advertisement Plans",
     "pageSubtitle": "Choose the perfect plan to promote your products and reach more customers",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "adPlans": "Advertisement Plans"
+    },
     "currentSubscription": {
       "title": "Current Subscription",
       "featured": "⭐ Featured",
@@ -2583,6 +2832,10 @@
   "sellerOnboarding": {
     "title": "Seller Onboarding",
     "subtitle": "Complete these steps to start selling on NextPik",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "onboarding": "Onboarding"
+    },
     "errorTitle": "Unable to Load Onboarding",
     "errorMessage": "Please make sure you're logged in as a seller.",
     "goToLogin": "Go to Login",
@@ -2635,6 +2888,10 @@
   "sellerReviews": {
     "title": "Product Reviews",
     "subtitle": "See what customers are saying about your products",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "reviews": "Reviews"
+    },
     "backToDashboard": "Back to Dashboard",
     "stats": {
       "averageRating": "Average Rating",
@@ -2734,6 +2991,2237 @@
       "description": "If you have questions about your application or need assistance, our support team is here to help.",
       "contactSupport": "Contact Support",
       "sellerGuidelines": "Seller Guidelines"
+    }
+  },
+  "sellerInquiries": {
+    "pageTitle": "Inquiries",
+    "pageSubtitle": "Manage inquiries from potential buyers",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "inquiries": "Inquiries"
+    },
+    "stats": {
+      "total": "Total",
+      "new": "New",
+      "contacted": "Contacted",
+      "scheduled": "Scheduled",
+      "converted": "Converted"
+    },
+    "filter": {
+      "label": "Filter:",
+      "all": "All",
+      "new": "New",
+      "contacted": "Contacted",
+      "viewingScheduled": "Viewing Scheduled",
+      "negotiating": "Negotiating",
+      "converted": "Converted",
+      "closed": "Closed"
+    },
+    "status": {
+      "NEW": "New",
+      "CONTACTED": "Contacted",
+      "VIEWING_SCHEDULED": "Viewing Scheduled",
+      "TEST_DRIVE_SCHEDULED": "Test Drive Scheduled",
+      "NEGOTIATING": "Negotiating",
+      "CONVERTED": "Converted",
+      "CLOSED": "Closed",
+      "SPAM": "Spam"
+    },
+    "badges": {
+      "preApproved": "Pre-approved",
+      "preApprovedFull": "Pre-approved for Mortgage",
+      "requestedViewing": "Requested Viewing:"
+    },
+    "time": {
+      "justNow": "Just now",
+      "hoursAgo": "{hours}h ago",
+      "daysAgo": "{days}d ago"
+    },
+    "empty": {
+      "title": "No inquiries found",
+      "description": "Inquiries from potential buyers will appear here"
+    },
+    "actions": {
+      "viewDetails": "View Details",
+      "reply": "Reply",
+      "call": "Call",
+      "updateStatus": "Update Status",
+      "sendEmail": "Send Email"
+    },
+    "detailModal": {
+      "title": "Inquiry Details",
+      "buyerInfo": "Buyer Information",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "preferredContact": "Preferred Contact",
+      "bestTime": "Best Time",
+      "message": "Message",
+      "yourNotes": "Your Notes"
+    },
+    "updateModal": {
+      "title": "Update Inquiry Status",
+      "newStatus": "New Status",
+      "notes": "Notes (Optional)",
+      "notesPlaceholder": "Add notes about this inquiry...",
+      "cancel": "Cancel",
+      "update": "Update Status",
+      "updating": "Updating..."
+    }
+  },
+  "sellerDashboard": {
+    "pageTitle": "Dashboard",
+    "pageSubtitle": "Welcome back! Here's an overview of your seller performance.",
+    "sections": {
+      "keyMetrics": "Key Metrics",
+      "quickActions": "Quick Actions",
+      "recentActivity": "Recent Activity"
+    },
+    "stats": {
+      "totalProducts": "Total Products",
+      "activeProducts": "{count} active",
+      "activeOrders": "Active Orders",
+      "pendingOrders": "{count} pending",
+      "totalRevenue": "Total Revenue",
+      "earned": "${amount} earned",
+      "totalSales": "Total Sales",
+      "allTime": "All time"
+    },
+    "quickActions": {
+      "addProduct": {
+        "title": "Add New Product",
+        "description": "Create and list a new product"
+      },
+      "viewOrders": {
+        "title": "View Orders",
+        "description": "Manage your orders and fulfillment"
+      },
+      "manageReviews": {
+        "title": "Manage Reviews",
+        "description": "Respond to customer reviews"
+      },
+      "checkEarnings": {
+        "title": "Check Earnings",
+        "description": "View earnings and payouts"
+      },
+      "storeSettings": {
+        "title": "Store Settings",
+        "description": "Update your store information"
+      },
+      "advertisements": {
+        "title": "Advertisements",
+        "description": "Promote your products"
+      }
+    },
+    "tabs": {
+      "recentOrders": "Recent Orders",
+      "recentReviews": "Recent Reviews",
+      "recentInquiries": "Recent Inquiries"
+    },
+    "activityTypes": {
+      "order": "order",
+      "review": "review",
+      "inquiry": "inquiry",
+      "product": "product"
+    },
+    "empty": {
+      "noRecentActivity": "No recent activity",
+      "noRecentReviews": "No recent reviews",
+      "noRecentInquiries": "No recent inquiries"
+    },
+    "onboarding": {
+      "title": "Grow Your Business",
+      "description": "Complete your onboarding to unlock all features",
+      "button": "View Onboarding"
+    }
+  },
+  "sellerPayoutSettings": {
+    "pageTitle": "Payout Settings",
+    "pageSubtitle": "Configure how and when you receive your earnings",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "payoutSettings": "Payout Settings"
+    },
+    "viewEarnings": "View Earnings",
+    "alerts": {
+      "error": "Error",
+      "success": "Success",
+      "updateSuccess": "Payout settings updated successfully!"
+    },
+    "balances": {
+      "available": "Available Balance",
+      "availableDesc": "Ready for payout",
+      "pending": "Pending Balance",
+      "pendingDesc": "In escrow, awaiting release",
+      "nextPayout": "Next Payout",
+      "nextPayoutDesc": "Based on your schedule"
+    },
+    "payoutMethod": {
+      "title": "Payout Method",
+      "bankTransfer": {
+        "label": "Bank Transfer",
+        "description": "Direct deposit to your bank"
+      },
+      "paypal": {
+        "label": "PayPal",
+        "description": "Send to PayPal account"
+      },
+      "stripe": {
+        "label": "Stripe",
+        "description": "Via Stripe Connect"
+      },
+      "paypalEmail": "PayPal Email",
+      "paypalEmailPlaceholder": "your-paypal@email.com"
+    },
+    "bankDetails": {
+      "title": "Bank Account Details",
+      "accountHolderName": "Account Holder Name",
+      "accountHolderPlaceholder": "John Doe",
+      "bankCountry": "Bank Country",
+      "bankName": "Bank Name",
+      "bankNamePlaceholder": "Bank of America",
+      "branchName": "Branch Name",
+      "branchPlaceholder": "Main Street Branch",
+      "accountNumber": "Account Number",
+      "accountNumberCurrent": "(Current: {number})",
+      "accountNumberPlaceholder": "Enter to update",
+      "routingNumber": "Routing Number",
+      "routingNumberCurrent": "(Current: {number})",
+      "routingNumberPlaceholder": "Enter to update",
+      "swiftCode": "SWIFT/BIC Code",
+      "swiftPlaceholder": "For international transfers",
+      "iban": "IBAN",
+      "ibanCurrent": "(Current: {iban})",
+      "ibanPlaceholder": "Enter to update",
+      "securityTitle": "Your information is secure",
+      "securityDesc": "Bank account details are encrypted and stored securely. We never share your financial information with third parties.",
+      "required": "*"
+    },
+    "schedule": {
+      "title": "Payout Schedule",
+      "frequency": "Payout Frequency",
+      "weekly": "Weekly",
+      "biweekly": "Bi-weekly",
+      "monthly": "Monthly",
+      "payoutDay": "Payout Day",
+      "dayOfMonth": "Day of Month",
+      "currency": "Payout Currency",
+      "minAmount": "Minimum Payout Amount",
+      "minAmountDesc": "Minimum $10, maximum $10,000",
+      "automaticTitle": "Automatic Payouts",
+      "automaticDesc": "Automatically transfer funds when threshold is met"
+    },
+    "daysOfWeek": {
+      "sunday": "Sunday",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday"
+    },
+    "buttons": {
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "reset": "Reset"
+    },
+    "recentPayouts": {
+      "title": "Recent Payouts",
+      "viewAll": "View All",
+      "empty": "No payouts yet",
+      "status": {
+        "COMPLETED": "COMPLETED",
+        "PENDING": "PENDING",
+        "PROCESSING": "PROCESSING",
+        "FAILED": "FAILED"
+      }
+    },
+    "help": {
+      "title": "Need Help?",
+      "bankTransfer": "Bank Transfer:",
+      "bankTransferDesc": "Takes 3-5 business days",
+      "paypal": "PayPal:",
+      "paypalDesc": "Usually instant",
+      "minimum": "Minimum:",
+      "minimumDesc": "Payouts occur only when your balance exceeds the minimum",
+      "learnMore": "Learn more about payouts"
+    },
+    "verification": {
+      "verified": "Store Verified",
+      "verifiedDesc": "Your store is verified and eligible for payouts.",
+      "pending": "Verification Pending",
+      "pendingDesc": "Complete verification to enable payouts."
+    }
+  },
+  "sellerVacationMode": {
+    "pageTitle": "Vacation Mode",
+    "pageSubtitleActive": "Your store is currently on vacation",
+    "pageSubtitleInactive": "Take a break without losing your store",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "vacationMode": "Vacation Mode"
+    },
+    "buttons": {
+      "endVacation": "End Vacation",
+      "startVacation": "Start Vacation",
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "reset": "Reset"
+    },
+    "alerts": {
+      "error": "Error",
+      "success": "Success",
+      "autoEndMessage": "Your vacation mode was automatically ended because the end date was reached."
+    },
+    "statusCards": {
+      "daysOnVacation": "Days on Vacation",
+      "since": "Since {date}",
+      "endDate": "End Date",
+      "noEndDate": "No end date set",
+      "daysRemaining": "{days} day remaining",
+      "daysRemainingPlural": "{days} days remaining",
+      "products": "Products",
+      "hidden": "Hidden",
+      "visible": "Visible",
+      "hiddenDesc": "Products hidden from search",
+      "visibleDesc": "Products still visible with vacation banner"
+    },
+    "vacationMessage": {
+      "title": "Vacation Message",
+      "messageLabel": "Message for Visitors",
+      "messagePlaceholder": "Hi! We're currently on vacation and won't be able to ship orders. We'll be back soon!",
+      "characterCount": "{count}/500 characters",
+      "autoReplyLabel": "Auto-Reply for Inquiries",
+      "autoReplyPlaceholder": "Thank you for your inquiry. We're currently on vacation and will respond when we return.",
+      "autoReplyDesc": "This message will be sent automatically to any new inquiries"
+    },
+    "schedule": {
+      "title": "Vacation Schedule",
+      "endDateLabel": "End Date (Optional)",
+      "endDateDesc": "Vacation mode will automatically end on this date",
+      "notSet": "Not set"
+    },
+    "productVisibility": {
+      "title": "Product Visibility",
+      "hideLabel": "Hide Products from Search",
+      "hideDesc": "When enabled, your products won't appear in search results during vacation",
+      "infoTitle": "What happens to your products?",
+      "infoItems": {
+        "item1": "Products remain on your store page with a vacation banner",
+        "item2": "Direct links to products still work",
+        "item3": "Customers can still view but not purchase (if orders are disabled)",
+        "item4": "Products will be hidden from search results"
+      }
+    },
+    "status": {
+      "onVacation": "On Vacation",
+      "storeActive": "Store Active",
+      "onVacationDesc": "Your store is showing the vacation message to visitors.",
+      "storeActiveDesc": "Your store is open and accepting orders normally."
+    },
+    "quickLinks": {
+      "title": "Quick Links",
+      "dashboard": "Dashboard",
+      "storeSettings": "Store Settings",
+      "pendingOrders": "Pending Orders"
+    },
+    "tips": {
+      "title": "Tips for Vacation Mode",
+      "beforeLeaving": "Before leaving:",
+      "beforeLeavingDesc": "Ship all pending orders",
+      "setEndDate": "Set an end date:",
+      "setEndDateDesc": "So you don't forget to reactivate",
+      "friendlyMessage": "Write a friendly message:",
+      "friendlyMessageDesc": "Let customers know when you'll be back",
+      "checkInquiries": "Check inquiries:",
+      "checkInquiriesDesc": "Respond to any urgent messages before leaving"
+    }
+  },
+  "sellerNav": {
+    "sellerPortal": "Seller Portal",
+    "groups": {
+      "dashboard": "Dashboard",
+      "productsInventory": "Products & Inventory",
+      "ordersCustomers": "Orders & Customers",
+      "marketingGrowth": "Marketing & Growth",
+      "earningsPayments": "Earnings & Payments",
+      "subscription": "Subscription",
+      "accountSettings": "Account & Settings"
+    },
+    "items": {
+      "overview": "Overview",
+      "onboarding": "Onboarding",
+      "products": "Products",
+      "addProduct": "Add Product",
+      "reviews": "Reviews",
+      "orders": "Orders",
+      "inquiries": "Inquiries",
+      "advertisements": "Advertisements",
+      "adPlans": "Ad Plans",
+      "earnings": "Earnings",
+      "payoutSettings": "Payout Settings",
+      "plan": "Plan",
+      "sellingCredits": "Selling Credits",
+      "myProfile": "My Profile",
+      "security": "Security",
+      "storeSettings": "Store Settings",
+      "vacationMode": "Vacation Mode"
+    },
+    "topbar": {
+      "sellerDashboard": "Seller Dashboard",
+      "visitStore": "Visit Store",
+      "storeSettings": "Store Settings",
+      "language": "Language",
+      "notifications": "Notifications",
+      "noNotifications": "No new notifications",
+      "myProfile": "My Profile",
+      "visitWebsite": "Visit Website",
+      "logout": "Logout"
+    }
+  },
+  "sellerSubscription": {
+    "pageTitle": "My Subscription",
+    "pageSubtitle": "Manage your subscription and view usage",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "subscription": "Subscription"
+    },
+    "loading": "Loading subscription...",
+    "currentPlan": "Current Plan",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "renewsOn": "Renews on",
+    "usage": {
+      "listings": "Listings",
+      "credits": "Credits",
+      "featured": "Featured",
+      "duration": "Duration",
+      "of": "of",
+      "available": "available",
+      "daysPerListing": "days/listing",
+      "unlimited": "∞"
+    },
+    "actions": {
+      "upgradePlan": "Upgrade Plan",
+      "changePlan": "Change Plan",
+      "viewPlans": "View available plans and features",
+      "buyCredits": "Buy Credits",
+      "purchaseCredits": "Purchase additional listing credits"
+    }
+  },
+  "sellerSellingCredits": {
+    "pageTitle": "Platform Subscription",
+    "pageSubtitle": "Manage your monthly subscription to keep your products active",
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "sellingCredits": "Selling Credits"
+    },
+    "errors": {
+      "authRequired": "Authentication Required",
+      "loginPrompt": "Please log in as a seller to view your selling credits.",
+      "fetchBalance": "Please log in as a seller to view credits",
+      "purchaseCanceled": "Purchase canceled",
+      "monthsRange": "Please select between 1 and 12 months",
+      "loginRequired": "Please log in to purchase credits",
+      "checkoutFailed": "Failed to start checkout",
+      "noCheckoutUrl": "No checkout URL received"
+    },
+    "actions": {
+      "goToLogin": "Go to Login",
+      "purchaseNow": "Purchase Credits Now",
+      "purchase": "Purchase",
+      "processing": "Processing..."
+    },
+    "balance": {
+      "title": "Credit Balance",
+      "current": "Current Balance",
+      "month": "month",
+      "months": "months",
+      "available": "Available Credits",
+      "of": "of",
+      "expiresOn": "Expires On",
+      "noExpiry": "No expiry",
+      "inDays": "in {days} days",
+      "lastDeducted": "Last Deducted",
+      "never": "Never",
+      "status": "Status",
+      "statusActive": "Active",
+      "statusGrace": "Grace Period",
+      "statusDepleted": "Depleted",
+      "daysLeft": "{days} days left"
+    },
+    "grace": {
+      "title": "Your credits have been depleted!",
+      "message": "Your products are currently inactive. You have",
+      "day": "day",
+      "days": "days",
+      "remaining": "remaining in your grace period before they are permanently suspended."
+    },
+    "purchase": {
+      "title": "Purchase Credits",
+      "selectMonths": "Select number of months (${price}/month)",
+      "month": "month",
+      "months": "months",
+      "pricePerMonth": "Price per month",
+      "selectedMonths": "Selected months",
+      "total": "Total",
+      "buttonText": "Purchase {months} Month - ${total}",
+      "buttonTextPlural": "Purchase {months} Months - ${total}",
+      "accountNotApproved": "Your account must be approved before purchasing credits"
+    },
+    "history": {
+      "title": "Transaction History",
+      "types": {
+        "purchase": "Purchase",
+        "deduction": "Deduction",
+        "refund": "Refund",
+        "adjustment": "Adjustment",
+        "bonus": "Bonus"
+      },
+      "description": {
+        "fallback": "{type} transaction"
+      }
+    },
+    "loading": "Loading..."
+  },
+  "sellerSubscriptionSuccess": {
+    "title": "Subscription Activated!",
+    "subtitle": "Welcome to your new subscription plan",
+    "status": {
+      "waiting": "Processing your payment...",
+      "verifying": "Verifying with Stripe...",
+      "polling": "Activating your subscription...",
+      "pleaseWait": "This may take a few moments. Please don't close this page."
+    },
+    "timeout": {
+      "title": "Subscription Activation Pending",
+      "message": "Your payment was successful, but your subscription is still being activated. This can happen when our servers are busy. Please wait a few minutes and check your",
+      "linkText": "subscription page",
+      "contact": "If your subscription doesn't update within 15 minutes, please contact support."
+    },
+    "steps": {
+      "title": "What happens next?",
+      "step1": {
+        "title": "Subscription Confirmed",
+        "description": "Your payment has been processed successfully and your subscription is now active."
+      },
+      "step2": {
+        "title": "Full Access Enabled",
+        "description": "You now have access to all features included in your plan. Start listing products right away!"
+      },
+      "step3": {
+        "title": "Confirmation Email Sent",
+        "description": "Check your inbox for a detailed confirmation email with your invoice and plan details."
+      }
+    },
+    "details": {
+      "title": "Your Subscription Details",
+      "plan": "Plan",
+      "billingCycle": "Billing Cycle",
+      "status": "Status",
+      "sessionId": "Session ID"
+    },
+    "actions": {
+      "viewDetails": "View Subscription Details",
+      "goToDashboard": "Go to Dashboard"
+    },
+    "help": {
+      "question": "Need help getting started?",
+      "linkText": "View Getting Started Guide"
+    }
+  },
+  "buyerDashboard": {
+    "pageTitle": "Dashboard",
+    "welcomeBack": "Welcome back, {name}! Track your orders, manage your wishlist, and explore new products.",
+    "yourActivity": "Your Activity",
+    "quickActions": "Quick Actions",
+    "recentOrders": "Recent Orders",
+    "viewAll": "View all",
+    "stats": {
+      "totalOrders": "Total Orders",
+      "activeOrders": "Active Orders",
+      "totalSpent": "Total Spent",
+      "wishlistItems": "Wishlist Items",
+      "active": "{count} active",
+      "inProgress": "In progress",
+      "allTime": "All time",
+      "savedForLater": "Saved for later"
+    },
+    "actions": {
+      "browseProducts": "Browse Products",
+      "browseProductsDesc": "Discover new luxury items",
+      "myOrders": "My Orders",
+      "myOrdersDesc": "Track your orders and deliveries",
+      "myWishlist": "My Wishlist",
+      "myWishlistDesc": "View saved items",
+      "myProfile": "My Profile",
+      "myProfileDesc": "Update your account information",
+      "addresses": "Addresses",
+      "addressesDesc": "Manage shipping addresses",
+      "paymentMethods": "Payment Methods",
+      "paymentMethodsDesc": "Manage your payment options",
+      "myReviews": "My Reviews",
+      "myReviewsDesc": "View and manage your reviews",
+      "followingStores": "Following Stores",
+      "followingStoresDesc": "See stores you follow",
+      "myInquiries": "My Inquiries",
+      "myInquiriesDesc": "View product inquiries"
+    },
+    "orders": {
+      "noOrders": "No orders yet",
+      "noOrdersDesc": "Start shopping to see your orders here",
+      "startShopping": "Start Shopping",
+      "more": "+{count} more"
+    },
+    "sellerCTA": {
+      "title": "Start Selling on NextPik",
+      "description": "Join our marketplace and reach millions of customers worldwide. Turn your passion into profit.",
+      "button": "Become a Seller"
+    }
+  },
+  "adminDashboard": {
+    "pageTitle": "Dashboard",
+    "stats": {
+      "totalRevenue": "Total Revenue",
+      "totalOrders": "Total Orders",
+      "totalCustomers": "Total Customers",
+      "totalProducts": "Total Products"
+    },
+    "charts": {
+      "revenue": "Revenue (Last 30 Days)",
+      "orders": "Orders by Status",
+      "topProducts": "Top Products by Revenue",
+      "customerGrowth": "Customer Growth (Last 30 Days)"
+    },
+    "recentOrders": {
+      "title": "Recent Orders",
+      "viewAll": "View All",
+      "guestCustomer": "Guest Customer",
+      "noEmail": "No email provided",
+      "noOrders": "No recent orders",
+      "view": "View"
+    },
+    "table": {
+      "order": "Order",
+      "customer": "Customer",
+      "total": "Total",
+      "status": "Status",
+      "date": "Date",
+      "actions": "Actions"
+    },
+    "quickActions": {
+      "addProduct": {
+        "title": "Add Product",
+        "description": "Create a new product listing"
+      },
+      "processOrders": {
+        "title": "Process Orders",
+        "description": "Manage pending orders"
+      },
+      "viewAnalytics": {
+        "title": "View Analytics",
+        "description": "Detailed sales reports"
+      }
+    }
+  },
+  "adminSettings": {
+    "pageTitle": "Settings",
+    "pageDescription": "Configure and manage your platform settings",
+    "searchPlaceholder": "Search settings...",
+    "buttons": {
+      "viewHistory": "View History",
+      "hideHistory": "Hide History",
+      "close": "Close"
+    },
+    "tabs": {
+      "overview": {
+        "label": "Overview",
+        "description": "Settings status dashboard"
+      },
+      "general": {
+        "label": "General",
+        "description": "Basic platform settings"
+      },
+      "payment": {
+        "label": "Payment",
+        "description": "Payment & escrow configuration"
+      },
+      "commission": {
+        "label": "Commission",
+        "description": "Commission rates & structure"
+      },
+      "currency": {
+        "label": "Currency",
+        "description": "Multi-currency support"
+      },
+      "inventory": {
+        "label": "Inventory",
+        "description": "Stock & inventory management"
+      },
+      "tax": {
+        "label": "Tax",
+        "description": "Tax calculation & rates"
+      },
+      "shipping": {
+        "label": "Shipping Rates",
+        "description": "Shipping cost calculator & pricing"
+      },
+      "delivery": {
+        "label": "Fulfillment",
+        "description": "Order fulfillment & delivery partners"
+      },
+      "security": {
+        "label": "Security",
+        "description": "Authentication & security"
+      },
+      "notifications": {
+        "label": "Notifications",
+        "description": "Email & SMS notifications"
+      },
+      "seo": {
+        "label": "SEO",
+        "description": "Search engine optimization"
+      }
+    },
+    "auditLog": {
+      "title": "Change History",
+      "description": "Track all configuration changes and modifications"
+    }
+  },
+  "adminCustomers": {
+    "pageTitle": "Customers",
+    "pageDescription": "Manage customer accounts",
+    "buttons": {
+      "export": "Export",
+      "email": "Email",
+      "suspend": "Suspend",
+      "activate": "Activate",
+      "delete": "Delete",
+      "view": "View",
+      "clearSelection": "Clear selection"
+    },
+    "stats": {
+      "totalCustomers": "Total Customers",
+      "newThisMonth": "New This Month",
+      "vipCustomers": "VIP Customers",
+      "totalRevenue": "Total Revenue",
+      "growth": "{percent}% growth",
+      "vipThreshold": "$1000+ spent"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by name, email, or phone...",
+      "allRoles": "All Roles",
+      "allStatus": "All Status",
+      "allSegments": "All Segments",
+      "roles": {
+        "customers": "Customers",
+        "sellers": "Sellers",
+        "deliveryPartners": "Delivery Partners",
+        "admins": "Admins"
+      },
+      "status": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "inactive": "Inactive"
+      },
+      "segments": {
+        "vip": "VIP ($1000+)",
+        "regular": "Regular",
+        "new": "New (30 days)",
+        "atRisk": "At Risk (90+ days)"
+      },
+      "sortBy": {
+        "newestFirst": "Newest First",
+        "oldestFirst": "Oldest First",
+        "highestSpend": "Highest Spend",
+        "lowestSpend": "Lowest Spend",
+        "mostOrders": "Most Orders",
+        "recentActivity": "Recent Activity",
+        "nameAZ": "Name: A-Z",
+        "nameZA": "Name: Z-A"
+      },
+      "clear": "Clear ({count})",
+      "activePills": {
+        "search": "Search: \"{query}\"",
+        "role": "Role: {role}",
+        "status": "Status: {status}",
+        "segment": "Segment: {segment}",
+        "sort": "Sort: {sort}"
+      }
+    },
+    "table": {
+      "headers": {
+        "customer": "Customer",
+        "email": "Email",
+        "orders": "Orders",
+        "totalSpent": "Total Spent",
+        "status": "Status",
+        "joinDate": "Join Date",
+        "actions": "Actions"
+      },
+      "vipBadge": "VIP",
+      "noCustomers": "No customers found",
+      "loading": "Loading customers..."
+    },
+    "pagination": {
+      "showing": "Showing {from} to {to} of {total} customers",
+      "perPage": {
+        "10": "10 per page",
+        "25": "25 per page",
+        "50": "50 per page",
+        "100": "100 per page"
+      },
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "bulkActions": {
+      "selected": "{count} customer selected",
+      "selectedPlural": "{count} customers selected"
+    },
+    "modals": {
+      "delete": {
+        "title": "Delete Customer",
+        "message": "Are you sure you want to delete {name}? This action cannot be undone and will permanently remove all customer data.",
+        "confirm": "Delete",
+        "cancel": "Cancel",
+        "processing": "Processing..."
+      },
+      "suspend": {
+        "title": "Suspend Customer",
+        "message": "Are you sure you want to suspend {name}? They will not be able to log in or place orders until reactivated.",
+        "confirm": "Suspend",
+        "cancel": "Cancel",
+        "processing": "Processing..."
+      },
+      "bulkSuspend": {
+        "title": "Suspend Multiple Customers",
+        "message": "Are you sure you want to suspend {count} customer? They will not be able to log in or place orders until reactivated.",
+        "messagePlural": "Are you sure you want to suspend {count} customers? They will not be able to log in or place orders until reactivated.",
+        "confirm": "Suspend {count} Customer",
+        "confirmPlural": "Suspend {count} Customers",
+        "cancel": "Cancel",
+        "processing": "Processing..."
+      }
+    },
+    "toasts": {
+      "deleteSuccess": "Customer deleted successfully",
+      "deleteFailed": "Failed to delete customer",
+      "suspendSuccess": "Customer suspended successfully",
+      "suspendFailed": "Failed to suspend customer",
+      "activateSuccess": "Customer activated successfully",
+      "activateFailed": "Failed to activate customer",
+      "bulkSuspendSuccess": "{count} customers suspended successfully",
+      "bulkSuspendFailed": "Failed to suspend customers",
+      "bulkActivateSuccess": "{count} customers activated successfully",
+      "bulkActivateFailed": "Failed to activate customers"
+    },
+    "export": {
+      "filename": "customers.csv",
+      "selectedFilename": "customers-selected-{count}.csv",
+      "headers": {
+        "name": "Name",
+        "email": "Email",
+        "totalOrders": "Total Orders",
+        "totalSpent": "Total Spent",
+        "status": "Status",
+        "joinDate": "Join Date"
+      }
+    }
+  },
+  "adminOrders": {
+    "pageTitle": "Orders",
+    "pageDescription": "Manage customer orders",
+    "buttons": {
+      "export": "Export",
+      "view": "View",
+      "clearSelection": "Clear selection",
+      "printInvoices": "Print Invoices"
+    },
+    "stats": {
+      "totalOrders": "Total Orders",
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "totalRevenue": "Total Revenue",
+      "awaitingAction": "Awaiting action"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by order #, customer name, or email...",
+      "allStatus": "All Status",
+      "allPayments": "All Payments",
+      "allTime": "All Time",
+      "status": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "processing": "Processing",
+        "shipped": "Shipped",
+        "delivered": "Delivered",
+        "cancelled": "Cancelled"
+      },
+      "payment": {
+        "paid": "Paid",
+        "pending": "Pending",
+        "failed": "Failed",
+        "refunded": "Refunded"
+      },
+      "dateRange": {
+        "today": "Today",
+        "7days": "Last 7 Days",
+        "30days": "Last 30 Days"
+      },
+      "sortBy": {
+        "newestFirst": "Newest First",
+        "oldestFirst": "Oldest First",
+        "amountHighToLow": "Amount: High to Low",
+        "amountLowToHigh": "Amount: Low to High"
+      },
+      "clear": "Clear ({count})",
+      "activePills": {
+        "search": "Search: \"{query}\"",
+        "status": "Status: {status}",
+        "payment": "Payment: {payment}",
+        "date": "Date: {date}",
+        "sort": "Sort: {sort}"
+      }
+    },
+    "table": {
+      "headers": {
+        "order": "Order",
+        "customer": "Customer",
+        "items": "Items",
+        "total": "Total",
+        "payment": "Payment",
+        "status": "Status",
+        "date": "Date",
+        "actions": "Actions"
+      },
+      "itemCount": "{count} item",
+      "itemCountPlural": "{count} items",
+      "guestCustomer": "Guest Customer",
+      "noEmail": "No email provided",
+      "noOrders": "No orders found",
+      "tryAdjusting": "Try adjusting your filters",
+      "loading": "Loading orders..."
+    },
+    "pagination": {
+      "showing": "Showing {from} to {to} of {total} orders",
+      "perPage": {
+        "10": "10 per page",
+        "25": "25 per page",
+        "50": "50 per page",
+        "100": "100 per page"
+      },
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "bulkActions": {
+      "selected": "{count} order selected",
+      "selectedPlural": "{count} orders selected"
+    },
+    "modals": {
+      "printInvoices": {
+        "comingSoon": "Print invoices feature coming soon"
+      }
+    },
+    "toasts": {
+      "exportSuccess": "Orders exported successfully",
+      "exportFailed": "Failed to export orders"
+    },
+    "export": {
+      "filename": "orders.csv",
+      "selectedFilename": "orders-selected-{count}.csv",
+      "headers": {
+        "orderNumber": "Order Number",
+        "customer": "Customer",
+        "email": "Email",
+        "items": "Items",
+        "total": "Total",
+        "status": "Status",
+        "payment": "Payment",
+        "date": "Date"
+      }
+    }
+  },
+  "sellerSubscriptionPlans": {
+    "pageTitle": "Choose Your Plan",
+    "pageSubtitle": "Unlock premium features to grow your business. All paid plans include a 14-day free trial.",
+    "badge": "SUBSCRIPTION PLANS",
+    "breadcrumbs": {
+      "backToDashboard": "Back to Dashboard"
+    },
+    "loading": "Loading subscription plans...",
+    "errors": {
+      "fetchPlans": "Failed to fetch subscription plans",
+      "noCheckoutUrl": "No checkout URL received",
+      "initiateFailed": "Failed to initiate upgrade"
+    },
+    "currentPlan": {
+      "label": "Current Plan:",
+      "current": "Current",
+      "currentPlanButton": "Current Plan"
+    },
+    "billing": {
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "yearlyDiscount": "-20%",
+      "year": "year",
+      "month": "month",
+      "billedYearly": "billed yearly"
+    },
+    "planTiers": {
+      "taglines": {
+        "FREE": "Get started for free",
+        "STARTER": "Perfect for growing sellers",
+        "PROFESSIONAL": "For serious businesses",
+        "BUSINESS": "Unlimited potential"
+      }
+    },
+    "badges": {
+      "mostPopular": "Most Popular",
+      "enterprise": "Enterprise"
+    },
+    "planCard": {
+      "free": "Free",
+      "freeForever": "Free Forever",
+      "getStarted": "Get Started",
+      "upgrade": "Upgrade",
+      "processing": "Processing...",
+      "listings": "Listings",
+      "creditsPerMonth": "Credits/mo",
+      "productTypes": "Product Types",
+      "features": "Features",
+      "moreFeatures": "+{count} more features",
+      "physicalOnly": "Physical products only"
+    },
+    "productTypes": {
+      "SERVICE": "Services",
+      "RENTAL": "Rentals",
+      "VEHICLE": "Vehicles",
+      "REAL_ESTATE": "Real Estate"
+    },
+    "toasts": {
+      "freePlanActive": "Free plan is already active for your account",
+      "alreadySubscribed": "You are already subscribed to this plan",
+      "redirecting": "Redirecting to checkout..."
+    },
+    "helpSection": {
+      "title": "Need help choosing the right plan?",
+      "subtitle": "Compare features or contact our team for personalized recommendations.",
+      "comparePlans": "Compare Plans",
+      "contactSales": "Contact Sales"
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "subtitle": "Everything you need to know about our plans",
+      "questions": {
+        "changePlan": {
+          "q": "Can I change my plan later?",
+          "a": "Yes, you can upgrade or downgrade your plan at any time. Changes will be prorated based on your billing cycle."
+        },
+        "paymentMethods": {
+          "q": "What payment methods do you accept?",
+          "a": "We accept all major credit cards (Visa, Mastercard, American Express), debit cards, and various local payment methods through Stripe."
+        },
+        "freeTrial": {
+          "q": "Is there a free trial?",
+          "a": "Yes! All paid plans come with a 14-day free trial. No credit card required to start."
+        },
+        "productTypes": {
+          "q": "What product types can I list?",
+          "a": "Free accounts can list physical products. Higher tier plans unlock Services, Rentals, Vehicles, and Real Estate listings."
+        },
+        "refunds": {
+          "q": "Do you offer refunds?",
+          "a": "Yes, we offer a 30-day money-back guarantee on all paid plans. Contact support for assistance."
+        }
+      }
+    },
+    "bottomCta": {
+      "message": "Have more questions? We're here to help.",
+      "linkText": "Visit Help Center"
+    }
+  },
+  "adminProducts": {
+    "pageTitle": "Products",
+    "pageDescription": "Manage your product catalog",
+    "header": {
+      "exportButton": "Export",
+      "addProductButton": "Add Product"
+    },
+    "stats": {
+      "totalProducts": "Total Products",
+      "activeProducts": "Active Products",
+      "outOfStock": "Out of Stock",
+      "lowStock": "Low Stock",
+      "totalValue": "Total Value",
+      "needsAttention": "Needs attention",
+      "units": "{count} units"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by name, SKU, or description...",
+      "loading": "Loading...",
+      "allCategories": "All Categories",
+      "allStatus": "All Status",
+      "allStock": "All Stock",
+      "inStock": "In Stock",
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock",
+      "clear": "Clear ({count})"
+    },
+    "sorting": {
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "priceHighToLow": "Price: High to Low",
+      "priceLowToHigh": "Price: Low to High",
+      "stockLowToHigh": "Stock: Low to High",
+      "stockHighToLow": "Stock: High to Low",
+      "nameAZ": "Name: A-Z",
+      "nameZA": "Name: Z-A"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "DRAFT": "Draft",
+      "ARCHIVED": "Archived",
+      "OUT_OF_STOCK": "Out of Stock"
+    },
+    "activeFilters": {
+      "search": "Search",
+      "category": "Category",
+      "status": "Status",
+      "stock": "Stock",
+      "sort": "Sort",
+      "inStock": "In Stock",
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock"
+    },
+    "table": {
+      "loading": "Loading products...",
+      "noProducts": "No products found",
+      "noProductsDescription": "Try adjusting your filters or add a new product",
+      "headers": {
+        "product": "Product",
+        "sku": "SKU",
+        "category": "Category",
+        "price": "Price",
+        "stock": "Stock",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "na": "N/A"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "view": "View"
+    },
+    "pagination": {
+      "showing": "Showing {start} to {end} of {total} products",
+      "perPage": "{count} per page",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "bulk": {
+      "selected": "{count} product selected",
+      "selectedPlural": "{count} products selected",
+      "export": "Export",
+      "activate": "Activate",
+      "archive": "Archive",
+      "adjustStock": "Adjust Stock",
+      "delete": "Delete",
+      "clearSelection": "Clear selection"
+    },
+    "confirmations": {
+      "deleteProduct": "Are you sure you want to delete this product?",
+      "deleteBulk": "Are you sure you want to delete {count} products?"
+    },
+    "toasts": {
+      "productDeleted": "Product deleted",
+      "productsDeleted": "{count} products deleted",
+      "productsUpdated": "{count} products updated",
+      "deleteError": "Failed to delete product",
+      "bulkDeleteError": "Failed to delete products",
+      "bulkUpdateError": "Failed to update products"
+    }
+  },
+  "adminSellers": {
+    "pageTitle": "Seller Management",
+    "pageDescription": "Manage seller applications and accounts",
+    "buttons": {
+      "refresh": "Refresh",
+      "view": "View",
+      "approve": "Approve",
+      "reject": "Reject",
+      "suspend": "Suspend",
+      "reactivate": "Reactivate"
+    },
+    "stats": {
+      "totalSellers": "Total Sellers",
+      "pendingApproval": "Pending Approval",
+      "activeSellers": "Active Sellers",
+      "paidSubscriptions": "Paid Subscriptions"
+    },
+    "tabs": {
+      "all": "All",
+      "pending": "Pending",
+      "active": "Active",
+      "suspended": "Suspended",
+      "rejected": "Rejected"
+    },
+    "filters": {
+      "searchPlaceholder": "Search sellers..."
+    },
+    "table": {
+      "headers": {
+        "store": "Store",
+        "owner": "Owner",
+        "status": "Status",
+        "subscription": "Subscription",
+        "applied": "Applied",
+        "actions": "Actions"
+      },
+      "subscription": {
+        "months": "{count} months",
+        "month": "{count} month",
+        "expired": "Expired",
+        "low": "Low"
+      },
+      "emptyState": {
+        "noSellers": "No sellers found",
+        "searchTip": "Try adjusting your search",
+        "noApplications": "Applications will appear here"
+      }
+    },
+    "statusBadges": {
+      "PENDING": "PENDING",
+      "ACTIVE": "ACTIVE",
+      "SUSPENDED": "SUSPENDED",
+      "REJECTED": "REJECTED",
+      "INACTIVE": "INACTIVE"
+    },
+    "modals": {
+      "approve": {
+        "title": "Approve Seller Application",
+        "description": "Are you sure you want to approve {storeName}?",
+        "willAutomatically": "This will automatically:",
+        "actions": {
+          "approveAccount": "Approve the seller account",
+          "approveStore": "Approve their store",
+          "allowProducts": "Allow product creation (with credits)",
+          "sendEmail": "Send approval email notification"
+        },
+        "warning": "They'll need to purchase credits before publishing products.",
+        "confirmButton": "Approve",
+        "confirmButtonLoading": "Approving...",
+        "cancelButton": "Cancel"
+      },
+      "reject": {
+        "title": "Reject Seller Application",
+        "description": "Are you sure you want to reject {storeName}?",
+        "reasonLabel": "Rejection Reason",
+        "reasonRequired": "*",
+        "reasonPlaceholder": "Provide a clear reason for rejection...",
+        "warning": "This action will prevent the seller from creating products. They can reapply later.",
+        "confirmButton": "Confirm Rejection",
+        "confirmButtonLoading": "Rejecting...",
+        "cancelButton": "Cancel"
+      },
+      "suspend": {
+        "title": "Suspend Seller",
+        "description": "Are you sure you want to suspend {storeName}?",
+        "reasonLabel": "Suspension Reason",
+        "reasonRequired": "*",
+        "reasonPlaceholder": "Provide a reason for suspension...",
+        "warning": "This will immediately suspend the store and archive all active products.",
+        "confirmButton": "Confirm Suspension",
+        "confirmButtonLoading": "Suspending...",
+        "cancelButton": "Cancel"
+      }
+    },
+    "toasts": {
+      "dataRefreshed": "Data refreshed",
+      "approveSuccess": "{storeName} approved successfully!",
+      "approveFailed": "Failed to approve seller",
+      "rejectSuccess": "{storeName} rejected",
+      "rejectFailed": "Failed to reject seller",
+      "rejectNoteRequired": "Rejection note is required",
+      "suspendSuccess": "{storeName} suspended",
+      "suspendFailed": "Failed to suspend seller",
+      "suspendNoteRequired": "Suspension note is required",
+      "reactivateSuccess": "Seller reactivated",
+      "reactivateFailed": "Failed to reactivate seller"
+    }
+  },
+  "adminAnalytics": {
+    "pageTitle": "Analytics",
+    "pageDescription": "Detailed sales and performance metrics",
+    "dateRange": {
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "last90": "Last 90 days",
+      "lastYear": "Last year",
+      "custom": "Custom range"
+    },
+    "buttons": {
+      "exportReport": "Export Report"
+    },
+    "customRange": {
+      "startDate": "Start Date",
+      "endDate": "End Date"
+    },
+    "metrics": {
+      "totalRevenue": "Total Revenue",
+      "totalOrders": "Total Orders",
+      "newCustomers": "New Customers",
+      "conversionRate": "Conversion Rate",
+      "avgOrderValue": "Avg Order Value"
+    },
+    "charts": {
+      "salesByCategory": "Sales by Category",
+      "ordersByCategory": "Orders by Category"
+    },
+    "table": {
+      "title": "Top Selling Products",
+      "headers": {
+        "product": "Product",
+        "category": "Category",
+        "sales": "Sales",
+        "orders": "Orders",
+        "revenue": "Revenue"
+      }
+    }
+  },
+  "adminCategories": {
+    "pageTitle": "Categories",
+    "pageSubtitle": "Organize your products into categories",
+    "addCategory": "Add Category",
+    "stats": {
+      "totalCategories": "Total Categories",
+      "active": "Active",
+      "withProducts": "With Products",
+      "emptyCategories": "Empty Categories"
+    },
+    "filters": {
+      "searchPlaceholder": "Search categories...",
+      "allStatus": "All Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "allLevels": "All Levels",
+      "rootLevel": "Root Level",
+      "hasParent": "Has Parent",
+      "clear": "Clear",
+      "searchLabel": "Search:",
+      "statusLabel": "Status:",
+      "levelLabel": "Level:"
+    },
+    "form": {
+      "createTitle": "Create New Category",
+      "editTitle": "Edit Category",
+      "editSubtitle": "Update category details and settings",
+      "name": "Name",
+      "slug": "Slug",
+      "autoGenerated": "(auto-generated)",
+      "description": "Description",
+      "parentCategory": "Parent Category",
+      "noneTopLevel": "None (Top Level)",
+      "visibilityOptions": "Visibility Options",
+      "showInMegaMenu": "Show in Mega Menu",
+      "megaMenuHelp": "(Shop/Collections dropdown)",
+      "showInCategoryBar": "Show in Category Bar",
+      "categoryBarHelp": "(Filter pills: All Products, Watches, etc.)",
+      "showInSidebar": "Show in Sidebar",
+      "showOnHomepage": "Show on Homepage",
+      "showInFooter": "Show in Footer",
+      "featured": "Featured",
+      "namePlaceholder": "e.g., Watches",
+      "slugPlaceholder": "e.g., watches",
+      "descriptionPlaceholder": "Optional description for this category",
+      "updateCategory": "Update Category",
+      "createCategory": "Create Category",
+      "cancel": "Cancel"
+    },
+    "table": {
+      "name": "Name",
+      "slug": "Slug",
+      "products": "Products",
+      "visibility": "Visibility",
+      "actions": "Actions",
+      "subcategories": "subcategories",
+      "subcategory": "subcategory",
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "editCategory": "Edit category",
+      "deleteCategory": "Delete category",
+      "hasDependencies": "Has dependencies:",
+      "products_other": "products",
+      "product": "product"
+    },
+    "visibility": {
+      "menu": "Menu",
+      "catBar": "Cat Bar",
+      "sidebar": "Sidebar",
+      "footer": "Footer",
+      "home": "Home",
+      "featured": "⭐ Featured"
+    },
+    "empty": {
+      "noCategories": "No categories found",
+      "tryAdjusting": "Try adjusting your filters",
+      "clickToCreate": "Click \"Add Category\" to create your first category"
+    },
+    "loading": "Loading categories...",
+    "delete": {
+      "confirmTitle": "Are you sure you want to delete \"{name}\"?",
+      "warningHas": "This category has:",
+      "mustDeleteFirst": "You must delete or reassign them first.",
+      "cannotUndo": "This action cannot be undone.",
+      "cannotDeleteWithSubcategories": "Cannot delete category with {count} {count, plural, one {subcategory} other {subcategories}}. Please delete or reassign them first.",
+      "cannotDeleteWithProducts": "Cannot delete category with {count} {count, plural, one {product} other {products}}. Please reassign or delete the products first."
+    },
+    "toast": {
+      "categoryCreated": "Category created successfully",
+      "categoryUpdated": "Category updated successfully",
+      "categoryDeleted": "Category deleted successfully",
+      "visibilityUpdated": "Visibility updated",
+      "errorSave": "Failed to save category",
+      "errorDelete": "Failed to delete category",
+      "errorVisibility": "Failed to update visibility",
+      "slugExists": "A category with this slug already exists. Please use a different name or slug.",
+      "alreadyExists": "A category with these details already exists.",
+      "fieldExists": "A category with this {field} already exists.",
+      "databaseConstraint": "Failed to save category due to a database constraint."
+    }
+  },
+  "adminReviews": {
+    "title": "Reviews Management",
+    "subtitle": "Moderate customer reviews",
+    "stats": {
+      "totalReviews": "Total Reviews",
+      "pendingModeration": "Pending Moderation",
+      "averageRating": "Average Rating",
+      "thisMonth": "This Month",
+      "needsReview": "Needs review"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by product, customer, or content...",
+      "allStatus": "All Status",
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "allRatings": "All Ratings",
+      "fiveStars": "5 Stars",
+      "fourStars": "4 Stars",
+      "threeStars": "3 Stars",
+      "twoStars": "2 Stars",
+      "oneStar": "1 Star",
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "highestRating": "Highest Rating",
+      "lowestRating": "Lowest Rating",
+      "clear": "Clear",
+      "search": "Search",
+      "status": "Status",
+      "rating": "Rating",
+      "sort": "Sort",
+      "stars": "stars"
+    },
+    "table": {
+      "product": "Product",
+      "customer": "Customer",
+      "rating": "Rating",
+      "review": "Review",
+      "status": "Status",
+      "date": "Date",
+      "actions": "Actions",
+      "unknownProduct": "Unknown Product",
+      "anonymous": "Anonymous"
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "delete": "Delete",
+      "bulkApprove": "Approve",
+      "bulkReject": "Reject",
+      "bulkDelete": "Delete"
+    },
+    "pagination": {
+      "showing": "Showing {start} to {end} of {total} reviews",
+      "perPage10": "10 per page",
+      "perPage25": "25 per page",
+      "perPage50": "50 per page",
+      "perPage100": "100 per page",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "bulk": {
+      "selected": "{count} review selected",
+      "selectedPlural": "{count} reviews selected"
+    },
+    "messages": {
+      "loadingReviews": "Loading reviews...",
+      "noReviewsFound": "No reviews found",
+      "tryAdjustingFilters": "Try adjusting your filters",
+      "reviewApproved": "Review approved successfully",
+      "reviewRejected": "Review rejected successfully",
+      "reviewDeleted": "Review deleted successfully",
+      "reviewsApproved": "{count} reviews approved",
+      "reviewsRejected": "{count} reviews rejected",
+      "reviewsDeleted": "{count} reviews deleted",
+      "failedToUpdate": "Failed to update review",
+      "failedToApprove": "Failed to approve reviews",
+      "failedToReject": "Failed to reject reviews",
+      "failedToDelete": "Failed to delete reviews",
+      "confirmDelete": "Are you sure you want to delete this review?",
+      "confirmBulkDelete": "Are you sure you want to delete {count} reviews?"
+    }
+  },
+  "adminCommissions": {
+    "pageTitle": "Commission Overrides",
+    "pageDescription": "Manage seller-specific commission rates",
+    "addOverride": "Add Override",
+    "stats": {
+      "totalOverrides": "Total Overrides",
+      "active": "active",
+      "inactive": "inactive",
+      "averageRate": "Average Rate",
+      "percentageOverrides": "Percentage overrides",
+      "lowestRate": "Lowest Rate",
+      "bestSellerRate": "Best seller rate",
+      "highestRate": "Highest Rate",
+      "maximumOverride": "Maximum override",
+      "expiringSoon": "Expiring Soon",
+      "within30Days": "Within 30 days"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by seller name, email, or notes...",
+      "allStatuses": "All Statuses",
+      "active": "Active",
+      "inactive": "Inactive",
+      "allTypes": "All Types",
+      "percentage": "Percentage",
+      "fixed": "Fixed",
+      "allCategories": "All Categories",
+      "noCategory": "No Category",
+      "sortBy": "Sort by",
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "rateHigh": "Rate (High)",
+      "rateLow": "Rate (Low)",
+      "sellerName": "Seller Name",
+      "activeFilters": "Active filters:",
+      "search": "Search",
+      "status": "Status",
+      "type": "Type",
+      "category": "Category",
+      "none": "None",
+      "clearAll": "Clear all"
+    },
+    "table": {
+      "title": "Commission Overrides",
+      "description": "Seller-specific commission rates that override default rules",
+      "headers": {
+        "seller": "Seller",
+        "rate": "Rate",
+        "type": "Type",
+        "category": "Category",
+        "orderRange": "Order Range",
+        "validity": "Validity",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "all": "All",
+      "any": "Any",
+      "from": "From",
+      "until": "Until",
+      "always": "Always",
+      "active": "Active",
+      "inactive": "Inactive",
+      "loading": "Loading commission overrides...",
+      "noResults": "No commission overrides found"
+    },
+    "bulkActions": {
+      "selected": "selected",
+      "clearSelection": "Clear selection",
+      "export": "Export",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "delete": "Delete",
+      "confirmActivate": "Activate {count} commission overrides?",
+      "confirmDeactivate": "Deactivate {count} commission overrides?",
+      "confirmDelete": "Delete {count} commission overrides? This cannot be undone.",
+      "exportSuccess": "Exporting {count} commission overrides",
+      "activateSuccess": "Activated {count} overrides",
+      "deactivateSuccess": "Deactivated {count} overrides",
+      "deleteSuccess": "Deleted {count} overrides ({failed} failed)"
+    },
+    "dialog": {
+      "createTitle": "Create Commission Override",
+      "editTitle": "Edit Commission Override",
+      "description": "Set a custom commission rate for a specific seller",
+      "sellerEmail": "Seller Email",
+      "sellerEmailPlaceholder": "seller@example.com",
+      "type": "Type",
+      "typePercentage": "Percentage",
+      "typeFixed": "Fixed Amount",
+      "ratePercent": "Rate (%)",
+      "rateAmount": "Amount ($)",
+      "ratePlaceholderPercent": "5.00",
+      "ratePlaceholderAmount": "10.00",
+      "category": "Category (Optional)",
+      "allCategories": "All categories",
+      "minOrderValue": "Min Order Value ($)",
+      "minOrderPlaceholder": "0.00",
+      "maxOrderValue": "Max Order Value ($)",
+      "maxOrderPlaceholder": "Unlimited",
+      "validFrom": "Valid From",
+      "validUntil": "Valid Until",
+      "notes": "Notes",
+      "notesPlaceholder": "Reason for custom rate...",
+      "cancel": "Cancel",
+      "createOverride": "Create Override",
+      "updateOverride": "Update Override",
+      "required": "*"
+    },
+    "toast": {
+      "loadError": "Failed to load commission overrides",
+      "findSellerError": "Failed to find seller",
+      "invalidSellerEmail": "Please provide a valid seller email",
+      "createSuccess": "Commission override created successfully",
+      "updateSuccess": "Commission override updated successfully",
+      "saveError": "Failed to save commission override",
+      "deleteConfirm": "Are you sure you want to delete this commission override?",
+      "deleteSuccess": "Commission override deleted successfully",
+      "deleteError": "Failed to delete commission override"
+    }
+  },
+  "adminCurrencies": {
+    "pageTitle": "Currency Management",
+    "pageDescription": "Manage exchange rates and currency settings for the platform",
+    "buttons": {
+      "addCurrency": "Add Currency",
+      "clearSelection": "Clear selection",
+      "export": "Export",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "delete": "Delete",
+      "clearAll": "Clear all",
+      "cancel": "Cancel"
+    },
+    "stats": {
+      "totalCurrencies": "Total Currencies",
+      "allCurrencies": "All currencies",
+      "active": "Active",
+      "availableForUse": "Available for use",
+      "inactive": "Inactive",
+      "disabledCurrencies": "Disabled currencies",
+      "recentlyUpdated": "Recently Updated",
+      "last24Hours": "Last 24 hours",
+      "baseCurrency": "Base Currency",
+      "usDollar": "US Dollar"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by code, name, or symbol...",
+      "statusLabel": "Status",
+      "allStatuses": "All Statuses",
+      "active": "Active",
+      "inactive": "Inactive",
+      "sortBy": "Sort by",
+      "sortNameAZ": "Name (A-Z)",
+      "sortCodeAZ": "Code (A-Z)",
+      "sortRateHigh": "Rate (High)",
+      "sortRateLow": "Rate (Low)",
+      "sortLastUpdated": "Last Updated",
+      "activeFilters": "Active filters:",
+      "search": "Search",
+      "status": "Status"
+    },
+    "table": {
+      "title": "All Currencies",
+      "headers": {
+        "currency": "Currency",
+        "code": "Code",
+        "symbol": "Symbol",
+        "exchangeRate": "Exchange Rate",
+        "status": "Status",
+        "lastUpdated": "Last Updated",
+        "actions": "Actions"
+      },
+      "baseCurrency": "Base Currency",
+      "active": "Active",
+      "inactive": "Inactive",
+      "exchangeRateFormat": "1 USD = {rate} {code}",
+      "loading": "Loading currencies...",
+      "error": "Failed to load currencies",
+      "noResults": "No currencies found",
+      "selected": "{count} selected"
+    },
+    "actions": {
+      "toggleActiveSuccess": "{name} has been {status}",
+      "activated": "activated",
+      "deactivated": "deactivated",
+      "toggleActiveFailed": "Failed to toggle currency status",
+      "deleteBaseError": "USD is the base currency and cannot be deleted",
+      "deleteConfirm": "Are you sure you want to delete {name}? This action cannot be undone.",
+      "deleteSuccess": "{name} has been deleted",
+      "deleteFailed": "Failed to delete currency",
+      "bulkExportSuccess": "Exporting {count} currencies",
+      "bulkActivateConfirm": "Activate {count} currencies?",
+      "bulkActivateSuccess": "Activated {success} currencies ({failed} failed)",
+      "bulkDeactivateConfirm": "Deactivate {count} currencies?",
+      "bulkDeactivateSuccess": "Deactivated {success} currencies ({failed} failed)",
+      "bulkDeleteConfirm": "Delete {count} currencies? This cannot be undone.",
+      "bulkDeleteSuccess": "Deleted {success} currencies ({failed} failed)"
+    },
+    "modal": {
+      "addTitle": "Add New Currency",
+      "editTitle": "Edit Currency",
+      "addDescription": "Add a new currency to the platform",
+      "editDescription": "Update currency settings and exchange rate",
+      "fields": {
+        "currencyCode": "Currency Code",
+        "currencyCodePlaceholder": "USD",
+        "currencyCodeHelp": "ISO 4217 code (3 letters)",
+        "currencyName": "Currency Name",
+        "currencyNamePlaceholder": "US Dollar",
+        "symbol": "Symbol",
+        "symbolPlaceholder": "$",
+        "rate": "Exchange Rate (to USD)",
+        "ratePlaceholder": "1.0",
+        "rateHelp": "1 USD = {rate} {code}",
+        "rateHelpEmpty": "1 USD = {rate} ...",
+        "decimalDigits": "Decimal Places",
+        "position": "Symbol Position",
+        "positionBefore": "Before ({symbol}100)",
+        "positionAfter": "After (100{symbol})",
+        "isActive": "Activate this currency immediately",
+        "required": "*"
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "adding": "Adding...",
+        "updating": "Updating...",
+        "addCurrency": "Add Currency",
+        "updateCurrency": "Update Currency"
+      },
+      "success": {
+        "added": "{name} has been added successfully",
+        "updated": "{name} has been updated successfully"
+      },
+      "error": {
+        "add": "Failed to add currency",
+        "edit": "Failed to update currency"
+      }
+    }
+  },
+  "adminEscrow": {
+    "pageTitle": "Escrow Management",
+    "pageDescription": "Manage escrow transactions and release funds to sellers",
+    "stats": {
+      "held": "Held",
+      "heldCount": "{count} transactions",
+      "pendingRelease": "Pending Release",
+      "pendingReleaseCount": "{count} transactions",
+      "released": "Released",
+      "releasedCount": "{count} transactions",
+      "refunded": "Refunded",
+      "refundedCount": "{count} transactions",
+      "platformFee": "Platform Fee",
+      "totalCommission": "Total commission"
+    },
+    "filters": {
+      "title": "Escrow Transactions",
+      "description": "View and manage all escrow transactions",
+      "searchPlaceholder": "Search by order number, seller, or store...",
+      "filterByStatus": "Filter by status",
+      "allStatuses": "All Statuses",
+      "held": "Held",
+      "pendingRelease": "Pending Release",
+      "released": "Released",
+      "refunded": "Refunded",
+      "disputed": "Disputed"
+    },
+    "table": {
+      "headers": {
+        "order": "Order",
+        "sellerStore": "Seller/Store",
+        "totalAmount": "Total Amount",
+        "platformFee": "Platform Fee",
+        "sellerAmount": "Seller Amount",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "noResults": "No escrow transactions found",
+      "releaseButton": "Release",
+      "refundButton": "Refund"
+    },
+    "statusBadges": {
+      "held": "HELD",
+      "pendingRelease": "PENDING RELEASE",
+      "released": "RELEASED",
+      "refunded": "REFUNDED",
+      "disputed": "DISPUTED"
+    },
+    "dialog": {
+      "releaseTitle": "Release Escrow",
+      "refundTitle": "Refund Escrow",
+      "releaseDescription": "This will release the funds to the seller. This action cannot be undone.",
+      "refundDescription": "This will refund the funds to the buyer. This action cannot be undone.",
+      "orderLabel": "Order:",
+      "sellerLabel": "Seller:",
+      "amountLabel": "Amount:",
+      "refundReasonLabel": "Refund Reason",
+      "refundReasonPlaceholder": "Enter reason for refund...",
+      "cancelButton": "Cancel",
+      "releaseFundsButton": "Release Funds",
+      "refundToBuyerButton": "Refund to Buyer"
+    },
+    "toast": {
+      "loadFailed": "Failed to load escrow transactions",
+      "releaseSuccess": "Escrow funds released to seller",
+      "releaseFailed": "Failed to release escrow",
+      "refundSuccess": "Escrow funds refunded to buyer",
+      "refundFailed": "Failed to refund escrow"
+    }
+  },
+  "adminSubscriptions": {
+    "heroTitle": "Feature Plans Dashboard",
+    "heroDescription": "Manage seller feature plans that unlock premium product types (SERVICE, INQUIRY, REAL_ESTATE)",
+    "stats": {
+      "activeFeaturePlans": "Active Feature Plans",
+      "monthlyRevenue": "Monthly Revenue",
+      "totalFeaturePlans": "Total Feature Plans",
+      "churnRate": "Churn Rate"
+    },
+    "sellerPlans": {
+      "title": "Seller Feature Plans",
+      "activeSubscribers": "Active Subscribers",
+      "subscribersDescription": "Sellers with feature plans",
+      "viewAll": "View all"
+    },
+    "advertisementPlans": {
+      "title": "Advertisement Subscriptions",
+      "activeCampaigns": "Active Ad Campaigns",
+      "campaignsDescription": "Running advertisements",
+      "viewAll": "View all"
+    },
+    "quickActions": {
+      "manageFeaturePlans": {
+        "title": "Manage Feature Plans",
+        "description": "Edit tiers, pricing, and product types"
+      },
+      "adCampaigns": {
+        "title": "Ad Campaigns",
+        "description": "Monitor performance"
+      },
+      "sellerFeaturePlans": {
+        "title": "Seller Feature Plans",
+        "description": "View active subscriptions"
+      }
+    },
+    "errors": {
+      "loadStatistics": "Failed to load subscription statistics"
+    }
+  },
+  "adminPayouts": {
+    "title": "Payout Management",
+    "description": "Manage seller payouts and schedule automated payments",
+    "buttons": {
+      "processAll": "Process All Payouts",
+      "processing": "Processing..."
+    },
+    "stats": {
+      "totalPayouts": "Total Payouts",
+      "transactions": "{count} transactions",
+      "pending": "Pending",
+      "pendingCount": "{count} pending",
+      "processing": "Processing",
+      "inProgress": "{count} in progress",
+      "completed": "Completed",
+      "paidOut": "{count} paid out",
+      "failed": "Failed",
+      "needsAttention": "Needs attention"
+    },
+    "schedule": {
+      "title": "Payout Schedule",
+      "description": "Current automated payout configuration",
+      "frequency": "Frequency",
+      "minAmount": "Min Amount",
+      "holdPeriod": "Hold Period",
+      "nextRun": "Next Run",
+      "days": "{count} days",
+      "notScheduled": "Not scheduled"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by seller, store, or reference...",
+      "statusLabel": "Status",
+      "allStatuses": "All Statuses",
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "paymentMethod": "Payment Method",
+      "allMethods": "All Methods",
+      "sortBy": "Sort by",
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "amountHigh": "Amount (High)",
+      "amountLow": "Amount (Low)",
+      "activeFilters": "Active filters:",
+      "search": "Search",
+      "status": "Status",
+      "method": "Method",
+      "clearAll": "Clear all"
+    },
+    "table": {
+      "title": "Payout History",
+      "description": "All seller payouts and their status",
+      "headers": {
+        "sellerStore": "Seller/Store",
+        "amount": "Amount",
+        "period": "Period",
+        "commissions": "Commissions",
+        "method": "Method",
+        "status": "Status",
+        "scheduled": "Scheduled",
+        "actions": "Actions"
+      },
+      "loading": "Loading payouts...",
+      "noResults": "No payouts found",
+      "selected": "{count} selected"
+    },
+    "actions": {
+      "complete": "Complete",
+      "fail": "Fail",
+      "retry": "Retry",
+      "clearSelection": "Clear selection",
+      "export": "Export",
+      "printReport": "Print Report"
+    },
+    "bulk": {
+      "exportSuccess": "Exporting {count} payouts",
+      "completeConfirm": "Mark {count} payouts as completed?",
+      "notPendingError": "Selected payouts are not pending",
+      "completeIndividually": "Please complete payouts individually with payment references",
+      "failPrompt": "Enter reason for failing {count} payouts:",
+      "failSuccess": "Failed {success} payouts ({failed} errors)"
+    },
+    "toast": {
+      "loadFailed": "Failed to load payouts",
+      "processSuccess": "Processed {successful} payouts successfully ({failed} failed)",
+      "processFailed": "Failed to process payouts",
+      "triggerSuccess": "Payout triggered successfully",
+      "triggerFailed": "Failed to trigger payout",
+      "completeSuccess": "Payout marked as completed",
+      "completeFailed": "Failed to complete payout",
+      "failSuccess": "Payout marked as failed",
+      "failFailed": "Failed to update payout"
+    },
+    "dialog": {
+      "complete": {
+        "title": "Complete Payout",
+        "description": "Mark this payout as completed after transferring funds to the seller",
+        "seller": "Seller:",
+        "amount": "Amount:",
+        "referenceLabel": "Payment Reference *",
+        "referencePlaceholder": "BANK-TXN-12345",
+        "proofLabel": "Payment Proof (URL)",
+        "proofPlaceholder": "https://...",
+        "cancel": "Cancel",
+        "confirm": "Mark as Completed"
+      },
+      "processAllConfirm": "Process all pending payouts now?",
+      "failPrompt": "Enter reason for failure:"
+    },
+    "status": {
+      "pending": "PENDING",
+      "processing": "PROCESSING",
+      "completed": "COMPLETED",
+      "failed": "FAILED",
+      "cancelled": "CANCELLED"
+    }
+  },
+  "adminAdvertisements": {
+    "pageTitle": "Advertisements",
+    "pageDescription": "Manage and approve advertisements",
+    "filters": {
+      "all": "all",
+      "pending": "pending",
+      "active": "active",
+      "rejected": "rejected"
+    },
+    "table": {
+      "headers": {
+        "ad": "Ad",
+        "placement": "Placement",
+        "pricing": "Pricing",
+        "status": "Status",
+        "performance": "Performance",
+        "actions": "Actions"
+      },
+      "performance": {
+        "impressions": "{count} impressions",
+        "clicks": "{count} clicks",
+        "ctr": "{rate}% CTR"
+      }
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "pause": "Pause",
+      "resume": "Resume",
+      "analytics": "Analytics",
+      "delete": "Delete"
+    },
+    "modal": {
+      "title": "Advertisement Analytics",
+      "metrics": {
+        "impressions": "Impressions",
+        "clicks": "Clicks",
+        "conversions": "Conversions",
+        "ctr": "CTR",
+        "conversionRate": "Conversion Rate"
+      },
+      "close": "Close"
+    },
+    "messages": {
+      "loading": "Loading advertisements...",
+      "noAds": "No advertisements found",
+      "deleteConfirm": "Are you sure you want to delete this advertisement?",
+      "fetchError": "Failed to fetch advertisements",
+      "approveSuccess": "Advertisement approved",
+      "rejectSuccess": "Advertisement rejected",
+      "updateError": "Failed to update advertisement",
+      "toggleSuccess": "Advertisement {status}",
+      "activated": "activated",
+      "deactivated": "deactivated",
+      "toggleError": "Failed to toggle advertisement",
+      "deleteSuccess": "Advertisement deleted",
+      "deleteError": "Failed to delete advertisement",
+      "analyticsError": "Failed to load analytics"
+    }
+  },
+  "adminAdvertisementPlans": {
+    "header": {
+      "title": "Advertisement Plans",
+      "subtitle": "Manage subscription plans for seller advertising",
+      "createButton": "Create Plan"
+    },
+    "loading": "Loading advertisement plans...",
+    "error": "Failed to load advertisement plans. Please try again.",
+    "statistics": {
+      "totalPlans": "Total Plans",
+      "activeSubscriptions": "Active Subscriptions",
+      "totalRevenue": "Total Revenue",
+      "impressionsServed": "Impressions Served"
+    },
+    "plan": {
+      "featured": "Featured",
+      "active": "Active",
+      "inactive": "Inactive",
+      "perMonth": "month",
+      "perYear": "year",
+      "unlimited": "Unlimited",
+      "activeAds": "active ads",
+      "impressions": "impressions",
+      "priorityBoost": "Priority boost: {boost}",
+      "placements": "{count} placements",
+      "dayTrial": "{days} day trial",
+      "editButton": "Edit",
+      "deleteButton": "Delete"
+    },
+    "empty": {
+      "message": "No advertisement plans yet",
+      "createButton": "Create First Plan"
+    },
+    "modal": {
+      "createTitle": "Create Plan",
+      "editTitle": "Edit Plan",
+      "closeButton": "Close"
+    },
+    "form": {
+      "name": "Name",
+      "slug": "Slug",
+      "description": "Description",
+      "price": "Price",
+      "currency": "Currency",
+      "billingPeriod": "Billing Period",
+      "billingMonthly": "Monthly",
+      "billingYearly": "Yearly",
+      "maxActiveAds": "Max Active Ads",
+      "maxActiveAdsHelp": "-1 for unlimited",
+      "maxImpressions": "Max Impressions",
+      "maxImpressionsHelp": "0 for unlimited",
+      "priorityBoost": "Priority Boost",
+      "trialDays": "Trial Days",
+      "displayOrder": "Display Order",
+      "allowedPlacements": "Allowed Placements",
+      "isActive": "Active",
+      "isFeatured": "Mark as Featured",
+      "cancelButton": "Cancel",
+      "createButton": "Create Plan",
+      "updateButton": "Update Plan",
+      "submitting": "Saving..."
+    },
+    "placements": {
+      "HOMEPAGE_HERO": "HOMEPAGE HERO",
+      "HOMEPAGE_FEATURED": "HOMEPAGE FEATURED",
+      "HOMEPAGE_SIDEBAR": "HOMEPAGE SIDEBAR",
+      "PRODUCTS_BANNER": "PRODUCTS BANNER",
+      "PRODUCTS_INLINE": "PRODUCTS INLINE",
+      "PRODUCTS_SIDEBAR": "PRODUCTS SIDEBAR",
+      "CATEGORY_BANNER": "CATEGORY BANNER",
+      "PRODUCT_DETAIL_SIDEBAR": "PRODUCT DETAIL SIDEBAR",
+      "CHECKOUT_UPSELL": "CHECKOUT UPSELL",
+      "SEARCH_RESULTS": "SEARCH RESULTS"
+    },
+    "messages": {
+      "deleteConfirm": "Are you sure you want to delete this plan?",
+      "planUpdated": "Plan updated successfully",
+      "planCreated": "Plan created successfully",
+      "planDeleted": "Plan deleted successfully",
+      "saveFailed": "Failed to save plan",
+      "deleteFailed": "Failed to delete plan"
+    }
+  },
+  "adminShipping": {
+    "pageTitle": "Shipping Zones",
+    "pageDescription": "Manage regional shipping rates and delivery options",
+    "buttons": {
+      "addZone": "Add Zone",
+      "cancel": "Cancel",
+      "createZone": "Create Zone",
+      "updateZone": "Update Zone"
+    },
+    "stats": {
+      "totalZones": "Total Zones",
+      "active": "active",
+      "countriesCovered": "Countries Covered",
+      "uniqueCountries": "Unique countries",
+      "avgBaseFee": "Avg. Base Fee",
+      "acrossAllZones": "Across all zones"
+    },
+    "table": {
+      "title": "Shipping Zones",
+      "description": "Configure shipping zones and rates for different regions",
+      "headers": {
+        "nameCode": "Name / Code",
+        "countries": "Countries",
+        "baseFee": "Base Fee",
+        "freeShipping": "Free Shipping",
+        "deliveryTime": "Delivery Time",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "noZonesFound": "No shipping zones found",
+      "days": "days",
+      "active": "Active",
+      "inactive": "Inactive",
+      "none": "None"
+    },
+    "dialog": {
+      "editTitle": "Edit Shipping Zone",
+      "createTitle": "Create Shipping Zone",
+      "description": "Configure shipping rates and delivery options for a region",
+      "zoneName": "Zone Name",
+      "zoneCode": "Zone Code",
+      "countries": "Countries (comma-separated)",
+      "baseFee": "Base Fee ($)",
+      "perKgFee": "Per Kg Fee ($)",
+      "freeShippingThreshold": "Free Shipping Threshold ($)",
+      "minDeliveryDays": "Min Delivery Days",
+      "maxDeliveryDays": "Max Delivery Days",
+      "descriptionField": "Description",
+      "required": "*"
+    },
+    "placeholders": {
+      "zoneName": "North America",
+      "zoneCode": "NA",
+      "countries": "US, CA, MX",
+      "baseFee": "15.00",
+      "perKgFee": "5.00",
+      "freeShippingThreshold": "200.00",
+      "minDeliveryDays": "3",
+      "maxDeliveryDays": "7",
+      "description": "Shipping to North American countries"
+    },
+    "toast": {
+      "loadError": "Failed to load shipping zones",
+      "updateSuccess": "Shipping zone updated successfully",
+      "createSuccess": "Shipping zone created successfully",
+      "saveError": "Failed to save shipping zone",
+      "deleteConfirm": "Are you sure you want to delete this shipping zone?",
+      "deleteSuccess": "Shipping zone deleted successfully",
+      "deleteError": "Failed to delete shipping zone"
+    }
+  },
+  "buyerNav": {
+    "portalTitle": "Buyer Portal",
+    "groups": {
+      "dashboard": "Dashboard",
+      "shopping": "Shopping",
+      "orders": "Orders",
+      "account": "Account",
+      "activity": "Activity",
+      "communication": "Communication",
+      "settings": "Settings"
+    },
+    "items": {
+      "overview": "Overview",
+      "browseProducts": "Browse Products",
+      "wishlist": "Wishlist",
+      "cart": "Cart",
+      "myOrders": "My Orders",
+      "orderHistory": "Order History",
+      "returns": "Returns",
+      "profile": "Profile",
+      "addresses": "Addresses",
+      "paymentMethods": "Payment Methods",
+      "reviews": "Reviews",
+      "followingStores": "Following Stores",
+      "downloads": "Downloads",
+      "messages": "Messages",
+      "notifications": "Notifications",
+      "preferences": "Preferences"
+    },
+    "topbar": {
+      "title": "Buyer Dashboard",
+      "quickLinks": {
+        "wishlist": "Wishlist",
+        "cart": "Cart"
+      },
+      "language": "Language",
+      "currency": "Currency",
+      "currencyDropdown": {
+        "noCurrencies": "No currencies available",
+        "loading": "Loading currencies..."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "noNotifications": "No new notifications"
+      },
+      "userMenu": {
+        "myProfile": "My Profile",
+        "myOrders": "My Orders",
+        "settings": "Settings",
+        "logout": "Logout"
+      },
+      "alerts": {
+        "currencyLocked": "Your cart contains items in a different currency. Please clear your cart to change currency."
+      },
+      "ariaLabels": {
+        "toggleMenu": "Toggle menu",
+        "language": "Language",
+        "currency": "Currency",
+        "notifications": "Notifications",
+        "messages": "Messages"
+      }
     }
   }
 }

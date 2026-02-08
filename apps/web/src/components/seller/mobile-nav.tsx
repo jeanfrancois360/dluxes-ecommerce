@@ -2,6 +2,7 @@
 
 import { Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 
 interface MobileNavProps {
   isOpen: boolean;
@@ -9,6 +10,8 @@ interface MobileNavProps {
 }
 
 export default function MobileNav({ isOpen, onToggle }: MobileNavProps) {
+  const t = useTranslations('sellerNav');
+
   return (
     <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-neutral-200 z-30 flex items-center px-4">
       <button
@@ -33,7 +36,7 @@ export default function MobileNav({ isOpen, onToggle }: MobileNavProps) {
         <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
           <span className="text-white font-bold text-sm">S</span>
         </div>
-        <span className="text-lg font-semibold text-black">Seller Portal</span>
+        <span className="text-lg font-semibold text-black">{t('sellerPortal')}</span>
       </div>
     </div>
   );

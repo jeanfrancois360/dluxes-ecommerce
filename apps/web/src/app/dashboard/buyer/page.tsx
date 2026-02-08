@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -45,6 +46,7 @@ interface RecentOrder {
 }
 
 export default function BuyerDashboard() {
+  const t = useTranslations('buyerDashboard');
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
@@ -59,56 +61,56 @@ export default function BuyerDashboard() {
 
   const quickActions = [
     {
-      title: 'Browse Products',
-      description: 'Discover new luxury items',
+      title: t('actions.browseProducts'),
+      description: t('actions.browseProductsDesc'),
       icon: ShoppingBag,
       href: '/products',
     },
     {
-      title: 'My Orders',
-      description: 'Track your orders and deliveries',
+      title: t('actions.myOrders'),
+      description: t('actions.myOrdersDesc'),
       icon: Package,
       href: '/account/orders',
     },
     {
-      title: 'My Wishlist',
-      description: 'View saved items',
+      title: t('actions.myWishlist'),
+      description: t('actions.myWishlistDesc'),
       icon: Heart,
       href: '/wishlist',
     },
     {
-      title: 'My Profile',
-      description: 'Update your account information',
+      title: t('actions.myProfile'),
+      description: t('actions.myProfileDesc'),
       icon: User,
       href: '/account/profile',
     },
     {
-      title: 'Addresses',
-      description: 'Manage shipping addresses',
+      title: t('actions.addresses'),
+      description: t('actions.addressesDesc'),
       icon: MapPin,
       href: '/account/addresses',
     },
     {
-      title: 'Payment Methods',
-      description: 'Manage your payment options',
+      title: t('actions.paymentMethods'),
+      description: t('actions.paymentMethodsDesc'),
       icon: CreditCard,
       href: '/account/payment-methods',
     },
     {
-      title: 'My Reviews',
-      description: 'View and manage your reviews',
+      title: t('actions.myReviews'),
+      description: t('actions.myReviewsDesc'),
       icon: Star,
       href: '/account/reviews',
     },
     {
-      title: 'Following Stores',
-      description: 'See stores you follow',
+      title: t('actions.followingStores'),
+      description: t('actions.followingStoresDesc'),
       icon: Store,
       href: '/account/following',
     },
     {
-      title: 'My Inquiries',
-      description: 'View product inquiries',
+      title: t('actions.myInquiries'),
+      description: t('actions.myInquiriesDesc'),
       icon: MessageSquare,
       href: '/account/inquiries',
     },
@@ -185,45 +187,45 @@ export default function BuyerDashboard() {
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
       <PageHeader
-        title="Dashboard"
-        description={`Welcome back, ${user?.firstName || 'there'}! Track your orders, manage your wishlist, and explore new products.`}
+        title={t('pageTitle')}
+        description={t('welcomeBack', { name: user?.firstName || 'there' })}
       />
 
       {/* Content */}
       <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Key Metrics */}
         <section>
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Your Activity</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('yourActivity')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
-              title="Total Orders"
+              title={t('stats.totalOrders')}
               value={stats.totalOrders}
               icon={Package}
-              subtitle={`${stats.activeOrders} active`}
+              subtitle={t('stats.active', { count: stats.activeOrders })}
               isLoading={isLoading}
               index={0}
             />
             <StatCard
-              title="Active Orders"
+              title={t('stats.activeOrders')}
               value={stats.activeOrders}
               icon={ShoppingBag}
-              subtitle="In progress"
+              subtitle={t('stats.inProgress')}
               isLoading={isLoading}
               index={1}
             />
             <StatCard
-              title="Total Spent"
+              title={t('stats.totalSpent')}
               value={`$${stats.totalSpent.toFixed(2)}`}
               icon={DollarSign}
-              subtitle="All time"
+              subtitle={t('stats.allTime')}
               isLoading={isLoading}
               index={2}
             />
             <StatCard
-              title="Wishlist Items"
+              title={t('stats.wishlistItems')}
               value={stats.wishlistCount}
               icon={Heart}
-              subtitle="Saved for later"
+              subtitle={t('stats.savedForLater')}
               isLoading={isLoading}
               index={3}
             />
@@ -232,7 +234,7 @@ export default function BuyerDashboard() {
 
         {/* Quick Actions */}
         <section>
-          <h2 className="text-lg font-semibold text-black mb-4">Quick Actions</h2>
+          <h2 className="text-lg font-semibold text-black mb-4">{t('quickActions')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {quickActions.map((action, index) => (
               <QuickActionCard key={action.title} {...action} index={index} />
@@ -244,12 +246,12 @@ export default function BuyerDashboard() {
         <section>
           <div className="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
             <div className="border-b border-neutral-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-black">Recent Orders</h2>
+              <h2 className="text-lg font-semibold text-black">{t('recentOrders')}</h2>
               <Link
                 href="/account/orders"
                 className="text-sm text-gold hover:text-gold/80 font-medium inline-flex items-center gap-2 transition-all hover:gap-3"
               >
-                View all
+                {t('viewAll')}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -267,16 +269,14 @@ export default function BuyerDashboard() {
                   <div className="w-16 h-16 bg-neutral-100 rounded-full mx-auto mb-4 flex items-center justify-center">
                     <Package className="w-8 h-8 text-neutral-400" />
                   </div>
-                  <p className="text-neutral-600 mb-2 font-medium">No orders yet</p>
-                  <p className="text-sm text-neutral-500 mb-6">
-                    Start shopping to see your orders here
-                  </p>
+                  <p className="text-neutral-600 mb-2 font-medium">{t('orders.noOrders')}</p>
+                  <p className="text-sm text-neutral-500 mb-6">{t('orders.noOrdersDesc')}</p>
                   <Link
                     href="/products"
                     className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 rounded-lg hover:bg-neutral-800 transition-colors"
                   >
                     <ShoppingBag className="w-4 h-4" />
-                    Start Shopping
+                    {t('orders.startShopping')}
                   </Link>
                 </div>
               ) : (
@@ -339,7 +339,7 @@ export default function BuyerDashboard() {
                           </div>
                           {order.items.length > 3 && (
                             <span className="text-sm text-neutral-500 font-medium whitespace-nowrap">
-                              +{order.items.length - 3} more
+                              {t('orders.more', { count: order.items.length - 3 })}
                             </span>
                           )}
                         </div>
@@ -368,18 +368,15 @@ export default function BuyerDashboard() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
                     <TrendingUp className="w-8 h-8" />
-                    <h3 className="text-2xl font-bold">Start Selling on NextPik</h3>
+                    <h3 className="text-2xl font-bold">{t('sellerCTA.title')}</h3>
                   </div>
-                  <p className="text-white/95 mb-6 text-lg">
-                    Join our marketplace and reach millions of customers worldwide. Turn your
-                    passion into profit.
-                  </p>
+                  <p className="text-white/95 mb-6 text-lg">{t('sellerCTA.description')}</p>
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Link
                       href="/become-seller"
                       className="inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-lg hover:bg-neutral-50 transition-all font-semibold shadow-md hover:shadow-lg"
                     >
-                      Become a Seller
+                      {t('sellerCTA.button')}
                       <svg
                         className="w-5 h-5"
                         fill="none"

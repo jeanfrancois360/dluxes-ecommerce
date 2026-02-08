@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
@@ -8,7 +9,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@next
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 import { Button } from '@nextpik/ui';
-import { Settings, DollarSign, Percent, Globe, Truck, Shield, Bell, Search, History, Save, ChevronRight, Sparkles, Package, Receipt, Calculator, PackageCheck } from 'lucide-react';
+import {
+  Settings,
+  DollarSign,
+  Percent,
+  Globe,
+  Truck,
+  Shield,
+  Bell,
+  Search,
+  History,
+  Save,
+  ChevronRight,
+  Sparkles,
+  Package,
+  Receipt,
+  Calculator,
+  PackageCheck,
+} from 'lucide-react';
 import { GeneralSettingsSection } from '@/components/settings/general-settings';
 import { PaymentSettingsSection } from '@/components/settings/payment-settings';
 import { CommissionSettingsSection } from '@/components/settings/commission-settings';
@@ -24,25 +42,86 @@ import { AuditLogViewer } from '@/components/settings/audit-log-viewer';
 import { SettingsValidationAlert } from '@/components/settings/settings-validation-alert';
 import { SettingsOverviewDashboard } from '@/components/settings/settings-overview-dashboard';
 
-const tabsConfig = [
-  { value: 'overview', label: 'Overview', icon: Sparkles, description: 'Settings status dashboard' },
-  { value: 'general', label: 'General', icon: Settings, description: 'Basic platform settings' },
-  { value: 'payment', label: 'Payment', icon: DollarSign, description: 'Payment & escrow configuration' },
-  { value: 'commission', label: 'Commission', icon: Percent, description: 'Commission rates & structure' },
-  { value: 'currency', label: 'Currency', icon: Globe, description: 'Multi-currency support' },
-  { value: 'inventory', label: 'Inventory', icon: Package, description: 'Stock & inventory management' },
-  { value: 'tax', label: 'Tax', icon: Receipt, description: 'Tax calculation & rates' },
-  { value: 'shipping', label: 'Shipping Rates', icon: Calculator, description: 'Shipping cost calculator & pricing' },
-  { value: 'delivery', label: 'Fulfillment', icon: PackageCheck, description: 'Order fulfillment & delivery partners' },
-  { value: 'security', label: 'Security', icon: Shield, description: 'Authentication & security' },
-  { value: 'notifications', label: 'Notifications', icon: Bell, description: 'Email & SMS notifications' },
-  { value: 'seo', label: 'SEO', icon: Search, description: 'Search engine optimization' },
-];
-
 function SettingsPageContent() {
+  const t = useTranslations('adminSettings');
   const [activeTab, setActiveTab] = useState('overview');
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const tabsConfig = [
+    {
+      value: 'overview',
+      label: t('tabs.overview.label'),
+      icon: Sparkles,
+      description: t('tabs.overview.description'),
+    },
+    {
+      value: 'general',
+      label: t('tabs.general.label'),
+      icon: Settings,
+      description: t('tabs.general.description'),
+    },
+    {
+      value: 'payment',
+      label: t('tabs.payment.label'),
+      icon: DollarSign,
+      description: t('tabs.payment.description'),
+    },
+    {
+      value: 'commission',
+      label: t('tabs.commission.label'),
+      icon: Percent,
+      description: t('tabs.commission.description'),
+    },
+    {
+      value: 'currency',
+      label: t('tabs.currency.label'),
+      icon: Globe,
+      description: t('tabs.currency.description'),
+    },
+    {
+      value: 'inventory',
+      label: t('tabs.inventory.label'),
+      icon: Package,
+      description: t('tabs.inventory.description'),
+    },
+    {
+      value: 'tax',
+      label: t('tabs.tax.label'),
+      icon: Receipt,
+      description: t('tabs.tax.description'),
+    },
+    {
+      value: 'shipping',
+      label: t('tabs.shipping.label'),
+      icon: Calculator,
+      description: t('tabs.shipping.description'),
+    },
+    {
+      value: 'delivery',
+      label: t('tabs.delivery.label'),
+      icon: PackageCheck,
+      description: t('tabs.delivery.description'),
+    },
+    {
+      value: 'security',
+      label: t('tabs.security.label'),
+      icon: Shield,
+      description: t('tabs.security.description'),
+    },
+    {
+      value: 'notifications',
+      label: t('tabs.notifications.label'),
+      icon: Bell,
+      description: t('tabs.notifications.description'),
+    },
+    {
+      value: 'seo',
+      label: t('tabs.seo.label'),
+      icon: Search,
+      description: t('tabs.seo.description'),
+    },
+  ];
 
   const handleNavigateToTab = (tab: string) => {
     setActiveTab(tab);
@@ -51,12 +130,13 @@ function SettingsPageContent() {
     }, 100);
   };
 
-  const filteredTabs = tabsConfig.filter(tab =>
-    tab.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    tab.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredTabs = tabsConfig.filter(
+    (tab) =>
+      tab.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tab.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const activeTabConfig = tabsConfig.find(t => t.value === activeTab);
+  const activeTabConfig = tabsConfig.find((t) => t.value === activeTab);
 
   return (
     <div className="space-y-6 pb-12">
@@ -73,13 +153,9 @@ function SettingsPageContent() {
               <div className="p-2 rounded-lg bg-[#CBB57B]/10">
                 <Settings className="h-5 w-5 text-[#CBB57B]" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                Settings
-              </h1>
+              <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
             </div>
-            <p className="text-muted-foreground">
-              Configure and manage your platform settings
-            </p>
+            <p className="text-muted-foreground">{t('pageDescription')}</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -89,7 +165,7 @@ function SettingsPageContent() {
               className="gap-2"
             >
               <History className="h-4 w-4" />
-              {showAuditLog ? 'Hide' : 'View'} History
+              {showAuditLog ? t('buttons.hideHistory') : t('buttons.viewHistory')}
             </Button>
           </div>
         </div>
@@ -98,7 +174,7 @@ function SettingsPageContent() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search settings..."
+            placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -220,16 +296,12 @@ function SettingsPageContent() {
                       <History className="h-5 w-5 text-[#CBB57B]" />
                     </div>
                     <div>
-                      <CardTitle>Change History</CardTitle>
-                      <CardDescription>Track all configuration changes and modifications</CardDescription>
+                      <CardTitle>{t('auditLog.title')}</CardTitle>
+                      <CardDescription>{t('auditLog.description')}</CardDescription>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowAuditLog(false)}
-                  >
-                    Close
+                  <Button variant="ghost" size="sm" onClick={() => setShowAuditLog(false)}>
+                    {t('buttons.close')}
                   </Button>
                 </div>
               </CardHeader>

@@ -1,12 +1,28 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import { format, subDays } from 'date-fns';
 
 function AnalyticsContent() {
+  const t = useTranslations('adminAnalytics');
   const [dateRange, setDateRange] = useState('30');
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -33,8 +49,8 @@ function AnalyticsContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600 mt-1">Detailed sales and performance metrics</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
+          <p className="text-gray-600 mt-1">{t('pageDescription')}</p>
         </div>
         <div className="flex items-center gap-3">
           <select
@@ -42,14 +58,14 @@ function AnalyticsContent() {
             onChange={(e) => setDateRange(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
           >
-            <option value="7">Last 7 days</option>
-            <option value="30">Last 30 days</option>
-            <option value="90">Last 90 days</option>
-            <option value="365">Last year</option>
-            <option value="custom">Custom range</option>
+            <option value="7">{t('dateRange.last7')}</option>
+            <option value="30">{t('dateRange.last30')}</option>
+            <option value="90">{t('dateRange.last90')}</option>
+            <option value="365">{t('dateRange.lastYear')}</option>
+            <option value="custom">{t('dateRange.custom')}</option>
           </select>
           <button className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors">
-            Export Report
+            {t('buttons.exportReport')}
           </button>
         </div>
       </div>
@@ -58,7 +74,9 @@ function AnalyticsContent() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('customRange.startDate')}
+              </label>
               <input
                 type="date"
                 value={startDate}
@@ -67,7 +85,9 @@ function AnalyticsContent() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('customRange.endDate')}
+              </label>
               <input
                 type="date"
                 value={endDate}
@@ -82,23 +102,23 @@ function AnalyticsContent() {
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Total Revenue</h3>
+          <h3 className="text-sm font-medium text-gray-600 mb-2">{t('metrics.totalRevenue')}</h3>
           <p className="text-3xl font-bold text-gray-900">${metrics.revenue.toLocaleString()}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Total Orders</h3>
+          <h3 className="text-sm font-medium text-gray-600 mb-2">{t('metrics.totalOrders')}</h3>
           <p className="text-3xl font-bold text-gray-900">{metrics.orders.toLocaleString()}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">New Customers</h3>
+          <h3 className="text-sm font-medium text-gray-600 mb-2">{t('metrics.newCustomers')}</h3>
           <p className="text-3xl font-bold text-gray-900">{metrics.customers.toLocaleString()}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Conversion Rate</h3>
+          <h3 className="text-sm font-medium text-gray-600 mb-2">{t('metrics.conversionRate')}</h3>
           <p className="text-3xl font-bold text-gray-900">{metrics.conversionRate}%</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Avg Order Value</h3>
+          <h3 className="text-sm font-medium text-gray-600 mb-2">{t('metrics.avgOrderValue')}</h3>
           <p className="text-3xl font-bold text-gray-900">${metrics.averageOrderValue}</p>
         </div>
       </div>
@@ -106,7 +126,9 @@ function AnalyticsContent() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Sales by Category</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            {t('charts.salesByCategory')}
+          </h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -128,7 +150,9 @@ function AnalyticsContent() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Orders by Category</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            {t('charts.ordersByCategory')}
+          </h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={salesByCategory}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -144,30 +168,60 @@ function AnalyticsContent() {
       {/* Top Products Table */}
       <div className="bg-white rounded-lg shadow">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Top Selling Products</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{t('table.title')}</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sales</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Orders</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.product')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.category')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.sales')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.orders')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  {t('table.headers.revenue')}
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {[
-                { name: 'Luxury Gold Watch', category: 'Watches', sales: 45, orders: 45, revenue: 22500 },
-                { name: 'Diamond Necklace', category: 'Jewelry', sales: 32, orders: 32, revenue: 19200 },
+                {
+                  name: 'Luxury Gold Watch',
+                  category: 'Watches',
+                  sales: 45,
+                  orders: 45,
+                  revenue: 22500,
+                },
+                {
+                  name: 'Diamond Necklace',
+                  category: 'Jewelry',
+                  sales: 32,
+                  orders: 32,
+                  revenue: 19200,
+                },
                 { name: 'Leather Bag', category: 'Bags', sales: 28, orders: 28, revenue: 8400 },
               ].map((product, index) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.category}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.sales}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.orders}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {product.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {product.category}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {product.sales}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {product.orders}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     ${product.revenue.toLocaleString()}
                   </td>
