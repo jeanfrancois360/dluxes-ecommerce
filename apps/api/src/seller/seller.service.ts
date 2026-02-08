@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { EmailService } from '../email/email.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
 import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
@@ -20,11 +21,12 @@ export class SellerService {
 
   constructor(
     private prisma: PrismaService,
+    private emailService: EmailService,
     private subscriptionService: SubscriptionService,
     private creditsService: CreditsService,
     private dhlTrackingService: DhlTrackingService,
     private settingsService: SettingsService,
-    private currencyService: CurrencyService,
+    private currencyService: CurrencyService
   ) {}
 
   /**
@@ -64,7 +66,14 @@ export class SellerService {
    * Get seller's products
    */
   async getMyProducts(userId: string, query: any) {
-    const { page = 1, limit = 20, status, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = query;
     const skip = (page - 1) * limit;
 
     // Get seller's store
@@ -312,8 +321,7 @@ export class SellerService {
     };
 
     // Average rating
-    const averageRating =
-      total > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / total : 0;
+    const averageRating = total > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / total : 0;
 
     return {
       total,
@@ -452,9 +460,7 @@ export class SellerService {
     const orderDiscount = new Decimal(order.discount || 0);
 
     // Calculate proportion (seller's items / total items)
-    const proportion = orderSubtotal.isZero()
-      ? new Decimal(0)
-      : sellerSubtotal.div(orderSubtotal);
+    const proportion = orderSubtotal.isZero() ? new Decimal(0) : sellerSubtotal.div(orderSubtotal);
 
     // Allocate shipping, tax, and discount proportionally
     const sellerShipping = orderShipping.mul(proportion);
@@ -462,10 +468,7 @@ export class SellerService {
     const sellerDiscount = orderDiscount.mul(proportion);
 
     // Calculate seller's gross total (before commission)
-    const sellerTotal = sellerSubtotal
-      .plus(sellerShipping)
-      .plus(sellerTax)
-      .minus(sellerDiscount);
+    const sellerTotal = sellerSubtotal.plus(sellerShipping).plus(sellerTax).minus(sellerDiscount);
 
     // Get commission rate from settings (default 10%)
     let commissionRate = new Decimal(10); // Default 10%
@@ -510,12 +513,16 @@ export class SellerService {
 
         this.logger.log(
           `Order ${order.id}: Using actual ${paymentProcessor} fee: ` +
-          `${totalProcessingFee.toFixed(2)} (seller portion: ${paymentProcessingFee.toFixed(2)})`
+            `${totalProcessingFee.toFixed(2)} (seller portion: ${paymentProcessingFee.toFixed(2)})`
         );
       } else {
         // Estimate if not yet retrieved (should be rare after webhook)
         const method = transaction?.paymentMethod || 'STRIPE';
-        paymentProcessingFee = await this.estimateProcessingFee(sellerTotal, order.currency, method);
+        paymentProcessingFee = await this.estimateProcessingFee(
+          sellerTotal,
+          order.currency,
+          method
+        );
 
         // Get fee rate from settings for display
         try {
@@ -524,7 +531,9 @@ export class SellerService {
           );
           processingFeeRate = feePercentageSetting?.value
             ? Number(feePercentageSetting.value)
-            : method === 'PAYPAL' ? 3.49 : 2.9;
+            : method === 'PAYPAL'
+              ? 3.49
+              : 2.9;
         } catch {
           processingFeeRate = method === 'PAYPAL' ? 3.49 : 2.9;
         }
@@ -533,15 +542,13 @@ export class SellerService {
 
         this.logger.log(
           `Order ${order.id}: Estimated processing fee: ${paymentProcessingFee.toFixed(2)} ` +
-          `(will update with actual after webhook)`
+            `(will update with actual after webhook)`
         );
       }
     }
 
     // Calculate net earnings (what seller actually receives after ALL fees)
-    const netEarnings = sellerTotal
-      .minus(platformCommission)
-      .minus(paymentProcessingFee);
+    const netEarnings = sellerTotal.minus(platformCommission).minus(paymentProcessingFee);
 
     return {
       subtotal: sellerSubtotal.toNumber(),
@@ -580,16 +587,19 @@ export class SellerService {
 
       const feePercentValue = feePercentageSetting?.value
         ? Number(feePercentageSetting.value)
-        : processor === 'STRIPE' ? 2.9 : 3.49;
+        : processor === 'STRIPE'
+          ? 2.9
+          : 3.49;
 
       // Get fixed fee with smart fallback
       let feeFixedValue: number;
       let usedFallback = false;
 
       // Try to get currency-specific fee setting
-      const currencyFeeKey = processor === 'STRIPE'
-        ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
-        : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`;
+      const currencyFeeKey =
+        processor === 'STRIPE'
+          ? `stripe_fee_fixed_${currencyUpper.toLowerCase()}`
+          : `paypal_fee_fixed_${currencyUpper.toLowerCase()}`;
 
       const feeFixedSetting = await this.settingsService.getSetting(currencyFeeKey);
 
@@ -598,12 +608,10 @@ export class SellerService {
         feeFixedValue = Number(feeFixedSetting.value);
       } else {
         // Smart fallback: Use USD fee and convert to target currency
-        const usdFeeKey = processor === 'STRIPE'
-          ? 'stripe_fee_fixed_usd'
-          : 'paypal_fee_fixed_usd';
+        const usdFeeKey = processor === 'STRIPE' ? 'stripe_fee_fixed_usd' : 'paypal_fee_fixed_usd';
 
         const usdFeeSetting = await this.settingsService.getSetting(usdFeeKey);
-        const usdFeeValue = usdFeeSetting?.value ? Number(usdFeeSetting.value) : 0.30;
+        const usdFeeValue = usdFeeSetting?.value ? Number(usdFeeSetting.value) : 0.3;
 
         try {
           // Convert USD fee to target currency
@@ -651,9 +659,9 @@ export class SellerService {
    */
   private getDefaultFixedFee(currency: string, processor: string): number {
     if (processor === 'STRIPE') {
-      return currency === 'GBP' ? 0.20 : 0.30;
+      return currency === 'GBP' ? 0.2 : 0.3;
     } else {
-      return currency === 'EUR' ? 0.35 : 0.30;
+      return currency === 'EUR' ? 0.35 : 0.3;
     }
   }
 
@@ -846,12 +854,16 @@ export class SellerService {
     // Validate allowed status transitions
     const allowedStatuses = ['PROCESSING', 'SHIPPED', 'DELIVERED'];
     if (!allowedStatuses.includes(status)) {
-      throw new ForbiddenException(`Sellers can only update order status to: ${allowedStatuses.join(', ')}`);
+      throw new ForbiddenException(
+        `Sellers can only update order status to: ${allowedStatuses.join(', ')}`
+      );
     }
 
     // Validate status transition logic
     if (status === 'SHIPPED' && !['PROCESSING', 'CONFIRMED'].includes(order.status)) {
-      throw new ForbiddenException('Order must be in PROCESSING or CONFIRMED status to mark as SHIPPED');
+      throw new ForbiddenException(
+        'Order must be in PROCESSING or CONFIRMED status to mark as SHIPPED'
+      );
     }
 
     if (status === 'DELIVERED' && order.status !== 'SHIPPED') {
@@ -896,7 +908,11 @@ export class SellerService {
   /**
    * Update shipping information
    */
-  async updateShippingInfo(userId: string, orderId: string, data: { trackingNumber?: string; carrier?: string; notes?: string }) {
+  async updateShippingInfo(
+    userId: string,
+    orderId: string,
+    data: { trackingNumber?: string; carrier?: string; notes?: string }
+  ) {
     const store = await this.prisma.store.findUnique({
       where: { userId },
     });
@@ -932,7 +948,9 @@ export class SellerService {
         where: { id: order.delivery.id },
         data: {
           trackingNumber: data.trackingNumber,
-          trackingUrl: data.carrier ? `https://${data.carrier}.com/track/${data.trackingNumber}` : undefined,
+          trackingUrl: data.carrier
+            ? `https://${data.carrier}.com/track/${data.trackingNumber}`
+            : undefined,
         },
       });
     }
@@ -1078,10 +1096,7 @@ export class SellerService {
     const productType = data.productType;
 
     if (productType && inquiryProductTypes.includes(productType)) {
-      const check = await this.subscriptionService.canListProductType(
-        userId,
-        productType,
-      );
+      const check = await this.subscriptionService.canListProductType(userId, productType);
 
       if (!check.canList) {
         // Provide clear, user-friendly error messages
@@ -1121,7 +1136,8 @@ export class SellerService {
           throw new BadRequestException({
             code: 'LISTING_LIMIT_REACHED',
             message: 'You have reached your listing limit.',
-            userMessage: 'You have reached the maximum number of listings for your plan. Upgrade to add more products.',
+            userMessage:
+              'You have reached the maximum number of listings for your plan. Upgrade to add more products.',
             action: 'upgrade',
             actionUrl: '/seller/plans',
           });
@@ -1159,13 +1175,11 @@ export class SellerService {
           userId,
           action,
           `Listed ${productType} product`,
-          product.id,
+          product.id
         );
       } catch (error) {
         // Log but don't fail - product is already created
-        this.logger.warn(
-          `Failed to deduct credits for product ${product.id}: ${error.message}`,
-        );
+        this.logger.warn(`Failed to deduct credits for product ${product.id}: ${error.message}`);
       }
     }
 
@@ -1379,74 +1393,74 @@ export class SellerService {
         throw new NotFoundException('Store not found');
       }
 
-    // Calculate date range based on period
-    const now = new Date();
-    let startDate: Date;
-    let groupByFormat: string;
+      // Calculate date range based on period
+      const now = new Date();
+      let startDate: Date;
+      let groupByFormat: string;
 
-    switch (period) {
-      case 'daily':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
-        groupByFormat = 'day';
-        break;
-      case 'weekly':
-        startDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000); // Last 12 weeks
-        groupByFormat = 'week';
-        break;
-      case 'monthly':
-      default:
-        startDate = new Date(now.getTime() - 12 * 30 * 24 * 60 * 60 * 1000); // Last 12 months
-        groupByFormat = 'month';
-        break;
-    }
+      switch (period) {
+        case 'daily':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
+          groupByFormat = 'day';
+          break;
+        case 'weekly':
+          startDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000); // Last 12 weeks
+          groupByFormat = 'week';
+          break;
+        case 'monthly':
+        default:
+          startDate = new Date(now.getTime() - 12 * 30 * 24 * 60 * 60 * 1000); // Last 12 months
+          groupByFormat = 'month';
+          break;
+      }
 
-    // Get orders within date range
-    const orders = await this.prisma.order.findMany({
-      where: {
-        createdAt: {
-          gte: startDate,
+      // Get orders within date range
+      const orders = await this.prisma.order.findMany({
+        where: {
+          createdAt: {
+            gte: startDate,
+          },
+          items: {
+            some: {
+              product: {
+                storeId: store.id,
+              },
+            },
+          },
+          status: {
+            notIn: ['CANCELLED'],
+          },
         },
-        items: {
-          some: {
-            product: {
-              storeId: store.id,
+        include: {
+          items: {
+            where: {
+              product: {
+                storeId: store.id,
+              },
             },
           },
         },
-        status: {
-          notIn: ['CANCELLED'],
+        orderBy: {
+          createdAt: 'asc',
         },
-      },
-      include: {
-        items: {
-          where: {
-            product: {
-              storeId: store.id,
-            },
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
-
-    // Group orders by period and calculate revenue
-    const revenueMap = new Map<string, { amount: number; orders: number }>();
-
-    orders.forEach((order) => {
-      const orderRevenue = order.items.reduce((sum, item) => sum + Number(item.total), 0);
-      const dateKey = this.formatDateForPeriod(order.createdAt, groupByFormat);
-
-      const existing = revenueMap.get(dateKey) || { amount: 0, orders: 0 };
-      revenueMap.set(dateKey, {
-        amount: existing.amount + orderRevenue,
-        orders: existing.orders + 1,
       });
-    });
 
-    // Convert to array and fill gaps
-    const data = this.fillRevenueDateGaps(revenueMap, startDate, now, period);
+      // Group orders by period and calculate revenue
+      const revenueMap = new Map<string, { amount: number; orders: number }>();
+
+      orders.forEach((order) => {
+        const orderRevenue = order.items.reduce((sum, item) => sum + Number(item.total), 0);
+        const dateKey = this.formatDateForPeriod(order.createdAt, groupByFormat);
+
+        const existing = revenueMap.get(dateKey) || { amount: 0, orders: 0 };
+        revenueMap.set(dateKey, {
+          amount: existing.amount + orderRevenue,
+          orders: existing.orders + 1,
+        });
+      });
+
+      // Convert to array and fill gaps
+      const data = this.fillRevenueDateGaps(revenueMap, startDate, now, period);
 
       // Calculate total and trend
       const total = data.reduce((sum, item) => sum + item.amount, 0);
@@ -1696,7 +1710,7 @@ export class SellerService {
     const dayNum = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 
   /**
@@ -1706,13 +1720,16 @@ export class SellerService {
     revenueMap: Map<string, { amount: number; orders: number }>,
     startDate: Date,
     endDate: Date,
-    period: string,
+    period: string
   ) {
     const data: Array<{ date: string; amount: number; orders: number }> = [];
     const current = new Date(startDate);
 
     while (current <= endDate) {
-      const dateKey = this.formatDateForPeriod(current, period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month');
+      const dateKey = this.formatDateForPeriod(
+        current,
+        period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month'
+      );
       const revenueData = revenueMap.get(dateKey) || { amount: 0, orders: 0 };
 
       data.push({
@@ -1768,22 +1785,25 @@ export class SellerService {
   /**
    * Apply to become a seller
    */
-  async applyToBecomeSeller(userId: string, data: {
-    storeName: string;
-    storeDescription?: string;
-    businessType: string;
-    businessName?: string;
-    taxId?: string;
-    phone: string;
-    website?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    zipCode?: string;
-    country?: string;
-    productCategories?: string[];
-    monthlyVolume?: string;
-  }) {
+  async applyToBecomeSeller(
+    userId: string,
+    data: {
+      storeName: string;
+      storeDescription?: string;
+      businessType: string;
+      businessName?: string;
+      taxId?: string;
+      phone: string;
+      website?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+      country?: string;
+      productCategories?: string[];
+      monthlyVolume?: string;
+    }
+  ) {
     // Check if user already has a store
     const existingStore = await this.prisma.store.findUnique({
       where: { userId },
@@ -1816,9 +1836,24 @@ export class SellerService {
           },
         });
 
+        // Get user info for email
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+        });
+
+        // Send application submitted email
+        if (user) {
+          await this.emailService.sendSellerApplicationSubmitted(user.email, {
+            sellerName: `${user.firstName} ${user.lastName}`,
+            storeName: updatedStore.name,
+            submittedAt: new Date(),
+          });
+        }
+
         return {
           success: true,
-          message: 'Seller application resubmitted successfully. We will review your application and get back to you soon.',
+          message:
+            'Seller application resubmitted successfully. We will review your application and get back to you soon.',
           store: {
             id: updatedStore.id,
             name: updatedStore.name,
@@ -1861,9 +1896,17 @@ export class SellerService {
       },
     });
 
+    // Send application submitted email
+    await this.emailService.sendSellerApplicationSubmitted(user.email, {
+      sellerName: `${user.firstName} ${user.lastName}`,
+      storeName: store.name,
+      submittedAt: new Date(),
+    });
+
     return {
       success: true,
-      message: 'Seller application submitted successfully. We will review your application and get back to you soon.',
+      message:
+        'Seller application submitted successfully. We will review your application and get back to you soon.',
       store: {
         id: store.id,
         name: store.name,
@@ -1927,7 +1970,7 @@ export class SellerService {
       recipientPostalCode?: string;
       originCountryCode?: string;
       language?: string;
-    },
+    }
   ) {
     // Get seller's store
     const store = await this.prisma.store.findUnique({
@@ -1961,9 +2004,7 @@ export class SellerService {
     }
 
     // Verify seller owns at least one item in the order
-    const sellerOwnsOrder = order.items.some(
-      (item) => item.product.storeId === store.id,
-    );
+    const sellerOwnsOrder = order.items.some((item) => item.product.storeId === store.id);
 
     if (!sellerOwnsOrder) {
       throw new ForbiddenException('You do not have permission to ship this order');
@@ -2046,17 +2087,15 @@ export class SellerService {
       this.fetchInitialDhlTracking(delivery.id, data).catch((error) => {
         this.logger.error(
           `Failed to fetch initial DHL tracking for delivery ${delivery.id}`,
-          error.message,
+          error.message
         );
       });
 
       // Generate tracking URL
-      const trackingUrl = this.dhlTrackingService.generateTrackingUrl(
-        data.trackingNumber,
-      );
+      const trackingUrl = this.dhlTrackingService.generateTrackingUrl(data.trackingNumber);
 
       this.logger.log(
-        `Order ${orderId} shipped successfully with DHL tracking ${data.trackingNumber}`,
+        `Order ${orderId} shipped successfully with DHL tracking ${data.trackingNumber}`
       );
 
       return {
@@ -2103,7 +2142,7 @@ export class SellerService {
       recipientPostalCode?: string;
       originCountryCode?: string;
       language?: string;
-    },
+    }
   ): Promise<void> {
     try {
       // ✅ Pass optional parameters to DHL API for better tracking accuracy
@@ -2114,15 +2153,12 @@ export class SellerService {
         language: data.language || 'en',
       };
 
-      await this.dhlTrackingService.updateDeliveryFromDhl(
-        deliveryId,
-        trackingOptions,
-      );
+      await this.dhlTrackingService.updateDeliveryFromDhl(deliveryId, trackingOptions);
 
       this.logger.log(`Initial DHL tracking data fetched for delivery ${deliveryId}`);
     } catch (error) {
       this.logger.warn(
-        `Could not fetch initial DHL tracking for delivery ${deliveryId}: ${error.message}`,
+        `Could not fetch initial DHL tracking for delivery ${deliveryId}: ${error.message}`
       );
       // Non-critical error, don't throw
     }
