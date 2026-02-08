@@ -7,6 +7,10 @@ import { welcomeTemplate } from './templates/welcome.template';
 import { getEmailOTPTemplate } from './templates/email-otp.template';
 import { orderConfirmationTemplate } from './templates/order-confirmation.template';
 import { sellerOrderNotificationTemplate } from './templates/seller-order-notification.template';
+import { sellerApplicationSubmittedTemplate } from './templates/seller-application-submitted.template';
+import { sellerApprovedTemplate } from './templates/seller-approved.template';
+import { sellerRejectedTemplate } from './templates/seller-rejected.template';
+import { sellerSuspendedTemplate } from './templates/seller-suspended.template';
 
 @Injectable()
 export class EmailService {
@@ -446,7 +450,7 @@ export class EmailService {
     firstName: string,
     code: string,
     type: EmailOTPType,
-    ipAddress?: string,
+    ipAddress?: string
   ): Promise<boolean> {
     try {
       if (!process.env.RESEND_API_KEY) {
@@ -600,7 +604,9 @@ export class EmailService {
         this.logger.log(`Seller: ${notificationData.sellerName}`);
         this.logger.log(`Store: ${notificationData.storeName}`);
         this.logger.log(`Order: #${notificationData.orderNumber}`);
-        this.logger.log(`Net Payout: ${notificationData.currency} ${notificationData.netPayout.toFixed(2)}`);
+        this.logger.log(
+          `Net Payout: ${notificationData.currency} ${notificationData.netPayout.toFixed(2)}`
+        );
         this.logger.log(`URL: ${orderUrl}`);
         this.logger.warn('='.repeat(80));
         return true;
@@ -644,7 +650,7 @@ export class EmailService {
       currency: string;
       paidAt: Date;
       invoicePdf: Buffer;
-    },
+    }
   ): Promise<boolean> {
     const { orderNumber, customerName, total, currency, paidAt, invoicePdf } = data;
 
@@ -802,6 +808,211 @@ export class EmailService {
       return true;
     } catch (error) {
       this.logger.error('Error sending payment confirmation email with invoice', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send seller application submitted email
+   */
+  async sendSellerApplicationSubmitted(
+    email: string,
+    data: {
+      sellerName: string;
+      storeName: string;
+      submittedAt: Date;
+    }
+  ): Promise<boolean> {
+    try {
+      const dashboardUrl = `${this.frontendUrl}/dashboard/buyer`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 SELLER APPLICATION SUBMITTED FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Seller: ${data.sellerName}`);
+        this.logger.log(`Store: ${data.storeName}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = sellerApplicationSubmittedTemplate({
+        ...data,
+        dashboardUrl,
+      });
+
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: '📝 Seller Application Received - NextPik',
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send seller application email', error);
+        return false;
+      }
+
+      this.logger.log(`Seller application email sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending seller application email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send seller approved email
+   */
+  async sendSellerApproved(
+    email: string,
+    data: {
+      sellerName: string;
+      storeName: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const creditsUrl = `${this.frontendUrl}/seller/credits`;
+      const dashboardUrl = `${this.frontendUrl}/seller/dashboard`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 SELLER APPROVED FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Seller: ${data.sellerName}`);
+        this.logger.log(`Store: ${data.storeName}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = sellerApprovedTemplate({
+        ...data,
+        creditsUrl,
+        dashboardUrl,
+      });
+
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: '🎉 Seller Application Approved - Welcome to NextPik!',
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send seller approved email', error);
+        return false;
+      }
+
+      this.logger.log(`Seller approved email sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending seller approved email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send seller rejected email
+   */
+  async sendSellerRejected(
+    email: string,
+    data: {
+      sellerName: string;
+      storeName: string;
+      rejectionReason: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const supportUrl = `${this.frontendUrl}/support`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 SELLER REJECTED FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Seller: ${data.sellerName}`);
+        this.logger.log(`Store: ${data.storeName}`);
+        this.logger.log(`Reason: ${data.rejectionReason}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = sellerRejectedTemplate({
+        ...data,
+        supportUrl,
+      });
+
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: 'Seller Application Update - NextPik',
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send seller rejected email', error);
+        return false;
+      }
+
+      this.logger.log(`Seller rejected email sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending seller rejected email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send seller suspended email
+   */
+  async sendSellerSuspended(
+    email: string,
+    data: {
+      sellerName: string;
+      storeName: string;
+      suspensionReason: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const supportUrl = `${this.frontendUrl}/support`;
+      const dashboardUrl = `${this.frontendUrl}/seller/dashboard`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 SELLER SUSPENDED FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Seller: ${data.sellerName}`);
+        this.logger.log(`Store: ${data.storeName}`);
+        this.logger.log(`Reason: ${data.suspensionReason}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = sellerSuspendedTemplate({
+        ...data,
+        supportUrl,
+        dashboardUrl,
+      });
+
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: '⚠️ Important: Your Seller Account Has Been Suspended',
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send seller suspended email', error);
+        return false;
+      }
+
+      this.logger.log(`Seller suspended email sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending seller suspended email', error);
       return false;
     }
   }

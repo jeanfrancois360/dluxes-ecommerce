@@ -56,7 +56,7 @@ export default function BecomeSellerPage() {
     if (!authLoading && user) {
       // If already a seller, redirect to seller dashboard
       if (user.role === 'SELLER') {
-        router.push('/dashboard/seller');
+        router.push('/seller');
         return;
       }
       // If admin, they shouldn't need this page
@@ -95,7 +95,7 @@ export default function BecomeSellerPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify(formData),
       });
@@ -104,7 +104,7 @@ export default function BecomeSellerPage() {
 
       if (data.success) {
         alert(data.message || t('applicationSubmitted'));
-        router.push('/dashboard/buyer');
+        router.push('/become-seller/status');
       } else {
         alert(data.message || t('applicationFailed'));
       }

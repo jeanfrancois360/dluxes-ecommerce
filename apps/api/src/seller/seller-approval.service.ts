@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { EmailService } from '../email/email.service';
 import { StoreStatus } from '@prisma/client';
 
 /**
@@ -14,6 +15,7 @@ import { StoreStatus } from '@prisma/client';
 export class SellerApprovalService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly emailService: EmailService
   ) {}
 
   /**
@@ -83,7 +85,7 @@ export class SellerApprovalService {
   async getAllSellers(
     filters: { status?: StoreStatus; search?: string } = {},
     page = 1,
-    limit = 20,
+    limit = 20
   ) {
     const skip = (page - 1) * limit;
 
@@ -325,7 +327,7 @@ export class SellerApprovalService {
 
     if (store.status === StoreStatus.SUSPENDED) {
       throw new ForbiddenException(
-        'Cannot approve a suspended store. Please reactivate it instead.',
+        'Cannot approve a suspended store. Please reactivate it instead.'
       );
     }
 
@@ -353,6 +355,12 @@ export class SellerApprovalService {
       }),
     ]);
 
+    // Send approval email
+    await this.emailService.sendSellerApproved(store.user.email, {
+      sellerName: `${store.user.firstName} ${store.user.lastName}`,
+      storeName: store.name,
+    });
+
     return {
       success: true,
       message: 'Seller approved successfully',
@@ -369,11 +377,7 @@ export class SellerApprovalService {
   /**
    * Reject a seller application
    */
-  async rejectSeller(
-    storeId: string,
-    adminId: string,
-    rejectionNote: string,
-  ) {
+  async rejectSeller(storeId: string, adminId: string, rejectionNote: string) {
     if (!rejectionNote || rejectionNote.trim().length === 0) {
       throw new BadRequestException('Rejection note is required');
     }
@@ -411,6 +415,13 @@ export class SellerApprovalService {
       }),
     ]);
 
+    // Send rejection email
+    await this.emailService.sendSellerRejected(store.user.email, {
+      sellerName: `${store.user.firstName} ${store.user.lastName}`,
+      storeName: store.name,
+      rejectionReason: rejectionNote,
+    });
+
     return {
       success: true,
       message: 'Seller application rejected',
@@ -428,11 +439,7 @@ export class SellerApprovalService {
   /**
    * Suspend an active seller (products become inactive)
    */
-  async suspendSeller(
-    storeId: string,
-    adminId: string,
-    suspensionNote: string,
-  ) {
+  async suspendSeller(storeId: string, adminId: string, suspensionNote: string) {
     if (!suspensionNote || suspensionNote.trim().length === 0) {
       throw new BadRequestException('Suspension note is required');
     }
@@ -484,6 +491,13 @@ export class SellerApprovalService {
       }),
     ]);
 
+    // Send suspension email
+    await this.emailService.sendSellerSuspended(store.user.email, {
+      sellerName: `${store.user.firstName} ${store.user.lastName}`,
+      storeName: store.name,
+      suspensionReason: suspensionNote,
+    });
+
     return {
       success: true,
       message: 'Seller suspended successfully',
@@ -517,12 +531,11 @@ export class SellerApprovalService {
 
     // Check if store has credits
     if (store.creditsBalance <= 0) {
-      const inGracePeriod =
-        store.creditsGraceEndsAt && new Date() < store.creditsGraceEndsAt;
+      const inGracePeriod = store.creditsGraceEndsAt && new Date() < store.creditsGraceEndsAt;
 
       if (!inGracePeriod) {
         throw new ForbiddenException(
-          'Cannot reactivate seller without credits. Seller must purchase credits first.',
+          'Cannot reactivate seller without credits. Seller must purchase credits first.'
         );
       }
     }
