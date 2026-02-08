@@ -67,6 +67,7 @@ model User {
   passwordResets   PasswordReset[]
   refreshTokens    RefreshToken[]
   emailOTPs        EmailOTP[]
+  notifications    Notification[]
   store            Store? // Seller's store (only for SELLER role)
   commissionRules  CommissionRule[]       @relation("SellerCommissionRules")
   commissions      Commission[]           @relation("SellerCommissions")
@@ -1716,6 +1717,63 @@ model EmailOTP {
   @@index([userId])
   @@index([code, expiresAt])
   @@map("email_otps")
+}
+
+// In-App Notifications
+model Notification {
+  id     String           @id @default(cuid())
+  userId String
+  type   NotificationType
+  title  String
+  message String          @db.Text
+  link    String?         // Optional URL to navigate to when clicked
+  read    Boolean         @default(false)
+  readAt  DateTime?
+
+  // Metadata for different notification types
+  metadata Json?          // Store additional data (orderId, productId, etc.)
+
+  // Priority (for future filtering/sorting)
+  priority NotificationPriority @default(NORMAL)
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  ORDER_PLACED       // New order received (for sellers)
+  ORDER_CONFIRMED    // Order confirmed (for buyers)
+  ORDER_SHIPPED      // Order shipped
+  ORDER_DELIVERED    // Order delivered
+  ORDER_CANCELLED    // Order cancelled
+  PAYMENT_SUCCESS    // Payment successful
+  PAYMENT_FAILED     // Payment failed
+  PRODUCT_REVIEW     // New product review
+  LOW_STOCK_ALERT    // Product stock running low
+  STOCK_OUT          // Product out of stock
+  INQUIRY_RECEIVED   // New product inquiry
+  INQUIRY_RESPONSE   // Inquiry response received
+  RETURN_REQUEST     // Return request submitted
+  PAYOUT_PROCESSED   // Seller payout processed
+  CREDIT_LOW         // Seller credits running low
+  CREDIT_EXPIRED     // Seller credits expired
+  SUBSCRIPTION_EXPIRING // Subscription expiring soon
+  SYSTEM_ANNOUNCEMENT   // System-wide announcement
+  ACCOUNT_ALERT         // Account security alert
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 
 // ============================================================================
