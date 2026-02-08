@@ -12,9 +12,19 @@ import { DhlModule } from '../integrations/dhl/dhl.module';
 import { SettingsModule } from '../settings/settings.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { PaymentModule } from '../payment/payment.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
-  imports: [DatabaseModule, SubscriptionModule, CreditsModule, DhlModule, SettingsModule, CurrencyModule, PaymentModule],
+  imports: [
+    DatabaseModule,
+    SubscriptionModule,
+    CreditsModule,
+    DhlModule,
+    SettingsModule,
+    CurrencyModule,
+    PaymentModule,
+    EmailModule,
+  ],
   controllers: [SellerController, SellerCreditsController],
   providers: [SellerService, SellerApprovalService, SellerCreditsService, CanPublishGuard],
   exports: [SellerService, SellerApprovalService, SellerCreditsService, CanPublishGuard],
