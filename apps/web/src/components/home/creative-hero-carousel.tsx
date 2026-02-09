@@ -323,8 +323,8 @@ export function CreativeHeroCarousel({
         ))}
       </motion.div>
 
-      {/* Slide counter */}
-      <motion.div
+      {/* Slide counter - Hidden */}
+      {/* <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.8 }}
@@ -333,7 +333,7 @@ export function CreativeHeroCarousel({
         <span className="text-white font-bold text-xs sm:text-sm">
           {currentIndex + 1} / {slides.length}
         </span>
-      </motion.div>
+      </motion.div> */}
     </div>
   );
 }
@@ -353,7 +353,8 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
           transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="space-y-3 sm:space-y-4 md:space-y-5"
         >
-          {slide.icon && (
+          {/* Icon badge - Hidden */}
+          {/* {slide.icon && (
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
@@ -362,7 +363,7 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
             >
               {slide.icon}
             </motion.div>
-          )}
+          )} */}
 
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
