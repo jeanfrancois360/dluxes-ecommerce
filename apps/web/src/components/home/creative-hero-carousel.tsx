@@ -402,7 +402,7 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
         {/* Right Images with Parallax */}
         <motion.div
           style={{ x, y }}
-          className="relative h-[350px] hidden lg:flex items-center justify-center"
+          className="relative h-[180px] sm:h-[250px] md:h-[300px] lg:h-[350px] flex items-center justify-center mt-6 lg:mt-0"
         >
           {slide.images.map((img: any, idx: number) => (
             <motion.div
@@ -418,7 +418,7 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
                 zIndex: slide.images.length - idx,
               }}
             >
-              <div className="relative w-56 h-72 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-xl bg-white/5 border border-white/10">
+              <div className="relative w-32 h-40 sm:w-40 sm:h-52 md:w-48 md:h-64 lg:w-56 lg:h-72 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl backdrop-blur-xl bg-white/5 border border-white/10">
                 {!imageErrors[img.src] ? (
                   <Image
                     src={img.src}
@@ -429,7 +429,7 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-white/10 to-white/5">
-                    <Sparkles className="h-16 w-16 text-white/50" />
+                    <Sparkles className="h-8 w-8 sm:h-12 sm:w-12 lg:h-16 lg:w-16 text-white/50" />
                   </div>
                 )}
               </div>
