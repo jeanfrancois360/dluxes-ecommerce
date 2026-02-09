@@ -344,7 +344,7 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
   const y = useTransform(mouseY, [-1, 1], [-15, 15]);
 
   return (
-    <div className="max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-16 h-full flex items-center pt-6 sm:pt-8 md:pt-0">
+    <div className="max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-16 h-full flex items-center pt-12 sm:pt-16 md:pt-8 lg:pt-4">
       <div className="w-full grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-16 items-center">
         {/* Left Content */}
         <motion.div
