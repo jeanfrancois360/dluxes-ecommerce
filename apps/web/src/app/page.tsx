@@ -39,7 +39,7 @@ const CreativeHeroCarousel = lazy(() =>
 export default function Home() {
   const router = useRouter();
   const t = useTranslations('common');
-  const tHero = useTranslations('common.home.hero');
+  const tHero = useTranslations('common');
   const tModal = useTranslations('quickViewModal');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
@@ -213,9 +213,9 @@ export default function Home() {
         layout: 'split' as const,
         gradient: 'linear-gradient(135deg, #2d3436 0%, #1e272e 100%)',
         accentColor: '#CBB57B',
-        title: tHero('accessories.title'),
-        subtitle: tHero('accessories.subtitle'),
-        ctaText: tHero('accessories.cta'),
+        title: tHero('home.hero.accessories.title'),
+        subtitle: tHero('home.hero.accessories.subtitle'),
+        ctaText: tHero('home.hero.accessories.cta'),
         ctaHref: '/products?category=accessories',
         icon: <Sparkles className="h-8 w-8 text-[#CBB57B]" />,
         images: [
@@ -255,9 +255,9 @@ export default function Home() {
         layout: 'split' as const,
         gradient: 'linear-gradient(135deg, #0f0f0f 0%, #000000 100%)',
         accentColor: '#ffffff',
-        title: tHero('fashion.title'),
-        subtitle: tHero('fashion.subtitle'),
-        ctaText: tHero('fashion.cta'),
+        title: tHero('home.hero.fashion.title'),
+        subtitle: tHero('home.hero.fashion.subtitle'),
+        ctaText: tHero('home.hero.fashion.cta'),
         ctaHref: '/products?category=fashion',
         icon: <TrendingUp className="h-8 w-8 text-white" />,
         images: [
@@ -297,9 +297,9 @@ export default function Home() {
         layout: 'split' as const,
         gradient: 'linear-gradient(135deg, #232526 0%, #0f1419 100%)',
         accentColor: '#60a5fa',
-        title: tHero('electronics.title'),
-        subtitle: tHero('electronics.subtitle'),
-        ctaText: tHero('electronics.cta'),
+        title: tHero('home.hero.electronics.title'),
+        subtitle: tHero('home.hero.electronics.subtitle'),
+        ctaText: tHero('home.hero.electronics.cta'),
         ctaHref: '/products?category=electronics',
         icon: <Zap className="h-8 w-8 text-[#60a5fa]" />,
         images: [
@@ -339,9 +339,9 @@ export default function Home() {
         layout: 'split' as const,
         gradient: 'linear-gradient(135deg, #36454f 0%, #1a1f25 100%)',
         accentColor: '#CBB57B',
-        title: tHero('realEstate.title'),
-        subtitle: tHero('realEstate.subtitle'),
-        ctaText: tHero('realEstate.cta'),
+        title: tHero('home.hero.realEstate.title'),
+        subtitle: tHero('home.hero.realEstate.subtitle'),
+        ctaText: tHero('home.hero.realEstate.cta'),
         ctaHref: '/products?category=real-estate',
         icon: <HomeIcon className="h-8 w-8 text-[#CBB57B]" />,
         images: [
@@ -381,9 +381,9 @@ export default function Home() {
         layout: 'split' as const,
         gradient: 'linear-gradient(135deg, #1a1a1a 0%, #000000 100%)',
         accentColor: '#CBB57B',
-        title: tHero('vehicles.title'),
-        subtitle: tHero('vehicles.subtitle'),
-        ctaText: tHero('vehicles.cta'),
+        title: tHero('home.hero.vehicles.title'),
+        subtitle: tHero('home.hero.vehicles.subtitle'),
+        ctaText: tHero('home.hero.vehicles.cta'),
         ctaHref: '/products?category=vehicles',
         icon: <Car className="h-8 w-8 text-[#CBB57B]" />,
         images: [
