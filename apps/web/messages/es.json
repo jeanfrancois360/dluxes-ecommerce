@@ -150,7 +150,34 @@
       "onSale": "En Oferta",
       "stayUpdated": "Mantente Informado",
       "subscribeDescription": "Suscríbete para ofertas especiales, novedades y recomendaciones personalizadas",
-      "enterEmail": "Ingresa tu correo"
+      "enterEmail": "Ingresa tu correo",
+      "hero": {
+        "accessories": {
+          "title": "Eleva tu estilo.",
+          "subtitle": "Descubre accesorios premium que complementan cada look.",
+          "cta": "Comprar accesorios"
+        },
+        "fashion": {
+          "title": "Moda que habla volúmenes.",
+          "subtitle": "Colecciones curadas desde estilos tendencia hasta clásicos atemporales.",
+          "cta": "Explorar moda"
+        },
+        "electronics": {
+          "title": "Potencia tu mundo.",
+          "subtitle": "Última tecnología, precios inmejorables. Desde smartphones hasta hogares inteligentes.",
+          "cta": "Comprar electrónica"
+        },
+        "realEstate": {
+          "title": "Encuentra tu propiedad soñada.",
+          "subtitle": "Listados exclusivos. Casas de lujo. Oportunidades de inversión.",
+          "cta": "Ver propiedades"
+        },
+        "vehicles": {
+          "title": "Conduce tu sueño.",
+          "subtitle": "Vehículos premium a precios inmejorables. Tu próximo viaje te espera.",
+          "cta": "Explorar vehículos"
+        }
+      }
     },
     "toast": {
       "addedToCart": "El artículo ha sido añadido a tu carrito",

@@ -425,6 +425,7 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
                     src={img.src}
                     alt={img.alt}
                     fill
+                    sizes="(max-width: 640px) 128px, (max-width: 768px) 160px, (max-width: 1024px) 192px, 224px"
                     className="object-cover"
                     onError={() => onImageError(img.src)}
                   />
