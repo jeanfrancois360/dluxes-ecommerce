@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
+import PageHeader from '@/components/admin/page-header';
 import { useAdminCustomers, useCustomerStats } from '@/hooks/use-admin';
 import { adminCustomersApi } from '@/lib/api/admin';
 import { toast, standardToasts } from '@/lib/utils/toast';
@@ -306,729 +307,16 @@ function CustomersContent() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <p className="text-neutral-600">{t('pageDescription')}</p>
-        <button
-          onClick={handleExport}
-          className="px-4 py-2.5 bg-white border border-neutral-300 text-black rounded-lg hover:border-[#CBB57B] hover:text-[#CBB57B] transition-all flex items-center gap-2 shadow-sm font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          {t('buttons.export')}
-        </button>
-      </div>
+    <>
+      <PageHeader title={t('pageTitle')} description={t('pageDescription')} />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">{t('stats.totalCustomers')}</p>
-              <p className="text-2xl font-bold text-black">
-                {statsLoading ? '...' : formatNumber(stats.total)}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-blue-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">{t('stats.newThisMonth')}</p>
-              <p className="text-2xl font-bold text-black">
-                {statsLoading ? '...' : formatNumber(stats.newThisMonth)}
-              </p>
-              {!statsLoading && (
-                <p className="text-xs text-green-600 mt-1">
-                  {t('stats.growth', {
-                    percent:
-                      stats.growthPercent > 0 ? `+${stats.growthPercent}` : stats.growthPercent,
-                  })}
-                </p>
-              )}
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">{t('stats.vipCustomers')}</p>
-              <p className="text-2xl font-bold text-black">
-                {statsLoading ? '...' : formatNumber(stats.vipCount)}
-              </p>
-              {!statsLoading && (
-                <p className="text-xs text-amber-600 mt-1">{t('stats.vipThreshold')}</p>
-              )}
-            </div>
-            <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-amber-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm text-neutral-600 mb-1">{t('stats.totalRevenue')}</p>
-              <p className="text-2xl font-bold text-black">
-                {statsLoading ? '...' : `$${formatCurrencyAmount(stats.totalRevenue, 0)}`}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-emerald-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Search */}
-          <div className="flex-1 min-w-[250px] relative">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              type="text"
-              placeholder={t('filters.searchPlaceholder')}
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 bg-white border border-neutral-300 text-black placeholder-neutral-400 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-            />
-            {searchInput && (
-              <button
-                onClick={() => setSearchInput('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
-
-          {/* Role Filter */}
-          <select
-            value={role}
-            onChange={(e) => {
-              setRole(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-          >
-            <option value="">{t('filters.allRoles')}</option>
-            <option value="BUYER">{t('filters.roles.customers')}</option>
-            <option value="SELLER">{t('filters.roles.sellers')}</option>
-            <option value="DELIVERY_PARTNER">{t('filters.roles.deliveryPartners')}</option>
-            <option value="ADMIN">{t('filters.roles.admins')}</option>
-          </select>
-
-          {/* Status Filter */}
-          <select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-          >
-            <option value="">{t('filters.allStatus')}</option>
-            <option value="active">{t('filters.status.active')}</option>
-            <option value="suspended">{t('filters.status.suspended')}</option>
-            <option value="inactive">{t('filters.status.inactive')}</option>
-          </select>
-
-          {/* Segment Filter */}
-          <select
-            value={segment}
-            onChange={(e) => {
-              setSegment(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-          >
-            <option value="">{t('filters.allSegments')}</option>
-            <option value="vip">{t('filters.segments.vip')}</option>
-            <option value="regular">{t('filters.segments.regular')}</option>
-            <option value="new">{t('filters.segments.new')}</option>
-            <option value="at-risk">{t('filters.segments.atRisk')}</option>
-          </select>
-
-          {/* Sort By */}
-          <select
-            value={sortBy}
-            onChange={(e) => {
-              setSortBy(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-          >
-            <option value="createdAt-desc">{t('filters.sortBy.newestFirst')}</option>
-            <option value="createdAt-asc">{t('filters.sortBy.oldestFirst')}</option>
-            <option value="totalSpent-desc">{t('filters.sortBy.highestSpend')}</option>
-            <option value="totalSpent-asc">{t('filters.sortBy.lowestSpend')}</option>
-            <option value="orderCount-desc">{t('filters.sortBy.mostOrders')}</option>
-            <option value="lastLoginAt-desc">{t('filters.sortBy.recentActivity')}</option>
-            <option value="name-asc">{t('filters.sortBy.nameAZ')}</option>
-            <option value="name-desc">{t('filters.sortBy.nameZA')}</option>
-          </select>
-
-          {/* Clear Filters */}
-          {hasActiveFilters && (
+      <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-neutral-900">{t('actionsTitle')}</h2>
             <button
-              onClick={clearFilters}
-              className="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors flex items-center gap-1"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-              {t('filters.clear', { count: activeFilterCount })}
-            </button>
-          )}
-        </div>
-
-        {/* Active Filter Pills */}
-        {hasActiveFilters && (
-          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-neutral-200">
-            {searchInput && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
-                {t('filters.activePills.search', { query: searchInput })}
-                <button onClick={() => setSearchInput('')} className="hover:text-neutral-900">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </span>
-            )}
-            {role && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
-                {t('filters.activePills.role', {
-                  role:
-                    role === 'BUYER'
-                      ? t('filters.roles.customers')
-                      : role === 'SELLER'
-                        ? t('filters.roles.sellers')
-                        : role === 'DELIVERY_PARTNER'
-                          ? t('filters.roles.deliveryPartners')
-                          : t('filters.roles.admins'),
-                })}
-                <button onClick={() => setRole('')} className="hover:text-neutral-900">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </span>
-            )}
-            {status && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
-                {t('filters.activePills.status', {
-                  status:
-                    status === 'active'
-                      ? t('filters.status.active')
-                      : status === 'suspended'
-                        ? t('filters.status.suspended')
-                        : t('filters.status.inactive'),
-                })}
-                <button onClick={() => setStatus('')} className="hover:text-neutral-900">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </span>
-            )}
-            {segment && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
-                {t('filters.activePills.segment', {
-                  segment:
-                    segment === 'vip'
-                      ? t('filters.segments.vip')
-                      : segment === 'new'
-                        ? t('filters.segments.new')
-                        : segment === 'at-risk'
-                          ? t('filters.segments.atRisk')
-                          : t('filters.segments.regular'),
-                })}
-                <button onClick={() => setSegment('')} className="hover:text-neutral-900">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </span>
-            )}
-            {sortBy !== 'createdAt-desc' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
-                {t('filters.activePills.sort', { sort: sortBy })}
-                <button
-                  onClick={() => setSortBy('createdAt-desc')}
-                  className="hover:text-neutral-900"
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="relative bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div className="overflow-x-auto relative">
-          {loading ? (
-            <div className="p-16 text-center">
-              <div className="relative w-16 h-16 mx-auto">
-                <div className="absolute inset-0 rounded-full border-4 border-neutral-200"></div>
-                <div className="absolute inset-0 rounded-full border-4 border-[#CBB57B] border-t-transparent animate-spin"></div>
-              </div>
-              <p className="mt-4 text-neutral-600 font-medium">{t('table.loading')}</p>
-            </div>
-          ) : customers.length === 0 ? (
-            <div className="p-16 text-center">
-              <svg
-                className="w-16 h-16 mx-auto text-neutral-400 mb-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              <p className="text-neutral-600 font-medium">{t('table.noCustomers')}</p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50">
-                  <th className="px-4 py-4 w-[40px]">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-neutral-300 text-[#CBB57B] focus:ring-[#CBB57B]"
-                    />
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    {t('table.headers.customer')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    {t('table.headers.email')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    {t('table.headers.orders')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    {t('table.headers.totalSpent')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    {t('table.headers.status')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    {t('table.headers.joinDate')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                    {t('table.headers.actions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200">
-                {customers.map((customer) => (
-                  <tr
-                    key={customer.id}
-                    className="group transition-all duration-200 hover:bg-neutral-50"
-                  >
-                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(customer.id)}
-                        onChange={() => toggleSelect(customer.id)}
-                        className="w-4 h-4 rounded border-neutral-300 text-[#CBB57B] focus:ring-[#CBB57B]"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 min-w-[40px] min-h-[40px] bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-full overflow-hidden flex items-center justify-center ring-2 ring-[#CBB57B]/30">
-                          <span className="text-white font-semibold text-sm">
-                            {customer.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">
-                            {customer.name}
-                          </div>
-                          {customer.totalSpent >= 1000 && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded text-xs font-semibold">
-                              <svg
-                                className="w-3 h-3"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                                />
-                              </svg>
-                              {t('table.vipBadge')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-neutral-700">{customer.email}</td>
-                    <td className="px-6 py-4 text-sm text-neutral-800 font-bold">
-                      {customer.totalOrders}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-bold text-black">
-                      ${formatCurrencyAmount(customer.totalSpent, 2)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${
-                          customer.status === 'active'
-                            ? 'bg-green-100 text-green-800 border border-green-200'
-                            : 'bg-red-100 text-red-800 border border-red-200'
-                        }`}
-                      >
-                        <div
-                          className={`w-1.5 h-1.5 rounded-full ${customer.status === 'active' ? 'bg-green-600' : 'bg-red-600'}`}
-                        ></div>
-                        {customer.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-neutral-700">
-                      {format(new Date(customer.createdAt), 'MMM d, yyyy')}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/admin/customers/${customer.id}`}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#CBB57B]/20 hover:bg-[#CBB57B]/30 border border-[#CBB57B]/30 text-[#CBB57B] rounded-lg text-xs font-semibold transition-all hover:scale-105"
-                        >
-                          <svg
-                            className="w-3.5 h-3.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            />
-                          </svg>
-                          {t('buttons.view')}
-                        </Link>
-                        {customer.status === 'active' ? (
-                          <button
-                            onClick={() => openSuspendModal(customer.id, customer.name)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 border border-orange-200 text-orange-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
-                          >
-                            <svg
-                              className="w-3.5 h-3.5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                              />
-                            </svg>
-                            {t('buttons.suspend')}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleActivate(customer.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 border border-green-200 text-green-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
-                          >
-                            <svg
-                              className="w-3.5 h-3.5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                            {t('buttons.activate')}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => openDeleteModal(customer.id, customer.name)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 border border-red-200 text-red-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
-                        >
-                          <svg
-                            className="w-3.5 h-3.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                          {t('buttons.delete')}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {!loading && customers.length > 0 && (
-          <div className="px-6 py-4 border-t border-neutral-200 bg-white">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-neutral-700">
-                  {t('pagination.showing', {
-                    from: (page - 1) * limit + 1,
-                    to: Math.min(page * limit, total),
-                    total,
-                  })}
-                </span>
-                <select
-                  value={limit}
-                  onChange={(e) => setLimit(Number(e.target.value))}
-                  className="ml-4 px-3 py-1.5 border border-neutral-300 bg-white text-black rounded-lg text-sm focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
-                >
-                  <option value="10">{t('pagination.perPage.10')}</option>
-                  <option value="25">{t('pagination.perPage.25')}</option>
-                  <option value="50">{t('pagination.perPage.50')}</option>
-                  <option value="100">{t('pagination.perPage.100')}</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage(Math.max(1, page - 1))}
-                  disabled={page === 1}
-                  className="px-4 py-2 border border-neutral-300 bg-white text-black rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-[#CBB57B] transition-all"
-                >
-                  {t('pagination.previous')}
-                </button>
-                <span className="text-sm text-neutral-700 font-medium px-3">
-                  {t('pagination.page', { current: page, total: pages })}
-                </span>
-                <button
-                  onClick={() => setPage(Math.min(pages, page + 1))}
-                  disabled={page === pages}
-                  className="px-4 py-2 border border-neutral-300 bg-white text-black rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-[#CBB57B] transition-all"
-                >
-                  {t('pagination.next')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, customerId: '', customerName: '' })}
-        onConfirm={handleDelete}
-        title={t('modals.delete.title')}
-        message={t('modals.delete.message', { name: deleteModal.customerName })}
-        confirmText={t('modals.delete.confirm')}
-        confirmVariant="danger"
-        loading={actionLoading}
-      />
-
-      {/* Suspend Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={suspendModal.isOpen}
-        onClose={() => setSuspendModal({ isOpen: false, customerId: '', customerName: '' })}
-        onConfirm={handleSuspend}
-        title={t('modals.suspend.title')}
-        message={t('modals.suspend.message', { name: suspendModal.customerName })}
-        confirmText={t('modals.suspend.confirm')}
-        confirmVariant="warning"
-        loading={actionLoading}
-      />
-
-      {/* Bulk Suspend Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={bulkSuspendModal}
-        onClose={() => setBulkSuspendModal(false)}
-        onConfirm={handleBulkSuspend}
-        title={t('modals.bulkSuspend.title')}
-        message={
-          selectedIds.length > 1
-            ? t('modals.bulkSuspend.messagePlural', { count: selectedIds.length })
-            : t('modals.bulkSuspend.message', { count: selectedIds.length })
-        }
-        confirmText={
-          selectedIds.length > 1
-            ? t('modals.bulkSuspend.confirmPlural', { count: selectedIds.length })
-            : t('modals.bulkSuspend.confirm', { count: selectedIds.length })
-        }
-        confirmVariant="warning"
-        loading={actionLoading}
-      />
-
-      {/* Bulk Actions Bar (Fixed at Bottom) */}
-      {selectedIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-slate-900 text-white rounded-lg px-6 py-3 flex items-center gap-4 shadow-xl">
-            <span className="font-medium text-sm">
-              {selectedIds.length > 1
-                ? t('bulkActions.selectedPlural', { count: selectedIds.length })
-                : t('bulkActions.selected', { count: selectedIds.length })}
-            </span>
-
-            <div className="h-4 w-px bg-slate-600" />
-
-            <button
-              onClick={handleBulkEmail}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-              </svg>
-              {t('buttons.email')}
-            </button>
-
-            <button
-              onClick={handleBulkExport}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
+              onClick={handleExport}
+              className="px-4 py-2.5 bg-white border border-neutral-300 text-black rounded-lg hover:border-[#CBB57B] hover:text-[#CBB57B] transition-all flex items-center gap-2 shadow-sm font-medium"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -1040,40 +328,790 @@ function CustomersContent() {
               </svg>
               {t('buttons.export')}
             </button>
-
-            <button
-              onClick={() => setBulkSuspendModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                />
-              </svg>
-              {t('buttons.suspend')}
-            </button>
-
-            <button
-              onClick={() => setSelectedIds([])}
-              className="flex items-center gap-1.5 px-2 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
-              title={t('buttons.clearSelection')}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
           </div>
-        </div>
-      )}
-    </div>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('stats.title')}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm text-neutral-600 mb-1">{t('stats.totalCustomers')}</p>
+                  <p className="text-2xl font-bold text-black">
+                    {statsLoading ? '...' : formatNumber(stats.total)}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-blue-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm text-neutral-600 mb-1">{t('stats.newThisMonth')}</p>
+                  <p className="text-2xl font-bold text-black">
+                    {statsLoading ? '...' : formatNumber(stats.newThisMonth)}
+                  </p>
+                  {!statsLoading && (
+                    <p className="text-xs text-green-600 mt-1">
+                      {t('stats.growth', {
+                        percent:
+                          stats.growthPercent > 0 ? `+${stats.growthPercent}` : stats.growthPercent,
+                      })}
+                    </p>
+                  )}
+                </div>
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm text-neutral-600 mb-1">{t('stats.vipCustomers')}</p>
+                  <p className="text-2xl font-bold text-black">
+                    {statsLoading ? '...' : formatNumber(stats.vipCount)}
+                  </p>
+                  {!statsLoading && (
+                    <p className="text-xs text-amber-600 mt-1">{t('stats.vipThreshold')}</p>
+                  )}
+                </div>
+                <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-amber-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm text-neutral-600 mb-1">{t('stats.totalRevenue')}</p>
+                  <p className="text-2xl font-bold text-black">
+                    {statsLoading ? '...' : `$${formatCurrencyAmount(stats.totalRevenue, 0)}`}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-emerald-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('filters.title')}</h2>
+          <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Search */}
+              <div className="flex-1 min-w-[250px] relative">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  placeholder={t('filters.searchPlaceholder')}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2 bg-white border border-neutral-300 text-black placeholder-neutral-400 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+                />
+                {searchInput && (
+                  <button
+                    onClick={() => setSearchInput('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Role Filter */}
+              <select
+                value={role}
+                onChange={(e) => {
+                  setRole(e.target.value);
+                  setPage(1);
+                }}
+                className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+              >
+                <option value="">{t('filters.allRoles')}</option>
+                <option value="BUYER">{t('filters.roles.customers')}</option>
+                <option value="SELLER">{t('filters.roles.sellers')}</option>
+                <option value="DELIVERY_PARTNER">{t('filters.roles.deliveryPartners')}</option>
+                <option value="ADMIN">{t('filters.roles.admins')}</option>
+              </select>
+
+              {/* Status Filter */}
+              <select
+                value={status}
+                onChange={(e) => {
+                  setStatus(e.target.value);
+                  setPage(1);
+                }}
+                className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+              >
+                <option value="">{t('filters.allStatus')}</option>
+                <option value="active">{t('filters.status.active')}</option>
+                <option value="suspended">{t('filters.status.suspended')}</option>
+                <option value="inactive">{t('filters.status.inactive')}</option>
+              </select>
+
+              {/* Segment Filter */}
+              <select
+                value={segment}
+                onChange={(e) => {
+                  setSegment(e.target.value);
+                  setPage(1);
+                }}
+                className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+              >
+                <option value="">{t('filters.allSegments')}</option>
+                <option value="vip">{t('filters.segments.vip')}</option>
+                <option value="regular">{t('filters.segments.regular')}</option>
+                <option value="new">{t('filters.segments.new')}</option>
+                <option value="at-risk">{t('filters.segments.atRisk')}</option>
+              </select>
+
+              {/* Sort By */}
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  setPage(1);
+                }}
+                className="px-4 py-2 bg-white border border-neutral-300 text-black rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+              >
+                <option value="createdAt-desc">{t('filters.sortBy.newestFirst')}</option>
+                <option value="createdAt-asc">{t('filters.sortBy.oldestFirst')}</option>
+                <option value="totalSpent-desc">{t('filters.sortBy.highestSpend')}</option>
+                <option value="totalSpent-asc">{t('filters.sortBy.lowestSpend')}</option>
+                <option value="orderCount-desc">{t('filters.sortBy.mostOrders')}</option>
+                <option value="lastLoginAt-desc">{t('filters.sortBy.recentActivity')}</option>
+                <option value="name-asc">{t('filters.sortBy.nameAZ')}</option>
+                <option value="name-desc">{t('filters.sortBy.nameZA')}</option>
+              </select>
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                  {t('filters.clear', { count: activeFilterCount })}
+                </button>
+              )}
+            </div>
+
+            {/* Active Filter Pills */}
+            {hasActiveFilters && (
+              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-neutral-200">
+                {searchInput && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
+                    {t('filters.activePills.search', { query: searchInput })}
+                    <button onClick={() => setSearchInput('')} className="hover:text-neutral-900">
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                {role && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
+                    {t('filters.activePills.role', {
+                      role:
+                        role === 'BUYER'
+                          ? t('filters.roles.customers')
+                          : role === 'SELLER'
+                            ? t('filters.roles.sellers')
+                            : role === 'DELIVERY_PARTNER'
+                              ? t('filters.roles.deliveryPartners')
+                              : t('filters.roles.admins'),
+                    })}
+                    <button onClick={() => setRole('')} className="hover:text-neutral-900">
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                {status && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
+                    {t('filters.activePills.status', {
+                      status:
+                        status === 'active'
+                          ? t('filters.status.active')
+                          : status === 'suspended'
+                            ? t('filters.status.suspended')
+                            : t('filters.status.inactive'),
+                    })}
+                    <button onClick={() => setStatus('')} className="hover:text-neutral-900">
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                {segment && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
+                    {t('filters.activePills.segment', {
+                      segment:
+                        segment === 'vip'
+                          ? t('filters.segments.vip')
+                          : segment === 'new'
+                            ? t('filters.segments.new')
+                            : segment === 'at-risk'
+                              ? t('filters.segments.atRisk')
+                              : t('filters.segments.regular'),
+                    })}
+                    <button onClick={() => setSegment('')} className="hover:text-neutral-900">
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+                {sortBy !== 'createdAt-desc' && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-sm">
+                    {t('filters.activePills.sort', { sort: sortBy })}
+                    <button
+                      onClick={() => setSortBy('createdAt-desc')}
+                      className="hover:text-neutral-900"
+                    >
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('table.title')}</h2>
+          <div className="relative bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+            <div className="overflow-x-auto relative">
+              {loading ? (
+                <div className="p-16 text-center">
+                  <div className="relative w-16 h-16 mx-auto">
+                    <div className="absolute inset-0 rounded-full border-4 border-neutral-200"></div>
+                    <div className="absolute inset-0 rounded-full border-4 border-[#CBB57B] border-t-transparent animate-spin"></div>
+                  </div>
+                  <p className="mt-4 text-neutral-600 font-medium">{t('table.loading')}</p>
+                </div>
+              ) : customers.length === 0 ? (
+                <div className="p-16 text-center">
+                  <svg
+                    className="w-16 h-16 mx-auto text-neutral-400 mb-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                  <p className="text-neutral-600 font-medium">{t('table.noCustomers')}</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-neutral-200 bg-neutral-50">
+                      <th className="px-4 py-4 w-[40px]">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 rounded border-neutral-300 text-[#CBB57B] focus:ring-[#CBB57B]"
+                        />
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                        {t('table.headers.customer')}
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                        {t('table.headers.email')}
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                        {t('table.headers.orders')}
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                        {t('table.headers.totalSpent')}
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                        {t('table.headers.status')}
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                        {t('table.headers.joinDate')}
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
+                        {t('table.headers.actions')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200">
+                    {customers.map((customer) => (
+                      <tr
+                        key={customer.id}
+                        className="group transition-all duration-200 hover:bg-neutral-50"
+                      >
+                        <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(customer.id)}
+                            onChange={() => toggleSelect(customer.id)}
+                            className="w-4 h-4 rounded border-neutral-300 text-[#CBB57B] focus:ring-[#CBB57B]"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 min-w-[40px] min-h-[40px] bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-full overflow-hidden flex items-center justify-center ring-2 ring-[#CBB57B]/30">
+                              <span className="text-white font-semibold text-sm">
+                                {customer.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">
+                                {customer.name}
+                              </div>
+                              {customer.totalSpent >= 1000 && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded text-xs font-semibold">
+                                  <svg
+                                    className="w-3 h-3"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                                    />
+                                  </svg>
+                                  {t('table.vipBadge')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-neutral-700">{customer.email}</td>
+                        <td className="px-6 py-4 text-sm text-neutral-800 font-bold">
+                          {customer.totalOrders}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-black">
+                          ${formatCurrencyAmount(customer.totalSpent, 2)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide ${
+                              customer.status === 'active'
+                                ? 'bg-green-100 text-green-800 border border-green-200'
+                                : 'bg-red-100 text-red-800 border border-red-200'
+                            }`}
+                          >
+                            <div
+                              className={`w-1.5 h-1.5 rounded-full ${customer.status === 'active' ? 'bg-green-600' : 'bg-red-600'}`}
+                            ></div>
+                            {customer.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-neutral-700">
+                          {format(new Date(customer.createdAt), 'MMM d, yyyy')}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/admin/customers/${customer.id}`}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#CBB57B]/20 hover:bg-[#CBB57B]/30 border border-[#CBB57B]/30 text-[#CBB57B] rounded-lg text-xs font-semibold transition-all hover:scale-105"
+                            >
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                />
+                              </svg>
+                              {t('buttons.view')}
+                            </Link>
+                            {customer.status === 'active' ? (
+                              <button
+                                onClick={() => openSuspendModal(customer.id, customer.name)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 border border-orange-200 text-orange-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                                  />
+                                </svg>
+                                {t('buttons.suspend')}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleActivate(customer.id)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 border border-green-200 text-green-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                                {t('buttons.activate')}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => openDeleteModal(customer.id, customer.name)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 border border-red-200 text-red-700 rounded-lg text-xs font-semibold transition-all hover:scale-105"
+                            >
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                              {t('buttons.delete')}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {!loading && customers.length > 0 && (
+              <div className="px-6 py-4 border-t border-neutral-200 bg-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-neutral-700">
+                      {t('pagination.showing', {
+                        from: (page - 1) * limit + 1,
+                        to: Math.min(page * limit, total),
+                        total,
+                      })}
+                    </span>
+                    <select
+                      value={limit}
+                      onChange={(e) => setLimit(Number(e.target.value))}
+                      className="ml-4 px-3 py-1.5 border border-neutral-300 bg-white text-black rounded-lg text-sm focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-all"
+                    >
+                      <option value="10">{t('pagination.perPage.10')}</option>
+                      <option value="25">{t('pagination.perPage.25')}</option>
+                      <option value="50">{t('pagination.perPage.50')}</option>
+                      <option value="100">{t('pagination.perPage.100')}</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPage(Math.max(1, page - 1))}
+                      disabled={page === 1}
+                      className="px-4 py-2 border border-neutral-300 bg-white text-black rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-[#CBB57B] transition-all"
+                    >
+                      {t('pagination.previous')}
+                    </button>
+                    <span className="text-sm text-neutral-700 font-medium px-3">
+                      {t('pagination.page', { current: page, total: pages })}
+                    </span>
+                    <button
+                      onClick={() => setPage(Math.min(pages, page + 1))}
+                      disabled={page === pages}
+                      className="px-4 py-2 border border-neutral-300 bg-white text-black rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50 hover:border-[#CBB57B] transition-all"
+                    >
+                      {t('pagination.next')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={deleteModal.isOpen}
+          onClose={() => setDeleteModal({ isOpen: false, customerId: '', customerName: '' })}
+          onConfirm={handleDelete}
+          title={t('modals.delete.title')}
+          message={t('modals.delete.message', { name: deleteModal.customerName })}
+          confirmText={t('modals.delete.confirm')}
+          confirmVariant="danger"
+          loading={actionLoading}
+        />
+
+        {/* Suspend Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={suspendModal.isOpen}
+          onClose={() => setSuspendModal({ isOpen: false, customerId: '', customerName: '' })}
+          onConfirm={handleSuspend}
+          title={t('modals.suspend.title')}
+          message={t('modals.suspend.message', { name: suspendModal.customerName })}
+          confirmText={t('modals.suspend.confirm')}
+          confirmVariant="warning"
+          loading={actionLoading}
+        />
+
+        {/* Bulk Suspend Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={bulkSuspendModal}
+          onClose={() => setBulkSuspendModal(false)}
+          onConfirm={handleBulkSuspend}
+          title={t('modals.bulkSuspend.title')}
+          message={
+            selectedIds.length > 1
+              ? t('modals.bulkSuspend.messagePlural', { count: selectedIds.length })
+              : t('modals.bulkSuspend.message', { count: selectedIds.length })
+          }
+          confirmText={
+            selectedIds.length > 1
+              ? t('modals.bulkSuspend.confirmPlural', { count: selectedIds.length })
+              : t('modals.bulkSuspend.confirm', { count: selectedIds.length })
+          }
+          confirmVariant="warning"
+          loading={actionLoading}
+        />
+
+        {/* Bulk Actions Bar (Fixed at Bottom) */}
+        {selectedIds.length > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+            <div className="bg-slate-900 text-white rounded-lg px-6 py-3 flex items-center gap-4 shadow-xl">
+              <span className="font-medium text-sm">
+                {selectedIds.length > 1
+                  ? t('bulkActions.selectedPlural', { count: selectedIds.length })
+                  : t('bulkActions.selected', { count: selectedIds.length })}
+              </span>
+
+              <div className="h-4 w-px bg-slate-600" />
+
+              <button
+                onClick={handleBulkEmail}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+                {t('buttons.email')}
+              </button>
+
+              <button
+                onClick={handleBulkExport}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                {t('buttons.export')}
+              </button>
+
+              <button
+                onClick={() => setBulkSuspendModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                  />
+                </svg>
+                {t('buttons.suspend')}
+              </button>
+
+              <button
+                onClick={() => setSelectedIds([])}
+                className="flex items-center gap-1.5 px-2 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-all"
+                title={t('buttons.clearSelection')}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

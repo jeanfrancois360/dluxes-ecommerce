@@ -10,6 +10,7 @@ import React, { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
+import PageHeader from '@/components/admin/page-header';
 import { ProductForm } from '@/components/admin/product-form';
 import { InventoryAdjustmentModal } from '@/components/admin/inventory-adjustment-modal';
 import { InventoryHistoryModal } from '@/components/admin/inventory-history-modal';
@@ -81,102 +82,134 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   // Show loading state
   if (loading && !isNew) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#CBB57B]" />
-      </div>
+      <>
+        <PageHeader
+          title="Loading Product..."
+          description="Please wait while we load the product details"
+        />
+        <div className="px-4 sm:px-6 lg:px-8 py-8 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#CBB57B]" />
+        </div>
+      </>
     );
   }
 
   // Show error state if product not found
   if (error && !isNew) {
     return (
-      <div className="max-w-4xl">
-        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
-          <svg className="w-16 h-16 mx-auto mb-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h2 className="text-xl font-bold text-red-900 mb-2">Product Not Found</h2>
-          <p className="text-red-700 mb-6">
-            The product you're trying to edit doesn't exist or has been deleted.
-          </p>
-          <button
-            onClick={() => router.push('/admin/products')}
-            className="px-6 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Back to Products
-          </button>
+      <>
+        <PageHeader
+          title="Product Not Found"
+          description="The product you're looking for doesn't exist"
+        />
+        <div className="px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-8 text-center">
+              <svg
+                className="w-16 h-16 mx-auto mb-4 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <h2 className="text-xl font-bold text-red-900 mb-2">Product Not Found</h2>
+              <p className="text-red-700 mb-6">
+                The product you're trying to edit doesn't exist or has been deleted.
+              </p>
+              <button
+                onClick={() => router.push('/admin/products')}
+                className="px-6 py-3 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 transition-colors"
+              >
+                Back to Products
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   // Transform product data to match form expectations
-  const transformedProduct = product ? {
-    ...product,
-    category: typeof product.category === 'object' ? (product.category as any)?.slug : product.category,
-    images: Array.isArray(product.images)
-      ? product.images.map((img: any) => typeof img === 'string' ? img : img.url)
-      : [(product as any).heroImage].filter(Boolean),
-    tags: Array.isArray(product.tags)
-      ? product.tags.map((tag: any) => typeof tag === 'string' ? tag : tag.name)
-      : [],
-    stock: (product as any).inventory ?? (product as any).stock ?? 0,
-  } : undefined;
+  const transformedProduct = product
+    ? {
+        ...product,
+        category:
+          typeof product.category === 'object' ? (product.category as any)?.slug : product.category,
+        images: Array.isArray(product.images)
+          ? product.images.map((img: any) => (typeof img === 'string' ? img : img.url))
+          : [(product as any).heroImage].filter(Boolean),
+        tags: Array.isArray(product.tags)
+          ? product.tags.map((tag: any) => (typeof tag === 'string' ? tag : tag.name))
+          : [],
+        stock: (product as any).inventory ?? (product as any).stock ?? 0,
+      }
+    : undefined;
 
   return (
-    <div className="max-w-4xl">
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {isNew ? 'Create Product' : `Edit Product`}
-          </h1>
-          <p className="text-gray-600 mt-1">
-            {isNew ? 'Add a new product to your catalog' : 'Update product information'}
-          </p>
-          {!isNew && product && (
-            <p className="text-sm text-gray-500 mt-1">
-              Product ID: {resolvedParams.id}
-            </p>
-          )}
-        </div>
-        {!isNew && product && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowInventoryModal(true)}
-              className="flex items-center gap-2"
-            >
-              <Package className="h-4 w-4" />
-              Adjust Stock
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowHistoryModal(true)}
-              className="flex items-center gap-2"
-            >
-              <History className="h-4 w-4" />
-              History
-            </Button>
-            {(product as any)?.variants && (product as any).variants.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={handleSyncInventory}
-                className="flex items-center gap-2"
-                title="Sync inventory from variants"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Sync from Variants
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <ProductForm
-        product={isNew ? undefined : transformedProduct}
-        onSubmit={handleSubmit}
-        onCancel={handleCancel}
+    <>
+      <PageHeader
+        title={isNew ? 'Create Product' : 'Edit Product'}
+        description={isNew ? 'Add a new product to your catalog' : 'Update product information'}
       />
+
+      <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {!isNew && product && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-neutral-900">Quick Actions</h2>
+                <p className="text-sm text-neutral-500 mt-1">Product ID: {resolvedParams.id}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowInventoryModal(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Package className="h-4 w-4" />
+                  Adjust Stock
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowHistoryModal(true)}
+                  className="flex items-center gap-2"
+                >
+                  <History className="h-4 w-4" />
+                  History
+                </Button>
+                {(product as any)?.variants && (product as any).variants.length > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={handleSyncInventory}
+                    className="flex items-center gap-2"
+                    title="Sync inventory from variants"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Sync from Variants
+                  </Button>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+            {isNew ? 'Product Details' : 'Edit Product Details'}
+          </h2>
+          <ProductForm
+            product={isNew ? undefined : transformedProduct}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+          />
+        </section>
+      </div>
 
       {/* Inventory Adjustment Modal */}
       <InventoryAdjustmentModal
@@ -198,7 +231,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
         productId={!isNew ? resolvedParams.id : undefined}
         productName={product?.name}
       />
-    </div>
+    </>
   );
 }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
+import PageHeader from '@/components/admin/page-header';
 import { currencyAdminApi, CurrencyRate } from '@/lib/api/currency';
 import useSWR from 'swr';
 import { toast, standardToasts } from '@/lib/utils/toast';
@@ -279,366 +280,376 @@ function CurrenciesContent() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
-          <p className="text-muted-foreground mt-2">{t('pageDescription')}</p>
+    <>
+      <PageHeader title={t('pageTitle')} description={t('pageDescription')} />
+
+      <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div className="flex justify-end items-center">
+          <Button onClick={() => setIsAddModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t('buttons.addCurrency')}
+          </Button>
         </div>
-        <Button onClick={() => setIsAddModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t('buttons.addCurrency')}
-        </Button>
-      </div>
 
-      {/* Statistics */}
-      <div className="grid gap-4 md:grid-cols-5">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('stats.totalCurrencies')}</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">{t('stats.allCurrencies')}</p>
-          </CardContent>
-        </Card>
+        {/* Statistics */}
+        <div className="grid gap-4 md:grid-cols-5">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{t('stats.totalCurrencies')}</CardTitle>
+              <Globe className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-xs text-muted-foreground">{t('stats.allCurrencies')}</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('stats.active')}</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <p className="text-xs text-muted-foreground">{t('stats.availableForUse')}</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{t('stats.active')}</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+              <p className="text-xs text-muted-foreground">{t('stats.availableForUse')}</p>
+            </CardContent>
+          </Card>
 
-        <Card className={stats.inactive > 0 ? 'border-amber-200 bg-amber-50' : ''}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle
-              className={`text-sm font-medium ${stats.inactive > 0 ? 'text-amber-700' : ''}`}
-            >
-              {t('stats.inactive')}
-            </CardTitle>
-            <XCircle
-              className={`h-4 w-4 ${stats.inactive > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
-            />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${stats.inactive > 0 ? 'text-amber-700' : ''}`}>
-              {stats.inactive}
-            </div>
-            <p
-              className={`text-xs ${stats.inactive > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}
-            >
-              {t('stats.disabledCurrencies')}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('stats.recentlyUpdated')}</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.recentlyUpdated}</div>
-            <p className="text-xs text-muted-foreground">{t('stats.last24Hours')}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('stats.baseCurrency')}</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">USD</div>
-            <p className="text-xs text-muted-foreground">{t('stats.usDollar')}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="rounded-lg border p-4 bg-white space-y-4">
-        <div className="flex flex-wrap gap-4">
-          {/* Search */}
-          <div className="flex-1 min-w-[250px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={t('filters.searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+          <Card className={stats.inactive > 0 ? 'border-amber-200 bg-amber-50' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle
+                className={`text-sm font-medium ${stats.inactive > 0 ? 'text-amber-700' : ''}`}
+              >
+                {t('stats.inactive')}
+              </CardTitle>
+              <XCircle
+                className={`h-4 w-4 ${stats.inactive > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
               />
-            </div>
-          </div>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${stats.inactive > 0 ? 'text-amber-700' : ''}`}>
+                {stats.inactive}
+              </div>
+              <p
+                className={`text-xs ${stats.inactive > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}
+              >
+                {t('stats.disabledCurrencies')}
+              </p>
+            </CardContent>
+          </Card>
 
-          {/* Status Filter */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t('filters.statusLabel')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
-              <SelectItem value="active">{t('filters.active')}</SelectItem>
-              <SelectItem value="inactive">{t('filters.inactive')}</SelectItem>
-            </SelectContent>
-          </Select>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{t('stats.recentlyUpdated')}</CardTitle>
+              <Clock className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{stats.recentlyUpdated}</div>
+              <p className="text-xs text-muted-foreground">{t('stats.last24Hours')}</p>
+            </CardContent>
+          </Card>
 
-          {/* Sort */}
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder={t('filters.sortBy')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">{t('filters.sortNameAZ')}</SelectItem>
-              <SelectItem value="code">{t('filters.sortCodeAZ')}</SelectItem>
-              <SelectItem value="rate_high">{t('filters.sortRateHigh')}</SelectItem>
-              <SelectItem value="rate_low">{t('filters.sortRateLow')}</SelectItem>
-              <SelectItem value="updated">{t('filters.sortLastUpdated')}</SelectItem>
-            </SelectContent>
-          </Select>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{t('stats.baseCurrency')}</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">USD</div>
+              <p className="text-xs text-muted-foreground">{t('stats.usDollar')}</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Active Filter Pills */}
-        {hasActiveFilters && (
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-muted-foreground">{t('filters.activeFilters')}</span>
-            {debouncedSearch && (
-              <Badge variant="secondary" className="gap-1">
-                {t('filters.search')}: {debouncedSearch}
-                <button onClick={() => setSearchQuery('')} className="ml-1 hover:text-destructive">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {statusFilter !== 'all' && (
-              <Badge variant="secondary" className="gap-1">
-                {t('filters.status')}: {statusFilter}
-                <button
-                  onClick={() => setStatusFilter('all')}
-                  className="ml-1 hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-              {t('buttons.clearAll')}
-            </Button>
-          </div>
-        )}
-      </div>
+        {/* Filter Bar */}
+        <div className="rounded-lg border p-4 bg-white space-y-4">
+          <div className="flex flex-wrap gap-4">
+            {/* Search */}
+            <div className="flex-1 min-w-[250px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={t('filters.searchPlaceholder')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
 
-      {/* Currencies Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('table.title')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <input
-                      type="checkbox"
-                      checked={
-                        filteredCurrencies.length > 0 &&
-                        selectedIds.size === filteredCurrencies.length
-                      }
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-neutral-300"
-                    />
-                  </TableHead>
-                  <TableHead>{t('table.headers.currency')}</TableHead>
-                  <TableHead>{t('table.headers.code')}</TableHead>
-                  <TableHead>{t('table.headers.symbol')}</TableHead>
-                  <TableHead>{t('table.headers.exchangeRate')}</TableHead>
-                  <TableHead>{t('table.headers.status')}</TableHead>
-                  <TableHead>{t('table.headers.lastUpdated')}</TableHead>
-                  <TableHead className="text-right">{t('table.headers.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder={t('filters.statusLabel')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
+                <SelectItem value="active">{t('filters.active')}</SelectItem>
+                <SelectItem value="inactive">{t('filters.inactive')}</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder={t('filters.sortBy')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">{t('filters.sortNameAZ')}</SelectItem>
+                <SelectItem value="code">{t('filters.sortCodeAZ')}</SelectItem>
+                <SelectItem value="rate_high">{t('filters.sortRateHigh')}</SelectItem>
+                <SelectItem value="rate_low">{t('filters.sortRateLow')}</SelectItem>
+                <SelectItem value="updated">{t('filters.sortLastUpdated')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Active Filter Pills */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-sm text-muted-foreground">{t('filters.activeFilters')}</span>
+              {debouncedSearch && (
+                <Badge variant="secondary" className="gap-1">
+                  {t('filters.search')}: {debouncedSearch}
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {statusFilter !== 'all' && (
+                <Badge variant="secondary" className="gap-1">
+                  {t('filters.status')}: {statusFilter}
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                {t('buttons.clearAll')}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Currencies Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('table.title')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      {t('table.loading')}
-                    </TableCell>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredCurrencies.length > 0 &&
+                          selectedIds.size === filteredCurrencies.length
+                        }
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 rounded border-neutral-300"
+                      />
+                    </TableHead>
+                    <TableHead>{t('table.headers.currency')}</TableHead>
+                    <TableHead>{t('table.headers.code')}</TableHead>
+                    <TableHead>{t('table.headers.symbol')}</TableHead>
+                    <TableHead>{t('table.headers.exchangeRate')}</TableHead>
+                    <TableHead>{t('table.headers.status')}</TableHead>
+                    <TableHead>{t('table.headers.lastUpdated')}</TableHead>
+                    <TableHead className="text-right">{t('table.headers.actions')}</TableHead>
                   </TableRow>
-                ) : error ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-red-500">
-                      {t('table.error')}
-                    </TableCell>
-                  </TableRow>
-                ) : filteredCurrencies.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                      {t('table.noResults')}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredCurrencies.map((currency) => (
-                    <TableRow
-                      key={currency.id}
-                      className={selectedIds.has(currency.id) ? 'bg-muted/50' : ''}
-                    >
-                      <TableCell>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(currency.id)}
-                          onChange={() => toggleSelect(currency.id)}
-                          className="w-4 h-4 rounded border-neutral-300"
-                        />
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        {t('table.loading')}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl">
-                            {currency.symbol}
+                    </TableRow>
+                  ) : error ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-red-500">
+                        {t('table.error')}
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredCurrencies.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        {t('table.noResults')}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredCurrencies.map((currency) => (
+                      <TableRow
+                        key={currency.id}
+                        className={selectedIds.has(currency.id) ? 'bg-muted/50' : ''}
+                      >
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(currency.id)}
+                            onChange={() => toggleSelect(currency.id)}
+                            className="w-4 h-4 rounded border-neutral-300"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl">
+                              {currency.symbol}
+                            </div>
+                            <div>
+                              <div className="font-medium">{currency.currencyName}</div>
+                              {currency.currencyCode === 'USD' && (
+                                <span className="text-xs text-amber-600 font-medium">
+                                  {t('table.baseCurrency')}
+                                </span>
+                              )}
+                            </div>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-mono font-medium">{currency.currencyCode}</span>
+                        </TableCell>
+                        <TableCell>{currency.symbol}</TableCell>
+                        <TableCell>
                           <div>
-                            <div className="font-medium">{currency.currencyName}</div>
-                            {currency.currencyCode === 'USD' && (
-                              <span className="text-xs text-amber-600 font-medium">
-                                {t('table.baseCurrency')}
-                              </span>
-                            )}
+                            <div className="font-medium">
+                              {formatCurrencyAmount(currency.rate, 6)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {t('table.exchangeRateFormat', {
+                                rate: formatNumber(currency.rate, currency.decimalDigits),
+                                code: currency.currencyCode,
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-mono font-medium">{currency.currencyCode}</span>
-                      </TableCell>
-                      <TableCell>{currency.symbol}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {formatCurrencyAmount(currency.rate, 6)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={currency.isActive ? 'default' : 'secondary'}>
+                            {currency.isActive ? t('table.active') : t('table.inactive')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {new Date(currency.lastUpdated).toLocaleDateString()}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {t('table.exchangeRateFormat', {
-                              rate: formatNumber(currency.rate, currency.decimalDigits),
-                              code: currency.currencyCode,
-                            })}
+                            {new Date(currency.lastUpdated).toLocaleTimeString()}
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={currency.isActive ? 'default' : 'secondary'}>
-                          {currency.isActive ? t('table.active') : t('table.inactive')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {new Date(currency.lastUpdated).toLocaleDateString()}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(currency.lastUpdated).toLocaleTimeString()}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingCurrency(currency)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleToggleActive(currency)}
-                          >
-                            {currency.isActive ? (
-                              <XCircle className="h-4 w-4" />
-                            ) : (
-                              <CheckCircle className="h-4 w-4" />
-                            )}
-                          </Button>
-                          {currency.currencyCode !== 'USD' && (
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleDelete(currency)}
-                              disabled={deletingId === currency.id}
+                              onClick={() => setEditingCurrency(currency)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Edit className="h-4 w-4" />
                             </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleToggleActive(currency)}
+                            >
+                              {currency.isActive ? (
+                                <XCircle className="h-4 w-4" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4" />
+                              )}
+                            </Button>
+                            {currency.currencyCode !== 'USD' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDelete(currency)}
+                                disabled={deletingId === currency.id}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Fixed Bottom Bulk Actions Bar */}
-      {selectedIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 flex items-center justify-between z-50">
-          <div className="flex items-center gap-4">
-            <span className="font-medium">{t('table.selected', { count: selectedIds.size })}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedIds(new Set())}
-              className="text-white hover:text-white hover:bg-slate-800"
-            >
-              {t('buttons.clearSelection')}
-            </Button>
+        {/* Fixed Bottom Bulk Actions Bar */}
+        {selectedIds.size > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 flex items-center justify-between z-50">
+            <div className="flex items-center gap-4">
+              <span className="font-medium">
+                {t('table.selected', { count: selectedIds.size })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+                className="text-white hover:text-white hover:bg-slate-800"
+              >
+                {t('buttons.clearSelection')}
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={handleBulkExport} className="gap-2">
+                <Download className="h-4 w-4" />
+                {t('buttons.export')}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkActivate}
+                className="bg-green-600 hover:bg-green-700 gap-2"
+              >
+                <CheckCircle className="h-4 w-4" />
+                {t('buttons.activate')}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleBulkDeactivate}
+                className="gap-2"
+              >
+                <XCircle className="h-4 w-4" />
+                {t('buttons.deactivate')}
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+                <Trash2 className="h-4 w-4" />
+                {t('buttons.delete')}
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={handleBulkExport} className="gap-2">
-              <Download className="h-4 w-4" />
-              {t('buttons.export')}
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleBulkActivate}
-              className="bg-green-600 hover:bg-green-700 gap-2"
-            >
-              <CheckCircle className="h-4 w-4" />
-              {t('buttons.activate')}
-            </Button>
-            <Button variant="secondary" size="sm" onClick={handleBulkDeactivate} className="gap-2">
-              <XCircle className="h-4 w-4" />
-              {t('buttons.deactivate')}
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
-              <Trash2 className="h-4 w-4" />
-              {t('buttons.delete')}
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* Add Currency Modal */}
-      <CurrencyFormModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSuccess={handleAddSuccess}
-        mode="add"
-      />
+        {/* Add Currency Modal */}
+        <CurrencyFormModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={handleAddSuccess}
+          mode="add"
+        />
 
-      {/* Edit Currency Modal */}
-      <CurrencyFormModal
-        isOpen={!!editingCurrency}
-        onClose={() => setEditingCurrency(null)}
-        onSuccess={handleEditSuccess}
-        mode="edit"
-        currency={editingCurrency}
-      />
-    </div>
+        {/* Edit Currency Modal */}
+        <CurrencyFormModal
+          isOpen={!!editingCurrency}
+          onClose={() => setEditingCurrency(null)}
+          onSuccess={handleEditSuccess}
+          mode="edit"
+          currency={editingCurrency}
+        />
+      </div>
+    </>
   );
 }
 

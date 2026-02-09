@@ -7,16 +7,20 @@ import { useTranslations } from 'next-intl';
 import { useUser } from '@/hooks/use-user';
 import { useNotifications } from '@/hooks/use-notifications';
 import { formatDistanceToNow } from 'date-fns';
+import Breadcrumbs from '@/components/shared/breadcrumbs';
 import {
   Menu,
   Bell,
   Search,
   ExternalLink,
   ChevronDown,
-  ChevronRight,
   Home,
   Settings as SettingsIcon,
   LogOut,
+  Package,
+  ShoppingBag,
+  Users,
+  MessageSquare,
 } from 'lucide-react';
 
 interface AdminTopbarProps {
@@ -24,29 +28,11 @@ interface AdminTopbarProps {
   isMobileMenuOpen: boolean;
 }
 
-const getBreadcrumbs = (pathname: string) => {
-  const segments = pathname.split('/').filter(Boolean);
-  const breadcrumbs = [];
-
-  for (let i = 0; i < segments.length; i++) {
-    const path = `/${segments.slice(0, i + 1).join('/')}`;
-    const name = segments[i]
-      .split('-')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-
-    breadcrumbs.push({ name, path, isLast: i === segments.length - 1 });
-  }
-
-  return breadcrumbs;
-};
-
 export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: AdminTopbarProps) {
   const t = useTranslations('components.adminHeader');
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useUser();
-  const breadcrumbs = getBreadcrumbs(pathname);
 
   const [showSearch, setShowSearch] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -109,86 +95,74 @@ export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: Ad
 
   return (
     <>
-      <header className="fixed top-0 right-0 left-0 lg:left-64 z-30 h-16 bg-white border-b border-gray-200">
-        <div className="h-full px-4 sm:px-6 flex items-center justify-between">
+      <header className="fixed top-0 right-0 left-0 lg:left-64 z-30 h-16 bg-white border-b border-neutral-200">
+        <div className="h-full px-6 flex items-center justify-between">
           {/* Left: Mobile Menu + Breadcrumbs */}
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <button
               onClick={onMobileMenuToggle}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="lg:hidden p-2 hover:bg-neutral-100 rounded-lg transition-colors"
               aria-label="Toggle menu"
             >
-              <Menu className="w-6 h-6 text-gray-600" />
+              <Menu className="w-6 h-6 text-neutral-600" />
             </button>
 
             {/* Breadcrumbs */}
-            <nav className="hidden md:flex items-center space-x-2 text-sm min-w-0">
-              {breadcrumbs.map((crumb, index) => (
-                <div key={crumb.path} className="flex items-center gap-2 min-w-0">
-                  {index > 0 && <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
-                  {crumb.isLast ? (
-                    <span className="font-medium text-gray-900 truncate">{crumb.name}</span>
-                  ) : (
-                    <Link
-                      href={crumb.path}
-                      className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer truncate"
-                    >
-                      {crumb.name}
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </nav>
+            <div className="hidden md:block">
+              <Breadcrumbs homeHref="/admin/dashboard" />
+            </div>
           </div>
 
-          {/* Right: Actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Search */}
-            <button
-              onClick={() => setShowSearch(true)}
-              className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              <Search className="w-4 h-4" />
-              <span className="hidden lg:inline">{t('search')}</span>
-              <span className="hidden lg:inline text-xs text-gray-400 ml-2">⌘K</span>
-            </button>
-
-            {/* View Website */}
+          {/* Center: View Website Link */}
+          <div className="hidden md:flex items-center justify-center flex-1">
             <a
               href="/"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-black hover:bg-gray-800 rounded-lg transition-colors"
+              className="flex items-center gap-2 text-sm text-neutral-700 hover:text-[#CBB57B] transition-colors"
               title={t('viewWebsite')}
             >
-              <ExternalLink className="w-4 h-4" />
-              <span className="hidden lg:inline">{t('viewWebsite')}</span>
+              <ExternalLink className="w-5 h-5" />
+              <span className="font-medium">{t('viewWebsite')}</span>
             </a>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-3 flex-1 justify-end">
+            {/* Search */}
+            <button
+              onClick={() => setShowSearch(true)}
+              className="p-2 text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors"
+              aria-label="Search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
 
             {/* Notifications */}
             <div ref={notificationsRef} className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="relative p-2 text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors"
+                aria-label="Notifications"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#CBB57B] rounded-full border-2 border-white" />
                 )}
               </button>
 
               {/* Notifications Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">{t('notifications')}</h3>
-                    <span className="text-xs text-gray-500">
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-neutral-200 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
+                    <h3 className="font-semibold text-black">{t('notifications')}</h3>
+                    <span className="text-xs text-neutral-500">
                       {unreadCount} {t('unread', { count: unreadCount })}
                     </span>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                      <div className="px-4 py-8 text-center text-neutral-500 text-sm">
                         No notifications yet
                       </div>
                     ) : (
@@ -196,20 +170,20 @@ export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: Ad
                         <div
                           key={notification.id}
                           onClick={() => handleNotificationClick(notification)}
-                          className={`px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 ${
-                            !notification.read ? 'bg-blue-50/50' : ''
+                          className={`px-4 py-3 hover:bg-neutral-50 cursor-pointer border-b border-neutral-100 ${
+                            !notification.read ? 'bg-[#CBB57B]/10' : ''
                           }`}
                         >
                           <div className="flex items-start gap-3">
                             {!notification.read && (
-                              <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
+                              <span className="w-2 h-2 bg-[#CBB57B] rounded-full mt-1.5 flex-shrink-0" />
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900">
-                                {notification.title}
+                              <p className="text-sm font-medium text-black">{notification.title}</p>
+                              <p className="text-sm text-neutral-600 mt-1">
+                                {notification.message}
                               </p>
-                              <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                              <p className="text-xs text-gray-400 mt-1">
+                              <p className="text-xs text-neutral-400 mt-1">
                                 {formatDistanceToNow(new Date(notification.createdAt), {
                                   addSuffix: true,
                                 })}
@@ -221,14 +195,14 @@ export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: Ad
                     )}
                   </div>
                   {notifications.length > 0 && (
-                    <div className="px-4 py-3 bg-gray-50 text-center border-t border-gray-200">
+                    <div className="px-4 py-3 bg-neutral-50 text-center border-t border-neutral-200">
                       {unreadCount > 0 && (
                         <button
                           onClick={async (e) => {
                             e.stopPropagation();
                             await markAllAsRead();
                           }}
-                          className="text-sm text-blue-600 hover:text-blue-700 font-medium mr-4"
+                          className="text-sm text-[#CBB57B] hover:text-[#a89158] font-medium mr-4"
                         >
                           Mark all as read
                         </button>
@@ -238,7 +212,7 @@ export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: Ad
                           setShowNotifications(false);
                           router.push('/admin/notifications');
                         }}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-sm text-[#CBB57B] hover:text-[#a89158] font-medium"
                       >
                         {t('viewAllNotifications')}
                       </button>
@@ -248,38 +222,69 @@ export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: Ad
               )}
             </div>
 
+            {/* Messages */}
+            <button
+              onClick={() => router.push('/admin/notifications')}
+              className="p-2 text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors"
+              aria-label="Messages"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+
             {/* Profile Menu */}
             <div ref={profileMenuRef} className="relative">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-2 px-2 py-1 hover:bg-neutral-100 rounded-lg transition-colors"
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-[#CBB57B] to-[#a89158] rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">
+                <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold">
                     {(user as any)?.name?.charAt(0).toUpperCase() ||
                       user?.firstName?.charAt(0).toUpperCase() ||
                       user?.email?.charAt(0).toUpperCase() ||
                       'A'}
                   </span>
                 </div>
-                <ChevronDown className="hidden sm:block w-4 h-4 text-gray-600" />
+                <span className="hidden lg:block text-sm font-medium text-black">
+                  {(user as any)?.name ||
+                    user?.firstName ||
+                    user?.email?.split('@')[0] ||
+                    'Admin User'}
+                </span>
+                <ChevronDown
+                  className={`hidden lg:block w-4 h-4 text-neutral-600 transition-transform duration-200 ${
+                    showProfileMenu ? 'rotate-180' : ''
+                  }`}
+                />
               </button>
 
               {/* Profile Dropdown */}
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-gray-200">
-                    <p className="text-sm font-medium text-gray-900">
-                      {(user as any)?.name || user?.firstName || user?.email || 'Admin User'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {user?.email || 'admin@luxury.com'}
-                    </p>
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-neutral-200 bg-neutral-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
+                        <span className="text-white font-semibold">
+                          {(user as any)?.name?.charAt(0).toUpperCase() ||
+                            user?.firstName?.charAt(0).toUpperCase() ||
+                            user?.email?.charAt(0).toUpperCase() ||
+                            'A'}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-black truncate">
+                          {(user as any)?.name || user?.firstName || user?.email || 'Admin User'}
+                        </p>
+                        <p className="text-xs text-neutral-600 truncate">
+                          {user?.email || 'admin@luxury.com'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <div className="py-2">
                     <Link
                       href="/admin/dashboard"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-[#CBB57B] transition-colors"
                       onClick={() => setShowProfileMenu(false)}
                     >
                       <Home className="w-4 h-4" />
@@ -287,17 +292,17 @@ export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: Ad
                     </Link>
                     <Link
                       href="/admin/settings"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-[#CBB57B] transition-colors"
                       onClick={() => setShowProfileMenu(false)}
                     >
                       <SettingsIcon className="w-4 h-4" />
                       {t('settings')}
                     </Link>
                   </div>
-                  <div className="border-t border-gray-200 py-2">
+                  <div className="border-t border-neutral-200 py-2">
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
                       {t('logout')}
@@ -312,67 +317,70 @@ export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: Ad
 
       {/* Search Modal */}
       {showSearch && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-start justify-center min-h-screen pt-24 px-4">
+        <div className="fixed inset-0 z-50">
+          <div className="flex items-start justify-center min-h-screen pt-20 px-4">
             {/* Backdrop */}
             <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
               onClick={() => setShowSearch(false)}
             />
 
             {/* Modal */}
-            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl">
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
-                <Search className="w-5 h-5 text-gray-400" />
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-neutral-200">
+                <Search className="w-5 h-5 text-neutral-400 flex-shrink-0" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('searchPlaceholder')}
-                  className="flex-1 outline-none text-gray-900 placeholder-gray-400"
+                  placeholder="Search admin panel..."
+                  className="flex-1 outline-none text-black placeholder-neutral-400 text-base"
                   autoFocus
                 />
-                <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs font-mono text-gray-500 bg-gray-100 rounded">
+                <button
+                  onClick={() => setShowSearch(false)}
+                  className="text-xs text-neutral-500 hover:text-neutral-700 px-2 py-1 bg-neutral-100 rounded"
+                >
                   ESC
-                </kbd>
+                </button>
               </div>
 
-              <div className="p-4 max-h-96 overflow-y-auto">
+              <div className="p-3 max-h-[400px] overflow-y-auto">
                 {searchQuery ? (
-                  <div className="text-center py-12 text-gray-500">
-                    <p className="text-sm">{t('searchFor', { query: searchQuery })}</p>
-                    <p className="text-xs mt-2">{t('pressEnterToSearch')}</p>
+                  <div className="text-center py-16 text-neutral-500">
+                    <Search className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
+                    <p className="text-sm">Searching for "{searchQuery}"...</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                        {t('quickActions')}
+                  <div className="space-y-3">
+                    <div className="px-2">
+                      <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+                        Quick Actions
                       </h3>
                       <div className="space-y-1">
                         <Link
                           href="/admin/products"
-                          className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
+                          className="flex items-center gap-3 px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors group"
                           onClick={() => setShowSearch(false)}
                         >
-                          <span>📦</span>
-                          <span>{t('products')}</span>
+                          <Package className="w-4 h-4 text-neutral-400 group-hover:text-[#CBB57B]" />
+                          <span className="group-hover:text-black">Products</span>
                         </Link>
                         <Link
                           href="/admin/orders"
-                          className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
+                          className="flex items-center gap-3 px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors group"
                           onClick={() => setShowSearch(false)}
                         >
-                          <span>🛒</span>
-                          <span>{t('orders')}</span>
+                          <ShoppingBag className="w-4 h-4 text-neutral-400 group-hover:text-[#CBB57B]" />
+                          <span className="group-hover:text-black">Orders</span>
                         </Link>
                         <Link
                           href="/admin/customers"
-                          className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
+                          className="flex items-center gap-3 px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors group"
                           onClick={() => setShowSearch(false)}
                         >
-                          <span>👥</span>
-                          <span>{t('customers')}</span>
+                          <Users className="w-4 h-4 text-neutral-400 group-hover:text-[#CBB57B]" />
+                          <span className="group-hover:text-black">Customers</span>
                         </Link>
                       </div>
                     </div>

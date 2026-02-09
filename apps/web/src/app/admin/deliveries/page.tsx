@@ -9,17 +9,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
+import PageHeader from '@/components/admin/page-header';
 import { Button } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 import { Badge } from '@nextpik/ui';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@nextpik/ui';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nextpik/ui';
 import {
   Dialog,
   DialogContent,
@@ -28,13 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@nextpik/ui';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@nextpik/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@nextpik/ui';
 import {
   Search,
@@ -317,9 +305,7 @@ function DeliveriesContent() {
     // Sort
     switch (sortBy) {
       case 'oldest':
-        filtered.sort(
-          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
+        filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         break;
       case 'amount_high':
         filtered.sort((a, b) => b.order.total - a.order.total);
@@ -329,9 +315,7 @@ function DeliveriesContent() {
         break;
       case 'newest':
       default:
-        filtered.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
     return filtered;
@@ -420,622 +404,636 @@ function DeliveriesContent() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Deliveries Management</h1>
-        <p className="text-muted-foreground">View and manage all deliveries in the system</p>
-      </div>
+    <>
+      <PageHeader
+        title="Deliveries Management"
+        description="View and manage all deliveries in the system"
+      />
 
-      {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-5">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Deliveries</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
+      <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Statistics Cards */}
+        <div className="grid gap-4 md:grid-cols-5">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Deliveries</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-xs text-muted-foreground">All time</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Transit</CardTitle>
-            <Truck className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.inTransit}</div>
-            <p className="text-xs text-muted-foreground">Currently shipping</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">In Transit</CardTitle>
+              <Truck className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{stats.inTransit}</div>
+              <p className="text-xs text-muted-foreground">Currently shipping</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Delivered Today</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.deliveredToday}</div>
-            <p className="text-xs text-muted-foreground">Completed today</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Delivered Today</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{stats.deliveredToday}</div>
+              <p className="text-xs text-muted-foreground">Completed today</p>
+            </CardContent>
+          </Card>
 
-        <Card className={stats.delayed > 0 ? 'border-amber-200 bg-amber-50' : ''}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle
-              className={`text-sm font-medium ${stats.delayed > 0 ? 'text-amber-700' : ''}`}
-            >
-              Delayed
-            </CardTitle>
-            <AlertTriangle
-              className={`h-4 w-4 ${stats.delayed > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
-            />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${stats.delayed > 0 ? 'text-amber-700' : ''}`}>
-              {stats.delayed}
-            </div>
-            <p className={`text-xs ${stats.delayed > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
-              Needs attention
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Delivery Time</CardTitle>
-            <Timer className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.avgDeliveryDays} days</div>
-            <p className="text-xs text-muted-foreground">Average duration</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="rounded-lg border p-4 bg-white space-y-4">
-        <div className="flex flex-wrap gap-4">
-          {/* Search */}
-          <div className="flex-1 min-w-[250px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by tracking, order, or customer..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+          <Card className={stats.delayed > 0 ? 'border-amber-200 bg-amber-50' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle
+                className={`text-sm font-medium ${stats.delayed > 0 ? 'text-amber-700' : ''}`}
+              >
+                Delayed
+              </CardTitle>
+              <AlertTriangle
+                className={`h-4 w-4 ${stats.delayed > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
               />
-            </div>
-          </div>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${stats.delayed > 0 ? 'text-amber-700' : ''}`}>
+                {stats.delayed}
+              </div>
+              <p
+                className={`text-xs ${stats.delayed > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}
+              >
+                Needs attention
+              </p>
+            </CardContent>
+          </Card>
 
-          {/* Status Filter */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="PENDING_PICKUP">Pending Pickup</SelectItem>
-              <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
-              <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
-              <SelectItem value="DELIVERED">Delivered</SelectItem>
-              <SelectItem value="FAILED_DELIVERY">Failed</SelectItem>
-              <SelectItem value="RETURNED">Returned</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Provider Filter */}
-          <Select value={providerFilter} onValueChange={setProviderFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Provider" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Providers</SelectItem>
-              {providers.map((provider) => (
-                <SelectItem key={provider} value={provider}>
-                  {provider}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Confirmation Filter */}
-          <Select value={confirmedFilter} onValueChange={setConfirmedFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Confirmation" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="confirmed">Buyer Confirmed</SelectItem>
-              <SelectItem value="pending">Pending Confirm</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Payout Filter */}
-          <Select value={payoutFilter} onValueChange={setPayoutFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Payout" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Payouts</SelectItem>
-              <SelectItem value="released">Released</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Sort */}
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="oldest">Oldest First</SelectItem>
-              <SelectItem value="amount_high">Amount (High)</SelectItem>
-              <SelectItem value="amount_low">Amount (Low)</SelectItem>
-            </SelectContent>
-          </Select>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg Delivery Time</CardTitle>
+              <Timer className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.avgDeliveryDays} days</div>
+              <p className="text-xs text-muted-foreground">Average duration</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Active Filter Pills */}
-        {hasActiveFilters && (
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
-            {debouncedSearch && (
-              <Badge variant="secondary" className="gap-1">
-                Search: {debouncedSearch}
-                <button onClick={() => setSearchQuery('')} className="ml-1 hover:text-destructive">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {statusFilter !== 'all' && (
-              <Badge variant="secondary" className="gap-1">
-                Status: {statusFilter.replace(/_/g, ' ')}
-                <button
-                  onClick={() => setStatusFilter('all')}
-                  className="ml-1 hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {providerFilter !== 'all' && (
-              <Badge variant="secondary" className="gap-1">
-                Provider: {providerFilter}
-                <button
-                  onClick={() => setProviderFilter('all')}
-                  className="ml-1 hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {confirmedFilter !== 'all' && (
-              <Badge variant="secondary" className="gap-1">
-                {confirmedFilter === 'confirmed' ? 'Buyer Confirmed' : 'Pending Confirm'}
-                <button
-                  onClick={() => setConfirmedFilter('all')}
-                  className="ml-1 hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {payoutFilter !== 'all' && (
-              <Badge variant="secondary" className="gap-1">
-                Payout: {payoutFilter === 'released' ? 'Released' : 'Pending'}
-                <button
-                  onClick={() => setPayoutFilter('all')}
-                  className="ml-1 hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-              Clear all
+        {/* Filter Bar */}
+        <div className="rounded-lg border p-4 bg-white space-y-4">
+          <div className="flex flex-wrap gap-4">
+            {/* Search */}
+            <div className="flex-1 min-w-[250px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by tracking, order, or customer..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="PENDING_PICKUP">Pending Pickup</SelectItem>
+                <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
+                <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
+                <SelectItem value="DELIVERED">Delivered</SelectItem>
+                <SelectItem value="FAILED_DELIVERY">Failed</SelectItem>
+                <SelectItem value="RETURNED">Returned</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Provider Filter */}
+            <Select value={providerFilter} onValueChange={setProviderFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Providers</SelectItem>
+                {providers.map((provider) => (
+                  <SelectItem key={provider} value={provider}>
+                    {provider}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Confirmation Filter */}
+            <Select value={confirmedFilter} onValueChange={setConfirmedFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Confirmation" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="confirmed">Buyer Confirmed</SelectItem>
+                <SelectItem value="pending">Pending Confirm</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Payout Filter */}
+            <Select value={payoutFilter} onValueChange={setPayoutFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Payout" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Payouts</SelectItem>
+                <SelectItem value="released">Released</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
+                <SelectItem value="amount_high">Amount (High)</SelectItem>
+                <SelectItem value="amount_low">Amount (Low)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Active Filter Pills */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-sm text-muted-foreground">Active filters:</span>
+              {debouncedSearch && (
+                <Badge variant="secondary" className="gap-1">
+                  Search: {debouncedSearch}
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {statusFilter !== 'all' && (
+                <Badge variant="secondary" className="gap-1">
+                  Status: {statusFilter.replace(/_/g, ' ')}
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {providerFilter !== 'all' && (
+                <Badge variant="secondary" className="gap-1">
+                  Provider: {providerFilter}
+                  <button
+                    onClick={() => setProviderFilter('all')}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {confirmedFilter !== 'all' && (
+                <Badge variant="secondary" className="gap-1">
+                  {confirmedFilter === 'confirmed' ? 'Buyer Confirmed' : 'Pending Confirm'}
+                  <button
+                    onClick={() => setConfirmedFilter('all')}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {payoutFilter !== 'all' && (
+                <Badge variant="secondary" className="gap-1">
+                  Payout: {payoutFilter === 'released' ? 'Released' : 'Pending'}
+                  <button
+                    onClick={() => setPayoutFilter('all')}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                Clear all
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Table */}
+        <div className="rounded-md border bg-white">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">
+                  <input
+                    type="checkbox"
+                    checked={
+                      filteredDeliveries.length > 0 &&
+                      selectedIds.size === filteredDeliveries.length
+                    }
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-neutral-300"
+                  />
+                </TableHead>
+                <TableHead>Tracking #</TableHead>
+                <TableHead>Order</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Provider</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Expected</TableHead>
+                <TableHead>Buyer Confirmed</TableHead>
+                <TableHead>Payout</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center py-8">
+                    Loading deliveries...
+                  </TableCell>
+                </TableRow>
+              ) : filteredDeliveries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center py-8">
+                    No deliveries found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredDeliveries.map((delivery) => (
+                  <TableRow
+                    key={delivery.id}
+                    className={selectedIds.has(delivery.id) ? 'bg-muted/50' : ''}
+                  >
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(delivery.id)}
+                        onChange={() => toggleSelect(delivery.id)}
+                        className="w-4 h-4 rounded border-neutral-300"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium font-mono text-sm">{delivery.trackingNumber}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(delivery.createdAt), 'MMM d, yyyy')}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{delivery.order.orderNumber}</div>
+                      <div className="text-xs text-muted-foreground">
+                        ${formatCurrencyAmount(delivery.order.total, 2)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        {delivery.order.user.firstName} {delivery.order.user.lastName}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {delivery.order.user.email}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{delivery.provider.name}</div>
+                      {delivery.deliveryPartner && (
+                        <div className="text-xs text-muted-foreground">
+                          Driver: {delivery.deliveryPartner.firstName}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(delivery.currentStatus)}</TableCell>
+                    <TableCell>
+                      {delivery.expectedDeliveryDate ? (
+                        <span
+                          className={
+                            new Date(delivery.expectedDeliveryDate) < new Date() &&
+                            delivery.currentStatus !== 'DELIVERED'
+                              ? 'text-amber-600 font-medium'
+                              : ''
+                          }
+                        >
+                          {format(new Date(delivery.expectedDeliveryDate), 'MMM d')}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {delivery.buyerConfirmed ? (
+                        <div className="flex items-center gap-1 text-green-600">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="text-sm">Confirmed</span>
+                        </div>
+                      ) : delivery.currentStatus === 'DELIVERED' ? (
+                        <div className="flex items-center gap-1 text-yellow-600">
+                          <Clock className="w-4 h-4" />
+                          <span className="text-sm">Pending</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {delivery.payoutReleased ? (
+                        <div className="flex items-center gap-1 text-green-600">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="text-sm">Released</span>
+                        </div>
+                      ) : delivery.buyerConfirmed ? (
+                        <div className="flex items-center gap-1 text-blue-600">
+                          <DollarSign className="w-4 h-4" />
+                          <span className="text-sm">Ready</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openDetailsDialog(delivery)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {delivery.buyerConfirmed && !delivery.payoutReleased && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleReleasePayout(delivery.id)}
+                            disabled={releasingPayout === delivery.id}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            {releasingPayout === delivery.id ? (
+                              'Releasing...'
+                            ) : (
+                              <>
+                                <DollarSign className="mr-1 h-3 w-3" />
+                                Release
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              Next
             </Button>
           </div>
         )}
-      </div>
 
-      {/* Table */}
-      <div className="rounded-md border bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <input
-                  type="checkbox"
-                  checked={
-                    filteredDeliveries.length > 0 &&
-                    selectedIds.size === filteredDeliveries.length
-                  }
-                  onChange={toggleSelectAll}
-                  className="w-4 h-4 rounded border-neutral-300"
-                />
-              </TableHead>
-              <TableHead>Tracking #</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Expected</TableHead>
-              <TableHead>Buyer Confirmed</TableHead>
-              <TableHead>Payout</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={10} className="text-center py-8">
-                  Loading deliveries...
-                </TableCell>
-              </TableRow>
-            ) : filteredDeliveries.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={10} className="text-center py-8">
-                  No deliveries found
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredDeliveries.map((delivery) => (
-                <TableRow key={delivery.id} className={selectedIds.has(delivery.id) ? 'bg-muted/50' : ''}>
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(delivery.id)}
-                      onChange={() => toggleSelect(delivery.id)}
-                      className="w-4 h-4 rounded border-neutral-300"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium font-mono text-sm">{delivery.trackingNumber}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(new Date(delivery.createdAt), 'MMM d, yyyy')}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{delivery.order.orderNumber}</div>
-                    <div className="text-xs text-muted-foreground">
-                      ${formatCurrencyAmount(delivery.order.total, 2)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      {delivery.order.user.firstName} {delivery.order.user.lastName}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{delivery.order.user.email}</div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{delivery.provider.name}</div>
-                    {delivery.deliveryPartner && (
-                      <div className="text-xs text-muted-foreground">
-                        Driver: {delivery.deliveryPartner.firstName}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(delivery.currentStatus)}</TableCell>
-                  <TableCell>
-                    {delivery.expectedDeliveryDate ? (
-                      <span
-                        className={
-                          new Date(delivery.expectedDeliveryDate) < new Date() &&
-                          delivery.currentStatus !== 'DELIVERED'
-                            ? 'text-amber-600 font-medium'
-                            : ''
-                        }
-                      >
-                        {format(new Date(delivery.expectedDeliveryDate), 'MMM d')}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {delivery.buyerConfirmed ? (
-                      <div className="flex items-center gap-1 text-green-600">
-                        <CheckCircle className="w-4 h-4" />
-                        <span className="text-sm">Confirmed</span>
-                      </div>
-                    ) : delivery.currentStatus === 'DELIVERED' ? (
-                      <div className="flex items-center gap-1 text-yellow-600">
-                        <Clock className="w-4 h-4" />
-                        <span className="text-sm">Pending</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {delivery.payoutReleased ? (
-                      <div className="flex items-center gap-1 text-green-600">
-                        <CheckCircle className="w-4 h-4" />
-                        <span className="text-sm">Released</span>
-                      </div>
-                    ) : delivery.buyerConfirmed ? (
-                      <div className="flex items-center gap-1 text-blue-600">
-                        <DollarSign className="w-4 h-4" />
-                        <span className="text-sm">Ready</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => openDetailsDialog(delivery)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {delivery.buyerConfirmed && !delivery.payoutReleased && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleReleasePayout(delivery.id)}
-                          disabled={releasingPayout === delivery.id}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          {releasingPayout === delivery.id ? (
-                            'Releasing...'
-                          ) : (
-                            <>
-                              <DollarSign className="mr-1 h-3 w-3" />
-                              Release
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-          >
-            Next
-          </Button>
-        </div>
-      )}
-
-      {/* Fixed Bottom Bulk Actions Bar */}
-      {selectedIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 flex items-center justify-between z-50">
-          <div className="flex items-center gap-4">
-            <span className="font-medium">{selectedIds.size} selected</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedIds(new Set())}
-              className="text-white hover:text-white hover:bg-slate-800"
-            >
-              Clear selection
-            </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleBulkExport}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleBulkPrintLabels}
-              className="gap-2"
-            >
-              <Printer className="h-4 w-4" />
-              Print Labels
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleBulkReleasePayout}
-              className="bg-green-600 hover:bg-green-700 gap-2"
-            >
-              <DollarSign className="h-4 w-4" />
-              Release Payouts
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Delivery Details Dialog */}
-      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Delivery Details</DialogTitle>
-            <DialogDescription>
-              {selectedDelivery?.trackingNumber} - {selectedDelivery?.order.orderNumber}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedDelivery && (
-            <div className="space-y-6">
-              {/* Status Information */}
-              <div>
-                <h3 className="font-semibold mb-3">Status Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Current Status</div>
-                    <div className="mt-1">{getStatusBadge(selectedDelivery.currentStatus)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Created</div>
-                    <div className="mt-1">{format(new Date(selectedDelivery.createdAt), 'PPp')}</div>
-                  </div>
-                  {selectedDelivery.deliveredAt && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">Delivered</div>
-                      <div className="mt-1">
-                        {format(new Date(selectedDelivery.deliveredAt), 'PPp')}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Customer Information */}
-              <div>
-                <h3 className="font-semibold mb-3">Customer Information</h3>
-                <div className="space-y-2">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Name</div>
-                    <div>
-                      {selectedDelivery.order.user.firstName}{' '}
-                      {selectedDelivery.order.user.lastName}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Email</div>
-                    <div>{selectedDelivery.order.user.email}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Provider Information */}
-              <div>
-                <h3 className="font-semibold mb-3">Provider Information</h3>
-                <div className="space-y-2">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Provider</div>
-                    <div className="font-medium">{selectedDelivery.provider.name}</div>
-                  </div>
-                  {selectedDelivery.deliveryPartner && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">Driver</div>
-                      <div>
-                        {selectedDelivery.deliveryPartner.firstName}{' '}
-                        {selectedDelivery.deliveryPartner.lastName}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {selectedDelivery.deliveryPartner.email}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Financial Information */}
-              <div>
-                <h3 className="font-semibold mb-3">Financial Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Delivery Fee</div>
-                    <div className="font-medium">
-                      ${formatCurrencyAmount(selectedDelivery.deliveryFee, 2)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Partner Commission</div>
-                    <div className="font-medium">
-                      ${formatCurrencyAmount(selectedDelivery.partnerCommission, 2)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Confirmation & Payout */}
-              <div>
-                <h3 className="font-semibold mb-3">Confirmation & Payout</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <div className="font-medium">Buyer Confirmation</div>
-                      {selectedDelivery.buyerConfirmedAt && (
-                        <div className="text-sm text-muted-foreground">
-                          {format(new Date(selectedDelivery.buyerConfirmedAt), 'PPp')}
-                        </div>
-                      )}
-                    </div>
-                    {selectedDelivery.buyerConfirmed ? (
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <div className="font-medium">Payout Released</div>
-                      {selectedDelivery.payoutReleasedAt && (
-                        <div className="text-sm text-muted-foreground">
-                          {format(new Date(selectedDelivery.payoutReleasedAt), 'PPp')}
-                        </div>
-                      )}
-                    </div>
-                    {selectedDelivery.payoutReleased ? (
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-gray-400" />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Proof of Delivery */}
-              {selectedDelivery.proofOfDeliveryUrl && (
-                <div>
-                  <h3 className="font-semibold mb-3">Proof of Delivery</h3>
-                  <div className="border rounded-lg p-4">
-                    <a
-                      href={selectedDelivery.proofOfDeliveryUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-blue-600 hover:underline"
-                    >
-                      <FileText className="w-4 h-4" />
-                      View Proof of Delivery
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
-              Close
-            </Button>
-            {selectedDelivery && selectedDelivery.buyerConfirmed && !selectedDelivery.payoutReleased && (
+        {/* Fixed Bottom Bulk Actions Bar */}
+        {selectedIds.size > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 flex items-center justify-between z-50">
+            <div className="flex items-center gap-4">
+              <span className="font-medium">{selectedIds.size} selected</span>
               <Button
-                onClick={() => {
-                  handleReleasePayout(selectedDelivery.id);
-                  setIsDetailsDialogOpen(false);
-                }}
-                className="bg-green-600 hover:bg-green-700"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+                className="text-white hover:text-white hover:bg-slate-800"
               >
-                <DollarSign className="mr-2 h-4 w-4" />
-                Release Payout
+                Clear selection
               </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={handleBulkExport} className="gap-2">
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleBulkPrintLabels}
+                className="gap-2"
+              >
+                <Printer className="h-4 w-4" />
+                Print Labels
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkReleasePayout}
+                className="bg-green-600 hover:bg-green-700 gap-2"
+              >
+                <DollarSign className="h-4 w-4" />
+                Release Payouts
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Delivery Details Dialog */}
+        <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Delivery Details</DialogTitle>
+              <DialogDescription>
+                {selectedDelivery?.trackingNumber} - {selectedDelivery?.order.orderNumber}
+              </DialogDescription>
+            </DialogHeader>
+            {selectedDelivery && (
+              <div className="space-y-6">
+                {/* Status Information */}
+                <div>
+                  <h3 className="font-semibold mb-3">Status Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-muted-foreground">Current Status</div>
+                      <div className="mt-1">{getStatusBadge(selectedDelivery.currentStatus)}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Created</div>
+                      <div className="mt-1">
+                        {format(new Date(selectedDelivery.createdAt), 'PPp')}
+                      </div>
+                    </div>
+                    {selectedDelivery.deliveredAt && (
+                      <div>
+                        <div className="text-sm text-muted-foreground">Delivered</div>
+                        <div className="mt-1">
+                          {format(new Date(selectedDelivery.deliveredAt), 'PPp')}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Customer Information */}
+                <div>
+                  <h3 className="font-semibold mb-3">Customer Information</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <div className="text-sm text-muted-foreground">Name</div>
+                      <div>
+                        {selectedDelivery.order.user.firstName}{' '}
+                        {selectedDelivery.order.user.lastName}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Email</div>
+                      <div>{selectedDelivery.order.user.email}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Provider Information */}
+                <div>
+                  <h3 className="font-semibold mb-3">Provider Information</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <div className="text-sm text-muted-foreground">Provider</div>
+                      <div className="font-medium">{selectedDelivery.provider.name}</div>
+                    </div>
+                    {selectedDelivery.deliveryPartner && (
+                      <div>
+                        <div className="text-sm text-muted-foreground">Driver</div>
+                        <div>
+                          {selectedDelivery.deliveryPartner.firstName}{' '}
+                          {selectedDelivery.deliveryPartner.lastName}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {selectedDelivery.deliveryPartner.email}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Financial Information */}
+                <div>
+                  <h3 className="font-semibold mb-3">Financial Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-muted-foreground">Delivery Fee</div>
+                      <div className="font-medium">
+                        ${formatCurrencyAmount(selectedDelivery.deliveryFee, 2)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Partner Commission</div>
+                      <div className="font-medium">
+                        ${formatCurrencyAmount(selectedDelivery.partnerCommission, 2)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Confirmation & Payout */}
+                <div>
+                  <h3 className="font-semibold mb-3">Confirmation & Payout</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="font-medium">Buyer Confirmation</div>
+                        {selectedDelivery.buyerConfirmedAt && (
+                          <div className="text-sm text-muted-foreground">
+                            {format(new Date(selectedDelivery.buyerConfirmedAt), 'PPp')}
+                          </div>
+                        )}
+                      </div>
+                      {selectedDelivery.buyerConfirmed ? (
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="font-medium">Payout Released</div>
+                        {selectedDelivery.payoutReleasedAt && (
+                          <div className="text-sm text-muted-foreground">
+                            {format(new Date(selectedDelivery.payoutReleasedAt), 'PPp')}
+                          </div>
+                        )}
+                      </div>
+                      {selectedDelivery.payoutReleased ? (
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-gray-400" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Proof of Delivery */}
+                {selectedDelivery.proofOfDeliveryUrl && (
+                  <div>
+                    <h3 className="font-semibold mb-3">Proof of Delivery</h3>
+                    <div className="border rounded-lg p-4">
+                      <a
+                        href={selectedDelivery.proofOfDeliveryUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-blue-600 hover:underline"
+                      >
+                        <FileText className="w-4 h-4" />
+                        View Proof of Delivery
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
+                Close
+              </Button>
+              {selectedDelivery &&
+                selectedDelivery.buyerConfirmed &&
+                !selectedDelivery.payoutReleased && (
+                  <Button
+                    onClick={() => {
+                      handleReleasePayout(selectedDelivery.id);
+                      setIsDetailsDialogOpen(false);
+                    }}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <DollarSign className="mr-2 h-4 w-4" />
+                    Release Payout
+                  </Button>
+                )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </>
   );
 }
 

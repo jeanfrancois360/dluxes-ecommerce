@@ -55,7 +55,7 @@ export default function UnifiedAdminLayout({ children }: UnifiedAdminLayoutProps
 
       {/* Main Content */}
       <div className="lg:pl-64 pt-16">
-        <main className="min-h-screen p-6">{children}</main>
+        <main className="min-h-screen bg-neutral-50">{children}</main>
       </div>
     </div>
   );

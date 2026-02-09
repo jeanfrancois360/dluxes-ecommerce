@@ -2,32 +2,40 @@
 
 import React, { useState } from 'react';
 import useSWR from 'swr';
-import { Plus, Edit, Trash2, MoreVertical, Copy, ToggleLeft, ToggleRight, X, Loader2, Check } from 'lucide-react';
+import {
+  Plus,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Copy,
+  ToggleLeft,
+  ToggleRight,
+  X,
+  Loader2,
+  Check,
+} from 'lucide-react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
+import PageHeader from '@/components/admin/page-header';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
-import { subscriptionApi, type SubscriptionPlan, type CreatePlanData } from '@/lib/api/subscription';
+import {
+  subscriptionApi,
+  type SubscriptionPlan,
+  type CreatePlanData,
+} from '@/lib/api/subscription';
 
 // Stat Card Component
-function StatCard({
-  title,
-  value,
-  icon,
-}: {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-}) {
+function StatCard({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 hover:border-gray-300 transition-colors p-6">
-      <div className="flex items-center gap-4">
-        <div className="p-3 bg-[#CBB57B]/10 rounded-lg">
-          {icon}
+    <div className="bg-white rounded-xl shadow-sm border border-neutral-200 hover:shadow-md transition-all p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-neutral-600 mb-2">{title}</p>
+          <p className="text-3xl font-bold text-black">{value}</p>
         </div>
-        <div>
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
+        <div className="w-12 h-12 bg-[#CBB57B]/10 rounded-lg flex items-center justify-center">
+          {icon}
         </div>
       </div>
     </div>
@@ -63,10 +71,12 @@ function SubscriptionPlansContent() {
   });
 
   // Fetch plans with useSWR
-  const { data: plans, error, isLoading, mutate } = useSWR(
-    'subscription-plans',
-    () => subscriptionApi.adminGetPlans()
-  );
+  const {
+    data: plans,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR('subscription-plans', () => subscriptionApi.adminGetPlans());
 
   // Show error toast if data fetch fails
   React.useEffect(() => {
@@ -110,7 +120,7 @@ function SubscriptionPlansContent() {
       monthlyCredits: plan.monthlyCredits,
       featuredSlotsPerMonth: plan.featuredSlotsPerMonth,
       listingDurationDays: plan.listingDurationDays,
-      features: (plan.features as string[])?.length > 0 ? plan.features as string[] : [''],
+      features: (plan.features as string[])?.length > 0 ? (plan.features as string[]) : [''],
       allowedProductTypes: (plan.allowedProductTypes as string[]) || [],
       isActive: plan.isActive,
       isPopular: plan.isPopular,
@@ -128,7 +138,7 @@ function SubscriptionPlansContent() {
     try {
       const data = {
         ...formData,
-        features: formData.features?.filter(f => f.trim() !== ''),
+        features: formData.features?.filter((f) => f.trim() !== ''),
       };
 
       if (editingPlan) {
@@ -220,300 +230,381 @@ function SubscriptionPlansContent() {
 
   const totalRevenue = React.useMemo(() => {
     if (!plans) return 0;
-    return plans.reduce((sum, p) => sum + (p.monthlyPrice * (p._count?.subscriptions || 0)), 0);
+    return plans.reduce((sum, p) => sum + p.monthlyPrice * (p._count?.subscriptions || 0), 0);
   }, [plans]);
 
   if (isLoading) {
     return (
-      <div className="space-y-8">
-        <div className="bg-gray-800 rounded-lg p-8 animate-pulse">
-          <div className="h-8 bg-gray-700 rounded w-1/3 mb-3" />
-          <div className="h-5 bg-gray-700 rounded w-1/2" />
+      <>
+        <PageHeader
+          title="Feature Plans"
+          description="Manage subscription plans that unlock premium product types (SERVICE, INQUIRY, REAL_ESTATE)"
+        />
+        <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 animate-pulse"
+              >
+                <div className="h-16 bg-neutral-200 rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 animate-pulse"
+              >
+                <div className="h-40 bg-neutral-200 rounded-lg mb-4" />
+                <div className="h-20 bg-neutral-200 rounded" />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-lg shadow border border-gray-200 p-6 animate-pulse">
-              <div className="h-16 bg-gray-200 rounded" />
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-lg shadow border border-gray-200 p-6 animate-pulse">
-              <div className="h-40 bg-gray-200 rounded-lg mb-4" />
-              <div className="h-20 bg-gray-200 rounded" />
-            </div>
-          ))}
-        </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Feature Plans</h1>
-          <p className="text-gray-500 mt-1">Manage plans that unlock premium product types (SERVICE, INQUIRY, REAL_ESTATE)</p>
-        </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#CBB57B] text-black font-semibold rounded-xl hover:bg-[#b9a369] transition-colors shadow-sm"
-        >
-          <Plus className="w-5 h-5" />
-          Create Plan
-        </button>
-      </div>
+    <>
+      <PageHeader
+        title="Feature Plans"
+        description="Manage subscription plans that unlock premium product types (SERVICE, INQUIRY, REAL_ESTATE)"
+      />
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard
-          title="Total Feature Plans"
-          value={(plans?.length || 0).toString()}
-          icon={
-            <svg className="w-6 h-6 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-            </svg>
-          }
-        />
-        <StatCard
-          title="Active Subscribers"
-          value={totalSubscribers.toString()}
-          icon={
-            <svg className="w-6 h-6 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          }
-        />
-        <StatCard
-          title="Monthly Revenue"
-          value={formatCurrencyAmount(totalRevenue)}
-          icon={
-            <svg className="w-6 h-6 text-[#CBB57B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        />
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2">
-        <div className="inline-flex items-center bg-gray-100 p-1 rounded-xl">
-          {(['all', 'active', 'inactive'] as const).map((tab) => {
-            let count = 0;
-            if (tab === 'all') count = plans?.length || 0;
-            else if (tab === 'active') count = plans?.filter(p => p.isActive).length || 0;
-            else count = plans?.filter(p => !p.isActive).length || 0;
-
-            return (
-              <button
-                key={tab}
-                onClick={() => setFilter(tab)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                  filter === tab
-                    ? 'bg-[#000000] text-[#FFFFFF] shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)} ({count})
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Plans Grid */}
-      {filteredPlans.length === 0 ? (
-        <div className="bg-white rounded-lg shadow border border-gray-200 p-16 text-center">
-          <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-            </svg>
+      <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Quick Actions Section */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-neutral-900">Quick Actions</h2>
+            <button
+              onClick={handleCreate}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#CBB57B] text-black font-semibold rounded-xl hover:bg-[#b9a369] transition-colors shadow-sm"
+            >
+              <Plus className="w-5 h-5" />
+              Create Plan
+            </button>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No plans found</h3>
-          <p className="text-gray-600">Try adjusting your filters or create a new plan.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredPlans.map((plan) => {
-            const savingsPercent = plan.monthlyPrice > 0
-              ? Math.round((1 - (plan.yearlyPrice / 12) / plan.monthlyPrice) * 100)
-              : 0;
+        </section>
 
-            return (
-              <div
-                key={plan.id}
-                className="bg-[#FFFFFF] rounded-xl border-2 border-gray-200 hover:border-[#CBB57B] shadow-sm hover:shadow-lg transition-all flex flex-col h-full overflow-hidden"
-              >
-                {/* Card Header */}
-                <div className="p-6 flex-1 flex flex-col min-h-0">
-                  {/* Title Row with Fixed Height */}
-                  <div className="flex items-start justify-between mb-4 min-h-[60px]">
-                    <div className="flex-1 min-w-0 pr-2">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <h3 className="text-lg font-bold text-[#000000] truncate">{plan.name}</h3>
-                        {plan.isPopular && (
-                          <span className="px-2 py-0.5 bg-[#CBB57B] text-[#000000] text-xs font-semibold rounded-full whitespace-nowrap">
-                            Popular
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-gray-500 text-sm line-clamp-2 leading-tight">{plan.description || `${plan.tier} tier subscription`}</p>
-                    </div>
+        {/* Statistics Section */}
+        <section>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Overview Statistics</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <StatCard
+              title="Total Feature Plans"
+              value={(plans?.length || 0).toString()}
+              icon={
+                <svg
+                  className="w-6 h-6 text-[#CBB57B]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+                  />
+                </svg>
+              }
+            />
+            <StatCard
+              title="Active Subscribers"
+              value={totalSubscribers.toString()}
+              icon={
+                <svg
+                  className="w-6 h-6 text-[#CBB57B]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+              }
+            />
+            <StatCard
+              title="Monthly Revenue"
+              value={formatCurrencyAmount(totalRevenue)}
+              icon={
+                <svg
+                  className="w-6 h-6 text-[#CBB57B]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              }
+            />
+          </div>
+        </section>
 
-                    {/* Status & Menu */}
-                    <div className="flex items-start gap-1 flex-shrink-0">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                        plan.isActive
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        {plan.isActive ? '●' : '○'}
-                      </span>
+        {/* Plans Management Section */}
+        <section>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">All Plans</h2>
 
-                      {/* More Menu */}
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(openMenuId === plan.id ? null : plan.id);
-                          }}
-                          className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                          <MoreVertical className="w-4 h-4 text-gray-400" />
-                        </button>
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-2 mb-6">
+            <div className="inline-flex items-center bg-neutral-100 p-1 rounded-xl">
+              {(['all', 'active', 'inactive'] as const).map((tab) => {
+                let count = 0;
+                if (tab === 'all') count = plans?.length || 0;
+                else if (tab === 'active') count = plans?.filter((p) => p.isActive).length || 0;
+                else count = plans?.filter((p) => !p.isActive).length || 0;
 
-                        {openMenuId === plan.id && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-10"
-                              onClick={() => setOpenMenuId(null)}
-                            />
-                            <div className="absolute right-0 top-full mt-1 w-44 bg-[#FFFFFF] rounded-xl shadow-lg border-2 border-gray-200 py-1 z-20">
-                              <button
-                                onClick={() => handleEdit(plan)}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                              >
-                                <Edit className="w-4 h-4" />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleToggle(plan)}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                              >
-                                {plan.isActive ? (
-                                  <>
-                                    <ToggleLeft className="w-4 h-4" />
-                                    Deactivate
-                                  </>
-                                ) : (
-                                  <>
-                                    <ToggleRight className="w-4 h-4" />
-                                    Activate
-                                  </>
-                                )}
-                              </button>
-                              <button
-                                onClick={() => handleDuplicate(plan)}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                              >
-                                <Copy className="w-4 h-4" />
-                                Duplicate
-                              </button>
-                              <hr className="my-1 border-gray-100" />
-                              <button
-                                onClick={() => {
-                                  setDeleteConfirm(plan);
-                                  setOpenMenuId(null);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Pricing - Fixed Height */}
-                  <div className="mb-4 min-h-[56px]">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-[#000000]">
-                        {plan.monthlyPrice === 0 ? 'Free' : `$${plan.monthlyPrice.toFixed(2)}`}
-                      </span>
-                      {plan.monthlyPrice > 0 && (
-                        <span className="text-gray-500 text-sm font-medium">/month</span>
-                      )}
-                    </div>
-                    {plan.yearlyPrice > 0 && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-gray-500 text-xs">${plan.yearlyPrice.toFixed(2)} /year</span>
-                        {savingsPercent > 0 && (
-                          <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
-                            Save {savingsPercent}%
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Stats Row - Compact */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                      <p className="text-xs text-gray-500 font-medium mb-1">Subscribers</p>
-                      <p className="text-xl font-bold text-[#000000]">{plan._count?.subscriptions || 0}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                      <p className="text-xs text-gray-500 font-medium mb-1">Revenue</p>
-                      <p className="text-xl font-bold text-[#000000]">
-                        ${((plan.monthlyPrice * (plan._count?.subscriptions || 0))).toFixed(0)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Features - Fixed Height with Scroll */}
-                  <div className="flex-1 min-h-0">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Top Features</p>
-                    <div className="space-y-1.5 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
-                      {(plan.features as string[])?.slice(0, 4).map((feature, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-sm text-gray-600">
-                          <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0 mt-0.5" />
-                          <span className="line-clamp-2 leading-tight">{feature}</span>
-                        </div>
-                      ))}
-                      {(plan.features as string[])?.length > 4 && (
-                        <p className="text-xs text-gray-400 pl-5 pt-1">
-                          +{(plan.features as string[]).length - 4} more
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Footer - Edit Button */}
-                <div className="p-4 border-t-2 border-gray-100 bg-gray-50/50">
+                return (
                   <button
-                    onClick={() => handleEdit(plan)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#000000] text-[#FFFFFF] rounded-lg font-semibold hover:bg-[#1a1a1a] active:scale-[0.98] transition-all shadow-sm"
+                    key={tab}
+                    onClick={() => setFilter(tab)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                      filter === tab
+                        ? 'bg-black text-white shadow-sm'
+                        : 'text-neutral-600 hover:text-neutral-900'
+                    }`}
                   >
-                    <Edit className="w-4 h-4" />
-                    Edit Plan
+                    {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)} ({count})
                   </button>
-                </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Plans Grid */}
+          {filteredPlans.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-16 text-center">
+              <div className="w-20 h-20 bg-neutral-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-10 h-10 text-neutral-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                  />
+                </svg>
               </div>
-            );
-          })}
-        </div>
-      )}
+              <h3 className="text-xl font-bold text-neutral-900 mb-2">No plans found</h3>
+              <p className="text-neutral-600">Try adjusting your filters or create a new plan.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredPlans.map((plan) => {
+                const savingsPercent =
+                  plan.monthlyPrice > 0
+                    ? Math.round((1 - plan.yearlyPrice / 12 / plan.monthlyPrice) * 100)
+                    : 0;
+
+                return (
+                  <div
+                    key={plan.id}
+                    className="bg-white rounded-xl border-2 border-neutral-200 hover:border-[#CBB57B] shadow-sm hover:shadow-lg transition-all flex flex-col h-full overflow-hidden"
+                  >
+                    {/* Card Header */}
+                    <div className="p-6 flex-1 flex flex-col min-h-0">
+                      {/* Title Row with Fixed Height */}
+                      <div className="flex items-start justify-between mb-4 min-h-[60px]">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <h3 className="text-lg font-bold text-[#000000] truncate">
+                              {plan.name}
+                            </h3>
+                            {plan.isPopular && (
+                              <span className="px-2 py-0.5 bg-[#CBB57B] text-[#000000] text-xs font-semibold rounded-full whitespace-nowrap">
+                                Popular
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-neutral-500 text-sm line-clamp-2 leading-tight">
+                            {plan.description || `${plan.tier} tier subscription`}
+                          </p>
+                        </div>
+
+                        {/* Status & Menu */}
+                        <div className="flex items-start gap-1 flex-shrink-0">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                              plan.isActive
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-neutral-100 text-neutral-500'
+                            }`}
+                          >
+                            {plan.isActive ? '●' : '○'}
+                          </span>
+
+                          {/* More Menu */}
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(openMenuId === plan.id ? null : plan.id);
+                              }}
+                              className="p-1 hover:bg-neutral-100 rounded-lg transition-colors"
+                            >
+                              <MoreVertical className="w-4 h-4 text-neutral-400" />
+                            </button>
+
+                            {openMenuId === plan.id && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-10"
+                                  onClick={() => setOpenMenuId(null)}
+                                />
+                                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border-2 border-neutral-200 py-1 z-20">
+                                  <button
+                                    onClick={() => handleEdit(plan)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggle(plan)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                                  >
+                                    {plan.isActive ? (
+                                      <>
+                                        <ToggleLeft className="w-4 h-4" />
+                                        Deactivate
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ToggleRight className="w-4 h-4" />
+                                        Activate
+                                      </>
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDuplicate(plan)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                    Duplicate
+                                  </button>
+                                  <hr className="my-1 border-neutral-100" />
+                                  <button
+                                    onClick={() => {
+                                      setDeleteConfirm(plan);
+                                      setOpenMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pricing - Fixed Height */}
+                      <div className="mb-4 min-h-[56px]">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-bold text-[#000000]">
+                            {plan.monthlyPrice === 0 ? 'Free' : `$${plan.monthlyPrice.toFixed(2)}`}
+                          </span>
+                          {plan.monthlyPrice > 0 && (
+                            <span className="text-neutral-500 text-sm font-medium">/month</span>
+                          )}
+                        </div>
+                        {plan.yearlyPrice > 0 && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-neutral-500 text-xs">
+                              ${plan.yearlyPrice.toFixed(2)} /year
+                            </span>
+                            {savingsPercent > 0 && (
+                              <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
+                                Save {savingsPercent}%
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stats Row - Compact */}
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-neutral-50 rounded-lg p-3 border border-neutral-100">
+                          <p className="text-xs text-neutral-500 font-medium mb-1">Subscribers</p>
+                          <p className="text-xl font-bold text-black">
+                            {plan._count?.subscriptions || 0}
+                          </p>
+                        </div>
+                        <div className="bg-neutral-50 rounded-lg p-3 border border-neutral-100">
+                          <p className="text-xs text-neutral-500 font-medium mb-1">Revenue</p>
+                          <p className="text-xl font-bold text-[#000000]">
+                            ${(plan.monthlyPrice * (plan._count?.subscriptions || 0)).toFixed(0)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Features - Fixed Height with Scroll */}
+                      <div className="flex-1 min-h-0">
+                        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+                          Top Features
+                        </p>
+                        <div className="space-y-1.5 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
+                          {(plan.features as string[])?.slice(0, 4).map((feature, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-start gap-2 text-sm text-neutral-600"
+                            >
+                              <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                              <span className="line-clamp-2 leading-tight">{feature}</span>
+                            </div>
+                          ))}
+                          {(plan.features as string[])?.length > 4 && (
+                            <p className="text-xs text-neutral-400 pl-5 pt-1">
+                              +{(plan.features as string[]).length - 4} more
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Footer - Edit Button */}
+                    <div className="p-4 border-t-2 border-neutral-100 bg-neutral-50/50">
+                      <button
+                        onClick={() => handleEdit(plan)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white rounded-lg font-semibold hover:bg-neutral-900 active:scale-[0.98] transition-all shadow-sm"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Edit Plan
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
 
       {/* Create/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !isSubmitting && setIsModalOpen(false)} />
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !isSubmitting && setIsModalOpen(false)}
+          />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
@@ -530,12 +621,17 @@ function SubscriptionPlansContent() {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmit} className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+            <form
+              onSubmit={handleSubmit}
+              className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-140px)]"
+            >
               <div className="space-y-6">
                 {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Plan Name *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Plan Name *
+                    </label>
                     <input
                       type="text"
                       value={formData.name}
@@ -561,11 +657,15 @@ function SubscriptionPlansContent() {
                       <option value="BUSINESS">BUSINESS</option>
                     </select>
                     {editingPlan && (
-                      <p className="text-xs text-gray-500 mt-1">Tier cannot be changed after creation</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Tier cannot be changed after creation
+                      </p>
                     )}
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Description
+                    </label>
                     <textarea
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -582,26 +682,37 @@ function SubscriptionPlansContent() {
                   <h3 className="text-sm font-semibold text-gray-900 mb-3">Pricing</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Monthly Price ($) *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Monthly Price ($) *
+                      </label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         value={formData.monthlyPrice}
-                        onChange={(e) => setFormData({ ...formData, monthlyPrice: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            monthlyPrice: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-colors"
                         required
                         disabled={isSubmitting}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Yearly Price ($) *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Yearly Price ($) *
+                      </label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         value={formData.yearlyPrice}
-                        onChange={(e) => setFormData({ ...formData, yearlyPrice: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, yearlyPrice: parseFloat(e.target.value) || 0 })
+                        }
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-colors"
                         required
                         disabled={isSubmitting}
@@ -615,12 +726,19 @@ function SubscriptionPlansContent() {
                   <h3 className="text-sm font-semibold text-gray-900 mb-3">Plan Limits</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Max Active Listings</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Max Active Listings
+                      </label>
                       <input
                         type="number"
                         min="-1"
                         value={formData.maxActiveListings}
-                        onChange={(e) => setFormData({ ...formData, maxActiveListings: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            maxActiveListings: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-colors"
                         placeholder="-1 for unlimited"
                         disabled={isSubmitting}
@@ -628,34 +746,55 @@ function SubscriptionPlansContent() {
                       <p className="text-xs text-gray-500 mt-1">-1 for unlimited</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Credits per Month</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Credits per Month
+                      </label>
                       <input
                         type="number"
                         min="0"
                         value={formData.monthlyCredits}
-                        onChange={(e) => setFormData({ ...formData, monthlyCredits: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            monthlyCredits: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-colors"
                         disabled={isSubmitting}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Featured Slots</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Featured Slots
+                      </label>
                       <input
                         type="number"
                         min="0"
                         value={formData.featuredSlotsPerMonth}
-                        onChange={(e) => setFormData({ ...formData, featuredSlotsPerMonth: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            featuredSlotsPerMonth: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-colors"
                         disabled={isSubmitting}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Listing Duration (days)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Listing Duration (days)
+                      </label>
                       <input
                         type="number"
                         min="1"
                         value={formData.listingDurationDays}
-                        onChange={(e) => setFormData({ ...formData, listingDurationDays: parseInt(e.target.value) || 30 })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            listingDurationDays: parseInt(e.target.value) || 30,
+                          })
+                        }
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-colors"
                         disabled={isSubmitting}
                       />
@@ -714,7 +853,9 @@ function SubscriptionPlansContent() {
                         className="w-4 h-4 rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]"
                         disabled={isSubmitting}
                       />
-                      <span className="text-sm text-gray-700">Plan is active and visible to sellers</span>
+                      <span className="text-sm text-gray-700">
+                        Plan is active and visible to sellers
+                      </span>
                     </label>
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
@@ -724,16 +865,22 @@ function SubscriptionPlansContent() {
                         className="w-4 h-4 rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]"
                         disabled={isSubmitting}
                       />
-                      <span className="text-sm text-gray-700">Mark as &quot;Popular&quot; (highlighted)</span>
+                      <span className="text-sm text-gray-700">
+                        Mark as &quot;Popular&quot; (highlighted)
+                      </span>
                     </label>
                   </div>
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Display Order</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Display Order
+                    </label>
                     <input
                       type="number"
                       min="0"
                       value={formData.displayOrder}
-                      onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, displayOrder: parseInt(e.target.value) || 0 })
+                      }
                       className="w-32 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBB57B]/20 focus:border-[#CBB57B] transition-colors"
                       disabled={isSubmitting}
                     />
@@ -772,7 +919,8 @@ function SubscriptionPlansContent() {
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Plan</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete &quot;{deleteConfirm.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{deleteConfirm.name}&quot;? This action cannot
+              be undone.
               {deleteConfirm._count && deleteConfirm._count.subscriptions > 0 && (
                 <span className="block mt-2 text-red-600 font-medium">
                   Warning: This plan has {deleteConfirm._count.subscriptions} active subscriber(s).
@@ -796,7 +944,7 @@ function SubscriptionPlansContent() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -809,4 +957,3 @@ export default function SubscriptionPlansPage() {
     </AdminRoute>
   );
 }
-

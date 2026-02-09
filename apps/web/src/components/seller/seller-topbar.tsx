@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/use-auth';
 import { useSellerDashboard } from '@/hooks/use-seller-dashboard';
 import { useLocale, languages, type LanguageOption } from '@/contexts/locale-context';
+import Breadcrumbs from '@/components/shared/breadcrumbs';
 import {
   User,
   Settings,
@@ -130,10 +131,10 @@ export default function SellerTopbar({
             </motion.div>
           </button>
 
-          {/* Page Title (optional - can be dynamic per page) */}
-          <h1 className="hidden lg:block text-lg font-semibold text-black">
-            {t('topbar.sellerDashboard')}
-          </h1>
+          {/* Breadcrumbs */}
+          <div className="hidden lg:block">
+            <Breadcrumbs homeHref="/seller" />
+          </div>
         </div>
 
         {/* Center Section: Quick Links (hidden on mobile) */}
