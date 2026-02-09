@@ -76,6 +76,7 @@ export interface AdminProduct {
   price: number;
   compareAtPrice?: number;
   category: string;
+  storeId?: string; // Store assignment for admin-created products
   images: string[];
   stock?: number; // Legacy field name
   inventory?: number; // Database field name
@@ -260,6 +261,12 @@ export const dashboardApi = {
 
 // Helper function to transform admin product data to backend DTO format
 function transformProductData(data: Partial<AdminProduct>): any {
+  console.log('[Admin API] Transforming product data:', {
+    storeId: (data as any).storeId,
+    categoryId: (data as any).categoryId,
+    name: data.name,
+  });
+
   const transformed: any = {
     name: data.name,
     slug: data.slug,
@@ -276,6 +283,12 @@ function transformProductData(data: Partial<AdminProduct>): any {
 
   // Optional fields
   if (data.compareAtPrice !== undefined) transformed.compareAtPrice = data.compareAtPrice;
+
+  // Store ID - required for admin product creation (process before category)
+  const storeIdValue = (data as any).storeId;
+  if (storeIdValue !== undefined && storeIdValue !== null && storeIdValue !== '') {
+    transformed.storeId = storeIdValue;
+  }
 
   // Category handling - accept both 'categoryId' (from ProductForm) and 'category' (from AdminProduct interface)
   const categoryValue = (data as any).categoryId ?? data.category;
@@ -349,6 +362,12 @@ function transformProductData(data: Partial<AdminProduct>): any {
   if ((data as any).materials && Array.isArray((data as any).materials)) {
     transformed.materials = (data as any).materials;
   }
+
+  console.log('[Admin API] Transformed data:', {
+    storeId: transformed.storeId,
+    categoryId: transformed.categoryId,
+    name: transformed.name,
+  });
 
   return transformed;
 }
@@ -915,6 +934,7 @@ export interface AdminStore {
 export const adminStoresApi = {
   async getAll(params?: { status?: string; search?: string }): Promise<AdminStore[]> {
     const response = await api.get(`/admin/stores${buildQueryString(params)}`);
-    return response.data || [];
+    // API client already unwraps { success, data } responses, so response is the array
+    return Array.isArray(response) ? response : response?.data || [];
   },
 };

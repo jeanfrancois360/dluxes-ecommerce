@@ -39,7 +39,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from 'recharts';
+} from '@/components/admin/charts';
 // Stat Card Component
 function StatCard({
   title,
