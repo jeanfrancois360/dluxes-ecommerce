@@ -1161,28 +1161,47 @@ export class SellerService {
     const finalSKU = await this.generateSKU();
 
     // Clean up empty string values that would cause Prisma foreign key errors
-    // Remove categoryId if it's empty string (Prisma will try to find category with "" ID and fail)
-    if (
-      productData.categoryId === '' ||
-      productData.categoryId === null ||
-      productData.categoryId === undefined
-    ) {
-      delete productData.categoryId;
-    }
+    // Remove any field that is an empty string, null, or undefined
+    // This prevents Prisma from trying to find related records with "" ID
+    Object.keys(productData).forEach((key) => {
+      if (productData[key] === '' || productData[key] === null || productData[key] === undefined) {
+        delete productData[key];
+      }
+    });
+
+    // Log data being sent to Prisma for debugging foreign key errors
+    this.logger.debug('Creating product with data:', {
+      ...productData,
+      sku: finalSKU,
+      storeId: store.id,
+      status: data.status || 'DRAFT',
+    });
 
     // Create product with seller's store ID
-    const product = await this.prisma.product.create({
-      data: {
-        ...productData,
-        sku: finalSKU,
-        storeId: store.id,
-        status: data.status || 'DRAFT',
-      },
-      include: {
-        category: true,
-        images: true,
-      },
-    });
+    let product;
+    try {
+      product = await this.prisma.product.create({
+        data: {
+          ...productData,
+          sku: finalSKU,
+          storeId: store.id,
+          status: data.status || 'DRAFT',
+        },
+        include: {
+          category: true,
+          images: true,
+        },
+      });
+    } catch (error) {
+      // Log detailed error for debugging
+      this.logger.error('Prisma create product error:', {
+        error: error.message,
+        code: error.code,
+        meta: error.meta,
+        productData: JSON.stringify(productData),
+      });
+      throw error;
+    }
 
     // Deduct credits for inquiry-based product types
     if (productType && inquiryProductTypes.includes(productType)) {
