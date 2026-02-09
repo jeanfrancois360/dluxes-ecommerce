@@ -600,53 +600,139 @@ export default function ProductsPage() {
 
               {/* Availability - In Stock Only */}
               <div className="pb-6 border-b border-neutral-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-semibold text-black">{t('availability')}</h4>
+                <div className="flex items-center justify-between mb-5">
+                  <h4 className="text-lg font-semibold text-black flex items-center gap-2">
+                    <svg
+                      className="w-5 h-5 text-neutral-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                      />
+                    </svg>
+                    {t('availability')}
+                  </h4>
                   {inStockOnly && (
-                    <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-gold/20 text-gold text-xs font-bold rounded-full">
+                    <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-green-500 text-white text-xs font-bold rounded-full animate-pulse">
                       1
                     </span>
                   )}
                 </div>
-                <label
-                  className={`flex items-center gap-3 cursor-pointer group -mx-3 px-3 py-3 rounded-xl transition-all border-2 ${
+
+                {/* Enhanced Stock Filter Card */}
+                <div
+                  className={`relative overflow-hidden rounded-xl border-2 transition-all duration-300 ${
                     inStockOnly
-                      ? 'bg-green-50 border-green-200 shadow-sm'
-                      : 'hover:bg-neutral-50 border-transparent'
+                      ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 border-green-300 shadow-lg shadow-green-100/50'
+                      : 'bg-white hover:bg-neutral-50 border-neutral-200 hover:border-neutral-300'
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={inStockOnly}
-                    onChange={(e) => setInStockOnly(e.target.checked)}
-                    className="w-5 h-5 text-green-600 border-neutral-300 rounded focus:ring-2 focus:ring-green-500/20 cursor-pointer"
-                  />
-                  <div className="flex items-center gap-2 flex-1">
-                    <svg
-                      className={`w-5 h-5 ${inStockOnly ? 'text-green-600' : 'text-neutral-400 group-hover:text-green-600'}`}
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
+                  <label className="flex items-start gap-4 cursor-pointer group p-4">
+                    {/* Custom Checkbox */}
+                    <div className="relative flex-shrink-0 mt-0.5">
+                      <input
+                        type="checkbox"
+                        checked={inStockOnly}
+                        onChange={(e) => setInStockOnly(e.target.checked)}
+                        className="peer sr-only"
                       />
-                    </svg>
-                    <span
-                      className={`font-semibold transition-colors ${
-                        inStockOnly ? 'text-green-700' : 'text-neutral-700 group-hover:text-black'
+                      <div
+                        className={`w-6 h-6 border-2 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                          inStockOnly
+                            ? 'bg-green-600 border-green-600 scale-110'
+                            : 'bg-white border-neutral-300 group-hover:border-green-400'
+                        }`}
+                      >
+                        {inStockOnly && (
+                          <svg
+                            className="w-4 h-4 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={3}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`font-semibold text-base transition-colors ${
+                            inStockOnly
+                              ? 'text-green-800'
+                              : 'text-neutral-800 group-hover:text-black'
+                          }`}
+                        >
+                          {t('inStockOnly')}
+                        </span>
+                        {inStockOnly && (
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700 bg-green-200/60 px-2 py-0.5 rounded-full">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <p
+                        className={`text-sm transition-colors ${
+                          inStockOnly
+                            ? 'text-green-700'
+                            : 'text-neutral-500 group-hover:text-neutral-700'
+                        }`}
+                      >
+                        {inStockOnly
+                          ? 'Showing products ready to ship immediately'
+                          : 'Show only items currently available in stock'}
+                      </p>
+                    </div>
+
+                    {/* Stock Icon Indicator */}
+                    <div
+                      className={`flex-shrink-0 transition-all duration-300 ${
+                        inStockOnly ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
                       }`}
                     >
-                      {t('inStockOnly')}
-                    </span>
-                  </div>
+                      <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">
+                        <svg
+                          className="w-6 h-6 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Active Indicator Bar */}
                   {inStockOnly && (
-                    <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
-                      Active
-                    </span>
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 via-emerald-500 to-green-500 animate-pulse" />
                   )}
-                </label>
+                </div>
               </div>
 
               {/* Apply Filters */}
@@ -1386,53 +1472,139 @@ export default function ProductsPage() {
 
                 {/* Availability - In Stock Only */}
                 <div className="pb-6 border-b border-neutral-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-black">{t('availability')}</h4>
+                  <div className="flex items-center justify-between mb-5">
+                    <h4 className="text-lg font-semibold text-black flex items-center gap-2">
+                      <svg
+                        className="w-5 h-5 text-neutral-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                        />
+                      </svg>
+                      {t('availability')}
+                    </h4>
                     {inStockOnly && (
-                      <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-gold/20 text-gold text-xs font-bold rounded-full">
+                      <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-green-500 text-white text-xs font-bold rounded-full animate-pulse">
                         1
                       </span>
                     )}
                   </div>
-                  <label
-                    className={`flex items-center gap-3 cursor-pointer group px-3 py-3 rounded-xl transition-all border-2 ${
+
+                  {/* Enhanced Stock Filter Card */}
+                  <div
+                    className={`relative overflow-hidden rounded-xl border-2 transition-all duration-300 ${
                       inStockOnly
-                        ? 'bg-green-50 border-green-200 shadow-sm'
-                        : 'hover:bg-neutral-50 border-transparent'
+                        ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 border-green-300 shadow-lg shadow-green-100/50'
+                        : 'bg-white hover:bg-neutral-50 border-neutral-200 hover:border-neutral-300'
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={inStockOnly}
-                      onChange={(e) => setInStockOnly(e.target.checked)}
-                      className="w-5 h-5 text-green-600 border-neutral-300 rounded focus:ring-2 focus:ring-green-500/20"
-                    />
-                    <div className="flex items-center gap-2 flex-1">
-                      <svg
-                        className={`w-5 h-5 ${inStockOnly ? 'text-green-600' : 'text-neutral-400 group-hover:text-green-600'}`}
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
+                    <label className="flex items-start gap-4 cursor-pointer group p-4">
+                      {/* Custom Checkbox */}
+                      <div className="relative flex-shrink-0 mt-0.5">
+                        <input
+                          type="checkbox"
+                          checked={inStockOnly}
+                          onChange={(e) => setInStockOnly(e.target.checked)}
+                          className="peer sr-only"
                         />
-                      </svg>
-                      <span
-                        className={`font-semibold transition-colors ${
-                          inStockOnly ? 'text-green-700' : 'text-neutral-700 group-hover:text-black'
+                        <div
+                          className={`w-6 h-6 border-2 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                            inStockOnly
+                              ? 'bg-green-600 border-green-600 scale-110'
+                              : 'bg-white border-neutral-300 group-hover:border-green-400'
+                          }`}
+                        >
+                          {inStockOnly && (
+                            <svg
+                              className="w-4 h-4 text-white"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={3}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span
+                            className={`font-semibold text-base transition-colors ${
+                              inStockOnly
+                                ? 'text-green-800'
+                                : 'text-neutral-800 group-hover:text-black'
+                            }`}
+                          >
+                            {t('inStockOnly')}
+                          </span>
+                          {inStockOnly && (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700 bg-green-200/60 px-2 py-0.5 rounded-full">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <p
+                          className={`text-sm transition-colors ${
+                            inStockOnly
+                              ? 'text-green-700'
+                              : 'text-neutral-500 group-hover:text-neutral-700'
+                          }`}
+                        >
+                          {inStockOnly
+                            ? 'Showing products ready to ship immediately'
+                            : 'Show only items currently available in stock'}
+                        </p>
+                      </div>
+
+                      {/* Stock Icon Indicator */}
+                      <div
+                        className={`flex-shrink-0 transition-all duration-300 ${
+                          inStockOnly ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
                         }`}
                       >
-                        {t('inStockOnly')}
-                      </span>
-                    </div>
+                        <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">
+                          <svg
+                            className="w-6 h-6 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* Active Indicator Bar */}
                     {inStockOnly && (
-                      <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
-                        Active
-                      </span>
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 via-emerald-500 to-green-500 animate-pulse" />
                     )}
-                  </label>
+                  </div>
                 </div>
               </div>
 
