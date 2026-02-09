@@ -268,17 +268,17 @@ export function CreativeHeroCarousel({
 
       {/* Modern Navigation Dots */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.8 }}
-        className="absolute bottom-4 sm:bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-3 z-20 backdrop-blur-xl bg-white/10 px-3 sm:px-4 py-2 sm:py-3 rounded-full border border-white/20"
+        className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 sm:gap-3 z-20 backdrop-blur-xl bg-white/20 px-2 sm:px-3 py-3 sm:py-4 rounded-full border border-white/30 shadow-lg"
       >
         {slides.map((_, idx) => (
           <motion.button
             key={idx}
             onClick={() => goToSlide(idx)}
-            className={`relative h-2 rounded-full transition-all duration-300 ${
-              idx === currentIndex ? 'w-8 bg-white' : 'w-2 bg-white/40'
+            className={`relative w-2 rounded-full transition-all duration-300 ${
+              idx === currentIndex ? 'h-8 bg-white' : 'h-2 bg-white/50'
             }`}
             whileHover={{ scale: 1.2 }}
             whileTap={{ scale: 0.9 }}
@@ -287,7 +287,7 @@ export function CreativeHeroCarousel({
             {idx === currentIndex && (
               <motion.div
                 layoutId="activeDot"
-                className="absolute inset-0 bg-gradient-to-r from-white to-white/80 rounded-full"
+                className="absolute inset-0 bg-gradient-to-b from-white to-white/80 rounded-full"
               />
             )}
           </motion.button>
