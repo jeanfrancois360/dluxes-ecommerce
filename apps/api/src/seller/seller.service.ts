@@ -1154,10 +1154,13 @@ export class SellerService {
       }
     }
 
+    // Extract images field (Prisma relation, not a data field)
+    const { images, ...productData } = data;
+
     // Create product with seller's store ID
     const product = await this.prisma.product.create({
       data: {
-        ...data,
+        ...productData,
         storeId: store.id,
         status: data.status || 'DRAFT',
       },
