@@ -353,7 +353,7 @@ async function main() {
       currencyCode: 'USD',
       currencyName: 'US Dollar',
       symbol: '$',
-      rate: 1.000000, // Base currency
+      rate: 1.0, // Base currency
       decimalDigits: 2,
       position: 'before',
       isActive: true,
@@ -362,7 +362,7 @@ async function main() {
       currencyCode: 'EUR',
       currencyName: 'Euro',
       symbol: '€',
-      rate: 0.920000, // 1 USD = 0.92 EUR
+      rate: 0.92, // 1 USD = 0.92 EUR
       decimalDigits: 2,
       position: 'before',
       isActive: true,
@@ -371,7 +371,7 @@ async function main() {
       currencyCode: 'GBP',
       currencyName: 'British Pound',
       symbol: '£',
-      rate: 0.790000, // 1 USD = 0.79 GBP
+      rate: 0.79, // 1 USD = 0.79 GBP
       decimalDigits: 2,
       position: 'before',
       isActive: true,
@@ -380,7 +380,7 @@ async function main() {
       currencyCode: 'RWF',
       currencyName: 'Rwandan Franc',
       symbol: 'Fr',
-      rate: 1350.000000, // 1 USD = 1350 RWF
+      rate: 1350.0, // 1 USD = 1350 RWF
       decimalDigits: 0,
       position: 'after',
       isActive: true,
@@ -389,7 +389,7 @@ async function main() {
       currencyCode: 'JPY',
       currencyName: 'Japanese Yen',
       symbol: '¥',
-      rate: 150.000000, // 1 USD = 150 JPY
+      rate: 150.0, // 1 USD = 150 JPY
       decimalDigits: 0,
       position: 'before',
       isActive: true,
@@ -398,7 +398,7 @@ async function main() {
       currencyCode: 'CHF',
       currencyName: 'Swiss Franc',
       symbol: 'CHF',
-      rate: 0.880000, // 1 USD = 0.88 CHF
+      rate: 0.88, // 1 USD = 0.88 CHF
       decimalDigits: 2,
       position: 'after',
       isActive: true,
@@ -407,7 +407,7 @@ async function main() {
       currencyCode: 'CAD',
       currencyName: 'Canadian Dollar',
       symbol: 'C$',
-      rate: 1.360000, // 1 USD = 1.36 CAD
+      rate: 1.36, // 1 USD = 1.36 CAD
       decimalDigits: 2,
       position: 'before',
       isActive: true,
@@ -416,7 +416,7 @@ async function main() {
       currencyCode: 'AUD',
       currencyName: 'Australian Dollar',
       symbol: 'A$',
-      rate: 1.530000, // 1 USD = 1.53 AUD
+      rate: 1.53, // 1 USD = 1.53 AUD
       decimalDigits: 2,
       position: 'before',
       isActive: true,
@@ -488,6 +488,48 @@ async function main() {
       image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b',
       icon: 'Shirt',
       displayOrder: 4,
+      isActive: true,
+    },
+  });
+
+  const electronicsCategory = await prisma.category.upsert({
+    where: { slug: 'electronics' },
+    update: {},
+    create: {
+      name: 'Electronics',
+      slug: 'electronics',
+      description: 'Latest tech, unbeatable prices. From smartphones to smart homes.',
+      image: 'https://images.unsplash.com/photo-1468495244123-6c6c332eeece',
+      icon: 'Zap',
+      displayOrder: 5,
+      isActive: true,
+    },
+  });
+
+  const realEstateCategory = await prisma.category.upsert({
+    where: { slug: 'real-estate' },
+    update: {},
+    create: {
+      name: 'Real Estate',
+      slug: 'real-estate',
+      description: 'Find your dream home. Luxury properties and prime locations.',
+      image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9',
+      icon: 'Home',
+      displayOrder: 6,
+      isActive: true,
+    },
+  });
+
+  const vehiclesCategory = await prisma.category.upsert({
+    where: { slug: 'vehicles' },
+    update: {},
+    create: {
+      name: 'Vehicles',
+      slug: 'vehicles',
+      description: 'Drive in style. Luxury vehicles and premium automotive excellence.',
+      image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70',
+      icon: 'Car',
+      displayOrder: 7,
       isActive: true,
     },
   });
@@ -1007,7 +1049,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'jewelry' }, { name: 'emerald' }, { name: 'platinum' }, { name: 'earrings' }],
+          create: [
+            { name: 'jewelry' },
+            { name: 'emerald' },
+            { name: 'platinum' },
+            { name: 'earrings' },
+          ],
         },
       },
     }),
@@ -1045,7 +1092,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'jewelry' }, { name: 'diamonds' }, { name: 'bracelet' }, { name: 'luxury' }],
+          create: [
+            { name: 'jewelry' },
+            { name: 'diamonds' },
+            { name: 'bracelet' },
+            { name: 'luxury' },
+          ],
         },
       },
     }),
@@ -1085,7 +1137,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'jewelry' }, { name: 'sapphire' }, { name: 'ring' }, { name: 'cocktail' }],
+          create: [
+            { name: 'jewelry' },
+            { name: 'sapphire' },
+            { name: 'ring' },
+            { name: 'cocktail' },
+          ],
         },
       },
     }),
@@ -1123,7 +1180,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'jewelry' }, { name: 'pearls' }, { name: 'necklace' }, { name: 'classic' }],
+          create: [
+            { name: 'jewelry' },
+            { name: 'pearls' },
+            { name: 'necklace' },
+            { name: 'classic' },
+          ],
         },
       },
     }),
@@ -1161,7 +1223,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'jewelry' }, { name: 'ruby' }, { name: 'earrings' }, { name: 'premium' }],
+          create: [
+            { name: 'jewelry' },
+            { name: 'ruby' },
+            { name: 'earrings' },
+            { name: 'premium' },
+          ],
         },
       },
     }),
@@ -1240,7 +1307,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'accessories' }, { name: 'silk' }, { name: 'scarf' }, { name: 'artisan' }],
+          create: [
+            { name: 'accessories' },
+            { name: 'silk' },
+            { name: 'scarf' },
+            { name: 'artisan' },
+          ],
         },
       },
     }),
@@ -1279,7 +1351,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'accessories' }, { name: 'leather' }, { name: 'belt' }, { name: 'menswear' }],
+          create: [
+            { name: 'accessories' },
+            { name: 'leather' },
+            { name: 'belt' },
+            { name: 'menswear' },
+          ],
         },
       },
     }),
@@ -1318,7 +1395,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'accessories' }, { name: 'wallet' }, { name: 'leather' }, { name: 'rfid' }],
+          create: [
+            { name: 'accessories' },
+            { name: 'wallet' },
+            { name: 'leather' },
+            { name: 'rfid' },
+          ],
         },
       },
     }),
@@ -1356,7 +1438,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'accessories' }, { name: 'cufflinks' }, { name: 'platinum' }, { name: 'formal' }],
+          create: [
+            { name: 'accessories' },
+            { name: 'cufflinks' },
+            { name: 'platinum' },
+            { name: 'formal' },
+          ],
         },
       },
     }),
@@ -1394,7 +1481,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'accessories' }, { name: 'leather' }, { name: 'duffle' }, { name: 'travel' }],
+          create: [
+            { name: 'accessories' },
+            { name: 'leather' },
+            { name: 'duffle' },
+            { name: 'travel' },
+          ],
         },
       },
     }),
@@ -1436,7 +1528,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'fashion' }, { name: 'blazer' }, { name: 'tailored' }, { name: 'menswear' }],
+          create: [
+            { name: 'fashion' },
+            { name: 'blazer' },
+            { name: 'tailored' },
+            { name: 'menswear' },
+          ],
         },
       },
     }),
@@ -1515,7 +1612,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'fashion' }, { name: 'blouse' }, { name: 'silk' }, { name: 'versatile' }],
+          create: [
+            { name: 'fashion' },
+            { name: 'blouse' },
+            { name: 'silk' },
+            { name: 'versatile' },
+          ],
         },
       },
     }),
@@ -1633,7 +1735,12 @@ async function main() {
           ],
         },
         tags: {
-          create: [{ name: 'fashion' }, { name: 'cashmere' }, { name: 'turtleneck' }, { name: 'knitwear' }],
+          create: [
+            { name: 'fashion' },
+            { name: 'cashmere' },
+            { name: 'turtleneck' },
+            { name: 'knitwear' },
+          ],
         },
       },
     }),
@@ -1657,7 +1764,8 @@ async function main() {
         value: true,
         valueType: 'BOOLEAN',
         label: 'Enable Escrow (Default Payment Model)',
-        description: 'When enabled, all payments go through escrow and funds are held until delivery confirmation. This is the core payment mechanism and should remain enabled for marketplace security.',
+        description:
+          'When enabled, all payments go through escrow and funds are held until delivery confirmation. This is the core payment mechanism and should remain enabled for marketplace security.',
         isPublic: false,
         isEditable: true,
         requiresRestart: false,
@@ -1675,7 +1783,8 @@ async function main() {
         value: false,
         valueType: 'BOOLEAN',
         label: 'Enable Immediate Payouts (Testing/Trusted Sellers)',
-        description: 'When enabled, allows immediate payouts bypassing escrow for trusted sellers. Should be DISABLED in production. Only enable for testing or specific trusted seller accounts.',
+        description:
+          'When enabled, allows immediate payouts bypassing escrow for trusted sellers. Should be DISABLED in production. Only enable for testing or specific trusted seller accounts.',
         isPublic: false,
         isEditable: true,
         requiresRestart: false,
@@ -1693,7 +1802,8 @@ async function main() {
         value: 7,
         valueType: 'NUMBER',
         label: 'Escrow Hold Period (Days)',
-        description: 'Number of days to hold funds in escrow after delivery confirmation before auto-releasing to seller. Recommended: 3-7 days for buyer protection.',
+        description:
+          'Number of days to hold funds in escrow after delivery confirmation before auto-releasing to seller. Recommended: 3-7 days for buyer protection.',
         isPublic: true,
         isEditable: true,
         requiresRestart: false,
@@ -1711,7 +1821,8 @@ async function main() {
         value: true,
         valueType: 'BOOLEAN',
         label: 'Enable Auto-Release of Escrow',
-        description: 'Automatically release funds to seller after hold period expires. If disabled, requires manual admin approval for every payout.',
+        description:
+          'Automatically release funds to seller after hold period expires. If disabled, requires manual admin approval for every payout.',
         isPublic: false,
         isEditable: true,
         requiresRestart: false,
@@ -1727,14 +1838,15 @@ async function main() {
       create: {
         key: 'payout_minimum_amount',
         category: 'payout',
-        value: 50.00,
+        value: 50.0,
         valueType: 'NUMBER',
         label: 'Minimum Payout Amount (USD)',
-        description: 'Minimum accumulated earnings required before triggering a payout to seller. Prevents small transaction fees.',
+        description:
+          'Minimum accumulated earnings required before triggering a payout to seller. Prevents small transaction fees.',
         isPublic: true,
         isEditable: true,
         requiresRestart: false,
-        defaultValue: 50.00,
+        defaultValue: 50.0,
         lastUpdatedBy: superAdmin.id,
       },
     }),
@@ -1748,7 +1860,8 @@ async function main() {
         value: 'WEEKLY',
         valueType: 'STRING',
         label: 'Default Payout Frequency',
-        description: 'Default frequency for automated seller payouts: DAILY, WEEKLY, BIWEEKLY, or MONTHLY. Sellers can customize their preference.',
+        description:
+          'Default frequency for automated seller payouts: DAILY, WEEKLY, BIWEEKLY, or MONTHLY. Sellers can customize their preference.',
         isPublic: true,
         isEditable: true,
         requiresRestart: false,
@@ -1766,7 +1879,8 @@ async function main() {
         value: true,
         valueType: 'BOOLEAN',
         label: 'Enable Automated Payout Scheduler',
-        description: 'Automatically process payouts based on seller frequency preferences and minimum thresholds. If disabled, all payouts require manual processing.',
+        description:
+          'Automatically process payouts based on seller frequency preferences and minimum thresholds. If disabled, all payouts require manual processing.',
         isPublic: false,
         isEditable: true,
         requiresRestart: false,
@@ -1785,7 +1899,8 @@ async function main() {
         value: true,
         valueType: 'BOOLEAN',
         label: 'Log All Escrow Actions',
-        description: 'Maintain full audit trail of all escrow releases, refunds, and modifications. Required for financial compliance and dispute resolution.',
+        description:
+          'Maintain full audit trail of all escrow releases, refunds, and modifications. Required for financial compliance and dispute resolution.',
         isPublic: false,
         isEditable: false,
         requiresRestart: false,
@@ -1803,7 +1918,8 @@ async function main() {
         value: 2555, // 7 years
         valueType: 'NUMBER',
         label: 'Audit Log Retention (Days)',
-        description: 'Number of days to retain audit logs. Financial regulations typically require 7 years (2555 days) for transaction records.',
+        description:
+          'Number of days to retain audit logs. Financial regulations typically require 7 years (2555 days) for transaction records.',
         isPublic: false,
         isEditable: true,
         requiresRestart: false,
@@ -1822,7 +1938,8 @@ async function main() {
         value: 10.0,
         valueType: 'NUMBER',
         label: 'Default Platform Commission (%)',
-        description: 'Default commission percentage charged on each transaction. Can be overridden per category or seller.',
+        description:
+          'Default commission percentage charged on each transaction. Can be overridden per category or seller.',
         isPublic: true,
         isEditable: true,
         requiresRestart: false,
@@ -1891,14 +2008,14 @@ async function main() {
       create: {
         key: 'commission_min_amount',
         category: 'commission',
-        value: 0.50,
+        value: 0.5,
         valueType: 'NUMBER',
         label: 'Minimum Commission Amount (USD)',
         description: 'Minimum commission charged per transaction regardless of rate',
         isPublic: false,
         isEditable: true,
         requiresRestart: false,
-        defaultValue: 0.50,
+        defaultValue: 0.5,
         lastUpdatedBy: superAdmin.id,
       },
     }),
@@ -1927,14 +2044,14 @@ async function main() {
       create: {
         key: 'commission_fixed_fee',
         category: 'commission',
-        value: 0.30,
+        value: 0.3,
         valueType: 'NUMBER',
         label: 'Fixed Commission Fee (USD)',
         description: 'Fixed fee added to every transaction (similar to Stripe fee)',
         isPublic: false,
         isEditable: true,
         requiresRestart: false,
-        defaultValue: 0.30,
+        defaultValue: 0.3,
         lastUpdatedBy: superAdmin.id,
       },
     }),
@@ -2183,7 +2300,13 @@ async function main() {
       listingDurationDays: 45,
       featuredSlotsPerMonth: 2,
       allowedProductTypes: ['SERVICE', 'RENTAL', 'VEHICLE'],
-      features: ['15 Active Listings', '10 Credits/Month', '2 Featured Slots', 'Priority Support', '45-Day Listings'],
+      features: [
+        '15 Active Listings',
+        '10 Credits/Month',
+        '2 Featured Slots',
+        'Priority Support',
+        '45-Day Listings',
+      ],
       isPopular: false,
       isActive: true,
       displayOrder: 2,
@@ -2200,7 +2323,15 @@ async function main() {
       listingDurationDays: 60,
       featuredSlotsPerMonth: 5,
       allowedProductTypes: ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'],
-      features: ['50 Active Listings', '30 Credits/Month', '5 Featured Slots', 'Priority Support', '60-Day Listings', 'Analytics Dashboard', 'Real Estate Listings'],
+      features: [
+        '50 Active Listings',
+        '30 Credits/Month',
+        '5 Featured Slots',
+        'Priority Support',
+        '60-Day Listings',
+        'Analytics Dashboard',
+        'Real Estate Listings',
+      ],
       isPopular: true,
       isActive: true,
       displayOrder: 3,
@@ -2217,7 +2348,16 @@ async function main() {
       listingDurationDays: 90,
       featuredSlotsPerMonth: 15,
       allowedProductTypes: ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'],
-      features: ['Unlimited Listings', '100 Credits/Month', '15 Featured Slots', 'Dedicated Support', '90-Day Listings', 'Advanced Analytics', 'API Access', 'White-Label Options'],
+      features: [
+        'Unlimited Listings',
+        '100 Credits/Month',
+        '15 Featured Slots',
+        'Dedicated Support',
+        '90-Day Listings',
+        'Advanced Analytics',
+        'API Access',
+        'White-Label Options',
+      ],
       isPopular: false,
       isActive: true,
       displayOrder: 4,
@@ -2502,7 +2642,8 @@ async function main() {
       slug: 'nextpik-express',
       type: 'PARTNER',
       serviceType: 'LOCAL',
-      description: 'Premium local delivery service for luxury goods - Serving Rwanda, Uganda, and Kenya',
+      description:
+        'Premium local delivery service for luxury goods - Serving Rwanda, Uganda, and Kenya',
       contactEmail: 'contact@nextpikexpress.com',
       contactPhone: '+250-788-123-456',
       website: 'https://nextpikexpress.com',

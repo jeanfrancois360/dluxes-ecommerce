@@ -8,6 +8,7 @@ import { ProductCarousel } from '@/components/product-carousel';
 import { type QuickViewProduct, QuickViewModal } from '@nextpik/ui';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { Sparkles, Zap, TrendingUp, Home as HomeIcon, Car } from 'lucide-react';
 import {
   useFeaturedProducts,
   useNewArrivals,
@@ -29,10 +30,16 @@ const InlineAd = lazy(() => import('@/components/ads').then((m) => ({ default: m
 const HeroBannerAd = lazy(() =>
   import('@/components/ads').then((m) => ({ default: m.HeroBannerAd }))
 );
+const CreativeHeroCarousel = lazy(() =>
+  import('@/components/home/creative-hero-carousel').then((m) => ({
+    default: m.CreativeHeroCarousel,
+  }))
+);
 
 export default function Home() {
   const router = useRouter();
   const t = useTranslations('common');
+  const tHero = useTranslations('common.home.hero');
   const tModal = useTranslations('quickViewModal');
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
@@ -197,83 +204,236 @@ export default function Home() {
     [addingToWishlist, addToWishlistApi, removeFromWishlistApi, isInWishlist, router, t]
   );
 
+  // Creative Hero Carousel Slides - All using Split Layout for Consistency
+  const heroSlides = useMemo(
+    () => [
+      // 1. Accessories - Split Layout (Dark Gray)
+      {
+        id: 'accessories',
+        layout: 'split' as const,
+        gradient: 'linear-gradient(135deg, #2d3436 0%, #1e272e 100%)',
+        accentColor: '#CBB57B',
+        title: tHero('accessories.title'),
+        subtitle: tHero('accessories.subtitle'),
+        ctaText: tHero('accessories.cta'),
+        ctaHref: '/products?category=accessories',
+        icon: <Sparkles className="h-8 w-8 text-[#CBB57B]" />,
+        images: [
+          {
+            src: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400&h=500&fit=crop&q=80',
+            alt: 'Luxury Watches',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400&h=500&fit=crop&q=80',
+            alt: 'Designer Bags',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400&h=500&fit=crop&q=80',
+            alt: 'Fine Jewelry',
+          },
+        ],
+        shapes: [
+          {
+            type: 'circle' as const,
+            color: '#CBB57B',
+            size: 250,
+            position: { x: 75, y: 15 },
+            blur: true,
+          },
+          {
+            type: 'blob' as const,
+            color: '#3a3a3a',
+            size: 200,
+            position: { x: 10, y: 70 },
+            blur: true,
+          },
+        ],
+      },
+      // 2. Fashion - Split Layout (Pure Black)
+      {
+        id: 'fashion',
+        layout: 'split' as const,
+        gradient: 'linear-gradient(135deg, #0f0f0f 0%, #000000 100%)',
+        accentColor: '#ffffff',
+        title: tHero('fashion.title'),
+        subtitle: tHero('fashion.subtitle'),
+        ctaText: tHero('fashion.cta'),
+        ctaHref: '/products?category=fashion',
+        icon: <TrendingUp className="h-8 w-8 text-white" />,
+        images: [
+          {
+            src: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&h=500&fit=crop&q=80',
+            alt: 'Fashion Collection',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=500&fit=crop&q=80',
+            alt: 'Stylish Outfits',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&h=500&fit=crop&q=80',
+            alt: 'Fashion Trends',
+          },
+        ],
+        shapes: [
+          {
+            type: 'circle' as const,
+            color: '#1a1a1a',
+            size: 350,
+            position: { x: 20, y: 25 },
+            blur: true,
+          },
+          {
+            type: 'circle' as const,
+            color: '#2a2a2a',
+            size: 250,
+            position: { x: 70, y: 60 },
+            blur: true,
+          },
+        ],
+      },
+      // 3. Electronics - Split Layout (Charcoal)
+      {
+        id: 'electronics',
+        layout: 'split' as const,
+        gradient: 'linear-gradient(135deg, #232526 0%, #0f1419 100%)',
+        accentColor: '#60a5fa',
+        title: tHero('electronics.title'),
+        subtitle: tHero('electronics.subtitle'),
+        ctaText: tHero('electronics.cta'),
+        ctaHref: '/products?category=electronics',
+        icon: <Zap className="h-8 w-8 text-[#60a5fa]" />,
+        images: [
+          {
+            src: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=400&h=500&fit=crop&q=80',
+            alt: 'PlayStation 5',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=500&fit=crop&q=80',
+            alt: 'MacBook Pro M4 Max',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400&h=500&fit=crop&q=80',
+            alt: 'JBL Flip Speaker',
+          },
+        ],
+        shapes: [
+          {
+            type: 'square' as const,
+            color: '#1a1a1a',
+            size: 120,
+            position: { x: 25, y: 35 },
+            blur: false,
+          },
+          {
+            type: 'circle' as const,
+            color: '#2a3a4a',
+            size: 300,
+            position: { x: 65, y: 10 },
+            blur: true,
+          },
+        ],
+      },
+      // 4. Real Estate - Split Layout (Slate Gray)
+      {
+        id: 'realEstate',
+        layout: 'split' as const,
+        gradient: 'linear-gradient(135deg, #36454f 0%, #1a1f25 100%)',
+        accentColor: '#CBB57B',
+        title: tHero('realEstate.title'),
+        subtitle: tHero('realEstate.subtitle'),
+        ctaText: tHero('realEstate.cta'),
+        ctaHref: '/products?category=real-estate',
+        icon: <HomeIcon className="h-8 w-8 text-[#CBB57B]" />,
+        images: [
+          {
+            src: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=500&fit=crop&q=80',
+            alt: 'Luxury Homes',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=500&fit=crop&q=80',
+            alt: 'Commercial',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=500&fit=crop&q=80',
+            alt: 'Apartments',
+          },
+        ],
+        shapes: [
+          {
+            type: 'blob' as const,
+            color: '#2a2a2a',
+            size: 280,
+            position: { x: 12, y: 75 },
+            blur: true,
+          },
+          {
+            type: 'circle' as const,
+            color: '#3a3a3a',
+            size: 180,
+            position: { x: 82, y: 12 },
+            blur: true,
+          },
+        ],
+      },
+      // 5. Vehicles - Split Layout (Deep Black with Gold)
+      {
+        id: 'vehicles',
+        layout: 'split' as const,
+        gradient: 'linear-gradient(135deg, #1a1a1a 0%, #000000 100%)',
+        accentColor: '#CBB57B',
+        title: tHero('vehicles.title'),
+        subtitle: tHero('vehicles.subtitle'),
+        ctaText: tHero('vehicles.cta'),
+        ctaHref: '/products?category=vehicles',
+        icon: <Car className="h-8 w-8 text-[#CBB57B]" />,
+        images: [
+          {
+            src: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&h=500&fit=crop&q=80',
+            alt: 'Luxury Cars',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=400&h=500&fit=crop&q=80',
+            alt: 'SUVs',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=500&fit=crop&q=80',
+            alt: 'Classic Cars',
+          },
+        ],
+        shapes: [
+          {
+            type: 'circle' as const,
+            color: '#CBB57B',
+            size: 220,
+            position: { x: 45, y: 45 },
+            blur: true,
+          },
+          {
+            type: 'blob' as const,
+            color: '#2a2a2a',
+            size: 150,
+            position: { x: 18, y: 18 },
+            blur: true,
+          },
+        ],
+      },
+    ],
+    [tHero]
+  );
+
   return (
     <PageLayout>
-      {/* Hero Section - Dynamic Ad or Static Fallback */}
+      {/* Hero Section - Creative Carousel */}
       <Suspense
         fallback={
-          <div className="relative h-screen min-h-[600px] bg-gray-200 animate-pulse -mt-[168px] pt-[168px]" />
+          <div className="relative h-[450px] bg-gradient-to-br from-purple-600 to-blue-600 animate-pulse -mt-[168px] pt-[168px]" />
         }
       >
-        <HeroBannerAd
-          className="-mt-[168px] pt-[168px]"
-          fallback={
-            <section className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden text-white -mt-[168px] pt-[168px]">
-              {/* Background Image */}
-              <div className="absolute inset-0 z-0">
-                <Image
-                  src="/images/default-hero-bg.jpg"
-                  alt="Hero Background"
-                  fill
-                  className="object-cover"
-                  priority
-                  quality={90}
-                />
-                {/* Dark overlay for better text readability */}
-                <div className="absolute inset-0 bg-black/40" />
-              </div>
-
-              {/* Optional grid pattern overlay */}
-              <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px] z-[1]" />
-
-              <div className="relative z-10 max-w-5xl mx-auto px-4 text-center">
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7 }}
-                >
-                  <span className="inline-block px-6 py-2 bg-[#CBB57B]/20 border border-[#CBB57B] text-[#CBB57B] text-sm font-semibold uppercase tracking-wider rounded-full mb-8">
-                    {t('home.welcomeTag')}
-                  </span>
-                  <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-                    {t('home.heroTitle')}
-                    <br />
-                    <span className="bg-gradient-to-r from-[#CBB57B] to-white bg-clip-text text-transparent">
-                      {t('home.heroTitleHighlight')}
-                    </span>
-                  </h1>
-                  <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
-                    {t('home.heroDescription')}
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-4">
-                    <Link href="/products">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="px-10 py-4 bg-[#CBB57B] text-black font-bold text-lg rounded-xl hover:bg-[#A89968] transition-colors shadow-xl"
-                      >
-                        {t('buttons.shopNow')}
-                      </motion.button>
-                    </Link>
-                    <Link href="/collections">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="px-10 py-4 bg-white/10 backdrop-blur-sm border-2 border-white text-white font-bold text-lg rounded-xl hover:bg-white/20 transition-colors"
-                      >
-                        {t('buttons.browseCollections')}
-                      </motion.button>
-                    </Link>
-                  </div>
-                </motion.div>
-              </div>
-            </section>
-          }
-        />
+        <CreativeHeroCarousel slides={heroSlides} autoPlayInterval={6000} />
       </Suspense>
 
       {/* Featured Products */}
-      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 pt-16 pb-0 bg-white">
+      <section className="max-w-[1920px] mx-auto px-4 lg:px-8 pt-8 pb-0 bg-white">
         <ProductCarousel
           title={t('home.featuredProducts')}
           products={featuredProducts}
