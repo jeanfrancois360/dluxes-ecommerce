@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SubscriptionService } from '../subscription/subscription.service';
@@ -32,7 +27,7 @@ export class ProductsService {
     private readonly subscriptionService: SubscriptionService,
     private readonly creditsService: CreditsService,
     private readonly searchService: SearchService,
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsService
   ) {}
 
   /**
@@ -201,7 +196,7 @@ export class ProductsService {
    */
   private async checkSubscriptionRequirements(
     userId: string,
-    productType: string,
+    productType: string
   ): Promise<{ allowed: boolean; message?: string }> {
     const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
 
@@ -210,26 +205,21 @@ export class ProductsService {
       return { allowed: true };
     }
 
-    const check = await this.subscriptionService.canListProductType(
-      userId,
-      productType,
-    );
+    const check = await this.subscriptionService.canListProductType(userId, productType);
 
     if (!check.canList) {
       const messages: string[] = [];
       if (!check.reasons.hasMonthlyCredits) {
-        messages.push(
-          'You need an active platform subscription to list products',
-        );
+        messages.push('You need an active platform subscription to list products');
       }
       if (!check.reasons.productTypeAllowed) {
         messages.push(
-          `Your feature plan does not include ${productType} listings. Upgrade to a plan that supports this product type`,
+          `Your feature plan does not include ${productType} listings. Upgrade to a plan that supports this product type`
         );
       }
       if (!check.reasons.meetsTierRequirement) {
         messages.push(
-          `Your current feature plan tier doesn't support ${productType} products. Upgrade to a higher tier`,
+          `Your current feature plan tier doesn't support ${productType} products. Upgrade to a higher tier`
         );
       }
       if (!check.reasons.hasListingCapacity) {
@@ -248,7 +238,7 @@ export class ProductsService {
   private async deductListingCredits(
     userId: string,
     productType: string,
-    productId: string,
+    productId: string
   ): Promise<void> {
     const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
 
@@ -261,7 +251,7 @@ export class ProductsService {
       userId,
       action,
       `Listed ${productType} product`,
-      productId,
+      productId
     );
   }
 
@@ -827,6 +817,7 @@ export class ProductsService {
       price,
       inventory,
       sku, // Ignore any provided SKU - always auto-generate
+      images, // Extract images to handle separately (not passed to Prisma directly)
       ...productData
     } = createProductDto;
 
@@ -1298,7 +1289,9 @@ export class ProductsService {
 
     // SKU is read-only - ignore any provided SKU value
     if (dto.sku !== undefined) {
-      this.logger.warn(`Attempt to update variant SKU ignored - SKU is system-generated and read-only`);
+      this.logger.warn(
+        `Attempt to update variant SKU ignored - SKU is system-generated and read-only`
+      );
     }
 
     // Track inventory change
@@ -1512,9 +1505,7 @@ export class ProductsService {
    */
   private indexProductAsync(productId: string): void {
     this.searchService.indexProduct(productId).catch((error) => {
-      this.logger.error(
-        `Failed to index product ${productId} in Meilisearch: ${error.message}`,
-      );
+      this.logger.error(`Failed to index product ${productId} in Meilisearch: ${error.message}`);
     });
   }
 
@@ -1524,9 +1515,7 @@ export class ProductsService {
    */
   private deleteProductFromIndexAsync(productId: string): void {
     this.searchService.deleteProduct(productId).catch((error) => {
-      this.logger.error(
-        `Failed to delete product ${productId} from Meilisearch: ${error.message}`,
-      );
+      this.logger.error(`Failed to delete product ${productId} from Meilisearch: ${error.message}`);
     });
   }
 }

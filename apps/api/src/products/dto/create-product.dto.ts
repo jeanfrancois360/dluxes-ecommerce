@@ -1,7 +1,21 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, IsArray, IsEnum, Min, IsObject, ValidateNested, Validate } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+  IsEnum,
+  Min,
+  IsObject,
+  ValidateNested,
+  Validate,
+} from 'class-validator';
 import { ProductStatus, ProductType, PurchaseType } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { RequiresPriceForInstantConstraint, RequiresInventoryForInstantConstraint } from './validators/product-validation';
+import {
+  RequiresPriceForInstantConstraint,
+  RequiresInventoryForInstantConstraint,
+} from './validators/product-validation';
 
 export class CreateProductDto {
   @IsString()
@@ -78,6 +92,11 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   heroImage?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[]; // Array of image URLs (handled separately, not passed to Prisma directly)
 
   @IsOptional()
   @IsObject()
