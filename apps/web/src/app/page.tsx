@@ -426,7 +426,7 @@ export default function Home() {
       {/* Hero Section - Creative Carousel */}
       <Suspense
         fallback={
-          <div className="relative h-[450px] bg-gradient-to-br from-gray-900 to-black animate-pulse -mt-[168px] pt-[168px]" />
+          <div className="relative h-[400px] sm:h-[420px] md:h-[450px] lg:h-[450px] bg-gradient-to-br from-gray-900 to-black animate-pulse -mt-[168px] pt-[168px]" />
         }
       >
         <CreativeHeroCarousel slides={heroSlides} autoPlayInterval={6000} />
