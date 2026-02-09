@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { PrismaService } from '../prisma/prisma.service';
+import request from 'supertest';
+import { PrismaService } from '../database/prisma.service';
 import { ProductsModule } from './products.module';
 import { AuthModule } from '../auth/auth.module';
 import { JwtService } from '@nestjs/jwt';
@@ -74,6 +74,7 @@ describe('Product CRUD Operations (E2E)', () => {
         userId: sellerId,
         name: 'Test Store',
         slug: 'test-store',
+        email: seller.email,
         status: 'ACTIVE',
       },
     });
@@ -554,6 +555,7 @@ describe('Product CRUD Operations (E2E)', () => {
           userId: otherSeller.id,
           name: 'Other Store',
           slug: 'other-store',
+          email: otherSeller.email,
           status: 'ACTIVE',
         },
       });
