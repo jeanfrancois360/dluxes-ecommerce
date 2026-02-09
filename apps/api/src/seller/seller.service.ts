@@ -1154,8 +1154,11 @@ export class SellerService {
       }
     }
 
-    // Extract images and sku fields (images is Prisma relation, sku is auto-generated)
-    const { images, sku, ...productData } = data;
+    // Extract images, sku, and categoryId fields
+    // - images: Prisma relation, not a data field
+    // - sku: auto-generated
+    // - categoryId: needs to be connected by slug, not passed directly
+    const { images, sku, categoryId, ...productData } = data;
 
     // ALWAYS auto-generate SKU (custom SKUs not allowed)
     const finalSKU = await this.generateSKU();
@@ -1220,6 +1223,12 @@ export class SellerService {
           sku: finalSKU,
           storeId: store.id,
           status: data.status || 'DRAFT',
+          // Connect category by slug if provided (frontend sends slug, not ID)
+          ...(categoryId && {
+            category: {
+              connect: { slug: categoryId },
+            },
+          }),
         },
         include: {
           category: true,
