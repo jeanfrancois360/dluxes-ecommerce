@@ -333,47 +333,43 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
   if (isLoading) {
     return (
-      <PageLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-64 bg-gray-200 rounded"></div>
-            <div className="h-96 bg-gray-200 rounded"></div>
-          </div>
+      <div className="p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+          <div className="h-96 bg-gray-200 rounded"></div>
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   if (error || !order) {
     return (
-      <PageLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
-            <svg
-              className="w-16 h-16 text-red-500 mx-auto mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <h2 className="text-2xl font-bold mb-2">{t('error.title')}</h2>
-            <p className="text-gray-600 mb-6">{error || t('error.description')}</p>
-            <Link
-              href="/account/orders"
-              className="inline-block px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors"
-            >
-              {t('error.backToOrders')}
-            </Link>
-          </div>
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+          <svg
+            className="w-16 h-16 text-red-500 mx-auto mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <h2 className="text-2xl font-bold mb-2">{t('error.title')}</h2>
+          <p className="text-gray-600 mb-6">{error || t('error.description')}</p>
+          <Link
+            href="/account/orders"
+            className="inline-block px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors"
+          >
+            {t('error.backToOrders')}
+          </Link>
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
