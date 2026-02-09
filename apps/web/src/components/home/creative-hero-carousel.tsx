@@ -231,7 +231,7 @@ export function CreativeHeroCarousel({
           dragElastic={0.2}
           onDragEnd={handleDragEnd}
           onMouseMove={handleMouseMove}
-          className="relative h-[450px] cursor-grab active:cursor-grabbing overflow-hidden"
+          className="relative h-[400px] sm:h-[420px] md:h-[450px] lg:h-[450px] cursor-grab active:cursor-grabbing overflow-hidden"
           style={{
             background: currentSlide.gradient,
           }}
@@ -271,7 +271,7 @@ export function CreativeHeroCarousel({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20 backdrop-blur-xl bg-white/10 px-4 py-3 rounded-full border border-white/20"
+        className="absolute bottom-4 sm:bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-3 z-20 backdrop-blur-xl bg-white/10 px-3 sm:px-4 py-2 sm:py-3 rounded-full border border-white/20"
       >
         {slides.map((_, idx) => (
           <motion.button
@@ -299,7 +299,7 @@ export function CreativeHeroCarousel({
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.8 }}
-        className="absolute bottom-6 right-6 flex items-center gap-2 z-20"
+        className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 flex items-center gap-1.5 sm:gap-2 z-20"
       >
         {[
           { icon: ChevronLeft, onClick: prevSlide, label: 'Previous' },
@@ -313,12 +313,12 @@ export function CreativeHeroCarousel({
           <motion.button
             key={idx}
             onClick={btn.onClick}
-            className="w-14 h-14 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-200 shadow-xl"
+            className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-200 shadow-xl"
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
             aria-label={btn.label}
           >
-            <btn.icon className="h-6 w-6" />
+            <btn.icon className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
           </motion.button>
         ))}
       </motion.div>
@@ -328,9 +328,9 @@ export function CreativeHeroCarousel({
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.8 }}
-        className="absolute bottom-6 left-6 z-20 backdrop-blur-xl bg-white/10 px-4 py-2 rounded-full border border-white/20"
+        className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 z-20 backdrop-blur-xl bg-white/10 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/20"
       >
-        <span className="text-white font-semibold text-sm">
+        <span className="text-white font-semibold text-xs sm:text-sm">
           {currentIndex + 1} / {slides.length}
         </span>
       </motion.div>
@@ -344,21 +344,21 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
   const y = useTransform(mouseY, [-1, 1], [-15, 15]);
 
   return (
-    <div className="max-w-[1920px] mx-auto px-8 lg:px-16 h-full flex items-center">
-      <div className="w-full grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+    <div className="max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-16 h-full flex items-center">
+      <div className="w-full grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-16 items-center">
         {/* Left Content */}
         <motion.div
           initial={{ opacity: 0, x: -100 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="space-y-5"
+          className="space-y-3 sm:space-y-4 md:space-y-5"
         >
           {slide.icon && (
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ delay: 0.2, type: 'spring' }}
-              className="inline-flex p-4 rounded-2xl bg-white/10 backdrop-blur-sm"
+              className="inline-flex p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-sm"
             >
               {slide.icon}
             </motion.div>
@@ -368,7 +368,7 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-black leading-[1.1] text-white"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-[1.1] text-white"
           >
             {slide.title}
           </motion.h1>
@@ -377,7 +377,7 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.6 }}
-            className="text-lg lg:text-xl text-white/80 max-w-xl leading-relaxed"
+            className="text-base sm:text-lg lg:text-xl text-white/80 max-w-xl leading-relaxed"
           >
             {slide.subtitle}
           </motion.p>
@@ -391,7 +391,7 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
               <motion.button
                 whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}
                 whileTap={{ scale: 0.95 }}
-                className="px-8 py-4 rounded-xl font-semibold text-base bg-white text-black shadow-xl border-2 border-white hover:bg-white/90 transition-all duration-200"
+                className="px-6 sm:px-8 py-3 sm:py-4 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base bg-white text-black shadow-xl border-2 border-white hover:bg-white/90 transition-all duration-200"
               >
                 {slide.ctaText}
               </motion.button>
