@@ -142,8 +142,6 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
         category:
           typeof product.category === 'object' ? (product.category as any)?.slug : product.category,
         storeId: (product as any).storeId, // Preserve store assignment
-        // Debug log to verify storeId
-        ...(console.log('[Product Edit] Product storeId:', (product as any).storeId) || {}),
         images: Array.isArray(product.images)
           ? product.images.map((img: any) => (typeof img === 'string' ? img : img.url))
           : [(product as any).heroImage].filter(Boolean),
