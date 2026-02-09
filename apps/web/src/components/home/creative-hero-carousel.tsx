@@ -323,17 +323,17 @@ export function CreativeHeroCarousel({
         ))}
       </motion.div>
 
-      {/* Slide counter - Hidden */}
-      {/* <motion.div
+      {/* Slide counter - Hidden on mobile, visible on desktop */}
+      <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.8 }}
-        className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 z-20 backdrop-blur-xl bg-white/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/30 shadow-lg"
+        className="hidden md:flex absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 z-20 backdrop-blur-xl bg-white/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/30 shadow-lg"
       >
         <span className="text-white font-bold text-xs sm:text-sm">
           {currentIndex + 1} / {slides.length}
         </span>
-      </motion.div> */}
+      </motion.div>
     </div>
   );
 }
