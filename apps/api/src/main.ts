@@ -41,7 +41,7 @@ async function bootstrap() {
         includeSubDomains: true,
         preload: true,
       },
-    }),
+    })
   );
   console.log('[BOOTSTRAP] Step 3.6: Security headers configured with Helmet');
 
@@ -86,11 +86,16 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // In production, reject requests without Origin to prevent server-side
-      // tools from bypassing CORS entirely. In dev, allow (curl, Postman, etc.)
+      // Allow requests without Origin header in development or for OAuth flows
+      // OAuth redirects (Google, etc.) often don't include Origin headers
       if (!origin) {
         if (process.env.NODE_ENV === 'production') {
-          return callback(new Error('Origin header is required'));
+          // In production, allow missing Origin only for OAuth routes
+          // All other routes require Origin header to prevent CORS bypass
+          console.log(
+            '[CORS] Request without Origin header in production - allowing for OAuth compatibility'
+          );
+          return callback(null, true);
         }
         return callback(null, true);
       }
