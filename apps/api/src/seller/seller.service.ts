@@ -1214,6 +1214,17 @@ export class SellerService {
       )
     );
 
+    // Validate category exists if provided
+    if (categoryId && categoryId.trim() !== '') {
+      const categoryExists = await this.prisma.category.findUnique({
+        where: { slug: categoryId },
+      });
+
+      if (!categoryExists) {
+        throw new NotFoundException(`Category with slug "${categoryId}" not found`);
+      }
+    }
+
     // Create product with seller's store ID
     let product;
     try {
@@ -1221,14 +1232,18 @@ export class SellerService {
         data: {
           ...productData,
           sku: finalSKU,
-          storeId: store.id,
           status: data.status || 'DRAFT',
+          // Connect store relation (required)
+          store: {
+            connect: { id: store.id },
+          },
           // Connect category by slug if provided (frontend sends slug, not ID)
-          ...(categoryId && {
-            category: {
-              connect: { slug: categoryId },
-            },
-          }),
+          ...(categoryId &&
+            categoryId.trim() !== '' && {
+              category: {
+                connect: { slug: categoryId },
+              },
+            }),
         },
         include: {
           category: true,
@@ -1280,6 +1295,37 @@ export class SellerService {
       },
     });
 
+    // Save images if provided
+    if (images && Array.isArray(images) && images.length > 0) {
+      try {
+        await this.prisma.productImage.createMany({
+          data: images.map((url, index) => ({
+            productId: product.id,
+            url,
+            alt: product.name,
+            width: 800, // Default width (actual dimensions should come from upload service)
+            height: 600, // Default height (actual dimensions should come from upload service)
+            displayOrder: index,
+            isPrimary: index === 0, // First image is primary
+          })),
+        });
+
+        // Set first image as hero image if not already set
+        if (!product.heroImage && images[0]) {
+          await this.prisma.product.update({
+            where: { id: product.id },
+            data: { heroImage: images[0] },
+          });
+          product.heroImage = images[0];
+        }
+
+        this.logger.log(`Saved ${images.length} images for product ${product.id}`);
+      } catch (error) {
+        this.logger.error(`Failed to save images for product ${product.id}:`, error);
+        // Don't fail the entire operation if images fail
+      }
+    }
+
     return product;
   }
 
@@ -1307,9 +1353,36 @@ export class SellerService {
       throw new NotFoundException('Product not found or does not belong to your store');
     }
 
+    // Extract categoryId to handle it separately (frontend sends slug, not ID)
+    const { categoryId, ...updateData } = data;
+
+    // Handle category connection by slug (uniform with products.service.ts)
+    if (categoryId !== undefined) {
+      // Treat empty strings as falsy to disconnect category
+      if (categoryId && categoryId.trim() !== '') {
+        // Validate category exists before connecting
+        const categoryExists = await this.prisma.category.findUnique({
+          where: { slug: categoryId },
+        });
+
+        if (!categoryExists) {
+          throw new NotFoundException(`Category with slug "${categoryId}" not found`);
+        }
+
+        updateData.category = {
+          connect: { slug: categoryId },
+        };
+      } else {
+        // Disconnect category if categoryId is null/empty/whitespace
+        updateData.category = {
+          disconnect: true,
+        };
+      }
+    }
+
     return this.prisma.product.update({
       where: { id: productId },
-      data,
+      data: updateData,
       include: {
         category: true,
         images: true,

@@ -31,6 +31,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
+      // Log full exception response for debugging validation errors
+      if (status === HttpStatus.BAD_REQUEST) {
+        this.logger.error('=== VALIDATION ERROR DETAILS ===');
+        this.logger.error(JSON.stringify(exceptionResponse, null, 2));
+      }
+
       if (typeof exceptionResponse === 'object') {
         const resp = exceptionResponse as Record<string, any>;
         message = resp.message || exception.message;
