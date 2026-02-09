@@ -231,6 +231,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         price: product.price || undefined,
         compareAtPrice: product.compareAtPrice || undefined,
         category: product.category || '',
+        storeId: (product as any)?.storeId || (product as any)?.store?.id || '',
         images: imageArray,
         stock: product.inventory || product.stock || undefined,
         status: product.status || 'DRAFT',

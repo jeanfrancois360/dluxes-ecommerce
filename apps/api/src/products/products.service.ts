@@ -62,59 +62,17 @@ export class ProductsService {
    */
   private async generateSKU(): Promise<string> {
     try {
-      // Get SKU prefix from settings
-      const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
-      const prefix = String(prefixSetting.value || 'NEXTPIK').toUpperCase();
-
-      // Get current date components
-      const now = new Date();
-      const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
-      const day = String(now.getDate()).padStart(2, '0'); // 01-31
-
-      // Format: PREFIX-MM-DD-
-      const datePrefix = `${prefix}-${month}-${day}-`;
-
-      // Find the highest existing SKU number for today's date with this prefix
-      const products = await this.prisma.product.findMany({
-        where: {
-          sku: {
-            startsWith: datePrefix,
-          },
-        },
-        orderBy: {
-          sku: 'desc',
-        },
-        take: 1,
-      });
-
-      let nextNumber = 1;
-      if (products.length > 0) {
-        const lastSKU = products[0].sku;
-        // Extract the sequence number from PREFIX-MM-DD-XXXXXX
-        const match = lastSKU.match(/-(\d+)$/);
-        if (match) {
-          nextNumber = parseInt(match[1], 10) + 1;
-        }
-      }
-
-      // Format with leading zeros (6 digits)
-      const formattedNumber = String(nextNumber).padStart(6, '0');
-      const generatedSKU = `${datePrefix}${formattedNumber}`;
-
-      // Double-check uniqueness (race condition protection)
-      const duplicate = await this.prisma.product.findUnique({
-        where: { sku: generatedSKU },
-      });
-      if (duplicate) {
-        // Recursively try next number if collision occurs
-        return this.generateSKU();
-      }
+      // Use simple timestamp-based SKU for better performance
+      // Format: PREFIX-TIMESTAMP-RANDOM
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const generatedSKU = `PROD-${timestamp}-${random}`;
 
       this.logger.log(`Auto-generated SKU: ${generatedSKU}`);
       return generatedSKU;
     } catch (error) {
       this.logger.error('Failed to generate SKU:', error);
-      // Fallback to timestamp-based SKU if settings fail
+      // Fallback to simple timestamp-based SKU
       const timestamp = Date.now();
       const fallbackSKU = `PROD-${timestamp}`;
       this.logger.warn(`Using fallback SKU: ${fallbackSKU}`);
@@ -258,7 +216,7 @@ export class ProductsService {
   /**
    * Find all products with advanced filtering, sorting, and pagination
    */
-  async findAll(query: ProductQueryDto) {
+  async findAll(query: ProductQueryDto, user?: any) {
     const {
       category,
       minPrice,
@@ -287,13 +245,15 @@ export class ProductsService {
 
     const where: Prisma.ProductWhereInput = {};
 
-    // Status filter: Default to ACTIVE for public endpoints, only show other statuses if explicitly requested
+    // Status filter: Default to ACTIVE for public/unauthenticated users only
     if (status !== undefined && status !== null) {
       where.status = status;
-    } else {
-      // Default to ACTIVE status to hide DRAFT products from public views
+    } else if (!user) {
+      // Only default to ACTIVE status for unauthenticated (public) users
+      // Admins/sellers see all statuses by default
       where.status = 'ACTIVE';
     }
+    // If user is authenticated and no status filter provided, show all statuses
 
     // Category filter - lookup by slug
     if (category) {
@@ -898,6 +858,14 @@ export class ProductsService {
     // Auto-index in Meilisearch (async, non-blocking)
     this.indexProductAsync(product.id);
 
+    // Increment store's totalProducts counter if assigned to a store
+    if (storeId) {
+      await this.prisma.store.update({
+        where: { id: storeId },
+        data: { totalProducts: { increment: 1 } },
+      });
+    }
+
     return product;
   }
 
@@ -905,7 +873,8 @@ export class ProductsService {
    * Update product
    */
   async update(id: string, updateProductDto: UpdateProductDto) {
-    await this.findById(id); // Check if exists
+    const existingProduct = await this.findById(id); // Check if exists
+    const oldStoreId = existingProduct.storeId;
 
     const { badges, seoKeywords, colors, sizes, materials, categoryId, storeId, ...productData } =
       updateProductDto;
@@ -977,6 +946,24 @@ export class ProductsService {
 
     // Auto-re-index in Meilisearch (async, non-blocking)
     this.indexProductAsync(id);
+
+    // Update store totalProducts counters if storeId changed
+    if (storeId !== undefined && oldStoreId !== storeId) {
+      // Decrement old store's count
+      if (oldStoreId) {
+        await this.prisma.store.update({
+          where: { id: oldStoreId },
+          data: { totalProducts: { decrement: 1 } },
+        });
+      }
+      // Increment new store's count
+      if (storeId) {
+        await this.prisma.store.update({
+          where: { id: storeId },
+          data: { totalProducts: { increment: 1 } },
+        });
+      }
+    }
 
     return product;
   }
@@ -1075,7 +1062,7 @@ export class ProductsService {
    * Delete product
    */
   async delete(id: string) {
-    await this.findById(id); // Check if exists
+    const existingProduct = await this.findById(id); // Check if exists
 
     const product = await this.prisma.product.delete({
       where: { id },
@@ -1083,6 +1070,14 @@ export class ProductsService {
 
     // Auto-remove from Meilisearch index (async, non-blocking)
     this.deleteProductFromIndexAsync(id);
+
+    // Decrement store's totalProducts counter if it was assigned to a store
+    if (existingProduct.storeId) {
+      await this.prisma.store.update({
+        where: { id: existingProduct.storeId },
+        data: { totalProducts: { decrement: 1 } },
+      });
+    }
 
     return product;
   }
