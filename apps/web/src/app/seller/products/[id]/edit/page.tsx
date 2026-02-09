@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import ProductForm from '@/components/seller/ProductForm';
 import { api } from '@/lib/api/client';
+import { toast } from '@/lib/utils/toast';
 
 export default function EditProductPage() {
   const t = useTranslations('sellerProductsEdit');
@@ -61,12 +62,12 @@ export default function EditProductPage() {
           await api.post(`/products/${productId}/images`, { images });
         } catch (imgError) {
           console.error('Failed to save images:', imgError);
-          alert(t('success.imagesFailed'));
+          toast.error(t('success.imagesFailed'));
         }
       }
 
       // Show success message
-      alert(t('success.productUpdated'));
+      toast.success(t('success.productUpdated'));
 
       // Redirect to products list
       router.push('/seller/products');

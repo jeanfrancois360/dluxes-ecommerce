@@ -641,6 +641,55 @@ export class AdminController {
   ) {
     return this.adminService.deleteCustomerNote(noteId, req.user.id);
   }
+
+  /**
+   * Get all stores for product assignment
+   * @route GET /admin/stores
+   */
+  @Get('stores')
+  async getAllStores(@Query('status') status?: string, @Query('search') search?: string) {
+    const where: any = {};
+
+    if (status) {
+      where.status = status.toUpperCase();
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { slug: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const stores = await this.prisma.store.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+        verified: true,
+        user: {
+          select: {
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            products: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    return {
+      success: true,
+      data: stores,
+    };
+  }
 }
 
 // Note: For admin product management (POST, PUT, DELETE),

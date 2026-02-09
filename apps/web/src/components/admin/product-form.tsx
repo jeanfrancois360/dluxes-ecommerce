@@ -14,12 +14,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type { AdminProduct } from '@/lib/api/admin';
-import { adminCategoriesApi, type Category } from '@/lib/api/admin';
+import {
+  adminCategoriesApi,
+  adminStoresApi,
+  type Category,
+  type AdminStore,
+} from '@/lib/api/admin';
 import { VariantManager } from './variant-manager';
 import { StockLevelIndicator } from './stock-status-badge';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
 import { useInventorySettings } from '@/hooks/use-inventory-settings';
-import { RealEstateFields, VehicleFields, DigitalFields, ServiceFields, RentalFields } from './product-type-fields';
+import {
+  RealEstateFields,
+  VehicleFields,
+  DigitalFields,
+  ServiceFields,
+  RentalFields,
+} from './product-type-fields';
 
 // Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
 const EnhancedImageUpload = dynamic(() => import('../products/EnhancedImageUpload'), {
@@ -41,6 +52,10 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
+  // Stores state
+  const [stores, setStores] = useState<AdminStore[]>([]);
+  const [loadingStores, setLoadingStores] = useState(true);
+
   // Form state
   const [formData, setFormData] = useState<any>({
     name: product?.name || '',
@@ -50,7 +65,14 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     shortDescription: (product as any)?.shortDescription || '',
     price: product?.price || undefined,
     compareAtPrice: product?.compareAtPrice || undefined,
-    category: product?.category || '',
+    // Extract category slug for backend (backend expects slug, not ID)
+    category:
+      (product?.category &&
+        typeof product.category === 'object' &&
+        (product.category as any).slug) ||
+      (typeof product?.category === 'string' ? product.category : '') ||
+      '',
+    storeId: (product as any)?.storeId || (product as any)?.store?.id || '',
     images: product?.images || [],
     stock: product?.stock || undefined,
     status: product?.status || 'DRAFT',
@@ -160,7 +182,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   });
 
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [newTag, setNewTag] = useState('');
 
   // Fetch categories on mount
@@ -177,6 +199,22 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       }
     }
     fetchCategories();
+  }, []);
+
+  // Fetch stores
+  useEffect(() => {
+    async function fetchStores() {
+      try {
+        setLoadingStores(true);
+        const data = await adminStoresApi.getAll({ status: 'ACTIVE' });
+        setStores(data);
+      } catch (error) {
+        console.error('Failed to fetch stores:', error);
+      } finally {
+        setLoadingStores(false);
+      }
+    }
+    fetchStores();
   }, []);
 
   // Update form data when product prop changes (for edit mode)
@@ -315,14 +353,13 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       ...prev,
       name: value,
       // Auto-generate slug if it's a new product or slug hasn't been manually edited
-      slug: !product?.slug || prev.slug === generateSlug(prev.name)
-        ? generateSlug(value)
-        : prev.slug
+      slug:
+        !product?.slug || prev.slug === generateSlug(prev.name) ? generateSlug(value) : prev.slug,
     }));
   };
 
   const validateForm = (): boolean => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     // Required field validation
     if (!formData.name?.trim()) {
@@ -359,7 +396,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
 
     // Compare at price validation
-    if (formData.compareAtPrice !== undefined && formData.compareAtPrice !== null && formData.compareAtPrice !== '') {
+    if (
+      formData.compareAtPrice !== undefined &&
+      formData.compareAtPrice !== null &&
+      formData.compareAtPrice !== ''
+    ) {
       if (formData.compareAtPrice < 0) {
         newErrors.compareAtPrice = 'Compare at price cannot be negative';
       }
@@ -389,7 +430,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     if (!validateForm()) {
       // Scroll to first error
       const firstErrorField = Object.keys(errors)[0];
-      document.getElementById(firstErrorField)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document
+        .getElementById(firstErrorField)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -403,11 +446,24 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         // SKU is always auto-generated - never send it from frontend
         description: formData.description,
         shortDescription: formData.shortDescription || undefined,
+        storeId: formData.storeId || undefined, // Admin assigns product to store
         categoryId: formData.category || undefined,
-        price: formData.price === '' || formData.price === undefined ? undefined : Number(formData.price),
-        compareAtPrice: formData.compareAtPrice === '' || formData.compareAtPrice === undefined ? undefined : Number(formData.compareAtPrice),
-        inventory: formData.stock === '' || formData.stock === undefined ? undefined : Number(formData.stock),
-        weight: formData.weight === '' || formData.weight === undefined ? undefined : Number(formData.weight),
+        price:
+          formData.price === '' || formData.price === undefined
+            ? undefined
+            : Number(formData.price),
+        compareAtPrice:
+          formData.compareAtPrice === '' || formData.compareAtPrice === undefined
+            ? undefined
+            : Number(formData.compareAtPrice),
+        inventory:
+          formData.stock === '' || formData.stock === undefined
+            ? undefined
+            : Number(formData.stock),
+        weight:
+          formData.weight === '' || formData.weight === undefined
+            ? undefined
+            : Number(formData.weight),
         status: formData.status,
         productType: formData.productType,
         purchaseType: formData.purchaseType,
@@ -415,9 +471,13 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         metaTitle: formData.metaTitle || undefined,
         metaDescription: formData.metaDescription || undefined,
         // Convert seoKeywords string to array if needed
-        seoKeywords: typeof formData.seoKeywords === 'string'
-          ? formData.seoKeywords.split(',').map((k: string) => k.trim()).filter(Boolean)
-          : (formData.seoKeywords || []),
+        seoKeywords:
+          typeof formData.seoKeywords === 'string'
+            ? formData.seoKeywords
+                .split(',')
+                .map((k: string) => k.trim())
+                .filter(Boolean)
+            : formData.seoKeywords || [],
         badges: formData.badges || [],
         colors: formData.colors || [],
         sizes: formData.sizes || [],
@@ -428,20 +488,44 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       if (formData.productType === 'REAL_ESTATE') {
         Object.assign(submitData, {
           propertyType: formData.propertyType || undefined,
-          bedrooms: formData.bedrooms !== undefined && formData.bedrooms !== '' ? Number(formData.bedrooms) : undefined,
-          bathrooms: formData.bathrooms !== undefined && formData.bathrooms !== '' ? Number(formData.bathrooms) : undefined,
-          squareFeet: formData.squareFeet !== undefined && formData.squareFeet !== '' ? Number(formData.squareFeet) : undefined,
-          lotSize: formData.lotSize !== undefined && formData.lotSize !== '' ? Number(formData.lotSize) : undefined,
-          yearBuilt: formData.yearBuilt !== undefined && formData.yearBuilt !== '' ? Number(formData.yearBuilt) : undefined,
-          parkingSpaces: formData.parkingSpaces !== undefined && formData.parkingSpaces !== '' ? Number(formData.parkingSpaces) : undefined,
+          bedrooms:
+            formData.bedrooms !== undefined && formData.bedrooms !== ''
+              ? Number(formData.bedrooms)
+              : undefined,
+          bathrooms:
+            formData.bathrooms !== undefined && formData.bathrooms !== ''
+              ? Number(formData.bathrooms)
+              : undefined,
+          squareFeet:
+            formData.squareFeet !== undefined && formData.squareFeet !== ''
+              ? Number(formData.squareFeet)
+              : undefined,
+          lotSize:
+            formData.lotSize !== undefined && formData.lotSize !== ''
+              ? Number(formData.lotSize)
+              : undefined,
+          yearBuilt:
+            formData.yearBuilt !== undefined && formData.yearBuilt !== ''
+              ? Number(formData.yearBuilt)
+              : undefined,
+          parkingSpaces:
+            formData.parkingSpaces !== undefined && formData.parkingSpaces !== ''
+              ? Number(formData.parkingSpaces)
+              : undefined,
           amenities: formData.amenities || [],
           propertyAddress: formData.propertyAddress || undefined,
           propertyCity: formData.propertyCity || undefined,
           propertyState: formData.propertyState || undefined,
           propertyCountry: formData.propertyCountry || undefined,
           propertyZipCode: formData.propertyZipCode || undefined,
-          propertyLatitude: formData.propertyLatitude !== undefined && formData.propertyLatitude !== '' ? Number(formData.propertyLatitude) : undefined,
-          propertyLongitude: formData.propertyLongitude !== undefined && formData.propertyLongitude !== '' ? Number(formData.propertyLongitude) : undefined,
+          propertyLatitude:
+            formData.propertyLatitude !== undefined && formData.propertyLatitude !== ''
+              ? Number(formData.propertyLatitude)
+              : undefined,
+          propertyLongitude:
+            formData.propertyLongitude !== undefined && formData.propertyLongitude !== ''
+              ? Number(formData.propertyLongitude)
+              : undefined,
           virtualTourUrl: formData.virtualTourUrl || undefined,
         });
       }
@@ -451,8 +535,14 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         Object.assign(submitData, {
           vehicleMake: formData.vehicleMake || undefined,
           vehicleModel: formData.vehicleModel || undefined,
-          vehicleYear: formData.vehicleYear !== undefined && formData.vehicleYear !== '' ? Number(formData.vehicleYear) : undefined,
-          vehicleMileage: formData.vehicleMileage !== undefined && formData.vehicleMileage !== '' ? Number(formData.vehicleMileage) : undefined,
+          vehicleYear:
+            formData.vehicleYear !== undefined && formData.vehicleYear !== ''
+              ? Number(formData.vehicleYear)
+              : undefined,
+          vehicleMileage:
+            formData.vehicleMileage !== undefined && formData.vehicleMileage !== ''
+              ? Number(formData.vehicleMileage)
+              : undefined,
           vehicleVIN: formData.vehicleVIN || undefined,
           vehicleCondition: formData.vehicleCondition || undefined,
           vehicleTransmission: formData.vehicleTransmission || undefined,
@@ -473,12 +563,18 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       if (formData.productType === 'DIGITAL') {
         Object.assign(submitData, {
           digitalFileUrl: formData.digitalFileUrl || undefined,
-          digitalFileSize: formData.digitalFileSize !== undefined && formData.digitalFileSize !== '' ? Number(formData.digitalFileSize) : undefined,
+          digitalFileSize:
+            formData.digitalFileSize !== undefined && formData.digitalFileSize !== ''
+              ? Number(formData.digitalFileSize)
+              : undefined,
           digitalFileFormat: formData.digitalFileFormat || undefined,
           digitalFileName: formData.digitalFileName || undefined,
           digitalVersion: formData.digitalVersion || undefined,
           digitalLicenseType: formData.digitalLicenseType || undefined,
-          digitalDownloadLimit: formData.digitalDownloadLimit !== undefined && formData.digitalDownloadLimit !== '' ? Number(formData.digitalDownloadLimit) : undefined,
+          digitalDownloadLimit:
+            formData.digitalDownloadLimit !== undefined && formData.digitalDownloadLimit !== ''
+              ? Number(formData.digitalDownloadLimit)
+              : undefined,
           digitalPreviewUrl: formData.digitalPreviewUrl || undefined,
           digitalRequirements: formData.digitalRequirements || undefined,
           digitalInstructions: formData.digitalInstructions || undefined,
@@ -491,18 +587,27 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       if (formData.productType === 'SERVICE') {
         Object.assign(submitData, {
           serviceType: formData.serviceType || undefined,
-          serviceDuration: formData.serviceDuration !== undefined && formData.serviceDuration !== '' ? Number(formData.serviceDuration) : undefined,
+          serviceDuration:
+            formData.serviceDuration !== undefined && formData.serviceDuration !== ''
+              ? Number(formData.serviceDuration)
+              : undefined,
           serviceDurationUnit: formData.serviceDurationUnit || undefined,
           serviceLocation: formData.serviceLocation || undefined,
           serviceArea: formData.serviceArea || undefined,
           serviceAvailability: formData.serviceAvailability || undefined,
           serviceBookingRequired: formData.serviceBookingRequired,
-          serviceBookingLeadTime: formData.serviceBookingLeadTime !== undefined && formData.serviceBookingLeadTime !== '' ? Number(formData.serviceBookingLeadTime) : undefined,
+          serviceBookingLeadTime:
+            formData.serviceBookingLeadTime !== undefined && formData.serviceBookingLeadTime !== ''
+              ? Number(formData.serviceBookingLeadTime)
+              : undefined,
           serviceProviderName: formData.serviceProviderName || undefined,
           serviceProviderBio: formData.serviceProviderBio || undefined,
           serviceProviderImage: formData.serviceProviderImage || undefined,
           serviceProviderCredentials: formData.serviceProviderCredentials || [],
-          serviceMaxClients: formData.serviceMaxClients !== undefined && formData.serviceMaxClients !== '' ? Number(formData.serviceMaxClients) : undefined,
+          serviceMaxClients:
+            formData.serviceMaxClients !== undefined && formData.serviceMaxClients !== ''
+              ? Number(formData.serviceMaxClients)
+              : undefined,
           serviceCancellationPolicy: formData.serviceCancellationPolicy || undefined,
           serviceIncludes: formData.serviceIncludes || [],
           serviceExcludes: formData.serviceExcludes || [],
@@ -514,22 +619,52 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       if (formData.productType === 'RENTAL') {
         Object.assign(submitData, {
           rentalPeriodType: formData.rentalPeriodType || undefined,
-          rentalMinPeriod: formData.rentalMinPeriod !== undefined && formData.rentalMinPeriod !== '' ? Number(formData.rentalMinPeriod) : undefined,
-          rentalMaxPeriod: formData.rentalMaxPeriod !== undefined && formData.rentalMaxPeriod !== '' ? Number(formData.rentalMaxPeriod) : undefined,
-          rentalPriceHourly: formData.rentalPriceHourly !== undefined && formData.rentalPriceHourly !== '' ? Number(formData.rentalPriceHourly) : undefined,
-          rentalPriceDaily: formData.rentalPriceDaily !== undefined && formData.rentalPriceDaily !== '' ? Number(formData.rentalPriceDaily) : undefined,
-          rentalPriceWeekly: formData.rentalPriceWeekly !== undefined && formData.rentalPriceWeekly !== '' ? Number(formData.rentalPriceWeekly) : undefined,
-          rentalPriceMonthly: formData.rentalPriceMonthly !== undefined && formData.rentalPriceMonthly !== '' ? Number(formData.rentalPriceMonthly) : undefined,
-          rentalSecurityDeposit: formData.rentalSecurityDeposit !== undefined && formData.rentalSecurityDeposit !== '' ? Number(formData.rentalSecurityDeposit) : undefined,
+          rentalMinPeriod:
+            formData.rentalMinPeriod !== undefined && formData.rentalMinPeriod !== ''
+              ? Number(formData.rentalMinPeriod)
+              : undefined,
+          rentalMaxPeriod:
+            formData.rentalMaxPeriod !== undefined && formData.rentalMaxPeriod !== ''
+              ? Number(formData.rentalMaxPeriod)
+              : undefined,
+          rentalPriceHourly:
+            formData.rentalPriceHourly !== undefined && formData.rentalPriceHourly !== ''
+              ? Number(formData.rentalPriceHourly)
+              : undefined,
+          rentalPriceDaily:
+            formData.rentalPriceDaily !== undefined && formData.rentalPriceDaily !== ''
+              ? Number(formData.rentalPriceDaily)
+              : undefined,
+          rentalPriceWeekly:
+            formData.rentalPriceWeekly !== undefined && formData.rentalPriceWeekly !== ''
+              ? Number(formData.rentalPriceWeekly)
+              : undefined,
+          rentalPriceMonthly:
+            formData.rentalPriceMonthly !== undefined && formData.rentalPriceMonthly !== ''
+              ? Number(formData.rentalPriceMonthly)
+              : undefined,
+          rentalSecurityDeposit:
+            formData.rentalSecurityDeposit !== undefined && formData.rentalSecurityDeposit !== ''
+              ? Number(formData.rentalSecurityDeposit)
+              : undefined,
           rentalPickupLocation: formData.rentalPickupLocation || undefined,
           rentalDeliveryAvailable: formData.rentalDeliveryAvailable,
-          rentalDeliveryFee: formData.rentalDeliveryFee !== undefined && formData.rentalDeliveryFee !== '' ? Number(formData.rentalDeliveryFee) : undefined,
-          rentalLateReturnFee: formData.rentalLateReturnFee !== undefined && formData.rentalLateReturnFee !== '' ? Number(formData.rentalLateReturnFee) : undefined,
+          rentalDeliveryFee:
+            formData.rentalDeliveryFee !== undefined && formData.rentalDeliveryFee !== ''
+              ? Number(formData.rentalDeliveryFee)
+              : undefined,
+          rentalLateReturnFee:
+            formData.rentalLateReturnFee !== undefined && formData.rentalLateReturnFee !== ''
+              ? Number(formData.rentalLateReturnFee)
+              : undefined,
           rentalConditions: formData.rentalConditions || undefined,
           rentalAvailability: formData.rentalAvailability || undefined,
           rentalInsuranceRequired: formData.rentalInsuranceRequired,
           rentalInsuranceOptions: formData.rentalInsuranceOptions || undefined,
-          rentalAgeRequirement: formData.rentalAgeRequirement !== undefined && formData.rentalAgeRequirement !== '' ? Number(formData.rentalAgeRequirement) : undefined,
+          rentalAgeRequirement:
+            formData.rentalAgeRequirement !== undefined && formData.rentalAgeRequirement !== ''
+              ? Number(formData.rentalAgeRequirement)
+              : undefined,
           rentalIdRequired: formData.rentalIdRequired,
           rentalIncludes: formData.rentalIncludes || [],
           rentalExcludes: formData.rentalExcludes || [],
@@ -558,7 +693,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
     // Clear error for this field
     if (errors[field]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[field];
         return newErrors;
@@ -567,24 +702,27 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   };
 
   // Memoized callback to prevent infinite loop in EnhancedImageUpload
-  const handleImagesChange = useCallback((urls: string[]) => {
-    setFormData((prev: any) => ({ ...prev, images: urls }));
-    // Clear error for images field
-    if (errors.images) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.images;
-        return newErrors;
-      });
-    }
-  }, [errors.images]);
+  const handleImagesChange = useCallback(
+    (urls: string[]) => {
+      setFormData((prev: any) => ({ ...prev, images: urls }));
+      // Clear error for images field
+      if (errors.images) {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors.images;
+          return newErrors;
+        });
+      }
+    },
+    [errors.images]
+  );
 
   // Handle array field changes (colors, sizes, materials, badges)
   const handleArrayFieldAdd = (field: string, value: string) => {
     if (value.trim() && !formData[field].includes(value.trim())) {
       setFormData((prev: any) => ({
         ...prev,
-        [field]: [...prev[field], value.trim()]
+        [field]: [...prev[field], value.trim()],
       }));
     }
   };
@@ -592,7 +730,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const handleArrayFieldRemove = (field: string, value: string) => {
     setFormData((prev: any) => ({
       ...prev,
-      [field]: prev[field].filter((item: string) => item !== value)
+      [field]: prev[field].filter((item: string) => item !== value),
     }));
   };
 
@@ -604,17 +742,15 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   };
 
   const handleRemoveTag = (tag: string) => {
-    handleChange('tags', formData.tags?.filter((t: string) => t !== tag));
+    handleChange(
+      'tags',
+      formData.tags?.filter((t: string) => t !== tag)
+    );
   };
 
-
-
   // Helper component for error display
-  const ErrorMessage = ({ field }: { field: string }) => (
-    errors[field] ? (
-      <p className="mt-1 text-sm text-red-600">{errors[field]}</p>
-    ) : null
-  );
+  const ErrorMessage = ({ field }: { field: string }) =>
+    errors[field] ? <p className="mt-1 text-sm text-red-600">{errors[field]}</p> : null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -650,14 +786,19 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.slug ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="product-slug"
               />
-              <p className="text-xs text-gray-500 mt-1">Auto-generated from name, or customize it</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Auto-generated from name, or customize it
+              </p>
               <ErrorMessage field="slug" />
             </div>
             {/* SKU Field - Only visible when editing (read-only) */}
             {product?.sku && (
               <div id="sku">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  SKU <span className="text-xs font-normal text-gray-500 ml-2">(Auto-generated - Read only)</span>
+                  SKU{' '}
+                  <span className="text-xs font-normal text-gray-500 ml-2">
+                    (Auto-generated - Read only)
+                  </span>
                 </label>
                 <input
                   type="text"
@@ -676,7 +817,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <div className="col-span-2">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-700">
-                    <strong>ℹ️ SKU Generation:</strong> A unique SKU will be automatically generated after you create the product. Format: <strong>{inventorySettings.skuPrefix}-MM-DD-XXXXXX</strong>
+                    <strong>ℹ️ SKU Generation:</strong> A unique SKU will be automatically generated
+                    after you create the product. Format:{' '}
+                    <strong>{inventorySettings.skuPrefix}-MM-DD-XXXXXX</strong>
                   </p>
                 </div>
               </div>
@@ -692,12 +835,16 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="Enter product description"
             />
-            <p className="text-xs text-gray-500 mt-1">{formData.description?.length || 0}/5000 characters</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.description?.length || 0}/5000 characters
+            </p>
             <ErrorMessage field="description" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Short Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Short Description
+            </label>
             <input
               type="text"
               value={formData.shortDescription}
@@ -706,7 +853,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               placeholder="Brief one-line description"
               maxLength={150}
             />
-            <p className="text-xs text-gray-500 mt-1">Used in product cards and previews (max 150 characters)</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Used in product cards and previews (max 150 characters)
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -807,7 +956,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Pricing & Inventory
           {formData.purchaseType === 'INQUIRY' && (
-            <span className="ml-2 text-sm font-normal text-gray-500">(Optional for inquiry products)</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">
+              (Optional for inquiry products)
+            </span>
           )}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -823,13 +974,17 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 min="0"
                 step="0.01"
                 value={formData.price === undefined ? '' : formData.price}
-                onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : undefined)}
+                onChange={(e) =>
+                  handleChange('price', e.target.value ? parseFloat(e.target.value) : undefined)
+                }
                 className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.price ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder={formData.purchaseType === 'INQUIRY' ? 'Optional' : '0.00'}
               />
             </div>
             {formData.purchaseType === 'INQUIRY' && (
-              <p className="text-xs text-gray-500 mt-1">Leave empty if price varies or is negotiable</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Leave empty if price varies or is negotiable
+              </p>
             )}
             <ErrorMessage field="price" />
           </div>
@@ -843,7 +998,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 min="0"
                 step="0.01"
                 value={formData.compareAtPrice === undefined ? '' : formData.compareAtPrice}
-                onChange={(e) => handleChange('compareAtPrice', e.target.value ? parseFloat(e.target.value) : undefined)}
+                onChange={(e) =>
+                  handleChange(
+                    'compareAtPrice',
+                    e.target.value ? parseFloat(e.target.value) : undefined
+                  )
+                }
                 className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.compareAtPrice ? 'border-red-500' : 'border-gray-300'}`}
                 disabled={formData.purchaseType === 'INQUIRY'}
                 placeholder="0.00"
@@ -862,33 +1022,52 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               required={formData.purchaseType === 'INSTANT'}
               min="0"
               value={formData.stock === undefined ? '' : formData.stock}
-              onChange={(e) => handleChange('stock', e.target.value ? parseInt(e.target.value) : undefined)}
+              onChange={(e) =>
+                handleChange('stock', e.target.value ? parseInt(e.target.value) : undefined)
+              }
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.stock ? 'border-red-500' : 'border-gray-300'}`}
               placeholder={formData.purchaseType === 'INQUIRY' ? 'Optional' : '0'}
             />
             {formData.purchaseType === 'INQUIRY' && (
-              <p className="text-xs text-gray-500 mt-1">Not applicable for inquiry-based products</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Not applicable for inquiry-based products
+              </p>
             )}
             <ErrorMessage field="stock" />
             {/* Stock Level Indicator - only show for existing products with stock data */}
-            {product && formData.stock !== undefined && formData.stock !== null && formData.stock !== '' && formData.purchaseType !== 'INQUIRY' && (
-              <div className="mt-3">
-                <StockLevelIndicator stock={Number(formData.stock)} />
-              </div>
-            )}
+            {product &&
+              formData.stock !== undefined &&
+              formData.stock !== null &&
+              formData.stock !== '' &&
+              formData.purchaseType !== 'INQUIRY' && (
+                <div className="mt-3">
+                  <StockLevelIndicator stock={Number(formData.stock)} />
+                </div>
+              )}
           </div>
         </div>
 
         {formData.purchaseType === 'INQUIRY' && (
           <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <div>
                 <h4 className="text-sm font-semibold text-blue-900 mb-1">Inquiry Product</h4>
                 <p className="text-xs text-blue-800">
-                  This product will display "Contact for Price" instead of a price. Customers will submit an inquiry form to contact you about pricing and availability.
+                  This product will display "Contact for Price" instead of a price. Customers will
+                  submit an inquiry form to contact you about pricing and availability.
                 </p>
               </div>
             </div>
@@ -900,6 +1079,29 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Organization</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Store Selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Store <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={formData.storeId}
+              onChange={(e) => handleChange('storeId', e.target.value)}
+              disabled={loadingStores}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent disabled:bg-gray-100"
+            >
+              <option value="">{loadingStores ? 'Loading...' : 'Select store'}</option>
+              {stores.map((store) => (
+                <option key={store.id} value={store.id}>
+                  {store.name} ({store.user.email}) - {store._count.products} products
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Assign this product to a specific seller's store
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
             <select
@@ -958,7 +1160,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 className="px-3 py-1 bg-[#CBB57B] text-black rounded-full text-sm flex items-center gap-2"
               >
                 {tag}
-                <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:text-red-600">
+                <button
+                  type="button"
+                  onClick={() => handleRemoveTag(tag)}
+                  className="hover:text-red-600"
+                >
                   ×
                 </button>
               </span>
@@ -977,7 +1183,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             />
             <span className="text-sm font-medium text-gray-700">Feature this product</span>
           </label>
-          <p className="text-xs text-gray-500 mt-1 ml-6">Featured products appear prominently on the homepage</p>
+          <p className="text-xs text-gray-500 mt-1 ml-6">
+            Featured products appear prominently on the homepage
+          </p>
         </div>
       </div>
 
@@ -994,9 +1202,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           folder="products"
         />
 
-        {errors.images && (
-          <p className="mt-2 text-sm text-red-600">{errors.images}</p>
-        )}
+        {errors.images && <p className="mt-2 text-sm text-red-600">{errors.images}</p>}
       </div>
 
       {/* Product Attributes */}
@@ -1113,9 +1319,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
             {/* Materials */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Materials
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Materials</label>
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"
@@ -1166,9 +1370,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
             {/* Product Badges */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Badges
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Product Badges</label>
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"
@@ -1200,7 +1402,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               </div>
               <div className="flex flex-wrap gap-2">
                 {formData.badges.map((badge: any, index: number) => {
-                  const badgeValue = typeof badge === 'string' ? badge : badge?.name || String(badge);
+                  const badgeValue =
+                    typeof badge === 'string' ? badge : badge?.name || String(badge);
                   return (
                     <span
                       key={`badge-${index}-${badgeValue}`}
@@ -1224,17 +1427,15 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       )}
 
       {/* Product Variants */}
-      <VariantManager
-        productId={product?.id}
-        productPrice={formData.price}
-      />
+      <VariantManager productId={product?.id} productPrice={formData.price} />
 
       {/* Actions */}
       <div className="flex items-center justify-between gap-4 bg-white rounded-lg shadow p-6">
         <div className="text-sm text-gray-600">
           {Object.keys(errors).length > 0 && (
             <p className="text-red-600">
-              Please fix {Object.keys(errors).length} error{Object.keys(errors).length > 1 ? 's' : ''} above
+              Please fix {Object.keys(errors).length} error
+              {Object.keys(errors).length > 1 ? 's' : ''} above
             </p>
           )}
         </div>

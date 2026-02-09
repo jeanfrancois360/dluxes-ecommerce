@@ -251,7 +251,13 @@ export default function ProductForm({
       shortDescription: (product as any)?.shortDescription || '',
       price: product?.price || undefined,
       compareAtPrice: product?.compareAtPrice || undefined,
-      categoryId: product?.categoryId || product?.category || '',
+      // Extract category slug for backend (backend expects slug, not ID)
+      categoryId:
+        (product?.category &&
+          typeof product.category === 'object' &&
+          (product.category as any).slug) ||
+        (typeof product?.category === 'string' ? product.category : '') ||
+        '',
       images: initialImages,
       inventory: product?.inventory || product?.stock || undefined,
       status: product?.status || 'DRAFT',
@@ -426,7 +432,13 @@ export default function ProductForm({
         shortDescription: (product as any)?.shortDescription || '',
         price: product.price || undefined,
         compareAtPrice: product.compareAtPrice || undefined,
-        categoryId: product.categoryId || product.category || '',
+        // Extract category slug for backend (backend expects slug, not ID)
+        categoryId:
+          (product.category &&
+            typeof product.category === 'object' &&
+            (product.category as any).slug) ||
+          (typeof product.category === 'string' ? product.category : '') ||
+          '',
         images: imageArray,
         inventory: product.inventory || product.stock || undefined,
         status: product.status || 'DRAFT',

@@ -39,6 +39,10 @@ export class CreateProductDto {
   @IsString()
   categoryId?: string;
 
+  @IsOptional()
+  @IsString()
+  storeId?: string; // Admin can assign product to a specific store
+
   @IsOptional() // Optional for INQUIRY purchase type
   @Validate(RequiresPriceForInstantConstraint)
   @IsNumber()

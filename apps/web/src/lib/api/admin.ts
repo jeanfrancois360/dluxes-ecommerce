@@ -895,3 +895,26 @@ export const adminAnalyticsApi = {
     return response;
   },
 };
+
+// Store interface
+export interface AdminStore {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  verified: boolean;
+  user: {
+    email: string;
+  };
+  _count: {
+    products: number;
+  };
+}
+
+// Stores APIs
+export const adminStoresApi = {
+  async getAll(params?: { status?: string; search?: string }): Promise<AdminStore[]> {
+    const response = await api.get(`/admin/stores${buildQueryString(params)}`);
+    return response.data || [];
+  },
+};

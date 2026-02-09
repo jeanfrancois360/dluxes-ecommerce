@@ -287,9 +287,12 @@ export class ProductsService {
 
     const where: Prisma.ProductWhereInput = {};
 
-    // Only filter by status if explicitly provided
+    // Status filter: Default to ACTIVE for public endpoints, only show other statuses if explicitly requested
     if (status !== undefined && status !== null) {
       where.status = status;
+    } else {
+      // Default to ACTIVE status to hide DRAFT products from public views
+      where.status = 'ACTIVE';
     }
 
     // Category filter - lookup by slug
@@ -725,6 +728,11 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
+    // Only allow public access to ACTIVE products (sellers/admins can see their own drafts)
+    if (product.status !== ProductStatus.ACTIVE) {
+      throw new NotFoundException('Product not found');
+    }
+
     // Increment view count
     await this.prisma.product.update({
       where: { id: product.id },
@@ -813,6 +821,7 @@ export class ProductsService {
       sizes,
       materials,
       categoryId,
+      storeId, // Admin can assign product to a specific store
       purchaseType,
       price,
       inventory,
@@ -833,6 +842,17 @@ export class ProductsService {
     const finalInventory =
       inventory !== undefined ? inventory : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
 
+    // Validate category exists if provided
+    if (categoryId && categoryId.trim() !== '') {
+      const categoryExists = await this.prisma.category.findUnique({
+        where: { slug: categoryId },
+      });
+
+      if (!categoryExists) {
+        throw new NotFoundException(`Category with slug "${categoryId}" not found`);
+      }
+    }
+
     const product = await this.prisma.product.create({
       data: {
         ...productData,
@@ -845,14 +865,29 @@ export class ProductsService {
         colors: colors || [],
         sizes: sizes || [],
         materials: materials || [],
-        // Connect category using relation if provided (by slug)
-        ...(categoryId && {
-          category: {
-            connect: { slug: categoryId },
+        // Connect store relation if provided (admin assigns to store)
+        ...(storeId && {
+          store: {
+            connect: { id: storeId },
           },
         }),
+        // Connect category using relation if provided (by slug)
+        ...(categoryId &&
+          categoryId.trim() !== '' && {
+            category: {
+              connect: { slug: categoryId },
+            },
+          }),
       },
       include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+          },
+        },
         category: true,
         images: true,
         variants: true,
@@ -872,7 +907,7 @@ export class ProductsService {
   async update(id: string, updateProductDto: UpdateProductDto) {
     await this.findById(id); // Check if exists
 
-    const { badges, seoKeywords, colors, sizes, materials, categoryId, ...productData } =
+    const { badges, seoKeywords, colors, sizes, materials, categoryId, storeId, ...productData } =
       updateProductDto;
 
     const updateData: any = { ...productData };
@@ -883,14 +918,38 @@ export class ProductsService {
     if (sizes !== undefined) updateData.sizes = sizes;
     if (materials !== undefined) updateData.materials = materials;
 
+    // Handle store reassignment (admin can move product to different store)
+    if (storeId !== undefined) {
+      if (storeId) {
+        updateData.store = {
+          connect: { id: storeId },
+        };
+      } else {
+        // Disconnect store if storeId is null/empty (orphan product)
+        updateData.store = {
+          disconnect: true,
+        };
+      }
+    }
+
     // Handle category connection by slug
     if (categoryId !== undefined) {
-      if (categoryId) {
+      // Treat empty strings as falsy to disconnect category
+      if (categoryId && categoryId.trim() !== '') {
+        // Validate category exists before connecting
+        const categoryExists = await this.prisma.category.findUnique({
+          where: { slug: categoryId },
+        });
+
+        if (!categoryExists) {
+          throw new NotFoundException(`Category with slug "${categoryId}" not found`);
+        }
+
         updateData.category = {
           connect: { slug: categoryId },
         };
       } else {
-        // Disconnect category if categoryId is null/empty
+        // Disconnect category if categoryId is null/empty/whitespace
         updateData.category = {
           disconnect: true,
         };
@@ -901,6 +960,14 @@ export class ProductsService {
       where: { id },
       data: updateData,
       include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+          },
+        },
         category: true,
         images: true,
         variants: true,
