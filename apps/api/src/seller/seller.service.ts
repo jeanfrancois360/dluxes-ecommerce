@@ -1160,6 +1160,16 @@ export class SellerService {
     // ALWAYS auto-generate SKU (custom SKUs not allowed)
     const finalSKU = await this.generateSKU();
 
+    // Clean up empty string values that would cause Prisma foreign key errors
+    // Remove categoryId if it's empty string (Prisma will try to find category with "" ID and fail)
+    if (
+      productData.categoryId === '' ||
+      productData.categoryId === null ||
+      productData.categoryId === undefined
+    ) {
+      delete productData.categoryId;
+    }
+
     // Create product with seller's store ID
     const product = await this.prisma.product.create({
       data: {
