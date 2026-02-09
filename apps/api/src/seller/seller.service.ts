@@ -1163,19 +1163,53 @@ export class SellerService {
     // Clean up empty string values that would cause Prisma foreign key errors
     // Remove any field that is an empty string, null, or undefined
     // This prevents Prisma from trying to find related records with "" ID
+    this.logger.log('=== BEFORE CLEANUP ===');
+    this.logger.log(JSON.stringify(productData, null, 2));
+
     Object.keys(productData).forEach((key) => {
-      if (productData[key] === '' || productData[key] === null || productData[key] === undefined) {
+      const value = productData[key];
+
+      // Remove if value is empty, null, or undefined
+      if (value === '' || value === null || value === undefined) {
+        this.logger.log(`Removing field '${key}' with value: ${JSON.stringify(value)}`);
         delete productData[key];
+        return;
+      }
+
+      // Handle arrays - filter out empty strings
+      if (Array.isArray(value)) {
+        const filtered = value.filter((item) => item !== '' && item !== null && item !== undefined);
+        if (filtered.length === 0) {
+          // If array becomes empty after filtering, remove the field
+          this.logger.log(`Removing empty array field '${key}'`);
+          delete productData[key];
+        } else if (filtered.length !== value.length) {
+          // If we filtered out some items, update the array
+          this.logger.log(
+            `Cleaned array field '${key}': ${value.length} -> ${filtered.length} items`
+          );
+          productData[key] = filtered;
+        }
       }
     });
 
+    this.logger.log('=== AFTER CLEANUP ===');
+    this.logger.log(JSON.stringify(productData, null, 2));
+
     // Log data being sent to Prisma for debugging foreign key errors
-    this.logger.debug('Creating product with data:', {
-      ...productData,
-      sku: finalSKU,
-      storeId: store.id,
-      status: data.status || 'DRAFT',
-    });
+    this.logger.log('=== FINAL DATA FOR PRISMA ===');
+    this.logger.log(
+      JSON.stringify(
+        {
+          ...productData,
+          sku: finalSKU,
+          storeId: store.id,
+          status: data.status || 'DRAFT',
+        },
+        null,
+        2
+      )
+    );
 
     // Create product with seller's store ID
     let product;
@@ -1194,12 +1228,20 @@ export class SellerService {
       });
     } catch (error) {
       // Log detailed error for debugging
-      this.logger.error('Prisma create product error:', {
-        error: error.message,
-        code: error.code,
-        meta: error.meta,
-        productData: JSON.stringify(productData),
-      });
+      this.logger.error('=== PRISMA ERROR ===');
+      this.logger.error('Error message:', error.message);
+      this.logger.error('Error code:', error.code);
+      this.logger.error('Error meta:', JSON.stringify(error.meta, null, 2));
+      this.logger.error('Error stack:', error.stack);
+      this.logger.error('Product data that failed:', JSON.stringify(productData, null, 2));
+
+      // For P2003 (foreign key constraint), try to identify the field
+      if (error.code === 'P2003') {
+        const fieldName = error.meta?.field_name;
+        this.logger.error(`Foreign key constraint failed on field: ${fieldName}`);
+        this.logger.error(`Check if the value exists: ${productData[fieldName]}`);
+      }
+
       throw error;
     }
 
