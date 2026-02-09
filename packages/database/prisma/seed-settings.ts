@@ -955,14 +955,14 @@ const defaultSettings = [
   {
     key: 'email_verification_required',
     category: 'security',
-    value: false,
+    value: true,
     valueType: SettingValueType.BOOLEAN,
     label: 'Require Email Verification',
     description: 'Block login for users with unverified emails (excludes OAuth users)',
     isPublic: true,
     isEditable: true,
     requiresRestart: false,
-    defaultValue: false,
+    defaultValue: true,
   },
   {
     key: 'email_verification_grace_period_days',
