@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useCurrencyRates, useSelectedCurrency } from '@/hooks/use-currency';
 import { useLocale, languages, type LanguageOption } from '@/contexts/locale-context';
 import { useCart } from '@/hooks/use-cart';
+import Breadcrumbs from '@/components/shared/breadcrumbs';
 import {
   User,
   Settings,
@@ -157,8 +158,10 @@ export default function BuyerTopbar({
             </motion.div>
           </button>
 
-          {/* Page Title (optional - can be dynamic per page) */}
-          <h1 className="hidden lg:block text-lg font-semibold text-black">{t('title')}</h1>
+          {/* Breadcrumbs */}
+          <div className="hidden lg:block">
+            <Breadcrumbs homeHref="/dashboard/buyer" />
+          </div>
         </div>
 
         {/* Center Section: Quick Links (hidden on mobile) */}

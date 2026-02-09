@@ -1,0 +1,261 @@
+{
+  "adminCategories": {
+    "pageSubtitle": "Manage product categories and hierarchies"
+  },
+  "adminCustomers": {
+    "pageTitle": "Customers",
+    "pageDescription": "Manage customer accounts and information",
+    "actionsTitle": "Quick Actions",
+    "modals": {
+      "delete": {
+        "cancel": "Cancel",
+        "processing": "Processing...",
+        "title": "Delete Customer",
+        "message": "Are you sure you want to delete {name}? This action cannot be undone.",
+        "confirm": "Delete Customer"
+      },
+      "suspend": {
+        "title": "Suspend Customer",
+        "message": "Are you sure you want to suspend {name}? They will not be able to access their account.",
+        "confirm": "Suspend Customer"
+      },
+      "bulkSuspend": {
+        "title": "Suspend Customers",
+        "message": "Are you sure you want to suspend {count} customer?",
+        "messagePlural": "Are you sure you want to suspend {count} customers?",
+        "confirm": "Suspend {count} Customer",
+        "confirmPlural": "Suspend {count} Customers"
+      }
+    },
+    "buttons": {
+      "export": "Export",
+      "view": "View",
+      "suspend": "Suspend",
+      "activate": "Activate",
+      "delete": "Delete",
+      "email": "Email",
+      "clearSelection": "Clear Selection"
+    },
+    "filters": {
+      "title": "Filters",
+      "searchPlaceholder": "Search by name or email...",
+      "allRoles": "All Roles",
+      "allStatus": "All Status",
+      "allSegments": "All Segments",
+      "clear": "Clear ({count})",
+      "roles": {
+        "customers": "Customers",
+        "sellers": "Sellers",
+        "deliveryPartners": "Delivery Partners",
+        "admins": "Admins"
+      },
+      "status": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "inactive": "Inactive"
+      },
+      "segments": {
+        "vip": "VIP",
+        "regular": "Regular",
+        "new": "New",
+        "atRisk": "At Risk"
+      },
+      "sortBy": {
+        "newestFirst": "Newest First",
+        "oldestFirst": "Oldest First",
+        "highestSpend": "Highest Spend",
+        "lowestSpend": "Lowest Spend",
+        "mostOrders": "Most Orders",
+        "recentActivity": "Recent Activity",
+        "nameAZ": "Name (A-Z)",
+        "nameZA": "Name (Z-A)"
+      },
+      "activePills": {
+        "search": "Search: \"{query}\"",
+        "role": "Role: {role}",
+        "status": "Status: {status}",
+        "segment": "Segment: {segment}",
+        "sort": "Sort: {sort}"
+      }
+    },
+    "stats": {
+      "title": "Statistics",
+      "totalCustomers": "Total Customers",
+      "newThisMonth": "New This Month",
+      "vipCustomers": "VIP Customers",
+      "totalRevenue": "Total Revenue",
+      "growth": "{percent}% from last month",
+      "vipThreshold": "$1,000+ lifetime spend"
+    },
+    "table": {
+      "title": "All Customers",
+      "loading": "Loading customers...",
+      "noCustomers": "No customers found",
+      "vipBadge": "VIP",
+      "headers": {
+        "customer": "Customer",
+        "email": "Email",
+        "orders": "Orders",
+        "totalSpent": "Total Spent",
+        "status": "Status",
+        "joinDate": "Join Date",
+        "actions": "Actions"
+      }
+    },
+    "pagination": {
+      "showing": "Showing {from} to {to} of {total}",
+      "page": "Page {current} of {total}",
+      "previous": "Previous",
+      "next": "Next",
+      "perPage": {
+        "10": "10 per page",
+        "25": "25 per page",
+        "50": "50 per page",
+        "100": "100 per page"
+      }
+    },
+    "bulkActions": {
+      "selected": "{count} customer selected",
+      "selectedPlural": "{count} customers selected"
+    },
+    "export": {
+      "filename": "customers-export.csv",
+      "selectedFilename": "customers-export-{count}-selected.csv",
+      "headers": {
+        "name": "Name",
+        "email": "Email",
+        "totalOrders": "Total Orders",
+        "totalSpent": "Total Spent",
+        "status": "Status",
+        "joinDate": "Join Date"
+      }
+    },
+    "toasts": {
+      "deleteSuccess": "Customer deleted successfully",
+      "deleteFailed": "Failed to delete customer",
+      "suspendSuccess": "Customer suspended successfully",
+      "suspendFailed": "Failed to suspend customer",
+      "activateSuccess": "Customer activated successfully",
+      "activateFailed": "Failed to activate customer",
+      "bulkSuspendSuccess": "Suspended {count} customers successfully",
+      "bulkSuspendFailed": "Failed to suspend customers",
+      "bulkActivateSuccess": "Activated {count} customers successfully",
+      "bulkActivateFailed": "Failed to activate customers"
+    }
+  },
+  "adminOrders": {
+    "pageTitle": "Orders",
+    "pageDescription": "Manage and track all customer orders",
+    "filters": {
+      "searchPlaceholder": "Search by order number, customer...",
+      "allStatus": "All Status",
+      "allPayments": "All Payments",
+      "allTime": "All Time",
+      "clear": "Clear ({count})",
+      "status": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "processing": "Processing",
+        "shipped": "Shipped",
+        "delivered": "Delivered",
+        "cancelled": "Cancelled"
+      },
+      "payment": {
+        "pending": "Pending",
+        "paid": "Paid",
+        "failed": "Failed",
+        "refunded": "Refunded"
+      },
+      "dateRange": {
+        "today": "Today",
+        "7days": "Last 7 Days",
+        "30days": "Last 30 Days"
+      },
+      "sortBy": {
+        "newestFirst": "Newest First",
+        "oldestFirst": "Oldest First",
+        "amountHighToLow": "Amount (High to Low)",
+        "amountLowToHigh": "Amount (Low to High)"
+      },
+      "activePills": {
+        "search": "Search: \"{query}\"",
+        "status": "Status: {status}",
+        "payment": "Payment: {payment}",
+        "date": "Date: {date}",
+        "sort": "Sort: {sort}"
+      }
+    },
+    "stats": {
+      "totalOrders": "Total Orders",
+      "totalRevenue": "Total Revenue",
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "awaitingAction": "Awaiting Action"
+    },
+    "table": {
+      "loading": "Loading orders...",
+      "noOrders": "No orders found",
+      "tryAdjusting": "Try adjusting your filters",
+      "guestCustomer": "Guest Customer",
+      "noEmail": "No email provided",
+      "itemCount": "{count} item",
+      "itemCountPlural": "{count} items",
+      "headers": {
+        "order": "Order",
+        "customer": "Customer",
+        "date": "Date",
+        "items": "Items",
+        "total": "Total",
+        "payment": "Payment",
+        "status": "Status",
+        "actions": "Actions"
+      }
+    },
+    "buttons": {
+      "view": "View",
+      "export": "Export",
+      "printInvoices": "Print Invoices",
+      "clearSelection": "Clear Selection"
+    },
+    "bulkActions": {
+      "selected": "{count} order selected",
+      "selectedPlural": "{count} orders selected"
+    },
+    "pagination": {
+      "showing": "Showing {from} to {to} of {total}",
+      "page": "Page {current} of {total}",
+      "previous": "Previous",
+      "next": "Next",
+      "perPage": {
+        "10": "10 per page",
+        "25": "25 per page",
+        "50": "50 per page",
+        "100": "100 per page"
+      }
+    },
+    "export": {
+      "filename": "orders-export.csv",
+      "selectedFilename": "orders-export-{count}-selected.csv",
+      "headers": {
+        "orderNumber": "Order Number",
+        "customer": "Customer",
+        "email": "Email",
+        "date": "Date",
+        "items": "Items",
+        "total": "Total",
+        "payment": "Payment",
+        "status": "Status"
+      }
+    },
+    "modals": {
+      "printInvoices": {
+        "comingSoon": "Bulk invoice printing coming soon!"
+      }
+    }
+  },
+  "adminPayouts": {
+    "title": "Seller Payouts",
+    "description": "Manage seller payouts and commissions"
+  }
+}
