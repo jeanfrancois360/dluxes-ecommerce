@@ -33,43 +33,70 @@ export function PayPalPayment({
   useEffect(() => {
     // For now, using the client ID directly from env
     // In production, you should fetch this from your backend
-    const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || 'AdKthQphKNhUNoHOdzNp2rxM0a_USh28cEOUEUFpAYz0oJo36VvV1YMaCdVgfbpVQdfaEaXGR0gTLYdD';
+    const paypalClientId =
+      process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
+      'AdKthQphKNhUNoHOdzNp2rxM0a_USh28cEOUEUFpAYz0oJo36VvV1YMaCdVgfbpVQdfaEaXGR0gTLYdD';
     setClientId(paypalClientId);
     setIsLoadingClientId(false);
   }, []);
 
   const handleCreateOrder = async () => {
     try {
+      console.log('[PayPal] Creating order with data:', {
+        orderId,
+        amount,
+        currency,
+        itemCount: items?.length,
+        hasShippingAddress: !!shippingAddress,
+      });
+
       // Create PayPal order on backend
-      const response = await api.post<{ success: boolean; data: { orderId: string; approvalUrl: string } }>(
-        '/payment/paypal/create-order',
-        {
-          orderId,
-          amount,
-          currency,
-          items,
-          shippingAddress,
-        }
-      );
+      const response = await api.post<{
+        success: boolean;
+        data: { orderId: string; approvalUrl: string };
+        message?: string;
+      }>('/payment/paypal/create-order', {
+        orderId,
+        amount,
+        currency,
+        items,
+        shippingAddress,
+      });
+
+      console.log('[PayPal] Backend response:', response);
 
       if (!response.success || !response.data) {
-        throw new Error('Failed to create PayPal order');
+        const errorMessage = response.message || 'Failed to create PayPal order';
+        console.error('[PayPal] Order creation failed:', errorMessage);
+        throw new Error(errorMessage);
       }
 
+      console.log('[PayPal] Order created successfully:', response.data.orderId);
       return response.data.orderId; // Return PayPal order ID
     } catch (error: any) {
-      console.error('PayPal order creation failed:', error);
-      onError(error.message || 'Failed to create PayPal order');
-      throw error;
+      console.error('[PayPal] Order creation error:', {
+        message: error.message,
+        data: error.data,
+        status: error.status,
+        fullError: error,
+      });
+
+      // APIError has error.data, not error.response.data
+      const errorMessage = error.data?.message || error.message || 'Failed to create PayPal order';
+      console.error('[PayPal] Extracted error message:', errorMessage);
+      onError(errorMessage);
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
   const handleApprove = async (data: any) => {
     try {
       // Capture the payment on backend
-      const response = await api.post<{ success: boolean; data: { success: boolean; orderId: string; transactionId: string } }>(
-        `/payment/paypal/capture/${data.orderID}`
-      );
+      const response = await api.post<{
+        success: boolean;
+        data: { success: boolean; orderId: string; transactionId: string };
+      }>(`/payment/paypal/capture/${data.orderID}`);
 
       if (!response.success || !response.data?.success) {
         throw new Error('Failed to capture PayPal payment');
@@ -94,11 +121,7 @@ export function PayPalPayment({
     return (
       <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
         <div className="flex flex-col items-center justify-center py-12">
-          <svg
-            className="animate-spin h-12 w-12 text-gold mb-4"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
+          <svg className="animate-spin h-12 w-12 text-gold mb-4" fill="none" viewBox="0 0 24 24">
             <circle
               className="opacity-25"
               cx="12"
@@ -137,7 +160,9 @@ export function PayPalPayment({
             />
           </svg>
           <h3 className="text-lg font-semibold text-red-900 mb-2">PayPal Not Configured</h3>
-          <p className="text-red-700">PayPal payments are currently unavailable. Please use card payment.</p>
+          <p className="text-red-700">
+            PayPal payments are currently unavailable. Please use card payment.
+          </p>
           {onBack && (
             <button
               onClick={onBack}
@@ -209,7 +234,8 @@ export function PayPalPayment({
           <div className="text-sm text-blue-900">
             <p className="font-medium mb-1">Secure Payment with PayPal</p>
             <p className="text-blue-700">
-              Your payment information is protected by PayPal's secure encryption. We never see or store your PayPal credentials.
+              Your payment information is protected by PayPal's secure encryption. We never see or
+              store your PayPal credentials.
             </p>
           </div>
         </div>
