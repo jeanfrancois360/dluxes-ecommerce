@@ -51,28 +51,25 @@ export function PayPalPayment({
       });
 
       // Create PayPal order on backend
-      const response = await api.post<{
-        success: boolean;
-        data: { orderId: string; approvalUrl: string };
-        message?: string;
-      }>('/payment/paypal/create-order', {
-        orderId,
-        amount,
-        currency,
-        items,
-        shippingAddress,
-      });
+      const response = await api.post<{ orderId: string; approvalUrl: string }>(
+        '/payment/paypal/create-order',
+        {
+          orderId,
+          amount,
+          currency,
+          items,
+          shippingAddress,
+        }
+      );
 
       console.log('[PayPal] Backend response:', response);
 
-      if (!response.success || !response.data) {
-        const errorMessage = response.message || 'Failed to create PayPal order';
-        console.error('[PayPal] Order creation failed:', errorMessage);
-        throw new Error(errorMessage);
+      if (!response.orderId || !response.approvalUrl) {
+        throw new Error('Failed to create PayPal order - missing order ID or approval URL');
       }
 
-      console.log('[PayPal] Order created successfully:', response.data.orderId);
-      return response.data.orderId; // Return PayPal order ID
+      console.log('[PayPal] Order created successfully:', response.orderId);
+      return response.orderId; // Return PayPal order ID
     } catch (error: any) {
       console.error('[PayPal] Order creation error:', {
         message: error.message,
