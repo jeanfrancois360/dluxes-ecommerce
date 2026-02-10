@@ -117,16 +117,7 @@ export class PayPalService {
             amount: {
               currency_code: data.currency.toUpperCase(),
               value: data.amount.toFixed(2),
-              breakdown: data.items
-                ? {
-                    item_total: {
-                      currency_code: data.currency.toUpperCase(),
-                      value: data.items
-                        .reduce((sum, item) => sum + item.price * item.quantity, 0)
-                        .toFixed(2),
-                    },
-                  }
-                : undefined,
+              // No breakdown - total amount includes items + tax + shipping
             },
             items: data.items?.map((item) => ({
               name: item.name,
