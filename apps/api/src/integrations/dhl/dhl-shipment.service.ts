@@ -109,27 +109,27 @@ export class DhlShipmentService {
 
   // DHL product code descriptions
   private readonly productCodes: Record<string, string> = {
-    'P': 'DHL Express Worldwide',
-    'U': 'DHL Express Worldwide',
-    'D': 'DHL Express Worldwide Document',
-    'K': 'DHL Express 9:00',
-    'L': 'DHL Express 10:30',
-    'Y': 'DHL Express 12:00',
-    'N': 'DHL Express Domestic',
-    'G': 'DHL Express Domestic Economy',
-    'W': 'DHL Express Economy Select',
-    'I': 'DHL Express Domestic 9:00',
+    P: 'DHL Express Worldwide',
+    U: 'DHL Express Worldwide',
+    D: 'DHL Express Worldwide Document',
+    K: 'DHL Express 9:00',
+    L: 'DHL Express 10:30',
+    Y: 'DHL Express 12:00',
+    N: 'DHL Express Domestic',
+    G: 'DHL Express Domestic Economy',
+    W: 'DHL Express Economy Select',
+    I: 'DHL Express Domestic 9:00',
   };
 
   constructor(
     private readonly configService: ConfigService,
     private readonly settingsService: SettingsService,
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService
   ) {
     this.apiClient = axios.create({
       timeout: 60000, // 60 seconds for shipment creation
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
       },
     });
@@ -196,22 +196,17 @@ export class DhlShipmentService {
     if (!credentials) {
       throw new HttpException(
         'DHL Express API is not configured. Please set DHL_EXPRESS_API_KEY and DHL_EXPRESS_API_SECRET.',
-        HttpStatus.SERVICE_UNAVAILABLE,
+        HttpStatus.SERVICE_UNAVAILABLE
       );
     }
 
     const { apiKey, apiSecret } = credentials;
     const accountNumber = this.getAccountNumber();
-
-    if (!accountNumber) {
-      throw new HttpException(
-        'DHL account number is required for shipment creation. Please set DHL_ACCOUNT_NUMBER.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const baseUrl = await this.getApiBaseUrl();
+    const isSandbox = baseUrl.includes('/test');
 
     // Build shipment payload according to DHL API specification
-    const payload = {
+    const payload: any = {
       plannedShippingDateAndTime: `${request.plannedShippingDate}T10:00:00 GMT+00:00`,
       pickup: {
         isRequested: false, // Can be changed to true if pickup is needed
@@ -220,82 +215,86 @@ export class DhlShipmentService {
       localProductCode: request.productCode,
       accounts: [
         {
+          // Use 'shipper' when shipping FROM Belgium (account country)
           typeCode: 'shipper',
-          number: accountNumber,
+          number: accountNumber || '123456789',
         },
       ],
-      customerDetails: {
-        shipperDetails: {
-          postalAddress: {
-            postalCode: request.shipperAddress.postalCode,
-            cityName: request.shipperAddress.city,
-            countryCode: request.shipperAddress.countryCode,
-            addressLine1: request.shipperAddress.addressLine1,
-            addressLine2: request.shipperAddress.addressLine2,
-            addressLine3: request.shipperAddress.addressLine3,
-            provinceCode: request.shipperAddress.stateOrProvince,
-          },
-          contactInformation: {
-            phone: request.shipperAddress.phone || '',
-            companyName: request.shipperAddress.company || request.shipperAddress.name,
-            fullName: request.shipperAddress.name,
-            email: request.shipperAddress.email,
-          },
-        },
-        receiverDetails: {
-          postalAddress: {
-            postalCode: request.receiverAddress.postalCode,
-            cityName: request.receiverAddress.city,
-            countryCode: request.receiverAddress.countryCode,
-            addressLine1: request.receiverAddress.addressLine1,
-            addressLine2: request.receiverAddress.addressLine2,
-            addressLine3: request.receiverAddress.addressLine3,
-            provinceCode: request.receiverAddress.stateOrProvince,
-          },
-          contactInformation: {
-            phone: request.receiverAddress.phone || '',
-            companyName: request.receiverAddress.company || request.receiverAddress.name,
-            fullName: request.receiverAddress.name,
-            email: request.receiverAddress.email,
-          },
-        },
-      },
-      content: {
-        packages: request.packages.map((pkg, index) => ({
-          weight: pkg.weight,
-          dimensions: {
-            length: pkg.length,
-            width: pkg.width,
-            height: pkg.height,
-          },
-          customerReferences: pkg.customerReferences || [
-            { value: request.customerReference || `PKG-${index + 1}` },
-          ],
-        })),
-        isCustomsDeclarable: request.shipperAddress.countryCode !== request.receiverAddress.countryCode,
-        description: request.description,
-        incoterm: request.incoterm || 'DAP',
-        unitOfMeasurement: 'metric',
-      },
-      outputImageProperties: {
-        printerDPI: 300,
-        encodingFormat: request.labelFormat || 'PDF',
-        imageOptions: [
-          {
-            typeCode: 'label',
-            templateName: request.labelTemplate || 'ECOM26_84_001',
-          },
-          {
-            typeCode: 'waybillDoc',
-            templateName: 'ARCH_8X4_A4_002',
-            isRequested: true,
-          },
-        ],
-      },
-      customerReferences: request.customerReference
-        ? [{ value: request.customerReference, typeCode: 'CU' }]
-        : undefined,
     };
+
+    payload.customerDetails = {
+      shipperDetails: {
+        postalAddress: {
+          postalCode: request.shipperAddress.postalCode,
+          cityName: request.shipperAddress.city,
+          countryCode: request.shipperAddress.countryCode,
+          addressLine1: request.shipperAddress.addressLine1,
+          addressLine2: request.shipperAddress.addressLine2,
+          addressLine3: request.shipperAddress.addressLine3,
+          provinceCode: request.shipperAddress.stateOrProvince,
+        },
+        contactInformation: {
+          phone: request.shipperAddress.phone || '',
+          companyName: request.shipperAddress.company || request.shipperAddress.name,
+          fullName: request.shipperAddress.name,
+          email: request.shipperAddress.email,
+        },
+      },
+      receiverDetails: {
+        postalAddress: {
+          postalCode: request.receiverAddress.postalCode,
+          cityName: request.receiverAddress.city,
+          countryCode: request.receiverAddress.countryCode,
+          addressLine1: request.receiverAddress.addressLine1,
+          addressLine2: request.receiverAddress.addressLine2,
+          addressLine3: request.receiverAddress.addressLine3,
+          provinceCode: request.receiverAddress.stateOrProvince,
+        },
+        contactInformation: {
+          phone: request.receiverAddress.phone || '',
+          companyName: request.receiverAddress.company || request.receiverAddress.name,
+          fullName: request.receiverAddress.name,
+          email: request.receiverAddress.email,
+        },
+      },
+    };
+
+    payload.content = {
+      packages: request.packages.map((pkg, index) => ({
+        weight: pkg.weight,
+        dimensions: {
+          length: pkg.length,
+          width: pkg.width,
+          height: pkg.height,
+        },
+        customerReferences: pkg.customerReferences || [
+          { value: request.customerReference || `PKG-${index + 1}` },
+        ],
+      })),
+      isCustomsDeclarable:
+        request.shipperAddress.countryCode !== request.receiverAddress.countryCode,
+      description: request.description,
+      incoterm: request.incoterm || 'DAP',
+      unitOfMeasurement: 'metric',
+    };
+
+    payload.outputImageProperties = {
+      imageOptions: [
+        {
+          typeCode: 'label',
+          templateName: request.labelTemplate || 'ECOM26_84_001',
+        },
+        {
+          typeCode: 'waybillDoc',
+          templateName: 'ARCH_8X4_A4_002',
+          isRequested: true,
+        },
+      ],
+    };
+
+    payload.customerReferences = request.customerReference
+      ? [{ value: request.customerReference, typeCode: 'CU' }]
+      : undefined;
 
     // Add declared value if provided (for customs)
     if (request.declaredValue && request.declaredValue > 0) {
@@ -305,19 +304,16 @@ export class DhlShipmentService {
 
     try {
       const authToken = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
-      const baseUrl = await this.getApiBaseUrl();
 
-      this.logger.debug(`Creating DHL shipment: ${request.shipperAddress.countryCode} → ${request.receiverAddress.countryCode}`);
-
-      const response = await this.apiClient.post(
-        `${baseUrl}/shipments`,
-        payload,
-        {
-          headers: {
-            'Authorization': `Basic ${authToken}`,
-          },
-        },
+      this.logger.debug(
+        `Creating DHL shipment: ${request.shipperAddress.countryCode} → ${request.receiverAddress.countryCode}`
       );
+
+      const response = await this.apiClient.post(`${baseUrl}/shipments`, payload, {
+        headers: {
+          Authorization: `Basic ${authToken}`,
+        },
+      });
 
       const data = response.data;
 
@@ -326,57 +322,68 @@ export class DhlShipmentService {
         shipmentTrackingNumber: data.shipmentTrackingNumber,
         trackingUrl: `https://www.dhl.com/en/express/tracking.html?AWB=${data.shipmentTrackingNumber}&brand=DHL`,
         dispatchConfirmationNumber: data.dispatchConfirmationNumber,
-        packages: data.packages?.map((pkg: any) => ({
-          trackingNumber: pkg.trackingNumber,
-          referenceNumber: pkg.referenceNumber,
-        })) || [],
-        documents: data.documents?.map((doc: any) => ({
-          typeCode: doc.typeCode,
-          content: doc.content,
-          format: doc.format || 'PDF',
-        })) || [],
+        packages:
+          data.packages?.map((pkg: any) => ({
+            trackingNumber: pkg.trackingNumber,
+            referenceNumber: pkg.referenceNumber,
+          })) || [],
+        documents:
+          data.documents?.map((doc: any) => ({
+            typeCode: doc.typeCode,
+            content: doc.content,
+            format: doc.format || 'PDF',
+          })) || [],
         estimatedDeliveryDate: data.estimatedDeliveryDate?.estimatedDeliveryDate,
-        totalPrice: data.shipmentCharges?.[0] ? {
-          price: data.shipmentCharges[0].price,
-          currency: data.shipmentCharges[0].currencyType,
-        } : undefined,
+        totalPrice: data.shipmentCharges?.[0]
+          ? {
+              price: data.shipmentCharges[0].price,
+              currency: data.shipmentCharges[0].currencyType,
+            }
+          : undefined,
       };
 
       this.logger.log(`DHL shipment created successfully: ${result.shipmentTrackingNumber}`);
       return result;
-
     } catch (error: any) {
       this.logger.error('DHL Shipment API error:', error.response?.data || error.message);
 
       if (error.response?.status === 401 || error.response?.status === 403) {
-        throw new HttpException(
-          'Invalid DHL API credentials.',
-          HttpStatus.UNAUTHORIZED,
-        );
+        throw new HttpException('Invalid DHL API credentials.', HttpStatus.UNAUTHORIZED);
       }
 
       if (error.response?.status === 400) {
-        const errorDetail = error.response?.data?.detail ||
+        const errorDetail =
+          error.response?.data?.detail ||
           error.response?.data?.message ||
           error.response?.data?.additionalDetails?.[0]?.message ||
           'Invalid shipment request';
-        throw new HttpException(
-          `DHL API error: ${errorDetail}`,
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new HttpException(`DHL API error: ${errorDetail}`, HttpStatus.BAD_REQUEST);
       }
 
       if (error.response?.status === 422) {
-        const errorDetail = error.response?.data?.detail || 'Validation error';
+        const detail = error.response?.data?.detail || 'Validation error';
+        const additionalDetails = error.response?.data?.additionalDetails || [];
+
+        // Format additional validation errors
+        const detailedErrors = additionalDetails
+          .map((err: any, index: number) => `${index + 1}. ${err.message || JSON.stringify(err)}`)
+          .join('\n');
+
+        const fullErrorMessage = detailedErrors
+          ? `${detail}\n\nDetails:\n${detailedErrors}`
+          : detail;
+
+        this.logger.error('DHL Validation Error:', fullErrorMessage);
+
         throw new HttpException(
-          `DHL validation error: ${errorDetail}`,
-          HttpStatus.UNPROCESSABLE_ENTITY,
+          `DHL validation error: ${fullErrorMessage}`,
+          HttpStatus.UNPROCESSABLE_ENTITY
         );
       }
 
       throw new HttpException(
         `Failed to create DHL shipment: ${error.response?.data?.detail || error.message}`,
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
@@ -391,10 +398,7 @@ export class DhlShipmentService {
     const credentials = this.getApiCredentials();
 
     if (!credentials) {
-      throw new HttpException(
-        'DHL Express API is not configured.',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException('DHL Express API is not configured.', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     const { apiKey, apiSecret } = credentials;
@@ -405,38 +409,31 @@ export class DhlShipmentService {
 
       this.logger.debug(`Cancelling DHL shipment: ${trackingNumber}`);
 
-      await this.apiClient.delete(
-        `${baseUrl}/shipments/${trackingNumber}`,
-        {
-          headers: {
-            'Authorization': `Basic ${authToken}`,
-          },
+      await this.apiClient.delete(`${baseUrl}/shipments/${trackingNumber}`, {
+        headers: {
+          Authorization: `Basic ${authToken}`,
         },
-      );
+      });
 
       this.logger.log(`DHL shipment cancelled: ${trackingNumber}`);
       return true;
-
     } catch (error: any) {
       this.logger.error('DHL Cancel Shipment error:', error.response?.data || error.message);
 
       if (error.response?.status === 404) {
-        throw new HttpException(
-          'Shipment not found or already cancelled.',
-          HttpStatus.NOT_FOUND,
-        );
+        throw new HttpException('Shipment not found or already cancelled.', HttpStatus.NOT_FOUND);
       }
 
       if (error.response?.status === 400) {
         throw new HttpException(
           'Shipment cannot be cancelled (may have been picked up).',
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
 
       throw new HttpException(
         `Failed to cancel DHL shipment: ${error.message}`,
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
@@ -451,10 +448,7 @@ export class DhlShipmentService {
     const credentials = this.getApiCredentials();
 
     if (!credentials) {
-      throw new HttpException(
-        'DHL Express API is not configured.',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException('DHL Express API is not configured.', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     const { apiKey, apiSecret } = credentials;
@@ -463,7 +457,7 @@ export class DhlShipmentService {
     if (!accountNumber) {
       throw new HttpException(
         'DHL account number is required for pickup requests.',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -493,7 +487,7 @@ export class DhlShipmentService {
           },
         },
       },
-      shipmentDetails: request.packages.map(pkg => ({
+      shipmentDetails: request.packages.map((pkg) => ({
         productCode: 'P',
         isCustomsDeclarable: false,
         unitOfMeasurement: 'metric',
@@ -515,15 +509,11 @@ export class DhlShipmentService {
 
       this.logger.debug(`Requesting DHL pickup for ${request.plannedPickupDate}`);
 
-      const response = await this.apiClient.post(
-        `${baseUrl}/pickups`,
-        payload,
-        {
-          headers: {
-            'Authorization': `Basic ${authToken}`,
-          },
+      const response = await this.apiClient.post(`${baseUrl}/pickups`, payload, {
+        headers: {
+          Authorization: `Basic ${authToken}`,
         },
-      );
+      });
 
       const data = response.data;
 
@@ -534,13 +524,12 @@ export class DhlShipmentService {
         readyByTime: data.readyByTime,
         callInTime: data.callInTime,
       };
-
     } catch (error: any) {
       this.logger.error('DHL Pickup API error:', error.response?.data || error.message);
 
       throw new HttpException(
         `Failed to request DHL pickup: ${error.response?.data?.detail || error.message}`,
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
@@ -556,10 +545,7 @@ export class DhlShipmentService {
     const credentials = this.getApiCredentials();
 
     if (!credentials) {
-      throw new HttpException(
-        'DHL Express API is not configured.',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      throw new HttpException('DHL Express API is not configured.', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     const { apiKey, apiSecret } = credentials;
@@ -568,30 +554,26 @@ export class DhlShipmentService {
       const authToken = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
       const baseUrl = await this.getApiBaseUrl();
 
-      const response = await this.apiClient.get(
-        `${baseUrl}/shipments/${trackingNumber}/image`,
-        {
-          headers: {
-            'Authorization': `Basic ${authToken}`,
-          },
-          params: {
-            typeCode: 'label',
-            encodingFormat: 'PDF',
-          },
+      const response = await this.apiClient.get(`${baseUrl}/shipments/${trackingNumber}/image`, {
+        headers: {
+          Authorization: `Basic ${authToken}`,
         },
-      );
+        params: {
+          typeCode: 'label',
+          encodingFormat: 'PDF',
+        },
+      });
 
       return {
         content: response.data.documents?.[0]?.content || '',
         format: 'PDF',
       };
-
     } catch (error: any) {
       this.logger.error('DHL Get Label error:', error.response?.data || error.message);
 
       throw new HttpException(
         `Failed to retrieve DHL label: ${error.message}`,
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
