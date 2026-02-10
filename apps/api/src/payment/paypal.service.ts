@@ -119,14 +119,8 @@ export class PayPalService {
               value: data.amount.toFixed(2),
               // No breakdown - total amount includes items + tax + shipping
             },
-            items: data.items?.map((item) => ({
-              name: item.name,
-              unit_amount: {
-                currency_code: data.currency.toUpperCase(),
-                value: item.price.toFixed(2),
-              },
-              quantity: item.quantity.toString(),
-            })),
+            // Items array removed - PayPal requires breakdown if items are provided
+            // We send just the total amount for simplicity
             shipping: data.shippingAddress
               ? {
                   name: {
