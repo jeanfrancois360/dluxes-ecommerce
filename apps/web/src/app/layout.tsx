@@ -9,6 +9,7 @@ import { LocaleProvider } from '@/contexts/locale-context';
 import { RouteLoadingProvider } from '@/components/providers/route-loading-provider';
 import { ToastListener } from '@/components/toast-listener';
 import { WhatsAppChat } from '@/components/whatsapp-chat';
+import { VersionChecker } from '@/components/version-checker';
 import { Toaster } from 'sonner';
 import { siteConfig } from '@/lib/seo';
 import './globals.css';
@@ -101,16 +102,17 @@ export const viewport: Viewport = {
   themeColor: '#ffffff',
 };
 
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   const messages = await getMessages();
 
   return (
-    <html lang={locale} suppressHydrationWarning data-scroll-behavior="smooth" className={`${poppins.variable} overflow-x-hidden`}>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      data-scroll-behavior="smooth"
+      className={`${poppins.variable} overflow-x-hidden`}
+    >
       <head>
         {/* Preconnect to critical origins */}
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'} />
@@ -136,6 +138,7 @@ export default async function RootLayout({
                 <CartProvider>
                   <WishlistProvider>
                     {children}
+                    <VersionChecker />
                     <Toaster
                       position="top-right"
                       theme="dark"
@@ -146,8 +149,13 @@ export default async function RootLayout({
                     />
                     <WhatsAppChat
                       phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890'}
-                      businessName={process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'Luxury Marketplace'}
-                      defaultMessage={process.env.NEXT_PUBLIC_WHATSAPP_DEFAULT_MESSAGE || "Hello! I'm interested in your luxury products."}
+                      businessName={
+                        process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'Luxury Marketplace'
+                      }
+                      defaultMessage={
+                        process.env.NEXT_PUBLIC_WHATSAPP_DEFAULT_MESSAGE ||
+                        "Hello! I'm interested in your luxury products."
+                      }
                       position="bottom-right"
                       showOnMobile={true}
                     />
