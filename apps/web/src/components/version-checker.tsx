@@ -70,15 +70,18 @@ export function VersionChecker() {
       localStorage.setItem(LAST_SEEN_VERSION_KEY, newVersion);
     }
 
-    // Clear all caches and hard reload
+    // Clear all caches
     if ('caches' in window) {
       caches.keys().then((names) => {
         names.forEach((name) => caches.delete(name));
       });
     }
 
-    // Force hard reload
-    window.location.reload();
+    // Force hard reload bypassing browser cache
+    // Using cache-busting parameter ensures fresh fetch from server
+    const url = new URL(window.location.href);
+    url.searchParams.set('_refresh', Date.now().toString());
+    window.location.replace(url.toString());
   };
 
   const handleDismiss = () => {
