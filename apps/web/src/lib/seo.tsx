@@ -3,7 +3,8 @@ import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 export const siteConfig = {
   name: 'NextPik',
-  description: 'A robust and scalable e-commerce platform built for performance, clarity, and usability. Shop quality products with confidence.',
+  description:
+    'A robust and scalable e-commerce platform built for performance, clarity, and usability. Shop quality products with confidence.',
   url: process.env.NEXT_PUBLIC_APP_URL || 'https://nextpik.com',
   ogImage: '/og-image.jpg',
   keywords: [
@@ -31,10 +32,10 @@ export function generateSeoMetadata({
   modifiedTime,
   authors,
 }: {
-  title: string;
-  description?: string;
+  title?: string | null;
+  description?: string | null;
   keywords?: string[];
-  image?: string;
+  image?: string | null;
   url?: string;
   noIndex?: boolean;
   noFollow?: boolean;
@@ -43,7 +44,10 @@ export function generateSeoMetadata({
   modifiedTime?: string;
   authors?: string[];
 }): Metadata {
-  const metaTitle = title.includes(siteConfig.name) ? title : `${title} - ${siteConfig.name}`;
+  const safeTitle = title || siteConfig.name;
+  const metaTitle = safeTitle.includes(siteConfig.name)
+    ? safeTitle
+    : `${safeTitle} - ${siteConfig.name}`;
   const metaDescription = description || siteConfig.description;
   const metaImage = image || siteConfig.ogImage;
   const metaUrl = url ? `${siteConfig.url}${url}` : siteConfig.url;
@@ -59,7 +63,7 @@ export function generateSeoMetadata({
     title: metaTitle,
     description: metaDescription,
     keywords: metaKeywords.join(', '),
-    authors: authors?.map(name => ({ name })),
+    authors: authors?.map((name) => ({ name })),
     creator: siteConfig.name,
     publisher: siteConfig.name,
     robots: robotsContent.length > 0 ? robotsContent.join(', ') : undefined,
@@ -155,10 +159,12 @@ export function generateProductSchema({
     description,
     image: image.startsWith('http') ? image : `${siteConfig.url}${image}`,
     sku,
-    brand: brand ? {
-      '@type': 'Brand',
-      name: brand,
-    } : undefined,
+    brand: brand
+      ? {
+          '@type': 'Brand',
+          name: brand,
+        }
+      : undefined,
     offers: {
       '@type': 'Offer',
       url: `${siteConfig.url}${url}`,
@@ -208,7 +214,7 @@ export function generateReviewSchema({
     date: string;
   }>;
 }) {
-  return reviews.map(review => ({
+  return reviews.map((review) => ({
     '@context': 'https://schema.org',
     '@type': 'Review',
     itemReviewed: {
@@ -263,9 +269,6 @@ export function generateWebPageSchema({
 // Helper to inject structured data into pages
 export function StructuredData({ data }: { data: any }) {
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
   );
 }
