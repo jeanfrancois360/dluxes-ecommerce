@@ -53,21 +53,22 @@ export function getProductsMetadata(params?: {
 
 // Product Detail Metadata
 export function getProductMetadata(product: {
-  name: string;
+  name?: string | null;
   description?: string | null;
-  price: number;
-  heroImage: string;
-  sku: string;
-  brand?: string;
-  category?: { name: string };
-  slug: string;
+  price?: number;
+  heroImage?: string | null;
+  sku?: string | null;
+  brand?: string | null;
+  category?: { name?: string | null } | null;
+  slug?: string | null;
 }): Metadata {
-  const title = product.name;
+  const productName = product.name || 'Product';
+  const title = productName;
   const description = product.description
     ? product.description.substring(0, 160)
-    : `Shop ${product.name} on NextPik - Premium quality products at great prices.`;
+    : `Shop ${productName} on NextPik - Premium quality products at great prices.`;
   const keywords = [
-    product.name,
+    productName,
     product.brand || '',
     product.category?.name || '',
     'luxury',
@@ -78,8 +79,8 @@ export function getProductMetadata(product: {
     title,
     description,
     keywords,
-    image: product.heroImage,
-    url: `/products/${product.slug}`,
+    image: product.heroImage || undefined,
+    url: product.slug ? `/products/${product.slug}` : '/products',
     type: 'product',
   });
 }
