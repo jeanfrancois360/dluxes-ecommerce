@@ -3,9 +3,13 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// This should match your package.json version or build hash
-const CURRENT_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '2.6.0';
+// Get version from environment (matches package.json)
+const CURRENT_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0';
 const CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
+const DISMISS_DURATION = 24 * 60 * 60 * 1000; // Don't show again for 24 hours after dismiss
+
+const STORAGE_KEY = 'nextpik_version_dismissed';
+const LAST_SEEN_VERSION_KEY = 'nextpik_last_version';
 
 export function VersionChecker() {
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
@@ -17,6 +21,12 @@ export function VersionChecker() {
 
     const checkVersion = async () => {
       try {
+        // Check if user dismissed recently
+        const dismissedUntil = localStorage.getItem(STORAGE_KEY);
+        if (dismissedUntil && Date.now() < parseInt(dismissedUntil)) {
+          return; // Still in dismiss period
+        }
+
         // Fetch version.json with cache-busting timestamp
         const response = await fetch(`/version.json?t=${Date.now()}`, {
           cache: 'no-store',
@@ -26,9 +36,17 @@ export function VersionChecker() {
 
         const data = await response.json();
         const serverVersion = data.version;
+        const lastSeenVersion = localStorage.getItem(LAST_SEEN_VERSION_KEY);
 
-        // Compare versions
-        if (serverVersion && serverVersion !== CURRENT_VERSION) {
+        // Only show if:
+        // 1. Server version exists
+        // 2. Server version is different from current
+        // 3. User hasn't seen this version before
+        if (
+          serverVersion &&
+          serverVersion !== CURRENT_VERSION &&
+          serverVersion !== lastSeenVersion
+        ) {
           setNewVersion(serverVersion);
           setShowUpdatePrompt(true);
         }
@@ -47,19 +65,33 @@ export function VersionChecker() {
   }, []);
 
   const handleRefresh = () => {
+    // Store the new version so we don't prompt again
+    if (newVersion) {
+      localStorage.setItem(LAST_SEEN_VERSION_KEY, newVersion);
+    }
+
     // Clear all caches and hard reload
     if ('caches' in window) {
       caches.keys().then((names) => {
         names.forEach((name) => caches.delete(name));
       });
     }
+
+    // Force hard reload
     window.location.reload();
   };
 
   const handleDismiss = () => {
     setShowUpdatePrompt(false);
-    // Show again in 30 minutes if user dismisses
-    setTimeout(() => setShowUpdatePrompt(true), 30 * 60 * 1000);
+
+    // Store dismiss timestamp (24 hours from now)
+    const dismissUntil = Date.now() + DISMISS_DURATION;
+    localStorage.setItem(STORAGE_KEY, dismissUntil.toString());
+
+    // Also store the version we showed, so we don't show it again
+    if (newVersion) {
+      localStorage.setItem(LAST_SEEN_VERSION_KEY, newVersion);
+    }
   };
 
   return (
