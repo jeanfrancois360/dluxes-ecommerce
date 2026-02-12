@@ -54,7 +54,7 @@ export function getProductsMetadata(params?: {
 // Product Detail Metadata
 export function getProductMetadata(product: {
   name: string;
-  description: string;
+  description?: string | null;
   price: number;
   heroImage: string;
   sku: string;
@@ -63,7 +63,9 @@ export function getProductMetadata(product: {
   slug: string;
 }): Metadata {
   const title = product.name;
-  const description = product.description.substring(0, 160);
+  const description = product.description
+    ? product.description.substring(0, 160)
+    : `Shop ${product.name} on NextPik - Premium quality products at great prices.`;
   const keywords = [
     product.name,
     product.brand || '',
