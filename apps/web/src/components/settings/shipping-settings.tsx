@@ -306,11 +306,32 @@ export function ShippingSettingsSection() {
   });
 
   useEffect(() => {
+    console.log('[ShippingSettings] Settings changed:', {
+      count: settings.length,
+      settingsKeys: settings.map((s) => s.key),
+      shippingMode: settings.find((s) => s.key === 'shipping_mode'),
+    });
+
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
+      console.log('[ShippingSettings] Transformed form data:', formData);
+      console.log('[ShippingSettings] Form state:', {
+        isDirty: form.formState.isDirty,
+        justSaved: justSavedRef.current,
+      });
+
       if (!form.formState.isDirty || justSavedRef.current) {
+        console.log(
+          '[ShippingSettings] Resetting form with shipping_mode:',
+          formData.shipping_mode
+        );
         form.reset(formData as ShippingSettings);
         justSavedRef.current = false;
+
+        // Verify the reset worked
+        setTimeout(() => {
+          console.log('[ShippingSettings] Form values after reset:', form.getValues());
+        }, 100);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
