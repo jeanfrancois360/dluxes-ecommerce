@@ -229,6 +229,27 @@ export class AdminController {
   }
 
   /**
+   * Update user status
+   * @route PATCH /admin/users/:id/status
+   */
+  @Patch('users/:id/status')
+  async updateUserStatus(@Param('id') id: string, @Body() body: { status: string }) {
+    try {
+      const data = await this.adminService.updateUserStatus(id, body.status);
+      return {
+        success: true,
+        data,
+        message: 'User status updated successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
    * Suspend user
    * @route PATCH /admin/users/:id/suspend
    */
