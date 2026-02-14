@@ -7,7 +7,17 @@ import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 import { Button } from '@nextpik/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
-import { Loader2, Calculator, Info, DollarSign, Truck, CheckCircle, XCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import {
+  Loader2,
+  Calculator,
+  Info,
+  DollarSign,
+  Truck,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  AlertTriangle,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { shippingSettingsSchema, type ShippingSettings } from '@/lib/validations/settings';
@@ -152,19 +162,29 @@ function DhlConfigurationSection() {
           <div className="grid grid-cols-3 gap-4 pt-2 border-t">
             <div className="text-center">
               <p className="text-xs text-muted-foreground">API Key</p>
-              <p className={`text-sm font-medium ${healthStatus.configured ? 'text-green-600' : 'text-red-600'}`}>
+              <p
+                className={`text-sm font-medium ${healthStatus.configured ? 'text-green-600' : 'text-red-600'}`}
+              >
                 {healthStatus.configured ? 'Configured' : 'Missing'}
               </p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Credentials</p>
-              <p className={`text-sm font-medium ${healthStatus.credentialsValid ? 'text-green-600' : healthStatus.configured ? 'text-yellow-600' : 'text-red-600'}`}>
-                {healthStatus.credentialsValid ? 'Valid' : healthStatus.configured ? 'Invalid' : 'Not Set'}
+              <p
+                className={`text-sm font-medium ${healthStatus.credentialsValid ? 'text-green-600' : healthStatus.configured ? 'text-yellow-600' : 'text-red-600'}`}
+              >
+                {healthStatus.credentialsValid
+                  ? 'Valid'
+                  : healthStatus.configured
+                    ? 'Invalid'
+                    : 'Not Set'}
               </p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Mode</p>
-              <p className={`text-sm font-medium ${healthStatus.environment === 'production' ? 'text-blue-600' : 'text-orange-600'}`}>
+              <p
+                className={`text-sm font-medium ${healthStatus.environment === 'production' ? 'text-blue-600' : 'text-orange-600'}`}
+              >
                 {healthStatus.environment === 'production' ? 'Production' : 'Sandbox'}
               </p>
             </div>
@@ -201,14 +221,18 @@ function DhlConfigurationSection() {
 
         {/* Test Results */}
         {showTestRates && testRateResult && (
-          <div className={`rounded-lg border p-4 ${testRateResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+          <div
+            className={`rounded-lg border p-4 ${testRateResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}
+          >
             <div className="flex items-center gap-2 mb-2">
               {testRateResult.success ? (
                 <CheckCircle className="h-4 w-4 text-green-600" />
               ) : (
                 <XCircle className="h-4 w-4 text-red-600" />
               )}
-              <p className={`text-sm font-medium ${testRateResult.success ? 'text-green-800' : 'text-red-800'}`}>
+              <p
+                className={`text-sm font-medium ${testRateResult.success ? 'text-green-800' : 'text-red-800'}`}
+              >
                 {testRateResult.message}
               </p>
             </div>
@@ -218,7 +242,10 @@ function DhlConfigurationSection() {
                 <p className="text-xs text-muted-foreground">Available Rates (US → UK, 1kg):</p>
                 <div className="space-y-1.5">
                   {testRateResult.rates.slice(0, 5).map((rate, index) => (
-                    <div key={index} className="flex justify-between items-center text-sm bg-white rounded px-3 py-2">
+                    <div
+                      key={index}
+                      className="flex justify-between items-center text-sm bg-white rounded px-3 py-2"
+                    >
                       <span className="text-gray-700">{rate.name}</span>
                       <span className="font-medium text-gray-900">
                         {rate.currency} {rate.price.toFixed(2)} ({rate.estimatedDays} days)
@@ -244,8 +271,13 @@ function DhlConfigurationSection() {
             <p className="text-sm font-medium text-amber-900">DHL API Configuration</p>
             <ul className="text-sm text-amber-700 space-y-1">
               <li>API credentials are configured in server environment variables</li>
-              <li>Current environment: <strong>{healthStatus?.environment || 'Unknown'}</strong></li>
-              <li>To switch to production, update <code className="bg-amber-100 px-1 rounded">DHL_API_ENVIRONMENT</code> in .env</li>
+              <li>
+                Current environment: <strong>{healthStatus?.environment || 'Unknown'}</strong>
+              </li>
+              <li>
+                To switch to production, update{' '}
+                <code className="bg-amber-100 px-1 rounded">DHL_API_ENVIRONMENT</code> in .env
+              </li>
             </ul>
           </div>
         </div>
@@ -266,7 +298,7 @@ export function ShippingSettingsSection() {
       shipping_standard_rate: 9.99,
       shipping_express_rate: 19.99,
       shipping_overnight_rate: 29.99,
-      shipping_international_surcharge: 15.00,
+      shipping_international_surcharge: 15.0,
       free_shipping_enabled: true,
       free_shipping_threshold: 100,
     },
@@ -286,11 +318,26 @@ export function ShippingSettingsSection() {
 
   const onSubmit = async (data: ShippingSettings) => {
     try {
+      const errors: string[] = [];
       for (const [key, value] of Object.entries(data)) {
-        await updateSetting(key, value, 'Updated via settings panel');
+        try {
+          await updateSetting(key, value, 'Updated via settings panel');
+          console.log(`✓ Saved ${key}:`, value);
+        } catch (err: any) {
+          console.error(`✗ Failed to save ${key}:`, err);
+          errors.push(`${key}: ${err.message || 'Unknown error'}`);
+        }
       }
-      justSavedRef.current = true;
-      toast.success('Shipping settings saved successfully');
+
+      if (errors.length > 0) {
+        console.error('Some settings failed to save:', errors);
+        toast.error(`Failed to save some settings: ${errors.join(', ')}`);
+        justSavedRef.current = false;
+      } else {
+        justSavedRef.current = true;
+        toast.success('Shipping settings saved successfully');
+      }
+
       await refetch();
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -331,9 +378,16 @@ export function ShippingSettingsSection() {
             <div className="space-y-1">
               <p className="text-sm font-medium text-blue-900">Shipping Modes</p>
               <ul className="text-sm text-blue-700 space-y-1">
-                <li><strong>Manual:</strong> Use manually configured rates (below)</li>
-                <li><strong>DHL API:</strong> Real-time rates from DHL Express</li>
-                <li><strong>Hybrid:</strong> Try DHL API, fallback to manual if unavailable (Recommended)</li>
+                <li>
+                  <strong>Manual:</strong> Use manually configured rates (below)
+                </li>
+                <li>
+                  <strong>DHL API:</strong> Real-time rates from DHL Express
+                </li>
+                <li>
+                  <strong>Hybrid:</strong> Try DHL API, fallback to manual if unavailable
+                  (Recommended)
+                </li>
               </ul>
             </div>
           </div>
@@ -348,7 +402,9 @@ export function ShippingSettingsSection() {
         >
           <Select
             value={form.watch('shipping_mode')}
-            onValueChange={(value) => form.setValue('shipping_mode', value as any, { shouldDirty: true })}
+            onValueChange={(value) =>
+              form.setValue('shipping_mode', value as any, { shouldDirty: true })
+            }
           >
             <SelectTrigger>
               <SelectValue placeholder="Select mode" />
@@ -455,10 +511,19 @@ export function ShippingSettingsSection() {
                 {currentMode === 'hybrid' ? 'Fallback Rate Preview' : 'Rate Preview'}
               </p>
               <div className="text-sm text-muted-foreground space-y-1">
-                <p>Standard (5-7 days): ${(form.watch('shipping_standard_rate') ?? 9.99).toFixed(2)}</p>
-                <p>Express (2-3 days): ${(form.watch('shipping_express_rate') ?? 19.99).toFixed(2)}</p>
-                <p>Overnight (1 day): ${(form.watch('shipping_overnight_rate') ?? 29.99).toFixed(2)}</p>
-                <p>International Surcharge: +${(form.watch('shipping_international_surcharge') ?? 15.00).toFixed(2)}</p>
+                <p>
+                  Standard (5-7 days): ${(form.watch('shipping_standard_rate') ?? 9.99).toFixed(2)}
+                </p>
+                <p>
+                  Express (2-3 days): ${(form.watch('shipping_express_rate') ?? 19.99).toFixed(2)}
+                </p>
+                <p>
+                  Overnight (1 day): ${(form.watch('shipping_overnight_rate') ?? 29.99).toFixed(2)}
+                </p>
+                <p>
+                  International Surcharge: +$
+                  {(form.watch('shipping_international_surcharge') ?? 15.0).toFixed(2)}
+                </p>
               </div>
               {currentMode === 'hybrid' && (
                 <p className="text-xs text-amber-600 mt-2">
@@ -477,8 +542,9 @@ export function ShippingSettingsSection() {
               <div>
                 <p className="text-sm font-medium text-amber-900">DHL API Only Mode</p>
                 <p className="text-sm text-amber-700">
-                  Shipping rates will be fetched exclusively from DHL Express. If DHL API is unavailable,
-                  customers will see an error. Consider using <strong>Hybrid mode</strong> for better reliability.
+                  Shipping rates will be fetched exclusively from DHL Express. If DHL API is
+                  unavailable, customers will see an error. Consider using{' '}
+                  <strong>Hybrid mode</strong> for better reliability.
                 </p>
               </div>
             </div>
@@ -487,9 +553,7 @@ export function ShippingSettingsSection() {
       </SettingsCard>
 
       {/* DHL Configuration Section - show when DHL or Hybrid mode */}
-      {(currentMode === 'dhl_api' || currentMode === 'hybrid') && (
-        <DhlConfigurationSection />
-      )}
+      {(currentMode === 'dhl_api' || currentMode === 'hybrid') && <DhlConfigurationSection />}
 
       <SettingsCard
         icon={DollarSign}
@@ -533,7 +597,8 @@ export function ShippingSettingsSection() {
             />
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Orders ${(form.watch('free_shipping_threshold') ?? 100).toFixed(2)} or more will receive free shipping
+            Orders ${(form.watch('free_shipping_threshold') ?? 100).toFixed(2)} or more will receive
+            free shipping
           </p>
         </SettingsField>
       </SettingsCard>
