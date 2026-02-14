@@ -106,6 +106,8 @@ function UserDetailContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
   const [editForm, setEditForm] = useState({
     firstName: '',
     lastName: '',
@@ -186,6 +188,52 @@ function UserDetailContent() {
       router.push('/admin/users');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete user');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    try {
+      await api.patch(`/admin/users/${userId}/reset-password`, { newPassword });
+      toast.success('Password reset successfully');
+      setShowPasswordReset(false);
+      setNewPassword('');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to reset password');
+    }
+  };
+
+  const handleToggle2FA = async (enabled: boolean) => {
+    try {
+      await api.patch(`/admin/users/${userId}/toggle-2fa`, { enabled });
+      toast.success(`2FA ${enabled ? 'enabled' : 'disabled'} successfully`);
+      fetchUser();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to toggle 2FA');
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    try {
+      await api.patch(`/admin/users/${userId}/verify-email`);
+      toast.success('Email verified successfully');
+      fetchUser();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to verify email');
+    }
+  };
+
+  const handleVerifyPhone = async () => {
+    try {
+      await api.patch(`/admin/users/${userId}/verify-phone`);
+      toast.success('Phone verified successfully');
+      fetchUser();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to verify phone');
     }
   };
 
@@ -522,6 +570,100 @@ function UserDetailContent() {
                   <Trash2 className="w-4 h-4" />
                   Delete User
                 </button>
+              </div>
+            </div>
+
+            {/* Security Settings */}
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+              <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Security Settings
+              </h3>
+              <div className="space-y-4">
+                {/* Password Reset */}
+                <div className="border-b border-neutral-200 pb-4">
+                  {!showPasswordReset ? (
+                    <button
+                      onClick={() => setShowPasswordReset(true)}
+                      className="w-full text-left px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors"
+                    >
+                      Reset Password
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-black">New Password</label>
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Min 8 characters"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleResetPassword}
+                          className="flex-1 px-3 py-2 bg-[#CBB57B] text-white rounded-lg hover:bg-[#a89158] text-sm font-medium"
+                        >
+                          Set Password
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowPasswordReset(false);
+                            setNewPassword('');
+                          }}
+                          className="flex-1 px-3 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 text-sm font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2FA Toggle */}
+                <div className="border-b border-neutral-200 pb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-neutral-700">Two-Factor Auth</span>
+                    <button
+                      onClick={() => handleToggle2FA(!user.twoFactorEnabled)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        user.twoFactorEnabled
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                      }`}
+                    >
+                      {user.twoFactorEnabled
+                        ? 'Enabled - Click to Disable'
+                        : 'Disabled - Click to Enable'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Email Verification */}
+                {!user.emailVerified && (
+                  <div className="border-b border-neutral-200 pb-4">
+                    <button
+                      onClick={handleVerifyEmail}
+                      className="w-full text-left px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <Mail className="w-4 h-4 inline mr-2" />
+                      Manually Verify Email
+                    </button>
+                  </div>
+                )}
+
+                {/* Phone Verification */}
+                {user.phone && !user.phoneVerified && (
+                  <div>
+                    <button
+                      onClick={handleVerifyPhone}
+                      className="w-full text-left px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <Phone className="w-4 h-4 inline mr-2" />
+                      Manually Verify Phone
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
