@@ -170,6 +170,33 @@ export class AdminController {
   }
 
   /**
+   * Get user orders
+   * @route GET /admin/users/:id/orders
+   */
+  @Get('users/:id/orders')
+  async getUserOrders(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('page') page?: string
+  ) {
+    try {
+      const data = await this.adminService.getUserOrders(id, {
+        limit: limit ? parseInt(limit) : 10,
+        page: page ? parseInt(page) : 1,
+      });
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
    * Update user details
    * @route PATCH /admin/users/:id
    */

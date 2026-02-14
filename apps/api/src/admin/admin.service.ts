@@ -372,21 +372,20 @@ export class AdminService {
         _count: {
           select: {
             orders: true,
+            reviews: true,
+            addresses: true,
           },
         },
         addresses: true,
-        orders: {
-          take: 10,
-          orderBy: { createdAt: 'desc' },
+        store: {
           select: {
             id: true,
-            orderNumber: true,
-            total: true,
+            name: true,
+            slug: true,
             status: true,
-            createdAt: true,
             _count: {
               select: {
-                items: true,
+                products: true,
               },
             },
           },
@@ -409,14 +408,53 @@ export class AdminService {
       },
     });
 
-    // Transform Decimal fields to numbers
+    // Transform Decimal fields to numbers and add products count from store
     return {
       ...user,
+      _count: {
+        ...user._count,
+        products: user.store?._count?.products || 0,
+      },
       totalSpent: totalSpentResult._sum.total ? Number(totalSpentResult._sum.total) : 0,
-      orders: user.orders.map((order) => ({
+    };
+  }
+
+  /**
+   * Get user orders with pagination
+   */
+  async getUserOrders(userId: string, options: { limit?: number; page?: number }) {
+    const { limit = 10, page = 1 } = options;
+    const skip = (page - 1) * limit;
+
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where: { userId },
+        take: limit,
+        skip,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: {
+              items: true,
+            },
+          },
+        },
+      }),
+      this.prisma.order.count({
+        where: { userId },
+      }),
+    ]);
+
+    return {
+      orders: orders.map((order) => ({
         ...order,
         total: Number(order.total),
+        currency: order.currency || 'USD',
       })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   }
 
