@@ -80,8 +80,8 @@ function DhlConfigurationSection() {
     setTestRateResult(null);
     try {
       const result = await api.post<DhlTestRateResult>('/shipping/admin/dhl/test-rates', {
-        originCountry: 'US',
-        originPostalCode: '10001',
+        originCountry: 'BE',
+        originPostalCode: '1000',
         destinationCountry: 'GB',
         destinationPostalCode: 'SW1A 1AA',
         weight: 1,
@@ -198,7 +198,7 @@ function DhlConfigurationSection() {
           <div>
             <p className="text-sm font-medium">Test DHL Rates</p>
             <p className="text-xs text-muted-foreground">
-              Send a test request to verify DHL API is working (US → UK, 1kg)
+              Send a test request to verify DHL API is working (BE → UK, 1kg)
             </p>
           </div>
           <Button
