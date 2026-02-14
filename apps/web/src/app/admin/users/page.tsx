@@ -140,8 +140,22 @@ function UsersContent() {
 
   const handleExport = async () => {
     try {
-      const response = await api.get('/admin/users/export', { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response]));
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : '';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
+      const response = await fetch(`${API_URL}/admin/users/export`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export users');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `users-${format(new Date(), 'yyyy-MM-dd')}.csv`);
