@@ -320,19 +320,20 @@ export function ShippingSettingsSection() {
         justSaved: justSavedRef.current,
       });
 
-      if (!form.formState.isDirty || justSavedRef.current) {
-        console.log(
-          '[ShippingSettings] Resetting form with shipping_mode:',
-          formData.shipping_mode
-        );
-        form.reset(formData as ShippingSettings);
-        justSavedRef.current = false;
+      // ALWAYS reset form when settings load to ensure correct values
+      // Use keepDirty: false to clear dirty state completely
+      console.log('[ShippingSettings] Resetting form with shipping_mode:', formData.shipping_mode);
+      form.reset(formData as ShippingSettings, {
+        keepDirty: false,
+        keepDirtyValues: false,
+        keepDefaultValues: false,
+      });
+      justSavedRef.current = false;
 
-        // Verify the reset worked
-        setTimeout(() => {
-          console.log('[ShippingSettings] Form values after reset:', form.getValues());
-        }, 100);
-      }
+      // Verify the reset worked
+      setTimeout(() => {
+        console.log('[ShippingSettings] Form values after reset:', form.getValues());
+      }, 100);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
