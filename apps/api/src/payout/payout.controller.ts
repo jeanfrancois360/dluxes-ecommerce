@@ -1,14 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { PayoutSchedulerService } from './payout-scheduler.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -42,6 +32,24 @@ export class PayoutController {
   // ========================================================================
 
   /**
+   * Get all payouts (Admin only)
+   */
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getAllPayouts(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('status') status?: string
+  ) {
+    return this.payoutService.getAllPayouts({
+      limit: limit ? parseInt(limit) : 50,
+      offset: offset ? parseInt(offset) : 0,
+      status,
+    });
+  }
+
+  /**
    * Manually trigger payout processing (Admin only)
    */
   @Post('admin/process')
@@ -57,10 +65,7 @@ export class PayoutController {
   @Post('admin/seller/:sellerId/trigger')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
-  async triggerSellerPayout(
-    @Request() req,
-    @Param('sellerId') sellerId: string
-  ) {
+  async triggerSellerPayout(@Request() req, @Param('sellerId') sellerId: string) {
     return this.payoutService.triggerManualPayout(sellerId, req.user.userId);
   }
 
@@ -71,7 +76,8 @@ export class PayoutController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   async updatePayoutSchedule(
-    @Body() body: {
+    @Body()
+    body: {
       frequency?: PayoutFrequency;
       dayOfWeek?: number;
       dayOfMonth?: number;
@@ -93,16 +99,13 @@ export class PayoutController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   async completePayout(
     @Param('payoutId') payoutId: string,
-    @Body() body: {
+    @Body()
+    body: {
       paymentReference?: string;
       paymentProof?: string;
     }
   ) {
-    return this.payoutService.completePayout(
-      payoutId,
-      body.paymentReference,
-      body.paymentProof
-    );
+    return this.payoutService.completePayout(payoutId, body.paymentReference, body.paymentProof);
   }
 
   /**
@@ -111,10 +114,7 @@ export class PayoutController {
   @Put('admin/:payoutId/fail')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
-  async failPayout(
-    @Param('payoutId') payoutId: string,
-    @Body() body: { reason: string }
-  ) {
+  async failPayout(@Param('payoutId') payoutId: string, @Body() body: { reason: string }) {
     return this.payoutService.failPayout(payoutId, body.reason);
   }
 }

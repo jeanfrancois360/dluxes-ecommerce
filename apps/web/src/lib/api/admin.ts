@@ -101,6 +101,7 @@ export interface AdminOrder {
     name: string;
     quantity: number;
     price: number;
+    total?: number;
     image?: string;
     product?: {
       id: string;
@@ -140,6 +141,16 @@ export interface AdminOrder {
       slug: string;
     };
   }>;
+  timeline?: Array<{
+    id: string;
+    orderId: string;
+    status: string;
+    title: string;
+    description?: string;
+    icon?: string;
+    createdAt: string;
+  }>;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }
