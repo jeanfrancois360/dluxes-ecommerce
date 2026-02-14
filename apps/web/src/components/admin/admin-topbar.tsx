@@ -292,7 +292,7 @@ export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: Ad
                       {t('dashboard')}
                     </Link>
                     <Link
-                      href="/account/profile"
+                      href="/admin/profile"
                       className="flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-[#CBB57B] transition-colors"
                       onClick={() => setShowProfileMenu(false)}
                     >
