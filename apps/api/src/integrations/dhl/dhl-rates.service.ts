@@ -97,16 +97,16 @@ export class DhlRatesService {
   private apiClient: AxiosInstance;
   private readonly productNames: Record<string, string> = {
     // DHL Express product codes
-    'N': 'DHL Express Domestic',
-    'P': 'DHL Express Worldwide',
-    'D': 'DHL Express Worldwide Document',
-    'U': 'DHL Express Worldwide',
-    'K': 'DHL Express 9:00',
-    'L': 'DHL Express 10:30',
-    'G': 'DHL Express Domestic Economy',
-    'W': 'DHL Express Economy Select',
-    'I': 'DHL Express Domestic 9:00',
-    'Y': 'DHL Express 12:00',
+    N: 'DHL Express Domestic',
+    P: 'DHL Express Worldwide',
+    D: 'DHL Express Worldwide Document',
+    U: 'DHL Express Worldwide',
+    K: 'DHL Express 9:00',
+    L: 'DHL Express 10:30',
+    G: 'DHL Express Domestic Economy',
+    W: 'DHL Express Economy Select',
+    I: 'DHL Express Domestic 9:00',
+    Y: 'DHL Express 12:00',
   };
 
   constructor(
@@ -117,7 +117,7 @@ export class DhlRatesService {
     this.apiClient = axios.create({
       timeout: 30000,
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
       },
     });
@@ -184,19 +184,20 @@ export class DhlRatesService {
     if (!credentials) {
       throw new HttpException(
         'DHL Express API is not configured. Please set DHL_EXPRESS_API_KEY and DHL_EXPRESS_API_SECRET in .env file.',
-        HttpStatus.SERVICE_UNAVAILABLE,
+        HttpStatus.SERVICE_UNAVAILABLE
       );
     }
 
     const { apiKey, apiSecret } = credentials;
 
     // Get account number from env only (also sensitive)
-    const accountNumber = request.accountNumber || this.configService.get<string>('DHL_ACCOUNT_NUMBER', '');
+    const accountNumber =
+      request.accountNumber || this.configService.get<string>('DHL_ACCOUNT_NUMBER', '');
 
     if (!accountNumber) {
       throw new HttpException(
         'DHL Account Number is required. Please set DHL_ACCOUNT_NUMBER in .env file.',
-        HttpStatus.SERVICE_UNAVAILABLE,
+        HttpStatus.SERVICE_UNAVAILABLE
       );
     }
 
@@ -231,7 +232,8 @@ export class DhlRatesService {
       // Shipment details
       plannedShippingDateAndTime,
       unitOfMeasurement: request.unitOfMeasurement || 'metric',
-      isCustomsDeclarable: request.isCustomsDeclarable ?? (request.originCountryCode !== request.destinationCountryCode),
+      isCustomsDeclarable:
+        request.isCustomsDeclarable ?? request.originCountryCode !== request.destinationCountryCode,
 
       // Package details
       packages: [
@@ -258,27 +260,28 @@ export class DhlRatesService {
       // Create Basic Auth credentials
       const authToken = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
 
-      this.logger.debug(`Requesting DHL rates: ${request.originCountryCode} → ${request.destinationCountryCode}, ${request.weight}kg`);
-
-      const baseUrl = await this.getApiBaseUrl();
-      const response = await this.apiClient.post<DhlRateResponse>(
-        `${baseUrl}/rates`,
-        payload,
-        {
-          headers: {
-            'Authorization': `Basic ${authToken}`,
-          },
-        },
+      this.logger.debug(
+        `Requesting DHL rates: ${request.originCountryCode} → ${request.destinationCountryCode}, ${request.weight}kg`
       );
 
-      this.logger.log(`DHL rates fetched successfully: ${response.data.products?.length || 0} products available`);
-      return response.data;
+      const baseUrl = await this.getApiBaseUrl();
+      const response = await this.apiClient.post<DhlRateResponse>(`${baseUrl}/rates`, payload, {
+        headers: {
+          Authorization: `Basic ${authToken}`,
+        },
+      });
 
+      this.logger.log(
+        `DHL rates fetched successfully: ${response.data.products?.length || 0} products available`
+      );
+      return response.data;
     } catch (error) {
       // Log error details for debugging
       const errorData = error.response?.data;
       if (errorData) {
-        this.logger.error(`DHL Rates API error: ${errorData.detail || errorData.message || 'Unknown error'}`);
+        this.logger.error(
+          `DHL Rates API error: ${errorData.detail || errorData.message || 'Unknown error'}`
+        );
         if (errorData.additionalDetails) {
           this.logger.error('Additional details:', errorData.additionalDetails);
         }
@@ -289,28 +292,28 @@ export class DhlRatesService {
       if (error.response?.status === 401 || error.response?.status === 403) {
         throw new HttpException(
           'Invalid DHL API credentials. Please check DHL_EXPRESS_API_KEY and DHL_EXPRESS_API_SECRET.',
-          HttpStatus.UNAUTHORIZED,
+          HttpStatus.UNAUTHORIZED
         );
       }
 
       if (error.response?.status === 400) {
-        const errorMessage = error.response?.data?.detail || error.response?.data?.message || 'Invalid request parameters';
-        throw new HttpException(
-          `DHL API request error: ${errorMessage}`,
-          HttpStatus.BAD_REQUEST,
-        );
+        const errorMessage =
+          error.response?.data?.detail ||
+          error.response?.data?.message ||
+          'Invalid request parameters';
+        throw new HttpException(`DHL API request error: ${errorMessage}`, HttpStatus.BAD_REQUEST);
       }
 
       if (error.response?.status === 429) {
         throw new HttpException(
           'DHL API rate limit exceeded. Please try again later.',
-          HttpStatus.TOO_MANY_REQUESTS,
+          HttpStatus.TOO_MANY_REQUESTS
         );
       }
 
       throw new HttpException(
         `Failed to fetch DHL rates: ${error.response?.data?.detail || error.message}`,
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
@@ -343,8 +346,8 @@ export class DhlRatesService {
 
         // Extract billing currency price from totalPrice array
         // BILLC = billing currency (what customer will be charged)
-        const billingPrice = product.totalPrice.find(p => p.currencyType === 'BILLC')
-          || product.totalPrice[0];
+        const billingPrice =
+          product.totalPrice.find((p) => p.currencyType === 'BILLC') || product.totalPrice[0];
         const price = billingPrice?.price || 0;
         const currency = billingPrice?.priceCurrency || 'EUR';
 
@@ -380,7 +383,6 @@ export class DhlRatesService {
 
       this.logger.log(`Converted ${simplifiedRates.length} DHL rates to simplified format`);
       return simplifiedRates;
-
     } catch (error) {
       // If DHL API fails, log error and return empty array (fallback to manual rates)
       this.logger.error('Failed to get simplified DHL rates:', error.message);
@@ -405,7 +407,6 @@ export class DhlRatesService {
 
       // Return cheapest option (already sorted by price)
       return rates[0];
-
     } catch (error) {
       this.logger.error('Failed to get cheapest DHL rate:', error.message);
       return null;
@@ -424,12 +425,15 @@ export class DhlRatesService {
     }
 
     try {
-      // Test with a simple rate request (US domestic)
+      // Test with a simple rate request (Belgium to UK - common route for Belgian sellers)
+      // Using Belgium as origin since the account is likely a Belgian DHL account
       await this.getRates({
-        originCountryCode: 'US',
-        originPostalCode: '10001',
-        destinationCountryCode: 'US',
-        destinationPostalCode: '90001',
+        originCountryCode: 'BE',
+        originPostalCode: '1000',
+        originCityName: 'Brussels',
+        destinationCountryCode: 'GB',
+        destinationPostalCode: 'SW1A 1AA',
+        destinationCityName: 'London',
         weight: 1,
       });
 
