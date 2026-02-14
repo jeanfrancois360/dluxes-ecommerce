@@ -447,7 +447,7 @@ function PayoutsContent() {
 
   return (
     <>
-      <PageHeader title={t('title')} description={t('description')} />
+      <PageHeader title={t('pageTitle')} description={t('pageDescription')} />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div className="flex justify-end items-center">

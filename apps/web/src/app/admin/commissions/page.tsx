@@ -111,7 +111,7 @@ function CommissionOverridesContent() {
     commissionRate: '',
     minOrderValue: '',
     maxOrderValue: '',
-    categoryId: '',
+    categoryId: 'all',
     validFrom: '',
     validUntil: '',
     notes: '',
@@ -376,7 +376,8 @@ function CommissionOverridesContent() {
         commissionRate: parseFloat(formData.commissionRate),
         minOrderValue: formData.minOrderValue ? parseFloat(formData.minOrderValue) : undefined,
         maxOrderValue: formData.maxOrderValue ? parseFloat(formData.maxOrderValue) : undefined,
-        categoryId: formData.categoryId || undefined,
+        categoryId:
+          formData.categoryId && formData.categoryId !== 'all' ? formData.categoryId : undefined,
         validFrom: formData.validFrom || undefined,
         validUntil: formData.validUntil || undefined,
         notes: formData.notes || undefined,
@@ -442,7 +443,7 @@ function CommissionOverridesContent() {
       commissionRate: '',
       minOrderValue: '',
       maxOrderValue: '',
-      categoryId: '',
+      categoryId: 'all',
       validFrom: '',
       validUntil: '',
       notes: '',
@@ -459,7 +460,7 @@ function CommissionOverridesContent() {
       commissionRate: override.commissionRate.toString(),
       minOrderValue: override.minOrderValue?.toString() || '',
       maxOrderValue: override.maxOrderValue?.toString() || '',
-      categoryId: override.categoryId || '',
+      categoryId: override.categoryId || 'all',
       validFrom: override.validFrom || '',
       validUntil: override.validUntil || '',
       notes: override.notes || '',
@@ -959,7 +960,7 @@ function CommissionOverridesContent() {
                       <SelectValue placeholder={t('dialog.allCategories')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">{t('filters.allCategories')}</SelectItem>
+                      <SelectItem value="all">{t('filters.allCategories')}</SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
