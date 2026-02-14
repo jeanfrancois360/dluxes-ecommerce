@@ -292,6 +292,90 @@ export class AdminController {
   }
 
   /**
+   * Reset user password (admin)
+   * @route PATCH /admin/users/:id/reset-password
+   */
+  @Patch('users/:id/reset-password')
+  async resetUserPassword(@Param('id') id: string, @Body() body: { newPassword: string }) {
+    try {
+      const data = await this.adminService.resetUserPassword(id, body.newPassword);
+      return {
+        success: true,
+        data,
+        message: 'Password reset successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Toggle 2FA for user
+   * @route PATCH /admin/users/:id/toggle-2fa
+   */
+  @Patch('users/:id/toggle-2fa')
+  async toggle2FA(@Param('id') id: string, @Body() body: { enabled: boolean }) {
+    try {
+      const data = await this.adminService.toggle2FA(id, body.enabled);
+      return {
+        success: true,
+        data,
+        message: `2FA ${body.enabled ? 'enabled' : 'disabled'} successfully`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Manually verify user email
+   * @route PATCH /admin/users/:id/verify-email
+   */
+  @Patch('users/:id/verify-email')
+  async verifyUserEmail(@Param('id') id: string) {
+    try {
+      const data = await this.adminService.verifyUserEmail(id);
+      return {
+        success: true,
+        data,
+        message: 'Email verified successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Manually verify user phone
+   * @route PATCH /admin/users/:id/verify-phone
+   */
+  @Patch('users/:id/verify-phone')
+  async verifyUserPhone(@Param('id') id: string) {
+    try {
+      const data = await this.adminService.verifyUserPhone(id);
+      return {
+        success: true,
+        data,
+        message: 'Phone verified successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
    * Update user role
    * @route PATCH /admin/users/:id/role
    */

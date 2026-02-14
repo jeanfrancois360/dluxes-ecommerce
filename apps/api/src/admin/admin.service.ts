@@ -604,6 +604,80 @@ export class AdminService {
   }
 
   /**
+   * Reset user password (Admin)
+   */
+  async resetUserPassword(userId: string, newPassword: string) {
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+  }
+
+  /**
+   * Toggle 2FA for user (Admin)
+   */
+  async toggle2FA(userId: string, enabled: boolean) {
+    const data: any = { twoFactorEnabled: enabled };
+
+    // If disabling 2FA, clear the secret
+    if (!enabled) {
+      data.twoFactorSecret = null;
+      data.backupCodes = null;
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        twoFactorEnabled: true,
+      },
+    });
+  }
+
+  /**
+   * Manually verify user email (Admin)
+   */
+  async verifyUserEmail(userId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
+      select: {
+        id: true,
+        email: true,
+        emailVerified: true,
+      },
+    });
+  }
+
+  /**
+   * Manually verify user phone (Admin)
+   */
+  async verifyUserPhone(userId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { phoneVerified: true },
+      select: {
+        id: true,
+        phone: true,
+        phoneVerified: true,
+      },
+    });
+  }
+
+  /**
    * Delete user (Admin)
    */
   async deleteUser(userId: string) {
