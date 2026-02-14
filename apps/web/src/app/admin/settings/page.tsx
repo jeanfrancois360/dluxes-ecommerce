@@ -139,7 +139,7 @@ function SettingsPageContent() {
   const activeTabConfig = tabsConfig.find((t) => t.value === activeTab);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6 pb-12">
       {/* Enhanced Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
