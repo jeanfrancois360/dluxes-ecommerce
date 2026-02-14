@@ -184,21 +184,38 @@ export default function SellerTopbar({
                     </h3>
                   </div>
                   <div className="py-1">
-                    {languages.map((lang) => (
-                      <button
-                        key={lang.code}
-                        onClick={() => handleLanguageChange(lang.code)}
-                        className={`w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-neutral-50 transition-colors ${
-                          language === lang.code ? 'bg-neutral-50' : ''
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg">{lang.flag}</span>
-                          <span className="font-medium text-neutral-900">{lang.name}</span>
+                    {languages
+                      .filter((lang) => lang.code === 'en')
+                      .map((lang) => (
+                        <button
+                          key={lang.code}
+                          onClick={() => handleLanguageChange(lang.code)}
+                          className={`w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-neutral-50 transition-colors ${
+                            language === lang.code ? 'bg-neutral-50' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg">{lang.flag}</span>
+                            <span className="font-medium text-neutral-900">{lang.name}</span>
+                          </div>
+                          {language === lang.code && <Check className="w-4 h-4 text-[#CBB57B]" />}
+                        </button>
+                      ))}
+                    {/* Disabled Languages */}
+                    {languages
+                      .filter((lang) => lang.code !== 'en')
+                      .map((lang) => (
+                        <div
+                          key={lang.code}
+                          className="w-full flex items-center justify-between px-4 py-2 text-sm opacity-40 cursor-not-allowed"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg">{lang.flag}</span>
+                            <span className="font-medium text-neutral-900">{lang.name}</span>
+                          </div>
+                          <span className="text-xs text-neutral-400">(Coming Soon)</span>
                         </div>
-                        {language === lang.code && <Check className="w-4 h-4 text-[#CBB57B]" />}
-                      </button>
-                    ))}
+                      ))}
                   </div>
                 </motion.div>
               )}
