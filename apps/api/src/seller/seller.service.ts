@@ -1154,18 +1154,120 @@ export class SellerService {
       }
     }
 
-    // Create product with seller's store ID
-    const product = await this.prisma.product.create({
-      data: {
-        ...data,
-        storeId: store.id,
-        status: data.status || 'DRAFT',
-      },
-      include: {
-        category: true,
-        images: true,
-      },
+    // Extract images, sku, and categoryId fields
+    // - images: Prisma relation, not a data field
+    // - sku: auto-generated
+    // - categoryId: needs to be connected by slug, not passed directly
+    const { images, sku, categoryId, ...productData } = data;
+
+    // ALWAYS auto-generate SKU (custom SKUs not allowed)
+    const finalSKU = await this.generateSKU();
+
+    // Clean up empty string values that would cause Prisma foreign key errors
+    // Remove any field that is an empty string, null, or undefined
+    // This prevents Prisma from trying to find related records with "" ID
+    this.logger.log('=== BEFORE CLEANUP ===');
+    this.logger.log(JSON.stringify(productData, null, 2));
+
+    Object.keys(productData).forEach((key) => {
+      const value = productData[key];
+
+      // Remove if value is empty, null, or undefined
+      if (value === '' || value === null || value === undefined) {
+        this.logger.log(`Removing field '${key}' with value: ${JSON.stringify(value)}`);
+        delete productData[key];
+        return;
+      }
+
+      // Handle arrays - filter out empty strings
+      if (Array.isArray(value)) {
+        const filtered = value.filter((item) => item !== '' && item !== null && item !== undefined);
+        if (filtered.length === 0) {
+          // If array becomes empty after filtering, remove the field
+          this.logger.log(`Removing empty array field '${key}'`);
+          delete productData[key];
+        } else if (filtered.length !== value.length) {
+          // If we filtered out some items, update the array
+          this.logger.log(
+            `Cleaned array field '${key}': ${value.length} -> ${filtered.length} items`
+          );
+          productData[key] = filtered;
+        }
+      }
     });
+
+    this.logger.log('=== AFTER CLEANUP ===');
+    this.logger.log(JSON.stringify(productData, null, 2));
+
+    // Log data being sent to Prisma for debugging foreign key errors
+    this.logger.log('=== FINAL DATA FOR PRISMA ===');
+    this.logger.log(
+      JSON.stringify(
+        {
+          ...productData,
+          sku: finalSKU,
+          storeId: store.id,
+          status: data.status || 'DRAFT',
+        },
+        null,
+        2
+      )
+    );
+
+    // Validate category exists if provided
+    if (categoryId && categoryId.trim() !== '') {
+      const categoryExists = await this.prisma.category.findUnique({
+        where: { slug: categoryId },
+      });
+
+      if (!categoryExists) {
+        throw new NotFoundException(`Category with slug "${categoryId}" not found`);
+      }
+    }
+
+    // Create product with seller's store ID
+    let product;
+    try {
+      product = await this.prisma.product.create({
+        data: {
+          ...productData,
+          sku: finalSKU,
+          status: data.status || 'DRAFT',
+          // Connect store relation (required)
+          store: {
+            connect: { id: store.id },
+          },
+          // Connect category by slug if provided (frontend sends slug, not ID)
+          ...(categoryId &&
+            categoryId.trim() !== '' && {
+              category: {
+                connect: { slug: categoryId },
+              },
+            }),
+        },
+        include: {
+          category: true,
+          images: true,
+        },
+      });
+    } catch (error) {
+      // Log detailed error for debugging
+      this.logger.error('=== PRISMA ERROR ===');
+      this.logger.error('Error message:', error.message);
+      this.logger.error('Error code:', error.code);
+      this.logger.error('Error meta:', JSON.stringify(error.meta, null, 2));
+      this.logger.error('Error stack:', error.stack);
+      this.logger.error('Product data that failed:', JSON.stringify(productData, null, 2));
+
+      // For P2003 (foreign key constraint), try to identify the field
+      if (error.code === 'P2003') {
+        const fieldName = error.meta?.field_name;
+        this.logger.error(`Foreign key constraint failed on field: ${fieldName}`);
+        this.logger.error(`Check if the value exists: ${productData[fieldName]}`);
+      }
+
+      throw error;
+    }
 
     // Deduct credits for inquiry-based product types
     if (productType && inquiryProductTypes.includes(productType)) {
@@ -1192,6 +1294,37 @@ export class SellerService {
         },
       },
     });
+
+    // Save images if provided
+    if (images && Array.isArray(images) && images.length > 0) {
+      try {
+        await this.prisma.productImage.createMany({
+          data: images.map((url, index) => ({
+            productId: product.id,
+            url,
+            alt: product.name,
+            width: 800, // Default width (actual dimensions should come from upload service)
+            height: 600, // Default height (actual dimensions should come from upload service)
+            displayOrder: index,
+            isPrimary: index === 0, // First image is primary
+          })),
+        });
+
+        // Set first image as hero image if not already set
+        if (!product.heroImage && images[0]) {
+          await this.prisma.product.update({
+            where: { id: product.id },
+            data: { heroImage: images[0] },
+          });
+          product.heroImage = images[0];
+        }
+
+        this.logger.log(`Saved ${images.length} images for product ${product.id}`);
+      } catch (error) {
+        this.logger.error(`Failed to save images for product ${product.id}:`, error);
+        // Don't fail the entire operation if images fail
+      }
+    }
 
     return product;
   }
@@ -1220,9 +1353,36 @@ export class SellerService {
       throw new NotFoundException('Product not found or does not belong to your store');
     }
 
+    // Extract categoryId to handle it separately (frontend sends slug, not ID)
+    const { categoryId, ...updateData } = data;
+
+    // Handle category connection by slug (uniform with products.service.ts)
+    if (categoryId !== undefined) {
+      // Treat empty strings as falsy to disconnect category
+      if (categoryId && categoryId.trim() !== '') {
+        // Validate category exists before connecting
+        const categoryExists = await this.prisma.category.findUnique({
+          where: { slug: categoryId },
+        });
+
+        if (!categoryExists) {
+          throw new NotFoundException(`Category with slug "${categoryId}" not found`);
+        }
+
+        updateData.category = {
+          connect: { slug: categoryId },
+        };
+      } else {
+        // Disconnect category if categoryId is null/empty/whitespace
+        updateData.category = {
+          disconnect: true,
+        };
+      }
+    }
+
     return this.prisma.product.update({
       where: { id: productId },
-      data,
+      data: updateData,
       include: {
         category: true,
         images: true,
@@ -2175,5 +2335,60 @@ export class SellerService {
 
     const uniqueSuffix = Date.now().toString(36).slice(-6);
     return `${baseSlug}-${uniqueSuffix}`;
+  }
+
+  /**
+   * Generate unique SKU for product
+   * Format: PREFIX-MM-DD-XXXX (e.g., NEXTPIK-02-09-0001)
+   * Always auto-generates, custom SKUs not allowed
+   */
+  private async generateSKU(): Promise<string> {
+    try {
+      // Get SKU prefix from settings
+      const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
+      const prefix = String(prefixSetting.value || 'NEXTPIK').toUpperCase();
+
+      // Get current date components
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
+      const day = String(now.getDate()).padStart(2, '0'); // 01-31
+
+      // Format: PREFIX-MM-DD-
+      const datePrefix = `${prefix}-${month}-${day}-`;
+
+      // Find the highest existing SKU number for today's date with this prefix
+      const products = await this.prisma.product.findMany({
+        where: {
+          sku: {
+            startsWith: datePrefix,
+          },
+        },
+        orderBy: {
+          sku: 'desc',
+        },
+        take: 1,
+      });
+
+      // Extract the sequence number from the last SKU, or start at 1
+      let nextNumber = 1;
+      if (products.length > 0) {
+        const lastSKU = products[0].sku;
+        const match = lastSKU.match(/-(\d+)$/);
+        if (match) {
+          nextNumber = parseInt(match[1], 10) + 1;
+        }
+      }
+
+      // Pad the number to 4 digits (0001, 0002, etc.)
+      const paddedNumber = String(nextNumber).padStart(4, '0');
+
+      // Return final SKU: PREFIX-MM-DD-XXXX
+      return `${datePrefix}${paddedNumber}`;
+    } catch (error) {
+      this.logger.error(`Failed to generate SKU: ${error.message}`);
+      // Fallback to timestamp-based SKU if setting lookup fails
+      const timestamp = Date.now().toString(36).toUpperCase();
+      return `NEXTPIK-${timestamp}`;
+    }
   }
 }

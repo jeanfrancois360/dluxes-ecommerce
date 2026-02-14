@@ -9,6 +9,8 @@ export interface User {
   role: 'BUYER' | 'SELLER' | 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN' | 'DELIVERY_PARTNER';
   emailVerified: boolean;
   twoFactorEnabled: boolean;
+  authProvider?: 'LOCAL' | 'GOOGLE';
+  googleId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -371,12 +373,7 @@ export type OrderStatus =
   | 'cancelled'
   | 'refunded';
 
-export type PaymentStatus =
-  | 'pending'
-  | 'processing'
-  | 'paid'
-  | 'failed'
-  | 'refunded';
+export type PaymentStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'refunded';
 
 export interface OrderItem {
   id: string;

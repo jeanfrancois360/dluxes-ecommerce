@@ -1,27 +1,42 @@
 import { MetadataRoute } from 'next';
 import { siteConfig } from '@/lib/seo';
 
-// In a real application, you would fetch this data from your API
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
+// Fetch active products for sitemap
 async function getProducts() {
   try {
-    // This would be replaced with actual API call
-    // const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products`);
-    // const products = await response.json();
-    // return products;
-    return [];
+    const response = await fetch(`${API_URL}/products?status=ACTIVE&limit=1000`, {
+      next: { revalidate: 3600 }, // Revalidate every hour
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch products for sitemap:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.products || [];
   } catch (error) {
     console.error('Error fetching products for sitemap:', error);
     return [];
   }
 }
 
+// Fetch categories for sitemap
 async function getCategories() {
   try {
-    // This would be replaced with actual API call
-    // const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories`);
-    // const categories = await response.json();
-    // return categories;
-    return [];
+    const response = await fetch(`${API_URL}/categories`, {
+      next: { revalidate: 3600 }, // Revalidate every hour
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch categories for sitemap:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Error fetching categories for sitemap:', error);
     return [];

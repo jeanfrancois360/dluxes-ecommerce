@@ -111,7 +111,10 @@ export function ShippingMethodSelector({
         currency: currency,
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
-      }).format(0).replace(/\d/g, '').trim();
+      })
+        .format(0)
+        .replace(/\d/g, '')
+        .trim();
     } catch {
       return '$'; // Fallback to USD symbol
     }
@@ -119,47 +122,56 @@ export function ShippingMethodSelector({
 
   // Use dynamic options from backend if available, fallback to hardcoded
   const methods = useMemo((): ShippingMethod[] => {
-    if (shippingOptions && shippingOptions.length > 0) {
+    // If backend explicitly provided options (even if empty), use them
+    // Only fallback to hardcoded when shippingOptions is undefined/null
+    if (shippingOptions !== undefined && shippingOptions !== null) {
       // Backend provided options - transform to component format
-      return shippingOptions.map(opt => ({
+      return shippingOptions.map((opt) => ({
         id: opt.id,
         name: opt.name,
         description: opt.carrier ? `Delivered via ${opt.carrier}` : undefined,
         price: opt.price,
-        estimatedDays: typeof opt.estimatedDays === 'number'
-          ? `${opt.estimatedDays} business days`
-          : String(opt.estimatedDays),
+        estimatedDays:
+          typeof opt.estimatedDays === 'number'
+            ? `${opt.estimatedDays} business days`
+            : String(opt.estimatedDays),
         carrier: opt.carrier,
         icon: undefined, // Backend options don't have icons
       }));
     }
-    // Fallback to hardcoded options
+    // Fallback to hardcoded options only when backend hasn't provided any
     return SHIPPING_METHODS;
   }, [shippingOptions]);
 
   // Check if we're using backend options (they already have calculated prices)
-  const usingBackendOptions = shippingOptions && shippingOptions.length > 0;
+  const usingBackendOptions = shippingOptions !== undefined && shippingOptions !== null;
+
+  // Check if backend returned empty options (e.g., DHL-only mode failure)
+  const hasNoShippingOptions = usingBackendOptions && methods.length === 0;
 
   // Calculate shipping costs dynamically based on subtotal
   // Only use calculateShippingCost for hardcoded options
   const shippingCalculations = useMemo(() => {
-    return methods.reduce((acc, method) => {
-      if (usingBackendOptions) {
-        // Backend already calculated prices, use them directly
-        acc[method.id] = {
-          methodId: method.id,
-          finalPrice: method.price,
-          originalPrice: method.price,
-          isFree: method.price === 0,
-          discount: 0,
-          qualifiesForFreeShipping: method.price === 0,
-        };
-      } else {
-        // Use frontend calculation for hardcoded options
-        acc[method.id] = calculateShippingCost(method.id, subtotal);
-      }
-      return acc;
-    }, {} as Record<string, ReturnType<typeof calculateShippingCost>>);
+    return methods.reduce(
+      (acc, method) => {
+        if (usingBackendOptions) {
+          // Backend already calculated prices, use them directly
+          acc[method.id] = {
+            methodId: method.id,
+            finalPrice: method.price,
+            originalPrice: method.price,
+            isFree: method.price === 0,
+            discount: 0,
+            qualifiesForFreeShipping: method.price === 0,
+          };
+        } else {
+          // Use frontend calculation for hardcoded options
+          acc[method.id] = calculateShippingCost(method.id, subtotal);
+        }
+        return acc;
+      },
+      {} as Record<string, ReturnType<typeof calculateShippingCost>>
+    );
   }, [methods, subtotal, usingBackendOptions]);
 
   // Check if qualifies for free shipping
@@ -208,6 +220,33 @@ export function ShippingMethodSelector({
               </div>
             ))}
           </div>
+        ) : hasNoShippingOptions ? (
+          // No shipping options available (e.g., DHL-only mode failure)
+          <div className="p-8 rounded-lg border-2 border-red-200 bg-red-50 text-center">
+            <svg
+              className="w-12 h-12 text-red-500 mx-auto mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <h4 className="text-lg font-semibold text-red-900 mb-2">
+              No Shipping Options Available
+            </h4>
+            <p className="text-sm text-red-700 mb-4">
+              We're unable to calculate shipping rates for your destination at this time. This may
+              be due to a temporary service issue or your location not being supported.
+            </p>
+            <p className="text-sm text-red-600">
+              Please try again later or contact support for assistance.
+            </p>
+          </div>
         ) : (
           methods.map((method, index) => (
             <motion.div
@@ -216,136 +255,65 @@ export function ShippingMethodSelector({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-            <label
-              className={cn(
-                'block cursor-pointer group',
-                isLoading && 'cursor-not-allowed opacity-50'
-              )}
-            >
-              <input
-                type="radio"
-                name="shipping-method"
-                value={method.id}
-                checked={selected === method.id}
-                onChange={() => handleSelect(method.id)}
-                disabled={isLoading}
-                className="sr-only"
-              />
-              <motion.div
-                whileHover={!isLoading ? { scale: 1.02 } : {}}
-                whileTap={!isLoading ? { scale: 0.98 } : {}}
+              <label
                 className={cn(
-                  'relative p-6 rounded-lg border-2 transition-all duration-300',
-                  selected === method.id
-                    ? 'border-gold bg-gradient-to-br from-gold/5 to-transparent shadow-lg'
-                    : 'border-neutral-200 hover:border-neutral-300 bg-white',
-                  'flex items-start gap-4'
+                  'block cursor-pointer group',
+                  isLoading && 'cursor-not-allowed opacity-50'
                 )}
               >
-                {/* Radio Indicator */}
-                <div className="flex-shrink-0 pt-1">
-                  <div
-                    className={cn(
-                      'w-6 h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center',
-                      selected === method.id
-                        ? 'border-gold bg-gold'
-                        : 'border-neutral-300 bg-white group-hover:border-neutral-400'
-                    )}
-                  >
-                    {selected === method.id && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="w-2.5 h-2.5 rounded-full bg-white"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Icon */}
-                <div
+                <input
+                  type="radio"
+                  name="shipping-method"
+                  value={method.id}
+                  checked={selected === method.id}
+                  onChange={() => handleSelect(method.id)}
+                  disabled={isLoading}
+                  className="sr-only"
+                />
+                <motion.div
+                  whileHover={!isLoading ? { scale: 1.02 } : {}}
+                  whileTap={!isLoading ? { scale: 0.98 } : {}}
                   className={cn(
-                    'flex-shrink-0 p-3 rounded-lg transition-colors duration-300',
+                    'relative p-6 rounded-lg border-2 transition-all duration-300',
                     selected === method.id
-                      ? 'bg-gold/10 text-gold'
-                      : 'bg-neutral-100 text-neutral-600 group-hover:bg-neutral-200'
+                      ? 'border-gold bg-gradient-to-br from-gold/5 to-transparent shadow-lg'
+                      : 'border-neutral-200 hover:border-neutral-300 bg-white',
+                    'flex items-start gap-4'
                   )}
                 >
-                  {method.icon || (
-                    // Default shipping icon if none provided
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                      />
-                    </svg>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4 mb-1">
-                    <h4 className="font-semibold text-black">{method.name}</h4>
-                    <div className="text-right flex-shrink-0">
-                      {shippingCalculations[method.id]?.isFree ? (
-                        <div className="flex flex-col items-end">
-                          <p className="text-lg font-serif font-bold text-green-600">{t('free')}</p>
-                          <p className="text-xs text-neutral-400 line-through">
-                            {currencySymbol}{formatCurrencyAmount(shippingCalculations[method.id].originalPrice, 2)}
-                          </p>
-                        </div>
-                      ) : (
-                        <p
-                          className={cn(
-                            'text-lg font-serif font-bold',
-                            selected === method.id ? 'text-gold' : 'text-black'
-                          )}
-                        >
-                          {currencySymbol}{formatCurrencyAmount(shippingCalculations[method.id]?.finalPrice || method.price, 2)}
-                        </p>
+                  {/* Radio Indicator */}
+                  <div className="flex-shrink-0 pt-1">
+                    <div
+                      className={cn(
+                        'w-6 h-6 rounded-full border-2 transition-all duration-300 flex items-center justify-center',
+                        selected === method.id
+                          ? 'border-gold bg-gold'
+                          : 'border-neutral-300 bg-white group-hover:border-neutral-400'
+                      )}
+                    >
+                      {selected === method.id && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="w-2.5 h-2.5 rounded-full bg-white"
+                        />
                       )}
                     </div>
                   </div>
-                  <p className="text-sm text-neutral-600 mb-2">{method.description}</p>
-                  <div className="flex items-center gap-2 text-xs">
-                    <svg
-                      className="w-4 h-4 text-neutral-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span className="text-neutral-600">
-                      {typeof method.estimatedDays === 'number'
-                        ? `${method.estimatedDays} business days`
-                        : method.estimatedDays}
-                    </span>
-                    <span className="text-neutral-400">•</span>
-                    <span className="text-neutral-500">
-                      {t('estDelivery', { date: getEstimatedDeliveryDate(String(method.estimatedDays)) })}
-                    </span>
-                  </div>
-                </div>
 
-                {/* Selected Badge */}
-                {selected === method.id && (
-                  <motion.div
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                    className="absolute bottom-4 right-4"
+                  {/* Icon */}
+                  <div
+                    className={cn(
+                      'flex-shrink-0 p-3 rounded-lg transition-colors duration-300',
+                      selected === method.id
+                        ? 'bg-gold/10 text-gold'
+                        : 'bg-neutral-100 text-neutral-600 group-hover:bg-neutral-200'
+                    )}
                   >
-                    <div className="w-8 h-8 bg-gold rounded-full flex items-center justify-center shadow-lg">
+                    {method.icon || (
+                      // Default shipping icon if none provided
                       <svg
-                        className="w-5 h-5 text-white"
+                        className="w-8 h-8"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -353,16 +321,104 @@ export function ShippingMethodSelector({
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M5 13l4 4L19 7"
+                          strokeWidth={1.5}
+                          d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
                         />
                       </svg>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4 mb-1">
+                      <h4 className="font-semibold text-black">{method.name}</h4>
+                      <div className="text-right flex-shrink-0">
+                        {shippingCalculations[method.id]?.isFree ? (
+                          <div className="flex flex-col items-end">
+                            <p className="text-lg font-serif font-bold text-green-600">
+                              {t('free')}
+                            </p>
+                            <p className="text-xs text-neutral-400 line-through">
+                              {currencySymbol}
+                              {formatCurrencyAmount(
+                                shippingCalculations[method.id].originalPrice,
+                                2
+                              )}
+                            </p>
+                          </div>
+                        ) : (
+                          <p
+                            className={cn(
+                              'text-lg font-serif font-bold',
+                              selected === method.id ? 'text-gold' : 'text-black'
+                            )}
+                          >
+                            {currencySymbol}
+                            {formatCurrencyAmount(
+                              shippingCalculations[method.id]?.finalPrice || method.price,
+                              2
+                            )}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </motion.div>
-                )}
-              </motion.div>
-            </label>
-          </motion.div>
+                    <p className="text-sm text-neutral-600 mb-2">{method.description}</p>
+                    <div className="flex items-center gap-2 text-xs">
+                      <svg
+                        className="w-4 h-4 text-neutral-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <span className="text-neutral-600">
+                        {typeof method.estimatedDays === 'number'
+                          ? `${method.estimatedDays} business days`
+                          : method.estimatedDays}
+                      </span>
+                      <span className="text-neutral-400">•</span>
+                      <span className="text-neutral-500">
+                        {t('estDelivery', {
+                          date: getEstimatedDeliveryDate(String(method.estimatedDays)),
+                        })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Selected Badge */}
+                  {selected === method.id && (
+                    <motion.div
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                      className="absolute bottom-4 right-4"
+                    >
+                      <div className="w-8 h-8 bg-gold rounded-full flex items-center justify-center shadow-lg">
+                        <svg
+                          className="w-5 h-5 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={3}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
+              </label>
+            </motion.div>
           ))
         )}
       </div>
@@ -403,21 +459,32 @@ export function ShippingMethodSelector({
           {amountNeededForFreeShipping > 0 ? (
             <>
               <p className="text-amber-900 font-medium">
-                {t('addMoreForFreeShipping', { amount: `${currencySymbol}${formatCurrencyAmount(amountNeededForFreeShipping, 2)}` })}
+                {t('addMoreForFreeShipping', {
+                  amount: `${currencySymbol}${formatCurrencyAmount(amountNeededForFreeShipping, 2)}`,
+                })}
               </p>
               <p className="text-amber-700 mt-1">
-                {t('freeShippingAvailable', { amount: `${currencySymbol}${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}` })}
+                {t('freeShippingAvailable', {
+                  amount: `${currencySymbol}${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}`,
+                })}
               </p>
             </>
           ) : (
             <>
               <p className="text-green-900 font-medium">{t('qualifyForFreeShipping')}</p>
               <p className="text-green-700 mt-1">
-                {t('orderMeetsMinimum', { amount: `${currencySymbol}${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}` })}
+                {t('orderMeetsMinimum', {
+                  amount: `${currencySymbol}${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}`,
+                })}
               </p>
             </>
           )}
-          <p className={cn('mt-1', amountNeededForFreeShipping > 0 ? 'text-amber-600' : 'text-green-600')}>
+          <p
+            className={cn(
+              'mt-1',
+              amountNeededForFreeShipping > 0 ? 'text-amber-600' : 'text-green-600'
+            )}
+          >
             {t('ordersInsured')}
           </p>
         </div>
@@ -440,7 +507,7 @@ export function ShippingMethodSelector({
         <motion.button
           type="button"
           onClick={handleContinue}
-          disabled={isLoading || !selected}
+          disabled={isLoading || !selected || hasNoShippingOptions}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="flex-1 bg-black text-white px-6 py-4 rounded-lg font-semibold hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -468,7 +535,12 @@ export function ShippingMethodSelector({
             <>
               {t('continueToPayment')}
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M14 5l7 7m0 0l-7 7m7-7H3"
+                />
               </svg>
             </>
           )}

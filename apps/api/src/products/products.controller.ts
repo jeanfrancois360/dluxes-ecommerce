@@ -7,6 +7,7 @@ import {
   Query,
   Param,
   Body,
+  Req,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -40,17 +41,20 @@ import { InventoryService } from './inventory.service';
 export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
-    private readonly inventoryService: InventoryService,
+    private readonly inventoryService: InventoryService
   ) {}
 
   /**
    * Get all products with filtering, sorting, and pagination
    * @route GET /products
+   * Auth is optional - admins/sellers see all statuses by default, public users see only ACTIVE
    */
   @Get()
-  async findAll(@Query() query: ProductQueryDto) {
+  async findAll(@Query() query: ProductQueryDto, @Req() req?: any) {
     try {
-      const data = await this.productsService.findAll(query);
+      // Pass authenticated user info to service
+      const user = req?.user;
+      const data = await this.productsService.findAll(query, user);
       return {
         success: true,
         data,
@@ -58,7 +62,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -70,9 +74,7 @@ export class ProductsController {
   @Get('featured')
   async getFeatured(@Query('limit') limit?: string) {
     try {
-      const data = await this.productsService.getFeatured(
-        limit ? parseInt(limit) : 12
-      );
+      const data = await this.productsService.getFeatured(limit ? parseInt(limit) : 12);
       return {
         success: true,
         data,
@@ -80,7 +82,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -92,9 +94,7 @@ export class ProductsController {
   @Get('new-arrivals')
   async getNewArrivals(@Query('limit') limit?: string) {
     try {
-      const data = await this.productsService.getNewArrivals(
-        limit ? parseInt(limit) : 12
-      );
+      const data = await this.productsService.getNewArrivals(limit ? parseInt(limit) : 12);
       return {
         success: true,
         data,
@@ -102,7 +102,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -114,9 +114,7 @@ export class ProductsController {
   @Get('trending')
   async getTrending(@Query('limit') limit?: string) {
     try {
-      const data = await this.productsService.getTrending(
-        limit ? parseInt(limit) : 12
-      );
+      const data = await this.productsService.getTrending(limit ? parseInt(limit) : 12);
       return {
         success: true,
         data,
@@ -124,7 +122,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -136,9 +134,7 @@ export class ProductsController {
   @Get('sale')
   async getOnSale(@Query('limit') limit?: string) {
     try {
-      const data = await this.productsService.getOnSale(
-        limit ? parseInt(limit) : 12
-      );
+      const data = await this.productsService.getOnSale(limit ? parseInt(limit) : 12);
       return {
         success: true,
         data,
@@ -146,7 +142,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -172,10 +168,7 @@ export class ProductsController {
   @Get(':id/related')
   async getRelated(@Param('id') id: string, @Query('limit') limit?: string) {
     try {
-      const data = await this.productsService.getRelatedProducts(
-        id,
-        limit ? parseInt(limit) : 8
-      );
+      const data = await this.productsService.getRelatedProducts(id, limit ? parseInt(limit) : 8);
       return {
         success: true,
         data,
@@ -183,7 +176,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -204,7 +197,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -233,10 +226,7 @@ export class ProductsController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
-  async update(
-    @Param('id') id: string,
-    @Body() updateProductDto: UpdateProductDto
-  ) {
+  async update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
     const data = await this.productsService.update(id, updateProductDto);
     return {
       success: true,
@@ -252,10 +242,7 @@ export class ProductsController {
   @Post(':id/images')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
-  async addImages(
-    @Param('id') id: string,
-    @Body() body: { images: string[] }
-  ) {
+  async addImages(@Param('id') id: string, @Body() body: { images: string[] }) {
     const data = await this.productsService.addProductImages(id, body.images);
     return {
       success: true,
@@ -271,10 +258,7 @@ export class ProductsController {
   @Delete(':id/images/:imageId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
-  async removeImage(
-    @Param('id') id: string,
-    @Param('imageId') imageId: string
-  ) {
+  async removeImage(@Param('id') id: string, @Param('imageId') imageId: string) {
     const data = await this.productsService.removeProductImage(id, imageId);
     return {
       success: true,
@@ -320,7 +304,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -346,7 +330,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -372,7 +356,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -396,7 +380,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -408,10 +392,7 @@ export class ProductsController {
    */
   @Post(':id/inquiry')
   @HttpCode(HttpStatus.OK)
-  async submitInquiry(
-    @Param('id') productId: string,
-    @Body() inquiryDto: ProductInquiryDto,
-  ) {
+  async submitInquiry(@Param('id') productId: string, @Body() inquiryDto: ProductInquiryDto) {
     try {
       const data = await this.productsService.submitInquiry(productId, inquiryDto);
       return {
@@ -422,7 +403,7 @@ export class ProductsController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -462,10 +443,7 @@ export class ProductsController {
   @Post(':productId/variants')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
-  async createVariant(
-    @Param('productId') productId: string,
-    @Body() dto: CreateProductVariantDto,
-  ) {
+  async createVariant(@Param('productId') productId: string, @Body() dto: CreateProductVariantDto) {
     const data = await this.productsService.createVariant(productId, dto);
     return {
       success: true,
@@ -483,7 +461,7 @@ export class ProductsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   async bulkCreateVariants(
     @Param('productId') productId: string,
-    @Body() dto: BulkCreateVariantsDto,
+    @Body() dto: BulkCreateVariantsDto
   ) {
     const data = await this.productsService.bulkCreateVariants(productId, dto.variants);
     return {
@@ -500,10 +478,7 @@ export class ProductsController {
   @Patch('variants/:variantId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
-  async updateVariant(
-    @Param('variantId') variantId: string,
-    @Body() dto: UpdateProductVariantDto,
-  ) {
+  async updateVariant(@Param('variantId') variantId: string, @Body() dto: UpdateProductVariantDto) {
     const data = await this.productsService.updateVariant(variantId, dto);
     return {
       success: true,
@@ -538,7 +513,7 @@ export class ProductsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SELLER)
   async reorderVariants(
     @Param('productId') productId: string,
-    @Body() body: { variantOrders: Array<{ id: string; order: number }> },
+    @Body() body: { variantOrders: Array<{ id: string; order: number }> }
   ) {
     const data = await this.productsService.reorderVariants(productId, body.variantOrders);
     return {
@@ -559,17 +534,14 @@ export class ProductsController {
   @Patch(':id/inventory')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  async adjustProductInventory(
-    @Param('id') id: string,
-    @Body() dto: AdjustInventoryDto,
-  ) {
+  async adjustProductInventory(@Param('id') id: string, @Body() dto: AdjustInventoryDto) {
     const data = await this.inventoryService.adjustProductInventory(
       id,
       dto.quantity,
       dto.type,
       undefined, // userId can be extracted from request if needed
       dto.reason,
-      dto.notes,
+      dto.notes
     );
     return {
       success: true,
@@ -587,7 +559,7 @@ export class ProductsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async adjustVariantInventory(
     @Param('variantId') variantId: string,
-    @Body() dto: AdjustInventoryDto,
+    @Body() dto: AdjustInventoryDto
   ) {
     const data = await this.inventoryService.adjustVariantInventory(
       variantId,
@@ -595,7 +567,7 @@ export class ProductsController {
       dto.type,
       undefined,
       dto.reason,
-      dto.notes,
+      dto.notes
     );
     return {
       success: true,
@@ -614,12 +586,12 @@ export class ProductsController {
   async getProductInventoryTransactions(
     @Param('id') id: string,
     @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
+    @Query('offset') offset?: string
   ) {
     const data = await this.inventoryService.getProductTransactions(
       id,
       limit ? parseInt(limit) : 50,
-      offset ? parseInt(offset) : 0,
+      offset ? parseInt(offset) : 0
     );
     return {
       success: true,
@@ -636,7 +608,7 @@ export class ProductsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getLowStockProducts(@Query('threshold') threshold?: string) {
     const data = await this.inventoryService.getLowStockProducts(
-      threshold ? parseInt(threshold) : 10,
+      threshold ? parseInt(threshold) : 10
     );
     return {
       success: true,

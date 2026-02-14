@@ -34,6 +34,7 @@ import {
 import { RealEstateInquiryForm } from '@/components/products/RealEstateInquiryForm';
 import { VehicleInquiryForm } from '@/components/products/VehicleInquiryForm';
 import { ProductDetailAd } from '@/components/ads';
+import { ProductSchema, BreadcrumbSchema } from '@/components/seo';
 
 // Reviews Section Component
 function ReviewsSection({ productId }: { productId: string }) {
@@ -406,8 +407,24 @@ export default function ProductDetailPage() {
       ? calculateDiscountPercentage(currentPrice.compareAtPrice, currentPrice.price)
       : 0;
 
+  // Breadcrumb items for schema
+  const breadcrumbItems = [
+    { name: 'Home', url: '/' },
+    { name: 'Products', url: '/products' },
+    ...(product.category
+      ? [{ name: product.category.name, url: `/products?category=${product.category.slug}` }]
+      : []),
+    { name: product.name, url: `/products/${product.slug}` },
+  ];
+
   return (
     <PageLayout>
+      {/* SEO: Product Schema */}
+      <ProductSchema product={product} />
+
+      {/* SEO: Breadcrumb Schema */}
+      <BreadcrumbSchema items={breadcrumbItems} />
+
       <div className="bg-white">
         {/* Breadcrumb */}
         <div className="bg-neutral-50 border-b border-neutral-200">

@@ -26,7 +26,7 @@ export class PaymentController {
   constructor(
     private readonly paymentService: PaymentService,
     private readonly paypalService: PayPalService,
-    private readonly paymentMonitorService: PaymentMonitorService,
+    private readonly paymentMonitorService: PaymentMonitorService
   ) {}
 
   // ==========================================
@@ -117,14 +117,14 @@ export class PaymentController {
   @UseGuards(JwtAuthGuard)
   async savePaymentMethodAfterPayment(
     @Request() req: any,
-    @Body() body: { paymentIntentId: string; nickname?: string },
+    @Body() body: { paymentIntentId: string; nickname?: string }
   ) {
     try {
       const userId = req.user.userId || req.user.id;
       const data = await this.paymentService.savePaymentMethodAfterPayment(
         body.paymentIntentId,
         userId,
-        body.nickname,
+        body.nickname
       );
       return { success: true, data };
     } catch (error) {
@@ -144,14 +144,14 @@ export class PaymentController {
   async updateCardNickname(
     @Request() req: any,
     @Param('id') paymentMethodId: string,
-    @Body() body: { nickname: string },
+    @Body() body: { nickname: string }
   ) {
     try {
       const userId = req.user.userId || req.user.id;
       const data = await this.paymentService.updateCardNickname(
         userId,
         paymentMethodId,
-        body.nickname,
+        body.nickname
       );
       return { success: true, data };
     } catch (error) {
@@ -189,12 +189,16 @@ export class PaymentController {
   @UseGuards(JwtAuthGuard)
   async createPaymentIntentWithSavedMethod(
     @Body() body: CreatePaymentIntentDto & { paymentMethodId: string },
-    @Request() req: any,
+    @Request() req: any
   ) {
     try {
       const userId = req.user.userId || req.user.id;
       const { paymentMethodId, ...dto } = body;
-      const data = await this.paymentService.createPaymentIntentWithSavedMethod(dto, userId, paymentMethodId);
+      const data = await this.paymentService.createPaymentIntentWithSavedMethod(
+        dto,
+        userId,
+        paymentMethodId
+      );
       return { success: true, data };
     } catch (error) {
       return {
@@ -230,7 +234,7 @@ export class PaymentController {
   @Post('webhook')
   async handleWebhook(
     @Headers('stripe-signature') signature: string,
-    @Req() request: RawBodyRequest<Request>,
+    @Req() request: RawBodyRequest<Request>
   ) {
     const rawBody = request.rawBody;
 
@@ -258,7 +262,7 @@ export class PaymentController {
   @UseGuards(JwtAuthGuard)
   async createRefund(
     @Param('orderId') orderId: string,
-    @Body() body: { amount?: number; reason?: string },
+    @Body() body: { amount?: number; reason?: string }
   ) {
     return this.paymentService.createRefund(orderId, body.amount, body.reason);
   }
@@ -294,7 +298,7 @@ export class PaymentController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
-    @Query('eventType') eventType?: string,
+    @Query('eventType') eventType?: string
   ) {
     return this.paymentService.getWebhookEvents({
       page: page ? parseInt(page) : 1,
@@ -354,9 +358,11 @@ export class PaymentController {
       items?: Array<{ name: string; quantity: number; price: number }>;
       shippingAddress?: any;
     },
+    @Request() req: any
   ) {
     try {
-      const data = await this.paypalService.createOrder(body);
+      const userId = req.user.userId || req.user.id;
+      const data = await this.paypalService.createOrder(body, userId);
       return { success: true, data };
     } catch (error) {
       return {
@@ -410,7 +416,7 @@ export class PaymentController {
   @UseGuards(JwtAuthGuard)
   async refundPayPalCapture(
     @Param('captureId') captureId: string,
-    @Body() body: { amount?: number; currency?: string },
+    @Body() body: { amount?: number; currency?: string }
   ) {
     try {
       const data = await this.paypalService.refundCapture(captureId, body.amount, body.currency);
@@ -435,17 +441,10 @@ export class PaymentController {
   @Post('orders/:orderId/capture')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
-  async captureOrderPayment(
-    @Param('orderId') orderId: string,
-    @Request() req: any,
-  ) {
+  async captureOrderPayment(@Param('orderId') orderId: string, @Request() req: any) {
     try {
       const userId = req.user.userId || req.user.id;
-      const data = await this.paymentService.capturePaymentWithStrategy(
-        orderId,
-        'MANUAL',
-        userId,
-      );
+      const data = await this.paymentService.capturePaymentWithStrategy(orderId, 'MANUAL', userId);
       return { success: true, data };
     } catch (error) {
       return {

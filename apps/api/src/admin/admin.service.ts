@@ -253,6 +253,7 @@ export class AdminService {
           isActive: true,
           isSuspended: true,
           emailVerified: true,
+          phoneVerified: true,
           createdAt: true,
           lastLoginAt: true,
           _count: {
@@ -283,10 +284,23 @@ export class AdminService {
 
     const totalSpentMap = new Map(orderTotals.map((ot) => [ot.userId, Number(ot._sum.total || 0)]));
 
-    const transformedUsers = users.map((user) => ({
-      ...user,
-      totalSpent: totalSpentMap.get(user.id) || 0,
-    }));
+    const transformedUsers = users.map((user) => {
+      // Determine status based on boolean flags
+      let status: 'ACTIVE' | 'SUSPENDED' | 'BANNED';
+      if (user.isSuspended) {
+        status = 'SUSPENDED';
+      } else if (!user.isActive) {
+        status = 'BANNED';
+      } else {
+        status = 'ACTIVE';
+      }
+
+      return {
+        ...user,
+        status,
+        totalSpent: totalSpentMap.get(user.id) || 0,
+      };
+    });
 
     return {
       users: transformedUsers,
@@ -372,21 +386,20 @@ export class AdminService {
         _count: {
           select: {
             orders: true,
+            reviews: true,
+            addresses: true,
           },
         },
         addresses: true,
-        orders: {
-          take: 10,
-          orderBy: { createdAt: 'desc' },
+        store: {
           select: {
             id: true,
-            orderNumber: true,
-            total: true,
+            name: true,
+            slug: true,
             status: true,
-            createdAt: true,
             _count: {
               select: {
-                items: true,
+                products: true,
               },
             },
           },
@@ -409,14 +422,53 @@ export class AdminService {
       },
     });
 
-    // Transform Decimal fields to numbers
+    // Transform Decimal fields to numbers and add products count from store
     return {
       ...user,
+      _count: {
+        ...user._count,
+        products: user.store?._count?.products || 0,
+      },
       totalSpent: totalSpentResult._sum.total ? Number(totalSpentResult._sum.total) : 0,
-      orders: user.orders.map((order) => ({
+    };
+  }
+
+  /**
+   * Get user orders with pagination
+   */
+  async getUserOrders(userId: string, options: { limit?: number; page?: number }) {
+    const { limit = 10, page = 1 } = options;
+    const skip = (page - 1) * limit;
+
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where: { userId },
+        take: limit,
+        skip,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: {
+              items: true,
+            },
+          },
+        },
+      }),
+      this.prisma.order.count({
+        where: { userId },
+      }),
+    ]);
+
+    return {
+      orders: orders.map((order) => ({
         ...order,
         total: Number(order.total),
+        currency: order.currency || 'USD',
       })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -448,6 +500,64 @@ export class AdminService {
         isSuspended: true,
       },
     });
+  }
+
+  /**
+   * Update user status (ACTIVE, SUSPENDED, BANNED)
+   */
+  async updateUserStatus(userId: string, status: string) {
+    // Convert status enum to boolean flags
+    let isActive = true;
+    let isSuspended = false;
+
+    switch (status) {
+      case 'ACTIVE':
+        isActive = true;
+        isSuspended = false;
+        break;
+      case 'SUSPENDED':
+        isActive = true;
+        isSuspended = true;
+        break;
+      case 'BANNED':
+        isActive = false;
+        isSuspended = false;
+        break;
+      default:
+        throw new Error('Invalid status value');
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive, isSuspended },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        role: true,
+        isActive: true,
+        isSuspended: true,
+        emailVerified: true,
+        phoneVerified: true,
+      },
+    });
+
+    // Return with status field for frontend
+    let returnStatus: 'ACTIVE' | 'SUSPENDED' | 'BANNED';
+    if (user.isSuspended) {
+      returnStatus = 'SUSPENDED';
+    } else if (!user.isActive) {
+      returnStatus = 'BANNED';
+    } else {
+      returnStatus = 'ACTIVE';
+    }
+
+    return {
+      ...user,
+      status: returnStatus,
+    };
   }
 
   /**
@@ -489,6 +599,80 @@ export class AdminService {
         firstName: true,
         lastName: true,
         role: true,
+      },
+    });
+  }
+
+  /**
+   * Reset user password (Admin)
+   */
+  async resetUserPassword(userId: string, newPassword: string) {
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+  }
+
+  /**
+   * Toggle 2FA for user (Admin)
+   */
+  async toggle2FA(userId: string, enabled: boolean) {
+    const data: any = { twoFactorEnabled: enabled };
+
+    // If disabling 2FA, clear the secret
+    if (!enabled) {
+      data.twoFactorSecret = null;
+      data.backupCodes = null;
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        twoFactorEnabled: true,
+      },
+    });
+  }
+
+  /**
+   * Manually verify user email (Admin)
+   */
+  async verifyUserEmail(userId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
+      select: {
+        id: true,
+        email: true,
+        emailVerified: true,
+      },
+    });
+  }
+
+  /**
+   * Manually verify user phone (Admin)
+   */
+  async verifyUserPhone(userId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { phoneVerified: true },
+      select: {
+        id: true,
+        phone: true,
+        phoneVerified: true,
       },
     });
   }

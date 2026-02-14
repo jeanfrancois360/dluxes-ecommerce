@@ -20,10 +20,10 @@ export const authAPI = {
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.post('/auth/password/change', data),
 
-  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  forgotPassword: (email: string) => api.post('/auth/password/reset-request', { email }),
 
-  resetPassword: (data: { token: string; password: string }) =>
-    api.post('/auth/reset-password', data),
+  resetPassword: (data: { token: string; newPassword: string }) =>
+    api.post('/auth/password/reset', data),
 
   verifyEmail: (token: string) => api.post('/auth/verify-email', { token }),
 
@@ -46,7 +46,7 @@ export const confirmPasswordReset = (data: {
   token: string;
   password: string;
   confirmPassword: string;
-}) => authAPI.resetPassword({ token: data.token, password: data.password });
+}) => authAPI.resetPassword({ token: data.token, newPassword: data.password });
 export const verifyEmail = (token: string) => authAPI.verifyEmail(token);
 export const resendEmailVerification = () => api.post('/auth/resend-verification');
 export const refreshToken = () => api.post('/auth/refresh');

@@ -82,7 +82,11 @@ export function OrderSummary({
 
   // Helper function to format prices with cart's locked currency
   // 🔒 UPDATED: Uses cartCurrency to prevent double conversion of locked totals
-  const formatWithCurrency = (amount: number, shouldConvert: boolean = false, fromCurrency?: string) => {
+  const formatWithCurrency = (
+    amount: number,
+    shouldConvert: boolean = false,
+    fromCurrency?: string
+  ) => {
     // Determine which currency to use for formatting
     // For totals (subtotal, shipping, tax, total), use cartCurrency
     // For item prices, use their currencyAtAdd
@@ -133,13 +137,7 @@ export function OrderSummary({
           >
             {/* Image */}
             <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
-              <Image
-                src={item.image}
-                alt={item.name}
-                fill
-                sizes="64px"
-                className="object-cover"
-              />
+              <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" />
               {/* Quantity Badge */}
               <div className="absolute -top-1 -right-1 w-5 h-5 bg-black text-white rounded-full flex items-center justify-center text-xs font-semibold">
                 {item.quantity}
@@ -155,7 +153,9 @@ export function OrderSummary({
               )}
               <h4 className="text-sm font-medium text-black truncate">{item.name}</h4>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-xs text-neutral-500">{t('qty')}: {item.quantity}</span>
+                <span className="text-xs text-neutral-500">
+                  {t('qty')}: {item.quantity}
+                </span>
                 <span className="text-sm font-serif font-semibold text-gold">
                   {/* 🔒 Use locked price (priceAtAdd) if available, otherwise convert from USD */}
                   {formatWithCurrency(
@@ -179,7 +179,12 @@ export function OrderSummary({
               className="w-full flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:border-gold transition-colors text-sm font-medium"
             >
               <span className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-5 h-5 text-gold"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -195,7 +200,12 @@ export function OrderSummary({
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </button>
 
@@ -218,20 +228,18 @@ export function OrderSummary({
                       }}
                       placeholder={t('enterCode')}
                       className={cn(
-                        'flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-gold transition-colors',
+                        'flex-1 min-w-0 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-gold transition-colors',
                         promoError ? 'border-red-500' : 'border-neutral-200'
                       )}
                     />
                     <button
                       onClick={handleApplyPromo}
-                      className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
+                      className="flex-shrink-0 px-6 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors whitespace-nowrap"
                     >
                       {t('apply')}
                     </button>
                   </div>
-                  {promoError && (
-                    <p className="text-xs text-red-500 mt-1 px-1">{promoError}</p>
-                  )}
+                  {promoError && <p className="text-xs text-red-500 mt-1 px-1">{promoError}</p>}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -243,11 +251,23 @@ export function OrderSummary({
             className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between"
           >
             <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-5 h-5 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               <div>
-                <p className="text-sm font-medium text-green-900">{t('code')}: {appliedPromo}</p>
+                <p className="text-sm font-medium text-green-900">
+                  {t('code')}: {appliedPromo}
+                </p>
                 <p className="text-xs text-green-700">{t('discountApplied')}</p>
               </div>
             </div>
@@ -256,7 +276,12 @@ export function OrderSummary({
               className="text-green-600 hover:text-green-800 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </motion.div>
@@ -310,7 +335,9 @@ export function OrderSummary({
             className="flex justify-between text-sm"
           >
             <span className="text-green-600">{t('discount')}</span>
-            <span className="font-medium text-green-600">-{formatWithCurrency(discount, false)}</span>
+            <span className="font-medium text-green-600">
+              -{formatWithCurrency(discount, false)}
+            </span>
           </motion.div>
         )}
 
@@ -320,9 +347,13 @@ export function OrderSummary({
             <span className="text-lg font-serif font-bold text-black">{t('total')}</span>
             <div className="text-right">
               {discount > 0 && (
-                <p className="text-sm text-neutral-500 line-through">{formatWithCurrency(total, false)}</p>
+                <p className="text-sm text-neutral-500 line-through">
+                  {formatWithCurrency(total, false)}
+                </p>
               )}
-              <p className="text-2xl font-serif font-bold text-gold">{formatWithCurrency(finalTotal, false)}</p>
+              <p className="text-2xl font-serif font-bold text-gold">
+                {formatWithCurrency(finalTotal, false)}
+              </p>
             </div>
           </div>
         </div>
@@ -335,8 +366,8 @@ export function OrderSummary({
             className="p-3 bg-blue-50 border border-blue-200 rounded-lg"
           >
             <p className="text-xs text-blue-900">
-              Add <strong className="font-semibold">{formatWithCurrency(200 - subtotal)}</strong> more for{' '}
-              <strong className="font-semibold text-gold">free shipping</strong>
+              Add <strong className="font-semibold">{formatWithCurrency(200 - subtotal)}</strong>{' '}
+              more for <strong className="font-semibold text-gold">free shipping</strong>
             </p>
           </motion.div>
         )}

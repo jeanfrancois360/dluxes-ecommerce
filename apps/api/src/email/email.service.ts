@@ -11,6 +11,9 @@ import { sellerApplicationSubmittedTemplate } from './templates/seller-applicati
 import { sellerApprovedTemplate } from './templates/seller-approved.template';
 import { sellerRejectedTemplate } from './templates/seller-rejected.template';
 import { sellerSuspendedTemplate } from './templates/seller-suspended.template';
+import { payoutScheduledTemplate } from './templates/payout-scheduled.template';
+import { payoutCompletedTemplate } from './templates/payout-completed.template';
+import { payoutFailedTemplate } from './templates/payout-failed.template';
 
 @Injectable()
 export class EmailService {
@@ -520,7 +523,7 @@ export class EmailService {
     }
   ): Promise<boolean> {
     try {
-      const orderUrl = `${this.frontendUrl}/orders/${orderData.orderId}`;
+      const orderUrl = `${this.frontendUrl}/account/orders/${orderData.orderId}`;
 
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
@@ -579,6 +582,8 @@ export class EmailService {
       subtotal: number;
       commission: number;
       commissionRate: number;
+      transactionFee?: number;
+      transactionFeeRate?: number;
       netPayout: number;
       currency: string;
       shippingAddress: {
@@ -594,7 +599,7 @@ export class EmailService {
   ): Promise<boolean> {
     try {
       const orderUrl = `${this.frontendUrl}/seller/orders/${notificationData.orderId}`;
-      const dashboardUrl = `${this.frontendUrl}/seller/dashboard`;
+      const dashboardUrl = `${this.frontendUrl}/seller`;
 
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
@@ -604,6 +609,17 @@ export class EmailService {
         this.logger.log(`Seller: ${notificationData.sellerName}`);
         this.logger.log(`Store: ${notificationData.storeName}`);
         this.logger.log(`Order: #${notificationData.orderNumber}`);
+        this.logger.log(
+          `Subtotal: ${notificationData.currency} ${notificationData.subtotal.toFixed(2)}`
+        );
+        this.logger.log(
+          `Commission: -${notificationData.currency} ${notificationData.commission.toFixed(2)}`
+        );
+        if (notificationData.transactionFee) {
+          this.logger.log(
+            `Transaction Fee: -${notificationData.currency} ${notificationData.transactionFee.toFixed(2)}`
+          );
+        }
         this.logger.log(
           `Net Payout: ${notificationData.currency} ${notificationData.netPayout.toFixed(2)}`
         );
@@ -824,7 +840,7 @@ export class EmailService {
     }
   ): Promise<boolean> {
     try {
-      const dashboardUrl = `${this.frontendUrl}/dashboard/buyer`;
+      const dashboardUrl = `${this.frontendUrl}/become-seller/status`;
 
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
@@ -874,7 +890,7 @@ export class EmailService {
   ): Promise<boolean> {
     try {
       const creditsUrl = `${this.frontendUrl}/seller/credits`;
-      const dashboardUrl = `${this.frontendUrl}/seller/dashboard`;
+      const dashboardUrl = `${this.frontendUrl}/seller`;
 
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
@@ -925,7 +941,7 @@ export class EmailService {
     }
   ): Promise<boolean> {
     try {
-      const supportUrl = `${this.frontendUrl}/support`;
+      const supportUrl = `${this.frontendUrl}/contact`;
 
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
@@ -976,8 +992,8 @@ export class EmailService {
     }
   ): Promise<boolean> {
     try {
-      const supportUrl = `${this.frontendUrl}/support`;
-      const dashboardUrl = `${this.frontendUrl}/seller/dashboard`;
+      const supportUrl = `${this.frontendUrl}/contact`;
+      const dashboardUrl = `${this.frontendUrl}/seller`;
 
       if (!process.env.RESEND_API_KEY) {
         this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
@@ -1013,6 +1029,193 @@ export class EmailService {
       return true;
     } catch (error) {
       this.logger.error('Error sending seller suspended email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send payout scheduled notification email
+   */
+  async sendPayoutScheduled(
+    email: string,
+    data: {
+      sellerName: string;
+      storeName: string;
+      payoutId: string;
+      amount: number;
+      currency: string;
+      commissionsCount: number;
+      periodStart: string;
+      periodEnd: string;
+      scheduledDate: string;
+      estimatedArrival: string;
+      paymentMethod: string;
+      sellerId: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const dashboardUrl = `${this.frontendUrl}/seller/earnings`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 PAYOUT SCHEDULED FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Seller: ${data.sellerName}`);
+        this.logger.log(`Store: ${data.storeName}`);
+        this.logger.log(`Amount: ${data.currency} ${data.amount.toFixed(2)}`);
+        this.logger.log(`Scheduled: ${data.scheduledDate}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = payoutScheduledTemplate({
+        ...data,
+        dashboardUrl,
+      });
+
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `💸 Payout Scheduled - ${data.currency} ${data.amount.toFixed(2)}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send payout scheduled email', error);
+        return false;
+      }
+
+      this.logger.log(`Payout scheduled email sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending payout scheduled email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send payout completed notification email
+   */
+  async sendPayoutCompleted(
+    email: string,
+    data: {
+      sellerName: string;
+      storeName: string;
+      payoutId: string;
+      amount: number;
+      currency: string;
+      commissionsCount: number;
+      periodStart: string;
+      periodEnd: string;
+      completedDate: string;
+      paymentMethod: string;
+      paymentReference?: string;
+      sellerId: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const dashboardUrl = `${this.frontendUrl}/seller/earnings`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 PAYOUT COMPLETED FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Seller: ${data.sellerName}`);
+        this.logger.log(`Store: ${data.storeName}`);
+        this.logger.log(`Amount: ${data.currency} ${data.amount.toFixed(2)}`);
+        this.logger.log(`Completed: ${data.completedDate}`);
+        if (data.paymentReference) {
+          this.logger.log(`Reference: ${data.paymentReference}`);
+        }
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = payoutCompletedTemplate({
+        ...data,
+        dashboardUrl,
+      });
+
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `✅ Payout Completed - ${data.currency} ${data.amount.toFixed(2)}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send payout completed email', error);
+        return false;
+      }
+
+      this.logger.log(`Payout completed email sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending payout completed email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send payout failed notification email
+   */
+  async sendPayoutFailed(
+    email: string,
+    data: {
+      sellerName: string;
+      storeName: string;
+      payoutId: string;
+      amount: number;
+      currency: string;
+      commissionsCount: number;
+      failureReason: string;
+      failedDate: string;
+      paymentMethod: string;
+      sellerId: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const dashboardUrl = `${this.frontendUrl}/seller/payout-settings`;
+      const supportUrl = `${this.frontendUrl}/contact`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 PAYOUT FAILED FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Seller: ${data.sellerName}`);
+        this.logger.log(`Store: ${data.storeName}`);
+        this.logger.log(`Amount: ${data.currency} ${data.amount.toFixed(2)}`);
+        this.logger.log(`Reason: ${data.failureReason}`);
+        this.logger.log(`Failed: ${data.failedDate}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = payoutFailedTemplate({
+        ...data,
+        dashboardUrl,
+        supportUrl,
+      });
+
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `⚠️ Payout Failed - Action Required`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send payout failed email', error);
+        return false;
+      }
+
+      this.logger.log(`Payout failed email sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending payout failed email', error);
       return false;
     }
   }

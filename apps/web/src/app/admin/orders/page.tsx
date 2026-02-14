@@ -48,14 +48,17 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   const getStatusLabel = (status: string) => {
-    const statusKey = status as
-      | 'pending'
-      | 'confirmed'
-      | 'processing'
-      | 'shipped'
-      | 'delivered'
-      | 'cancelled';
-    return t(statusKey) || status.charAt(0).toUpperCase() + status.slice(1);
+    const normalizedStatus = status.toLowerCase();
+    try {
+      const translated = t(normalizedStatus as any);
+      // If translation failed, it returns the key path with dots
+      if (translated.includes('.')) {
+        return status.charAt(0).toUpperCase() + status.slice(1);
+      }
+      return translated;
+    } catch {
+      return status.charAt(0).toUpperCase() + status.slice(1);
+    }
   };
 
   return (
@@ -86,8 +89,17 @@ function PaymentBadge({ status }: { status: string }) {
   };
 
   const getPaymentLabel = (status: string) => {
-    const statusKey = status as 'paid' | 'pending' | 'failed' | 'refunded';
-    return t(statusKey) || status.charAt(0).toUpperCase() + status.slice(1);
+    const normalizedStatus = status.toLowerCase();
+    try {
+      const translated = t(normalizedStatus as any);
+      // If translation failed, it returns the key path with dots
+      if (translated.includes('.')) {
+        return status.charAt(0).toUpperCase() + status.slice(1);
+      }
+      return translated;
+    } catch {
+      return status.charAt(0).toUpperCase() + status.slice(1);
+    }
   };
 
   return (

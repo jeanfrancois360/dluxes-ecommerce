@@ -12,7 +12,7 @@ export class PayPalService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService
   ) {
     this.initializePayPal();
   }
@@ -48,7 +48,9 @@ export class PayPalService {
    */
   private getClient(): paypal.core.PayPalHttpClient {
     if (!this.client) {
-      throw new BadRequestException('PayPal is not configured. Please add PayPal credentials to environment variables.');
+      throw new BadRequestException(
+        'PayPal is not configured. Please add PayPal credentials to environment variables.'
+      );
     }
     return this.client;
   }
@@ -56,21 +58,46 @@ export class PayPalService {
   /**
    * Create PayPal order
    */
-  async createOrder(data: {
-    orderId: string;
-    amount: number;
-    currency: string;
-    items?: Array<{ name: string; quantity: number; price: number }>;
-    shippingAddress?: any;
-  }): Promise<{ orderId: string; approvalUrl: string }> {
+  async createOrder(
+    data: {
+      orderId: string;
+      amount: number;
+      currency: string;
+      items?: Array<{ name: string; quantity: number; price: number }>;
+      shippingAddress?: any;
+    },
+    userId: string
+  ): Promise<{ orderId: string; approvalUrl: string }> {
     const client = this.getClient();
 
     try {
       // Validate currency is supported by PayPal
       const supportedCurrencies = [
-        'AUD', 'BRL', 'CAD', 'CNY', 'CZK', 'DKK', 'EUR', 'HKD', 'HUF',
-        'ILS', 'JPY', 'MYR', 'MXN', 'TWD', 'NZD', 'NOK', 'PHP', 'PLN',
-        'GBP', 'RUB', 'SGD', 'SEK', 'CHF', 'THB', 'USD',
+        'AUD',
+        'BRL',
+        'CAD',
+        'CNY',
+        'CZK',
+        'DKK',
+        'EUR',
+        'HKD',
+        'HUF',
+        'ILS',
+        'JPY',
+        'MYR',
+        'MXN',
+        'TWD',
+        'NZD',
+        'NOK',
+        'PHP',
+        'PLN',
+        'GBP',
+        'RUB',
+        'SGD',
+        'SEK',
+        'CHF',
+        'THB',
+        'USD',
       ];
 
       if (!supportedCurrencies.includes(data.currency.toUpperCase())) {
@@ -90,23 +117,10 @@ export class PayPalService {
             amount: {
               currency_code: data.currency.toUpperCase(),
               value: data.amount.toFixed(2),
-              breakdown: data.items
-                ? {
-                    item_total: {
-                      currency_code: data.currency.toUpperCase(),
-                      value: data.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2),
-                    },
-                  }
-                : undefined,
+              // No breakdown - total amount includes items + tax + shipping
             },
-            items: data.items?.map((item) => ({
-              name: item.name,
-              unit_amount: {
-                currency_code: data.currency.toUpperCase(),
-                value: item.price.toFixed(2),
-              },
-              quantity: item.quantity.toString(),
-            })),
+            // Items array removed - PayPal requires breakdown if items are provided
+            // We send just the total amount for simplicity
             shipping: data.shippingAddress
               ? {
                   name: {
@@ -144,13 +158,15 @@ export class PayPalService {
         throw new BadRequestException('Failed to get PayPal approval URL');
       }
 
-      this.logger.log(`PayPal order created: ${paypalOrder.id} for internal order: ${data.orderId}`);
+      this.logger.log(
+        `PayPal order created: ${paypalOrder.id} for internal order: ${data.orderId}`
+      );
 
       // Save PayPal transaction
       await this.prisma.paymentTransaction.create({
         data: {
           orderId: data.orderId,
-          userId: data.orderId, // Will be updated with actual userId later
+          userId: userId,
           paymentMethod: PaymentMethod.PAYPAL,
           amount: new Decimal(data.amount),
           currency: data.currency.toUpperCase(),
@@ -179,7 +195,9 @@ export class PayPalService {
   /**
    * Capture PayPal order after user approval
    */
-  async captureOrder(paypalOrderId: string): Promise<{ success: boolean; orderId: string; transactionId: string }> {
+  async captureOrder(
+    paypalOrderId: string
+  ): Promise<{ success: boolean; orderId: string; transactionId: string }> {
     const client = this.getClient();
 
     try {
@@ -310,41 +328,41 @@ export class PayPalService {
     const mapping: Record<string, string> = {
       'United States': 'US',
       'United Kingdom': 'GB',
-      'Canada': 'CA',
-      'Australia': 'AU',
-      'Germany': 'DE',
-      'France': 'FR',
-      'Spain': 'ES',
-      'Italy': 'IT',
-      'Netherlands': 'NL',
-      'Belgium': 'BE',
-      'Switzerland': 'CH',
-      'Austria': 'AT',
-      'Sweden': 'SE',
-      'Norway': 'NO',
-      'Denmark': 'DK',
-      'Finland': 'FI',
-      'Ireland': 'IE',
-      'Poland': 'PL',
-      'Portugal': 'PT',
-      'Greece': 'GR',
+      Canada: 'CA',
+      Australia: 'AU',
+      Germany: 'DE',
+      France: 'FR',
+      Spain: 'ES',
+      Italy: 'IT',
+      Netherlands: 'NL',
+      Belgium: 'BE',
+      Switzerland: 'CH',
+      Austria: 'AT',
+      Sweden: 'SE',
+      Norway: 'NO',
+      Denmark: 'DK',
+      Finland: 'FI',
+      Ireland: 'IE',
+      Poland: 'PL',
+      Portugal: 'PT',
+      Greece: 'GR',
       'Czech Republic': 'CZ',
-      'Hungary': 'HU',
-      'Romania': 'RO',
-      'Bulgaria': 'BG',
-      'Croatia': 'HR',
-      'Japan': 'JP',
-      'China': 'CN',
-      'India': 'IN',
-      'Brazil': 'BR',
-      'Mexico': 'MX',
+      Hungary: 'HU',
+      Romania: 'RO',
+      Bulgaria: 'BG',
+      Croatia: 'HR',
+      Japan: 'JP',
+      China: 'CN',
+      India: 'IN',
+      Brazil: 'BR',
+      Mexico: 'MX',
       'South Africa': 'ZA',
-      'Singapore': 'SG',
-      'Malaysia': 'MY',
-      'Thailand': 'TH',
-      'Philippines': 'PH',
-      'Indonesia': 'ID',
-      'Vietnam': 'VN',
+      Singapore: 'SG',
+      Malaysia: 'MY',
+      Thailand: 'TH',
+      Philippines: 'PH',
+      Indonesia: 'ID',
+      Vietnam: 'VN',
       'South Korea': 'KR',
       'New Zealand': 'NZ',
     };

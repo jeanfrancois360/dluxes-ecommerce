@@ -164,40 +164,55 @@ export function TopBar() {
                     className="absolute top-full left-0 mt-2 w-40 bg-neutral-900 border border-white/10 rounded-lg shadow-2xl overflow-hidden z-[100]"
                   >
                     <div className="py-1">
-                      {languages.map((lang) => (
-                        <button
-                          key={lang.code}
-                          onClick={() => {
-                            setLanguage(lang.code);
-                            setLanguageOpen(false);
-                          }}
-                          className={`w-full px-4 py-2.5 flex items-center gap-3 transition-all duration-200 ${
-                            language === lang.code
-                              ? 'bg-[#CBB57B]/20 text-[#CBB57B]'
-                              : 'text-white/80 hover:bg-white/5 hover:text-white'
-                          }`}
-                        >
-                          <span className="text-lg">{lang.flag}</span>
-                          <span className="text-sm font-medium">{lang.name}</span>
-                          {language === lang.code && (
-                            <motion.svg
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="w-4 h-4 ml-auto text-[#CBB57B]"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </motion.svg>
-                          )}
-                        </button>
-                      ))}
+                      {languages
+                        .filter((lang) => lang.code === 'en')
+                        .map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => {
+                              setLanguage(lang.code);
+                              setLanguageOpen(false);
+                            }}
+                            className={`w-full px-4 py-2.5 flex items-center gap-3 transition-all duration-200 ${
+                              language === lang.code
+                                ? 'bg-[#CBB57B]/20 text-[#CBB57B]'
+                                : 'text-white/80 hover:bg-white/5 hover:text-white'
+                            }`}
+                          >
+                            <span className="text-lg">{lang.flag}</span>
+                            <span className="text-sm font-medium">{lang.name}</span>
+                            {language === lang.code && (
+                              <motion.svg
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="w-4 h-4 ml-auto text-[#CBB57B]"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </motion.svg>
+                            )}
+                          </button>
+                        ))}
+                      {/* Disabled Languages */}
+                      {languages
+                        .filter((lang) => lang.code !== 'en')
+                        .map((lang) => (
+                          <div
+                            key={lang.code}
+                            className="w-full px-4 py-2.5 flex items-center gap-3 opacity-40 cursor-not-allowed"
+                          >
+                            <span className="text-lg">{lang.flag}</span>
+                            <span className="text-sm font-medium">{lang.name}</span>
+                            <span className="ml-auto text-xs text-white/40">(Coming Soon)</span>
+                          </div>
+                        ))}
                     </div>
                   </motion.div>
                 )}

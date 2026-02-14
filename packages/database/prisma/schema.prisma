@@ -111,6 +111,9 @@ model User {
   hotDeals         HotDeal[]         @relation("UserHotDeals")
   hotDealResponses HotDealResponse[] @relation("UserHotDealResponses")
 
+  // Seller Payout Settings
+  payoutSettings SellerPayoutSettings? @relation("SellerPayoutSettings")
+
   @@index([email])
   @@index([lastLoginAt])
   @@index([deliveryProviderId])
@@ -311,6 +314,9 @@ model Store {
 
   // Seller Credit Transactions
   sellerCreditTransactions SellerCreditTransaction[]
+
+  // Payout Settings (New detailed payout configuration)
+  payoutSettings SellerPayoutSettings?
 
   @@index([slug])
   @@index([status])
@@ -2118,6 +2124,82 @@ enum PayoutStatus {
   COMPLETED // Payment successful
   FAILED // Payment failed
   CANCELLED // Payout cancelled
+}
+
+// ============================================================================
+// SELLER PAYOUT SETTINGS (Bank Details & Payment Preferences)
+// ============================================================================
+
+model SellerPayoutSettings {
+  id       String @id @default(cuid())
+  sellerId String @unique
+  storeId  String @unique
+
+  // Payment Method Preference
+  paymentMethod String @default("bank_transfer") // 'bank_transfer', 'stripe_connect', 'paypal', 'wise'
+
+  // Bank Transfer Details
+  bankName          String?
+  accountHolderName String?
+  accountNumber     String? // Encrypted in production
+  routingNumber     String? // US: ACH routing number
+  iban              String? // International: IBAN
+  swiftCode         String? // International: SWIFT/BIC
+  bankAddress       String? @db.Text
+  bankCountry       String?
+
+  // Stripe Connect (For automated payouts via Stripe)
+  stripeAccountId     String? @unique
+  stripeAccountStatus String? // 'pending', 'verified', 'restricted'
+  stripeOnboardedAt   DateTime?
+
+  // PayPal
+  paypalEmail    String?
+  paypalVerified Boolean @default(false)
+
+  // Wise (TransferWise)
+  wiseEmail       String?
+  wiseRecipientId String?
+
+  // Tax & Compliance
+  taxId       String? // Tax ID / EIN / VAT number
+  taxCountry  String?
+  taxFormType String? // 'W9', '1099', etc.
+  taxFormUrl  String? // URL to uploaded tax form
+
+  // Payout Currency Preference
+  payoutCurrency String @default("USD")
+
+  // Verification Status
+  verified       Boolean   @default(false)
+  verifiedAt     DateTime?
+  verifiedBy     String? // Admin user ID who verified
+  rejectionNotes String?   @db.Text
+
+  // Metadata
+  notes    String? @db.Text
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  seller User  @relation("SellerPayoutSettings", fields: [sellerId], references: [id], onDelete: Cascade)
+  store  Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([storeId])
+  @@index([verified])
+  @@index([stripeAccountId])
+  @@map("seller_payout_settings")
+}
+
+enum PayoutMethod {
+  BANK_TRANSFER
+  STRIPE_CONNECT
+  PAYPAL
+  WISE
+  MANUAL
 }
 
 // ============================================================================

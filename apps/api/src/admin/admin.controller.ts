@@ -170,6 +170,33 @@ export class AdminController {
   }
 
   /**
+   * Get user orders
+   * @route GET /admin/users/:id/orders
+   */
+  @Get('users/:id/orders')
+  async getUserOrders(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('page') page?: string
+  ) {
+    try {
+      const data = await this.adminService.getUserOrders(id, {
+        limit: limit ? parseInt(limit) : 10,
+        page: page ? parseInt(page) : 1,
+      });
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
    * Update user details
    * @route PATCH /admin/users/:id
    */
@@ -192,6 +219,27 @@ export class AdminController {
         success: true,
         data,
         message: 'User updated successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Update user status
+   * @route PATCH /admin/users/:id/status
+   */
+  @Patch('users/:id/status')
+  async updateUserStatus(@Param('id') id: string, @Body() body: { status: string }) {
+    try {
+      const data = await this.adminService.updateUserStatus(id, body.status);
+      return {
+        success: true,
+        data,
+        message: 'User status updated successfully',
       };
     } catch (error) {
       return {
@@ -234,6 +282,90 @@ export class AdminController {
         success: true,
         data,
         message: 'User activated successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Reset user password (admin)
+   * @route PATCH /admin/users/:id/reset-password
+   */
+  @Patch('users/:id/reset-password')
+  async resetUserPassword(@Param('id') id: string, @Body() body: { newPassword: string }) {
+    try {
+      const data = await this.adminService.resetUserPassword(id, body.newPassword);
+      return {
+        success: true,
+        data,
+        message: 'Password reset successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Toggle 2FA for user
+   * @route PATCH /admin/users/:id/toggle-2fa
+   */
+  @Patch('users/:id/toggle-2fa')
+  async toggle2FA(@Param('id') id: string, @Body() body: { enabled: boolean }) {
+    try {
+      const data = await this.adminService.toggle2FA(id, body.enabled);
+      return {
+        success: true,
+        data,
+        message: `2FA ${body.enabled ? 'enabled' : 'disabled'} successfully`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Manually verify user email
+   * @route PATCH /admin/users/:id/verify-email
+   */
+  @Patch('users/:id/verify-email')
+  async verifyUserEmail(@Param('id') id: string) {
+    try {
+      const data = await this.adminService.verifyUserEmail(id);
+      return {
+        success: true,
+        data,
+        message: 'Email verified successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Manually verify user phone
+   * @route PATCH /admin/users/:id/verify-phone
+   */
+  @Patch('users/:id/verify-phone')
+  async verifyUserPhone(@Param('id') id: string) {
+    try {
+      const data = await this.adminService.verifyUserPhone(id);
+      return {
+        success: true,
+        data,
+        message: 'Phone verified successfully',
       };
     } catch (error) {
       return {
@@ -640,6 +772,55 @@ export class AdminController {
     @Req() req
   ) {
     return this.adminService.deleteCustomerNote(noteId, req.user.id);
+  }
+
+  /**
+   * Get all stores for product assignment
+   * @route GET /admin/stores
+   */
+  @Get('stores')
+  async getAllStores(@Query('status') status?: string, @Query('search') search?: string) {
+    const where: any = {};
+
+    if (status) {
+      where.status = status.toUpperCase();
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { slug: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const stores = await this.prisma.store.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+        verified: true,
+        user: {
+          select: {
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            products: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    return {
+      success: true,
+      data: stores,
+    };
   }
 }
 

@@ -60,7 +60,10 @@ export class ShippingTaxService {
     subtotal: number
   ): Promise<ShippingOption[]> {
     // Calculate total weight for zone/DHL calculations
-    const totalWeightGrams = items.reduce((sum, item) => sum + (item.weight || 500) * item.quantity, 0);
+    const totalWeightGrams = items.reduce(
+      (sum, item) => sum + (item.weight || 500) * item.quantity,
+      0
+    );
     const totalWeightKg = totalWeightGrams / 1000;
 
     // Get shipping mode from settings
@@ -79,18 +82,39 @@ export class ShippingTaxService {
             return dhlOptions;
           } else {
             // Hybrid mode: combine DHL with zones/manual fallback
-            const fallbackOptions = await this.getZonesOrManualRates(address, subtotal, totalWeightKg);
-            this.logger.log(`[Hybrid] ${dhlOptions.length} DHL + ${fallbackOptions.length} fallback options`);
+            const fallbackOptions = await this.getZonesOrManualRates(
+              address,
+              subtotal,
+              totalWeightKg
+            );
+            this.logger.log(
+              `[Hybrid] ${dhlOptions.length} DHL + ${fallbackOptions.length} fallback options`
+            );
             return [...dhlOptions, ...fallbackOptions];
           }
+        } else {
+          // DHL returned no options
+          if (shippingMode === 'dhl_api') {
+            // DHL-only mode: no fallback allowed
+            this.logger.error(`[DHL API] No shipping options available for this destination`);
+            return []; // Return empty array - frontend should show error to user
+          }
+          // Hybrid mode: fall through to manual rates
+          this.logger.warn(`[Hybrid] DHL returned no options, falling back to zones/manual`);
         }
       } catch (error) {
-        this.logger.warn(`[DHL API] Failed, falling back to zones/manual: ${error.message}`);
-        // Continue to fallback chain
+        if (shippingMode === 'dhl_api') {
+          // DHL-only mode: no fallback allowed
+          this.logger.error(`[DHL API] Failed with error: ${error.message}`);
+          return []; // Return empty array - frontend should show error to user
+        }
+        // Hybrid mode: fall through to manual rates
+        this.logger.warn(`[Hybrid] DHL API failed, falling back to zones/manual: ${error.message}`);
       }
     }
 
     // STEP 2: Try Shipping Zones or Manual Rates (fallback chain)
+    // Only reaches here if: mode is 'manual', OR mode is 'hybrid' and DHL failed
     return this.getZonesOrManualRates(address, subtotal, totalWeightKg);
   }
 
@@ -119,16 +143,16 @@ export class ShippingTaxService {
       if (zoneOptions && zoneOptions.length > 0) {
         this.logger.log(`[Zones] Using zone-based rates (${zoneOptions.length} options)`);
         // Convert zone options to our ShippingOption format
-        return zoneOptions.map(zone => ({
+        return zoneOptions.map((zone) => ({
           id: zone.id,
           name: zone.name,
-          description: typeof zone.estimatedDays === 'object'
-            ? `${zone.estimatedDays.min}-${zone.estimatedDays.max} business days`
-            : `${zone.estimatedDays} business days`,
+          description:
+            typeof zone.estimatedDays === 'object'
+              ? `${zone.estimatedDays.min}-${zone.estimatedDays.max} business days`
+              : `${zone.estimatedDays} business days`,
           price: zone.price,
-          estimatedDays: typeof zone.estimatedDays === 'object'
-            ? zone.estimatedDays.max
-            : zone.estimatedDays,
+          estimatedDays:
+            typeof zone.estimatedDays === 'object' ? zone.estimatedDays.max : zone.estimatedDays,
           carrier: (zone as any).zone || 'Standard',
         }));
       }
@@ -139,12 +163,14 @@ export class ShippingTaxService {
     // STEP 3: Fall back to manual rates
     this.logger.log('[Manual] Using manual/settings-based rates (final fallback)');
     // Manual rates need items array for weight-based pricing
-    const items: CartItem[] = [{
-      productId: 'checkout',
-      quantity: 1,
-      price: subtotal,
-      weight: (weightKg || 1) * 1000 // Convert back to grams
-    }];
+    const items: CartItem[] = [
+      {
+        productId: 'checkout',
+        quantity: 1,
+        price: subtotal,
+        weight: (weightKg || 1) * 1000, // Convert back to grams
+      },
+    ];
     return this.calculateManualShippingOptions(address, items, subtotal);
   }
 
@@ -180,7 +206,10 @@ export class ShippingTaxService {
     }
 
     // Calculate total weight in KG (items are in grams)
-    const totalWeightGrams = items.reduce((sum, item) => sum + (item.weight || 500) * item.quantity, 0);
+    const totalWeightGrams = items.reduce(
+      (sum, item) => sum + (item.weight || 500) * item.quantity,
+      0
+    );
     const totalWeightKg = totalWeightGrams / 1000;
 
     // Request DHL rates
@@ -194,7 +223,7 @@ export class ShippingTaxService {
     });
 
     // Convert DHL rates to our ShippingOption format
-    return dhlRates.map(rate => ({
+    return dhlRates.map((rate) => ({
       id: rate.id,
       name: rate.name,
       description: rate.description,
@@ -305,17 +334,57 @@ export class ShippingTaxService {
     if (mode === 'by_state') {
       // US state tax rates (simplified)
       const stateTaxRates: Record<string, number> = {
-        'AL': 0.04, 'AZ': 0.056, 'AR': 0.065, 'CA': 0.0725, 'CO': 0.029,
-        'CT': 0.0635, 'FL': 0.06, 'GA': 0.04, 'HI': 0.04, 'ID': 0.06,
-        'IL': 0.0625, 'IN': 0.07, 'IA': 0.06, 'KS': 0.065, 'KY': 0.06,
-        'LA': 0.0445, 'ME': 0.055, 'MD': 0.06, 'MA': 0.0625, 'MI': 0.06,
-        'MN': 0.06875, 'MS': 0.07, 'MO': 0.04225, 'NE': 0.055, 'NV': 0.0685,
-        'NJ': 0.06625, 'NM': 0.05125, 'NY': 0.04, 'NC': 0.0475, 'ND': 0.05,
-        'OH': 0.0575, 'OK': 0.045, 'PA': 0.06, 'RI': 0.07, 'SC': 0.06,
-        'SD': 0.045, 'TN': 0.07, 'TX': 0.0625, 'UT': 0.0595, 'VT': 0.06,
-        'VA': 0.053, 'WA': 0.065, 'WV': 0.06, 'WI': 0.05, 'WY': 0.04,
+        AL: 0.04,
+        AZ: 0.056,
+        AR: 0.065,
+        CA: 0.0725,
+        CO: 0.029,
+        CT: 0.0635,
+        FL: 0.06,
+        GA: 0.04,
+        HI: 0.04,
+        ID: 0.06,
+        IL: 0.0625,
+        IN: 0.07,
+        IA: 0.06,
+        KS: 0.065,
+        KY: 0.06,
+        LA: 0.0445,
+        ME: 0.055,
+        MD: 0.06,
+        MA: 0.0625,
+        MI: 0.06,
+        MN: 0.06875,
+        MS: 0.07,
+        MO: 0.04225,
+        NE: 0.055,
+        NV: 0.0685,
+        NJ: 0.06625,
+        NM: 0.05125,
+        NY: 0.04,
+        NC: 0.0475,
+        ND: 0.05,
+        OH: 0.0575,
+        OK: 0.045,
+        PA: 0.06,
+        RI: 0.07,
+        SC: 0.06,
+        SD: 0.045,
+        TN: 0.07,
+        TX: 0.0625,
+        UT: 0.0595,
+        VT: 0.06,
+        VA: 0.053,
+        WA: 0.065,
+        WV: 0.06,
+        WI: 0.05,
+        WY: 0.04,
         // No sales tax states
-        'AK': 0, 'DE': 0, 'MT': 0, 'NH': 0, 'OR': 0,
+        AK: 0,
+        DE: 0,
+        MT: 0,
+        NH: 0,
+        OR: 0,
       };
 
       // Only calculate tax for US addresses
@@ -375,7 +444,7 @@ export class ShippingTaxService {
     subtotal: number
   ): Promise<ShippingOption | null> {
     const options = await this.calculateShippingOptions(address, items, subtotal);
-    return options.find(opt => opt.id === optionId) || null;
+    return options.find((opt) => opt.id === optionId) || null;
   }
 
   /**
