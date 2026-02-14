@@ -708,11 +708,51 @@ export class ShipmentsController {
     let dhlResult: any;
     let lastError: any;
 
-    // Try product codes from Rating API response
-    const productCodesToTry =
-      rates && rates.length > 0
-        ? rates.map((r) => ({ code: r.productCode, name: r.name }))
-        : [{ code: productCode, name: 'Fallback' }];
+    // Get Belgium-specific manual product code as fallback
+    const manualProductCode = this.mapServiceTypeToDhlProduct(
+      dto.serviceType || 'express',
+      shipperCountry,
+      receiverCountry
+    );
+
+    // Build list of product codes to try
+    let productCodesToTry: Array<{ code: string; name: string }> = [];
+
+    if (rates && rates.length > 0) {
+      // Add all products from Rating API (account-specific, should all be available)
+      productCodesToTry = rates.map((r) => ({ code: r.productCode, name: r.name }));
+
+      this.logger.log(`✅ Rating API returned ${rates.length} products available for this account`);
+
+      // Only add manual fallback if Rating API returned no valid options
+      // Rating API should be authoritative about account permissions
+      const ratingApiCodes = rates.map((r) => r.productCode);
+      if (rates.length < 3 && !ratingApiCodes.includes(manualProductCode)) {
+        // If Rating API returned very few products, add manual selection as fallback
+        productCodesToTry.push({
+          code: manualProductCode,
+          name: `Manual Selection (Belgium-specific: ${manualProductCode})`,
+        });
+        this.logger.log(
+          `⚠️  Rating API returned only ${rates.length} products, adding manual code '${manualProductCode}' as fallback`
+        );
+      } else if (!ratingApiCodes.includes(manualProductCode)) {
+        this.logger.log(
+          `ℹ️  Belgium-specific code '${manualProductCode}' not in Rating API results - account may not support this product`
+        );
+      }
+    } else {
+      // No Rating API results, use manual selection only
+      productCodesToTry = [{ code: productCode, name: 'Manual Selection' }];
+      this.logger.warn(
+        `⚠️  Rating API returned no products - falling back to manual selection: ${productCode}`
+      );
+    }
+
+    this.logger.log(
+      `Will try ${productCodesToTry.length} product codes: ${productCodesToTry.map((p) => p.code).join(', ')}`
+    );
+    this.logger.log(`Shipment route: ${shipperCountry} → ${receiverCountry}`);
 
     for (const product of productCodesToTry) {
       try {
@@ -882,35 +922,44 @@ export class ShipmentsController {
     originCountry: string,
     destinationCountry: string
   ): string {
-    // EU countries for domestic routing
+    // EU member states (27 countries as of 2024)
     const euCountries = [
+      'AT',
       'BE',
+      'BG',
+      'HR',
+      'CY',
+      'CZ',
+      'DK',
+      'EE',
+      'FI',
       'FR',
       'DE',
-      'NL',
-      'IT',
-      'ES',
-      'AT',
-      'PT',
-      'IE',
-      'LU',
-      'DK',
-      'SE',
-      'FI',
       'GR',
-      'PL',
-      'CZ',
       'HU',
+      'IE',
+      'IT',
+      'LV',
+      'LT',
+      'LU',
+      'MT',
+      'NL',
+      'PL',
+      'PT',
       'RO',
-      'BG',
+      'SK',
+      'SI',
+      'ES',
+      'SE',
     ];
 
-    const isEuDomestic =
-      euCountries.includes(originCountry) && euCountries.includes(destinationCountry);
     const isDomestic = originCountry === destinationCountry;
+    const bothInEu =
+      euCountries.includes(originCountry) && euCountries.includes(destinationCountry);
+    const isInternationalEu = bothInEu && !isDomestic;
 
-    // For EU domestic shipments (Belgium → France, etc.)
-    if (isEuDomestic || isDomestic) {
+    // 1. Domestic shipments (same country) - Use product 'N'
+    if (isDomestic) {
       const domesticMap: Record<string, string> = {
         express: 'N', // DHL Express Domestic
         standard: 'N', // DHL Express Domestic
@@ -922,18 +971,35 @@ export class ShipmentsController {
       return domesticMap[serviceType.toLowerCase()] || 'N';
     }
 
-    // For international shipments
-    const internationalMap: Record<string, string> = {
-      express: 'P', // DHL Express Worldwide
-      standard: 'P', // DHL Express Worldwide
-      economy: 'W', // DHL Express Economy Select
+    // 2. International EU shipments (Belgium → France, etc.) - Use product 'U'
+    if (isInternationalEu) {
+      const euInternationalMap: Record<string, string> = {
+        express: 'U', // DHL Express Worldwide (EU)
+        standard: 'U', // DHL Express Worldwide (EU)
+        economy: 'W', // DHL Express Economy Select (ESU)
+        overnight: 'K', // DHL Express 9:00 (TDK for documents)
+        express_9: 'K', // DHL Express 9:00
+        express_10: 'L', // DHL Express 10:30 (TDL for documents)
+        express_12: 'T', // DHL Express 12:00 (TDT for documents, Y for non-doc)
+      };
+      return euInternationalMap[serviceType.toLowerCase()] || 'U';
+    }
+
+    // 3. International NON-EU shipments (Belgium → USA, etc.)
+    // NOTE: Belgium uses country-specific codes that differ from global codes!
+    // - Global code 'P' → Belgium code 'S' for Express Worldwide Non-document
+    // - Use Rating API for accurate product codes per account
+    const internationalNonEuMap: Record<string, string> = {
+      express: originCountry === 'BE' ? 'S' : 'P', // BE uses 'S', others use 'P'
+      standard: originCountry === 'BE' ? 'S' : 'P',
+      economy: 'W', // DHL Express Economy Select (ESI for non-doc)
       overnight: 'K', // DHL Express 9:00
-      express_9: 'K', // DHL Express 9:00
-      express_10: 'L', // DHL Express 10:30
-      express_12: 'Y', // DHL Express 12:00
+      express_9: 'C', // DHL Express 9:00 Non-document (BE specific)
+      express_10: 'X', // DHL Express 10:30 (only to USA for BE)
+      express_12: 'Y', // DHL Express 12:00 Non-document
     };
 
-    return internationalMap[serviceType.toLowerCase()] || 'P';
+    return internationalNonEuMap[serviceType.toLowerCase()] || (originCountry === 'BE' ? 'S' : 'P');
   }
 
   /**

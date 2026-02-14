@@ -1076,6 +1076,27 @@ export class OrdersService {
   }
 
   /**
+   * Update order notes (Admin only)
+   */
+  async updateNotes(id: string, notes: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Update order notes
+    const updatedOrder = await this.prisma.order.update({
+      where: { id },
+      data: { notes },
+    });
+
+    return updatedOrder;
+  }
+
+  /**
    * Validate order status transition
    * Prevents invalid status changes and regressions
    * @private
