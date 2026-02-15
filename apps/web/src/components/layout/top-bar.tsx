@@ -9,17 +9,19 @@ import { useCurrencyRates, useSelectedCurrency } from '@/hooks/use-currency';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 
+interface Announcement {
+  id: string;
+  text: string;
+  icon: string | null;
+  link: string | null;
+  type: string;
+  displayOrder: number;
+}
+
 export function TopBar() {
   const router = useRouter();
   const t = useTranslations('common');
-  const promoMessages = useMemo(
-    () => [
-      { text: t('promo.springCollection'), icon: '✨' },
-      { text: t('promo.freeShipping'), icon: '🚚' },
-      { text: t('promo.newArrivals'), icon: '💎' },
-    ],
-    [t]
-  );
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [currentPromo, setCurrentPromo] = useState(0);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
@@ -83,13 +85,59 @@ export function TopBar() {
     }
   };
 
+  // Fetch announcements on mount
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/announcements/active`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setAnnouncements(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch announcements:', error);
+        // Fallback to default messages if API fails
+        setAnnouncements([
+          {
+            id: '1',
+            text: t('promo.springCollection'),
+            icon: '✨',
+            link: null,
+            type: 'PROMO',
+            displayOrder: 0,
+          },
+          {
+            id: '2',
+            text: t('promo.freeShipping'),
+            icon: '🚚',
+            link: null,
+            type: 'PROMO',
+            displayOrder: 1,
+          },
+          {
+            id: '3',
+            text: t('promo.newArrivals'),
+            icon: '💎',
+            link: null,
+            type: 'PROMO',
+            displayOrder: 2,
+          },
+        ]);
+      }
+    };
+    fetchAnnouncements();
+  }, [t]);
+
   // Rotating promos
   useEffect(() => {
+    if (announcements.length === 0) return;
     const interval = setInterval(() => {
-      setCurrentPromo((prev) => (prev + 1) % promoMessages.length);
+      setCurrentPromo((prev) => (prev + 1) % announcements.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [announcements.length]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -312,44 +360,68 @@ export function TopBar() {
 
           {/* Center - Rotating Promo */}
           <div className="flex items-center justify-center gap-3 min-w-0">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentPromo}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5 }}
-                className="flex items-center gap-2"
-              >
-                <span className="text-lg">{promoMessages[currentPromo].icon}</span>
-                <span className="text-sm font-light tracking-wide text-white/90 hidden md:inline">
-                  {promoMessages[currentPromo].text}
-                </span>
-              </motion.div>
-            </AnimatePresence>
+            {announcements.length > 0 && (
+              <>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentPromo}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.5 }}
+                    className="flex items-center gap-2"
+                  >
+                    {announcements[currentPromo].link ? (
+                      <Link
+                        href={announcements[currentPromo].link!}
+                        className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                      >
+                        {announcements[currentPromo].icon && (
+                          <span className="text-lg">{announcements[currentPromo].icon}</span>
+                        )}
+                        <span className="text-sm font-light tracking-wide text-white/90 hidden md:inline">
+                          {announcements[currentPromo].text}
+                        </span>
+                      </Link>
+                    ) : (
+                      <>
+                        {announcements[currentPromo].icon && (
+                          <span className="text-lg">{announcements[currentPromo].icon}</span>
+                        )}
+                        <span className="text-sm font-light tracking-wide text-white/90 hidden md:inline">
+                          {announcements[currentPromo].text}
+                        </span>
+                      </>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
 
-            {/* Progress dots */}
-            <div className="hidden lg:flex items-center gap-2">
-              {promoMessages.map((_, i) => (
-                <motion.button
-                  key={i}
-                  onClick={() => setCurrentPromo(i)}
-                  className="relative h-1 overflow-hidden rounded-full bg-white/20"
-                  animate={{ width: currentPromo === i ? 24 : 12 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {currentPromo === i && (
-                    <motion.div
-                      className="absolute inset-0 bg-[#CBB57B]"
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 1 }}
-                      transition={{ duration: 4, ease: 'linear' }}
-                      style={{ transformOrigin: 'left' }}
-                    />
-                  )}
-                </motion.button>
-              ))}
-            </div>
+                {/* Progress dots */}
+                {announcements.length > 1 && (
+                  <div className="hidden lg:flex items-center gap-2">
+                    {announcements.map((_, i) => (
+                      <motion.button
+                        key={i}
+                        onClick={() => setCurrentPromo(i)}
+                        className="relative h-1 overflow-hidden rounded-full bg-white/20"
+                        animate={{ width: currentPromo === i ? 24 : 12 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {currentPromo === i && (
+                          <motion.div
+                            className="absolute inset-0 bg-[#CBB57B]"
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: 1 }}
+                            transition={{ duration: 4, ease: 'linear' }}
+                            style={{ transformOrigin: 'left' }}
+                          />
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Right - Account Dropdown */}
