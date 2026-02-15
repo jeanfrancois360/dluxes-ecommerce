@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { AdminRoute } from '@/components/admin-route';
+import { AdminLayout } from '@/components/admin/admin-layout';
 import {
   Button,
   Input,
@@ -59,7 +61,7 @@ const ANNOUNCEMENT_TYPES = [
   { value: 'SUCCESS', label: 'Success', color: 'bg-green-100 text-green-700' },
 ];
 
-export default function AnnouncementsPage() {
+function AnnouncementsContent() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -517,5 +519,15 @@ export default function AnnouncementsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function AnnouncementsPage() {
+  return (
+    <AdminRoute>
+      <AdminLayout>
+        <AnnouncementsContent />
+      </AdminLayout>
+    </AdminRoute>
   );
 }
