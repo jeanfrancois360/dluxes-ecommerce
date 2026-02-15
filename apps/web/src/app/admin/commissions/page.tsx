@@ -1004,8 +1004,7 @@ function CommissionOverridesContent() {
 
                 <div className="space-y-2">
                   <Label htmlFor="categoryId">
-                    {t('dialog.category')}{' '}
-                    <span className="text-muted-foreground text-xs">(optional)</span>
+                    Category <span className="text-muted-foreground text-xs">(optional)</span>
                   </Label>
                   <Select
                     value={formData.categoryId}
