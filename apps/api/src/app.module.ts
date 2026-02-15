@@ -25,6 +25,7 @@ import { SellerModule } from './seller/seller.module';
 import { CommissionModule } from './commission/commission.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { AdvertisementModule } from './advertisements/advertisement.module';
+import { AnnouncementModule } from './announcement/announcement.module';
 import { CurrencyModule } from './currency/currency.module';
 import { EscrowModule } from './escrow/escrow.module';
 import { SettingsModule } from './settings/settings.module';
@@ -91,6 +92,7 @@ import { SellerCreditsCronService } from './cron/seller-credits.cron';
     CommissionModule,
     InventoryModule,
     AdvertisementModule,
+    AnnouncementModule,
     CurrencyModule,
     EscrowModule,
     SettingsModule,

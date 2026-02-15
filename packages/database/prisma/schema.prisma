@@ -2290,6 +2290,13 @@ enum AuditAction {
   ROLLBACK
 }
 
+enum AnnouncementType {
+  INFO // General information
+  PROMO // Promotional message
+  WARNING // Warning or alert
+  SUCCESS // Success or positive message
+}
+
 enum PayoutFrequency {
   DAILY
   WEEKLY
@@ -2643,6 +2650,41 @@ model SettingsAuditLog {
   @@index([changedBy])
   @@index([createdAt])
   @@map("settings_audit_logs")
+}
+
+// ============================================================================
+// ANNOUNCEMENTS & PROMOTIONS (Top Bar Messages)
+// ============================================================================
+
+model Announcement {
+  id String @id @default(cuid())
+
+  // Content
+  text String      @db.Text
+  icon String?     @db.VarChar(10) // Emoji or icon code
+  link String?     // Optional CTA link
+  type AnnouncementType @default(INFO)
+
+  // Display Settings
+  displayOrder Int     @default(0) // Lower = higher priority
+  isActive     Boolean @default(true)
+
+  // Scheduling
+  validFrom  DateTime? // Show from this date (null = always)
+  validUntil DateTime? // Show until this date (null = forever)
+
+  // Metadata
+  createdBy String // Admin user ID
+  updatedBy String? // Last admin who updated
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([displayOrder])
+  @@index([validFrom])
+  @@index([validUntil])
+  @@map("announcements")
 }
 
 // ============================================================================
