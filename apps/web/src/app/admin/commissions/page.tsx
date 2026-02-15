@@ -145,9 +145,11 @@ function CommissionOverridesContent() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories`);
       if (response.ok) {
-        const data = await response.json();
+        const result = await response.json();
+        // Backend wraps data in {success: true, data: [...]}
+        const data = result.success ? result.data : result;
         setCategories(data);
       }
     } catch (error) {
