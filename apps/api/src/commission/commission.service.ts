@@ -5,7 +5,7 @@ import {
   CommissionRuleType,
   CommissionStatus,
   PaymentTransactionStatus,
-  Prisma
+  Prisma,
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -19,7 +19,7 @@ export class CommissionService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsService
   ) {}
 
   /**
@@ -135,29 +135,53 @@ export class CommissionService {
     const now = new Date();
     const orderAmountNumber = orderAmount.toNumber();
 
-    // 1. Check for seller-specific override (HIGHEST PRIORITY)
+    // Priority 1: Seller + Category specific override (MOST SPECIFIC)
+    if (categoryId) {
+      const sellerCategoryOverride = await this.prisma.sellerCommissionOverride.findFirst({
+        where: {
+          sellerId,
+          categoryId,
+          isActive: true,
+          AND: [
+            { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+            { OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
+            {
+              OR: [{ minOrderValue: null }, { minOrderValue: { lte: orderAmountNumber } }],
+            },
+            {
+              OR: [{ maxOrderValue: null }, { maxOrderValue: { gte: orderAmountNumber } }],
+            },
+          ],
+        },
+        orderBy: { priority: 'desc' },
+      });
+
+      if (sellerCategoryOverride) {
+        this.logger.log(
+          `Using seller+category override for ${sellerId} + ${categoryId}: ${sellerCategoryOverride.commissionRate}%`
+        );
+        return {
+          id: sellerCategoryOverride.id,
+          type: sellerCategoryOverride.commissionType,
+          value: sellerCategoryOverride.commissionRate,
+        };
+      }
+    }
+
+    // Priority 2: Seller-only override (all categories)
     const sellerOverride = await this.prisma.sellerCommissionOverride.findFirst({
       where: {
         sellerId,
+        categoryId: null,
         isActive: true,
-        OR: [
-          { categoryId },
-          { categoryId: null }, // Global override for seller
-        ],
         AND: [
           { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
           { OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
           {
-            OR: [
-              { minOrderValue: null },
-              { minOrderValue: { lte: orderAmountNumber } },
-            ],
+            OR: [{ minOrderValue: null }, { minOrderValue: { lte: orderAmountNumber } }],
           },
           {
-            OR: [
-              { maxOrderValue: null },
-              { maxOrderValue: { gte: orderAmountNumber } },
-            ],
+            OR: [{ maxOrderValue: null }, { maxOrderValue: { gte: orderAmountNumber } }],
           },
         ],
       },
@@ -166,9 +190,8 @@ export class CommissionService {
 
     if (sellerOverride) {
       this.logger.log(
-        `Using seller override for ${sellerId}: ${sellerOverride.commissionRate}%`
+        `Using seller-only override for ${sellerId}: ${sellerOverride.commissionRate}%`
       );
-      // Convert override to rule format
       return {
         id: sellerOverride.id,
         type: sellerOverride.commissionType,
@@ -176,7 +199,40 @@ export class CommissionService {
       };
     }
 
-    // 2. Fall back to standard commission rules (category/global rules)
+    // Priority 3: Category-only override (all sellers)
+    if (categoryId) {
+      const categoryOverride = await this.prisma.sellerCommissionOverride.findFirst({
+        where: {
+          sellerId: null,
+          categoryId,
+          isActive: true,
+          AND: [
+            { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+            { OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
+            {
+              OR: [{ minOrderValue: null }, { minOrderValue: { lte: orderAmountNumber } }],
+            },
+            {
+              OR: [{ maxOrderValue: null }, { maxOrderValue: { gte: orderAmountNumber } }],
+            },
+          ],
+        },
+        orderBy: { priority: 'desc' },
+      });
+
+      if (categoryOverride) {
+        this.logger.log(
+          `Using category-only override for ${categoryId}: ${categoryOverride.commissionRate}%`
+        );
+        return {
+          id: categoryOverride.id,
+          type: categoryOverride.commissionType,
+          value: categoryOverride.commissionRate,
+        };
+      }
+    }
+
+    // Priority 4-6: Fall back to standard commission rules (category/global rules)
     const rules = await this.prisma.commissionRule.findMany({
       where: {
         isActive: true,
@@ -193,16 +249,10 @@ export class CommissionService {
             OR: [{ validUntil: null }, { validUntil: { gte: now } }],
           },
           {
-            OR: [
-              { minOrderValue: null },
-              { minOrderValue: { lte: orderAmountNumber } },
-            ],
+            OR: [{ minOrderValue: null }, { minOrderValue: { lte: orderAmountNumber } }],
           },
           {
-            OR: [
-              { maxOrderValue: null },
-              { maxOrderValue: { gte: orderAmountNumber } },
-            ],
+            OR: [{ maxOrderValue: null }, { maxOrderValue: { gte: orderAmountNumber } }],
           },
         ],
       },
@@ -496,16 +546,19 @@ export class CommissionService {
   /**
    * Update commission rule
    */
-  async updateRule(id: string, data: Partial<{
-    name: string;
-    description: string;
-    type: CommissionRuleType;
-    value: number;
-    isActive: boolean;
-    priority: number;
-    validFrom: Date;
-    validUntil: Date;
-  }>) {
+  async updateRule(
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      type: CommissionRuleType;
+      value: number;
+      isActive: boolean;
+      priority: number;
+      validFrom: Date;
+      validUntil: Date;
+    }>
+  ) {
     const updateData: any = { ...data };
     if (data.value !== undefined) {
       updateData.value = new Decimal(data.value);
@@ -547,9 +600,10 @@ export class CommissionService {
    * Get commission statistics for admin dashboard
    */
   async getCommissionStatistics(filters?: { startDate?: Date; endDate?: Date }) {
-    const dateFilter = filters?.startDate && filters?.endDate
-      ? { createdAt: { gte: filters.startDate, lte: filters.endDate } }
-      : {};
+    const dateFilter =
+      filters?.startDate && filters?.endDate
+        ? { createdAt: { gte: filters.startDate, lte: filters.endDate } }
+        : {};
 
     const [total, pending, confirmed, paid, cancelled] = await Promise.all([
       this.prisma.commission.aggregate({
@@ -598,9 +652,10 @@ export class CommissionService {
    * Get top sellers by commission earned
    */
   async getTopSellersByCommission(filters?: { startDate?: Date; endDate?: Date; limit?: number }) {
-    const dateFilter = filters?.startDate && filters?.endDate
-      ? { createdAt: { gte: filters.startDate, lte: filters.endDate } }
-      : {};
+    const dateFilter =
+      filters?.startDate && filters?.endDate
+        ? { createdAt: { gte: filters.startDate, lte: filters.endDate } }
+        : {};
 
     const topSellers = await this.prisma.commission.groupBy({
       by: ['sellerId'],
@@ -615,7 +670,7 @@ export class CommissionService {
     });
 
     // Get seller details
-    const sellerIds = topSellers.map(s => s.sellerId);
+    const sellerIds = topSellers.map((s) => s.sellerId);
     const sellers = await this.prisma.user.findMany({
       where: { id: { in: sellerIds } },
       select: {
@@ -629,9 +684,9 @@ export class CommissionService {
       },
     });
 
-    const sellerMap = new Map(sellers.map(s => [s.id, s]));
+    const sellerMap = new Map(sellers.map((s) => [s.id, s]));
 
-    return topSellers.map(s => ({
+    return topSellers.map((s) => ({
       sellerId: s.sellerId,
       seller: sellerMap.get(s.sellerId),
       totalCommission: s._sum.commissionAmount || 0,
@@ -687,12 +742,13 @@ export class CommissionService {
     const where: Prisma.CommissionWhereInput = {
       ...(filters?.status && { status: filters.status }),
       ...(filters?.sellerId && { sellerId: filters.sellerId }),
-      ...(filters?.startDate && filters?.endDate && {
-        createdAt: {
-          gte: filters.startDate,
-          lte: filters.endDate,
-        },
-      }),
+      ...(filters?.startDate &&
+        filters?.endDate && {
+          createdAt: {
+            gte: filters.startDate,
+            lte: filters.endDate,
+          },
+        }),
     };
 
     const [commissions, total] = await Promise.all([

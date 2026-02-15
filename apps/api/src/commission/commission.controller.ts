@@ -16,9 +16,11 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole, CommissionStatus } from '@prisma/client';
 import { CommissionService } from './commission.service';
 import { PayoutService } from './payout.service';
+import { EnhancedCommissionService } from './enhanced-commission.service';
 import { CreateCommissionRuleDto } from './dto/create-commission-rule.dto';
 import { CreatePayoutDto } from './dto/create-payout.dto';
 import { ProcessPayoutDto } from './dto/process-payout.dto';
+import { CreateOverrideDto, UpdateOverrideDto } from './dto/create-override.dto';
 
 @Controller('commission')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -26,6 +28,7 @@ export class CommissionController {
   constructor(
     private readonly commissionService: CommissionService,
     private readonly payoutService: PayoutService,
+    private readonly enhancedCommissionService: EnhancedCommissionService
   ) {}
 
   // ============================================================================
@@ -46,7 +49,7 @@ export class CommissionController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('limit') limit?: string
   ) {
     return this.commissionService.getSellerCommissions(req.user.id, {
       status,
@@ -62,7 +65,7 @@ export class CommissionController {
   async getMyPayouts(
     @Request() req: any,
     @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('limit') limit?: string
   ) {
     return this.payoutService.getSellerPayouts(req.user.id, {
       page: page ? parseInt(page) : undefined,
@@ -86,7 +89,7 @@ export class CommissionController {
   async getAllRules(
     @Query('isActive') isActive?: string,
     @Query('categoryId') categoryId?: string,
-    @Query('sellerId') sellerId?: string,
+    @Query('sellerId') sellerId?: string
   ) {
     return this.commissionService.getAllRules({
       isActive: isActive === 'true',
@@ -114,6 +117,56 @@ export class CommissionController {
   }
 
   // ============================================================================
+  // Admin Endpoints - Commission Overrides
+  // ============================================================================
+
+  @Get('overrides')
+  @Roles(UserRole.ADMIN)
+  async getAllOverrides(
+    @Query('isActive') isActive?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('sellerId') sellerId?: string
+  ) {
+    return this.enhancedCommissionService.getAllSellerOverrides({
+      isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
+      categoryId,
+    });
+  }
+
+  @Get('overrides/seller/:sellerId')
+  @Roles(UserRole.ADMIN)
+  async getSellerOverrides(@Param('sellerId') sellerId: string) {
+    return this.enhancedCommissionService.getSellerOverride(sellerId);
+  }
+
+  @Get('overrides/category/:categoryId')
+  @Roles(UserRole.ADMIN)
+  async getCategoryOverrides(@Param('categoryId') categoryId: string) {
+    return this.enhancedCommissionService.getCategoryOverride(categoryId);
+  }
+
+  @Post('overrides')
+  @Roles(UserRole.ADMIN)
+  async createOverride(@Body() dto: CreateOverrideDto, @Request() req: any) {
+    return this.enhancedCommissionService.createSellerOverride({
+      ...dto,
+      approvedBy: req.user.id,
+    });
+  }
+
+  @Put('overrides/:id')
+  @Roles(UserRole.ADMIN)
+  async updateOverride(@Param('id') id: string, @Body() dto: UpdateOverrideDto) {
+    return this.enhancedCommissionService.updateSellerOverride(id, dto);
+  }
+
+  @Delete('overrides/:id')
+  @Roles(UserRole.ADMIN)
+  async deleteOverride(@Param('id') id: string) {
+    return this.enhancedCommissionService.deleteSellerOverride(id);
+  }
+
+  // ============================================================================
   // Admin Endpoints - Payouts
   // ============================================================================
 
@@ -125,7 +178,7 @@ export class CommissionController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('limit') limit?: string
   ) {
     return this.payoutService.getAllPayouts({
       status: status as any,
@@ -172,7 +225,7 @@ export class CommissionController {
   async getPayoutStatistics(
     @Query('sellerId') sellerId?: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('endDate') endDate?: string
   ) {
     return this.payoutService.getPayoutStatistics({
       sellerId,
@@ -189,7 +242,7 @@ export class CommissionController {
   @Roles(UserRole.ADMIN)
   async getDashboardStatistics(
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('endDate') endDate?: string
   ) {
     const dateFilters = {
       startDate: startDate ? new Date(startDate) : undefined,
@@ -230,7 +283,7 @@ export class CommissionController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('limit') limit?: string
   ) {
     return this.commissionService.getAllCommissions({
       status,
