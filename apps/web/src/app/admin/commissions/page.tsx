@@ -1015,7 +1015,7 @@ function CommissionOverridesContent() {
                       <SelectValue placeholder="Select category (or leave blank for all)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Categories</SelectItem>
+                      <SelectItem value="all">All Categories</SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
