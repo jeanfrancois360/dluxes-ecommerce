@@ -75,12 +75,12 @@ model User {
   inventoryChanges InventoryTransaction[] @relation("InventoryChanges")
 
   // Escrow & Payment Extensions
-  escrowTransactions EscrowTransaction[]       @relation("SellerEscrow")
-  escrowAllocations  EscrowSplitAllocation[]   @relation("SellerEscrowAllocations")
-  commissionOverride SellerCommissionOverride? @relation("SellerCommissionOverrides")
-  planSubscriptions  SellerPlanSubscription[]  @relation("SellerPlanSubscriptions")
-  sellerSubscription SellerSubscription?       @relation("UserSubscription") // Inquiry-based product subscription
-  creditBalance      CreditBalance?            @relation("UserCreditBalance") // Credit balance for inquiry responses
+  escrowTransactions  EscrowTransaction[]        @relation("SellerEscrow")
+  escrowAllocations   EscrowSplitAllocation[]    @relation("SellerEscrowAllocations")
+  commissionOverrides SellerCommissionOverride[] @relation("SellerCommissionOverrides")
+  planSubscriptions   SellerPlanSubscription[]   @relation("SellerPlanSubscriptions")
+  sellerSubscription  SellerSubscription?        @relation("UserSubscription") // Inquiry-based product subscription
+  creditBalance       CreditBalance?             @relation("UserCreditBalance") // Credit balance for inquiry responses
 
   // Delivery Provider Extensions
   deliveryProviderId  String?
@@ -2441,8 +2441,8 @@ model EscrowSplitAllocation {
 // ============================================================================
 
 model SellerCommissionOverride {
-  id       String @id @default(cuid())
-  sellerId String @unique
+  id       String  @id @default(cuid())
+  sellerId String? // Optional - for seller-specific or seller+category overrides
 
   // Override Settings
   commissionType CommissionRuleType @default(PERCENTAGE)
@@ -2451,7 +2451,7 @@ model SellerCommissionOverride {
   // Conditions (Optional)
   minOrderValue Decimal? @db.Decimal(10, 2)
   maxOrderValue Decimal? @db.Decimal(10, 2)
-  categoryId    String? // Apply to specific category only
+  categoryId    String? // Optional - for category-specific or seller+category overrides
 
   // Status
   isActive Boolean @default(true)
@@ -2470,10 +2470,13 @@ model SellerCommissionOverride {
   updatedAt DateTime @updatedAt
 
   // Relations
-  seller   User      @relation("SellerCommissionOverrides", fields: [sellerId], references: [id], onDelete: Cascade)
+  seller   User?     @relation("SellerCommissionOverrides", fields: [sellerId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
+  // Composite unique constraint - prevents duplicate seller+category combinations
+  @@unique([sellerId, categoryId], name: "unique_seller_category_override")
   @@index([sellerId])
+  @@index([categoryId])
   @@index([isActive])
   @@index([priority])
   @@map("seller_commission_overrides")
