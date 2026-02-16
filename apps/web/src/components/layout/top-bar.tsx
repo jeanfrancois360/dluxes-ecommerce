@@ -89,9 +89,7 @@ export function TopBar() {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/announcements/active`
-        );
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements/active`);
         if (response.ok) {
           const data = await response.json();
           setAnnouncements(data);
