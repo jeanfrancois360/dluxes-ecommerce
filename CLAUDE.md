@@ -513,10 +513,39 @@ nextpik/
 
 ---
 
+## SEO & Brand Identity
+
+### Core SEO Implementation
+
+- **Site Name:** NextPik (NOT NextPick - different from tennis recruiting platform)
+- **Brand Focus:** Multi-vendor luxury marketplace
+- **Core Keywords:** nextpik marketplace, luxury online shopping, multi-vendor platform
+- **Structured Data:** Organization, WebSite, Product, ItemList, Breadcrumb schemas
+- **Dynamic Sitemap:** Auto-generates with products, categories, stores
+- **Search Console:** Use `SEO_GUIDE.md` for setup instructions
+
+### Meta Tags Strategy
+
+- Homepage: Brand-focused with category mentions (fashion, electronics, vehicles, real estate)
+- Products: Dynamic meta from product data + structured data
+- Categories: Category-specific titles and descriptions
+- Stores: Seller branding + product collections
+
+### Files to Check for SEO
+
+- `apps/web/src/lib/seo.tsx` - Core SEO config and schema generators
+- `apps/web/src/lib/metadata.ts` - Page-specific meta tags
+- `apps/web/src/app/sitemap.ts` - Dynamic sitemap generation
+- `apps/web/src/app/robots.ts` - Robots.txt configuration
+- `SEO_GUIDE.md` - Comprehensive SEO documentation
+
+---
+
 ## Version History
 
 | Version | Date         | Key Changes                                                                          |
 | ------- | ------------ | ------------------------------------------------------------------------------------ |
+| 2.6.1   | Feb 16, 2026 | Enhanced SEO: Brand differentiation, structured data, comprehensive meta tags        |
 | 2.6.0   | Jan 16, 2026 | Authentication enhancements: Email OTP 2FA, Google OAuth, seller store auto-creation |
 | 2.5.0   | Jan 3, 2026  | Stripe subscription integration with webhooks and billing portal                     |
 | 2.4.0   | Dec 31, 2025 | Store following system, admin notes, enhanced UI/UX                                  |
