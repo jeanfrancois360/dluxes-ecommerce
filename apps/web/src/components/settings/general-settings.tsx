@@ -6,7 +6,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
-import { AlertCircle, Loader2, Settings, Globe, Mail, Phone, Clock, AlertTriangle, Building2 } from 'lucide-react';
+import {
+  AlertCircle,
+  Loader2,
+  Settings,
+  Globe,
+  Mail,
+  Phone,
+  Clock,
+  AlertTriangle,
+  Building2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { generalSettingsSchema, type GeneralSettings } from '@/lib/validations/settings';
@@ -108,7 +118,7 @@ export function GeneralSettingsSection() {
   const isDirty = form.formState.isDirty;
 
   const getGeneralSetting = (key: string) => {
-    const setting = settings.find(s => s.key === key);
+    const setting = settings.find((s) => s.key === key);
     return setting?.value;
   };
 
@@ -124,9 +134,7 @@ export function GeneralSettingsSection() {
           <div className="rounded-lg border border-red-200 bg-red-50 p-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className="h-5 w-5 text-red-600" />
-              <h4 className="text-sm font-medium text-red-900">
-                Form Validation Errors
-              </h4>
+              <h4 className="text-sm font-medium text-red-900">Form Validation Errors</h4>
             </div>
             <ul className="text-sm text-red-700 space-y-1 ml-7">
               {Object.entries(form.formState.errors).map(([field, error]: any) => (
@@ -215,6 +223,7 @@ export function GeneralSettingsSection() {
         icon={Globe}
         title="Regional Settings"
         description="Configure timezone and location preferences"
+        className="hidden"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <SettingsField
@@ -264,9 +273,15 @@ export function GeneralSettingsSection() {
                       onChange={(e) => {
                         const current = form.watch('allowed_countries') || [];
                         if (e.target.checked) {
-                          form.setValue('allowed_countries', [...current, country.code], { shouldDirty: true });
+                          form.setValue('allowed_countries', [...current, country.code], {
+                            shouldDirty: true,
+                          });
                         } else {
-                          form.setValue('allowed_countries', current.filter(c => c !== country.code), { shouldDirty: true });
+                          form.setValue(
+                            'allowed_countries',
+                            current.filter((c) => c !== country.code),
+                            { shouldDirty: true }
+                          );
                         }
                       }}
                       className="rounded border-gray-300"
@@ -309,8 +324,8 @@ export function GeneralSettingsSection() {
                     Maintenance Mode Active
                   </h4>
                   <p className="text-sm text-amber-700">
-                    Your site is currently in maintenance mode. Only administrators can access the platform.
-                    Visitors will see a maintenance message.
+                    Your site is currently in maintenance mode. Only administrators can access the
+                    platform. Visitors will see a maintenance message.
                   </p>
                 </div>
               </div>
