@@ -40,7 +40,8 @@ export function useCategories(includeInactive: boolean = false): UseCategoriesRe
       const response = await api.get<Category[]>(`/categories?${params.toString()}`);
       setCategories(response);
     } catch (err) {
-      const apiError = err instanceof APIError ? err : new APIError('Failed to fetch categories', 500);
+      const apiError =
+        err instanceof APIError ? err : new APIError('Failed to fetch categories', 500);
       setError(apiError);
       setCategories([]);
     } finally {
@@ -86,7 +87,8 @@ export function useCategory(slugOrId: string, bySlug: boolean = true): UseCatego
         const response = await api.get<Category>(endpoint);
         setCategory(response);
       } catch (err) {
-        const apiError = err instanceof APIError ? err : new APIError('Failed to fetch category', 500);
+        const apiError =
+          err instanceof APIError ? err : new APIError('Failed to fetch category', 500);
         setError(apiError);
         setCategory(null);
       } finally {
@@ -112,8 +114,15 @@ export function useTopBarCategories(): UseCategoriesReturn {
   return {
     categories: data || [],
     isLoading,
-    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch top bar categories', 500) : null,
-    refetch: async () => { await mutate(); },
+    error:
+      error instanceof APIError
+        ? error
+        : error
+          ? new APIError('Failed to fetch top bar categories', 500)
+          : null,
+    refetch: async () => {
+      await mutate();
+    },
   };
 }
 
@@ -127,8 +136,15 @@ export function useSidebarCategories(): UseCategoriesReturn {
   return {
     categories: data || [],
     isLoading,
-    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch sidebar categories', 500) : null,
-    refetch: async () => { await mutate(); },
+    error:
+      error instanceof APIError
+        ? error
+        : error
+          ? new APIError('Failed to fetch sidebar categories', 500)
+          : null,
+    refetch: async () => {
+      await mutate();
+    },
   };
 }
 
@@ -142,8 +158,15 @@ export function useNavbarCategories(): UseCategoriesReturn {
   return {
     categories: data || [],
     isLoading,
-    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch navbar categories', 500) : null,
-    refetch: async () => { await mutate(); },
+    error:
+      error instanceof APIError
+        ? error
+        : error
+          ? new APIError('Failed to fetch navbar categories', 500)
+          : null,
+    refetch: async () => {
+      await mutate();
+    },
   };
 }
 
@@ -157,8 +180,15 @@ export function useHomepageCategories(): UseCategoriesReturn {
   return {
     categories: data || [],
     isLoading,
-    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch homepage categories', 500) : null,
-    refetch: async () => { await mutate(); },
+    error:
+      error instanceof APIError
+        ? error
+        : error
+          ? new APIError('Failed to fetch homepage categories', 500)
+          : null,
+    refetch: async () => {
+      await mutate();
+    },
   };
 }
 
@@ -172,7 +202,36 @@ export function useFeaturedCategories(): UseCategoriesReturn {
   return {
     categories: data || [],
     isLoading,
-    error: error instanceof APIError ? error : error ? new APIError('Failed to fetch featured categories', 500) : null,
-    refetch: async () => { await mutate(); },
+    error:
+      error instanceof APIError
+        ? error
+        : error
+          ? new APIError('Failed to fetch featured categories', 500)
+          : null,
+    refetch: async () => {
+      await mutate();
+    },
+  };
+}
+
+export function useCategoryTree(): UseCategoriesReturn {
+  const { data, error, isLoading, mutate } = useSWR(
+    'categories-tree',
+    () => categoriesAPI.getTree(),
+    swrConfig
+  );
+
+  return {
+    categories: data || [],
+    isLoading,
+    error:
+      error instanceof APIError
+        ? error
+        : error
+          ? new APIError('Failed to fetch category tree', 500)
+          : null,
+    refetch: async () => {
+      await mutate();
+    },
   };
 }

@@ -5,9 +5,10 @@ import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import PageHeader from '@/components/admin/page-header';
 import { useCategories } from '@/hooks/use-admin';
+import { useCategoryTree } from '@/hooks/use-categories';
 import { adminCategoriesApi, type Category } from '@/lib/api/admin';
 import { toast, standardToasts } from '@/lib/utils/toast';
-import { Link2, X } from 'lucide-react';
+import { Link2, X, ChevronRight, ChevronDown } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 // Helper function to generate slug from name
@@ -17,6 +18,55 @@ function generateSlug(name: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+// Helper function to build parent category options recursively with indentation
+function buildParentOptions(
+  categories: Category[],
+  editingId: string | null,
+  depth: number = 0
+): React.ReactElement[] {
+  const options: React.ReactElement[] = [];
+
+  // Get categories at this level (based on parent relationship)
+  const categoriesAtLevel = categories.filter((c) => {
+    if (depth === 0) return !c.parentId;
+    return false; // This will be handled by the recursive call
+  });
+
+  // Recursive function to build options for a category and its children
+  const buildOptionsForCategory = (
+    category: Category,
+    currentDepth: number
+  ): React.ReactElement[] => {
+    const opts: React.ReactElement[] = [];
+
+    // Skip current category being edited (can't be its own parent)
+    if (category.id === editingId) return opts;
+
+    // Add current category with indentation
+    const indent = '—'.repeat(currentDepth);
+    opts.push(
+      <option key={category.id} value={category.id}>
+        {indent} {category.name}
+      </option>
+    );
+
+    // Find and add children recursively
+    const children = categories.filter((c) => c.parentId === category.id);
+    children.forEach((child) => {
+      opts.push(...buildOptionsForCategory(child, currentDepth + 1));
+    });
+
+    return opts;
+  };
+
+  // Build options for all top-level categories
+  categoriesAtLevel.forEach((category) => {
+    options.push(...buildOptionsForCategory(category, depth));
+  });
+
+  return options;
 }
 
 // Category Form Component (moved outside to prevent re-creation on every render)
@@ -109,13 +159,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
         >
           <option value="">{t('form.noneTopLevel')}</option>
-          {categories
-            .filter((c) => !c.parentId && c.id !== editingId)
-            .map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
+          {buildParentOptions(categories, editingId, 0)}
         </select>
       </div>
 
@@ -208,6 +252,213 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
         </button>
       </div>
     </form>
+  );
+};
+
+// Recursive Category Tree Row Component
+interface CategoryTreeRowProps {
+  category: Category;
+  depth: number;
+  expandedCategories: Set<string>;
+  toggleExpand: (id: string) => void;
+  handleEdit: (category: Category) => void;
+  handleDelete: (id: string) => void;
+  t: any;
+  allCategories: Category[];
+}
+
+const CategoryTreeRow: React.FC<CategoryTreeRowProps> = ({
+  category,
+  depth,
+  expandedCategories,
+  toggleExpand,
+  handleEdit,
+  handleDelete,
+  t,
+  allCategories,
+}) => {
+  const children = allCategories.filter((c) => c.parentId === category.id);
+  const hasChildren = children.length > 0;
+  const isExpanded = expandedCategories.has(category.id);
+  const isTopLevel = depth === 0;
+
+  return (
+    <>
+      <tr
+        className={`group transition-all duration-200 ${depth > 0 ? 'bg-neutral-50/50 hover:bg-neutral-100/70' : 'hover:bg-neutral-50'}`}
+      >
+        {/* Name with expand/collapse and depth indicator */}
+        <td className="px-6 py-3">
+          <div className="flex items-center" style={{ paddingLeft: `${depth * 24}px` }}>
+            {/* Tree connector for nested items */}
+            {depth > 0 && (
+              <div className="flex items-end mr-2" style={{ width: '20px', height: '20px' }}>
+                <div
+                  className="border-l-2 border-b-2 border-neutral-300 rounded-bl h-3"
+                  style={{ width: '16px' }}
+                ></div>
+              </div>
+            )}
+
+            {/* Expand/collapse button or spacer */}
+            {hasChildren ? (
+              <button
+                onClick={() => toggleExpand(category.id)}
+                className="p-1 hover:bg-neutral-200 rounded transition-colors mr-2"
+                title={isExpanded ? t('table.collapse') : t('table.expand')}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-neutral-600" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-neutral-600" />
+                )}
+              </button>
+            ) : (
+              <span className="w-6 mr-2" />
+            )}
+
+            <span
+              className={`text-sm ${isTopLevel ? 'font-semibold text-black' : 'font-medium text-neutral-700'} group-hover:text-[#CBB57B] transition-colors`}
+            >
+              {category.name}
+            </span>
+
+            {/* Children count badge */}
+            {hasChildren && (
+              <span
+                className="inline-flex items-center justify-center px-1.5 py-0.5 ml-2 text-xs font-bold text-[#CBB57B] bg-[#CBB57B]/10 rounded"
+                title={`${children.length} ${children.length > 1 ? t('table.subcategories') : t('table.subcategory')}`}
+              >
+                {children.length}
+              </span>
+            )}
+
+            {/* Depth level badge */}
+            <span className="inline-flex items-center justify-center px-1.5 py-0.5 ml-2 text-xs font-medium text-gray-600 bg-gray-100 rounded">
+              L{depth + 1}
+            </span>
+          </div>
+        </td>
+
+        {/* Slug */}
+        <td className="px-6 py-3">
+          <span
+            className={`font-mono text-xs px-2 py-1 rounded ${depth > 0 ? 'bg-neutral-200 text-neutral-600' : 'bg-neutral-100 text-neutral-700'}`}
+          >
+            {category.slug}
+          </span>
+        </td>
+
+        {/* Products count */}
+        <td className="px-6 py-3 text-center">
+          <span
+            className={`inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-bold rounded-full ${
+              category.productCount > 0
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-neutral-100 text-neutral-500'
+            }`}
+          >
+            {category.productCount}
+          </span>
+        </td>
+
+        {/* Visibility badges */}
+        <td className="px-6 py-3">
+          <div className="flex flex-wrap items-center gap-1">
+            {category.showInNavbar && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
+                {t('visibility.menu')}
+              </span>
+            )}
+            {category.showInTopBar && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
+                {t('visibility.catBar')}
+              </span>
+            )}
+            {category.showInSidebar && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-teal-100 text-teal-700 rounded">
+                {t('visibility.sidebar')}
+              </span>
+            )}
+            {category.showInFooter && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                {t('visibility.footer')}
+              </span>
+            )}
+            {category.showOnHomepage && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                {t('visibility.home')}
+              </span>
+            )}
+            {category.isFeatured && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">
+                {t('visibility.featured')}
+              </span>
+            )}
+            {!category.showInNavbar &&
+              !category.showInTopBar &&
+              !category.showInSidebar &&
+              !category.showInFooter &&
+              !category.showOnHomepage &&
+              !category.isFeatured && <span className="text-xs text-neutral-400">-</span>}
+          </div>
+        </td>
+
+        {/* Actions */}
+        <td className="px-6 py-3">
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => handleEdit(category)}
+              className="p-2 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-lg transition-all"
+              title={t('table.editCategory')}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={() => handleDelete(category.id)}
+              className="p-2 hover:bg-red-50 text-red-600 hover:text-red-700 rounded-lg transition-all"
+              title={
+                hasChildren || category.productCount > 0
+                  ? `${t('table.hasDependencies')} ${children.length} ${children.length !== 1 ? t('table.subcategories') : t('table.subcategory')}, ${category.productCount} ${category.productCount !== 1 ? t('table.products_other') : t('table.product')}`
+                  : t('table.deleteCategory')
+              }
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+
+      {/* Recursively render children */}
+      {isExpanded &&
+        children.map((child) => (
+          <CategoryTreeRow
+            key={child.id}
+            category={child}
+            depth={depth + 1}
+            expandedCategories={expandedCategories}
+            toggleExpand={toggleExpand}
+            handleEdit={handleEdit}
+            handleDelete={handleDelete}
+            t={t}
+            allCategories={allCategories}
+          />
+        ))}
+    </>
   );
 };
 
@@ -914,316 +1165,22 @@ function CategoriesContent() {
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
                   {(() => {
-                    const { parentCategories, childrenMap } = buildCategoryTree();
+                    // Get root categories (those without parents)
+                    const rootCategories = filteredCategories.filter((c) => !c.parentId);
 
-                    return parentCategories.map((parent) => {
-                      const children = childrenMap.get(parent.id) || [];
-                      const hasChildren = children.length > 0;
-                      const isExpanded = expandedCategories.has(parent.id);
-
+                    return rootCategories.map((rootCategory) => {
                       return (
-                        <React.Fragment key={parent.id}>
-                          {/* Parent Row */}
-                          <tr className="group transition-all duration-200 hover:bg-neutral-50">
-                            {/* Name with expand/collapse */}
-                            <td className="px-6 py-3">
-                              <div className="flex items-center gap-2">
-                                {hasChildren ? (
-                                  <button
-                                    onClick={() => toggleExpand(parent.id)}
-                                    className="p-1 hover:bg-neutral-200 rounded transition-colors"
-                                    title={isExpanded ? t('table.collapse') : t('table.expand')}
-                                  >
-                                    <svg
-                                      className={`w-4 h-4 text-neutral-600 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 5l7 7-7 7"
-                                      />
-                                    </svg>
-                                  </button>
-                                ) : (
-                                  <span className="w-6" />
-                                )}
-                                <span className="text-sm font-semibold text-black group-hover:text-[#CBB57B] transition-colors">
-                                  {parent.name}
-                                </span>
-                                {hasChildren && (
-                                  <span
-                                    className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold text-[#CBB57B] bg-[#CBB57B]/10 rounded"
-                                    title={`${children.length} ${children.length > 1 ? t('table.subcategories') : t('table.subcategory')}`}
-                                  >
-                                    {children.length}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Slug */}
-                            <td className="px-6 py-3">
-                              <span className="font-mono text-xs bg-neutral-100 px-2 py-1 rounded text-neutral-700">
-                                {parent.slug}
-                              </span>
-                            </td>
-
-                            {/* Products count */}
-                            <td className="px-6 py-3 text-center">
-                              <span
-                                className={`inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-bold rounded-full ${
-                                  parent.productCount > 0
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-neutral-100 text-neutral-500'
-                                }`}
-                              >
-                                {parent.productCount}
-                              </span>
-                            </td>
-
-                            {/* Visibility badges */}
-                            <td className="px-6 py-3">
-                              <div className="flex flex-wrap items-center gap-1">
-                                {parent.showInNavbar && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
-                                    {t('visibility.menu')}
-                                  </span>
-                                )}
-                                {parent.showInTopBar && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                                    {t('visibility.catBar')}
-                                  </span>
-                                )}
-                                {parent.showInSidebar && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-teal-100 text-teal-700 rounded">
-                                    {t('visibility.sidebar')}
-                                  </span>
-                                )}
-                                {parent.showInFooter && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded">
-                                    {t('visibility.footer')}
-                                  </span>
-                                )}
-                                {parent.showOnHomepage && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                                    {t('visibility.home')}
-                                  </span>
-                                )}
-                                {parent.isFeatured && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">
-                                    {t('visibility.featured')}
-                                  </span>
-                                )}
-                                {!parent.showInNavbar &&
-                                  !parent.showInTopBar &&
-                                  !parent.showInSidebar &&
-                                  !parent.showInFooter &&
-                                  !parent.showOnHomepage &&
-                                  !parent.isFeatured && (
-                                    <span className="text-xs text-neutral-400">-</span>
-                                  )}
-                              </div>
-                            </td>
-
-                            {/* Actions */}
-                            <td className="px-6 py-3">
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={() => handleEdit(parent)}
-                                  className="p-2 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-lg transition-all"
-                                  title={t('table.editCategory')}
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(parent.id)}
-                                  className="p-2 hover:bg-red-50 text-red-600 hover:text-red-700 rounded-lg transition-all"
-                                  title={
-                                    hasChildren || parent.productCount > 0
-                                      ? `${t('table.hasDependencies')} ${children.length} ${children.length !== 1 ? t('table.subcategories') : t('table.subcategory')}, ${parent.productCount} ${parent.productCount !== 1 ? t('table.products_other') : t('table.product')}`
-                                      : t('table.deleteCategory')
-                                  }
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                    />
-                                  </svg>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-
-                          {/* Child Rows - Only shown when expanded */}
-                          {isExpanded &&
-                            children.map((child, index) => {
-                              const isLast = index === children.length - 1;
-                              return (
-                                <tr
-                                  key={child.id}
-                                  className="group bg-neutral-50/50 hover:bg-neutral-100/70 transition-all duration-200"
-                                >
-                                  {/* Name with tree connector */}
-                                  <td className="px-6 py-3">
-                                    <div className="flex items-center pl-6">
-                                      <div
-                                        className="flex items-end"
-                                        style={{
-                                          width: '24px',
-                                          height: '20px',
-                                          marginRight: '8px',
-                                        }}
-                                      >
-                                        <div
-                                          className={`border-l-2 border-b-2 border-neutral-300 ${isLast ? 'h-3 rounded-bl' : 'h-full'}`}
-                                          style={{ width: '16px' }}
-                                        ></div>
-                                      </div>
-                                      <span className="text-sm font-medium text-neutral-700 group-hover:text-[#CBB57B] transition-colors">
-                                        {child.name}
-                                      </span>
-                                    </div>
-                                  </td>
-
-                                  {/* Slug */}
-                                  <td className="px-6 py-3">
-                                    <span className="font-mono text-xs bg-neutral-200 px-2 py-1 rounded text-neutral-600">
-                                      {child.slug}
-                                    </span>
-                                  </td>
-
-                                  {/* Products count */}
-                                  <td className="px-6 py-3 text-center">
-                                    <span
-                                      className={`inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-bold rounded-full ${
-                                        child.productCount > 0
-                                          ? 'bg-blue-100 text-blue-700'
-                                          : 'bg-neutral-100 text-neutral-500'
-                                      }`}
-                                    >
-                                      {child.productCount}
-                                    </span>
-                                  </td>
-
-                                  {/* Visibility badges */}
-                                  <td className="px-6 py-3">
-                                    <div className="flex flex-wrap items-center gap-1">
-                                      {child.showInNavbar && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
-                                          {t('visibility.menu')}
-                                        </span>
-                                      )}
-                                      {child.showInTopBar && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                                          {t('visibility.catBar')}
-                                        </span>
-                                      )}
-                                      {child.showInSidebar && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-teal-100 text-teal-700 rounded">
-                                          {t('visibility.sidebar')}
-                                        </span>
-                                      )}
-                                      {child.showInFooter && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded">
-                                          {t('visibility.footer')}
-                                        </span>
-                                      )}
-                                      {child.showOnHomepage && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                                          {t('visibility.home')}
-                                        </span>
-                                      )}
-                                      {child.isFeatured && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">
-                                          {t('visibility.featured')}
-                                        </span>
-                                      )}
-                                      {!child.showInNavbar &&
-                                        !child.showInTopBar &&
-                                        !child.showInSidebar &&
-                                        !child.showInFooter &&
-                                        !child.showOnHomepage &&
-                                        !child.isFeatured && (
-                                          <span className="text-xs text-neutral-400">-</span>
-                                        )}
-                                    </div>
-                                  </td>
-
-                                  {/* Actions */}
-                                  <td className="px-6 py-3">
-                                    <div className="flex items-center justify-center gap-2">
-                                      <button
-                                        onClick={() => handleEdit(child)}
-                                        className="p-2 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-lg transition-all"
-                                        title={t('table.editCategory')}
-                                      >
-                                        <svg
-                                          className="w-4 h-4"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                          stroke="currentColor"
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                          />
-                                        </svg>
-                                      </button>
-                                      <button
-                                        onClick={() => handleDelete(child.id)}
-                                        className="p-2 hover:bg-red-50 text-red-600 hover:text-red-700 rounded-lg transition-all"
-                                        title={
-                                          child.productCount > 0
-                                            ? `${t('table.hasDependencies')} ${child.productCount} ${child.productCount !== 1 ? t('table.products_other') : t('table.product')}`
-                                            : t('table.deleteCategory')
-                                        }
-                                      >
-                                        <svg
-                                          className="w-4 h-4"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                          stroke="currentColor"
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                          />
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                        </React.Fragment>
+                        <CategoryTreeRow
+                          key={rootCategory.id}
+                          category={rootCategory}
+                          depth={0}
+                          expandedCategories={expandedCategories}
+                          toggleExpand={toggleExpand}
+                          handleEdit={handleEdit}
+                          handleDelete={handleDelete}
+                          t={t}
+                          allCategories={filteredCategories}
+                        />
                       );
                     });
                   })()}
