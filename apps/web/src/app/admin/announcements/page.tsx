@@ -86,7 +86,7 @@ function AnnouncementsContent() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
 
@@ -179,7 +179,7 @@ function AnnouncementsContent() {
         method: editingAnnouncement ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify(payload),
       });
@@ -206,7 +206,7 @@ function AnnouncementsContent() {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements/${id}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
 
@@ -230,7 +230,7 @@ function AnnouncementsContent() {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
           },
           body: JSON.stringify({ isActive: !announcement.isActive }),
         }

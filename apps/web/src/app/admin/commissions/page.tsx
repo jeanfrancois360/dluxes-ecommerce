@@ -127,7 +127,7 @@ function CommissionOverridesContent() {
     try {
       const response = await fetch('/api/admin/commission/overrides', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
 
@@ -332,7 +332,7 @@ function CommissionOverridesContent() {
         const response = await fetch(`/api/admin/commission/overrides/${id}`, {
           method: 'DELETE',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
           },
         });
         if (response.ok) {
@@ -359,7 +359,7 @@ function CommissionOverridesContent() {
       try {
         const response = await fetch(`/api/admin/users?email=${formData.sellerEmail}`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
           },
         });
         if (response.ok) {
@@ -410,7 +410,7 @@ function CommissionOverridesContent() {
         method: editingOverride ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify(payload),
       });
@@ -437,7 +437,7 @@ function CommissionOverridesContent() {
       const response = await fetch(`/api/admin/commission/overrides/${id}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
 
