@@ -169,7 +169,7 @@ export function TopBar() {
       <div className="relative h-full max-w-[1920px] mx-auto px-4 lg:px-8">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center h-full gap-4">
           {/* Left - Language & Currency Selectors */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 hidden">
             {/* Language Selector */}
             <div ref={languageRef} className="relative">
               <button
