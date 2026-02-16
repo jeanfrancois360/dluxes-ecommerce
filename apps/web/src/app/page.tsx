@@ -24,7 +24,7 @@ import { useSelectedCurrency } from '@/hooks/use-currency';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { navigateWithLoading } from '@/lib/navigation';
 import { useTranslations } from 'next-intl';
-import { OrganizationSchema } from '@/components/seo';
+import { OrganizationSchema, WebSiteSchema } from '@/components/seo';
 
 // Lazy load heavy components
 const InlineAd = lazy(() => import('@/components/ads').then((m) => ({ default: m.InlineAd })));
@@ -424,8 +424,9 @@ export default function Home() {
 
   return (
     <PageLayout>
-      {/* SEO: Organization Schema */}
+      {/* SEO: Organization & WebSite Schema */}
       <OrganizationSchema />
+      <WebSiteSchema />
 
       {/* Hero Section - Creative Carousel */}
       <Suspense

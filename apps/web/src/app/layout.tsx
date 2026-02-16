@@ -149,12 +149,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     />
                     <WhatsAppChat
                       phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890'}
-                      businessName={
-                        process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'Luxury Marketplace'
-                      }
+                      businessName={process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'NextPik'}
                       defaultMessage={
                         process.env.NEXT_PUBLIC_WHATSAPP_DEFAULT_MESSAGE ||
-                        "Hello! I'm interested in your luxury products."
+                        "Hello! I'm interested in NextPik's premium products."
                       }
                       position="bottom-right"
                       showOnMobile={true}
