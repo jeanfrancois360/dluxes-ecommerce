@@ -51,12 +51,12 @@ export const categoriesAPI = {
 
   getFeatured: () => api.get<Category[]>('/categories/featured'),
 
-  // Admin endpoints
-  create: (data: Partial<Category>) =>
-    api.post<Category>('/categories', data),
+  getTree: () => api.get<Category[]>('/categories/tree'),
 
-  update: (id: string, data: Partial<Category>) =>
-    api.patch<Category>(`/categories/${id}`, data),
+  // Admin endpoints
+  create: (data: Partial<Category>) => api.post<Category>('/categories', data),
+
+  update: (id: string, data: Partial<Category>) => api.patch<Category>(`/categories/${id}`, data),
 
   delete: (id: string) => api.delete(`/categories/${id}`),
 
@@ -89,6 +89,5 @@ export const categoriesAPI = {
     }>
   ) => api.patch('/categories/bulk-visibility', { updates }),
 
-  reorder: (categoryIds: string[]) =>
-    api.patch('/categories/reorder', { categoryIds }),
+  reorder: (categoryIds: string[]) => api.patch('/categories/reorder', { categoryIds }),
 };

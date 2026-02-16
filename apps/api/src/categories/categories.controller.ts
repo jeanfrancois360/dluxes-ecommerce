@@ -36,7 +36,7 @@ export class CategoriesController {
       const categories = await this.categoriesService.findAllFlat();
 
       // Transform _count.products to productCount for frontend compatibility
-      const data = categories.map(category => ({
+      const data = categories.map((category) => ({
         ...category,
         productCount: category._count?.products || 0,
       }));
@@ -48,7 +48,7 @@ export class CategoriesController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -114,6 +114,23 @@ export class CategoriesController {
   }
 
   /**
+   * Get all categories with unlimited depth recursive tree structure
+   * @route GET /categories/tree
+   */
+  @Get('tree')
+  async getCategoryTree() {
+    try {
+      const data = await this.categoriesService.findAllRecursive();
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
    * Get category by slug
    * @route GET /categories/:slug
    */
@@ -128,7 +145,7 @@ export class CategoriesController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -151,7 +168,7 @@ export class CategoriesController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -163,10 +180,7 @@ export class CategoriesController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  async update(
-    @Param('id') id: string,
-    @Body() updateCategoryDto: UpdateCategoryDto
-  ) {
+  async update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
     try {
       const data = await this.categoriesService.update(id, updateCategoryDto);
       return {
@@ -177,7 +191,7 @@ export class CategoriesController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -200,7 +214,7 @@ export class CategoriesController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -214,7 +228,8 @@ export class CategoriesController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async updateVisibility(
     @Param('id') id: string,
-    @Body() dto: {
+    @Body()
+    dto: {
       showInNavbar?: boolean;
       showInTopBar?: boolean;
       showInSidebar?: boolean;
@@ -229,7 +244,7 @@ export class CategoriesController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -241,17 +256,14 @@ export class CategoriesController {
   @Patch(':id/priority')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  async updatePriority(
-    @Param('id') id: string,
-    @Body() body: { priority: number }
-  ) {
+  async updatePriority(@Param('id') id: string, @Body() body: { priority: number }) {
     try {
       const data = await this.categoriesService.updatePriority(id, body.priority);
       return { success: true, data };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -264,7 +276,8 @@ export class CategoriesController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async bulkUpdateVisibility(
-    @Body() body: {
+    @Body()
+    body: {
       updates: Array<{
         id: string;
         visibility: {
@@ -284,7 +297,7 @@ export class CategoriesController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -303,7 +316,7 @@ export class CategoriesController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
