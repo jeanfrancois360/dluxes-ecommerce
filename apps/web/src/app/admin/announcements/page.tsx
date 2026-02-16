@@ -84,7 +84,7 @@ function AnnouncementsContent() {
 
   const fetchAnnouncements = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/announcements`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -172,8 +172,8 @@ function AnnouncementsContent() {
       };
 
       const url = editingAnnouncement
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/announcements/${editingAnnouncement.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/announcements`;
+        ? `${process.env.NEXT_PUBLIC_API_URL}/announcements/${editingAnnouncement.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/announcements`;
 
       const response = await fetch(url, {
         method: editingAnnouncement ? 'PUT' : 'POST',
@@ -203,15 +203,12 @@ function AnnouncementsContent() {
     if (!confirm('Are you sure you want to delete this announcement?')) return;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/announcements/${id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
 
       if (response.ok) {
         toast.success('Announcement deleted');
@@ -228,7 +225,7 @@ function AnnouncementsContent() {
   const handleToggleActive = async (announcement: Announcement) => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/announcements/${announcement.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/announcements/${announcement.id}`,
         {
           method: 'PUT',
           headers: {
