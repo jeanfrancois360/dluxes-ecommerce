@@ -2,7 +2,6 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import Image from 'next/image';
 import { type Category } from '@/lib/api/categories';
 
 export interface MegaMenuProps {
@@ -14,14 +13,8 @@ export interface MegaMenuProps {
 export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
   if (!categories || categories.length === 0) return null;
 
-  // Only explicitly featured categories with an image appear in the panel
-  const featuredCategories = categories.filter((c) => c.isFeatured && c.image).slice(0, 2);
-  const hasFeatured = featuredCategories.length > 0;
-
-  const maxColumns = hasFeatured ? 4 : 5;
-  const columnCategories = categories.slice(0, maxColumns);
-  const overflowCategories = categories.slice(maxColumns);
-
+  const columnCategories = categories.slice(0, 4);
+  const overflowCategories = categories.slice(4);
   const totalProducts = categories.reduce((sum, c) => sum + (c._count?.products || 0), 0);
 
   const columnGridClass =
@@ -55,9 +48,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
             className="absolute top-full left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.1)]"
           >
             <div className="max-w-[1920px] mx-auto px-8 lg:px-16 py-6">
-              <div
-                className={`grid gap-10 ${hasFeatured ? 'grid-cols-[1fr_180px]' : 'grid-cols-1'}`}
-              >
+              <div className="grid grid-cols-[1fr_220px] gap-10">
                 {/* ── Category Columns ── */}
                 <div>
                   <div className={`grid ${columnGridClass} gap-x-10 gap-y-1`}>
@@ -74,28 +65,15 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                           onClick={onClose}
                           className="group/hdr flex items-center justify-between gap-2 pb-2 mb-2 border-b border-gray-100"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            {category.image && (
-                              <div className="w-7 h-7 rounded overflow-hidden flex-shrink-0 bg-gray-100">
-                                <Image
-                                  src={category.image}
-                                  alt={category.name}
-                                  width={28}
-                                  height={28}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-black group-hover/hdr:text-[#CBB57B] transition-colors duration-150">
-                                {category.name}
+                          <div className="min-w-0">
+                            <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-black group-hover/hdr:text-[#CBB57B] transition-colors duration-150">
+                              {category.name}
+                            </span>
+                            {(category._count?.products ?? 0) > 0 && (
+                              <span className="text-[10px] text-gray-400 tabular-nums">
+                                {category._count!.products} items
                               </span>
-                              {(category._count?.products ?? 0) > 0 && (
-                                <span className="text-[10px] text-gray-400 tabular-nums">
-                                  {category._count!.products} items
-                                </span>
-                              )}
-                            </div>
+                            )}
                           </div>
                           <svg
                             className="w-3 h-3 text-gray-300 opacity-0 group-hover/hdr:opacity-100 group-hover/hdr:text-black transition-all duration-150 flex-shrink-0"
@@ -206,48 +184,109 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                   </div>
                 </div>
 
-                {/* ── Featured Images ── */}
-                {hasFeatured && (
-                  <div className="flex flex-col gap-2 border-l border-gray-100 pl-8">
-                    {featuredCategories.map((cat, i) => (
-                      <motion.div
-                        key={cat.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.28, delay: 0.08 + i * 0.08 }}
-                        className="flex-1"
-                      >
-                        <Link
-                          href={`/products?category=${cat.slug}`}
-                          onClick={onClose}
-                          className="group/feat block relative overflow-hidden rounded-xl"
+                {/* ── Static Ad Panel ── */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  className="border-l border-gray-100 pl-8 flex flex-col gap-3"
+                >
+                  {/* Main ad card */}
+                  <Link
+                    href="/products"
+                    onClick={onClose}
+                    className="group/ad block relative overflow-hidden rounded-2xl flex-1"
+                    style={{ minHeight: '220px' }}
+                  >
+                    {/* Background gradient — instant, no network request */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background:
+                          'linear-gradient(145deg, #0a0a0a 0%, #1a1410 40%, #2d2010 70%, #0a0a0a 100%)',
+                      }}
+                    />
+
+                    {/* Decorative rings */}
+                    <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full border border-[#CBB57B]/10" />
+                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full border border-[#CBB57B]/15" />
+                    <div className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full border border-[#CBB57B]/8" />
+
+                    {/* Gold shimmer line */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-px"
+                      style={{
+                        background:
+                          'linear-gradient(90deg, transparent, #CBB57B 40%, #e8d49a 60%, transparent)',
+                      }}
+                    />
+
+                    {/* Content */}
+                    <div className="relative p-5 h-full flex flex-col justify-between">
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#CBB57B]/60 mb-2">
+                          New Collection
+                        </p>
+                        <h3 className="text-base font-bold text-white leading-snug mb-1">
+                          Luxury Picks
+                          <br />
+                          <span
+                            className="text-transparent bg-clip-text"
+                            style={{
+                              backgroundImage: 'linear-gradient(90deg, #CBB57B, #e8d49a, #CBB57B)',
+                            }}
+                          >
+                            2026
+                          </span>
+                        </h3>
+                        <p className="text-[11px] text-white/40 leading-relaxed">
+                          Curated selection of premium products across all categories.
+                        </p>
+                      </div>
+
+                      <div className="mt-4">
+                        <span
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-black group-hover/ad:gap-2.5 transition-all duration-200"
+                          style={{
+                            background:
+                              'linear-gradient(135deg, #CBB57B 0%, #e8d49a 50%, #CBB57B 100%)',
+                          }}
                         >
-                          <div className="relative aspect-[4/5] bg-gray-100">
-                            <Image
-                              src={cat.image!}
-                              alt={cat.name}
-                              fill
-                              className="object-cover group-hover/feat:scale-[1.04] transition-transform duration-500 ease-out"
+                          Shop Now
+                          <svg
+                            className="w-3 h-3 group-hover/ad:translate-x-0.5 transition-transform duration-200"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2.5}
+                              d="M17 8l4 4m0 0l-4 4m4-4H3"
                             />
-                            {/* Overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                          </div>
-                          {/* Label */}
-                          <div className="absolute bottom-0 left-0 right-0 p-4">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/50 mb-0.5">
-                              Shop now
-                            </p>
-                            <h4 className="text-sm font-semibold text-white leading-snug">
-                              {cat.name}
-                            </h4>
-                          </div>
-                          {/* Border on hover */}
-                          <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-transparent group-hover/feat:ring-black/20 transition-all duration-300" />
-                        </Link>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
+                          </svg>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Hover glow */}
+                    <div className="absolute inset-0 opacity-0 group-hover/ad:opacity-100 transition-opacity duration-300 rounded-2xl ring-1 ring-inset ring-[#CBB57B]/30" />
+                  </Link>
+
+                  {/* Small promo strip */}
+                  <Link
+                    href="/hot-deals"
+                    onClick={onClose}
+                    className="group/strip flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 hover:bg-[#CBB57B]/5 border border-gray-100 hover:border-[#CBB57B]/30 transition-all duration-150"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />
+                    <span className="text-[11px] font-semibold text-gray-700 group-hover/strip:text-black transition-colors">
+                      Hot Deals
+                    </span>
+                    <span className="ml-auto text-[10px] text-[#CBB57B] font-bold">Live →</span>
+                  </Link>
+                </motion.div>
               </div>
             </div>
           </motion.div>
