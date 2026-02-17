@@ -75,7 +75,6 @@ async function seedAdvertisementPlans() {
       maxImpressions: null, // Unlimited
       priorityBoost: 10,
       allowedPlacements: [
-        'HOMEPAGE_HERO',
         'HOMEPAGE_FEATURED',
         'HOMEPAGE_SIDEBAR',
         'PRODUCTS_BANNER',
