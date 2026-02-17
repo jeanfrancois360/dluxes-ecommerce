@@ -606,6 +606,19 @@ const defaultSettings = [
     requiresRestart: false,
     defaultValue: 0.3,
   },
+  {
+    key: 'commission_default_rate',
+    category: 'commission',
+    value: 10,
+    valueType: SettingValueType.NUMBER,
+    label: 'Default Platform Commission (%)',
+    description:
+      'Default commission percentage charged on each transaction. Can be overridden per category or seller.',
+    isPublic: true,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: 10,
+  },
 
   // CURRENCY SETTINGS
   {
