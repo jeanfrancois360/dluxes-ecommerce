@@ -95,10 +95,13 @@ export function Navbar({ className }: NavbarProps) {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + index * 0.05, duration: 0.4 }}
                       className="relative"
-                      onMouseEnter={() =>
-                        link.hasMegaMenu && setActiveMegaMenu(link.megaMenuType || null)
-                      }
-                      onMouseLeave={() => setActiveMegaMenu(null)}
+                      onMouseEnter={() => {
+                        if (link.hasMegaMenu) {
+                          setActiveMegaMenu(link.megaMenuType || null);
+                        } else {
+                          setActiveMegaMenu(null);
+                        }
+                      }}
                     >
                       <Link
                         href={link.href}
