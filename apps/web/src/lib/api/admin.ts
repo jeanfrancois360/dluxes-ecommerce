@@ -199,7 +199,6 @@ export interface Advertisement {
   startDate?: string;
   endDate?: string;
   status: string;
-  isActive: boolean;
   impressions: number;
   clicks: number;
   conversions: number;

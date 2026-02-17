@@ -81,6 +81,8 @@ export default function SellerAdvertisementsPage() {
     linkUrl: '',
     linkText: t('placeholder.learnMore'),
     placement: 'PRODUCTS_SIDEBAR',
+    pricingModel: 'FIXED',
+    price: 0,
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   });
@@ -99,6 +101,8 @@ export default function SellerAdvertisementsPage() {
       linkUrl: '',
       linkText: t('placeholder.learnMore'),
       placement: (allowedPlacements[0] as AdPlacement) || 'PRODUCTS_SIDEBAR',
+      pricingModel: 'FIXED',
+      price: 0,
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     });
@@ -127,6 +131,8 @@ export default function SellerAdvertisementsPage() {
       linkUrl: ad.linkUrl,
       linkText: ad.linkText || t('placeholder.learnMore'),
       placement: ad.placement,
+      pricingModel: ad.pricingModel || 'FIXED',
+      price: 0,
       startDate: ad.startDate.split('T')[0],
       endDate: ad.endDate.split('T')[0],
     });
@@ -167,9 +173,9 @@ export default function SellerAdvertisementsPage() {
     }
   };
 
-  const handleToggle = async (id: string) => {
+  const handleToggle = async (id: string, currentStatus: string) => {
     try {
-      await toggleAd(id);
+      await toggleAd(id, currentStatus !== 'ACTIVE');
       toast.success(t('toast.statusUpdated'));
       refresh();
     } catch (error: any) {
@@ -327,7 +333,7 @@ export default function SellerAdvertisementsPage() {
                   <div className="flex items-center gap-2">
                     {ad.status === 'ACTIVE' || ad.status === 'PAUSED' ? (
                       <button
-                        onClick={() => handleToggle(ad.id)}
+                        onClick={() => handleToggle(ad.id, ad.status)}
                         className="p-2 hover:bg-gray-100 rounded-lg"
                         title={ad.status === 'ACTIVE' ? t('pause') : t('resume')}
                       >
