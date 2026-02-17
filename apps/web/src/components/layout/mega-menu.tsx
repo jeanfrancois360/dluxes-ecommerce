@@ -65,15 +65,29 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                           onClick={onClose}
                           className="group/hdr flex items-center justify-between gap-2 pb-2 mb-2 border-b border-gray-100"
                         >
-                          <div className="min-w-0">
-                            <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-black group-hover/hdr:text-[#CBB57B] transition-colors duration-150">
-                              {category.name}
-                            </span>
-                            {(category._count?.products ?? 0) > 0 && (
-                              <span className="text-[10px] text-gray-400 tabular-nums">
-                                {category._count!.products} items
-                              </span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            {category.image && (
+                              // Plain <img> with eager loading — faster than next/image for tiny thumbnails
+                              <img
+                                src={category.image}
+                                alt={category.name}
+                                width={28}
+                                height={28}
+                                loading="eager"
+                                decoding="async"
+                                className="w-7 h-7 rounded object-cover flex-shrink-0 bg-gray-100"
+                              />
                             )}
+                            <div className="min-w-0">
+                              <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-black group-hover/hdr:text-[#CBB57B] transition-colors duration-150">
+                                {category.name}
+                              </span>
+                              {(category._count?.products ?? 0) > 0 && (
+                                <span className="text-[10px] text-gray-400 tabular-nums">
+                                  {category._count!.products} items
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <svg
                             className="w-3 h-3 text-gray-300 opacity-0 group-hover/hdr:opacity-100 group-hover/hdr:text-black transition-all duration-150 flex-shrink-0"
