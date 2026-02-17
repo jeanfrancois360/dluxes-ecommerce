@@ -1,15 +1,192 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import PageHeader from '@/components/admin/page-header';
 import { useCategories } from '@/hooks/use-admin';
-import { useCategoryTree } from '@/hooks/use-categories';
 import { adminCategoriesApi, type Category } from '@/lib/api/admin';
-import { toast, standardToasts } from '@/lib/utils/toast';
-import { Link2, X, ChevronRight, ChevronDown } from 'lucide-react';
+import { toast } from '@/lib/utils/toast';
+import { Link2, X, ChevronRight, ChevronDown, Upload, Loader2, ImageIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { createClient } from '@supabase/supabase-js';
+import { api } from '@/lib/api/client';
+
+// ── Category Image Upload ────────────────────────────────────────────────────
+
+interface CategoryImageUploadProps {
+  value: string;
+  onChange: (url: string) => void;
+}
+
+function CategoryImageUpload({ value, onChange }: CategoryImageUploadProps) {
+  const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isSupabaseConfigured =
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  const supabase = isSupabaseConfigured
+    ? createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+    : null;
+
+  const uploadToSupabase = async (file: File): Promise<string> => {
+    if (!supabase) throw new Error('Supabase not configured');
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+    const filePath = `categories/${fileName}`;
+    const { error } = await supabase.storage
+      .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET_NAME || 'product-images')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+    const { data: publicData } = supabase.storage
+      .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET_NAME || 'product-images')
+      .getPublicUrl(filePath);
+    return publicData.publicUrl;
+  };
+
+  const uploadViaAPI = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await api.post('/upload/image?folder=categories', formData);
+    if (!response?.url) throw new Error('No URL returned from server');
+    if (response.url.startsWith('http')) return response.url;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+    return `${apiUrl.replace('/api/v1', '')}${response.url}`;
+  };
+
+  const handleFile = useCallback(
+    async (file: File) => {
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validTypes.includes(file.type)) {
+        toast.error('Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File too large. Maximum size is 5MB.');
+        return;
+      }
+      setUploading(true);
+      try {
+        let url: string;
+        if (isSupabaseConfigured) {
+          try {
+            url = await uploadToSupabase(file);
+          } catch {
+            url = await uploadViaAPI(file);
+          }
+        } else {
+          url = await uploadViaAPI(file);
+        }
+        onChange(url);
+      } catch (err) {
+        toast.error('Image upload failed. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    },
+    [isSupabaseConfigured, supabase, onChange]
+  );
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Preview */}
+      {value && !uploading && (
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-gray-100 border border-gray-200 group">
+          <img src={value} alt="Category" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 bg-white text-black text-xs font-medium rounded-lg shadow hover:bg-gray-100 transition-colors"
+            >
+              Replace
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg shadow hover:bg-red-700 transition-colors"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Zone */}
+      {(!value || uploading) && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          className={`flex flex-col items-center justify-center gap-2 w-full py-8 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+            isDragging
+              ? 'border-[#CBB57B] bg-[#CBB57B]/5'
+              : 'border-gray-300 hover:border-[#CBB57B] hover:bg-gray-50'
+          } ${uploading ? 'cursor-default pointer-events-none' : ''}`}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="w-8 h-8 text-[#CBB57B] animate-spin" />
+              <p className="text-sm text-gray-500">Uploading...</p>
+            </>
+          ) : (
+            <>
+              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                <Upload className="w-5 h-5 text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-700">
+                Drop image here or <span className="text-[#CBB57B]">click to browse</span>
+              </p>
+              <p className="text-xs text-gray-400">JPEG, PNG, WebP, GIF · max 5 MB</p>
+            </>
+          )}
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.target.value = '';
+        }}
+      />
+
+      {/* URL fallback */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-px bg-gray-200" />
+        <span className="text-xs text-gray-400">or paste URL</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://images.unsplash.com/..."
+        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+      />
+    </div>
+  );
+}
 
 // Helper function to generate slug from name
 function generateSlug(name: string): string {
@@ -150,13 +327,10 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-        <input
-          type="text"
+        <label className="block text-sm font-medium text-gray-700 mb-2">Category Image</label>
+        <CategoryImageUpload
           value={(formData as any).image || ''}
-          onChange={(e) => onFormDataChange({ ...formData, image: e.target.value } as any)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-          placeholder="https://images.unsplash.com/..."
+          onChange={(url) => onFormDataChange({ ...formData, image: url } as any)}
         />
       </div>
 
