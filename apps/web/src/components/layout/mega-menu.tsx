@@ -14,7 +14,11 @@ export interface MegaMenuProps {
 export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
   if (!categories || categories.length === 0) return null;
 
-  const featuredCategories = categories.filter((c) => c.isFeatured && c.image).slice(0, 2);
+  // Prefer explicitly featured ones; fall back to any category with an image
+  const featuredWithFlag = categories.filter((c) => c.isFeatured && c.image);
+  const featuredCategories = (
+    featuredWithFlag.length > 0 ? featuredWithFlag : categories.filter((c) => c.image)
+  ).slice(0, 2);
   const hasFeatured = featuredCategories.length > 0;
 
   const maxColumns = hasFeatured ? 4 : 5;
