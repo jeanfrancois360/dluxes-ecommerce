@@ -580,7 +580,28 @@ model Product {
   @@index([status, createdAt])
   @@index([productType, purchaseType])
   @@index([status, productType, purchaseType])
+
+  // Print-on-Demand fields
+  fulfillmentType  FulfillmentType @default(SELF_FULFILLED)
+  gelatoProductUid String?         // Gelato product template UID
+  gelatoTemplateId String?         // Design template ID in Gelato
+  designFileUrl    String?         // URL to design file
+  printAreas       Json?           // Print area configs { front: {...}, back: {...} }
+  baseCost         Float?          // Base production cost from Gelato
+
+  // POD relation
+  podOrders GelatoPodOrder[]
+
   @@map("products")
+}
+
+// ============================================
+// GELATO PRINT-ON-DEMAND INTEGRATION
+// ============================================
+
+enum FulfillmentType {
+  SELF_FULFILLED // Seller ships themselves (default)
+  GELATO_POD     // Gelato print-on-demand
 }
 
 // Category Model for elegant hierarchical organization
@@ -1169,6 +1190,9 @@ model Order {
   // Returns
   returnRequests ReturnRequest[]
 
+  // POD
+  podOrders GelatoPodOrder[]
+
   @@index([userId])
   @@index([orderNumber])
   @@index([status])
@@ -1185,6 +1209,17 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
   REFUNDED
+}
+
+enum GelatoPodStatus {
+  PENDING       // Waiting to submit to Gelato
+  SUBMITTED     // Sent to Gelato API
+  IN_PRODUCTION // Being printed/produced
+  PRODUCED      // Production complete
+  SHIPPED       // In transit to customer
+  DELIVERED     // Delivered to customer
+  CANCELLED     // Order cancelled
+  FAILED        // Production failed
 }
 
 enum PaymentStatus {
@@ -1252,6 +1287,9 @@ model OrderItem {
 
   // Returns
   returnRequests ReturnRequest[]
+
+  // POD
+  podOrders GelatoPodOrder[]
 
   @@index([orderId])
   @@index([productId])
@@ -3340,6 +3378,83 @@ model AdminNote {
   @@index([createdBy])
   @@index([createdAt])
   @@map("admin_notes")
+}
+
+// ============================================
+// GELATO POD ORDER TRACKING
+// ============================================
+
+model GelatoPodOrder {
+  id String @id @default(cuid())
+
+  // NextPik references
+  orderId     String
+  orderItemId String
+  productId   String
+
+  // Gelato identifiers
+  gelatoOrderId        String  @unique
+  gelatoOrderReference String?
+
+  // Status tracking
+  status           GelatoPodStatus @default(PENDING)
+  productionStatus String?
+  shippingStatus   String?
+  failureReason    String?
+
+  // Shipping & Tracking
+  trackingNumber String?
+  trackingUrl    String?
+  carrier        String?
+  shippingMethod String?
+
+  // Costs (stored in cents)
+  productionCostCents Int?
+  shippingCostCents   Int?
+  totalCostCents      Int?
+  currency            String @default("USD")
+
+  // Timestamps
+  submittedAt  DateTime?
+  producedAt   DateTime?
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  cancelledAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  order         Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem     OrderItem            @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  product       Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  webhookEvents GelatoWebhookEvent[]
+
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([gelatoOrderId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("gelato_pod_orders")
+}
+
+model GelatoWebhookEvent {
+  id         String  @id @default(cuid())
+  eventId    String  @unique
+  eventType  String
+  podOrderId String?
+  data       Json
+  status     String  @default("PENDING")
+  errorMessage String?
+  processedAt  DateTime?
+  createdAt    DateTime @default(now())
+
+  podOrder GelatoPodOrder? @relation(fields: [podOrderId], references: [id], onDelete: SetNull)
+
+  @@index([eventType])
+  @@index([podOrderId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("gelato_webhook_events")
 }
 
 // ============================================================================

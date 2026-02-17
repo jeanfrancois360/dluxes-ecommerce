@@ -2,7 +2,7 @@
 
 ## Project Context
 
-**NextPik** is a **production-ready multi-vendor luxury e-commerce platform** (v2.6.0) with:
+**NextPik** is a **production-ready multi-vendor luxury e-commerce platform** (v2.8.0) with:
 
 - **Stripe payment processing** with escrow system
 - **Multi-currency support** (46+ currencies)
@@ -545,6 +545,7 @@ nextpik/
 
 | Version | Date         | Key Changes                                                                          |
 | ------- | ------------ | ------------------------------------------------------------------------------------ |
+| 2.8.0   | Feb 17, 2026 | Gelato Print-on-Demand integration: POD products, auto-submission, webhook tracking  |
 | 2.6.1   | Feb 16, 2026 | Enhanced SEO: Brand differentiation, structured data, comprehensive meta tags        |
 | 2.6.0   | Jan 16, 2026 | Authentication enhancements: Email OTP 2FA, Google OAuth, seller store auto-creation |
 | 2.5.0   | Jan 3, 2026  | Stripe subscription integration with webhooks and billing portal                     |
@@ -572,8 +573,8 @@ Check DEADLINE_TRACKER.md and tell me what I should work on today
 
 ---
 
-_Last Updated: January 16, 2026_
-_Version: 2.6.0 - Authentication Enhancements_
+_Last Updated: February 17, 2026_
+_Version: 2.8.0 - Gelato Print-on-Demand Integration_
 
 ---
 

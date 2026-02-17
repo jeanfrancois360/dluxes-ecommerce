@@ -16,6 +16,7 @@
       "analytics": "Analytics",
       "products": "Products",
       "orders": "Orders",
+      "podOrders": "POD Orders",
       "categories": "Categories",
       "reviews": "Reviews",
       "customers": "Customers",
