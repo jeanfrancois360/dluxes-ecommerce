@@ -8,7 +8,8 @@ import { cn } from '@nextpik/ui';
 import { useTranslations } from 'next-intl';
 import { SearchBar } from '@/components/search/search-bar';
 import { SearchModal } from '@/components/search/search-modal';
-import { MegaMenu, shopMegaMenuData, shopMegaMenuFeatured, collectionsMegaMenuData } from './mega-menu';
+import { MegaMenu } from './mega-menu';
+import { useNavbarCategories } from '@/hooks/use-categories';
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCart } from '@/hooks/use-cart';
 
@@ -22,6 +23,7 @@ export function Navbar({ className }: NavbarProps) {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [activeMegaMenu, setActiveMegaMenu] = useState<string | null>(null);
   const { scrollY } = useScroll();
+  const { categories: navCategories } = useNavbarCategories();
   const { total: wishlistCount } = useWishlist();
   const { items: cartItems } = useCart();
   const cartCount = cartItems?.length || 0;
@@ -62,7 +64,6 @@ export function Navbar({ className }: NavbarProps) {
           <div className="relative h-full max-w-[1920px] mx-auto px-8 md:px-12 lg:px-16">
             {/* Three-section grid layout */}
             <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-8 h-full">
-
               {/* LEFT: Logo */}
               <Link href="/" className="flex items-center group relative z-10 flex-shrink-0">
                 <motion.div
@@ -94,14 +95,18 @@ export function Navbar({ className }: NavbarProps) {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + index * 0.05, duration: 0.4 }}
                       className="relative"
-                      onMouseEnter={() => link.hasMegaMenu && setActiveMegaMenu(link.megaMenuType || null)}
+                      onMouseEnter={() =>
+                        link.hasMegaMenu && setActiveMegaMenu(link.megaMenuType || null)
+                      }
                       onMouseLeave={() => setActiveMegaMenu(null)}
                     >
                       <Link
                         href={link.href}
                         className="group relative px-4 py-3 text-sm font-medium text-gray-700 hover:text-[#CBB57B] transition-all duration-300"
                       >
-                        <span className="relative z-10 tracking-wide whitespace-nowrap">{link.label}</span>
+                        <span className="relative z-10 tracking-wide whitespace-nowrap">
+                          {link.label}
+                        </span>
 
                         {/* Hover background */}
                         <span className="absolute inset-0 bg-gradient-to-r from-[#CBB57B]/5 via-[#CBB57B]/10 to-[#CBB57B]/5 scale-0 group-hover:scale-100 rounded-xl transition-transform duration-300" />
@@ -121,7 +126,10 @@ export function Navbar({ className }: NavbarProps) {
                             animate={{
                               scale: activeMegaMenu === link.megaMenuType ? [1, 1.5, 1] : 1,
                             }}
-                            transition={{ duration: 0.5, repeat: activeMegaMenu === link.megaMenuType ? Infinity : 0 }}
+                            transition={{
+                              duration: 0.5,
+                              repeat: activeMegaMenu === link.megaMenuType ? Infinity : 0,
+                            }}
                           />
                         )}
                       </Link>
@@ -148,8 +156,18 @@ export function Navbar({ className }: NavbarProps) {
                   className="lg:hidden p-2 text-gray-700 hover:text-[#CBB57B] transition-colors"
                   aria-label="Search"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
                   </svg>
                 </button>
 
@@ -161,8 +179,18 @@ export function Navbar({ className }: NavbarProps) {
                     className="relative p-2 text-gray-700 hover:text-[#CBB57B] transition-colors"
                     aria-label="Wishlist"
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
                     </svg>
                     <AnimatePresence mode="wait">
                       {wishlistCount > 0 && (
@@ -189,8 +217,18 @@ export function Navbar({ className }: NavbarProps) {
                     className="relative p-2 text-gray-700 hover:text-[#CBB57B] transition-colors"
                     aria-label="Shopping Cart"
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                      />
                     </svg>
                     <AnimatePresence mode="wait">
                       {cartCount > 0 && (
@@ -244,20 +282,12 @@ export function Navbar({ className }: NavbarProps) {
           </div>
         </div>
 
-        {/* Mega Menus */}
-        <div onMouseEnter={() => { }} onMouseLeave={() => setActiveMegaMenu(null)}>
-          <MegaMenu
-            isOpen={activeMegaMenu === 'shop'}
-            sections={shopMegaMenuData}
-            featured={shopMegaMenuFeatured}
-            onClose={() => setActiveMegaMenu(null)}
-          />
-          <MegaMenu
-            isOpen={activeMegaMenu === 'collections'}
-            sections={collectionsMegaMenuData}
-            onClose={() => setActiveMegaMenu(null)}
-          />
-        </div>
+        {/* Mega Menu */}
+        <MegaMenu
+          isOpen={activeMegaMenu === 'shop'}
+          categories={navCategories}
+          onClose={() => setActiveMegaMenu(null)}
+        />
 
         {/* Mobile Menu - Slide Down */}
         <AnimatePresence>
@@ -304,7 +334,12 @@ export function Navbar({ className }: NavbarProps) {
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                           >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
                           </svg>
                         </Link>
                       </motion.div>

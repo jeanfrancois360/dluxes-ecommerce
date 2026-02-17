@@ -260,9 +260,17 @@ export class CategoriesService {
    * Get categories for navbar
    */
   async findNavCategories() {
+    // Return root categories as column headings, each with their active children as links
     return this.prisma.category.findMany({
-      where: { showInNavbar: true, isActive: true },
+      where: { showInNavbar: true, isActive: true, parentId: null },
       include: {
+        children: {
+          where: { isActive: true },
+          include: {
+            _count: { select: { products: true } },
+          },
+          orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+        },
         _count: { select: { products: true } },
       },
       orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
