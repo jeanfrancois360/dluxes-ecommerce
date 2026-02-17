@@ -14,10 +14,8 @@ export interface MegaMenuProps {
 export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
   if (!categories || categories.length === 0) return null;
 
-  const featuredWithFlag = categories.filter((c) => c.isFeatured && c.image);
-  const featuredCategories = (
-    featuredWithFlag.length > 0 ? featuredWithFlag : categories.filter((c) => c.image)
-  ).slice(0, 2);
+  // Only explicitly featured categories with an image appear in the panel
+  const featuredCategories = categories.filter((c) => c.isFeatured && c.image).slice(0, 2);
   const hasFeatured = featuredCategories.length > 0;
 
   const maxColumns = hasFeatured ? 4 : 5;
@@ -74,17 +72,30 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                         <Link
                           href={`/products?category=${category.slug}`}
                           onClick={onClose}
-                          className="group/hdr flex items-center justify-between pb-2 mb-2 border-b border-gray-100"
+                          className="group/hdr flex items-center justify-between gap-2 pb-2 mb-2 border-b border-gray-100"
                         >
-                          <div>
-                            <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-black group-hover/hdr:text-[#CBB57B] transition-colors duration-150">
-                              {category.name}
-                            </span>
-                            {(category._count?.products ?? 0) > 0 && (
-                              <span className="text-[10px] text-gray-400 tabular-nums">
-                                {category._count!.products} items
-                              </span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            {category.image && (
+                              <div className="w-7 h-7 rounded overflow-hidden flex-shrink-0 bg-gray-100">
+                                <Image
+                                  src={category.image}
+                                  alt={category.name}
+                                  width={28}
+                                  height={28}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
                             )}
+                            <div className="min-w-0">
+                              <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-black group-hover/hdr:text-[#CBB57B] transition-colors duration-150">
+                                {category.name}
+                              </span>
+                              {(category._count?.products ?? 0) > 0 && (
+                                <span className="text-[10px] text-gray-400 tabular-nums">
+                                  {category._count!.products} items
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <svg
                             className="w-3 h-3 text-gray-300 opacity-0 group-hover/hdr:opacity-100 group-hover/hdr:text-black transition-all duration-150 flex-shrink-0"
