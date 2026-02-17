@@ -39,36 +39,28 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-40"
           />
 
           {/* Mega Menu Panel */}
           <motion.div
-            initial={{ opacity: 0, y: -8, scaleY: 0.97 }}
+            initial={{ opacity: 0, y: -6, scaleY: 0.98 }}
             animate={{ opacity: 1, y: 0, scaleY: 1 }}
-            exit={{ opacity: 0, y: -8, scaleY: 0.97 }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0, y: -6, scaleY: 0.98 }}
+            transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
             style={{ transformOrigin: 'top center' }}
             onMouseLeave={onClose}
-            className="absolute top-full left-0 right-0 z-50 overflow-hidden"
+            className="absolute top-full left-0 right-0 z-50"
           >
             {/* Glass panel */}
-            <div className="relative bg-neutral-950/[0.97] backdrop-blur-2xl border-t border-white/[0.06] shadow-[0_32px_80px_-12px_rgba(0,0,0,0.9)]">
-              {/* Gold top shimmer line */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#CBB57B] to-transparent opacity-80" />
+            <div className="relative bg-white/[0.88] backdrop-blur-2xl border-t border-black/[0.06] shadow-[0_24px_64px_-8px_rgba(0,0,0,0.18),0_4px_16px_-4px_rgba(0,0,0,0.08)]">
+              {/* Gold top shimmer */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#CBB57B] to-transparent" />
 
-              {/* Subtle inner glow at top */}
-              <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
-
-              {/* Noise grain overlay for depth */}
-              <div
-                className="absolute inset-0 opacity-[0.025] pointer-events-none"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-                }}
-              />
+              {/* Frosted top highlight */}
+              <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-white/60 to-transparent pointer-events-none" />
 
               <div className="relative max-w-[1920px] mx-auto px-8 lg:px-16 py-10">
                 <div
@@ -80,11 +72,11 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                       {columnCategories.map((category, colIndex) => (
                         <motion.div
                           key={category.id}
-                          initial={{ opacity: 0, y: 12 }}
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{
-                            duration: 0.32,
-                            delay: colIndex * 0.06,
+                            duration: 0.3,
+                            delay: colIndex * 0.055,
                             ease: [0.16, 1, 0.3, 1],
                           }}
                         >
@@ -92,25 +84,25 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                           <Link
                             href={`/products?category=${category.slug}`}
                             onClick={onClose}
-                            className="group/hdr flex items-center gap-2.5 pb-3 mb-3 border-b border-white/10 hover:border-[#CBB57B]/40 transition-colors duration-200"
+                            className="group/hdr flex items-center gap-2.5 pb-3 mb-3 border-b border-black/[0.07] hover:border-[#CBB57B]/50 transition-colors duration-200"
                           >
                             {category.icon && (
-                              <span className="text-base leading-none flex-shrink-0 opacity-70 group-hover/hdr:opacity-100 transition-opacity">
+                              <span className="text-base leading-none flex-shrink-0 text-neutral-400 group-hover/hdr:text-[#CBB57B] transition-colors duration-200">
                                 {category.icon}
                               </span>
                             )}
                             <div className="flex-1 min-w-0">
-                              <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-white/90 group-hover/hdr:text-[#CBB57B] transition-colors duration-200">
+                              <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-800 group-hover/hdr:text-[#CBB57B] transition-colors duration-200">
                                 {category.name}
                               </span>
                               {(category._count?.products ?? 0) > 0 && (
-                                <span className="text-[10px] text-white/30 font-normal tabular-nums">
+                                <span className="text-[10px] text-neutral-400 font-normal tabular-nums">
                                   {category._count!.products} items
                                 </span>
                               )}
                             </div>
                             <svg
-                              className="w-2.5 h-2.5 text-white/20 group-hover/hdr:text-[#CBB57B] opacity-0 group-hover/hdr:opacity-100 group-hover/hdr:translate-x-0.5 transition-all duration-200 flex-shrink-0"
+                              className="w-2.5 h-2.5 text-neutral-300 group-hover/hdr:text-[#CBB57B] opacity-0 group-hover/hdr:opacity-100 group-hover/hdr:translate-x-0.5 transition-all duration-200 flex-shrink-0"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -134,18 +126,18 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{
                                     duration: 0.2,
-                                    delay: colIndex * 0.06 + i * 0.02,
+                                    delay: colIndex * 0.055 + i * 0.02,
                                   }}
                                 >
                                   <Link
                                     href={`/products?category=${child.slug}`}
                                     onClick={onClose}
-                                    className="group/link flex items-center gap-2 py-[5px] text-sm text-white/45 hover:text-white transition-colors duration-150"
+                                    className="group/link flex items-center gap-2 py-[5px] text-neutral-500 hover:text-neutral-900 transition-colors duration-150"
                                   >
                                     {/* Gold dash */}
                                     <span className="w-0 group-hover/link:w-3 h-px bg-[#CBB57B] transition-all duration-200 ease-out flex-shrink-0" />
                                     {child.icon && (
-                                      <span className="text-xs leading-none flex-shrink-0 opacity-60">
+                                      <span className="text-xs leading-none flex-shrink-0 opacity-50 group-hover/link:opacity-80 transition-opacity">
                                         {child.icon}
                                       </span>
                                     )}
@@ -160,7 +152,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                                   <Link
                                     href={`/products?category=${category.slug}`}
                                     onClick={onClose}
-                                    className="text-[11px] font-medium text-[#CBB57B]/70 hover:text-[#CBB57B] transition-colors duration-150"
+                                    className="text-[11px] font-medium text-[#CBB57B]/80 hover:text-[#CBB57B] transition-colors duration-150"
                                   >
                                     +{category.children.length - 7} more →
                                   </Link>
@@ -169,7 +161,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                             </ul>
                           ) : (
                             category.description && (
-                              <p className="text-[12px] text-white/30 leading-relaxed line-clamp-3">
+                              <p className="text-[12px] text-neutral-400 leading-relaxed line-clamp-3">
                                 {category.description}
                               </p>
                             )
@@ -183,10 +175,10 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 0.28 }}
-                        className="mt-7 pt-5 border-t border-white/[0.07] flex flex-wrap items-center gap-2"
+                        transition={{ delay: 0.26 }}
+                        className="mt-7 pt-5 border-t border-black/[0.06] flex flex-wrap items-center gap-2"
                       >
-                        <span className="text-[10px] font-semibold text-white/25 uppercase tracking-widest mr-1">
+                        <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest mr-1">
                           More
                         </span>
                         {overflowCategories.map((cat) => (
@@ -194,9 +186,9 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                             key={cat.id}
                             href={`/products?category=${cat.slug}`}
                             onClick={onClose}
-                            className="group/pill inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-white/50 bg-white/[0.05] hover:bg-[#CBB57B]/15 hover:text-[#CBB57B] rounded-full border border-white/[0.08] hover:border-[#CBB57B]/30 transition-all duration-200"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-neutral-500 bg-black/[0.03] hover:bg-[#CBB57B]/10 hover:text-[#CBB57B] rounded-full border border-black/[0.06] hover:border-[#CBB57B]/30 transition-all duration-200"
                           >
-                            {cat.icon && <span className="opacity-70">{cat.icon}</span>}
+                            {cat.icon && <span className="opacity-60">{cat.icon}</span>}
                             {cat.name}
                           </Link>
                         ))}
@@ -204,11 +196,11 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                     )}
 
                     {/* Bottom bar */}
-                    <div className="mt-7 pt-5 border-t border-white/[0.07] flex items-center justify-between">
+                    <div className="mt-7 pt-5 border-t border-black/[0.06] flex items-center justify-between">
                       <Link
                         href="/products"
                         onClick={onClose}
-                        className="group/all inline-flex items-center gap-2 text-sm font-semibold text-[#CBB57B] hover:text-white transition-colors duration-200"
+                        className="group/all inline-flex items-center gap-2 text-sm font-semibold text-[#CBB57B] hover:text-neutral-900 transition-colors duration-200"
                       >
                         <span>View All Products</span>
                         <svg
@@ -226,7 +218,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                         </svg>
                       </Link>
                       {totalProducts > 0 && (
-                        <span className="text-[11px] text-white/25 tabular-nums">
+                        <span className="text-[11px] text-neutral-400 tabular-nums">
                           {totalProducts.toLocaleString()} products
                         </span>
                       )}
@@ -235,17 +227,17 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
 
                   {/* ── RIGHT: Featured Panel ── */}
                   {hasFeatured && (
-                    <div className="flex flex-col gap-4 pl-8 border-l border-white/[0.07]">
-                      <p className="text-[10px] font-bold text-white/25 uppercase tracking-[0.15em] pb-2.5 border-b border-white/[0.07]">
+                    <div className="flex flex-col gap-4 pl-8 border-l border-black/[0.06]">
+                      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-[0.15em] pb-2.5 border-b border-black/[0.06]">
                         Featured
                       </p>
                       {featuredCategories.map((cat, i) => (
                         <motion.div
                           key={cat.id}
-                          initial={{ opacity: 0, x: 16 }}
+                          initial={{ opacity: 0, x: 14 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{
-                            duration: 0.35,
+                            duration: 0.32,
                             delay: 0.1 + i * 0.1,
                             ease: [0.16, 1, 0.3, 1],
                           }}
@@ -254,24 +246,24 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                           <Link
                             href={`/products?category=${cat.slug}`}
                             onClick={onClose}
-                            className="group/feat block relative rounded-2xl overflow-hidden shadow-lg hover:shadow-[0_8px_32px_rgba(203,181,123,0.2)] transition-all duration-300"
+                            className="group/feat block relative rounded-2xl overflow-hidden shadow-md hover:shadow-[0_12px_40px_rgba(203,181,123,0.25)] transition-all duration-300"
                           >
-                            <div className="relative aspect-[3/4] bg-neutral-900">
+                            <div className="relative aspect-[3/4] bg-neutral-100">
                               <Image
                                 src={cat.image!}
                                 alt={cat.name}
                                 fill
-                                className="object-cover group-hover/feat:scale-105 transition-transform duration-700 ease-out opacity-80 group-hover/feat:opacity-100"
+                                className="object-cover group-hover/feat:scale-105 transition-transform duration-700 ease-out"
                               />
                             </div>
                             {/* Gradient overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
                             {/* Gold border on hover */}
                             <div className="absolute inset-0 rounded-2xl border border-transparent group-hover/feat:border-[#CBB57B]/60 transition-colors duration-300" />
-                            {/* Corner accent */}
-                            <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center opacity-0 group-hover/feat:opacity-100 transition-opacity duration-300">
+                            {/* Corner arrow */}
+                            <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center opacity-0 group-hover/feat:opacity-100 transition-opacity duration-300">
                               <svg
-                                className="w-3 h-3 text-[#CBB57B]"
+                                className="w-3 h-3 text-white"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -286,14 +278,12 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                             </div>
                             {/* Text */}
                             <div className="absolute bottom-0 left-0 right-0 p-4">
-                              {cat.icon && (
-                                <span className="text-xl block mb-1.5 opacity-90">{cat.icon}</span>
-                              )}
+                              {cat.icon && <span className="text-xl block mb-1.5">{cat.icon}</span>}
                               <h4 className="text-white font-bold text-sm group-hover/feat:text-[#CBB57B] transition-colors duration-200 leading-snug">
                                 {cat.name}
                               </h4>
                               {(cat._count?.products ?? 0) > 0 && (
-                                <p className="text-white/50 text-[11px] mt-0.5 tabular-nums">
+                                <p className="text-white/60 text-[11px] mt-0.5 tabular-nums">
                                   {cat._count!.products} products
                                 </p>
                               )}
@@ -302,11 +292,11 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                         </motion.div>
                       ))}
 
-                      {/* Shop Featured CTA */}
+                      {/* CTA */}
                       <Link
                         href="/products?featured=true"
                         onClick={onClose}
-                        className="group/cta mt-auto flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.04] hover:bg-[#CBB57B] border border-white/10 hover:border-[#CBB57B] text-[11px] font-semibold text-white/60 hover:text-black transition-all duration-250"
+                        className="group/cta mt-auto flex items-center justify-center gap-2 py-2.5 rounded-xl bg-black/[0.03] hover:bg-[#CBB57B] border border-black/[0.08] hover:border-[#CBB57B] text-[11px] font-semibold text-neutral-500 hover:text-black transition-all duration-200"
                       >
                         Shop Featured
                         <svg
@@ -328,8 +318,8 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                 </div>
               </div>
 
-              {/* Bottom edge glow */}
-              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+              {/* Bottom edge */}
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-black/[0.06] to-transparent" />
             </div>
           </motion.div>
         </>
