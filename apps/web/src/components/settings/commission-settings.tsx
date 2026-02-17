@@ -47,7 +47,12 @@ export function CommissionSettingsSection() {
     if (settings.length > 0) {
       const formData = transformSettingsToForm(settings);
       if (!form.formState.isDirty || justSavedRef.current) {
-        form.reset(formData as CommissionSettings);
+        // Ensure commission_type always has a valid value even if missing from DB
+        const resetData = {
+          ...formData,
+          commission_type: (formData.commission_type as string) || 'percentage',
+        } as CommissionSettings;
+        form.reset(resetData);
         justSavedRef.current = false;
       }
     }
@@ -55,8 +60,10 @@ export function CommissionSettingsSection() {
   }, [settings]);
 
   const onSubmit = async (data: CommissionSettings) => {
+    // Ensure commission_type always has a value before saving
+    const safeData = { ...data, commission_type: data.commission_type || 'percentage' };
     try {
-      const updates = Object.entries(data);
+      const updates = Object.entries(safeData);
       for (const [key, value] of updates) {
         await updateSetting(key, value, 'Updated via commission settings panel');
       }
@@ -66,7 +73,7 @@ export function CommissionSettingsSection() {
     } catch (error: any) {
       console.error('Failed to save settings:', error);
       justSavedRef.current = false;
-      toast.error(error?.message || 'Failed to save commission settings');
+      // useSettingsUpdate already shows an error toast per-setting; avoid a duplicate
     }
   };
 
@@ -171,8 +178,8 @@ export function CommissionSettingsSection() {
           )}
         />
 
-        {/* Hidden field to maintain schema compatibility */}
-        <input type="hidden" {...form.register('commission_type')} value="percentage" />
+        {/* Hidden field — use defaultValue so React Hook Form owns the DOM value */}
+        <input type="hidden" {...form.register('commission_type')} defaultValue="percentage" />
       </SettingsCard>
 
       {/* Commission Caps & Limits */}
