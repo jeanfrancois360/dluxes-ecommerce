@@ -13,8 +13,8 @@ export interface MegaMenuProps {
 export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
   if (!categories || categories.length === 0) return null;
 
-  const columnCategories = categories.slice(0, 4);
-  const overflowCategories = categories.slice(4);
+  const columnCategories = categories.slice(0, 5);
+  const overflowCategories = categories.slice(5);
   const totalProducts = categories.reduce((sum, c) => sum + (c._count?.products || 0), 0);
 
   const columnGridClass =
@@ -22,7 +22,9 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
       ? 'grid-cols-2'
       : columnCategories.length === 3
         ? 'grid-cols-3'
-        : 'grid-cols-4';
+        : columnCategories.length === 4
+          ? 'grid-cols-4'
+          : 'grid-cols-5';
 
   return (
     <AnimatePresence>
@@ -48,7 +50,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
             className="absolute top-full left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.1)]"
           >
             <div className="max-w-[1920px] mx-auto px-8 lg:px-16 py-6">
-              <div className="grid grid-cols-[1fr_220px] gap-10">
+              <div className="grid grid-cols-[1fr_200px] gap-8">
                 {/* ── Category Columns ── */}
                 <div>
                   <div className={`grid ${columnGridClass} gap-x-10 gap-y-1`}>
@@ -217,56 +219,56 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                       className="absolute inset-0"
                       style={{
                         background:
-                          'linear-gradient(145deg, #0a0a0a 0%, #1a1410 40%, #2d2010 70%, #0a0a0a 100%)',
+                          'linear-gradient(145deg, #0f172a 0%, #1e293b 45%, #0f2744 70%, #0f172a 100%)',
                       }}
                     />
 
                     {/* Decorative rings */}
-                    <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full border border-[#CBB57B]/10" />
-                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full border border-[#CBB57B]/15" />
-                    <div className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full border border-[#CBB57B]/8" />
+                    <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full border border-blue-400/10" />
+                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full border border-blue-400/15" />
+                    <div className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full border border-blue-400/8" />
 
-                    {/* Gold shimmer line */}
+                    {/* Shimmer line */}
                     <div
                       className="absolute top-0 left-0 right-0 h-px"
                       style={{
                         background:
-                          'linear-gradient(90deg, transparent, #CBB57B 40%, #e8d49a 60%, transparent)',
+                          'linear-gradient(90deg, transparent, #60a5fa 40%, #93c5fd 60%, transparent)',
                       }}
                     />
 
                     {/* Content */}
                     <div className="relative p-5 h-full flex flex-col justify-between">
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#CBB57B]/60 mb-2">
-                          New Collection
+                        <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-blue-400/70 mb-2">
+                          Multi-Vendor Marketplace
                         </p>
                         <h3 className="text-base font-bold text-white leading-snug mb-1">
-                          Luxury Picks
+                          Everything,
                           <br />
                           <span
                             className="text-transparent bg-clip-text"
                             style={{
-                              backgroundImage: 'linear-gradient(90deg, #CBB57B, #e8d49a, #CBB57B)',
+                              backgroundImage: 'linear-gradient(90deg, #60a5fa, #93c5fd, #60a5fa)',
                             }}
                           >
-                            2026
+                            One Platform
                           </span>
                         </h3>
                         <p className="text-[11px] text-white/40 leading-relaxed">
-                          Curated selection of premium products across all categories.
+                          Thousands of sellers, millions of products across every category.
                         </p>
                       </div>
 
                       <div className="mt-4">
                         <span
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-black group-hover/ad:gap-2.5 transition-all duration-200"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-white group-hover/ad:gap-2.5 transition-all duration-200"
                           style={{
                             background:
-                              'linear-gradient(135deg, #CBB57B 0%, #e8d49a 50%, #CBB57B 100%)',
+                              'linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #2563eb 100%)',
                           }}
                         >
-                          Shop Now
+                          Browse All
                           <svg
                             className="w-3 h-3 group-hover/ad:translate-x-0.5 transition-transform duration-200"
                             fill="none"
@@ -285,7 +287,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                     </div>
 
                     {/* Hover glow */}
-                    <div className="absolute inset-0 opacity-0 group-hover/ad:opacity-100 transition-opacity duration-300 rounded-2xl ring-1 ring-inset ring-[#CBB57B]/30" />
+                    <div className="absolute inset-0 opacity-0 group-hover/ad:opacity-100 transition-opacity duration-300 rounded-2xl ring-1 ring-inset ring-blue-400/30" />
                   </Link>
 
                   {/* Small promo strip */}
