@@ -182,6 +182,7 @@ export interface Category {
   showOnHomepage?: boolean;
   isFeatured?: boolean;
   priority?: number;
+  displayOrder?: number;
   createdAt: string;
 }
 
@@ -792,6 +793,14 @@ export const adminCategoriesApi = {
 
   async reorder(categoryIds: string[]): Promise<Category[]> {
     const response = await api.patch('/categories/reorder', { categoryIds });
+    return response.data || response;
+  },
+
+  async updatePriority(id: string, priority: number): Promise<Category> {
+    const response = await api.patch(`/categories/${id}/priority`, { priority });
+    if (response.success === false) {
+      throw new Error(response.message || 'Failed to update priority');
+    }
     return response.data || response;
   },
 

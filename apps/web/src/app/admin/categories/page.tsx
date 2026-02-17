@@ -150,6 +150,47 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
       </div>
 
       <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+        <input
+          type="text"
+          value={(formData as any).image || ''}
+          onChange={(e) => onFormDataChange({ ...formData, image: e.target.value } as any)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+          placeholder="https://images.unsplash.com/..."
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          <input
+            type="number"
+            value={(formData as any).priority ?? 0}
+            onChange={(e) =>
+              onFormDataChange({ ...formData, priority: parseInt(e.target.value, 10) || 0 } as any)
+            }
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+          />
+          <p className="mt-1 text-xs text-gray-500">Higher = shown first</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+          <input
+            type="number"
+            value={(formData as any).displayOrder ?? 0}
+            onChange={(e) =>
+              onFormDataChange({
+                ...formData,
+                displayOrder: parseInt(e.target.value, 10) || 0,
+              } as any)
+            }
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+          />
+          <p className="mt-1 text-xs text-gray-500">Lower = shown first within same priority</p>
+        </div>
+      </div>
+
+      <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {t('form.parentCategory')}
         </label>
@@ -263,6 +304,7 @@ interface CategoryTreeRowProps {
   toggleExpand: (id: string) => void;
   handleEdit: (category: Category) => void;
   handleDelete: (id: string) => void;
+  handlePriorityChange: (id: string, currentPriority: number, delta: number) => void;
   t: any;
   allCategories: Category[];
 }
@@ -274,6 +316,7 @@ const CategoryTreeRow: React.FC<CategoryTreeRowProps> = ({
   toggleExpand,
   handleEdit,
   handleDelete,
+  handlePriorityChange,
   t,
   allCategories,
 }) => {
@@ -317,6 +360,13 @@ const CategoryTreeRow: React.FC<CategoryTreeRowProps> = ({
               <span className="w-6 mr-2" />
             )}
 
+            {category.image && (
+              <img
+                src={category.image}
+                alt={category.name}
+                className="w-4 h-4 rounded object-cover mr-1.5 flex-shrink-0"
+              />
+            )}
             <span
               className={`text-sm ${isTopLevel ? 'font-semibold text-black' : 'font-medium text-neutral-700'} group-hover:text-[#CBB57B] transition-colors`}
             >
@@ -360,6 +410,31 @@ const CategoryTreeRow: React.FC<CategoryTreeRowProps> = ({
           >
             {category.productCount}
           </span>
+        </td>
+
+        {/* Priority */}
+        <td className="px-6 py-3 text-center">
+          <div className="flex items-center justify-center gap-1">
+            <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-bold rounded-full bg-[#CBB57B]/10 text-[#CBB57B]">
+              {category.priority ?? 0}
+            </span>
+            <div className="flex flex-col gap-0.5">
+              <button
+                onClick={() => handlePriorityChange(category.id, category.priority ?? 0, 1)}
+                className="p-0.5 hover:bg-neutral-200 rounded text-neutral-500 hover:text-neutral-800 transition-colors leading-none"
+                title="Increase priority"
+              >
+                ↑
+              </button>
+              <button
+                onClick={() => handlePriorityChange(category.id, category.priority ?? 0, -1)}
+                className="p-0.5 hover:bg-neutral-200 rounded text-neutral-500 hover:text-neutral-800 transition-colors leading-none"
+                title="Decrease priority"
+              >
+                ↓
+              </button>
+            </div>
+          </div>
         </td>
 
         {/* Visibility badges */}
@@ -454,6 +529,7 @@ const CategoryTreeRow: React.FC<CategoryTreeRowProps> = ({
             toggleExpand={toggleExpand}
             handleEdit={handleEdit}
             handleDelete={handleDelete}
+            handlePriorityChange={handlePriorityChange}
             t={t}
             allCategories={allCategories}
           />
@@ -477,6 +553,9 @@ function CategoriesContent() {
     name: '',
     slug: '',
     description: '',
+    image: '',
+    priority: 0,
+    displayOrder: 0,
     parentId: undefined,
     showInNavbar: true,
     showInTopBar: false,
@@ -484,7 +563,7 @@ function CategoriesContent() {
     showInFooter: false,
     showOnHomepage: false,
     isFeatured: false,
-  });
+  } as any);
 
   // Calculate stats
   const stats = React.useMemo(() => {
@@ -619,6 +698,9 @@ function CategoriesContent() {
         name: '',
         slug: '',
         description: '',
+        image: '',
+        priority: 0,
+        displayOrder: 0,
         parentId: undefined,
         showInNavbar: true,
         showInTopBar: false,
@@ -626,7 +708,7 @@ function CategoriesContent() {
         showInFooter: false,
         showOnHomepage: false,
         isFeatured: false,
-      });
+      } as any);
 
       // Refetch categories to update the list
       console.log('Refetching categories...');
@@ -673,6 +755,9 @@ function CategoriesContent() {
       name: category.name,
       slug: category.slug,
       description: category.description,
+      image: category.image || '',
+      priority: category.priority ?? 0,
+      displayOrder: (category as any).displayOrder ?? 0,
       parentId: category.parentId,
       showInNavbar: category.showInNavbar ?? true,
       showInTopBar: category.showInTopBar ?? false,
@@ -680,7 +765,7 @@ function CategoriesContent() {
       showInFooter: category.showInFooter ?? false,
       showOnHomepage: category.showOnHomepage ?? false,
       isFeatured: category.isFeatured ?? false,
-    });
+    } as any);
     setSlugManuallyEdited(false); // Allow auto-slug in edit mode
     setShowEditModal(true);
   };
@@ -754,6 +839,9 @@ function CategoriesContent() {
       name: '',
       slug: '',
       description: '',
+      image: '',
+      priority: 0,
+      displayOrder: 0,
       parentId: undefined,
       showInNavbar: true,
       showInTopBar: false,
@@ -761,7 +849,7 @@ function CategoriesContent() {
       showInFooter: false,
       showOnHomepage: false,
       isFeatured: false,
-    });
+    } as any);
   };
 
   const handleVisibilityToggle = async (id: string, field: string, value: boolean) => {
@@ -771,6 +859,16 @@ function CategoriesContent() {
       refetch();
     } catch (error) {
       toast.error(t('toast.errorVisibility'));
+    }
+  };
+
+  const handlePriorityChange = async (id: string, currentPriority: number, delta: number) => {
+    const newPriority = currentPriority + delta;
+    try {
+      await adminCategoriesApi.update(id, { priority: newPriority } as any);
+      await refetch();
+    } catch (error) {
+      toast.error('Failed to update priority');
     }
   };
 
@@ -1151,6 +1249,11 @@ function CategoriesContent() {
                         {t('table.products')}
                       </div>
                     </th>
+                    <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center justify-center gap-2 text-black">
+                        Priority
+                      </div>
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
                         {t('table.visibility')}
@@ -1178,6 +1281,7 @@ function CategoriesContent() {
                           toggleExpand={toggleExpand}
                           handleEdit={handleEdit}
                           handleDelete={handleDelete}
+                          handlePriorityChange={handlePriorityChange}
                           t={t}
                           allCategories={filteredCategories}
                         />
