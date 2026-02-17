@@ -53,8 +53,8 @@ export default function AdminAdvertisementPlansPage() {
     displayOrder: 0,
   });
 
+  // HOMEPAGE_HERO is reserved for NextPik internal use only
   const allPlacements = [
-    'HOMEPAGE_HERO',
     'HOMEPAGE_FEATURED',
     'HOMEPAGE_SIDEBAR',
     'PRODUCTS_BANNER',
@@ -192,7 +192,7 @@ export default function AdminAdvertisementPlansPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">{t('statistics.totalPlans')}</p>
-                  <p className="text-xl font-semibold">{statistics.totalPlans}</p>
+                  <p className="text-xl font-semibold">{plans.length}</p>
                 </div>
               </div>
             </div>
@@ -203,7 +203,7 @@ export default function AdminAdvertisementPlansPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">{t('statistics.activeSubscriptions')}</p>
-                  <p className="text-xl font-semibold">{statistics.activeSubscriptions}</p>
+                  <p className="text-xl font-semibold">{statistics.active}</p>
                 </div>
               </div>
             </div>
@@ -215,7 +215,7 @@ export default function AdminAdvertisementPlansPage() {
                 <div>
                   <p className="text-sm text-gray-500">{t('statistics.totalRevenue')}</p>
                   <p className="text-xl font-semibold">
-                    ${formatCurrencyAmount(statistics.totalRevenue)}
+                    ${formatCurrencyAmount(statistics.monthlyRecurringRevenue)}
                   </p>
                 </div>
               </div>
@@ -227,9 +227,7 @@ export default function AdminAdvertisementPlansPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">{t('statistics.impressionsServed')}</p>
-                  <p className="text-xl font-semibold">
-                    {statistics.impressionsServed?.toLocaleString()}
-                  </p>
+                  <p className="text-xl font-semibold">{statistics.total?.toLocaleString()}</p>
                 </div>
               </div>
             </div>

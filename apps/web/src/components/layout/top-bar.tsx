@@ -9,17 +9,19 @@ import { useCurrencyRates, useSelectedCurrency } from '@/hooks/use-currency';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 
+interface Announcement {
+  id: string;
+  text: string;
+  icon: string | null;
+  link: string | null;
+  type: string;
+  displayOrder: number;
+}
+
 export function TopBar() {
   const router = useRouter();
   const t = useTranslations('common');
-  const promoMessages = useMemo(
-    () => [
-      { text: t('promo.springCollection'), icon: '✨' },
-      { text: t('promo.freeShipping'), icon: '🚚' },
-      { text: t('promo.newArrivals'), icon: '💎' },
-    ],
-    [t]
-  );
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [currentPromo, setCurrentPromo] = useState(0);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
@@ -83,13 +85,57 @@ export function TopBar() {
     }
   };
 
+  // Fetch announcements on mount
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements/active`);
+        if (response.ok) {
+          const data = await response.json();
+          setAnnouncements(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch announcements:', error);
+        // Fallback to default messages if API fails
+        setAnnouncements([
+          {
+            id: '1',
+            text: t('promo.springCollection'),
+            icon: '✨',
+            link: null,
+            type: 'PROMO',
+            displayOrder: 0,
+          },
+          {
+            id: '2',
+            text: t('promo.freeShipping'),
+            icon: '🚚',
+            link: null,
+            type: 'PROMO',
+            displayOrder: 1,
+          },
+          {
+            id: '3',
+            text: t('promo.newArrivals'),
+            icon: '💎',
+            link: null,
+            type: 'PROMO',
+            displayOrder: 2,
+          },
+        ]);
+      }
+    };
+    fetchAnnouncements();
+  }, [t]);
+
   // Rotating promos
   useEffect(() => {
+    if (announcements.length === 0) return;
     const interval = setInterval(() => {
-      setCurrentPromo((prev) => (prev + 1) % promoMessages.length);
+      setCurrentPromo((prev) => (prev + 1) % announcements.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [announcements.length]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -164,40 +210,55 @@ export function TopBar() {
                     className="absolute top-full left-0 mt-2 w-40 bg-neutral-900 border border-white/10 rounded-lg shadow-2xl overflow-hidden z-[100]"
                   >
                     <div className="py-1">
-                      {languages.map((lang) => (
-                        <button
-                          key={lang.code}
-                          onClick={() => {
-                            setLanguage(lang.code);
-                            setLanguageOpen(false);
-                          }}
-                          className={`w-full px-4 py-2.5 flex items-center gap-3 transition-all duration-200 ${
-                            language === lang.code
-                              ? 'bg-[#CBB57B]/20 text-[#CBB57B]'
-                              : 'text-white/80 hover:bg-white/5 hover:text-white'
-                          }`}
-                        >
-                          <span className="text-lg">{lang.flag}</span>
-                          <span className="text-sm font-medium">{lang.name}</span>
-                          {language === lang.code && (
-                            <motion.svg
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="w-4 h-4 ml-auto text-[#CBB57B]"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </motion.svg>
-                          )}
-                        </button>
-                      ))}
+                      {languages
+                        .filter((lang) => lang.code === 'en')
+                        .map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => {
+                              setLanguage(lang.code);
+                              setLanguageOpen(false);
+                            }}
+                            className={`w-full px-4 py-2.5 flex items-center gap-3 transition-all duration-200 ${
+                              language === lang.code
+                                ? 'bg-[#CBB57B]/20 text-[#CBB57B]'
+                                : 'text-white/80 hover:bg-white/5 hover:text-white'
+                            }`}
+                          >
+                            <span className="text-lg">{lang.flag}</span>
+                            <span className="text-sm font-medium">{lang.name}</span>
+                            {language === lang.code && (
+                              <motion.svg
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="w-4 h-4 ml-auto text-[#CBB57B]"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </motion.svg>
+                            )}
+                          </button>
+                        ))}
+                      {/* Disabled Languages */}
+                      {languages
+                        .filter((lang) => lang.code !== 'en')
+                        .map((lang) => (
+                          <div
+                            key={lang.code}
+                            className="w-full px-4 py-2.5 flex items-center gap-3 opacity-40 cursor-not-allowed"
+                          >
+                            <span className="text-lg">{lang.flag}</span>
+                            <span className="text-sm font-medium">{lang.name}</span>
+                            <span className="ml-auto text-xs text-white/40">(Coming Soon)</span>
+                          </div>
+                        ))}
                     </div>
                   </motion.div>
                 )}
@@ -297,44 +358,68 @@ export function TopBar() {
 
           {/* Center - Rotating Promo */}
           <div className="flex items-center justify-center gap-3 min-w-0">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentPromo}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5 }}
-                className="flex items-center gap-2"
-              >
-                <span className="text-lg">{promoMessages[currentPromo].icon}</span>
-                <span className="text-sm font-light tracking-wide text-white/90 hidden md:inline">
-                  {promoMessages[currentPromo].text}
-                </span>
-              </motion.div>
-            </AnimatePresence>
+            {announcements.length > 0 && (
+              <>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentPromo}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.5 }}
+                    className="flex items-center gap-2"
+                  >
+                    {announcements[currentPromo].link ? (
+                      <Link
+                        href={announcements[currentPromo].link!}
+                        className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                      >
+                        {announcements[currentPromo].icon && (
+                          <span className="text-lg">{announcements[currentPromo].icon}</span>
+                        )}
+                        <span className="text-sm font-light tracking-wide text-white/90 hidden md:inline">
+                          {announcements[currentPromo].text}
+                        </span>
+                      </Link>
+                    ) : (
+                      <>
+                        {announcements[currentPromo].icon && (
+                          <span className="text-lg">{announcements[currentPromo].icon}</span>
+                        )}
+                        <span className="text-sm font-light tracking-wide text-white/90 hidden md:inline">
+                          {announcements[currentPromo].text}
+                        </span>
+                      </>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
 
-            {/* Progress dots */}
-            <div className="hidden lg:flex items-center gap-2">
-              {promoMessages.map((_, i) => (
-                <motion.button
-                  key={i}
-                  onClick={() => setCurrentPromo(i)}
-                  className="relative h-1 overflow-hidden rounded-full bg-white/20"
-                  animate={{ width: currentPromo === i ? 24 : 12 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {currentPromo === i && (
-                    <motion.div
-                      className="absolute inset-0 bg-[#CBB57B]"
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 1 }}
-                      transition={{ duration: 4, ease: 'linear' }}
-                      style={{ transformOrigin: 'left' }}
-                    />
-                  )}
-                </motion.button>
-              ))}
-            </div>
+                {/* Progress dots */}
+                {announcements.length > 1 && (
+                  <div className="hidden lg:flex items-center gap-2">
+                    {announcements.map((_, i) => (
+                      <motion.button
+                        key={i}
+                        onClick={() => setCurrentPromo(i)}
+                        className="relative h-1 overflow-hidden rounded-full bg-white/20"
+                        animate={{ width: currentPromo === i ? 24 : 12 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {currentPromo === i && (
+                          <motion.div
+                            className="absolute inset-0 bg-[#CBB57B]"
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: 1 }}
+                            transition={{ duration: 4, ease: 'linear' }}
+                            style={{ transformOrigin: 'left' }}
+                          />
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Right - Account Dropdown */}

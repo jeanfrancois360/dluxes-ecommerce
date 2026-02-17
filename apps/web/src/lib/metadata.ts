@@ -3,16 +3,20 @@ import { generateSeoMetadata } from './seo';
 
 // Home Page Metadata
 export const homeMetadata: Metadata = generateSeoMetadata({
-  title: 'Premium Products & Curated Collections',
+  title: 'NextPik - Multi-Vendor Luxury Marketplace | Fashion, Electronics, Vehicles & Real Estate',
   description:
-    'Discover extraordinary lifestyle products curated for distinguished living. Shop premium fashion, luxury home decor, high-end electronics, and exclusive designer brands.',
+    "Shop NextPik's curated luxury marketplace featuring fashion, electronics, vehicles, real estate, and designer products from verified sellers. Discover premium brands, secure payments, and worldwide shipping.",
   keywords: [
-    'luxury shopping',
-    'premium products',
-    'designer fashion',
-    'luxury home decor',
-    'high-end electronics',
-    'curated collections',
+    'nextpik shopping',
+    'luxury multi-vendor marketplace',
+    'premium fashion online',
+    'designer electronics',
+    'luxury vehicles for sale',
+    'real estate listings',
+    'high-end products',
+    'curated luxury collections',
+    'verified luxury sellers',
+    'secure luxury shopping',
   ],
   url: '/',
   type: 'website',
@@ -53,19 +57,22 @@ export function getProductsMetadata(params?: {
 
 // Product Detail Metadata
 export function getProductMetadata(product: {
-  name: string;
-  description: string;
-  price: number;
-  heroImage: string;
-  sku: string;
-  brand?: string;
-  category?: { name: string };
-  slug: string;
+  name?: string | null;
+  description?: string | null;
+  price?: number;
+  heroImage?: string | null;
+  sku?: string | null;
+  brand?: string | null;
+  category?: { name?: string | null } | null;
+  slug?: string | null;
 }): Metadata {
-  const title = product.name;
-  const description = product.description.substring(0, 160);
+  const productName = product.name || 'Product';
+  const title = productName;
+  const description = product.description
+    ? product.description.substring(0, 160)
+    : `Shop ${productName} on NextPik - Premium quality products at great prices.`;
   const keywords = [
-    product.name,
+    productName,
     product.brand || '',
     product.category?.name || '',
     'luxury',
@@ -76,8 +83,8 @@ export function getProductMetadata(product: {
     title,
     description,
     keywords,
-    image: product.heroImage,
-    url: `/products/${product.slug}`,
+    image: product.heroImage || undefined,
+    url: product.slug ? `/products/${product.slug}` : '/products',
     type: 'product',
   });
 }
@@ -86,7 +93,7 @@ export function getProductMetadata(product: {
 export const loginMetadata: Metadata = generateSeoMetadata({
   title: 'Sign In',
   description:
-    'Sign in to your Luxury Marketplace account to access exclusive features and manage your orders.',
+    'Sign in to your NextPik account to access exclusive features and manage your orders.',
   url: '/auth/login',
   noIndex: true,
   noFollow: true,
@@ -95,7 +102,7 @@ export const loginMetadata: Metadata = generateSeoMetadata({
 export const registerMetadata: Metadata = generateSeoMetadata({
   title: 'Create Account',
   description:
-    'Join Luxury Marketplace to discover exclusive products, track orders, and enjoy personalized shopping.',
+    'Join NextPik to discover exclusive products, track orders, and enjoy personalized shopping.',
   url: '/auth/register',
   noIndex: true,
   noFollow: true,
@@ -103,7 +110,7 @@ export const registerMetadata: Metadata = generateSeoMetadata({
 
 export const forgotPasswordMetadata: Metadata = generateSeoMetadata({
   title: 'Reset Password',
-  description: 'Reset your Luxury Marketplace account password.',
+  description: 'Reset your NextPik account password.',
   url: '/auth/forgot-password',
   noIndex: true,
   noFollow: true,
@@ -112,14 +119,14 @@ export const forgotPasswordMetadata: Metadata = generateSeoMetadata({
 // Account Pages Metadata
 export const accountMetadata: Metadata = generateSeoMetadata({
   title: 'My Account',
-  description: 'Manage your Luxury Marketplace account, orders, and preferences.',
+  description: 'Manage your NextPik account, orders, and preferences.',
   url: '/account',
   noIndex: true,
 });
 
 export const ordersMetadata: Metadata = generateSeoMetadata({
   title: 'My Orders',
-  description: 'View and track your orders from Luxury Marketplace.',
+  description: 'View and track your orders from NextPik.',
   url: '/account/orders',
   noIndex: true,
 });
@@ -204,8 +211,8 @@ export const sellerDashboardMetadata: Metadata = generateSeoMetadata({
 export const aboutMetadata: Metadata = generateSeoMetadata({
   title: 'About Us',
   description:
-    'Learn about Luxury Marketplace, our mission, and commitment to providing the finest curated products.',
-  keywords: ['about', 'company', 'luxury marketplace'],
+    'Learn about NextPik, our mission, and commitment to providing the finest curated products from verified sellers worldwide.',
+  keywords: ['about nextpik', 'company', 'multi-vendor marketplace', 'luxury shopping platform'],
   url: '/about',
 });
 
@@ -227,7 +234,7 @@ export const helpMetadata: Metadata = generateSeoMetadata({
 
 export const termsMetadata: Metadata = generateSeoMetadata({
   title: 'Terms of Service',
-  description: 'Read our terms of service and conditions for using Luxury Marketplace.',
+  description: 'Read our terms of service and conditions for using NextPik.',
   url: '/terms',
   noIndex: true,
 });
@@ -293,7 +300,15 @@ export const sellerAgreementMetadata: Metadata = generateSeoMetadata({
 
 export const storesMetadata: Metadata = generateSeoMetadata({
   title: 'Browse Stores',
-  description: 'Discover stores and sellers on our marketplace.',
+  description:
+    'Discover verified sellers and premium stores on NextPik. Shop from trusted vendors offering luxury fashion, electronics, vehicles, real estate, and designer products.',
+  keywords: [
+    'nextpik stores',
+    'verified sellers',
+    'luxury vendors',
+    'premium stores',
+    'multi-vendor',
+  ],
   url: '/stores',
 });
 

@@ -53,7 +53,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 
 interface SellerCommissionOverride {
   id: string;
-  sellerId: string;
+  sellerId: string | null;
   commissionType: 'PERCENTAGE' | 'FIXED';
   commissionRate: number;
   minOrderValue: number | null;
@@ -72,8 +72,9 @@ interface SellerCommissionOverride {
     email: string;
     firstName: string;
     lastName: string;
-  };
+  } | null;
   category: {
+    id: string;
     name: string;
     slug: string;
   } | null;
@@ -126,7 +127,7 @@ function CommissionOverridesContent() {
     try {
       const response = await fetch('/api/admin/commission/overrides', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
 
@@ -144,9 +145,11 @@ function CommissionOverridesContent() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories`);
       if (response.ok) {
-        const data = await response.json();
+        const result = await response.json();
+        // Backend wraps data in {success: true, data: [...]}
+        const data = result.success ? result.data : result;
         setCategories(data);
       }
     } catch (error) {
@@ -182,6 +185,11 @@ function CommissionOverridesContent() {
       return validUntil <= thirtyDaysLater && validUntil > now;
     }).length;
 
+    // Count by scope
+    const sellerOnly = overrides.filter((o) => o.sellerId && !o.categoryId).length;
+    const categoryOnly = overrides.filter((o) => !o.sellerId && o.categoryId).length;
+    const specific = overrides.filter((o) => o.sellerId && o.categoryId).length;
+
     return {
       total: overrides.length,
       active: active.length,
@@ -190,6 +198,9 @@ function CommissionOverridesContent() {
       lowestRate,
       highestRate,
       expiringSoon,
+      sellerOnly,
+      categoryOnly,
+      specific,
     };
   }, [overrides]);
 
@@ -202,8 +213,10 @@ function CommissionOverridesContent() {
       const search = debouncedSearch.toLowerCase();
       filtered = filtered.filter(
         (o) =>
-          o.seller.email.toLowerCase().includes(search) ||
-          `${o.seller.firstName} ${o.seller.lastName}`.toLowerCase().includes(search) ||
+          o.seller?.email.toLowerCase().includes(search) ||
+          (o.seller &&
+            `${o.seller.firstName} ${o.seller.lastName}`.toLowerCase().includes(search)) ||
+          o.category?.name.toLowerCase().includes(search) ||
           o.notes?.toLowerCase().includes(search)
       );
     }
@@ -239,11 +252,11 @@ function CommissionOverridesContent() {
         filtered.sort((a, b) => Number(a.commissionRate) - Number(b.commissionRate));
         break;
       case 'seller':
-        filtered.sort((a, b) =>
-          `${a.seller.firstName} ${a.seller.lastName}`.localeCompare(
-            `${b.seller.firstName} ${b.seller.lastName}`
-          )
-        );
+        filtered.sort((a, b) => {
+          const aName = a.seller ? `${a.seller.firstName} ${a.seller.lastName}` : 'ZZZ';
+          const bName = b.seller ? `${b.seller.firstName} ${b.seller.lastName}` : 'ZZZ';
+          return aName.localeCompare(bName);
+        });
         break;
       case 'newest':
       default:
@@ -315,23 +328,20 @@ function CommissionOverridesContent() {
     let failed = 0;
 
     for (const id of selectedIds) {
-      const override = filteredOverrides.find((o) => o.id === id);
-      if (override) {
-        try {
-          const response = await fetch(`/api/admin/commission/overrides/${override.sellerId}`, {
-            method: 'DELETE',
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`,
-            },
-          });
-          if (response.ok) {
-            success++;
-          } else {
-            failed++;
-          }
-        } catch {
+      try {
+        const response = await fetch(`/api/admin/commission/overrides/${id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+        });
+        if (response.ok) {
+          success++;
+        } else {
           failed++;
         }
+      } catch {
+        failed++;
       }
     }
 
@@ -343,19 +353,22 @@ function CommissionOverridesContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Find seller by email first
+    // Find seller by email if provided
     let sellerId = formData.sellerId;
-    if (!sellerId && formData.sellerEmail) {
+    if (formData.sellerEmail) {
       try {
         const response = await fetch(`/api/admin/users?email=${formData.sellerEmail}`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
           },
         });
         if (response.ok) {
           const users = await response.json();
           if (users.length > 0) {
             sellerId = users[0].id;
+          } else {
+            toast.error(t('toast.invalidSellerEmail'));
+            return;
           }
         }
       } catch (error) {
@@ -364,19 +377,25 @@ function CommissionOverridesContent() {
       }
     }
 
-    if (!sellerId) {
-      toast.error(t('toast.invalidSellerEmail'));
+    // Validate: At least one of seller or category must be selected
+    const categoryId =
+      formData.categoryId && formData.categoryId !== '' && formData.categoryId !== 'all'
+        ? formData.categoryId
+        : null;
+
+    if (!sellerId && !categoryId) {
+      toast.error('Please select either a seller or category (or both)');
       return;
     }
 
     try {
       const payload = {
-        sellerId,
+        ...(sellerId && { sellerId }),
+        ...(categoryId && { categoryId }),
         commissionType: formData.commissionType,
         commissionRate: parseFloat(formData.commissionRate),
         minOrderValue: formData.minOrderValue ? parseFloat(formData.minOrderValue) : undefined,
         maxOrderValue: formData.maxOrderValue ? parseFloat(formData.maxOrderValue) : undefined,
-        categoryId: formData.categoryId || undefined,
         validFrom: formData.validFrom || undefined,
         validUntil: formData.validUntil || undefined,
         notes: formData.notes || undefined,
@@ -384,14 +403,14 @@ function CommissionOverridesContent() {
       };
 
       const url = editingOverride
-        ? `/api/admin/commission/overrides/${editingOverride.sellerId}`
+        ? `/api/admin/commission/overrides/${editingOverride.id}`
         : '/api/admin/commission/overrides';
 
       const response = await fetch(url, {
         method: editingOverride ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify(payload),
       });
@@ -411,14 +430,14 @@ function CommissionOverridesContent() {
     }
   };
 
-  const handleDelete = async (sellerId: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm(t('toast.deleteConfirm'))) return;
 
     try {
-      const response = await fetch(`/api/admin/commission/overrides/${sellerId}`, {
+      const response = await fetch(`/api/admin/commission/overrides/${id}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
 
@@ -453,8 +472,8 @@ function CommissionOverridesContent() {
   const handleEdit = (override: SellerCommissionOverride) => {
     setEditingOverride(override);
     setFormData({
-      sellerId: override.sellerId,
-      sellerEmail: override.seller.email,
+      sellerId: override.sellerId || '',
+      sellerEmail: override.seller?.email || '',
       commissionType: override.commissionType,
       commissionRate: override.commissionRate.toString(),
       minOrderValue: override.minOrderValue?.toString() || '',
@@ -712,9 +731,10 @@ function CommissionOverridesContent() {
                       />
                     </TableHead>
                     <TableHead>{t('table.headers.seller')}</TableHead>
+                    <TableHead>{t('table.headers.category')}</TableHead>
+                    <TableHead>Scope</TableHead>
                     <TableHead>{t('table.headers.rate')}</TableHead>
                     <TableHead>{t('table.headers.type')}</TableHead>
-                    <TableHead>{t('table.headers.category')}</TableHead>
                     <TableHead>{t('table.headers.orderRange')}</TableHead>
                     <TableHead>{t('table.headers.validity')}</TableHead>
                     <TableHead>{t('table.headers.status')}</TableHead>
@@ -749,14 +769,44 @@ function CommissionOverridesContent() {
                           />
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {override.seller.firstName} {override.seller.lastName}
+                          {override.seller ? (
+                            <div>
+                              <div className="font-medium">
+                                {override.seller.firstName} {override.seller.lastName}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {override.seller.email}
+                              </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              {override.seller.email}
-                            </div>
-                          </div>
+                          ) : (
+                            <Badge variant="secondary">All Sellers</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {override.category ? (
+                            override.category.name
+                          ) : override.seller ? (
+                            <span className="text-muted-foreground">All Categories</span>
+                          ) : (
+                            <Badge variant="outline">Global</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {override.seller && override.category && (
+                            <Badge className="bg-purple-100 text-purple-700 border-purple-300">
+                              Specific
+                            </Badge>
+                          )}
+                          {override.seller && !override.category && (
+                            <Badge className="bg-blue-100 text-blue-700 border-blue-300">
+                              Seller
+                            </Badge>
+                          )}
+                          {!override.seller && override.category && (
+                            <Badge className="bg-green-100 text-green-700 border-green-300">
+                              Category
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="font-medium">
                           {override.commissionType === 'PERCENTAGE' ? (
@@ -769,11 +819,6 @@ function CommissionOverridesContent() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{override.commissionType}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {override.category?.name || (
-                            <span className="text-muted-foreground">{t('table.all')}</span>
-                          )}
                         </TableCell>
                         <TableCell>
                           {override.minOrderValue || override.maxOrderValue ? (
@@ -821,7 +866,7 @@ function CommissionOverridesContent() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleDelete(override.sellerId)}
+                              onClick={() => handleDelete(override.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -891,18 +936,28 @@ function CommissionOverridesContent() {
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Validation Message */}
+              {!formData.sellerEmail && (!formData.categoryId || formData.categoryId === 'all') && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                  <p className="text-sm text-amber-700">
+                    ⚠️ Please select at least one: Seller OR Category (or both for specific
+                    combination)
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="sellerEmail">
-                    {t('dialog.sellerEmail')} {t('dialog.required')}
+                    {t('dialog.sellerEmail')}{' '}
+                    <span className="text-muted-foreground text-xs">(optional)</span>
                   </Label>
                   <Input
                     id="sellerEmail"
                     type="email"
-                    placeholder={t('dialog.sellerEmailPlaceholder')}
+                    placeholder="seller@example.com (leave blank for all sellers)"
                     value={formData.sellerEmail}
                     onChange={(e) => setFormData({ ...formData, sellerEmail: e.target.value })}
-                    required
                     disabled={!!editingOverride}
                   />
                 </div>
@@ -950,16 +1005,18 @@ function CommissionOverridesContent() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="categoryId">{t('dialog.category')}</Label>
+                  <Label htmlFor="categoryId">
+                    Category <span className="text-muted-foreground text-xs">(optional)</span>
+                  </Label>
                   <Select
                     value={formData.categoryId}
                     onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={t('dialog.allCategories')} />
+                      <SelectValue placeholder="Select category (or leave blank for all)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">{t('filters.allCategories')}</SelectItem>
+                      <SelectItem value="all">All Categories</SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}

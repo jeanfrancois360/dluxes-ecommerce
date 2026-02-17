@@ -2,10 +2,12 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// NOTE: HOMEPAGE_HERO is reserved for NextPik internal use only.
+// It must NOT be included in any seller advertisement plan.
+
 async function main() {
   console.log('🌱 Seeding Advertisement Plans...\n');
 
-  // Define the 4 advertisement plans
   const plans = [
     {
       name: 'Starter',
@@ -31,7 +33,6 @@ async function main() {
       maxImpressions: 50000,
       priorityBoost: 2,
       allowedPlacements: [
-        'HOMEPAGE_HERO',
         'HOMEPAGE_FEATURED',
         'HOMEPAGE_SIDEBAR',
         'PRODUCTS_BANNER',
@@ -54,7 +55,6 @@ async function main() {
       maxImpressions: 150000,
       priorityBoost: 3,
       allowedPlacements: [
-        'HOMEPAGE_HERO',
         'HOMEPAGE_FEATURED',
         'HOMEPAGE_SIDEBAR',
         'PRODUCTS_BANNER',
@@ -76,11 +76,10 @@ async function main() {
       name: 'Enterprise',
       slug: 'enterprise',
       description: 'Ultimate advertising power with unlimited reach',
-      maxActiveAds: -1, // unlimited
-      maxImpressions: null, // unlimited
+      maxActiveAds: -1,
+      maxImpressions: null,
       priorityBoost: 5,
       allowedPlacements: [
-        'HOMEPAGE_HERO',
         'HOMEPAGE_FEATURED',
         'HOMEPAGE_SIDEBAR',
         'PRODUCTS_BANNER',
@@ -101,17 +100,17 @@ async function main() {
     },
   ];
 
-  // Upsert each plan (update if exists, create if not)
   for (const planData of plans) {
     const plan = await prisma.advertisementPlan.upsert({
       where: { slug: planData.slug },
       update: planData,
       create: planData,
     });
-    console.log(`✅ ${plan.slug === planData.slug ? 'Updated' : 'Created'} plan: ${plan.name} (${plan.slug})`);
+    console.log(`✅ Upserted plan: ${plan.name} (${plan.slug})`);
   }
 
   console.log('\n✨ Advertisement Plans seeded successfully!');
+  console.log('ℹ️  HOMEPAGE_HERO is reserved for NextPik internal use only.');
 }
 
 main()

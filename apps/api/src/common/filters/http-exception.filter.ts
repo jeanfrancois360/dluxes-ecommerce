@@ -31,6 +31,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
+      // Log full exception response for debugging validation errors
+      if (status === HttpStatus.BAD_REQUEST) {
+        this.logger.error('=== VALIDATION ERROR DETAILS ===');
+        this.logger.error(JSON.stringify(exceptionResponse, null, 2));
+      }
+
       if (typeof exceptionResponse === 'object') {
         const resp = exceptionResponse as Record<string, any>;
         message = resp.message || exception.message;
@@ -71,15 +77,24 @@ export class HttpExceptionFilter implements ExceptionFilter {
           message = 'Database operation failed';
       }
 
-      this.logger.error(
-        `Prisma error ${exception.code}: ${exception.message}`,
-        exception.stack,
-      );
+      this.logger.error(`Prisma error ${exception.code}: ${exception.message}`, exception.stack);
     }
     // Handle Prisma validation errors
     else if (exception instanceof Prisma.PrismaClientValidationError) {
       status = HttpStatus.BAD_REQUEST;
-      message = 'Invalid data provided';
+      // Extract more helpful error message from Prisma validation error
+      const errorMessage = exception.message;
+      if (errorMessage.includes('Argument')) {
+        // Try to extract field name from error message
+        const match = errorMessage.match(/Argument `(\w+)`/);
+        if (match) {
+          message = `Invalid value for field: ${match[1]}`;
+        } else {
+          message = 'Invalid data provided. Please check your input fields.';
+        }
+      } else {
+        message = 'Invalid data provided. Please check all required fields.';
+      }
       this.logger.error(`Prisma validation error: ${exception.message}`, exception.stack);
     }
     // Handle other errors
@@ -89,9 +104,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     // Log error for monitoring
-    this.logger.error(
-      `${request.method} ${request.url} - Status: ${status} - Message: ${message}`,
-    );
+    this.logger.error(`${request.method} ${request.url} - Status: ${status} - Message: ${message}`);
 
     // Send consistent error response
     response.status(status).json({

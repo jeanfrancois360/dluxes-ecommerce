@@ -3,18 +3,27 @@ import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 export const siteConfig = {
   name: 'NextPik',
-  description: 'A robust and scalable e-commerce platform built for performance, clarity, and usability. Shop quality products with confidence.',
+  description:
+    'NextPik - Your premium multi-vendor marketplace for luxury fashion, electronics, vehicles, real estate, and designer products. Discover curated collections from verified sellers worldwide. Shop with confidence.',
   url: process.env.NEXT_PUBLIC_APP_URL || 'https://nextpik.com',
   ogImage: '/og-image.jpg',
   keywords: [
     'nextpik',
-    'e-commerce platform',
-    'online shopping',
-    'marketplace',
-    'quality products',
-    'scalable platform',
-    'modern shopping',
-    'reliable commerce',
+    'nextpik marketplace',
+    'nextpik online shopping',
+    'multi-vendor marketplace',
+    'luxury online shopping',
+    'premium products marketplace',
+    'designer fashion online',
+    'luxury electronics store',
+    'buy luxury vehicles online',
+    'real estate marketplace',
+    'curated luxury products',
+    'verified sellers marketplace',
+    'high-end shopping platform',
+    'exclusive designer brands',
+    'luxury home decor online',
+    'premium marketplace platform',
   ],
 };
 
@@ -31,10 +40,10 @@ export function generateSeoMetadata({
   modifiedTime,
   authors,
 }: {
-  title: string;
-  description?: string;
+  title?: string | null;
+  description?: string | null;
   keywords?: string[];
-  image?: string;
+  image?: string | null;
   url?: string;
   noIndex?: boolean;
   noFollow?: boolean;
@@ -43,7 +52,10 @@ export function generateSeoMetadata({
   modifiedTime?: string;
   authors?: string[];
 }): Metadata {
-  const metaTitle = title.includes(siteConfig.name) ? title : `${title} - ${siteConfig.name}`;
+  const safeTitle = title || siteConfig.name;
+  const metaTitle = safeTitle.includes(siteConfig.name)
+    ? safeTitle
+    : `${safeTitle} - ${siteConfig.name}`;
   const metaDescription = description || siteConfig.description;
   const metaImage = image || siteConfig.ogImage;
   const metaUrl = url ? `${siteConfig.url}${url}` : siteConfig.url;
@@ -59,7 +71,7 @@ export function generateSeoMetadata({
     title: metaTitle,
     description: metaDescription,
     keywords: metaKeywords.join(', '),
-    authors: authors?.map(name => ({ name })),
+    authors: authors?.map((name) => ({ name })),
     creator: siteConfig.name,
     publisher: siteConfig.name,
     robots: robotsContent.length > 0 ? robotsContent.join(', ') : undefined,
@@ -101,6 +113,7 @@ export function generateOrganizationSchema() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: siteConfig.name,
+    alternateName: 'NextPik Marketplace',
     url: siteConfig.url,
     logo: `${siteConfig.url}/logo.png`,
     description: siteConfig.description,
@@ -108,15 +121,25 @@ export function generateOrganizationSchema() {
       '@type': 'PostalAddress',
       addressCountry: 'US',
     },
-    contactPoint: {
-      '@type': 'ContactPoint',
-      contactType: 'Customer Service',
-      email: 'support@nextpik.com',
-    },
+    contactPoint: [
+      {
+        '@type': 'ContactPoint',
+        contactType: 'Customer Service',
+        email: 'support@nextpik.com',
+        availableLanguage: ['English'],
+      },
+      {
+        '@type': 'ContactPoint',
+        contactType: 'Sales',
+        email: 'sales@nextpik.com',
+        availableLanguage: ['English'],
+      },
+    ],
     sameAs: [
       'https://facebook.com/nextpik',
       'https://twitter.com/nextpik',
       'https://instagram.com/nextpik',
+      'https://linkedin.com/company/nextpik',
     ],
   };
 }
@@ -155,10 +178,12 @@ export function generateProductSchema({
     description,
     image: image.startsWith('http') ? image : `${siteConfig.url}${image}`,
     sku,
-    brand: brand ? {
-      '@type': 'Brand',
-      name: brand,
-    } : undefined,
+    brand: brand
+      ? {
+          '@type': 'Brand',
+          name: brand,
+        }
+      : undefined,
     offers: {
       '@type': 'Offer',
       url: `${siteConfig.url}${url}`,
@@ -208,7 +233,7 @@ export function generateReviewSchema({
     date: string;
   }>;
 }) {
-  return reviews.map(review => ({
+  return reviews.map((review) => ({
     '@context': 'https://schema.org',
     '@type': 'Review',
     itemReviewed: {
@@ -260,12 +285,63 @@ export function generateWebPageSchema({
   };
 }
 
+export function generateWebSiteSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: siteConfig.name,
+    alternateName: 'NextPik Marketplace',
+    url: siteConfig.url,
+    description: siteConfig.description,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${siteConfig.url}/search?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+}
+
+export function generateItemListSchema({
+  items,
+  name,
+  description,
+}: {
+  items: Array<{ name: string; image?: string; url: string; price?: number; currency?: string }>;
+  name: string;
+  description?: string;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name,
+    description,
+    numberOfItems: items.length,
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'Product',
+        name: item.name,
+        image: item.image,
+        url: item.url.startsWith('http') ? item.url : `${siteConfig.url}${item.url}`,
+        ...(item.price && {
+          offers: {
+            '@type': 'Offer',
+            price: formatCurrencyAmount(item.price, 2),
+            priceCurrency: item.currency || 'USD',
+          },
+        }),
+      },
+    })),
+  };
+}
+
 // Helper to inject structured data into pages
 export function StructuredData({ data }: { data: any }) {
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
   );
 }

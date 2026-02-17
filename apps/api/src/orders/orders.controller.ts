@@ -33,7 +33,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
-    private readonly cartService: CartService,
+    private readonly cartService: CartService
   ) {}
 
   /**
@@ -47,7 +47,7 @@ export class OrdersController {
     @Query('limit') limit?: string,
     @Query('status') status?: string,
     @Query('sortBy') sortBy?: string,
-    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc'
   ) {
     try {
       const pageNum = page ? parseInt(page, 10) : 1;
@@ -68,7 +68,7 @@ export class OrdersController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -87,22 +87,26 @@ export class OrdersController {
       // Transform data for frontend compatibility
       const data = {
         ...order,
-        customer: order.user ? {
-          id: order.user.id,
-          name: `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || null,
-          email: order.user.email,
-        } : null,
-        items: order.items?.map(item => ({
+        customer: order.user
+          ? {
+              id: order.user.id,
+              name: `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || null,
+              email: order.user.email,
+            }
+          : null,
+        items: order.items?.map((item) => ({
           ...item,
           image: item.product?.images?.[0]?.url || null,
         })),
-        shippingAddress: order.shippingAddress ? {
-          street: order.shippingAddress.address1,
-          city: order.shippingAddress.city,
-          state: order.shippingAddress.province,
-          zipCode: order.shippingAddress.postalCode,
-          country: order.shippingAddress.country,
-        } : null,
+        shippingAddress: order.shippingAddress
+          ? {
+              street: order.shippingAddress.address1,
+              city: order.shippingAddress.city,
+              state: order.shippingAddress.province,
+              zipCode: order.shippingAddress.postalCode,
+              country: order.shippingAddress.country,
+            }
+          : null,
       };
 
       return {
@@ -112,7 +116,7 @@ export class OrdersController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -123,11 +127,7 @@ export class OrdersController {
    */
   @Get(':id/invoice')
   @Header('Content-Type', 'text/html')
-  async getInvoice(
-    @Param('id') id: string,
-    @Request() req,
-    @Res() res: Response
-  ) {
+  async getInvoice(@Param('id') id: string, @Request() req, @Res() res: Response) {
     try {
       const html = await this.ordersService.generateInvoiceHtml(id, req.user.userId || req.user.id);
       res.send(html);
@@ -176,10 +176,7 @@ export class OrdersController {
   @Post()
   async create(@Request() req, @Body() createOrderDto: CreateOrderDto) {
     try {
-      const data = await this.ordersService.create(
-        req.user.userId,
-        createOrderDto
-      );
+      const data = await this.ordersService.create(req.user.userId, createOrderDto);
       return {
         success: true,
         data,
@@ -188,7 +185,7 @@ export class OrdersController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -200,15 +197,9 @@ export class OrdersController {
   @Patch(':id/status')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  async updateStatus(
-    @Param('id') id: string,
-    @Body() updateOrderStatusDto: UpdateOrderStatusDto
-  ) {
+  async updateStatus(@Param('id') id: string, @Body() updateOrderStatusDto: UpdateOrderStatusDto) {
     try {
-      const data = await this.ordersService.updateStatus(
-        id,
-        updateOrderStatusDto.status
-      );
+      const data = await this.ordersService.updateStatus(id, updateOrderStatusDto.status);
       return {
         success: true,
         data,
@@ -217,7 +208,30 @@ export class OrdersController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Update order notes (Admin only)
+   * @route PATCH /orders/:id/notes
+   */
+  @Patch(':id/notes')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async updateNotes(@Param('id') id: string, @Body() body: { notes: string }) {
+    try {
+      const data = await this.ordersService.updateNotes(id, body.notes);
+      return {
+        success: true,
+        data,
+        message: 'Order notes updated successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -238,7 +252,7 @@ export class OrdersController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -259,7 +273,7 @@ export class OrdersController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }
@@ -312,14 +326,15 @@ export class OrdersController {
           cart: updatedCart,
           results,
         },
-        message: results.added.length > 0
-          ? `Added ${results.added.length} item(s) to cart`
-          : 'No items could be added to cart',
+        message:
+          results.added.length > 0
+            ? `Added ${results.added.length} item(s) to cart`
+            : 'No items could be added to cart',
       };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : "An error occurred",
+        message: error instanceof Error ? error.message : 'An error occurred',
       };
     }
   }

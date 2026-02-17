@@ -14,6 +14,7 @@ function AdvertisementsContent() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'rejected'>('all');
   const [selectedAd, setSelectedAd] = useState<Advertisement | null>(null);
+  const [selectedAdAnalytics, setSelectedAdAnalytics] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
 
   const fetchAds = async () => {
@@ -23,7 +24,8 @@ function AdvertisementsContent() {
       if (filter === 'pending') {
         data = await adminAdvertisementsApi.getPending();
       } else {
-        const params = filter !== 'all' ? { status: filter.toUpperCase() } : undefined;
+        const statusMap: Record<string, string> = { active: 'ACTIVE', rejected: 'REJECTED' };
+        const params = filter !== 'all' ? { status: statusMap[filter] } : undefined;
         data = await adminAdvertisementsApi.getAll(params);
       }
       setAds(data || []);
@@ -73,7 +75,9 @@ function AdvertisementsContent() {
   const viewAnalytics = async (ad: Advertisement) => {
     try {
       const analytics = await adminAdvertisementsApi.getAnalytics(ad.id);
-      setSelectedAd({ ...ad, ...analytics });
+      setSelectedAd(ad);
+      // analytics shape: { advertisement, metrics: { impressions, clicks, conversions, ctr, conversionRate }, events }
+      setSelectedAdAnalytics(analytics?.metrics || analytics);
       setShowModal(true);
     } catch (error) {
       toast.error(t('messages.analyticsError'));
@@ -82,11 +86,14 @@ function AdvertisementsContent() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      PENDING: 'bg-yellow-100 text-yellow-800',
+      PENDING_APPROVAL: 'bg-yellow-100 text-yellow-800',
+      APPROVED: 'bg-blue-100 text-blue-800',
       ACTIVE: 'bg-green-100 text-green-800',
       REJECTED: 'bg-red-100 text-red-800',
       EXPIRED: 'bg-gray-100 text-gray-800',
-      PAUSED: 'bg-blue-100 text-blue-800',
+      PAUSED: 'bg-orange-100 text-orange-800',
+      DRAFT: 'bg-gray-100 text-gray-600',
+      COMPLETED: 'bg-purple-100 text-purple-800',
     };
     return styles[status] || 'bg-gray-100 text-gray-800';
   };
@@ -196,7 +203,7 @@ function AdvertisementsContent() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        {ad.status === 'PENDING' && (
+                        {ad.status === 'PENDING_APPROVAL' && (
                           <>
                             <button
                               onClick={() => handleApprove(ad.id, true)}
@@ -212,12 +219,12 @@ function AdvertisementsContent() {
                             </button>
                           </>
                         )}
-                        {ad.status === 'ACTIVE' && (
+                        {(ad.status === 'ACTIVE' || ad.status === 'PAUSED') && (
                           <button
-                            onClick={() => handleToggle(ad.id, !ad.isActive)}
+                            onClick={() => handleToggle(ad.id, ad.status !== 'ACTIVE')}
                             className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                           >
-                            {ad.isActive ? t('actions.pause') : t('actions.resume')}
+                            {ad.status === 'ACTIVE' ? t('actions.pause') : t('actions.resume')}
                           </button>
                         )}
                         <button
@@ -258,43 +265,55 @@ function AdvertisementsContent() {
                     <p className="text-sm text-gray-500">{selectedAd.placement}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold">{selectedAd.impressions}</div>
-                    <div className="text-sm text-gray-500">{t('modal.metrics.impressions')}</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold">{selectedAd.clicks}</div>
-                    <div className="text-sm text-gray-500">{t('modal.metrics.clicks')}</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold">{selectedAd.conversions}</div>
-                    <div className="text-sm text-gray-500">{t('modal.metrics.conversions')}</div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-4 text-center">
-                    <div className="text-xl font-bold">
-                      {selectedAd.impressions > 0
-                        ? formatNumber((selectedAd.clicks / selectedAd.impressions) * 100, 2)
-                        : 0}
-                      %
-                    </div>
-                    <div className="text-sm text-gray-500">{t('modal.metrics.ctr')}</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4 text-center">
-                    <div className="text-xl font-bold">
-                      {selectedAd.clicks > 0
-                        ? formatNumber((selectedAd.conversions / selectedAd.clicks) * 100, 2)
-                        : 0}
-                      %
-                    </div>
-                    <div className="text-sm text-gray-500">{t('modal.metrics.conversionRate')}</div>
-                  </div>
-                </div>
+                {(() => {
+                  const impressions = selectedAdAnalytics?.impressions ?? selectedAd.impressions;
+                  const clicks = selectedAdAnalytics?.clicks ?? selectedAd.clicks;
+                  const conversions = selectedAdAnalytics?.conversions ?? selectedAd.conversions;
+                  return (
+                    <>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold">{impressions}</div>
+                          <div className="text-sm text-gray-500">
+                            {t('modal.metrics.impressions')}
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold">{clicks}</div>
+                          <div className="text-sm text-gray-500">{t('modal.metrics.clicks')}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold">{conversions}</div>
+                          <div className="text-sm text-gray-500">
+                            {t('modal.metrics.conversions')}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                          <div className="text-xl font-bold">
+                            {impressions > 0 ? formatNumber((clicks / impressions) * 100, 2) : 0}%
+                          </div>
+                          <div className="text-sm text-gray-500">{t('modal.metrics.ctr')}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                          <div className="text-xl font-bold">
+                            {clicks > 0 ? formatNumber((conversions / clicks) * 100, 2) : 0}%
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {t('modal.metrics.conversionRate')}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setSelectedAdAnalytics(null);
+                }}
                 className="mt-6 w-full py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 {t('modal.close')}

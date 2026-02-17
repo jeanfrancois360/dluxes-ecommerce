@@ -6,13 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import {
-  SellerShipment,
-  ShipmentStatus,
-  OrderStatus,
-  UserRole,
-  Prisma,
-} from '@prisma/client';
+import { SellerShipment, ShipmentStatus, OrderStatus, UserRole, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 interface CreateShipmentDto {
@@ -21,6 +15,7 @@ interface CreateShipmentDto {
   itemIds: string[]; // OrderItem IDs to include in shipment
   carrier?: string;
   trackingNumber?: string;
+  trackingUrl?: string;
   estimatedDelivery?: Date;
   shippingCost?: number;
   weight?: number;
@@ -47,10 +42,7 @@ export class ShipmentsService {
   /**
    * Create a new shipment for seller's order items
    */
-  async createShipment(
-    dto: CreateShipmentDto,
-    sellerId: string
-  ): Promise<SellerShipment> {
+  async createShipment(dto: CreateShipmentDto, sellerId: string): Promise<SellerShipment> {
     // Verify seller owns the store
     const store = await this.prisma.store.findFirst({
       where: {
@@ -78,9 +70,7 @@ export class ShipmentsService {
     });
 
     if (orderItems.length !== dto.itemIds.length) {
-      throw new BadRequestException(
-        'Some items do not belong to your store or this order'
-      );
+      throw new BadRequestException('Some items do not belong to your store or this order');
     }
 
     // Check if items are already in another shipment
@@ -94,12 +84,8 @@ export class ShipmentsService {
     });
 
     if (existingShipmentItems.length > 0) {
-      const duplicateItems = existingShipmentItems
-        .map((si) => si.orderItemId)
-        .join(', ');
-      throw new BadRequestException(
-        `Items already in shipment: ${duplicateItems}`
-      );
+      const duplicateItems = existingShipmentItems.map((si) => si.orderItemId).join(', ');
+      throw new BadRequestException(`Items already in shipment: ${duplicateItems}`);
     }
 
     // Generate unique shipment number
@@ -119,10 +105,9 @@ export class ShipmentsService {
           status: ShipmentStatus.PENDING,
           carrier: dto.carrier,
           trackingNumber: dto.trackingNumber,
+          trackingUrl: dto.trackingUrl,
           estimatedDelivery: dto.estimatedDelivery,
-          shippingCost: dto.shippingCost
-            ? new Decimal(dto.shippingCost)
-            : undefined,
+          shippingCost: dto.shippingCost ? new Decimal(dto.shippingCost) : undefined,
           weight: dto.weight ? new Decimal(dto.weight) : undefined,
           notes: dto.notes,
         },
@@ -157,9 +142,7 @@ export class ShipmentsService {
     // Update order status if needed
     await this.updateOrderStatusAfterShipmentChange(dto.orderId);
 
-    this.logger.log(
-      `Shipment ${shipment.shipmentNumber} created for order ${dto.orderId}`
-    );
+    this.logger.log(`Shipment ${shipment.shipmentNumber} created for order ${dto.orderId}`);
 
     return shipment;
   }
@@ -355,11 +338,8 @@ export class ShipmentsService {
 
     // Check access permissions
     const isBuyer = order.userId === userId;
-    const isSeller = order.items.some(
-      (item) => item.product.store?.userId === userId
-    );
-    const isAdmin =
-      userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN;
+    const isSeller = order.items.some((item) => item.product.store?.userId === userId);
+    const isAdmin = userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN;
 
     if (!isBuyer && !isSeller && !isAdmin) {
       throw new ForbiddenException('You do not have access to this order');
@@ -518,9 +498,7 @@ export class ShipmentsService {
   /**
    * Update order status based on all shipments' statuses
    */
-  private async updateOrderStatusAfterShipmentChange(
-    orderId: string
-  ): Promise<void> {
+  private async updateOrderStatusAfterShipmentChange(orderId: string): Promise<void> {
     // Get all shipments for this order
     const shipments = await this.prisma.sellerShipment.findMany({
       where: { orderId },
@@ -534,12 +512,8 @@ export class ShipmentsService {
     }
 
     // Count shipments by status
-    const allDelivered = shipments.every(
-      (s) => s.status === ShipmentStatus.DELIVERED
-    );
-    const someDelivered = shipments.some(
-      (s) => s.status === ShipmentStatus.DELIVERED
-    );
+    const allDelivered = shipments.every((s) => s.status === ShipmentStatus.DELIVERED);
+    const someDelivered = shipments.some((s) => s.status === ShipmentStatus.DELIVERED);
     const allShipped = shipments.every(
       (s) =>
         s.status === ShipmentStatus.IN_TRANSIT ||
@@ -592,17 +566,12 @@ export class ShipmentsService {
             orderId,
             status: newOrderStatus,
             title: this.getOrderStatusTitle(newOrderStatus),
-            description: this.getOrderStatusDescription(
-              newOrderStatus,
-              shipments.length
-            ),
+            description: this.getOrderStatusDescription(newOrderStatus, shipments.length),
             icon: this.getOrderStatusIcon(newOrderStatus),
           },
         });
 
-        this.logger.log(
-          `Order ${orderId} status updated to ${newOrderStatus}`
-        );
+        this.logger.log(`Order ${orderId} status updated to ${newOrderStatus}`);
       }
     }
   }
@@ -654,10 +623,7 @@ export class ShipmentsService {
     return titles[status];
   }
 
-  private getOrderStatusDescription(
-    status: OrderStatus,
-    shipmentCount: number
-  ): string {
+  private getOrderStatusDescription(status: OrderStatus, shipmentCount: number): string {
     if (status === OrderStatus.PARTIALLY_SHIPPED) {
       return `Some items from ${shipmentCount} shipment(s) have been delivered`;
     }

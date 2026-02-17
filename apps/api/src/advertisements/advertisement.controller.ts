@@ -12,7 +12,12 @@ import {
   Request,
 } from '@nestjs/common';
 import { AdvertisementService } from './advertisement.service';
-import { CreateAdvertisementDto, UpdateAdvertisementDto, ApproveAdvertisementDto, RecordAdEventDto } from './dto/advertisement.dto';
+import {
+  CreateAdvertisementDto,
+  UpdateAdvertisementDto,
+  ApproveAdvertisementDto,
+  RecordAdEventDto,
+} from './dto/advertisement.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -32,7 +37,7 @@ export class AdvertisementController {
   async findAll(
     @Query('status') status?: string,
     @Query('placement') placement?: string,
-    @Query('advertiserId') advertiserId?: string,
+    @Query('advertiserId') advertiserId?: string
   ) {
     const data = await this.adService.findAll({ status: status as any, placement, advertiserId });
     return { success: true, data };
@@ -91,12 +96,12 @@ export class AdvertisementController {
   async getAnalytics(
     @Param('id') id: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('endDate') endDate?: string
   ) {
     const data = await this.adService.getAnalytics(
       id,
       startDate ? new Date(startDate) : undefined,
-      endDate ? new Date(endDate) : undefined,
+      endDate ? new Date(endDate) : undefined
     );
     return { success: true, data };
   }
@@ -121,7 +126,8 @@ export class AdvertisementController {
   @UseGuards(JwtAuthGuard)
   async update(@Param('id') id: string, @Body() dto: UpdateAdvertisementDto, @Request() req: any) {
     const userId = req.user.userId || req.user.id;
-    const data = await this.adService.update(id, dto, userId);
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.user.role);
+    const data = await this.adService.update(id, dto, userId, isAdmin);
     return { success: true, data };
   }
 
@@ -154,13 +160,14 @@ export class AdvertisementController {
    * POST /advertisements/:id/event
    */
   @Post(':id/event')
-  async recordEvent(
-    @Param('id') id: string,
-    @Body() dto: RecordAdEventDto,
-    @Request() req: any,
-  ) {
+  async recordEvent(@Param('id') id: string, @Body() dto: RecordAdEventDto, @Request() req: any) {
     const userId = req.user?.userId || req.user?.id;
-    const data = await this.adService.recordEvent(id, dto.eventType as AdEventType, userId, dto.page);
+    const data = await this.adService.recordEvent(
+      id,
+      dto.eventType as AdEventType,
+      userId,
+      dto.page
+    );
     return { success: true, data };
   }
 
@@ -170,8 +177,10 @@ export class AdvertisementController {
    */
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  async delete(@Param('id') id: string) {
-    const data = await this.adService.delete(id);
+  async delete(@Param('id') id: string, @Request() req: any) {
+    const userId = req.user.userId || req.user.id;
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.user.role);
+    const data = await this.adService.delete(id, userId, isAdmin);
     return { success: true, ...data };
   }
 }

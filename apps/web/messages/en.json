@@ -19,6 +19,7 @@
       "categories": "Categories",
       "reviews": "Reviews",
       "customers": "Customers",
+      "userManagement": "User Management",
       "sellerManagement": "Seller Management",
       "subscriptions": "Subscriptions",
       "subscriptionPlans": "Subscription Plans",
@@ -33,6 +34,8 @@
       "deliveryProviders": "Delivery Providers",
       "deliveryPayouts": "Delivery Payouts",
       "advertisements": "Advertisements",
+      "advertisementPlans": "Advertisement Plans",
+      "announcements": "Announcements",
       "settings": "Settings"
     },
     "viewWebsite": "View Website",
@@ -1393,7 +1396,8 @@
         "reviewError": "Failed to submit review. Please try again.",
         "cancelError": "Failed to cancel order. Please contact support.",
         "returnSuccess": "Return request submitted. We will review your request and get back to you soon",
-        "returnError": "Failed to submit return request. Please try again."
+        "returnError": "Failed to submit return request. Please try again.",
+        "invoiceError": "Failed to download invoice. Please try again."
       }
     }
   },

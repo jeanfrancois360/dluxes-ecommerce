@@ -2,7 +2,15 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, X, Image as ImageIcon, Loader2, CheckCircle, AlertCircle, Star } from 'lucide-react';
+import {
+  Upload,
+  X,
+  Image as ImageIcon,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  Star,
+} from 'lucide-react';
 import { Card, CardContent } from '@nextpik/ui';
 import { Button } from '@nextpik/ui';
 import { createClient } from '@supabase/supabase-js';
@@ -114,93 +122,99 @@ export default function EnhancedImageUpload({
     return `${apiUrl.replace('/api/v1', '')}${response.url}`;
   };
 
-  const uploadFile = async (file: File): Promise<string> => {
-    // Try Supabase first, fallback to API
-    if (isSupabaseConfigured) {
-      try {
-        return await uploadToSupabase(file);
-      } catch (error) {
-        console.warn('Supabase upload failed, falling back to API', error);
-      }
-    }
-
-    // Fallback to API upload
-    return await uploadViaAPI(file);
-  };
-
-  const handleFileSelect = useCallback(async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-
-    const fileArray = Array.from(files);
-    const validFiles = fileArray.filter((file) => {
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-      if (!validTypes.includes(file.type)) {
-        alert(`Invalid file type: ${file.name}. Only JPEG, PNG, WebP, and GIF are allowed.`);
-        return false;
+  const uploadFile = useCallback(
+    async (file: File): Promise<string> => {
+      // Try Supabase first, fallback to API
+      if (isSupabaseConfigured) {
+        try {
+          return await uploadToSupabase(file);
+        } catch (error) {
+          console.warn('Supabase upload failed, falling back to API', error);
+        }
       }
 
-      // Validate file size (5MB)
-      const maxSize = 5 * 1024 * 1024;
-      if (file.size > maxSize) {
-        alert(`File too large: ${file.name}. Maximum size is 5MB.`);
-        return false;
+      // Fallback to API upload
+      return await uploadViaAPI(file);
+    },
+    [isSupabaseConfigured, supabase, folder]
+  );
+
+  const handleFileSelect = useCallback(
+    async (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+
+      const fileArray = Array.from(files);
+      const validFiles = fileArray.filter((file) => {
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+        if (!validTypes.includes(file.type)) {
+          alert(`Invalid file type: ${file.name}. Only JPEG, PNG, WebP, and GIF are allowed.`);
+          return false;
+        }
+
+        // Validate file size (5MB)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+          alert(`File too large: ${file.name}. Maximum size is 5MB.`);
+          return false;
+        }
+
+        return true;
+      });
+
+      if (validFiles.length === 0) return;
+
+      // Check max images limit
+      if (images.length + validFiles.length > maxImages) {
+        alert(`Maximum ${maxImages} images allowed`);
+        return;
       }
 
-      return true;
-    });
+      // Check if we need to set a primary image
+      const hasPrimary = images.some((img) => img.isPrimary);
 
-    if (validFiles.length === 0) return;
+      // Create temporary image entries
+      const tempImages: UploadedImage[] = validFiles.map((file, index) => ({
+        url: URL.createObjectURL(file),
+        id: `temp-${Date.now()}-${Math.random()}`,
+        uploading: true,
+        isPrimary: !hasPrimary && images.length === 0 && index === 0, // First image is primary if none exist
+      }));
 
-    // Check max images limit
-    if (images.length + validFiles.length > maxImages) {
-      alert(`Maximum ${maxImages} images allowed`);
-      return;
-    }
+      setImages((prev) => [...prev, ...tempImages]);
 
-    // Check if we need to set a primary image
-    const hasPrimary = images.some((img) => img.isPrimary);
+      // Upload files in parallel for better performance
+      const uploadPromises = validFiles.map(async (file, i) => {
+        const tempImage = tempImages[i];
 
-    // Create temporary image entries
-    const tempImages: UploadedImage[] = validFiles.map((file, index) => ({
-      url: URL.createObjectURL(file),
-      id: `temp-${Date.now()}-${Math.random()}`,
-      uploading: true,
-      isPrimary: !hasPrimary && images.length === 0 && index === 0, // First image is primary if none exist
-    }));
+        try {
+          const url = await uploadFile(file);
 
-    setImages((prev) => [...prev, ...tempImages]);
+          setImages((prev) =>
+            prev.map((img) =>
+              img.id === tempImage.id
+                ? { ...img, url, uploading: false, isPrimary: img.isPrimary } // Preserve isPrimary
+                : img
+            )
+          );
 
-    // Upload files
-    for (let i = 0; i < validFiles.length; i++) {
-      const file = validFiles[i];
-      const tempImage = tempImages[i];
+          // Clean up object URL
+          URL.revokeObjectURL(tempImage.url);
+        } catch (error) {
+          console.error('Upload failed:', error);
+          setImages((prev) =>
+            prev.map((img) =>
+              img.id === tempImage.id ? { ...img, uploading: false, error: 'Upload failed' } : img
+            )
+          );
+        }
+      });
 
-      try {
-        const url = await uploadFile(file);
-
-        setImages((prev) =>
-          prev.map((img) =>
-            img.id === tempImage.id
-              ? { ...img, url, uploading: false, isPrimary: img.isPrimary } // Preserve isPrimary
-              : img
-          )
-        );
-
-        // Clean up object URL
-        URL.revokeObjectURL(tempImage.url);
-      } catch (error) {
-        console.error('Upload failed:', error);
-        setImages((prev) =>
-          prev.map((img) =>
-            img.id === tempImage.id
-              ? { ...img, uploading: false, error: 'Upload failed' }
-              : img
-          )
-        );
-      }
-    }
-  }, [images, maxImages, uploadFile]);
+      // Wait for all uploads to complete
+      await Promise.all(uploadPromises);
+    },
+    [images, maxImages, uploadFile]
+  );
 
   const removeImage = useCallback((id: string) => {
     setImages((prev) => prev.filter((img) => img.id !== id));
@@ -225,11 +239,14 @@ export default function EnhancedImageUpload({
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    handleFileSelect(e.dataTransfer.files);
-  }, [handleFileSelect]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      handleFileSelect(e.dataTransfer.files);
+    },
+    [handleFileSelect]
+  );
 
   // Update parent when images change
   useEffect(() => {
@@ -320,11 +337,7 @@ export default function EnhancedImageUpload({
                 <Card className="h-full overflow-hidden border border-black/10">
                   <CardContent className="p-0 h-full relative">
                     {/* Image */}
-                    <img
-                      src={image.url}
-                      alt="Product"
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={image.url} alt="Product" className="w-full h-full object-cover" />
 
                     {/* Primary Badge */}
                     {image.isPrimary && (

@@ -1,14 +1,192 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import PageHeader from '@/components/admin/page-header';
 import { useCategories } from '@/hooks/use-admin';
 import { adminCategoriesApi, type Category } from '@/lib/api/admin';
-import { toast, standardToasts } from '@/lib/utils/toast';
-import { Link2, X } from 'lucide-react';
+import { toast } from '@/lib/utils/toast';
+import { Link2, X, ChevronRight, ChevronDown, Upload, Loader2, ImageIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { createClient } from '@supabase/supabase-js';
+import { api } from '@/lib/api/client';
+
+// ── Category Image Upload ────────────────────────────────────────────────────
+
+interface CategoryImageUploadProps {
+  value: string;
+  onChange: (url: string) => void;
+}
+
+function CategoryImageUpload({ value, onChange }: CategoryImageUploadProps) {
+  const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isSupabaseConfigured =
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  const supabase = isSupabaseConfigured
+    ? createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+    : null;
+
+  const uploadToSupabase = async (file: File): Promise<string> => {
+    if (!supabase) throw new Error('Supabase not configured');
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+    const filePath = `categories/${fileName}`;
+    const { error } = await supabase.storage
+      .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET_NAME || 'product-images')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+    const { data: publicData } = supabase.storage
+      .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET_NAME || 'product-images')
+      .getPublicUrl(filePath);
+    return publicData.publicUrl;
+  };
+
+  const uploadViaAPI = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await api.post('/upload/image?folder=categories', formData);
+    if (!response?.url) throw new Error('No URL returned from server');
+    if (response.url.startsWith('http')) return response.url;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+    return `${apiUrl.replace('/api/v1', '')}${response.url}`;
+  };
+
+  const handleFile = useCallback(
+    async (file: File) => {
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validTypes.includes(file.type)) {
+        toast.error('Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File too large. Maximum size is 5MB.');
+        return;
+      }
+      setUploading(true);
+      try {
+        let url: string;
+        if (isSupabaseConfigured) {
+          try {
+            url = await uploadToSupabase(file);
+          } catch {
+            url = await uploadViaAPI(file);
+          }
+        } else {
+          url = await uploadViaAPI(file);
+        }
+        onChange(url);
+      } catch (err) {
+        toast.error('Image upload failed. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    },
+    [isSupabaseConfigured, supabase, onChange]
+  );
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Preview */}
+      {value && !uploading && (
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-gray-100 border border-gray-200 group">
+          <img src={value} alt="Category" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 bg-white text-black text-xs font-medium rounded-lg shadow hover:bg-gray-100 transition-colors"
+            >
+              Replace
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg shadow hover:bg-red-700 transition-colors"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Zone */}
+      {(!value || uploading) && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          className={`flex flex-col items-center justify-center gap-2 w-full py-8 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+            isDragging
+              ? 'border-[#CBB57B] bg-[#CBB57B]/5'
+              : 'border-gray-300 hover:border-[#CBB57B] hover:bg-gray-50'
+          } ${uploading ? 'cursor-default pointer-events-none' : ''}`}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="w-8 h-8 text-[#CBB57B] animate-spin" />
+              <p className="text-sm text-gray-500">Uploading...</p>
+            </>
+          ) : (
+            <>
+              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                <Upload className="w-5 h-5 text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-700">
+                Drop image here or <span className="text-[#CBB57B]">click to browse</span>
+              </p>
+              <p className="text-xs text-gray-400">JPEG, PNG, WebP, GIF · max 5 MB</p>
+            </>
+          )}
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.target.value = '';
+        }}
+      />
+
+      {/* URL fallback */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-px bg-gray-200" />
+        <span className="text-xs text-gray-400">or paste URL</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://images.unsplash.com/..."
+        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+      />
+    </div>
+  );
+}
 
 // Helper function to generate slug from name
 function generateSlug(name: string): string {
@@ -17,6 +195,55 @@ function generateSlug(name: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+// Helper function to build parent category options recursively with indentation
+function buildParentOptions(
+  categories: Category[],
+  editingId: string | null,
+  depth: number = 0
+): React.ReactElement[] {
+  const options: React.ReactElement[] = [];
+
+  // Get categories at this level (based on parent relationship)
+  const categoriesAtLevel = categories.filter((c) => {
+    if (depth === 0) return !c.parentId;
+    return false; // This will be handled by the recursive call
+  });
+
+  // Recursive function to build options for a category and its children
+  const buildOptionsForCategory = (
+    category: Category,
+    currentDepth: number
+  ): React.ReactElement[] => {
+    const opts: React.ReactElement[] = [];
+
+    // Skip current category being edited (can't be its own parent)
+    if (category.id === editingId) return opts;
+
+    // Add current category with indentation
+    const indent = '—'.repeat(currentDepth);
+    opts.push(
+      <option key={category.id} value={category.id}>
+        {indent} {category.name}
+      </option>
+    );
+
+    // Find and add children recursively
+    const children = categories.filter((c) => c.parentId === category.id);
+    children.forEach((child) => {
+      opts.push(...buildOptionsForCategory(child, currentDepth + 1));
+    });
+
+    return opts;
+  };
+
+  // Build options for all top-level categories
+  categoriesAtLevel.forEach((category) => {
+    options.push(...buildOptionsForCategory(category, depth));
+  });
+
+  return options;
 }
 
 // Category Form Component (moved outside to prevent re-creation on every render)
@@ -100,6 +327,44 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
       </div>
 
       <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Category Image</label>
+        <CategoryImageUpload
+          value={(formData as any).image || ''}
+          onChange={(url) => onFormDataChange({ ...formData, image: url } as any)}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          <input
+            type="number"
+            value={(formData as any).priority ?? 0}
+            onChange={(e) =>
+              onFormDataChange({ ...formData, priority: parseInt(e.target.value, 10) || 0 } as any)
+            }
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+          />
+          <p className="mt-1 text-xs text-gray-500">Higher = shown first</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+          <input
+            type="number"
+            value={(formData as any).displayOrder ?? 0}
+            onChange={(e) =>
+              onFormDataChange({
+                ...formData,
+                displayOrder: parseInt(e.target.value, 10) || 0,
+              } as any)
+            }
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+          />
+          <p className="mt-1 text-xs text-gray-500">Lower = shown first within same priority</p>
+        </div>
+      </div>
+
+      <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {t('form.parentCategory')}
         </label>
@@ -109,13 +374,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
         >
           <option value="">{t('form.noneTopLevel')}</option>
-          {categories
-            .filter((c) => !c.parentId && c.id !== editingId)
-            .map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
+          {buildParentOptions(categories, editingId, 0)}
         </select>
       </div>
 
@@ -211,6 +470,248 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   );
 };
 
+// Recursive Category Tree Row Component
+interface CategoryTreeRowProps {
+  category: Category;
+  depth: number;
+  expandedCategories: Set<string>;
+  toggleExpand: (id: string) => void;
+  handleEdit: (category: Category) => void;
+  handleDelete: (id: string) => void;
+  handlePriorityChange: (id: string, currentPriority: number, delta: number) => void;
+  t: any;
+  allCategories: Category[];
+}
+
+const CategoryTreeRow: React.FC<CategoryTreeRowProps> = ({
+  category,
+  depth,
+  expandedCategories,
+  toggleExpand,
+  handleEdit,
+  handleDelete,
+  handlePriorityChange,
+  t,
+  allCategories,
+}) => {
+  const children = allCategories.filter((c) => c.parentId === category.id);
+  const hasChildren = children.length > 0;
+  const isExpanded = expandedCategories.has(category.id);
+  const isTopLevel = depth === 0;
+
+  return (
+    <>
+      <tr
+        className={`group transition-all duration-200 ${depth > 0 ? 'bg-neutral-50/50 hover:bg-neutral-100/70' : 'hover:bg-neutral-50'}`}
+      >
+        {/* Name with expand/collapse and depth indicator */}
+        <td className="px-6 py-3">
+          <div className="flex items-center" style={{ paddingLeft: `${depth * 24}px` }}>
+            {/* Tree connector for nested items */}
+            {depth > 0 && (
+              <div className="flex items-end mr-2" style={{ width: '20px', height: '20px' }}>
+                <div
+                  className="border-l-2 border-b-2 border-neutral-300 rounded-bl h-3"
+                  style={{ width: '16px' }}
+                ></div>
+              </div>
+            )}
+
+            {/* Expand/collapse button or spacer */}
+            {hasChildren ? (
+              <button
+                onClick={() => toggleExpand(category.id)}
+                className="p-1 hover:bg-neutral-200 rounded transition-colors mr-2"
+                title={isExpanded ? t('table.collapse') : t('table.expand')}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-neutral-600" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-neutral-600" />
+                )}
+              </button>
+            ) : (
+              <span className="w-6 mr-2" />
+            )}
+
+            {category.image && (
+              <img
+                src={category.image}
+                alt={category.name}
+                className="w-4 h-4 rounded object-cover mr-1.5 flex-shrink-0"
+              />
+            )}
+            <span
+              className={`text-sm ${isTopLevel ? 'font-semibold text-black' : 'font-medium text-neutral-700'} group-hover:text-[#CBB57B] transition-colors`}
+            >
+              {category.name}
+            </span>
+
+            {/* Children count badge */}
+            {hasChildren && (
+              <span
+                className="inline-flex items-center justify-center px-1.5 py-0.5 ml-2 text-xs font-bold text-[#CBB57B] bg-[#CBB57B]/10 rounded"
+                title={`${children.length} ${children.length > 1 ? t('table.subcategories') : t('table.subcategory')}`}
+              >
+                {children.length}
+              </span>
+            )}
+
+            {/* Depth level badge */}
+            <span className="inline-flex items-center justify-center px-1.5 py-0.5 ml-2 text-xs font-medium text-gray-600 bg-gray-100 rounded">
+              L{depth + 1}
+            </span>
+          </div>
+        </td>
+
+        {/* Slug */}
+        <td className="px-6 py-3">
+          <span
+            className={`font-mono text-xs px-2 py-1 rounded ${depth > 0 ? 'bg-neutral-200 text-neutral-600' : 'bg-neutral-100 text-neutral-700'}`}
+          >
+            {category.slug}
+          </span>
+        </td>
+
+        {/* Products count */}
+        <td className="px-6 py-3 text-center">
+          <span
+            className={`inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-bold rounded-full ${
+              category.productCount > 0
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-neutral-100 text-neutral-500'
+            }`}
+          >
+            {category.productCount}
+          </span>
+        </td>
+
+        {/* Priority */}
+        <td className="px-6 py-3 text-center">
+          <div className="flex items-center justify-center gap-1">
+            <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-bold rounded-full bg-[#CBB57B]/10 text-[#CBB57B]">
+              {category.priority ?? 0}
+            </span>
+            <div className="flex flex-col gap-0.5">
+              <button
+                onClick={() => handlePriorityChange(category.id, category.priority ?? 0, 1)}
+                className="p-0.5 hover:bg-neutral-200 rounded text-neutral-500 hover:text-neutral-800 transition-colors leading-none"
+                title="Increase priority"
+              >
+                ↑
+              </button>
+              <button
+                onClick={() => handlePriorityChange(category.id, category.priority ?? 0, -1)}
+                className="p-0.5 hover:bg-neutral-200 rounded text-neutral-500 hover:text-neutral-800 transition-colors leading-none"
+                title="Decrease priority"
+              >
+                ↓
+              </button>
+            </div>
+          </div>
+        </td>
+
+        {/* Visibility badges */}
+        <td className="px-6 py-3">
+          <div className="flex flex-wrap items-center gap-1">
+            {category.showInNavbar && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
+                {t('visibility.menu')}
+              </span>
+            )}
+            {category.showInTopBar && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
+                {t('visibility.catBar')}
+              </span>
+            )}
+            {category.showInSidebar && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-teal-100 text-teal-700 rounded">
+                {t('visibility.sidebar')}
+              </span>
+            )}
+            {category.showInFooter && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                {t('visibility.footer')}
+              </span>
+            )}
+            {category.showOnHomepage && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                {t('visibility.home')}
+              </span>
+            )}
+            {category.isFeatured && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">
+                {t('visibility.featured')}
+              </span>
+            )}
+            {!category.showInNavbar &&
+              !category.showInTopBar &&
+              !category.showInSidebar &&
+              !category.showInFooter &&
+              !category.showOnHomepage &&
+              !category.isFeatured && <span className="text-xs text-neutral-400">-</span>}
+          </div>
+        </td>
+
+        {/* Actions */}
+        <td className="px-6 py-3">
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => handleEdit(category)}
+              className="p-2 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-lg transition-all"
+              title={t('table.editCategory')}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={() => handleDelete(category.id)}
+              className="p-2 hover:bg-red-50 text-red-600 hover:text-red-700 rounded-lg transition-all"
+              title={
+                hasChildren || category.productCount > 0
+                  ? `${t('table.hasDependencies')} ${children.length} ${children.length !== 1 ? t('table.subcategories') : t('table.subcategory')}, ${category.productCount} ${category.productCount !== 1 ? t('table.products_other') : t('table.product')}`
+                  : t('table.deleteCategory')
+              }
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+
+      {/* Recursively render children */}
+      {isExpanded &&
+        children.map((child) => (
+          <CategoryTreeRow
+            key={child.id}
+            category={child}
+            depth={depth + 1}
+            expandedCategories={expandedCategories}
+            toggleExpand={toggleExpand}
+            handleEdit={handleEdit}
+            handleDelete={handleDelete}
+            handlePriorityChange={handlePriorityChange}
+            t={t}
+            allCategories={allCategories}
+          />
+        ))}
+    </>
+  );
+};
+
 function CategoriesContent() {
   const t = useTranslations('adminCategories');
   const { categories, loading, refetch } = useCategories();
@@ -226,6 +727,9 @@ function CategoriesContent() {
     name: '',
     slug: '',
     description: '',
+    image: '',
+    priority: 0,
+    displayOrder: 0,
     parentId: undefined,
     showInNavbar: true,
     showInTopBar: false,
@@ -233,7 +737,7 @@ function CategoriesContent() {
     showInFooter: false,
     showOnHomepage: false,
     isFeatured: false,
-  });
+  } as any);
 
   // Calculate stats
   const stats = React.useMemo(() => {
@@ -368,6 +872,9 @@ function CategoriesContent() {
         name: '',
         slug: '',
         description: '',
+        image: '',
+        priority: 0,
+        displayOrder: 0,
         parentId: undefined,
         showInNavbar: true,
         showInTopBar: false,
@@ -375,7 +882,7 @@ function CategoriesContent() {
         showInFooter: false,
         showOnHomepage: false,
         isFeatured: false,
-      });
+      } as any);
 
       // Refetch categories to update the list
       console.log('Refetching categories...');
@@ -422,6 +929,9 @@ function CategoriesContent() {
       name: category.name,
       slug: category.slug,
       description: category.description,
+      image: category.image || '',
+      priority: category.priority ?? 0,
+      displayOrder: (category as any).displayOrder ?? 0,
       parentId: category.parentId,
       showInNavbar: category.showInNavbar ?? true,
       showInTopBar: category.showInTopBar ?? false,
@@ -429,7 +939,7 @@ function CategoriesContent() {
       showInFooter: category.showInFooter ?? false,
       showOnHomepage: category.showOnHomepage ?? false,
       isFeatured: category.isFeatured ?? false,
-    });
+    } as any);
     setSlugManuallyEdited(false); // Allow auto-slug in edit mode
     setShowEditModal(true);
   };
@@ -503,6 +1013,9 @@ function CategoriesContent() {
       name: '',
       slug: '',
       description: '',
+      image: '',
+      priority: 0,
+      displayOrder: 0,
       parentId: undefined,
       showInNavbar: true,
       showInTopBar: false,
@@ -510,7 +1023,7 @@ function CategoriesContent() {
       showInFooter: false,
       showOnHomepage: false,
       isFeatured: false,
-    });
+    } as any);
   };
 
   const handleVisibilityToggle = async (id: string, field: string, value: boolean) => {
@@ -520,6 +1033,16 @@ function CategoriesContent() {
       refetch();
     } catch (error) {
       toast.error(t('toast.errorVisibility'));
+    }
+  };
+
+  const handlePriorityChange = async (id: string, currentPriority: number, delta: number) => {
+    const newPriority = currentPriority + delta;
+    try {
+      await adminCategoriesApi.update(id, { priority: newPriority } as any);
+      await refetch();
+    } catch (error) {
+      toast.error('Failed to update priority');
     }
   };
 
@@ -900,6 +1423,11 @@ function CategoriesContent() {
                         {t('table.products')}
                       </div>
                     </th>
+                    <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center justify-center gap-2 text-black">
+                        Priority
+                      </div>
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
                         {t('table.visibility')}
@@ -914,316 +1442,23 @@ function CategoriesContent() {
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
                   {(() => {
-                    const { parentCategories, childrenMap } = buildCategoryTree();
+                    // Get root categories (those without parents)
+                    const rootCategories = filteredCategories.filter((c) => !c.parentId);
 
-                    return parentCategories.map((parent) => {
-                      const children = childrenMap.get(parent.id) || [];
-                      const hasChildren = children.length > 0;
-                      const isExpanded = expandedCategories.has(parent.id);
-
+                    return rootCategories.map((rootCategory) => {
                       return (
-                        <React.Fragment key={parent.id}>
-                          {/* Parent Row */}
-                          <tr className="group transition-all duration-200 hover:bg-neutral-50">
-                            {/* Name with expand/collapse */}
-                            <td className="px-6 py-3">
-                              <div className="flex items-center gap-2">
-                                {hasChildren ? (
-                                  <button
-                                    onClick={() => toggleExpand(parent.id)}
-                                    className="p-1 hover:bg-neutral-200 rounded transition-colors"
-                                    title={isExpanded ? t('table.collapse') : t('table.expand')}
-                                  >
-                                    <svg
-                                      className={`w-4 h-4 text-neutral-600 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 5l7 7-7 7"
-                                      />
-                                    </svg>
-                                  </button>
-                                ) : (
-                                  <span className="w-6" />
-                                )}
-                                <span className="text-sm font-semibold text-black group-hover:text-[#CBB57B] transition-colors">
-                                  {parent.name}
-                                </span>
-                                {hasChildren && (
-                                  <span
-                                    className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold text-[#CBB57B] bg-[#CBB57B]/10 rounded"
-                                    title={`${children.length} ${children.length > 1 ? t('table.subcategories') : t('table.subcategory')}`}
-                                  >
-                                    {children.length}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Slug */}
-                            <td className="px-6 py-3">
-                              <span className="font-mono text-xs bg-neutral-100 px-2 py-1 rounded text-neutral-700">
-                                {parent.slug}
-                              </span>
-                            </td>
-
-                            {/* Products count */}
-                            <td className="px-6 py-3 text-center">
-                              <span
-                                className={`inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-bold rounded-full ${
-                                  parent.productCount > 0
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-neutral-100 text-neutral-500'
-                                }`}
-                              >
-                                {parent.productCount}
-                              </span>
-                            </td>
-
-                            {/* Visibility badges */}
-                            <td className="px-6 py-3">
-                              <div className="flex flex-wrap items-center gap-1">
-                                {parent.showInNavbar && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
-                                    {t('visibility.menu')}
-                                  </span>
-                                )}
-                                {parent.showInTopBar && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                                    {t('visibility.catBar')}
-                                  </span>
-                                )}
-                                {parent.showInSidebar && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-teal-100 text-teal-700 rounded">
-                                    {t('visibility.sidebar')}
-                                  </span>
-                                )}
-                                {parent.showInFooter && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded">
-                                    {t('visibility.footer')}
-                                  </span>
-                                )}
-                                {parent.showOnHomepage && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                                    {t('visibility.home')}
-                                  </span>
-                                )}
-                                {parent.isFeatured && (
-                                  <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">
-                                    {t('visibility.featured')}
-                                  </span>
-                                )}
-                                {!parent.showInNavbar &&
-                                  !parent.showInTopBar &&
-                                  !parent.showInSidebar &&
-                                  !parent.showInFooter &&
-                                  !parent.showOnHomepage &&
-                                  !parent.isFeatured && (
-                                    <span className="text-xs text-neutral-400">-</span>
-                                  )}
-                              </div>
-                            </td>
-
-                            {/* Actions */}
-                            <td className="px-6 py-3">
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={() => handleEdit(parent)}
-                                  className="p-2 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-lg transition-all"
-                                  title={t('table.editCategory')}
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(parent.id)}
-                                  className="p-2 hover:bg-red-50 text-red-600 hover:text-red-700 rounded-lg transition-all"
-                                  title={
-                                    hasChildren || parent.productCount > 0
-                                      ? `${t('table.hasDependencies')} ${children.length} ${children.length !== 1 ? t('table.subcategories') : t('table.subcategory')}, ${parent.productCount} ${parent.productCount !== 1 ? t('table.products_other') : t('table.product')}`
-                                      : t('table.deleteCategory')
-                                  }
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                    />
-                                  </svg>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-
-                          {/* Child Rows - Only shown when expanded */}
-                          {isExpanded &&
-                            children.map((child, index) => {
-                              const isLast = index === children.length - 1;
-                              return (
-                                <tr
-                                  key={child.id}
-                                  className="group bg-neutral-50/50 hover:bg-neutral-100/70 transition-all duration-200"
-                                >
-                                  {/* Name with tree connector */}
-                                  <td className="px-6 py-3">
-                                    <div className="flex items-center pl-6">
-                                      <div
-                                        className="flex items-end"
-                                        style={{
-                                          width: '24px',
-                                          height: '20px',
-                                          marginRight: '8px',
-                                        }}
-                                      >
-                                        <div
-                                          className={`border-l-2 border-b-2 border-neutral-300 ${isLast ? 'h-3 rounded-bl' : 'h-full'}`}
-                                          style={{ width: '16px' }}
-                                        ></div>
-                                      </div>
-                                      <span className="text-sm font-medium text-neutral-700 group-hover:text-[#CBB57B] transition-colors">
-                                        {child.name}
-                                      </span>
-                                    </div>
-                                  </td>
-
-                                  {/* Slug */}
-                                  <td className="px-6 py-3">
-                                    <span className="font-mono text-xs bg-neutral-200 px-2 py-1 rounded text-neutral-600">
-                                      {child.slug}
-                                    </span>
-                                  </td>
-
-                                  {/* Products count */}
-                                  <td className="px-6 py-3 text-center">
-                                    <span
-                                      className={`inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-bold rounded-full ${
-                                        child.productCount > 0
-                                          ? 'bg-blue-100 text-blue-700'
-                                          : 'bg-neutral-100 text-neutral-500'
-                                      }`}
-                                    >
-                                      {child.productCount}
-                                    </span>
-                                  </td>
-
-                                  {/* Visibility badges */}
-                                  <td className="px-6 py-3">
-                                    <div className="flex flex-wrap items-center gap-1">
-                                      {child.showInNavbar && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
-                                          {t('visibility.menu')}
-                                        </span>
-                                      )}
-                                      {child.showInTopBar && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                                          {t('visibility.catBar')}
-                                        </span>
-                                      )}
-                                      {child.showInSidebar && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-teal-100 text-teal-700 rounded">
-                                          {t('visibility.sidebar')}
-                                        </span>
-                                      )}
-                                      {child.showInFooter && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded">
-                                          {t('visibility.footer')}
-                                        </span>
-                                      )}
-                                      {child.showOnHomepage && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                                          {t('visibility.home')}
-                                        </span>
-                                      )}
-                                      {child.isFeatured && (
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">
-                                          {t('visibility.featured')}
-                                        </span>
-                                      )}
-                                      {!child.showInNavbar &&
-                                        !child.showInTopBar &&
-                                        !child.showInSidebar &&
-                                        !child.showInFooter &&
-                                        !child.showOnHomepage &&
-                                        !child.isFeatured && (
-                                          <span className="text-xs text-neutral-400">-</span>
-                                        )}
-                                    </div>
-                                  </td>
-
-                                  {/* Actions */}
-                                  <td className="px-6 py-3">
-                                    <div className="flex items-center justify-center gap-2">
-                                      <button
-                                        onClick={() => handleEdit(child)}
-                                        className="p-2 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-lg transition-all"
-                                        title={t('table.editCategory')}
-                                      >
-                                        <svg
-                                          className="w-4 h-4"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                          stroke="currentColor"
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                          />
-                                        </svg>
-                                      </button>
-                                      <button
-                                        onClick={() => handleDelete(child.id)}
-                                        className="p-2 hover:bg-red-50 text-red-600 hover:text-red-700 rounded-lg transition-all"
-                                        title={
-                                          child.productCount > 0
-                                            ? `${t('table.hasDependencies')} ${child.productCount} ${child.productCount !== 1 ? t('table.products_other') : t('table.product')}`
-                                            : t('table.deleteCategory')
-                                        }
-                                      >
-                                        <svg
-                                          className="w-4 h-4"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                          stroke="currentColor"
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                          />
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                        </React.Fragment>
+                        <CategoryTreeRow
+                          key={rootCategory.id}
+                          category={rootCategory}
+                          depth={0}
+                          expandedCategories={expandedCategories}
+                          toggleExpand={toggleExpand}
+                          handleEdit={handleEdit}
+                          handleDelete={handleDelete}
+                          handlePriorityChange={handlePriorityChange}
+                          t={t}
+                          allCategories={filteredCategories}
+                        />
                       );
                     });
                   })()}

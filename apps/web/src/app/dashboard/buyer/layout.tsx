@@ -1,5 +1,5 @@
-import BuyerLayout from '@/components/buyer/buyer-layout';
+import BuyerLayoutWrapper from '@/components/buyer/buyer-layout-wrapper';
 
 export default function DashboardBuyerLayout({ children }: { children: React.ReactNode }) {
-  return <BuyerLayout>{children}</BuyerLayout>;
+  return <BuyerLayoutWrapper>{children}</BuyerLayoutWrapper>;
 }

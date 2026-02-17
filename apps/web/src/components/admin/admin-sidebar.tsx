@@ -23,6 +23,7 @@ import {
   Banknote,
   PackageCheck,
   Store,
+  Bell,
 } from 'lucide-react';
 
 interface NavItem {
@@ -57,7 +58,7 @@ const navigationGroups: NavGroup[] = [
   {
     titleKey: 'users',
     items: [
-      { nameKey: 'customers', href: '/admin/customers', icon: Users },
+      { nameKey: 'userManagement', href: '/admin/users', icon: Users },
       { nameKey: 'sellerManagement', href: '/admin/sellers', icon: Store },
     ],
   },
@@ -90,7 +91,11 @@ const navigationGroups: NavGroup[] = [
   },
   {
     titleKey: 'marketing',
-    items: [{ nameKey: 'advertisements', href: '/admin/advertisements', icon: Megaphone }],
+    items: [
+      { nameKey: 'advertisements', href: '/admin/advertisements', icon: Megaphone },
+      { nameKey: 'advertisementPlans', href: '/admin/advertisement-plans', icon: CreditCard },
+      { nameKey: 'announcements', href: '/admin/announcements', icon: Bell },
+    ],
   },
   {
     titleKey: 'system',

@@ -29,6 +29,14 @@
     "storybook": "pnpm --filter @nextpik/ui storybook",
     "prisma:generate": "pnpm --filter @nextpik/database prisma:generate",
     "prisma:migrate": "pnpm --filter @nextpik/database prisma:migrate",
+    "prisma:seed": "pnpm --filter @nextpik/database prisma:seed",
+    "prisma:seed:settings": "pnpm --filter @nextpik/database prisma:seed:settings",
+    "cleanup:preview": "tsx scripts/cleanup-dryrun-data.ts --preview",
+    "cleanup:execute": "tsx scripts/cleanup-dryrun-data.ts --execute",
+    "reset:preview": "tsx scripts/reset-all-data.ts --preview",
+    "reset:execute": "tsx scripts/reset-all-data.ts --execute",
+    "analyze:db": "tsx scripts/analyze-all-data.ts",
+    "create:admin": "tsx scripts/create-admin.ts",
     "prepare": "husky"
   },
   "devDependencies": {
