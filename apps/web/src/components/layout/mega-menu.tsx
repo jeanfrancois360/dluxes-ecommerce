@@ -54,15 +54,15 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             onMouseLeave={onClose}
-            className="absolute top-full left-0 right-0 z-50 bg-white border-t-2 border-black shadow-[0_8px_32px_-4px_rgba(0,0,0,0.12)]"
+            className="absolute top-full left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.1)]"
           >
-            <div className="max-w-[1920px] mx-auto px-8 lg:px-16 py-10">
+            <div className="max-w-[1920px] mx-auto px-8 lg:px-16 py-6">
               <div
-                className={`grid gap-12 ${hasFeatured ? 'grid-cols-[1fr_240px]' : 'grid-cols-1'}`}
+                className={`grid gap-10 ${hasFeatured ? 'grid-cols-[1fr_180px]' : 'grid-cols-1'}`}
               >
                 {/* ── Category Columns ── */}
                 <div>
-                  <div className={`grid ${columnGridClass} gap-x-12 gap-y-2`}>
+                  <div className={`grid ${columnGridClass} gap-x-10 gap-y-1`}>
                     {columnCategories.map((category, colIndex) => (
                       <motion.div
                         key={category.id}
@@ -74,7 +74,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                         <Link
                           href={`/products?category=${category.slug}`}
                           onClick={onClose}
-                          className="group/hdr flex items-center justify-between pb-3 mb-3 border-b border-gray-100"
+                          className="group/hdr flex items-center justify-between pb-2 mb-2 border-b border-gray-100"
                         >
                           <div>
                             <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-black group-hover/hdr:text-[#CBB57B] transition-colors duration-150">
@@ -114,7 +114,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                                 <Link
                                   href={`/products?category=${child.slug}`}
                                   onClick={onClose}
-                                  className="group/link flex items-center gap-2 py-[4px] text-[13px] text-gray-400 hover:text-black transition-colors duration-150"
+                                  className="group/link flex items-center gap-2 py-[3px] text-[13px] text-gray-400 hover:text-black transition-colors duration-150"
                                 >
                                   <span className="w-0 group-hover/link:w-2.5 h-px bg-[#CBB57B] transition-all duration-200 flex-shrink-0" />
                                   <span className="group-hover/link:translate-x-0.5 transition-transform duration-150">
@@ -148,7 +148,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
 
                   {/* Overflow */}
                   {overflowCategories.length > 0 && (
-                    <div className="mt-7 pt-5 border-t border-gray-100 flex flex-wrap items-center gap-1.5">
+                    <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-1.5">
                       <span className="text-[10px] text-gray-300 uppercase tracking-widest mr-1">
                         More
                       </span>
@@ -166,7 +166,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                   )}
 
                   {/* Footer */}
-                  <div className="mt-7 pt-5 border-t border-gray-100 flex items-center justify-between">
+                  <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between">
                     <Link
                       href="/products"
                       onClick={onClose}
@@ -197,7 +197,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
 
                 {/* ── Featured Images ── */}
                 {hasFeatured && (
-                  <div className="flex flex-col gap-3 border-l border-gray-100 pl-10">
+                  <div className="flex flex-col gap-2 border-l border-gray-100 pl-8">
                     {featuredCategories.map((cat, i) => (
                       <motion.div
                         key={cat.id}
@@ -211,7 +211,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                           onClick={onClose}
                           className="group/feat block relative overflow-hidden rounded-xl"
                         >
-                          <div className="relative aspect-[3/4] bg-gray-100">
+                          <div className="relative aspect-[4/5] bg-gray-100">
                             <Image
                               src={cat.image!}
                               alt={cat.name}
