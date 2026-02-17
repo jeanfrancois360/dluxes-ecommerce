@@ -45,6 +45,7 @@ import { DhlModule } from './integrations/dhl/dhl.module';
 import { LoggerModule } from './logger/logger.module';
 import { HealthModule } from './health/health.module';
 import { HotDealsModule } from './hot-deals/hot-deals.module';
+import { GelatoModule } from './gelato/gelato.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
 import { SellerCreditsCronService } from './cron/seller-credits.cron';
@@ -108,6 +109,7 @@ import { SellerCreditsCronService } from './cron/seller-credits.cron';
     SubscriptionModule,
     CreditsModule,
     HotDealsModule,
+    GelatoModule,
   ],
   providers: [
     {

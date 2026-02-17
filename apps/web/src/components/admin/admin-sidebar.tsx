@@ -51,6 +51,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { nameKey: 'products', href: '/admin/products', icon: Package },
       { nameKey: 'orders', href: '/admin/orders', icon: ShoppingBag },
+      { nameKey: 'podOrders', href: '/admin/pod-orders', icon: Package },
       { nameKey: 'categories', href: '/admin/categories', icon: FolderOpen },
       { nameKey: 'reviews', href: '/admin/reviews', icon: Star },
     ],

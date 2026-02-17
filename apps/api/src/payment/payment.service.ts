@@ -1237,6 +1237,32 @@ export class PaymentService {
         // Don't fail the payment if commission calculation fails
       }
 
+      // Auto-submit Gelato POD items
+      try {
+        const gelatoEnabled = await this.settingsService.getSetting('gelato_enabled');
+        const gelatoAutoSubmit = await this.settingsService.getSetting('gelato_auto_submit_orders');
+        if (gelatoEnabled?.value === true && gelatoAutoSubmit?.value === true) {
+          const { GelatoService } = await import('../gelato/gelato.service');
+          const { GelatoOrdersService } = await import('../gelato/gelato-orders.service');
+          const gelatoService = new GelatoService(
+            this.prisma,
+            this.configService,
+            this.settingsService
+          );
+          await gelatoService.onModuleInit();
+          const gelatoOrdersService = new GelatoOrdersService(
+            this.prisma,
+            gelatoService,
+            this.settingsService
+          );
+          await gelatoOrdersService.submitAllPodItems(orderId);
+          this.logger.log(`Gelato POD items submitted for order ${orderId}`);
+        }
+      } catch (gelatoError) {
+        this.logger.error(`Gelato POD submission failed for order ${orderId}:`, gelatoError);
+        // Don't fail the payment if Gelato submission fails
+      }
+
       // Create Escrow Transaction (DEFAULT PAYMENT MODEL)
       // Funds are held until delivery confirmation
       // Check system settings for escrow configuration

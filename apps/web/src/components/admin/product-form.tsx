@@ -31,6 +31,7 @@ import {
   ServiceFields,
   RentalFields,
 } from './product-type-fields';
+import { PodConfigurationSection } from '../gelato/pod-configuration-section';
 
 // Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
 const EnhancedImageUpload = dynamic(() => import('../products/EnhancedImageUpload'), {
@@ -179,6 +180,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     rentalIncludes: (product as any)?.rentalIncludes || [],
     rentalExcludes: (product as any)?.rentalExcludes || [],
     rentalNotes: (product as any)?.rentalNotes || '',
+    // Gelato POD fields
+    fulfillmentType: (product as any)?.fulfillmentType || 'SELF_FULFILLED',
+    gelatoProductUid: (product as any)?.gelatoProductUid || '',
+    designFileUrl: (product as any)?.designFileUrl || '',
+    gelatoMarkupPercent: (product as any)?.gelatoMarkupPercent ?? undefined,
+    gelatoShippingMethod: (product as any)?.gelatoShippingMethod || '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -483,6 +490,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         colors: formData.colors || [],
         sizes: formData.sizes || [],
         materials: formData.materials || [],
+        // Gelato POD fields
+        fulfillmentType: formData.fulfillmentType || 'SELF_FULFILLED',
+        gelatoProductUid: formData.gelatoProductUid || undefined,
+        designFileUrl: formData.designFileUrl || undefined,
+        gelatoMarkupPercent: formData.gelatoMarkupPercent,
+        gelatoShippingMethod: formData.gelatoShippingMethod || undefined,
       };
 
       // Add real estate fields if product type is REAL_ESTATE
@@ -1424,6 +1437,26 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Gelato POD Configuration */}
+      {product?.id ? (
+        <PodConfigurationSection
+          fulfillmentType={formData.fulfillmentType}
+          gelatoProductUid={formData.gelatoProductUid}
+          designFileUrl={formData.designFileUrl}
+          gelatoMarkupPercent={formData.gelatoMarkupPercent}
+          gelatoShippingMethod={formData.gelatoShippingMethod}
+          onChange={handleChange}
+          disabled={loading}
+        />
+      ) : (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Print-on-Demand (POD)</h2>
+          <p className="text-sm text-gray-500">
+            Save the product first to configure Gelato Print-on-Demand settings.
+          </p>
         </div>
       )}
 
