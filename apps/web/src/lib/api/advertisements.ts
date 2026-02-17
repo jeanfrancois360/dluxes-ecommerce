@@ -44,7 +44,15 @@ export type AdPlacement =
   | 'SEARCH_RESULTS';
 
 export type AdPricingModel = 'CPM' | 'CPC' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'FIXED';
-export type AdStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'ACTIVE' | 'PAUSED' | 'REJECTED' | 'EXPIRED' | 'COMPLETED';
+export type AdStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'ACTIVE'
+  | 'PAUSED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'COMPLETED';
 export type AdPaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 
 export interface CreateAdvertisementDto {
@@ -60,7 +68,8 @@ export interface CreateAdvertisementDto {
   targetAudience?: Record<string, any>;
   startDate: string;
   endDate: string;
-  pricingModel?: AdPricingModel;
+  pricingModel: AdPricingModel;
+  price: number;
   budget?: number;
   dailyBudget?: number;
 }
@@ -85,7 +94,7 @@ export interface AdAnalyticsSummary {
   clicks: number;
   conversions: number;
   spend: number;
-  ctr: number;  // Click-through rate
+  ctr: number; // Click-through rate
   conversionRate: number;
 }
 
@@ -124,8 +133,8 @@ export const advertisementsApi = {
     return response.data || response;
   },
 
-  async toggle(id: string): Promise<Advertisement> {
-    const response = await api.patch(`/advertisements/${id}/toggle`);
+  async toggle(id: string, isActive: boolean): Promise<Advertisement> {
+    const response = await api.patch(`/advertisements/${id}/toggle`, { isActive });
     return response.data || response;
   },
 
@@ -139,7 +148,11 @@ export const advertisementsApi = {
   },
 
   // Analytics tracking
-  async trackEvent(id: string, eventType: 'IMPRESSION' | 'CLICK' | 'CONVERSION', data?: Record<string, any>): Promise<void> {
+  async trackEvent(
+    id: string,
+    eventType: 'IMPRESSION' | 'CLICK' | 'CONVERSION',
+    data?: Record<string, any>
+  ): Promise<void> {
     await api.post(`/advertisements/${id}/event`, { eventType, ...data });
   },
 
@@ -150,12 +163,15 @@ export const advertisementsApi = {
   },
 
   async approve(id: string): Promise<Advertisement> {
-    const response = await api.patch(`/advertisements/${id}/approve`);
+    const response = await api.patch(`/advertisements/${id}/approve`, { approved: true });
     return response.data || response;
   },
 
   async reject(id: string, reason?: string): Promise<Advertisement> {
-    const response = await api.patch(`/advertisements/${id}/approve`, { approved: false, reason });
+    const response = await api.patch(`/advertisements/${id}/approve`, {
+      approved: false,
+      rejectionReason: reason,
+    });
     return response.data || response;
   },
 };

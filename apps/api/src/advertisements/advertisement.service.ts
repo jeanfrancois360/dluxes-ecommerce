@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import {
   CreateAdvertisementDto,
@@ -102,7 +107,15 @@ export class AdvertisementService {
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
         categoryId: dto.categoryId,
         position: dto.priority ?? 0,
-        targetAudience: dto.targetAudience ? JSON.parse(dto.targetAudience) : undefined,
+        targetAudience: dto.targetAudience
+          ? (() => {
+              try {
+                return JSON.parse(dto.targetAudience!);
+              } catch {
+                return undefined;
+              }
+            })()
+          : undefined,
         advertiserId,
         status: AdStatus.PENDING_APPROVAL,
       },
@@ -112,7 +125,7 @@ export class AdvertisementService {
     });
   }
 
-  async update(id: string, dto: UpdateAdvertisementDto, userId: string) {
+  async update(id: string, dto: UpdateAdvertisementDto, userId: string, isAdmin = false) {
     const ad = await this.prisma.advertisement.findUnique({
       where: { id },
     });
@@ -122,8 +135,8 @@ export class AdvertisementService {
     }
 
     // Check ownership (unless admin)
-    if (ad.advertiserId !== userId) {
-      // Would check for admin role here
+    if (!isAdmin && ad.advertiserId !== userId) {
+      throw new ForbiddenException('You do not have permission to modify this advertisement');
     }
 
     const updateData: any = { ...dto };
@@ -168,13 +181,17 @@ export class AdvertisementService {
     });
   }
 
-  async delete(id: string) {
+  async delete(id: string, userId?: string, isAdmin = false) {
     const ad = await this.prisma.advertisement.findUnique({
       where: { id },
     });
 
     if (!ad) {
       throw new NotFoundException('Advertisement not found');
+    }
+
+    if (!isAdmin && userId && ad.advertiserId !== userId) {
+      throw new ForbiddenException('You do not have permission to delete this advertisement');
     }
 
     await this.prisma.advertisement.delete({
