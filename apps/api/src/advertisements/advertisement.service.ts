@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { CreateAdvertisementDto, UpdateAdvertisementDto, ApproveAdvertisementDto } from './dto/advertisement.dto';
+import {
+  CreateAdvertisementDto,
+  UpdateAdvertisementDto,
+  ApproveAdvertisementDto,
+} from './dto/advertisement.dto';
 import { AdStatus, AdEventType } from '@prisma/client';
 
 @Injectable()
@@ -64,6 +68,13 @@ export class AdvertisementService {
   }
 
   async create(dto: CreateAdvertisementDto, advertiserId: string) {
+    // HOMEPAGE_HERO is reserved for NextPik internal use only
+    if (dto.placement === 'HOMEPAGE_HERO') {
+      throw new BadRequestException(
+        'HOMEPAGE_HERO placement is reserved for NextPik internal use only.'
+      );
+    }
+
     // Validate category if provided
     if (dto.categoryId) {
       const category = await this.prisma.category.findUnique({
@@ -86,7 +97,9 @@ export class AdvertisementService {
         pricingModel: dto.pricingModel,
         pricePerUnit: dto.price,
         startDate: dto.startDate ? new Date(dto.startDate) : new Date(),
-        endDate: dto.endDate ? new Date(dto.endDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
+        endDate: dto.endDate
+          ? new Date(dto.endDate)
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
         categoryId: dto.categoryId,
         position: dto.priority ?? 0,
         targetAudience: dto.targetAudience ? JSON.parse(dto.targetAudience) : undefined,
@@ -236,8 +249,8 @@ export class AdvertisementService {
         impressions: ad.impressions,
         clicks: ad.clicks,
         conversions: ad.conversions,
-        ctr: ad.impressions > 0 ? (ad.clicks / ad.impressions * 100).toFixed(2) : 0,
-        conversionRate: ad.clicks > 0 ? (ad.conversions / ad.clicks * 100).toFixed(2) : 0,
+        ctr: ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : 0,
+        conversionRate: ad.clicks > 0 ? ((ad.conversions / ad.clicks) * 100).toFixed(2) : 0,
       },
       events,
     };

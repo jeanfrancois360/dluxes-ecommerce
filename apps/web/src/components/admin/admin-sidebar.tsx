@@ -93,6 +93,7 @@ const navigationGroups: NavGroup[] = [
     titleKey: 'marketing',
     items: [
       { nameKey: 'advertisements', href: '/admin/advertisements', icon: Megaphone },
+      { nameKey: 'advertisementPlans', href: '/admin/advertisement-plans', icon: CreditCard },
       { nameKey: 'announcements', href: '/admin/announcements', icon: Bell },
     ],
   },

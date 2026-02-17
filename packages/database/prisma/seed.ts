@@ -2528,7 +2528,6 @@ async function main() {
       maxImpressions: null, // Unlimited
       priorityBoost: 10,
       allowedPlacements: [
-        'HOMEPAGE_HERO',
         'HOMEPAGE_FEATURED',
         'HOMEPAGE_SIDEBAR',
         'PRODUCTS_BANNER',
@@ -2720,6 +2719,113 @@ async function main() {
   });
   console.log('✅ Created DELIVERY_PARTNER:', deliverypartner2.email);
   console.log('   └─ Provider: FedEx');
+
+  // ========================================
+  // SEED ADVERTISEMENT PLANS
+  // ========================================
+  console.log('');
+  console.log('📢 Seeding Advertisement Plans...');
+
+  const adPlans = [
+    {
+      name: 'Starter',
+      slug: 'starter',
+      description: 'Perfect for small businesses getting started with advertising',
+      maxActiveAds: 1,
+      maxImpressions: 10000,
+      priorityBoost: 1,
+      allowedPlacements: ['HOMEPAGE_SIDEBAR', 'PRODUCTS_SIDEBAR'],
+      price: 29.99,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 7,
+      isActive: true,
+      isFeatured: false,
+      displayOrder: 1,
+    },
+    {
+      name: 'Professional',
+      slug: 'professional',
+      description: 'Ideal for growing businesses that need more visibility',
+      maxActiveAds: 5,
+      maxImpressions: 50000,
+      priorityBoost: 2,
+      allowedPlacements: [
+        'HOMEPAGE_FEATURED',
+        'HOMEPAGE_SIDEBAR',
+        'PRODUCTS_BANNER',
+        'PRODUCTS_SIDEBAR',
+        'CATEGORY_BANNER',
+      ],
+      price: 99.99,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 14,
+      isActive: true,
+      isFeatured: true,
+      displayOrder: 2,
+    },
+    {
+      name: 'Business',
+      slug: 'business',
+      description: 'For established businesses with high advertising needs',
+      maxActiveAds: 15,
+      maxImpressions: 150000,
+      priorityBoost: 3,
+      allowedPlacements: [
+        'HOMEPAGE_FEATURED',
+        'HOMEPAGE_SIDEBAR',
+        'PRODUCTS_BANNER',
+        'PRODUCTS_INLINE',
+        'PRODUCTS_SIDEBAR',
+        'CATEGORY_BANNER',
+        'PRODUCT_DETAIL_SIDEBAR',
+        'SEARCH_RESULTS',
+      ],
+      price: 299.99,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 14,
+      isActive: true,
+      isFeatured: false,
+      displayOrder: 3,
+    },
+    {
+      name: 'Enterprise',
+      slug: 'enterprise',
+      description: 'Ultimate advertising power with unlimited reach',
+      maxActiveAds: -1,
+      maxImpressions: null,
+      priorityBoost: 5,
+      allowedPlacements: [
+        'HOMEPAGE_FEATURED',
+        'HOMEPAGE_SIDEBAR',
+        'PRODUCTS_BANNER',
+        'PRODUCTS_INLINE',
+        'PRODUCTS_SIDEBAR',
+        'CATEGORY_BANNER',
+        'PRODUCT_DETAIL_SIDEBAR',
+        'CHECKOUT_UPSELL',
+        'SEARCH_RESULTS',
+      ],
+      price: 999.99,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 30,
+      isActive: true,
+      isFeatured: false,
+      displayOrder: 4,
+    },
+  ];
+
+  for (const planData of adPlans) {
+    await prisma.advertisementPlan.upsert({
+      where: { slug: planData.slug },
+      update: planData,
+      create: planData,
+    });
+    console.log(`✅ Seeded advertisement plan: ${planData.name} ($${planData.price}/month)`);
+  }
 
   console.log('');
   console.log('🎉 Seeding completed!');

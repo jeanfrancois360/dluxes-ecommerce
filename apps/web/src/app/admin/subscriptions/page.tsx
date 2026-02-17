@@ -106,8 +106,8 @@ function SubscriptionsDashboardContent() {
       };
     }
 
-    const totalActive = sellerStats.activeSubscriptions + (adStats?.activeSubscriptions || 0);
-    const totalRevenue = sellerStats.monthlyRevenue + (adStats?.totalRevenue || 0);
+    const totalActive = sellerStats.activeSubscriptions + (adStats?.active || 0);
+    const totalRevenue = sellerStats.monthlyRevenue + (adStats?.monthlyRecurringRevenue || 0);
 
     // Calculate growth rate (mock for now - would need historical data)
     const growthRate = 12.5; // TODO: Calculate from historical data
@@ -124,7 +124,7 @@ function SubscriptionsDashboardContent() {
       totalActiveSubscriptions: totalActive,
       monthlyRevenue: totalRevenue,
       totalPlans: sellerStats.totalPlans,
-      totalAdvertisementSubscriptions: adStats?.activeSubscriptions || 0,
+      totalAdvertisementSubscriptions: adStats?.active || 0,
       totalSellerSubscriptions: sellerStats.activeSubscriptions,
       growthRate,
       churnRate,

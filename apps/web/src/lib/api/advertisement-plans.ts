@@ -6,8 +6,8 @@ export interface AdvertisementPlan {
   name: string;
   slug: string;
   description?: string;
-  maxActiveAds: number;  // -1 for unlimited
-  maxImpressions?: number;  // null for unlimited
+  maxActiveAds: number; // -1 for unlimited
+  maxImpressions?: number; // null for unlimited
   priorityBoost: number;
   allowedPlacements: string[];
   price: number;
@@ -103,14 +103,20 @@ export const advertisementPlansApi = {
 
   async adminGetSubscriptions(): Promise<AdPlanSubscription[]> {
     const response = await api.get('/advertisement-plans/admin/subscriptions');
-    return response.data || response;
+    // Backend returns { data: [...], pagination: {...} }
+    // Extract the data array
+    const result = response.data || response;
+    return result.data || result;
   },
 
   async adminGetStatistics(): Promise<{
-    totalPlans: number;
-    activeSubscriptions: number;
-    totalRevenue: number;
-    impressionsServed: number;
+    active: number;
+    trial: number;
+    pastDue: number;
+    cancelled: number;
+    expired: number;
+    total: number;
+    monthlyRecurringRevenue: number;
   }> {
     const response = await api.get('/advertisement-plans/admin/statistics');
     return response.data || response;
