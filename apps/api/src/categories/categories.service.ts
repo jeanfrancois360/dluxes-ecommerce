@@ -261,12 +261,9 @@ export class CategoriesService {
    */
   async findNavCategories() {
     return this.prisma.category.findMany({
-      where: { showInNavbar: true },
+      where: { showInNavbar: true, isActive: true },
       include: {
-        children: {
-          where: { showInNavbar: true },
-          orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
-        },
+        _count: { select: { products: true } },
       },
       orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
     });
@@ -376,20 +373,6 @@ export class CategoriesService {
         isActive: true,
       },
       include: {
-        children: {
-          where: {
-            showInTopBar: true,
-            isActive: true,
-          },
-          orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }],
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            icon: true,
-            isFeatured: true,
-          },
-        },
         _count: {
           select: { products: true },
         },
@@ -406,16 +389,8 @@ export class CategoriesService {
       where: {
         showInSidebar: true,
         isActive: true,
-        parentId: null, // Only top-level categories for sidebar
       },
       include: {
-        children: {
-          where: {
-            showInSidebar: true,
-            isActive: true,
-          },
-          orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }],
-        },
         _count: {
           select: { products: true },
         },
