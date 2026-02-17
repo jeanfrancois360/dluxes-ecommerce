@@ -438,12 +438,16 @@ async function main() {
   // Create Categories
   const watchesCategory = await prisma.category.upsert({
     where: { slug: 'watches' },
-    update: {},
+    update: {
+      image:
+        'https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=800&q=85&auto=format&fit=crop',
+    },
     create: {
       name: 'Watches',
       slug: 'watches',
       description: 'Luxury timepieces and watches from the finest brands',
-      image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49',
+      image:
+        'https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=800&q=85&auto=format&fit=crop',
       icon: 'Watch',
       displayOrder: 1,
       isActive: true,
@@ -452,12 +456,16 @@ async function main() {
 
   const jewelryCategory = await prisma.category.upsert({
     where: { slug: 'jewelry' },
-    update: {},
+    update: {
+      image:
+        'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&q=85&auto=format&fit=crop',
+    },
     create: {
       name: 'Jewelry',
       slug: 'jewelry',
       description: 'Exquisite jewelry and precious gems',
-      image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338',
+      image:
+        'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&q=85&auto=format&fit=crop',
       icon: 'Gem',
       displayOrder: 2,
       isActive: true,
@@ -466,12 +474,16 @@ async function main() {
 
   const accessoriesCategory = await prisma.category.upsert({
     where: { slug: 'accessories' },
-    update: {},
+    update: {
+      image:
+        'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=85&auto=format&fit=crop',
+    },
     create: {
       name: 'Accessories',
       slug: 'accessories',
       description: 'Premium accessories and leather goods',
-      image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7',
+      image:
+        'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=85&auto=format&fit=crop',
       icon: 'ShoppingBag',
       displayOrder: 3,
       isActive: true,
@@ -480,12 +492,16 @@ async function main() {
 
   const fashionCategory = await prisma.category.upsert({
     where: { slug: 'fashion' },
-    update: {},
+    update: {
+      image:
+        'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800&q=85&auto=format&fit=crop',
+    },
     create: {
       name: 'Fashion',
       slug: 'fashion',
       description: 'Luxury fashion and designer clothing',
-      image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b',
+      image:
+        'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800&q=85&auto=format&fit=crop',
       icon: 'Shirt',
       displayOrder: 4,
       isActive: true,
@@ -2528,7 +2544,6 @@ async function main() {
       maxImpressions: null, // Unlimited
       priorityBoost: 10,
       allowedPlacements: [
-        'HOMEPAGE_HERO',
         'HOMEPAGE_FEATURED',
         'HOMEPAGE_SIDEBAR',
         'PRODUCTS_BANNER',
@@ -2720,6 +2735,113 @@ async function main() {
   });
   console.log('✅ Created DELIVERY_PARTNER:', deliverypartner2.email);
   console.log('   └─ Provider: FedEx');
+
+  // ========================================
+  // SEED ADVERTISEMENT PLANS
+  // ========================================
+  console.log('');
+  console.log('📢 Seeding Advertisement Plans...');
+
+  const adPlans = [
+    {
+      name: 'Starter',
+      slug: 'starter',
+      description: 'Perfect for small businesses getting started with advertising',
+      maxActiveAds: 1,
+      maxImpressions: 10000,
+      priorityBoost: 1,
+      allowedPlacements: ['HOMEPAGE_SIDEBAR', 'PRODUCTS_SIDEBAR'],
+      price: 29.99,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 7,
+      isActive: true,
+      isFeatured: false,
+      displayOrder: 1,
+    },
+    {
+      name: 'Professional',
+      slug: 'professional',
+      description: 'Ideal for growing businesses that need more visibility',
+      maxActiveAds: 5,
+      maxImpressions: 50000,
+      priorityBoost: 2,
+      allowedPlacements: [
+        'HOMEPAGE_FEATURED',
+        'HOMEPAGE_SIDEBAR',
+        'PRODUCTS_BANNER',
+        'PRODUCTS_SIDEBAR',
+        'CATEGORY_BANNER',
+      ],
+      price: 99.99,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 14,
+      isActive: true,
+      isFeatured: true,
+      displayOrder: 2,
+    },
+    {
+      name: 'Business',
+      slug: 'business',
+      description: 'For established businesses with high advertising needs',
+      maxActiveAds: 15,
+      maxImpressions: 150000,
+      priorityBoost: 3,
+      allowedPlacements: [
+        'HOMEPAGE_FEATURED',
+        'HOMEPAGE_SIDEBAR',
+        'PRODUCTS_BANNER',
+        'PRODUCTS_INLINE',
+        'PRODUCTS_SIDEBAR',
+        'CATEGORY_BANNER',
+        'PRODUCT_DETAIL_SIDEBAR',
+        'SEARCH_RESULTS',
+      ],
+      price: 299.99,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 14,
+      isActive: true,
+      isFeatured: false,
+      displayOrder: 3,
+    },
+    {
+      name: 'Enterprise',
+      slug: 'enterprise',
+      description: 'Ultimate advertising power with unlimited reach',
+      maxActiveAds: -1,
+      maxImpressions: null,
+      priorityBoost: 5,
+      allowedPlacements: [
+        'HOMEPAGE_FEATURED',
+        'HOMEPAGE_SIDEBAR',
+        'PRODUCTS_BANNER',
+        'PRODUCTS_INLINE',
+        'PRODUCTS_SIDEBAR',
+        'CATEGORY_BANNER',
+        'PRODUCT_DETAIL_SIDEBAR',
+        'CHECKOUT_UPSELL',
+        'SEARCH_RESULTS',
+      ],
+      price: 999.99,
+      currency: 'USD',
+      billingPeriod: 'MONTHLY' as const,
+      trialDays: 30,
+      isActive: true,
+      isFeatured: false,
+      displayOrder: 4,
+    },
+  ];
+
+  for (const planData of adPlans) {
+    await prisma.advertisementPlan.upsert({
+      where: { slug: planData.slug },
+      update: planData,
+      create: planData,
+    });
+    console.log(`✅ Seeded advertisement plan: ${planData.name} ($${planData.price}/month)`);
+  }
 
   console.log('');
   console.log('🎉 Seeding completed!');

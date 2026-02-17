@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CommissionService } from './commission.service';
 import { CommissionRuleType } from '@prisma/client';
@@ -14,7 +14,7 @@ export class EnhancedCommissionService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly baseCommissionService: CommissionService,
+    private readonly baseCommissionService: CommissionService
   ) {}
 
   /**
@@ -41,16 +41,10 @@ export class EnhancedCommissionService {
           { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
           { OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
           {
-            OR: [
-              { minOrderValue: null },
-              { minOrderValue: { lte: orderAmount.toNumber() } },
-            ],
+            OR: [{ minOrderValue: null }, { minOrderValue: { lte: orderAmount.toNumber() } }],
           },
           {
-            OR: [
-              { maxOrderValue: null },
-              { maxOrderValue: { gte: orderAmount.toNumber() } },
-            ],
+            OR: [{ maxOrderValue: null }, { maxOrderValue: { gte: orderAmount.toNumber() } }],
           },
         ],
       },
@@ -58,9 +52,7 @@ export class EnhancedCommissionService {
     });
 
     if (sellerOverride) {
-      this.logger.log(
-        `Using seller override for ${sellerId}: ${sellerOverride.commissionRate}%`
-      );
+      this.logger.log(`Using seller override for ${sellerId}: ${sellerOverride.commissionRate}%`);
       return {
         type: sellerOverride.commissionType,
         value: sellerOverride.commissionRate,
@@ -74,13 +66,14 @@ export class EnhancedCommissionService {
   }
 
   /**
-   * Create seller-specific commission override (Admin only)
+   * Create commission override (Admin only)
+   * Supports: seller-only, category-only, or seller+category combinations
    */
   async createSellerOverride(data: {
-    sellerId: string;
+    sellerId?: string;
+    categoryId?: string;
     commissionType: CommissionRuleType;
     commissionRate: number;
-    categoryId?: string;
     minOrderValue?: number;
     maxOrderValue?: number;
     validFrom?: Date;
@@ -88,18 +81,37 @@ export class EnhancedCommissionService {
     notes?: string;
     approvedBy: string;
   }) {
+    // Validation: At least one of sellerId or categoryId required
+    if (!data.sellerId && !data.categoryId) {
+      throw new BadRequestException('At least one of sellerId or categoryId must be provided');
+    }
+
+    // Check for duplicate (sellerId, categoryId) combination
+    const existing = await this.prisma.sellerCommissionOverride.findFirst({
+      where: {
+        sellerId: data.sellerId || null,
+        categoryId: data.categoryId || null,
+      },
+    });
+
+    if (existing) {
+      const scope =
+        data.sellerId && data.categoryId
+          ? 'seller + category'
+          : data.sellerId
+            ? 'seller'
+            : 'category';
+      throw new ConflictException(`Override already exists for this ${scope} combination`);
+    }
+
     const override = await this.prisma.sellerCommissionOverride.create({
       data: {
-        sellerId: data.sellerId,
+        sellerId: data.sellerId || null,
+        categoryId: data.categoryId || null,
         commissionType: data.commissionType,
         commissionRate: new Decimal(data.commissionRate),
-        categoryId: data.categoryId,
-        minOrderValue: data.minOrderValue
-          ? new Decimal(data.minOrderValue)
-          : undefined,
-        maxOrderValue: data.maxOrderValue
-          ? new Decimal(data.maxOrderValue)
-          : undefined,
+        minOrderValue: data.minOrderValue ? new Decimal(data.minOrderValue) : undefined,
+        maxOrderValue: data.maxOrderValue ? new Decimal(data.maxOrderValue) : undefined,
         validFrom: data.validFrom,
         validUntil: data.validUntil,
         notes: data.notes,
@@ -110,22 +122,28 @@ export class EnhancedCommissionService {
       },
     });
 
-    this.logger.log(
-      `Created commission override for seller ${data.sellerId}: ${data.commissionRate}%`
-    );
+    const scope =
+      data.sellerId && data.categoryId
+        ? `seller ${data.sellerId} + category ${data.categoryId}`
+        : data.sellerId
+          ? `seller ${data.sellerId}`
+          : `category ${data.categoryId}`;
+
+    this.logger.log(`Created commission override for ${scope}: ${data.commissionRate}%`);
 
     return override;
   }
 
   /**
-   * Get seller's commission override
+   * Get seller's commission overrides (can have multiple now)
    */
   async getSellerOverride(sellerId: string) {
-    return this.prisma.sellerCommissionOverride.findUnique({
+    return this.prisma.sellerCommissionOverride.findMany({
       where: { sellerId },
       include: {
         seller: {
           select: {
+            id: true,
             email: true,
             firstName: true,
             lastName: true,
@@ -133,21 +151,47 @@ export class EnhancedCommissionService {
         },
         category: {
           select: {
+            id: true,
             name: true,
             slug: true,
           },
         },
       },
+      orderBy: { priority: 'desc' },
+    });
+  }
+
+  /**
+   * Get category's commission overrides
+   */
+  async getCategoryOverride(categoryId: string) {
+    return this.prisma.sellerCommissionOverride.findMany({
+      where: { categoryId },
+      include: {
+        seller: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+      orderBy: { priority: 'desc' },
     });
   }
 
   /**
    * Get all seller overrides (Admin)
    */
-  async getAllSellerOverrides(filters?: {
-    isActive?: boolean;
-    categoryId?: string;
-  }) {
+  async getAllSellerOverrides(filters?: { isActive?: boolean; categoryId?: string }) {
     return this.prisma.sellerCommissionOverride.findMany({
       where: {
         ...(filters?.isActive !== undefined && {
@@ -176,10 +220,10 @@ export class EnhancedCommissionService {
   }
 
   /**
-   * Update seller override
+   * Update override by ID
    */
   async updateSellerOverride(
-    sellerId: string,
+    id: string,
     data: Partial<{
       commissionRate: number;
       isActive: boolean;
@@ -194,17 +238,17 @@ export class EnhancedCommissionService {
     }
 
     return this.prisma.sellerCommissionOverride.update({
-      where: { sellerId },
+      where: { id },
       data: updateData,
     });
   }
 
   /**
-   * Delete seller override
+   * Delete override by ID
    */
-  async deleteSellerOverride(sellerId: string) {
+  async deleteSellerOverride(id: string) {
     return this.prisma.sellerCommissionOverride.delete({
-      where: { sellerId },
+      where: { id },
     });
   }
 }

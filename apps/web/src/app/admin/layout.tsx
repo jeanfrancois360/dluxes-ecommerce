@@ -1,9 +1,9 @@
 import { Metadata } from 'next';
 import { adminDashboardMetadata } from '@/lib/metadata';
-import UnifiedAdminLayout from '@/components/admin/unified-admin-layout';
+import AdminLayoutWrapper from '@/components/admin/admin-layout-wrapper';
 
 export const metadata: Metadata = adminDashboardMetadata;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <UnifiedAdminLayout>{children}</UnifiedAdminLayout>;
+  return <AdminLayoutWrapper>{children}</AdminLayoutWrapper>;
 }

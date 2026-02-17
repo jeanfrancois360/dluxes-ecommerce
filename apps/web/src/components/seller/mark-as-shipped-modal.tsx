@@ -2,7 +2,16 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Package, Truck, Calendar, DollarSign, Weight, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  X,
+  Package,
+  Truck,
+  Calendar,
+  DollarSign,
+  Weight,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 
@@ -38,9 +47,7 @@ export function MarkAsShippedModal({
   onSuccess,
 }: MarkAsShippedModalProps) {
   const t = useTranslations('components.markAsShippedModal');
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(
-    items.map((item) => item.id)
-  );
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(items.map((item) => item.id));
   const [useAutoGenerate, setUseAutoGenerate] = useState(true); // Auto-generate by default
   const [carrier, setCarrier] = useState('DHL');
   const [serviceType, setServiceType] = useState('express');
@@ -57,9 +64,7 @@ export function MarkAsShippedModal({
 
   const handleItemToggle = (itemId: string) => {
     setSelectedItemIds((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
     );
   };
 
@@ -117,7 +122,7 @@ export function MarkAsShippedModal({
           length: parseFloat(length),
           width: parseFloat(width),
           height: parseFloat(height),
-          unit: 'cm'
+          unit: 'cm',
         };
       } else {
         // Manual tracking fields
@@ -127,6 +132,8 @@ export function MarkAsShippedModal({
         payload.shippingCost = shippingCost ? parseFloat(shippingCost) : undefined;
         payload.weight = weight ? parseFloat(weight) : undefined;
       }
+
+      console.log('Shipment Request Payload:', payload);
 
       const response = await fetch(`${API_URL}/shipments`, {
         method: 'POST',
@@ -139,6 +146,7 @@ export function MarkAsShippedModal({
 
       if (!response.ok) {
         const error = await response.json();
+        console.error('Shipment API Error Response:', error);
         throw new Error(error.message || 'Failed to create shipment');
       }
 
@@ -191,9 +199,7 @@ export function MarkAsShippedModal({
                       </div>
                       <div>
                         <h2 className="text-xl font-bold">{t('markAsShipped')}</h2>
-                        <p className="text-neutral-300 text-sm mt-0.5">
-                          {t('createShipmentInfo')}
-                        </p>
+                        <p className="text-neutral-300 text-sm mt-0.5">{t('createShipmentInfo')}</p>
                       </div>
                     </div>
                     <button
@@ -206,7 +212,10 @@ export function MarkAsShippedModal({
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+                <form
+                  onSubmit={handleSubmit}
+                  className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)]"
+                >
                   {/* Items Selection */}
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-3">
@@ -243,7 +252,9 @@ export function MarkAsShippedModal({
                             )}
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-black truncate">{item.product.name}</p>
-                              <p className="text-sm text-neutral-500">{t('quantity')} {item.quantity}</p>
+                              <p className="text-sm text-neutral-500">
+                                {t('quantity')} {item.quantity}
+                              </p>
                             </div>
                           </label>
                         );
@@ -473,9 +484,14 @@ export function MarkAsShippedModal({
                     <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-yellow-800">{t('partialShipment')}</p>
+                        <p className="text-sm font-medium text-yellow-800">
+                          {t('partialShipment')}
+                        </p>
                         <p className="text-sm text-yellow-700 mt-0.5">
-                          {t('partialShipmentWarning', { selected: selectedItemIds.length, total: items.length })}
+                          {t('partialShipmentWarning', {
+                            selected: selectedItemIds.length,
+                            total: items.length,
+                          })}
                         </p>
                       </div>
                     </div>

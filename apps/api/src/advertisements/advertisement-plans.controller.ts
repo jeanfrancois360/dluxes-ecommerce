@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { AdvertisementPlansService } from './advertisement-plans.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -42,21 +43,24 @@ export class AdvertisementPlansController {
   @Post('admin/plans')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
-  async createPlan(@Body() body: {
-    name: string;
-    slug: string;
-    description?: string;
-    maxActiveAds: number;
-    maxImpressions?: number;
-    priorityBoost?: number;
-    allowedPlacements: string[];
-    price: number;
-    currency?: string;
-    billingPeriod: PlanBillingPeriod;
-    trialDays?: number;
-    isFeatured?: boolean;
-    displayOrder?: number;
-  }) {
+  async createPlan(
+    @Body()
+    body: {
+      name: string;
+      slug: string;
+      description?: string;
+      maxActiveAds: number;
+      maxImpressions?: number;
+      priorityBoost?: number;
+      allowedPlacements: string[];
+      price: number;
+      currency?: string;
+      billingPeriod: PlanBillingPeriod;
+      trialDays?: number;
+      isFeatured?: boolean;
+      displayOrder?: number;
+    }
+  ) {
     return this.plansService.createPlan(body);
   }
 
@@ -66,10 +70,7 @@ export class AdvertisementPlansController {
   @Put('admin/plans/:slug')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
-  async updatePlan(
-    @Param('slug') slug: string,
-    @Body() body: any
-  ) {
+  async updatePlan(@Param('slug') slug: string, @Body() body: any) {
     return this.plansService.updatePlan(slug, body);
   }
 
@@ -125,16 +126,27 @@ export class AdvertisementPlansController {
   @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
   async subscribe(
     @Request() req,
-    @Body() body: {
-      planId: string;
+    @Body()
+    body: {
+      planSlug?: string;
+      planId?: string;
+      billingPeriod?: PlanBillingPeriod;
       autoRenew?: boolean;
     }
   ) {
-    return this.plansService.subscribeToPlan(
-      req.user.userId,
-      body.planId,
-      body.autoRenew ?? true
-    );
+    // Support both planId and planSlug for backwards compatibility
+    let planId = body.planId;
+
+    if (!planId && body.planSlug) {
+      const plan = await this.plansService.getPlanBySlug(body.planSlug);
+      planId = plan.id;
+    }
+
+    if (!planId) {
+      throw new BadRequestException('Either planId or planSlug is required');
+    }
+
+    return this.plansService.subscribeToPlan(req.user.userId, planId, body.autoRenew ?? true);
   }
 
   /**
@@ -168,11 +180,7 @@ export class AdvertisementPlansController {
     @Param('id') id: string,
     @Body() body?: { reason?: string }
   ) {
-    return this.plansService.cancelSubscription(
-      id,
-      req.user.userId,
-      body?.reason
-    );
+    return this.plansService.cancelSubscription(id, req.user.userId, body?.reason);
   }
 
   // ========================================================================

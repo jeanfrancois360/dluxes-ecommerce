@@ -1,7 +1,9 @@
 # CLAUDE.md - NextPik
 
 ## Project Context
+
 **NextPik** is a **production-ready multi-vendor luxury e-commerce platform** (v2.6.0) with:
+
 - **Stripe payment processing** with escrow system
 - **Multi-currency support** (46+ currencies)
 - **Commission & payout system** for sellers
@@ -12,6 +14,7 @@
 **Deadline:** January 3, 2026
 
 ## URLs
+
 - **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:4000/api/v1
 - **Prisma Studio:** http://localhost:5555
@@ -21,6 +24,7 @@
 ## ⛔ CRITICAL - DO NOT MODIFY WITHOUT EXPLICIT APPROVAL
 
 ### Payment & Financial (HIGH RISK)
+
 - `apps/api/src/payment/` - Stripe integration, webhooks
 - `apps/api/src/escrow/` - Escrow transactions
 - `apps/api/src/commission/` - Commission calculations
@@ -28,23 +32,27 @@
 - Any file with `stripe`, `webhook`, or `payment` in the name
 
 ### Database Schema
+
 - `packages/database/prisma/schema.prisma` - NEVER modify without migration plan
 - `packages/database/prisma/migrations/` - Do not delete or modify existing migrations
 - `packages/database/prisma/seed.ts` - Contains 38+ system settings
 
 ### Database Name (CRITICAL)
+
 - ✅ **Correct database name:** `nextpik_ecommerce`
 - ❌ **NEVER use:** `luxury_ecommerce` (obsolete database from old development)
 - All `.env` files, `docker-compose.yml`, and scripts MUST use `nextpik_ecommerce`
 - Port 5433 (Docker) or 5432 (local) depending on setup
 
 ### Authentication & Security
+
 - `apps/api/src/auth/` - JWT, 2FA, sessions
 - `apps/api/src/auth/strategies/jwt.strategy.ts` - Returns `{ id, userId, email, role }`
 - `apps/api/src/guards/` - Authorization guards
 - Any file containing secrets, tokens, or encryption logic
 
 ### System Settings
+
 - `apps/api/src/settings/settings.service.ts` - 45 settings, audit logging
 - Settings keys use **underscores** (e.g., `escrow_default_hold_days`, NOT `escrow.enabled`)
 
@@ -53,21 +61,25 @@
 ## 🔶 CAUTION - REVIEW BEFORE MODIFYING
 
 ### Core Services
+
 - `apps/api/src/products/products.service.ts` - Product filtering, inventory
 - `apps/api/src/orders/orders.service.ts` - Order workflow
 - `apps/api/src/currency/currency.service.ts` - Exchange rates, sync with settings
 - `apps/api/src/admin/admin.controller.ts` - Dashboard routes (6 endpoints added in v2.3.0)
 
 ### Upload System (v2.3.0 Fix Applied)
+
 - `apps/api/src/upload/upload.module.ts` - Must have `MulterModule` imported
 - `apps/api/src/upload/upload.service.ts` - Image optimization with Sharp
 
 ### Shared Packages
+
 - `packages/database/` - Prisma client, shared across all apps
 - `packages/ui/` - Shared React components
 - `packages/shared/` - Shared utilities
 
 ### Configuration
+
 - `apps/api/.env` - Backend secrets
 - `apps/web/.env.local` - Frontend config
 - `docker-compose.yml` - Service orchestration
@@ -88,12 +100,14 @@
 ## Development Rules
 
 ### Before Making Changes
+
 1. **Always run first:** `pnpm type-check`
 2. **Lint code:** `pnpm lint`
 3. **For database changes:** Create migration with `pnpm prisma:migrate dev --name descriptive_name`
 4. **Test locally** before suggesting production changes
 
 ### Code Standards
+
 - Use **underscore notation** for settings keys: `escrow_enabled` NOT `escrow.enabled`
 - Use `formatCurrencyAmount()` from `@/lib/utils/number-format` for prices
 - Follow existing patterns in the codebase
@@ -101,6 +115,7 @@
 - Use DTOs for all API inputs with class-validator decorators
 
 ### Field Name Mappings (Frontend ↔ Backend)
+
 ```
 Frontend Form    →    Backend/Database
 ─────────────────────────────────────
@@ -111,6 +126,7 @@ category         →    categoryId (alias)
 ```
 
 ### JWT User Object Structure
+
 ```typescript
 // jwt.strategy.ts returns:
 {
@@ -122,6 +138,7 @@ category         →    categoryId (alias)
 ```
 
 ### API Response Format
+
 ```typescript
 // Standard success response
 { success: true, data: {...} }
@@ -129,6 +146,43 @@ category         →    categoryId (alias)
 // Standard error response
 { statusCode: 400, message: "Error", error: "Bad Request" }
 ```
+
+### Category Ordering System
+
+**Two Order Fields:**
+
+1. **priority** (Integer, default: 0)
+   - Higher values = more important
+   - Used for featured/promoted categories
+   - Primary sort criteria
+
+2. **displayOrder** (Integer, default: 0)
+   - Controls display sequence within same priority level
+   - Lower values appear first
+   - Secondary sort criteria
+
+**Sort Order:**
+
+```typescript
+[
+  { priority: 'desc' }, // Higher priority first
+  { displayOrder: 'asc' }, // Lower displayOrder first
+  { name: 'asc' }, // Alphabetical fallback
+];
+```
+
+**Unlimited Nesting:**
+
+- Database supports unlimited category depth via self-referencing `parentId`
+- Circular reference prevention enforced at service level
+- Frontend components support recursive tree rendering
+
+**Admin Methods:**
+
+- `updatePriority(id, priority)` - Set priority for single category
+- `reorder(categoryIds[])` - Bulk reorder by priority
+- `findAllRecursive()` - Get unlimited depth category tree
+- `getCategoryDepth(id)` - Calculate category depth level
 
 ---
 
@@ -172,11 +226,12 @@ pnpm build                # Build all packages
 6. **req.user.id undefined** - JWT strategy must return both `id` and `userId`
 7. **Creating workarounds** - Never create database aliases, modify node_modules, or hardcode values. Always fix the source configuration (`.env` files) and regenerate.
 
-
 ## ⛔ FORBIDDEN Actions - NEVER Do These
 
 ### 1. Never Create Workarounds
+
 When facing configuration or connection issues:
+
 - ❌ DO NOT create database aliases or duplicates
 - ❌ DO NOT modify files in `node_modules/`
 - ❌ DO NOT hardcode values to bypass config issues
@@ -185,11 +240,13 @@ When facing configuration or connection issues:
 - ✅ ALWAYS regenerate after config changes
 
 ### 2. Database Configuration
+
 - ✅ **Correct:** `nextpik_ecommerce`
 - ❌ **NEVER:** `luxury_ecommerce` (deprecated, do not create or reference)
 - If Prisma shows wrong database, fix `.env` and regenerate - NEVER create DB aliases
 
 ### 3. When Prisma Has Wrong Configuration
+
 ```bash
 # ✅ CORRECT approach:
 1. Fix the .env file (packages/database/.env, apps/api/.env)
@@ -205,6 +262,7 @@ When facing configuration or connection issues:
 ```
 
 ### 4. The Golden Rule
+
 > **If you're about to create a workaround, STOP.**
 > Ask yourself: "Am I fixing the root cause or masking the problem?"
 > If masking, find and fix the actual source of the issue instead.
@@ -214,7 +272,9 @@ When facing configuration or connection issues:
 ## Recent Fixes (v2.3.0 - Dec 26, 2025)
 
 ### Admin Dashboard Routes
+
 Added 6 new endpoints to `/admin/dashboard/*`:
+
 - `GET /admin/dashboard/stats`
 - `GET /admin/dashboard/revenue?days=30`
 - `GET /admin/dashboard/orders-by-status`
@@ -223,21 +283,24 @@ Added 6 new endpoints to `/admin/dashboard/*`:
 - `GET /admin/dashboard/recent-orders?limit=10`
 
 ### JWT Authentication Fix
+
 ```typescript
 // jwt.strategy.ts now returns:
 return {
-  id: payload.sub,           // Primary
-  userId: payload.sub,       // Backward compatibility
+  id: payload.sub, // Primary
+  userId: payload.sub, // Backward compatibility
   email: payload.email,
-  role: payload.role
+  role: payload.role,
 };
 ```
 
 ### Image Upload Fix
+
 - Added `MulterModule.register()` to `upload.module.ts`
 - Fixed "Multipart: Boundary not found" error
 
 ### Performance (M1 Mac)
+
 - CPU: 40-50% reduction
 - RAM: 54% reduction (5.5GB → 2.5GB)
 - Use `pnpm dev:web` or `pnpm dev:api` for single-area work
@@ -245,6 +308,7 @@ return {
 ### Tax & Shipping Configuration (v2.7.0 - Jan 25, 2026)
 
 **Tax System:**
+
 - Added `tax_calculation_mode` setting: 'disabled', 'simple', 'by_state'
 - Replaces hardcoded tax logic with admin-configurable settings
 - Simple mode: Single default rate for all orders
@@ -252,6 +316,7 @@ return {
 - Admin can configure via new "Tax" tab in System Settings
 
 **Shipping System:**
+
 - Added `shipping_mode` setting: 'manual', 'dhl_api', 'hybrid'
 - Manual mode: Admin-configurable rates (standard, express, overnight)
 - Settings: `shipping_standard_rate`, `shipping_express_rate`, `shipping_overnight_rate`, `shipping_international_surcharge`
@@ -259,16 +324,19 @@ return {
 - Admin can configure via new "Shipping" tab in System Settings
 
 **Database:**
+
 - Added 6 new system settings (tax_calculation_mode, shipping_mode, 4 shipping rates)
 - Created default shipping zones (US Domestic, International) with rate tiers
 - ShippingZone and ShippingRate models ready for zone-based shipping (future)
 
 **Files Modified:**
+
 - Backend: `shipping-tax.service.ts`, `settings.service.ts`, `seed-settings.ts`, `orders.service.ts`
 - Frontend: `tax-settings.tsx`, `shipping-settings.tsx`, `settings/page.tsx`, `validations/settings.ts`
 - Database: Created `seed-shipping-zones.ts` script
 
 **Backward Compatibility:**
+
 - All settings use current hardcoded values as defaults
 - Fallback logic preserves existing behavior if settings not configured
 - No breaking changes to existing orders or checkout flow
@@ -278,6 +346,7 @@ return {
 ## API Endpoints Quick Reference
 
 ### Admin Dashboard
+
 ```
 GET  /admin/dashboard/stats
 GET  /admin/dashboard/revenue?days=30
@@ -288,6 +357,7 @@ GET  /admin/dashboard/recent-orders?limit=10
 ```
 
 ### Products
+
 ```
 GET    /products                    # List with filters
 GET    /products/:slug              # Get by slug
@@ -298,6 +368,7 @@ PATCH  /products/:id/inventory      # Adjust inventory
 ```
 
 ### Payment (Stripe)
+
 ```
 POST  /payment/create-intent        # Create payment intent
 POST  /payment/webhook              # Stripe webhook handler
@@ -307,6 +378,7 @@ GET   /payment/health               # Health metrics (admin)
 ```
 
 ### Orders
+
 ```
 GET   /orders                       # Get user orders
 GET   /orders/:id                   # Get order details
@@ -316,6 +388,7 @@ POST  /orders/:id/cancel            # Cancel order
 ```
 
 ### Cart
+
 ```
 GET    /cart                        # Get cart
 POST   /cart/items                  # Add item
@@ -325,6 +398,7 @@ DELETE /cart                        # Clear cart
 ```
 
 ### Settings
+
 ```
 GET   /settings/public              # Public settings
 GET   /settings/:key                # Get single setting
@@ -332,6 +406,7 @@ PATCH /settings/:key                # Update setting (admin)
 ```
 
 ### Authentication
+
 ```
 POST  /auth/register                # User registration
 POST  /auth/login                   # Login
@@ -345,6 +420,7 @@ POST  /auth/2fa/enable              # Enable 2FA
 ```
 
 ### Seller
+
 ```
 GET  /seller/dashboard              # Seller dashboard stats
 GET  /seller/products               # Seller's products
@@ -372,6 +448,7 @@ imports: [
 ## Database Quick Reference
 
 ### Key Models (60+ tables)
+
 - **User Management:** User, UserSession, Address, MagicLink
 - **Products:** Product, ProductImage, ProductVariant, Category
 - **Orders:** Order, OrderItem, Cart, CartItem
@@ -380,14 +457,15 @@ imports: [
 - **System:** SystemSetting, SettingsAuditLog
 
 ### User Roles
-| Role | Description |
-|------|-------------|
-| `BUYER` | Can purchase products |
-| `SELLER` | Can sell + buy products |
-| `CUSTOMER` | Legacy (same as BUYER) |
-| `DELIVERY_PARTNER` | Handle deliveries |
-| `ADMIN` | Platform management |
-| `SUPER_ADMIN` | System-level access |
+
+| Role               | Description             |
+| ------------------ | ----------------------- |
+| `BUYER`            | Can purchase products   |
+| `SELLER`           | Can sell + buy products |
+| `CUSTOMER`         | Legacy (same as BUYER)  |
+| `DELIVERY_PARTNER` | Handle deliveries       |
+| `ADMIN`            | Platform management     |
+| `SUPER_ADMIN`      | System-level access     |
 
 ---
 
@@ -435,44 +513,78 @@ nextpik/
 
 ---
 
+## SEO & Brand Identity
+
+### Core SEO Implementation
+
+- **Site Name:** NextPik (NOT NextPick - different from tennis recruiting platform)
+- **Brand Focus:** Multi-vendor luxury marketplace
+- **Core Keywords:** nextpik marketplace, luxury online shopping, multi-vendor platform
+- **Structured Data:** Organization, WebSite, Product, ItemList, Breadcrumb schemas
+- **Dynamic Sitemap:** Auto-generates with products, categories, stores
+- **Search Console:** Use `SEO_GUIDE.md` for setup instructions
+
+### Meta Tags Strategy
+
+- Homepage: Brand-focused with category mentions (fashion, electronics, vehicles, real estate)
+- Products: Dynamic meta from product data + structured data
+- Categories: Category-specific titles and descriptions
+- Stores: Seller branding + product collections
+
+### Files to Check for SEO
+
+- `apps/web/src/lib/seo.tsx` - Core SEO config and schema generators
+- `apps/web/src/lib/metadata.ts` - Page-specific meta tags
+- `apps/web/src/app/sitemap.ts` - Dynamic sitemap generation
+- `apps/web/src/app/robots.ts` - Robots.txt configuration
+- `SEO_GUIDE.md` - Comprehensive SEO documentation
+
+---
+
 ## Version History
 
-| Version | Date | Key Changes |
-|---------|------|-------------|
-| 2.6.0 | Jan 16, 2026 | Authentication enhancements: Email OTP 2FA, Google OAuth, seller store auto-creation |
-| 2.5.0 | Jan 3, 2026 | Stripe subscription integration with webhooks and billing portal |
-| 2.4.0 | Dec 31, 2025 | Store following system, admin notes, enhanced UI/UX |
-| 2.3.0 | Dec 26, 2025 | UI/UX fixes, JWT auth fix, upload fix, M1 optimizations |
-| 2.2.0 | Dec 13, 2025 | Stripe integration (production-ready) |
-| 2.1.1 | Dec 13, 2025 | Product form fixes, filter system |
-| 2.0.0 | Dec 13, 2025 | Currency settings, real-time updates, number formatting |
+| Version | Date         | Key Changes                                                                          |
+| ------- | ------------ | ------------------------------------------------------------------------------------ |
+| 2.6.1   | Feb 16, 2026 | Enhanced SEO: Brand differentiation, structured data, comprehensive meta tags        |
+| 2.6.0   | Jan 16, 2026 | Authentication enhancements: Email OTP 2FA, Google OAuth, seller store auto-creation |
+| 2.5.0   | Jan 3, 2026  | Stripe subscription integration with webhooks and billing portal                     |
+| 2.4.0   | Dec 31, 2025 | Store following system, admin notes, enhanced UI/UX                                  |
+| 2.3.0   | Dec 26, 2025 | UI/UX fixes, JWT auth fix, upload fix, M1 optimizations                              |
+| 2.2.0   | Dec 13, 2025 | Stripe integration (production-ready)                                                |
+| 2.1.1   | Dec 13, 2025 | Product form fixes, filter system                                                    |
+| 2.0.0   | Dec 13, 2025 | Currency settings, real-time updates, number formatting                              |
 
 ---
 
 ## Quick Start for Claude Code
 
 When starting a session, say:
+
 ```
 Read CLAUDE.md first, then help me with [your task]
 ```
 
 For deadline tracking:
+
 ```
 Check DEADLINE_TRACKER.md and tell me what I should work on today
 ```
 
 ---
 
-*Last Updated: January 16, 2026*
-*Version: 2.6.0 - Authentication Enhancements*
+_Last Updated: January 16, 2026_
+_Version: 2.6.0 - Authentication Enhancements_
+
 ---
 
 ## 📝 DOCUMENTATION RULES
 
 ### Auto-Update Requirements
+
 After completing any **major change** that is **confirmed working**, Claude MUST update `COMPREHENSIVE_TECHNICAL_DOCUMENTATION.md`:
 
 **What counts as a major change:**
+
 - New API endpoint added
 - New feature implemented
 - Bug fix that changes behavior
@@ -482,20 +594,24 @@ After completing any **major change** that is **confirmed working**, Claude MUST
 - Security fix
 
 **What to update:**
+
 1. Version number (if significant)
 2. Relevant section in the docs
 3. Add to "Recent Changes" section
 4. Update "Version X.X.X Changes" section
 
 **Update format:**
-````markdown
+
+```markdown
 ### [Date] - Brief Description
+
 - What was changed
 - Files modified
 - How to use it (if applicable)
-````
+```
 
 **Example workflow:**
+
 1. Make the change
 2. Test it works
 3. User confirms it's working
@@ -503,17 +619,18 @@ After completing any **major change** that is **confirmed working**, Claude MUST
 5. Tell user: "✅ Documentation updated"
 
 ### Do NOT Update Docs When:
+
 - Change is experimental/untested
 - User hasn't confirmed it works
 - It's a minor typo or style fix
 - It's a temporary debugging change
-
 
 ---
 
 ## 📋 DOC UPDATE TEMPLATE
 
 When updating `COMPREHENSIVE_TECHNICAL_DOCUMENTATION.md`, use this format:
+
 ````markdown
 ## [Section Name]
 
@@ -522,17 +639,19 @@ When updating `COMPREHENSIVE_TECHNICAL_DOCUMENTATION.md`, use this format:
 **What:** Brief description of the change
 
 **Files Modified:**
+
 - `path/to/file1.ts` - What changed
 - `path/to/file2.tsx` - What changed
 
 **Usage:**
+
 ```typescript
 // Code example if applicable
 ```
 
 **API Endpoint (if applicable):**
+
 - `METHOD /endpoint` - Description
 
 **Tested:** ✅ Confirmed working
 ````
-

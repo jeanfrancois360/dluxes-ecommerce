@@ -76,6 +76,7 @@ export interface AdminProduct {
   price: number;
   compareAtPrice?: number;
   category: string;
+  storeId?: string; // Store assignment for admin-created products
   images: string[];
   stock?: number; // Legacy field name
   inventory?: number; // Database field name
@@ -100,6 +101,7 @@ export interface AdminOrder {
     name: string;
     quantity: number;
     price: number;
+    total?: number;
     image?: string;
     product?: {
       id: string;
@@ -139,6 +141,16 @@ export interface AdminOrder {
       slug: string;
     };
   }>;
+  timeline?: Array<{
+    id: string;
+    orderId: string;
+    status: string;
+    title: string;
+    description?: string;
+    icon?: string;
+    createdAt: string;
+  }>;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -170,6 +182,7 @@ export interface Category {
   showOnHomepage?: boolean;
   isFeatured?: boolean;
   priority?: number;
+  displayOrder?: number;
   createdAt: string;
 }
 
@@ -187,7 +200,6 @@ export interface Advertisement {
   startDate?: string;
   endDate?: string;
   status: string;
-  isActive: boolean;
   impressions: number;
   clicks: number;
   conversions: number;
@@ -260,6 +272,12 @@ export const dashboardApi = {
 
 // Helper function to transform admin product data to backend DTO format
 function transformProductData(data: Partial<AdminProduct>): any {
+  console.log('[Admin API] Transforming product data:', {
+    storeId: (data as any).storeId,
+    categoryId: (data as any).categoryId,
+    name: data.name,
+  });
+
   const transformed: any = {
     name: data.name,
     slug: data.slug,
@@ -276,6 +294,12 @@ function transformProductData(data: Partial<AdminProduct>): any {
 
   // Optional fields
   if (data.compareAtPrice !== undefined) transformed.compareAtPrice = data.compareAtPrice;
+
+  // Store ID - required for admin product creation (process before category)
+  const storeIdValue = (data as any).storeId;
+  if (storeIdValue !== undefined && storeIdValue !== null && storeIdValue !== '') {
+    transformed.storeId = storeIdValue;
+  }
 
   // Category handling - accept both 'categoryId' (from ProductForm) and 'category' (from AdminProduct interface)
   const categoryValue = (data as any).categoryId ?? data.category;
@@ -349,6 +373,12 @@ function transformProductData(data: Partial<AdminProduct>): any {
   if ((data as any).materials && Array.isArray((data as any).materials)) {
     transformed.materials = (data as any).materials;
   }
+
+  console.log('[Admin API] Transformed data:', {
+    storeId: transformed.storeId,
+    categoryId: transformed.categoryId,
+    name: transformed.name,
+  });
 
   return transformed;
 }
@@ -766,6 +796,14 @@ export const adminCategoriesApi = {
     return response.data || response;
   },
 
+  async updatePriority(id: string, priority: number): Promise<Category> {
+    const response = await api.patch(`/categories/${id}/priority`, { priority });
+    if (response.success === false) {
+      throw new Error(response.message || 'Failed to update priority');
+    }
+    return response.data || response;
+  },
+
   async delete(id: string): Promise<void> {
     await api.delete(`/categories/${id}`);
   },
@@ -893,5 +931,29 @@ export const adminAnalyticsApi = {
       `/admin/analytics/sales-by-product${buildQueryString({ startDate, endDate, limit })}`
     );
     return response;
+  },
+};
+
+// Store interface
+export interface AdminStore {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  verified: boolean;
+  user: {
+    email: string;
+  };
+  _count: {
+    products: number;
+  };
+}
+
+// Stores APIs
+export const adminStoresApi = {
+  async getAll(params?: { status?: string; search?: string }): Promise<AdminStore[]> {
+    const response = await api.get(`/admin/stores${buildQueryString(params)}`);
+    // API client already unwraps { success, data } responses, so response is the array
+    return Array.isArray(response) ? response : response?.data || [];
   },
 };

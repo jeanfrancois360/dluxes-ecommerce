@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SubscriptionService } from '../subscription/subscription.service';
@@ -32,7 +27,7 @@ export class ProductsService {
     private readonly subscriptionService: SubscriptionService,
     private readonly creditsService: CreditsService,
     private readonly searchService: SearchService,
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsService
   ) {}
 
   /**
@@ -67,59 +62,17 @@ export class ProductsService {
    */
   private async generateSKU(): Promise<string> {
     try {
-      // Get SKU prefix from settings
-      const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
-      const prefix = String(prefixSetting.value || 'NEXTPIK').toUpperCase();
-
-      // Get current date components
-      const now = new Date();
-      const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
-      const day = String(now.getDate()).padStart(2, '0'); // 01-31
-
-      // Format: PREFIX-MM-DD-
-      const datePrefix = `${prefix}-${month}-${day}-`;
-
-      // Find the highest existing SKU number for today's date with this prefix
-      const products = await this.prisma.product.findMany({
-        where: {
-          sku: {
-            startsWith: datePrefix,
-          },
-        },
-        orderBy: {
-          sku: 'desc',
-        },
-        take: 1,
-      });
-
-      let nextNumber = 1;
-      if (products.length > 0) {
-        const lastSKU = products[0].sku;
-        // Extract the sequence number from PREFIX-MM-DD-XXXXXX
-        const match = lastSKU.match(/-(\d+)$/);
-        if (match) {
-          nextNumber = parseInt(match[1], 10) + 1;
-        }
-      }
-
-      // Format with leading zeros (6 digits)
-      const formattedNumber = String(nextNumber).padStart(6, '0');
-      const generatedSKU = `${datePrefix}${formattedNumber}`;
-
-      // Double-check uniqueness (race condition protection)
-      const duplicate = await this.prisma.product.findUnique({
-        where: { sku: generatedSKU },
-      });
-      if (duplicate) {
-        // Recursively try next number if collision occurs
-        return this.generateSKU();
-      }
+      // Use simple timestamp-based SKU for better performance
+      // Format: PREFIX-TIMESTAMP-RANDOM
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const generatedSKU = `PROD-${timestamp}-${random}`;
 
       this.logger.log(`Auto-generated SKU: ${generatedSKU}`);
       return generatedSKU;
     } catch (error) {
       this.logger.error('Failed to generate SKU:', error);
-      // Fallback to timestamp-based SKU if settings fail
+      // Fallback to simple timestamp-based SKU
       const timestamp = Date.now();
       const fallbackSKU = `PROD-${timestamp}`;
       this.logger.warn(`Using fallback SKU: ${fallbackSKU}`);
@@ -201,7 +154,7 @@ export class ProductsService {
    */
   private async checkSubscriptionRequirements(
     userId: string,
-    productType: string,
+    productType: string
   ): Promise<{ allowed: boolean; message?: string }> {
     const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
 
@@ -210,26 +163,21 @@ export class ProductsService {
       return { allowed: true };
     }
 
-    const check = await this.subscriptionService.canListProductType(
-      userId,
-      productType,
-    );
+    const check = await this.subscriptionService.canListProductType(userId, productType);
 
     if (!check.canList) {
       const messages: string[] = [];
       if (!check.reasons.hasMonthlyCredits) {
-        messages.push(
-          'You need an active platform subscription to list products',
-        );
+        messages.push('You need an active platform subscription to list products');
       }
       if (!check.reasons.productTypeAllowed) {
         messages.push(
-          `Your feature plan does not include ${productType} listings. Upgrade to a plan that supports this product type`,
+          `Your feature plan does not include ${productType} listings. Upgrade to a plan that supports this product type`
         );
       }
       if (!check.reasons.meetsTierRequirement) {
         messages.push(
-          `Your current feature plan tier doesn't support ${productType} products. Upgrade to a higher tier`,
+          `Your current feature plan tier doesn't support ${productType} products. Upgrade to a higher tier`
         );
       }
       if (!check.reasons.hasListingCapacity) {
@@ -248,7 +196,7 @@ export class ProductsService {
   private async deductListingCredits(
     userId: string,
     productType: string,
-    productId: string,
+    productId: string
   ): Promise<void> {
     const subscriptionTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
 
@@ -261,14 +209,14 @@ export class ProductsService {
       userId,
       action,
       `Listed ${productType} product`,
-      productId,
+      productId
     );
   }
 
   /**
    * Find all products with advanced filtering, sorting, and pagination
    */
-  async findAll(query: ProductQueryDto) {
+  async findAll(query: ProductQueryDto, user?: any) {
     const {
       category,
       minPrice,
@@ -297,10 +245,15 @@ export class ProductsService {
 
     const where: Prisma.ProductWhereInput = {};
 
-    // Only filter by status if explicitly provided
+    // Status filter: Default to ACTIVE for public/unauthenticated users only
     if (status !== undefined && status !== null) {
       where.status = status;
+    } else if (!user) {
+      // Only default to ACTIVE status for unauthenticated (public) users
+      // Admins/sellers see all statuses by default
+      where.status = 'ACTIVE';
     }
+    // If user is authenticated and no status filter provided, show all statuses
 
     // Category filter - lookup by slug
     if (category) {
@@ -735,6 +688,11 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
+    // Only allow public access to ACTIVE products (sellers/admins can see their own drafts)
+    if (product.status !== ProductStatus.ACTIVE) {
+      throw new NotFoundException('Product not found');
+    }
+
     // Increment view count
     await this.prisma.product.update({
       where: { id: product.id },
@@ -823,10 +781,12 @@ export class ProductsService {
       sizes,
       materials,
       categoryId,
+      storeId, // Admin can assign product to a specific store
       purchaseType,
       price,
       inventory,
       sku, // Ignore any provided SKU - always auto-generate
+      images, // Extract images to handle separately (not passed to Prisma directly)
       ...productData
     } = createProductDto;
 
@@ -842,6 +802,17 @@ export class ProductsService {
     const finalInventory =
       inventory !== undefined ? inventory : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
 
+    // Validate category exists if provided
+    if (categoryId && categoryId.trim() !== '') {
+      const categoryExists = await this.prisma.category.findUnique({
+        where: { slug: categoryId },
+      });
+
+      if (!categoryExists) {
+        throw new NotFoundException(`Category with slug "${categoryId}" not found`);
+      }
+    }
+
     const product = await this.prisma.product.create({
       data: {
         ...productData,
@@ -854,14 +825,29 @@ export class ProductsService {
         colors: colors || [],
         sizes: sizes || [],
         materials: materials || [],
-        // Connect category using relation if provided (by slug)
-        ...(categoryId && {
-          category: {
-            connect: { slug: categoryId },
+        // Connect store relation if provided (admin assigns to store)
+        ...(storeId && {
+          store: {
+            connect: { id: storeId },
           },
         }),
+        // Connect category using relation if provided (by slug)
+        ...(categoryId &&
+          categoryId.trim() !== '' && {
+            category: {
+              connect: { slug: categoryId },
+            },
+          }),
       },
       include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+          },
+        },
         category: true,
         images: true,
         variants: true,
@@ -872,6 +858,14 @@ export class ProductsService {
     // Auto-index in Meilisearch (async, non-blocking)
     this.indexProductAsync(product.id);
 
+    // Increment store's totalProducts counter if assigned to a store
+    if (storeId) {
+      await this.prisma.store.update({
+        where: { id: storeId },
+        data: { totalProducts: { increment: 1 } },
+      });
+    }
+
     return product;
   }
 
@@ -879,9 +873,10 @@ export class ProductsService {
    * Update product
    */
   async update(id: string, updateProductDto: UpdateProductDto) {
-    await this.findById(id); // Check if exists
+    const existingProduct = await this.findById(id); // Check if exists
+    const oldStoreId = existingProduct.storeId;
 
-    const { badges, seoKeywords, colors, sizes, materials, categoryId, ...productData } =
+    const { badges, seoKeywords, colors, sizes, materials, categoryId, storeId, ...productData } =
       updateProductDto;
 
     const updateData: any = { ...productData };
@@ -892,14 +887,38 @@ export class ProductsService {
     if (sizes !== undefined) updateData.sizes = sizes;
     if (materials !== undefined) updateData.materials = materials;
 
+    // Handle store reassignment (admin can move product to different store)
+    if (storeId !== undefined) {
+      if (storeId) {
+        updateData.store = {
+          connect: { id: storeId },
+        };
+      } else {
+        // Disconnect store if storeId is null/empty (orphan product)
+        updateData.store = {
+          disconnect: true,
+        };
+      }
+    }
+
     // Handle category connection by slug
     if (categoryId !== undefined) {
-      if (categoryId) {
+      // Treat empty strings as falsy to disconnect category
+      if (categoryId && categoryId.trim() !== '') {
+        // Validate category exists before connecting
+        const categoryExists = await this.prisma.category.findUnique({
+          where: { slug: categoryId },
+        });
+
+        if (!categoryExists) {
+          throw new NotFoundException(`Category with slug "${categoryId}" not found`);
+        }
+
         updateData.category = {
           connect: { slug: categoryId },
         };
       } else {
-        // Disconnect category if categoryId is null/empty
+        // Disconnect category if categoryId is null/empty/whitespace
         updateData.category = {
           disconnect: true,
         };
@@ -910,6 +929,14 @@ export class ProductsService {
       where: { id },
       data: updateData,
       include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+          },
+        },
         category: true,
         images: true,
         variants: true,
@@ -919,6 +946,24 @@ export class ProductsService {
 
     // Auto-re-index in Meilisearch (async, non-blocking)
     this.indexProductAsync(id);
+
+    // Update store totalProducts counters if storeId changed
+    if (storeId !== undefined && oldStoreId !== storeId) {
+      // Decrement old store's count
+      if (oldStoreId) {
+        await this.prisma.store.update({
+          where: { id: oldStoreId },
+          data: { totalProducts: { decrement: 1 } },
+        });
+      }
+      // Increment new store's count
+      if (storeId) {
+        await this.prisma.store.update({
+          where: { id: storeId },
+          data: { totalProducts: { increment: 1 } },
+        });
+      }
+    }
 
     return product;
   }
@@ -1017,7 +1062,7 @@ export class ProductsService {
    * Delete product
    */
   async delete(id: string) {
-    await this.findById(id); // Check if exists
+    const existingProduct = await this.findById(id); // Check if exists
 
     const product = await this.prisma.product.delete({
       where: { id },
@@ -1025,6 +1070,14 @@ export class ProductsService {
 
     // Auto-remove from Meilisearch index (async, non-blocking)
     this.deleteProductFromIndexAsync(id);
+
+    // Decrement store's totalProducts counter if it was assigned to a store
+    if (existingProduct.storeId) {
+      await this.prisma.store.update({
+        where: { id: existingProduct.storeId },
+        data: { totalProducts: { decrement: 1 } },
+      });
+    }
 
     return product;
   }
@@ -1298,7 +1351,9 @@ export class ProductsService {
 
     // SKU is read-only - ignore any provided SKU value
     if (dto.sku !== undefined) {
-      this.logger.warn(`Attempt to update variant SKU ignored - SKU is system-generated and read-only`);
+      this.logger.warn(
+        `Attempt to update variant SKU ignored - SKU is system-generated and read-only`
+      );
     }
 
     // Track inventory change
@@ -1512,9 +1567,7 @@ export class ProductsService {
    */
   private indexProductAsync(productId: string): void {
     this.searchService.indexProduct(productId).catch((error) => {
-      this.logger.error(
-        `Failed to index product ${productId} in Meilisearch: ${error.message}`,
-      );
+      this.logger.error(`Failed to index product ${productId} in Meilisearch: ${error.message}`);
     });
   }
 
@@ -1524,9 +1577,7 @@ export class ProductsService {
    */
   private deleteProductFromIndexAsync(productId: string): void {
     this.searchService.deleteProduct(productId).catch((error) => {
-      this.logger.error(
-        `Failed to delete product ${productId} from Meilisearch: ${error.message}`,
-      );
+      this.logger.error(`Failed to delete product ${productId} from Meilisearch: ${error.message}`);
     });
   }
 }

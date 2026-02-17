@@ -22,7 +22,8 @@ export function SettingsFooter({
   className = '',
 }: SettingsFooterProps) {
   // Detect Mac vs Windows
-  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const isMac =
+    typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const modifierKey = isMac ? '⌘' : 'Ctrl';
 
   return (
@@ -47,7 +48,7 @@ export function SettingsFooter({
 
       <div className="flex flex-col items-end gap-1">
         <Button
-          type="submit"
+          type="button"
           onClick={onSave}
           disabled={isLoading || !isDirty}
           className="gap-2 min-w-[160px]"

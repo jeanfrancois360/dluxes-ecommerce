@@ -180,6 +180,16 @@ export class CategoriesService {
    * Create new category
    */
   async create(createCategoryDto: CreateCategoryDto) {
+    // Validate parent relationship before creating
+    if (createCategoryDto.parentId) {
+      const parent = await this.prisma.category.findUnique({
+        where: { id: createCategoryDto.parentId },
+      });
+      if (!parent) {
+        throw new NotFoundException('Parent category not found');
+      }
+    }
+
     return this.prisma.category.create({
       data: createCategoryDto,
       include: {
@@ -194,6 +204,11 @@ export class CategoriesService {
    */
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
     await this.findById(id); // Check if exists
+
+    // Validate parent relationship if parentId is being changed
+    if (updateCategoryDto.parentId !== undefined) {
+      await this.validateParentRelationship(id, updateCategoryDto.parentId);
+    }
 
     return this.prisma.category.update({
       where: { id },
@@ -245,13 +260,18 @@ export class CategoriesService {
    * Get categories for navbar
    */
   async findNavCategories() {
+    // Return root categories as column headings, each with their active children as links
     return this.prisma.category.findMany({
-      where: { showInNavbar: true },
+      where: { showInNavbar: true, isActive: true, parentId: null },
       include: {
         children: {
-          where: { showInNavbar: true },
+          where: { isActive: true },
+          include: {
+            _count: { select: { products: true } },
+          },
           orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
         },
+        _count: { select: { products: true } },
       },
       orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
     });
@@ -361,20 +381,6 @@ export class CategoriesService {
         isActive: true,
       },
       include: {
-        children: {
-          where: {
-            showInTopBar: true,
-            isActive: true,
-          },
-          orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }],
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            icon: true,
-            isFeatured: true,
-          },
-        },
         _count: {
           select: { products: true },
         },
@@ -391,16 +397,8 @@ export class CategoriesService {
       where: {
         showInSidebar: true,
         isActive: true,
-        parentId: null, // Only top-level categories for sidebar
       },
       include: {
-        children: {
-          where: {
-            showInSidebar: true,
-            isActive: true,
-          },
-          orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }],
-        },
         _count: {
           select: { products: true },
         },
@@ -437,5 +435,148 @@ export class CategoriesService {
         children: true,
       },
     });
+  }
+
+  /**
+   * Get all categories with unlimited depth recursive tree structure
+   */
+  async findAllRecursive() {
+    // Get all categories
+    const allCategories = await this.prisma.category.findMany({
+      where: { isActive: true },
+      include: {
+        _count: {
+          select: { products: true, children: true },
+        },
+      },
+      orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+    });
+
+    // Build recursive tree
+    const categoryMap = new Map(allCategories.map((cat) => [cat.id, { ...cat, children: [] }]));
+
+    const rootCategories = [];
+
+    allCategories.forEach((category) => {
+      const categoryWithChildren = categoryMap.get(category.id);
+      if (!categoryWithChildren) return;
+
+      if (!category.parentId) {
+        rootCategories.push(categoryWithChildren);
+      } else {
+        const parent = categoryMap.get(category.parentId);
+        if (parent) {
+          if (!parent.children) parent.children = [];
+          parent.children.push(categoryWithChildren);
+        }
+      }
+    });
+
+    return rootCategories;
+  }
+
+  /**
+   * Get the depth level of a category in the hierarchy (0-based)
+   */
+  async getCategoryDepth(categoryId: string): Promise<number> {
+    let depth = 0;
+    let currentId = categoryId;
+
+    while (currentId) {
+      const category = await this.prisma.category.findUnique({
+        where: { id: currentId },
+        select: { parentId: true },
+      });
+
+      if (!category || !category.parentId) break;
+      currentId = category.parentId;
+      depth++;
+    }
+
+    return depth;
+  }
+
+  /**
+   * Get all categories with depth information
+   */
+  async getAllCategoriesWithDepth() {
+    const categories = await this.prisma.category.findMany({
+      where: { isActive: true },
+      include: {
+        parent: true,
+        _count: {
+          select: { products: true, children: true },
+        },
+      },
+      orderBy: [{ priority: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+    });
+
+    // Calculate depth for each category
+    const categoriesWithDepth = await Promise.all(
+      categories.map(async (category) => ({
+        ...category,
+        depth: await this.getCategoryDepth(category.id),
+      }))
+    );
+
+    return categoriesWithDepth;
+  }
+
+  /**
+   * Validate parent-child relationship to prevent circular references
+   */
+  private async validateParentRelationship(
+    categoryId: string,
+    parentId: string | null
+  ): Promise<void> {
+    if (!parentId) return; // Top-level category is always valid
+
+    // Prevent self-reference
+    if (categoryId === parentId) {
+      throw new BadRequestException('A category cannot be its own parent');
+    }
+
+    // Check if parent exists
+    const parent = await this.prisma.category.findUnique({
+      where: { id: parentId },
+      select: { id: true, parentId: true },
+    });
+
+    if (!parent) {
+      throw new NotFoundException('Parent category not found');
+    }
+
+    // Prevent circular reference by checking if parentId is a descendant of categoryId
+    const isDescendant = await this.isDescendantOf(categoryId, parentId);
+    if (isDescendant) {
+      throw new BadRequestException(
+        'Cannot set parent to a descendant category (would create circular reference)'
+      );
+    }
+  }
+
+  /**
+   * Check if a category is a descendant of another category
+   */
+  private async isDescendantOf(ancestorId: string, descendantId: string): Promise<boolean> {
+    let currentId = descendantId;
+    const visited = new Set<string>([ancestorId]); // Prevent infinite loops
+
+    while (currentId) {
+      if (visited.has(currentId)) return true; // Circular reference detected
+      visited.add(currentId);
+
+      const category = await this.prisma.category.findUnique({
+        where: { id: currentId },
+        select: { parentId: true },
+      });
+
+      if (!category) break;
+      if (category.parentId === ancestorId) return true;
+
+      currentId = category.parentId;
+    }
+
+    return false;
   }
 }

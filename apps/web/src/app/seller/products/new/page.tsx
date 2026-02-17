@@ -9,6 +9,7 @@ import ProductForm from '@/components/seller/ProductForm';
 import { api, APIError } from '@/lib/api/client';
 import { useMySubscription, useCanListProductType } from '@/hooks/use-subscription';
 import { useTranslations } from 'next-intl';
+import { toast } from '@/lib/utils/toast';
 
 // Error modal state type
 interface ErrorModalState {
@@ -151,8 +152,10 @@ export default function NewProductPage() {
 
   const handleSubmit = async (formData: any) => {
     try {
-      await api.post('/seller/products', formData);
-      router.push('/seller/products?success=created');
+      // Backend will handle images automatically
+      const response = await api.post('/seller/products', formData);
+      toast.success('Product created successfully! 🎉');
+      router.push('/seller/products');
     } catch (error: any) {
       console.error('Failed to create product:', error);
       const parsed = parseProductError(error, t);

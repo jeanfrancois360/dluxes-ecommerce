@@ -15,6 +15,8 @@ interface SellerOrderNotificationData {
   subtotal: number;
   commission: number;
   commissionRate: number;
+  transactionFee?: number;
+  transactionFeeRate?: number;
   netPayout: number;
   currency: string;
   shippingAddress: {
@@ -108,23 +110,45 @@ export function sellerOrderNotificationTemplate(data: SellerOrderNotificationDat
                 ${itemsHtml}
               </table>
 
-              <!-- Earnings -->
+              <!-- Earnings Breakdown -->
               <div style="background-color: #FAFAFA; padding: 20px; margin-bottom: 24px; border: 1px solid #E5E5E5;">
-                <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 16px 0;">Your Earnings</p>
+                <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 16px 0;">💰 Your Earnings Breakdown</p>
                 <table width="100%" cellpadding="0" cellspacing="0">
                   <tr>
-                    <td style="padding: 6px 0; color: #737373; font-size: 14px;">Order Subtotal</td>
-                    <td style="padding: 6px 0; text-align: right; color: #000000; font-size: 14px;">${currencySymbol}${data.subtotal.toFixed(2)}</td>
+                    <td style="padding: 8px 0; color: #737373; font-size: 14px;">Order Subtotal</td>
+                    <td style="padding: 8px 0; text-align: right; color: #000000; font-size: 14px; font-weight: 500;">${currencySymbol}${data.subtotal.toFixed(2)}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #E5E5E5;">
+                    <td colspan="2" style="padding: 8px 0;">
+                      <p style="color: #DC2626; font-size: 13px; margin: 4px 0 0 0; font-style: italic;">Deductions:</p>
+                    </td>
                   </tr>
                   <tr>
-                    <td style="padding: 6px 0; color: #737373; font-size: 14px;">Commission (${data.commissionRate.toFixed(1)}%)</td>
-                    <td style="padding: 6px 0; text-align: right; color: #DC2626; font-size: 14px;">-${currencySymbol}${data.commission.toFixed(2)}</td>
+                    <td style="padding: 6px 0 6px 16px; color: #737373; font-size: 13px;">
+                      Platform Commission (${data.commissionRate.toFixed(1)}%)
+                    </td>
+                    <td style="padding: 6px 0; text-align: right; color: #DC2626; font-size: 13px;">-${currencySymbol}${data.commission.toFixed(2)}</td>
                   </tr>
+                  ${
+                    data.transactionFee && data.transactionFee > 0
+                      ? `
                   <tr>
-                    <td style="padding: 12px 0 0 0; color: #000000; font-size: 16px; font-weight: 600; border-top: 1px solid #E5E5E5;">Your Payout</td>
-                    <td style="padding: 12px 0 0 0; text-align: right; color: #10B981; font-size: 18px; font-weight: 700; border-top: 1px solid #E5E5E5;">${currencySymbol}${data.netPayout.toFixed(2)}</td>
+                    <td style="padding: 6px 0 6px 16px; color: #737373; font-size: 13px;">
+                      Payment Processing Fee (${data.transactionFeeRate ? data.transactionFeeRate.toFixed(2) + '% + fixed' : ''})
+                    </td>
+                    <td style="padding: 6px 0; text-align: right; color: #DC2626; font-size: 13px;">-${currencySymbol}${data.transactionFee.toFixed(2)}</td>
+                  </tr>
+                  `
+                      : ''
+                  }
+                  <tr>
+                    <td style="padding: 14px 0 0 0; color: #000000; font-size: 16px; font-weight: 600; border-top: 2px solid #10B981;">Your Net Payout</td>
+                    <td style="padding: 14px 0 0 0; text-align: right; color: #10B981; font-size: 20px; font-weight: 700; border-top: 2px solid #10B981;">${currencySymbol}${data.netPayout.toFixed(2)}</td>
                   </tr>
                 </table>
+                <p style="color: #737373; font-size: 11px; margin: 12px 0 0 0; line-height: 1.5;">
+                  💡 <strong>Note:</strong> Your payout will be processed according to your payment schedule after the order is delivered and confirmed.
+                </p>
               </div>
 
               <!-- Shipping Address -->

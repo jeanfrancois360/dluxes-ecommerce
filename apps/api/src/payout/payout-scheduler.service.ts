@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { PayoutStatus, CommissionStatus, PayoutFrequency, EscrowStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { StripeConnectService } from './integrations/stripe-connect.service';
 
 /**
  * Payout Scheduler Service
@@ -12,7 +13,11 @@ import { Decimal } from '@prisma/client/runtime/library';
 export class PayoutSchedulerService {
   private readonly logger = new Logger(PayoutSchedulerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => StripeConnectService))
+    private readonly stripeConnectService: StripeConnectService
+  ) {}
 
   /**
    * Process scheduled payouts based on configuration
@@ -392,6 +397,54 @@ export class PayoutSchedulerService {
   }
 
   /**
+   * Get all payouts with filters (Admin only)
+   */
+  async getAllPayouts(params: { limit?: number; offset?: number; status?: string }) {
+    const { limit = 50, offset = 0, status } = params;
+
+    const where: any = {};
+    if (status && status !== 'all') {
+      where.status = status.toUpperCase();
+    }
+
+    const [payouts, total] = await Promise.all([
+      this.prisma.payout.findMany({
+        where,
+        include: {
+          seller: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          store: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: limit,
+        skip: offset,
+      }),
+      this.prisma.payout.count({ where }),
+    ]);
+
+    return {
+      success: true,
+      data: payouts,
+      total,
+      limit,
+      offset,
+    };
+  }
+
+  /**
    * Mark payout as completed (Admin only - after actual payment)
    */
   async completePayout(payoutId: string, paymentReference?: string, paymentProof?: string) {
@@ -432,5 +485,430 @@ export class PayoutSchedulerService {
 
       return payout;
     });
+  }
+
+  /**
+   * Process pending payouts
+   * Executes actual payment transfers for pending payouts
+   */
+  async processPendingPayouts() {
+    this.logger.log('Processing pending payouts...');
+
+    const pendingPayouts = await this.prisma.payout.findMany({
+      where: {
+        status: PayoutStatus.PENDING,
+      },
+      include: {
+        seller: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            payoutSettings: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            payoutMethod: true,
+            payoutCurrency: true,
+          },
+        },
+      },
+      take: 100, // Process 100 at a time
+    });
+
+    let processedCount = 0;
+    let failedCount = 0;
+    const failedPayoutIds: string[] = [];
+
+    for (const payout of pendingPayouts) {
+      try {
+        // Get payout method from seller settings or store settings
+        const payoutMethod =
+          payout.seller.payoutSettings?.paymentMethod ||
+          payout.store.payoutMethod ||
+          'bank_transfer';
+        const currency =
+          payout.seller.payoutSettings?.payoutCurrency ||
+          payout.store.payoutCurrency ||
+          payout.currency;
+
+        // Process payment via payment provider
+        switch (payoutMethod) {
+          case 'STRIPE_CONNECT':
+            try {
+              // Process via Stripe Connect
+              const transfer = await this.stripeConnectService.createPayout({
+                sellerId: payout.sellerId,
+                amount: payout.amount.toNumber(),
+                currency: currency,
+                description: `Payout for ${payout.commissionCount} commission(s)`,
+                metadata: {
+                  payoutId: payout.id,
+                  periodStart: payout.periodStart.toISOString(),
+                  periodEnd: payout.periodEnd.toISOString(),
+                },
+              });
+
+              // Mark as completed
+              await this.prisma.payout.update({
+                where: { id: payout.id },
+                data: {
+                  status: PayoutStatus.COMPLETED,
+                  processedAt: new Date(),
+                  paymentReference: transfer.transferId,
+                  notes: `Stripe transfer: ${transfer.transferId}`,
+                },
+              });
+
+              this.logger.log(
+                `Stripe Connect payout completed: ${payout.id} -> ${transfer.transferId} (${transfer.amount} ${transfer.currency})`
+              );
+            } catch (stripeError) {
+              // If Stripe fails, mark as processing for manual handling
+              this.logger.error(`Stripe Connect failed for payout ${payout.id}:`, stripeError);
+              await this.prisma.payout.update({
+                where: { id: payout.id },
+                data: {
+                  status: PayoutStatus.PROCESSING,
+                  notes: `Stripe failed: ${stripeError instanceof Error ? stripeError.message : 'Unknown error'}. Manual processing required.`,
+                },
+              });
+            }
+            break;
+
+          case 'PAYPAL':
+            // TODO: Implement PayPal Payouts API
+            this.logger.log(`Would process PayPal payout for ${payout.id}`);
+            await this.prisma.payout.update({
+              where: { id: payout.id },
+              data: {
+                status: PayoutStatus.PROCESSING,
+                notes: 'PayPal integration pending - manual processing required',
+              },
+            });
+            break;
+
+          case 'WISE':
+            // TODO: Implement Wise API
+            this.logger.log(`Would process Wise payout for ${payout.id}`);
+            await this.prisma.payout.update({
+              where: { id: payout.id },
+              data: {
+                status: PayoutStatus.PROCESSING,
+                notes: 'Wise integration pending - manual processing required',
+              },
+            });
+            break;
+
+          case 'BANK_TRANSFER':
+          case 'bank_transfer':
+          default:
+            // Mark as processing - requires manual bank transfer
+            await this.prisma.payout.update({
+              where: { id: payout.id },
+              data: {
+                status: PayoutStatus.PROCESSING,
+                notes: 'Pending manual bank transfer',
+              },
+            });
+            this.logger.log(
+              `Marked payout ${payout.id} as processing (manual bank transfer required)`
+            );
+            break;
+        }
+
+        processedCount++;
+      } catch (error) {
+        this.logger.error(`Failed to process payout ${payout.id}:`, error);
+        failedCount++;
+        failedPayoutIds.push(payout.id);
+
+        // Mark as failed
+        await this.failPayout(payout.id, error instanceof Error ? error.message : 'Unknown error');
+      }
+    }
+
+    this.logger.log(
+      `Pending payout processing completed: ${processedCount} processed, ${failedCount} failed`
+    );
+
+    return {
+      processed: processedCount,
+      failed: failedCount,
+      failedPayoutIds,
+    };
+  }
+
+  /**
+   * Retry failed payouts
+   * Retries payouts that failed due to temporary issues
+   */
+  async retryFailedPayouts() {
+    this.logger.log('Retrying failed payouts...');
+
+    const failedPayouts = await this.prisma.payout.findMany({
+      where: {
+        status: PayoutStatus.FAILED,
+        createdAt: {
+          // Only retry payouts from last 7 days
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        },
+      },
+      include: {
+        seller: {
+          select: {
+            id: true,
+            email: true,
+            payoutSettings: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      take: 50, // Retry 50 at a time
+    });
+
+    let retriedCount = 0;
+    let succeededCount = 0;
+
+    for (const payout of failedPayouts) {
+      try {
+        // Reset to pending for retry
+        await this.prisma.payout.update({
+          where: { id: payout.id },
+          data: {
+            status: PayoutStatus.PENDING,
+            notes: `Retry attempt at ${new Date().toISOString()}`,
+          },
+        });
+
+        retriedCount++;
+        this.logger.log(`Retrying payout ${payout.id}`);
+      } catch (error) {
+        this.logger.error(`Failed to retry payout ${payout.id}:`, error);
+      }
+    }
+
+    this.logger.log(`Failed payout retry completed: ${retriedCount} retried`);
+
+    return {
+      retried: retriedCount,
+      succeeded: succeededCount,
+    };
+  }
+
+  /**
+   * Send payout reminders to sellers
+   * Notifies sellers about upcoming or available payouts
+   */
+  async sendPayoutReminders() {
+    this.logger.log('Sending payout reminders...');
+
+    // Find sellers with pending payout amounts
+    const sellers = await this.prisma.user.findMany({
+      where: {
+        role: 'SELLER',
+        escrowTransactions: {
+          some: {
+            status: EscrowStatus.RELEASED,
+          },
+        },
+      },
+      include: {
+        escrowTransactions: {
+          where: {
+            status: EscrowStatus.RELEASED,
+          },
+        },
+        commissions: {
+          where: {
+            status: CommissionStatus.CONFIRMED,
+            paidOut: false,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    let sentCount = 0;
+
+    for (const seller of sellers) {
+      try {
+        const pendingPayout = await this.getSellerPendingPayout(seller.id);
+
+        if (pendingPayout.totalPending > 0) {
+          // TODO: Integrate with email/notification service
+          this.logger.log(
+            `Would send payout reminder to ${seller.email}: ${pendingPayout.totalPending} ${pendingPayout.currency} available`
+          );
+
+          // TODO: Create notification
+          // await this.notificationService.create({
+          //   userId: seller.id,
+          //   type: 'PAYOUT_REMINDER',
+          //   title: 'Funds available for payout',
+          //   message: `You have ${pendingPayout.totalPending} ${pendingPayout.currency} available for payout`,
+          // });
+
+          sentCount++;
+        }
+      } catch (error) {
+        this.logger.error(`Failed to send payout reminder to seller ${seller.id}:`, error);
+      }
+    }
+
+    this.logger.log(`Payout reminders sent: ${sentCount}`);
+
+    return {
+      sent: sentCount,
+    };
+  }
+
+  /**
+   * Update payout statuses from payment providers
+   * Syncs status with Stripe, PayPal, Wise, etc.
+   */
+  async updatePayoutStatuses() {
+    this.logger.log('Updating payout statuses from payment providers...');
+
+    const processingPayouts = await this.prisma.payout.findMany({
+      where: {
+        status: PayoutStatus.PROCESSING,
+      },
+      include: {
+        seller: {
+          select: {
+            id: true,
+            email: true,
+            payoutSettings: true,
+          },
+        },
+      },
+      take: 100,
+    });
+
+    let updatedCount = 0;
+
+    for (const payout of processingPayouts) {
+      try {
+        const payoutMethod = payout.seller.payoutSettings?.paymentMethod || 'bank_transfer';
+
+        // TODO: Check status with payment provider
+        switch (payoutMethod) {
+          case 'STRIPE_CONNECT':
+            // const stripeStatus = await this.stripePayoutService.getPayoutStatus(payout.id);
+            // if (stripeStatus === 'paid') {
+            //   await this.completePayout(payout.id, stripeStatus.transferId);
+            //   updatedCount++;
+            // }
+            this.logger.log(`Would check Stripe Connect status for payout ${payout.id}`);
+            break;
+          case 'PAYPAL':
+            // const paypalStatus = await this.paypalPayoutService.getPayoutStatus(payout.id);
+            // if (paypalStatus === 'SUCCESS') {
+            //   await this.completePayout(payout.id, paypalStatus.batchId);
+            //   updatedCount++;
+            // }
+            this.logger.log(`Would check PayPal status for payout ${payout.id}`);
+            break;
+          case 'WISE':
+            // const wiseStatus = await this.wisePayoutService.getTransferStatus(payout.id);
+            // if (wiseStatus === 'funds_converted') {
+            //   await this.completePayout(payout.id, wiseStatus.transferId);
+            //   updatedCount++;
+            // }
+            this.logger.log(`Would check Wise status for payout ${payout.id}`);
+            break;
+        }
+      } catch (error) {
+        this.logger.error(`Failed to update status for payout ${payout.id}:`, error);
+      }
+    }
+
+    this.logger.log(`Payout status update completed: ${updatedCount} updated`);
+
+    return {
+      updated: updatedCount,
+    };
+  }
+
+  /**
+   * Get payout statistics
+   */
+  async getPayoutStatistics(filters?: { startDate?: Date; endDate?: Date; sellerId?: string }) {
+    const where: any = {};
+
+    if (filters?.startDate) {
+      where.createdAt = { ...where.createdAt, gte: filters.startDate };
+    }
+    if (filters?.endDate) {
+      where.createdAt = { ...where.createdAt, lte: filters.endDate };
+    }
+    if (filters?.sellerId) {
+      where.sellerId = filters.sellerId;
+    }
+
+    const [pending, processing, completed, failed] = await Promise.all([
+      this.prisma.payout.aggregate({
+        where: { ...where, status: PayoutStatus.PENDING },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.payout.aggregate({
+        where: { ...where, status: PayoutStatus.PROCESSING },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.payout.aggregate({
+        where: { ...where, status: PayoutStatus.COMPLETED },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.payout.aggregate({
+        where: { ...where, status: PayoutStatus.FAILED },
+        _sum: { amount: true },
+        _count: true,
+      }),
+    ]);
+
+    return {
+      pending: {
+        amount: pending._sum.amount || 0,
+        count: pending._count,
+      },
+      processing: {
+        amount: processing._sum.amount || 0,
+        count: processing._count,
+      },
+      completed: {
+        amount: completed._sum.amount || 0,
+        count: completed._count,
+      },
+      failed: {
+        amount: failed._sum.amount || 0,
+        count: failed._count,
+      },
+      total: {
+        amount:
+          Number(pending._sum.amount || 0) +
+          Number(processing._sum.amount || 0) +
+          Number(completed._sum.amount || 0) +
+          Number(failed._sum.amount || 0),
+        count: pending._count + processing._count + completed._count + failed._count,
+      },
+    };
   }
 }

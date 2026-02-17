@@ -255,8 +255,8 @@ export function useAdvertisementMutations() {
     async update(id: string, data: UpdateAdvertisementDto) {
       return await advertisementsApi.update(id, data);
     },
-    async toggle(id: string) {
-      return await advertisementsApi.toggle(id);
+    async toggle(id: string, isActive: boolean) {
+      return await advertisementsApi.toggle(id, isActive);
     },
     async delete(id: string) {
       return await advertisementsApi.delete(id);

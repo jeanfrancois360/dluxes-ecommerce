@@ -20,7 +20,8 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   experimental: {
-    optimizePackageImports: ['@nextpik/ui', '@nextpik/design-system'],
+    // Disabled optimizePackageImports to prevent dynamic import issues in Next.js 15
+    // optimizePackageImports: ['@nextpik/ui', '@nextpik/design-system'],
     // M1 Mac Performance Optimizations
     cpus: 2, // Limit CPU cores for compilation
   },
@@ -44,35 +45,10 @@ const nextConfig = {
       }
     }
 
-    // Reduce memory usage
+    // Simplified optimization to prevent dynamic import issues
     config.optimization = {
       ...config.optimization,
       moduleIds: 'deterministic',
-      runtimeChunk: isServer ? undefined : 'single',
-      splitChunks: isServer ? false : {
-        chunks: 'all',
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          // Vendor chunk
-          vendor: {
-            name: 'vendor',
-            chunks: 'all',
-            test: /node_modules/,
-            priority: 20,
-            maxSize: 500000, // 500KB max chunks
-          },
-          // Common chunk
-          common: {
-            name: 'common',
-            minChunks: 2,
-            chunks: 'all',
-            priority: 10,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
-        },
-      },
     };
 
     // Reduce parallelism to save memory
@@ -111,9 +87,17 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'upload.wikimedia.org',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.paypalobjects.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.simpleicons.org',
+      },
     ],
   },
-  // Security headers
+  // Security and cache headers
   async headers() {
     return [
       {
@@ -138,6 +122,54 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
+          },
+        ],
+      },
+      // Cache control for static assets
+      {
+        source: '/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Cache control for images
+      {
+        source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // No cache for version.json (always check for updates)
+      {
+        source: '/version.json',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+        ],
+      },
+      // Short cache for HTML pages (1 hour, must revalidate)
+      {
+        source: '/',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, must-revalidate',
           },
         ],
       },

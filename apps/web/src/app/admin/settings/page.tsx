@@ -26,6 +26,7 @@ import {
   Receipt,
   Calculator,
   PackageCheck,
+  Store,
 } from 'lucide-react';
 import { GeneralSettingsSection } from '@/components/settings/general-settings';
 import { PaymentSettingsSection } from '@/components/settings/payment-settings';
@@ -38,6 +39,7 @@ import { SecuritySettingsSection } from '@/components/settings/security-settings
 import { NotificationSettingsSection } from '@/components/settings/notification-settings';
 import { SeoSettingsSection } from '@/components/settings/seo-settings';
 import { InventorySettingsSection } from '@/components/settings/inventory-settings';
+import { SellerSettingsSection } from '@/components/settings/seller-settings';
 import { AuditLogViewer } from '@/components/settings/audit-log-viewer';
 import { SettingsValidationAlert } from '@/components/settings/settings-validation-alert';
 import { SettingsOverviewDashboard } from '@/components/settings/settings-overview-dashboard';
@@ -84,6 +86,12 @@ function SettingsPageContent() {
       label: t('tabs.inventory.label'),
       icon: Package,
       description: t('tabs.inventory.description'),
+    },
+    {
+      value: 'seller',
+      label: 'Seller Management',
+      icon: Store,
+      description: 'Configure selling credits, pricing, and seller policies',
     },
     {
       value: 'tax',
@@ -139,7 +147,7 @@ function SettingsPageContent() {
   const activeTabConfig = tabsConfig.find((t) => t.value === activeTab);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6 pb-12">
       {/* Enhanced Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -250,6 +258,10 @@ function SettingsPageContent() {
 
             <TabsContent value="inventory" className="mt-0">
               <InventorySettingsSection />
+            </TabsContent>
+
+            <TabsContent value="seller" className="mt-0">
+              <SellerSettingsSection />
             </TabsContent>
 
             <TabsContent value="tax" className="mt-0">

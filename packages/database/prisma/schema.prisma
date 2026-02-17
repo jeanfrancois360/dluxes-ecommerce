@@ -75,12 +75,12 @@ model User {
   inventoryChanges InventoryTransaction[] @relation("InventoryChanges")
 
   // Escrow & Payment Extensions
-  escrowTransactions EscrowTransaction[]       @relation("SellerEscrow")
-  escrowAllocations  EscrowSplitAllocation[]   @relation("SellerEscrowAllocations")
-  commissionOverride SellerCommissionOverride? @relation("SellerCommissionOverrides")
-  planSubscriptions  SellerPlanSubscription[]  @relation("SellerPlanSubscriptions")
-  sellerSubscription SellerSubscription?       @relation("UserSubscription") // Inquiry-based product subscription
-  creditBalance      CreditBalance?            @relation("UserCreditBalance") // Credit balance for inquiry responses
+  escrowTransactions  EscrowTransaction[]        @relation("SellerEscrow")
+  escrowAllocations   EscrowSplitAllocation[]    @relation("SellerEscrowAllocations")
+  commissionOverrides SellerCommissionOverride[] @relation("SellerCommissionOverrides")
+  planSubscriptions   SellerPlanSubscription[]   @relation("SellerPlanSubscriptions")
+  sellerSubscription  SellerSubscription?        @relation("UserSubscription") // Inquiry-based product subscription
+  creditBalance       CreditBalance?             @relation("UserCreditBalance") // Credit balance for inquiry responses
 
   // Delivery Provider Extensions
   deliveryProviderId  String?
@@ -110,6 +110,9 @@ model User {
   // Hot Deals - Emergency Services Marketplace
   hotDeals         HotDeal[]         @relation("UserHotDeals")
   hotDealResponses HotDealResponse[] @relation("UserHotDealResponses")
+
+  // Seller Payout Settings
+  payoutSettings SellerPayoutSettings? @relation("SellerPayoutSettings")
 
   @@index([email])
   @@index([lastLoginAt])
@@ -311,6 +314,9 @@ model Store {
 
   // Seller Credit Transactions
   sellerCreditTransactions SellerCreditTransaction[]
+
+  // Payout Settings (New detailed payout configuration)
+  payoutSettings SellerPayoutSettings?
 
   @@index([slug])
   @@index([status])
@@ -2121,6 +2127,82 @@ enum PayoutStatus {
 }
 
 // ============================================================================
+// SELLER PAYOUT SETTINGS (Bank Details & Payment Preferences)
+// ============================================================================
+
+model SellerPayoutSettings {
+  id       String @id @default(cuid())
+  sellerId String @unique
+  storeId  String @unique
+
+  // Payment Method Preference
+  paymentMethod String @default("bank_transfer") // 'bank_transfer', 'stripe_connect', 'paypal', 'wise'
+
+  // Bank Transfer Details
+  bankName          String?
+  accountHolderName String?
+  accountNumber     String? // Encrypted in production
+  routingNumber     String? // US: ACH routing number
+  iban              String? // International: IBAN
+  swiftCode         String? // International: SWIFT/BIC
+  bankAddress       String? @db.Text
+  bankCountry       String?
+
+  // Stripe Connect (For automated payouts via Stripe)
+  stripeAccountId     String? @unique
+  stripeAccountStatus String? // 'pending', 'verified', 'restricted'
+  stripeOnboardedAt   DateTime?
+
+  // PayPal
+  paypalEmail    String?
+  paypalVerified Boolean @default(false)
+
+  // Wise (TransferWise)
+  wiseEmail       String?
+  wiseRecipientId String?
+
+  // Tax & Compliance
+  taxId       String? // Tax ID / EIN / VAT number
+  taxCountry  String?
+  taxFormType String? // 'W9', '1099', etc.
+  taxFormUrl  String? // URL to uploaded tax form
+
+  // Payout Currency Preference
+  payoutCurrency String @default("USD")
+
+  // Verification Status
+  verified       Boolean   @default(false)
+  verifiedAt     DateTime?
+  verifiedBy     String? // Admin user ID who verified
+  rejectionNotes String?   @db.Text
+
+  // Metadata
+  notes    String? @db.Text
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  seller User  @relation("SellerPayoutSettings", fields: [sellerId], references: [id], onDelete: Cascade)
+  store  Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([storeId])
+  @@index([verified])
+  @@index([stripeAccountId])
+  @@map("seller_payout_settings")
+}
+
+enum PayoutMethod {
+  BANK_TRANSFER
+  STRIPE_CONNECT
+  PAYPAL
+  WISE
+  MANUAL
+}
+
+// ============================================================================
 // Inventory Management System
 // ============================================================================
 
@@ -2206,6 +2288,13 @@ enum AuditAction {
   UPDATE
   DELETE
   ROLLBACK
+}
+
+enum AnnouncementType {
+  INFO // General information
+  PROMO // Promotional message
+  WARNING // Warning or alert
+  SUCCESS // Success or positive message
 }
 
 enum PayoutFrequency {
@@ -2359,8 +2448,8 @@ model EscrowSplitAllocation {
 // ============================================================================
 
 model SellerCommissionOverride {
-  id       String @id @default(cuid())
-  sellerId String @unique
+  id       String  @id @default(cuid())
+  sellerId String? // Optional - for seller-specific or seller+category overrides
 
   // Override Settings
   commissionType CommissionRuleType @default(PERCENTAGE)
@@ -2369,7 +2458,7 @@ model SellerCommissionOverride {
   // Conditions (Optional)
   minOrderValue Decimal? @db.Decimal(10, 2)
   maxOrderValue Decimal? @db.Decimal(10, 2)
-  categoryId    String? // Apply to specific category only
+  categoryId    String? // Optional - for category-specific or seller+category overrides
 
   // Status
   isActive Boolean @default(true)
@@ -2388,10 +2477,13 @@ model SellerCommissionOverride {
   updatedAt DateTime @updatedAt
 
   // Relations
-  seller   User      @relation("SellerCommissionOverrides", fields: [sellerId], references: [id], onDelete: Cascade)
+  seller   User?     @relation("SellerCommissionOverrides", fields: [sellerId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
+  // Composite unique constraint - prevents duplicate seller+category combinations
+  @@unique([sellerId, categoryId], name: "unique_seller_category_override")
   @@index([sellerId])
+  @@index([categoryId])
   @@index([isActive])
   @@index([priority])
   @@map("seller_commission_overrides")
@@ -2558,6 +2650,41 @@ model SettingsAuditLog {
   @@index([changedBy])
   @@index([createdAt])
   @@map("settings_audit_logs")
+}
+
+// ============================================================================
+// ANNOUNCEMENTS & PROMOTIONS (Top Bar Messages)
+// ============================================================================
+
+model Announcement {
+  id String @id @default(cuid())
+
+  // Content
+  text String      @db.Text
+  icon String?     @db.VarChar(10) // Emoji or icon code
+  link String?     // Optional CTA link
+  type AnnouncementType @default(INFO)
+
+  // Display Settings
+  displayOrder Int     @default(0) // Lower = higher priority
+  isActive     Boolean @default(true)
+
+  // Scheduling
+  validFrom  DateTime? // Show from this date (null = always)
+  validUntil DateTime? // Show until this date (null = forever)
+
+  // Metadata
+  createdBy String // Admin user ID
+  updatedBy String? // Last admin who updated
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([displayOrder])
+  @@index([validFrom])
+  @@index([validUntil])
+  @@map("announcements")
 }
 
 // ============================================================================

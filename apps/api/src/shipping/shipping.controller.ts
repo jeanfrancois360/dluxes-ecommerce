@@ -1,14 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ShippingService } from './shipping.service';
 import { DhlRatesService } from '../integrations/dhl/dhl-rates.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -45,7 +35,8 @@ export class ShippingController {
    */
   @Post('calculate')
   async calculateShipping(
-    @Body() body: {
+    @Body()
+    body: {
       country: string;
       state?: string;
       city?: string;
@@ -72,21 +63,24 @@ export class ShippingController {
   @Post('zones')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
-  async createZone(@Body() body: {
-    name: string;
-    code: string;
-    description?: string;
-    countries: string[];
-    states?: string[];
-    cities?: string[];
-    postalCodes?: string[];
-    baseFee: number;
-    perKgFee?: number;
-    freeShippingThreshold?: number;
-    minDeliveryDays?: number;
-    maxDeliveryDays?: number;
-    priority?: number;
-  }) {
+  async createZone(
+    @Body()
+    body: {
+      name: string;
+      code: string;
+      description?: string;
+      countries: string[];
+      states?: string[];
+      cities?: string[];
+      postalCodes?: string[];
+      baseFee: number;
+      perKgFee?: number;
+      freeShippingThreshold?: number;
+      minDeliveryDays?: number;
+      maxDeliveryDays?: number;
+      priority?: number;
+    }
+  ) {
     return this.shippingService.createZone(body);
   }
 
@@ -96,10 +90,7 @@ export class ShippingController {
   @Put('zones/:code')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
-  async updateZone(
-    @Param('code') code: string,
-    @Body() body: any
-  ) {
+  async updateZone(@Param('code') code: string, @Body() body: any) {
     return this.shippingService.updateZone(code, body);
   }
 
@@ -121,7 +112,8 @@ export class ShippingController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   async createRate(
     @Param('zoneId') zoneId: string,
-    @Body() body: {
+    @Body()
+    body: {
       name: string;
       minOrderValue?: number;
       maxOrderValue?: number;
@@ -171,7 +163,8 @@ export class ShippingController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   async testDhlRates(
-    @Body() body?: {
+    @Body()
+    body?: {
       originCountry?: string;
       originPostalCode?: string;
       destinationCountry?: string;
@@ -181,10 +174,12 @@ export class ShippingController {
   ) {
     try {
       const rates = await this.dhlRatesService.getSimplifiedRates({
-        originCountryCode: body?.originCountry || 'US',
-        originPostalCode: body?.originPostalCode || '10001',
+        originCountryCode: body?.originCountry || 'BE',
+        originPostalCode: body?.originPostalCode || '1000',
+        originCityName: 'Brussels',
         destinationCountryCode: body?.destinationCountry || 'GB',
         destinationPostalCode: body?.destinationPostalCode || 'SW1A 1AA',
+        destinationCityName: 'London',
         weight: body?.weight || 1,
       });
 
