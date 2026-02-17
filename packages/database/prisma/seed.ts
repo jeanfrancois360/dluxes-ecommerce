@@ -438,12 +438,16 @@ async function main() {
   // Create Categories
   const watchesCategory = await prisma.category.upsert({
     where: { slug: 'watches' },
-    update: {},
+    update: {
+      image:
+        'https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=800&q=85&auto=format&fit=crop',
+    },
     create: {
       name: 'Watches',
       slug: 'watches',
       description: 'Luxury timepieces and watches from the finest brands',
-      image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49',
+      image:
+        'https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=800&q=85&auto=format&fit=crop',
       icon: 'Watch',
       displayOrder: 1,
       isActive: true,
@@ -452,12 +456,16 @@ async function main() {
 
   const jewelryCategory = await prisma.category.upsert({
     where: { slug: 'jewelry' },
-    update: {},
+    update: {
+      image:
+        'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&q=85&auto=format&fit=crop',
+    },
     create: {
       name: 'Jewelry',
       slug: 'jewelry',
       description: 'Exquisite jewelry and precious gems',
-      image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338',
+      image:
+        'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&q=85&auto=format&fit=crop',
       icon: 'Gem',
       displayOrder: 2,
       isActive: true,
@@ -466,12 +474,16 @@ async function main() {
 
   const accessoriesCategory = await prisma.category.upsert({
     where: { slug: 'accessories' },
-    update: {},
+    update: {
+      image:
+        'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=85&auto=format&fit=crop',
+    },
     create: {
       name: 'Accessories',
       slug: 'accessories',
       description: 'Premium accessories and leather goods',
-      image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7',
+      image:
+        'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=85&auto=format&fit=crop',
       icon: 'ShoppingBag',
       displayOrder: 3,
       isActive: true,
@@ -480,12 +492,16 @@ async function main() {
 
   const fashionCategory = await prisma.category.upsert({
     where: { slug: 'fashion' },
-    update: {},
+    update: {
+      image:
+        'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800&q=85&auto=format&fit=crop',
+    },
     create: {
       name: 'Fashion',
       slug: 'fashion',
       description: 'Luxury fashion and designer clothing',
-      image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b',
+      image:
+        'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800&q=85&auto=format&fit=crop',
       icon: 'Shirt',
       displayOrder: 4,
       isActive: true,
