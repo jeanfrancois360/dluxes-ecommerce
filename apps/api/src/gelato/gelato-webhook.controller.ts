@@ -3,16 +3,13 @@ import {
   Post,
   Body,
   Headers,
-  Req,
   HttpCode,
   HttpStatus,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { GelatoService } from './gelato.service';
 import { GelatoOrdersService } from './gelato-orders.service';
-import { GelatoWebhookPayload } from './interfaces';
 
 @Controller('webhooks/gelato')
 export class GelatoWebhookController {
@@ -25,18 +22,12 @@ export class GelatoWebhookController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  async handleWebhook(
-    @Req() req: Request & { rawBody?: Buffer },
-    @Headers('x-gelato-signature') signature: string,
-    @Body() body: GelatoWebhookPayload
-  ) {
-    this.logger.log(`Received Gelato webhook: ${body.event}`);
+  async handleWebhook(@Headers('x-webhook-secret') webhookSecret: string, @Body() body: any) {
+    this.logger.log(`Received Gelato webhook: ${body?.event}`);
 
-    const rawBody = req.rawBody?.toString() || JSON.stringify(body);
-
-    if (signature && !this.gelatoService.verifyWebhookSignature(rawBody, signature)) {
-      this.logger.warn('Invalid webhook signature');
-      throw new UnauthorizedException('Invalid webhook signature');
+    if (!this.gelatoService.verifyWebhookToken(webhookSecret || '')) {
+      this.logger.warn('Invalid webhook token');
+      throw new UnauthorizedException('Invalid webhook token');
     }
 
     try {

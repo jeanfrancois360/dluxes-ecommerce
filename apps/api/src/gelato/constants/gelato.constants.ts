@@ -1,15 +1,24 @@
 export const GELATO_CONSTANTS = {
   API_VERSION: 'v4',
 
+  // Gelato's actual webhook event names (as sent by the dashboard)
   WEBHOOK_EVENTS: {
-    ORDER_CREATED: 'order:created',
-    ORDER_CONFIRMED: 'order:confirmed',
-    ORDER_IN_PRODUCTION: 'order:production_ready',
-    ORDER_PRODUCED: 'order:production_finished',
-    ORDER_SHIPPED: 'order:shipped',
-    ORDER_DELIVERED: 'order:delivered',
-    ORDER_CANCELLED: 'order:cancelled',
-    ORDER_FAILED: 'order:failed',
+    ORDER_STATUS_UPDATED: 'order_status_updated',
+    ORDER_ITEM_STATUS_UPDATED: 'order_item_status_updated',
+    ORDER_ITEM_TRACKING_UPDATED: 'order_item_tracking_code_updated',
+    ORDER_DELIVERY_ESTIMATE_UPDATED: 'order_delivery_estimate_updated',
+  },
+
+  // Gelato order status values (sent inside event payloads)
+  ORDER_STATUS: {
+    CREATED: 'created',
+    PASSED: 'passed',
+    IN_PRODUCTION: 'in_production',
+    PRINTED: 'printed',
+    SHIPPED: 'shipped',
+    DELIVERED: 'delivered',
+    CANCELLED: 'cancelled',
+    FAILED: 'failed',
   },
 
   SHIPPING_METHODS: {
