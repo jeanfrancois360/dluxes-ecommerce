@@ -14,9 +14,6 @@ import { Toaster } from 'sonner';
 import { siteConfig } from '@/lib/seo';
 import './globals.css';
 
-// Force dynamic rendering to avoid static generation issues with client contexts
-export const dynamic = 'force-dynamic';
-
 const poppins = Poppins({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
@@ -67,8 +64,8 @@ export const metadata: Metadata = {
     title: siteConfig.name,
     description: siteConfig.description,
     images: [siteConfig.ogImage],
-    creator: '@luxurymarketplace',
-    site: '@luxurymarketplace',
+    creator: '@nextpik',
+    site: '@nextpik',
   },
   robots: {
     index: true,
@@ -88,10 +85,8 @@ export const metadata: Metadata = {
     ],
     apple: '/icons/icon-192x192.png',
   },
-  verification: {
-    google: 'your-google-verification-code',
-    // Add other verification codes as needed
-  },
+  // Add your Google Search Console verification code here:
+  // verification: { google: 'paste-your-code-from-search-console' },
 };
 
 export const viewport: Viewport = {

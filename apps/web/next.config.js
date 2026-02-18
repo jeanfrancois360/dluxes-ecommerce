@@ -97,6 +97,19 @@ const nextConfig = {
       },
     ],
   },
+  // Redirect HTTP → HTTPS and www → non-www in production
+  async redirects() {
+    if (process.env.NODE_ENV !== 'production') return [];
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.nextpik.com' }],
+        destination: 'https://nextpik.com/:path*',
+        permanent: true,
+      },
+    ];
+  },
+
   // Security and cache headers
   async headers() {
     return [
@@ -122,6 +135,11 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
+          },
+          // Tell browsers to always use HTTPS for this domain (1 year)
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
           },
         ],
       },
