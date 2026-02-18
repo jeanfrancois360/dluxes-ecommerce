@@ -85,8 +85,10 @@ export const metadata: Metadata = {
     ],
     apple: '/icons/icon-192x192.png',
   },
-  // Add your Google Search Console verification code here:
-  // verification: { google: 'paste-your-code-from-search-console' },
+  // Google Search Console: go to https://search.google.com/search-console
+  // Add property → select URL prefix → copy the "google-site-verification" meta tag content
+  // Then uncomment and paste your code below:
+  // verification: { google: 'YOUR_GOOGLE_SEARCH_CONSOLE_CODE_HERE' },
 };
 
 export const viewport: Viewport = {
