@@ -1,7 +1,12 @@
 import { MetadataRoute } from 'next';
 import { siteConfig } from '@/lib/seo';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+// Re-generate sitemap every hour on the server
+export const revalidate = 3600;
+
+// Use server-side env var (not baked at build time) so sitemap always calls the live API
+const API_URL =
+  process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 // Fetch active products for sitemap
 async function getProducts() {
