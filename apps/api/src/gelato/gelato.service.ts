@@ -227,19 +227,15 @@ export class GelatoService implements OnModuleInit {
 
   // ---- WEBHOOK VERIFICATION ----
 
-  verifyWebhookSignature(payload: string, signature: string): boolean {
+  // Simple token comparison — Gelato sends the secret as a custom HTTP header value
+  verifyWebhookToken(token: string): boolean {
     if (!this.webhookSecret) {
       this.logger.warn('Webhook secret not configured - skipping verification');
       return true;
     }
     try {
-      const expectedSignature = crypto
-        .createHmac('sha256', this.webhookSecret)
-        .update(payload)
-        .digest('hex');
-      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
-    } catch (error) {
-      this.logger.error(`Webhook signature verification failed: ${error.message}`);
+      return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(this.webhookSecret));
+    } catch {
       return false;
     }
   }

@@ -9,7 +9,7 @@ import {
   EscrowStatus,
   DeliveryConfirmationType,
 } from '@prisma/client';
-import { GelatoCreateOrderRequest, GelatoWebhookPayload } from './interfaces';
+import { GelatoCreateOrderRequest } from './interfaces';
 import { GELATO_CONSTANTS } from './constants/gelato.constants';
 
 @Injectable()
@@ -264,7 +264,7 @@ export class GelatoOrdersService {
     });
   }
 
-  async processWebhook(payload: GelatoWebhookPayload) {
+  async processWebhook(payload: any) {
     const { event, id: eventId, data } = payload;
 
     const existingEvent = await this.prisma.gelatoWebhookEvent.findUnique({
@@ -275,7 +275,9 @@ export class GelatoOrdersService {
       return { processed: false, reason: 'duplicate' };
     }
 
-    const gelatoOrderId = data.orderId || data.order?.id;
+    // Gelato sends order_status_updated with data.id = gelato order id
+    // Other events (item status, tracking) use data.orderId
+    const gelatoOrderId = data?.orderId || data?.id;
     if (!gelatoOrderId) {
       this.logger.warn(`Webhook ${eventId} missing order ID`);
       return { processed: false, reason: 'missing_order_id' };
@@ -323,49 +325,90 @@ export class GelatoOrdersService {
   }
 
   private async handleWebhookEvent(eventType: string, data: any, podOrderId: string) {
-    const { WEBHOOK_EVENTS } = GELATO_CONSTANTS;
+    const { WEBHOOK_EVENTS, ORDER_STATUS } = GELATO_CONSTANTS;
 
     switch (eventType) {
-      case WEBHOOK_EVENTS.ORDER_CREATED:
-      case WEBHOOK_EVENTS.ORDER_CONFIRMED:
-        await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.SUBMITTED);
+      // order_status_updated — map Gelato status string to our enum
+      case WEBHOOK_EVENTS.ORDER_STATUS_UPDATED: {
+        const status: string = data.status || '';
+        if (status === ORDER_STATUS.CREATED || status === ORDER_STATUS.PASSED) {
+          await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.SUBMITTED, {
+            productionStatus: status,
+          });
+        } else if (status === ORDER_STATUS.IN_PRODUCTION) {
+          await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.IN_PRODUCTION, {
+            productionStatus: status,
+          });
+        } else if (status === ORDER_STATUS.PRINTED) {
+          await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.PRODUCED, {
+            producedAt: new Date(),
+            productionStatus: status,
+          });
+        } else if (status === ORDER_STATUS.SHIPPED) {
+          await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.SHIPPED, {
+            shippedAt: new Date(),
+            productionStatus: status,
+          });
+          await this.updateMainOrderShipped(podOrderId, null);
+        } else if (status === ORDER_STATUS.DELIVERED) {
+          await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.DELIVERED, {
+            deliveredAt: new Date(),
+            productionStatus: status,
+          });
+          await this.updateMainOrderDelivered(podOrderId);
+        } else if (status === ORDER_STATUS.CANCELLED) {
+          await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.CANCELLED, {
+            cancelledAt: new Date(),
+            failureReason: data.comment || 'Cancelled by Gelato',
+          });
+        } else if (status === ORDER_STATUS.FAILED) {
+          await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.FAILED, {
+            failureReason: data.comment || 'Production failed',
+          });
+        }
         break;
-      case WEBHOOK_EVENTS.ORDER_IN_PRODUCTION:
-        await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.IN_PRODUCTION);
+      }
+
+      // order_item_status_updated — same status mapping for individual items
+      case WEBHOOK_EVENTS.ORDER_ITEM_STATUS_UPDATED: {
+        const itemStatus: string = data.status || '';
+        if (itemStatus === ORDER_STATUS.DELIVERED) {
+          await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.DELIVERED, {
+            deliveredAt: new Date(),
+          });
+          await this.updateMainOrderDelivered(podOrderId);
+        } else if (itemStatus === ORDER_STATUS.SHIPPED) {
+          await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.SHIPPED, {
+            shippedAt: new Date(),
+          });
+        } else if (itemStatus === ORDER_STATUS.IN_PRODUCTION) {
+          await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.IN_PRODUCTION);
+        }
         break;
-      case WEBHOOK_EVENTS.ORDER_PRODUCED:
-        await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.PRODUCED, {
-          producedAt: new Date(),
-        });
-        break;
-      case WEBHOOK_EVENTS.ORDER_SHIPPED: {
-        const shipment = data.shipment || data.order?.shipments?.[0];
+      }
+
+      // order_item_tracking_code_updated — update tracking info
+      case WEBHOOK_EVENTS.ORDER_ITEM_TRACKING_UPDATED: {
+        const shipment = {
+          trackingCode: data.trackingCode,
+          trackingUrl: data.trackingUrl,
+          carrier: data.carrier,
+        };
         await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.SHIPPED, {
           shippedAt: new Date(),
-          trackingNumber: shipment?.trackingCode,
-          trackingUrl: shipment?.trackingUrl,
-          carrier: shipment?.carrier,
+          trackingNumber: shipment.trackingCode,
+          trackingUrl: shipment.trackingUrl,
+          carrier: shipment.carrier,
         });
         await this.updateMainOrderShipped(podOrderId, shipment);
         break;
       }
-      case WEBHOOK_EVENTS.ORDER_DELIVERED:
-        await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.DELIVERED, {
-          deliveredAt: new Date(),
-        });
-        await this.updateMainOrderDelivered(podOrderId);
+
+      // order_delivery_estimate_updated — informational only, no status change needed
+      case WEBHOOK_EVENTS.ORDER_DELIVERY_ESTIMATE_UPDATED:
+        this.logger.log(`Delivery estimate updated for POD order ${podOrderId}`);
         break;
-      case WEBHOOK_EVENTS.ORDER_CANCELLED:
-        await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.CANCELLED, {
-          cancelledAt: new Date(),
-          failureReason: data.reason || 'Cancelled by Gelato',
-        });
-        break;
-      case WEBHOOK_EVENTS.ORDER_FAILED:
-        await this.updatePodOrderStatus(podOrderId, GelatoPodStatus.FAILED, {
-          failureReason: data.reason || data.message || 'Production failed',
-        });
-        break;
+
       default:
         this.logger.warn(`Unknown webhook event type: ${eventType}`);
     }
@@ -383,6 +426,7 @@ export class GelatoOrdersService {
       trackingUrl: string;
       carrier: string;
       failureReason: string;
+      productionStatus: string;
     }>
   ) {
     await this.prisma.gelatoPodOrder.update({
