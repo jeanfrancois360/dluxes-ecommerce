@@ -32,7 +32,11 @@ export class GelatoOrdersService {
             shippingAddress: true,
           },
         },
-        product: true,
+        product: {
+          include: {
+            store: true, // v2.9.0: Include store for seller Gelato credentials
+          },
+        },
         variant: true,
       },
     });
@@ -96,14 +100,36 @@ export class GelatoOrdersService {
       },
     };
 
-    this.logger.log(`Submitting order ${orderId} to Gelato...`);
-    const gelatoOrder = await this.gelatoService.createOrder(gelatoOrderRequest);
+    // v2.9.0: Get seller's store ID for per-seller Gelato credentials
+    const storeId = orderItem.product.storeId;
+    if (!storeId) {
+      throw new BadRequestException(
+        'POD product must be associated with a store. Please assign this product to a seller.'
+      );
+    }
+
+    this.logger.log(`Submitting order ${orderId} to Gelato using store ${storeId} credentials...`);
+
+    // Submit to Gelato using seller's account (or platform fallback)
+    const gelatoOrder = await this.gelatoService.createOrder(gelatoOrderRequest, storeId);
+
+    // Check if platform fallback was used
+    const credentials = await this.gelatoService.getSellerCredentials(storeId);
+    const usedPlatformAccount = credentials.isPlatformFallback;
+
+    if (usedPlatformAccount) {
+      this.logger.warn(
+        `Order ${orderId} submitted using platform Gelato account (seller has not configured their own account)`
+      );
+    }
 
     const podOrder = await this.prisma.gelatoPodOrder.create({
       data: {
         orderId,
         orderItemId,
         productId: orderItem.productId,
+        storeId, // v2.9.0: Track which seller's store
+        usedPlatformAccount, // v2.9.0: Track if platform fallback was used
         gelatoOrderId: gelatoOrder.id,
         gelatoOrderReference: gelatoOrderRequest.orderReferenceId,
         status: GelatoPodStatus.SUBMITTED,

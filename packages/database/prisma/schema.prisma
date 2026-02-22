@@ -114,6 +114,9 @@ model User {
   // Seller Payout Settings
   payoutSettings SellerPayoutSettings? @relation("SellerPayoutSettings")
 
+  // Seller Gelato POD Settings (v2.9.0)
+  gelatoSettings SellerGelatoSettings? @relation("SellerGelatoSettings")
+
   @@index([email])
   @@index([lastLoginAt])
   @@index([deliveryProviderId])
@@ -317,6 +320,9 @@ model Store {
 
   // Payout Settings (New detailed payout configuration)
   payoutSettings SellerPayoutSettings?
+
+  // Gelato POD Settings (v2.9.0 - Per-seller Gelato integration)
+  gelatoSettings SellerGelatoSettings?
 
   @@index([slug])
   @@index([status])
@@ -2241,6 +2247,53 @@ enum PayoutMethod {
 }
 
 // ============================================================================
+// Seller Gelato POD Integration Settings (v2.9.0)
+// ============================================================================
+
+model SellerGelatoSettings {
+  id       String @id @default(cuid())
+  sellerId String @unique
+  storeId  String @unique
+
+  // Gelato API Credentials (ENCRYPTED with AES-256-GCM)
+  gelatoApiKey       String?  // Encrypted API key
+  gelatoStoreId      String?  // Gelato store/account ID
+  gelatoWebhookSecret String? // Encrypted webhook secret
+
+  // Connection Status
+  isEnabled          Boolean   @default(false)
+  isVerified         Boolean   @default(false) // Connection verified via test API call
+  verifiedAt         DateTime?
+  lastTestAt         DateTime? // Last connection test
+
+  // Gelato Account Info (fetched from API after connection)
+  gelatoAccountName  String?
+  gelatoAccountEmail String?
+
+  // Webhook Configuration
+  webhookUrl         String?   // Auto-generated seller-specific webhook URL
+  webhookId          String?   // Gelato webhook subscription ID
+
+  // Metadata
+  connectionError    String?   @db.Text // Last connection error if any
+  notes              String?   @db.Text
+  metadata           Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  seller User  @relation("SellerGelatoSettings", fields: [sellerId], references: [id], onDelete: Cascade)
+  store  Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([storeId])
+  @@index([isEnabled])
+  @@index([isVerified])
+  @@map("seller_gelato_settings")
+}
+
+// ============================================================================
 // Inventory Management System
 // ============================================================================
 
@@ -3391,6 +3444,10 @@ model GelatoPodOrder {
   orderId     String
   orderItemId String
   productId   String
+
+  // Seller tracking (v2.9.0 - Per-seller Gelato)
+  storeId             String?  // Seller's store ID
+  usedPlatformAccount Boolean  @default(false) // True if platform fallback was used
 
   // Gelato identifiers
   gelatoOrderId        String  @unique
