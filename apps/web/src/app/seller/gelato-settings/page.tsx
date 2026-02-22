@@ -222,11 +222,65 @@ export default function GelatoSettingsPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <PageHeader
-        title="Gelato Integration"
-        description="Connect your Gelato account to enable Print-on-Demand products"
+        title="Print-on-Demand Setup"
+        description="Sell custom products without inventory - we'll print and ship them for you!"
       />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Benefits Section - Only show if not connected */}
+        {!isConfigured && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-gold/10 to-amber-50 rounded-2xl shadow-sm border border-gold/20 p-6"
+          >
+            <h2 className="text-xl font-semibold text-neutral-900 mb-3">
+              Why use Print-on-Demand?
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex gap-3">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-medium text-neutral-900 mb-1">No Inventory Needed</h3>
+                  <p className="text-sm text-neutral-600">
+                    Products are printed only when customers order them
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <Package className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-medium text-neutral-900 mb-1">Automatic Fulfillment</h3>
+                  <p className="text-sm text-neutral-600">
+                    Orders are automatically sent to Gelato for printing
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-purple-600" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-medium text-neutral-900 mb-1">Global Shipping</h3>
+                  <p className="text-sm text-neutral-600">
+                    Gelato ships worldwide from local production facilities
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Connection Status */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -336,48 +390,81 @@ export default function GelatoSettingsPage() {
           onSubmit={handleSubmit}
           className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6"
         >
-          <div className="flex items-center gap-3 mb-6">
-            <Shield className="w-6 h-6 text-gold" />
-            <h2 className="text-xl font-semibold text-neutral-900">API Credentials</h2>
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Shield className="w-6 h-6 text-gold" />
+              <h2 className="text-xl font-semibold text-neutral-900">
+                Connect Your Gelato Account
+              </h2>
+            </div>
+            <p className="text-sm text-neutral-600">
+              Enter your Gelato credentials below to link your account. Don't worry, this is secure
+              and encrypted.
+            </p>
           </div>
 
           <div className="space-y-6">
-            {/* Info Banner */}
+            {/* Simplified Info Banner */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
               <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-700">
-                <p className="font-medium mb-1">How to get your Gelato API credentials:</p>
-                <ol className="list-decimal list-inside space-y-1 ml-2">
+                <p className="font-medium mb-2">Need help finding your credentials?</p>
+                <p className="mb-2">
+                  Log in to your{' '}
+                  <a
+                    href="https://dashboard.gelato.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-medium hover:text-blue-800"
+                  >
+                    Gelato account
+                  </a>{' '}
+                  and follow these simple steps:
+                </p>
+                <ol className="space-y-1.5 ml-4 list-decimal">
                   <li>
-                    Go to{' '}
-                    <a
-                      href="https://dashboard.gelato.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
-                    >
-                      Gelato Dashboard
-                    </a>
+                    Click on <strong>Developer</strong> in the sidebar
                   </li>
-                  <li>Navigate to Developer → API Keys</li>
-                  <li>Create a new API key and copy it</li>
-                  <li>Your Store ID is shown in the dashboard URL or settings</li>
+                  <li>
+                    Select <strong>API Keys</strong>
+                  </li>
+                  <li>
+                    Click <strong>Create API Key</strong> and give it a name (e.g., "NextPik")
+                  </li>
+                  <li>
+                    Copy both the <strong>API Key</strong> and your <strong>Store ID</strong>
+                  </li>
                 </ol>
+                <p className="mt-3 text-xs text-blue-600">
+                  💡 Don't have a Gelato account?{' '}
+                  <a
+                    href="https://www.gelato.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-medium"
+                  >
+                    Sign up for free
+                  </a>
+                </p>
               </div>
             </div>
 
             {/* Gelato API Key */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Gelato API Key <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Your Gelato API Key <span className="text-red-500">*</span>
               </label>
+              <p className="text-xs text-neutral-500 mb-2">
+                This connects your NextPik store to your Gelato account for automatic order
+                fulfillment
+              </p>
               <div className="relative">
                 <input
                   type={showApiKey ? 'text' : 'password'}
                   name="gelatoApiKey"
                   value={formData.gelatoApiKey}
                   onChange={handleInputChange}
-                  placeholder={settings?.gelatoApiKey || 'Enter your Gelato API key'}
+                  placeholder={settings?.gelatoApiKey || 'Paste your API key here'}
                   className="w-full px-4 py-3 pr-12 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-all"
                   required={!settings?.gelatoApiKey}
                 />
@@ -385,58 +472,69 @@ export default function GelatoSettingsPage() {
                   type="button"
                   onClick={() => setShowApiKey(!showApiKey)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  title={showApiKey ? 'Hide API key' : 'Show API key'}
                 >
                   {showApiKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
               {settings?.gelatoApiKey && (
-                <p className="mt-1 text-xs text-neutral-500">Current: {settings.gelatoApiKey}</p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  ✓ Already connected: {settings.gelatoApiKey}
+                </p>
               )}
             </div>
 
             {/* Gelato Store ID */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Gelato Store ID <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Your Gelato Store ID <span className="text-red-500">*</span>
               </label>
+              <p className="text-xs text-neutral-500 mb-2">
+                Find this in your Gelato dashboard URL or under Store Settings
+              </p>
               <input
                 type="text"
                 name="gelatoStoreId"
                 value={formData.gelatoStoreId}
                 onChange={handleInputChange}
-                placeholder="Enter your Gelato Store ID"
+                placeholder="e.g., glt_store_abc123xyz"
                 className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-all"
                 required={!settings?.gelatoStoreId}
               />
+              {settings?.gelatoStoreId && (
+                <p className="mt-1 text-xs text-neutral-500">
+                  ✓ Connected to: {settings.gelatoStoreId}
+                </p>
+              )}
             </div>
 
             {/* Webhook Secret (Optional) */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Webhook Secret <span className="text-neutral-400 text-xs">(Optional)</span>
+            <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Webhook Secret{' '}
+                <span className="text-neutral-400 text-xs">(Optional - Advanced)</span>
               </label>
+              <p className="text-xs text-neutral-500 mb-3">
+                Only needed if you want extra security for order updates. You can skip this for now.
+              </p>
               <div className="relative">
                 <input
                   type={showWebhookSecret ? 'text' : 'password'}
                   name="gelatoWebhookSecret"
                   value={formData.gelatoWebhookSecret}
                   onChange={handleInputChange}
-                  placeholder={
-                    settings?.gelatoWebhookSecret ? '••••••••' : 'Enter webhook secret (optional)'
-                  }
-                  className="w-full px-4 py-3 pr-12 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-all"
+                  placeholder={settings?.gelatoWebhookSecret ? '••••••••' : 'Leave empty if unsure'}
+                  className="w-full px-4 py-3 pr-12 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-all bg-white"
                 />
                 <button
                   type="button"
                   onClick={() => setShowWebhookSecret(!showWebhookSecret)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  title={showWebhookSecret ? 'Hide secret' : 'Show secret'}
                 >
                   {showWebhookSecret ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-neutral-500">
-                For additional security when configuring webhooks
-              </p>
             </div>
 
             {/* Action Buttons */}
@@ -489,15 +587,16 @@ export default function GelatoSettingsPage() {
             transition={{ delay: 0.2 }}
             className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <LinkIcon className="w-6 h-6 text-gold" />
-              <h2 className="text-xl font-semibold text-neutral-900">Webhook Configuration</h2>
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <LinkIcon className="w-6 h-6 text-gold" />
+                <h2 className="text-xl font-semibold text-neutral-900">Automatic Order Updates</h2>
+              </div>
+              <p className="text-sm text-neutral-600">
+                Copy this URL and add it to your Gelato dashboard to get real-time updates when
+                orders are printed and shipped.
+              </p>
             </div>
-
-            <p className="text-sm text-neutral-600 mb-4">
-              Configure this webhook URL in your Gelato dashboard to receive order status updates
-              automatically.
-            </p>
 
             {/* Webhook URL Display */}
             <div className="flex gap-3 mb-4">
