@@ -541,6 +541,37 @@ nextpik/
 
 ---
 
+## Gelato Print-on-Demand Integration
+
+**Implementation Model:** Platform-Wide (Single Gelato Account)
+
+**Configuration:**
+
+- Admin configures one Gelato account in backend `.env`
+- All sellers use the platform's Gelato account for POD products
+- Platform manages fulfillment, tracking, and webhook processing
+
+**Environment Variables Required:**
+
+```bash
+GELATO_API_KEY=your_api_key
+GELATO_STORE_ID=your_store_id
+GELATO_WEBHOOK_SECRET=your_webhook_secret
+GELATO_API_URL=https://api.gelato.com/v4
+```
+
+**How It Works:**
+
+1. Seller creates product with `fulfillmentType: GELATO_POD`
+2. Customer places order
+3. Platform submits order to Gelato using platform's account
+4. Gelato produces and ships directly to customer
+5. Webhooks update order status automatically
+
+**Future Consideration:** Per-seller Gelato integration (sellers connect their own accounts)
+
+---
+
 ## Version History
 
 | Version | Date         | Key Changes                                                                          |

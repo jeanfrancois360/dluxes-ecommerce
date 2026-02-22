@@ -27,6 +27,7 @@ import {
   ServiceFields,
   RentalFields,
 } from '../admin/product-type-fields';
+import { PodConfigurationSection } from '../gelato/pod-configuration-section';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
 import { useCanListProductType } from '@/hooks/use-subscription';
 
@@ -382,6 +383,13 @@ export default function ProductForm({
       rentalIncludes: (product as any)?.rentalIncludes || [],
       rentalExcludes: (product as any)?.rentalExcludes || [],
       rentalNotes: (product as any)?.rentalNotes || '',
+      // Gelato POD fields
+      fulfillmentType: (product as any)?.fulfillmentType || 'SELF_FULFILLED',
+      gelatoProductUid: (product as any)?.gelatoProductUid || '',
+      gelatoTemplateId: (product as any)?.gelatoTemplateId || '',
+      designFileUrl: (product as any)?.designFileUrl || '',
+      printAreas: (product as any)?.printAreas || null,
+      baseCost: (product as any)?.baseCost || undefined,
     };
   });
 
@@ -547,6 +555,13 @@ export default function ProductForm({
         rentalIncludes: (product as any)?.rentalIncludes || [],
         rentalExcludes: (product as any)?.rentalExcludes || [],
         rentalNotes: (product as any)?.rentalNotes || '',
+        // Gelato POD fields
+        fulfillmentType: (product as any)?.fulfillmentType || 'SELF_FULFILLED',
+        gelatoProductUid: (product as any)?.gelatoProductUid || '',
+        gelatoTemplateId: (product as any)?.gelatoTemplateId || '',
+        designFileUrl: (product as any)?.designFileUrl || '',
+        printAreas: (product as any)?.printAreas || null,
+        baseCost: (product as any)?.baseCost || undefined,
       });
     }
   }, [product]);
@@ -1399,6 +1414,44 @@ export default function ProductForm({
 
       {/* Product Variants */}
       <VariantManager productId={product?.id} productPrice={formData.price} />
+
+      {/* Print-on-Demand Configuration */}
+      {product?.id ? (
+        <PodConfigurationSection
+          fulfillmentType={formData.fulfillmentType}
+          gelatoProductUid={formData.gelatoProductUid}
+          designFileUrl={formData.designFileUrl}
+          gelatoMarkupPercent={formData.gelatoMarkupPercent}
+          gelatoShippingMethod={formData.gelatoShippingMethod}
+          onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+          disabled={loading}
+        />
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Print-on-Demand (Gelato)</h3>
+          <div className="rounded-lg border-2 border-dashed border-amber-300 bg-amber-50 p-6 text-center">
+            <div className="text-amber-600 mb-2">
+              <svg
+                className="w-8 h-8 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-amber-800">Want to use Print-on-Demand?</p>
+            <p className="text-xs text-amber-600 mt-1">
+              Save your product first, then come back to configure Gelato POD settings.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Form Actions */}
       <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
