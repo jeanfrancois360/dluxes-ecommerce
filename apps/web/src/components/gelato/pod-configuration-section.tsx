@@ -38,6 +38,25 @@ export function PodConfigurationSection({
         <p className="text-sm text-gray-500 mt-1">
           Configure Gelato fulfillment for print-on-demand products
         </p>
+        <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <svg
+            className="w-4 h-4 text-blue-600 shrink-0 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <p className="text-xs text-blue-700">
+            <strong>Platform-managed fulfillment:</strong> POD products use the platform's Gelato
+            account for seamless order processing and global shipping.
+          </p>
+        </div>
       </div>
 
       {/* Fulfillment Type Toggle */}

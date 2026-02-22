@@ -1453,10 +1453,38 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         />
       ) : (
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Print-on-Demand (POD)</h2>
-          <p className="text-sm text-gray-500">
-            Save the product first to configure Gelato Print-on-Demand settings.
-          </p>
+          <div className="rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <svg
+                  className="w-10 h-10 text-blue-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h4 className="font-semibold text-blue-900 mb-1">Print-on-Demand with Gelato</h4>
+                <p className="text-sm text-blue-700 mb-3">
+                  Create custom products (t-shirts, mugs, posters, etc.) that are printed and
+                  shipped by Gelato when customers order.
+                </p>
+                <div className="bg-white/60 rounded-md p-3">
+                  <p className="text-xs text-blue-600">
+                    <strong>To enable POD:</strong> Save this product first with basic details, then
+                    return to configure Gelato settings.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
