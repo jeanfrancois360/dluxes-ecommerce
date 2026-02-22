@@ -3422,6 +3422,7 @@
       "myProfile": "My Profile",
       "security": "Security",
       "storeSettings": "Store Settings",
+      "gelatoIntegration": "Gelato POD",
       "vacationMode": "Vacation Mode"
     },
     "topbar": {

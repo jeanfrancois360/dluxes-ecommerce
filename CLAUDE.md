@@ -543,48 +543,108 @@ nextpik/
 
 ## Gelato Print-on-Demand Integration
 
-**Implementation Model:** Platform-Wide (Single Gelato Account)
+**Implementation Model:** Per-Seller (Multi-Tenant) with Platform Fallback
 
-**Configuration:**
+**v2.9.0 Architecture:**
 
-- Admin configures one Gelato account in backend `.env`
-- All sellers use the platform's Gelato account for POD products
-- Platform manages fulfillment, tracking, and webhook processing
+- Each seller connects their own Gelato account via Seller Dashboard
+- Credentials encrypted (AES-256-GCM) and stored per-seller in database
+- Platform credentials serve as fallback for unconfigured sellers
+- Seller-specific webhook URLs for order tracking
 
 **Environment Variables Required:**
 
 ```bash
-GELATO_API_KEY=your_api_key
-GELATO_STORE_ID=your_store_id
-GELATO_WEBHOOK_SECRET=your_webhook_secret
+# Encryption (REQUIRED)
+ENCRYPTION_KEY=<32-byte-base64-key>  # Generate: openssl rand -base64 32
+
+# Platform Gelato Account (Optional Fallback)
+GELATO_API_KEY=your_platform_api_key
+GELATO_STORE_ID=your_platform_store_id
+GELATO_WEBHOOK_SECRET=your_platform_webhook_secret
 GELATO_API_URL=https://api.gelato.com/v4
 ```
 
 **How It Works:**
 
-1. Seller creates product with `fulfillmentType: GELATO_POD`
-2. Customer places order
-3. Platform submits order to Gelato using platform's account
-4. Gelato produces and ships directly to customer
-5. Webhooks update order status automatically
+1. **Seller Setup:**
+   - Seller navigates to `/seller/gelato-settings`
+   - Enters Gelato API Key, Store ID, and optional Webhook Secret
+   - Tests connection to verify credentials
+   - Enables integration once verified
 
-**Future Consideration:** Per-seller Gelato integration (sellers connect their own accounts)
+2. **Order Flow:**
+   - Seller creates product with `fulfillmentType: GELATO_POD`
+   - Customer places order
+   - System loads seller's Gelato credentials (or uses platform fallback)
+   - Order submitted to appropriate Gelato account
+   - Gelato produces and ships directly to customer
+
+3. **Webhooks:**
+   - Platform webhook: `POST /webhooks/gelato` (backward compatible)
+   - Seller webhook: `POST /webhooks/gelato/:base64(storeId)` (unique per seller)
+   - Automatic status updates for production, shipping, delivery
+
+**Database Schema:**
+
+```prisma
+model SellerGelatoSettings {
+  gelatoApiKey       String?  // AES-256-GCM encrypted
+  gelatoStoreId      String?
+  gelatoWebhookSecret String? // AES-256-GCM encrypted
+  isEnabled          Boolean  @default(false)
+  isVerified         Boolean  @default(false)
+  webhookUrl         String?  // Auto-generated
+}
+
+model GelatoPodOrder {
+  storeId               String?
+  usedPlatformAccount   Boolean  @default(false)
+  // ... other fields
+}
+```
+
+**API Endpoints:**
+
+```
+GET    /seller/gelato              # Get settings
+POST   /seller/gelato              # Save/update settings
+POST   /seller/gelato/test         # Test connection
+PATCH  /seller/gelato/toggle       # Enable/disable
+DELETE /seller/gelato              # Delete settings
+GET    /seller/gelato/webhook-url  # Get webhook URL
+```
+
+**Security:**
+
+- Credentials encrypted at rest using AES-256-GCM
+- API keys masked in frontend: `dc0d0b41-••••••••-e7947ae3baf7`
+- Webhook verification using `crypto.timingSafeEqual()` to prevent timing attacks
+- 5-minute credential cache with automatic invalidation
+
+**Migration Notes:**
+
+- Platform account credentials still work as fallback
+- Existing POD orders continue to function
+- Sellers can optionally configure their own accounts
+- System tracks which orders used seller vs platform account
 
 ---
 
 ## Version History
 
-| Version | Date         | Key Changes                                                                          |
-| ------- | ------------ | ------------------------------------------------------------------------------------ |
-| 2.8.0   | Feb 17, 2026 | Gelato Print-on-Demand integration: POD products, auto-submission, webhook tracking  |
-| 2.6.1   | Feb 16, 2026 | Enhanced SEO: Brand differentiation, structured data, comprehensive meta tags        |
-| 2.6.0   | Jan 16, 2026 | Authentication enhancements: Email OTP 2FA, Google OAuth, seller store auto-creation |
-| 2.5.0   | Jan 3, 2026  | Stripe subscription integration with webhooks and billing portal                     |
-| 2.4.0   | Dec 31, 2025 | Store following system, admin notes, enhanced UI/UX                                  |
-| 2.3.0   | Dec 26, 2025 | UI/UX fixes, JWT auth fix, upload fix, M1 optimizations                              |
-| 2.2.0   | Dec 13, 2025 | Stripe integration (production-ready)                                                |
-| 2.1.1   | Dec 13, 2025 | Product form fixes, filter system                                                    |
-| 2.0.0   | Dec 13, 2025 | Currency settings, real-time updates, number formatting                              |
+| Version | Date         | Key Changes                                                                             |
+| ------- | ------------ | --------------------------------------------------------------------------------------- |
+| 2.9.0   | Feb 22, 2026 | Per-seller Gelato integration: Multi-tenant POD, encrypted credentials, seller webhooks |
+| 2.8.0   | Feb 17, 2026 | Gelato Print-on-Demand integration: POD products, auto-submission, webhook tracking     |
+| 2.6.1   | Feb 16, 2026 | Enhanced SEO: Brand differentiation, structured data, comprehensive meta tags           |
+| 2.6.0   | Jan 16, 2026 | Authentication enhancements: Email OTP 2FA, Google OAuth, seller store auto-creation    |
+| 2.5.0   | Jan 3, 2026  | Stripe subscription integration with webhooks and billing portal                        |
+| 2.4.0   | Dec 31, 2025 | Store following system, admin notes, enhanced UI/UX                                     |
+| 2.3.0   | Dec 26, 2025 | UI/UX fixes, JWT auth fix, upload fix, M1 optimizations                                 |
+| 2.2.0   | Dec 13, 2025 | Stripe integration (production-ready)                                                   |
+| 2.1.1   | Dec 13, 2025 | Product form fixes, filter system                                                       |
+| 2.0.0   | Dec 13, 2025 | Currency settings, real-time updates, number formatting                                 |
 
 ---
 
@@ -604,8 +664,8 @@ Check DEADLINE_TRACKER.md and tell me what I should work on today
 
 ---
 
-_Last Updated: February 17, 2026_
-_Version: 2.8.0 - Gelato Print-on-Demand Integration_
+_Last Updated: February 22, 2026_
+_Version: 2.9.0 - Per-Seller Gelato Integration_
 
 ---
 
