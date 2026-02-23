@@ -170,6 +170,8 @@ export class SellerGelatoSettingsService {
 
   /**
    * Test Gelato API connection
+   * Uses the Catalog List API - the simplest endpoint that requires only a valid API key
+   * Note: Store ID will be validated when creating actual orders
    */
   async testConnection(credentials: { apiKey: string; storeId: string }): Promise<{
     success: boolean;
@@ -178,40 +180,85 @@ export class SellerGelatoSettingsService {
     accountEmail?: string;
   }> {
     try {
-      this.logger.debug(`Testing Gelato API connection for store ${credentials.storeId}`);
+      // Validate input
+      if (!credentials.apiKey || !credentials.storeId) {
+        return {
+          success: false,
+          error: 'API Key and Store ID are required.',
+        };
+      }
 
-      const response = await fetch(`https://api.gelato.com/v4/stores/${credentials.storeId}`, {
+      // Trim whitespace from credentials
+      const apiKey = credentials.apiKey.trim();
+      const storeId = credentials.storeId.trim();
+
+      this.logger.log(`Testing Gelato API connection for store ${storeId.slice(0, 8)}...`);
+      this.logger.debug(
+        `API Key length: ${apiKey.length}, Store ID: ${storeId.slice(0, 8)}...${storeId.slice(-8)}`
+      );
+
+      // Use the List Catalogs endpoint - simplest test that works with any valid API key
+      // See: https://dashboard.gelato.com/docs/products/catalog/list/
+      const url = 'https://product.gelatoapis.com/v3/catalogs';
+
+      this.logger.debug(`Calling Gelato API: GET ${url}`);
+
+      const response = await fetch(url, {
+        method: 'GET',
         headers: {
-          'X-API-KEY': credentials.apiKey,
+          'X-API-KEY': apiKey,
           'Content-Type': 'application/json',
         },
       });
 
+      this.logger.debug(`Gelato API response: ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
         const errorText = await response.text();
         this.logger.warn(`Gelato API test failed: ${response.status} - ${errorText}`);
+        this.logger.warn(
+          `API Key format check: starts with '${apiKey.slice(0, 8)}', length: ${apiKey.length}`
+        );
+
+        let errorMessage: string;
+
+        // Provide helpful error messages
+        if (response.status === 401 || response.status === 403) {
+          errorMessage =
+            'Invalid API Key. Please verify:\n1. The API key is correct (no extra spaces)\n2. The key is active in your Gelato dashboard\n3. The key has the necessary permissions';
+        } else if (response.status === 404) {
+          errorMessage =
+            'Gelato API endpoint not found. Your API key may not have access to the catalog API.';
+        } else {
+          errorMessage = `Connection failed (${response.status}). Please check your API key and try again.`;
+        }
 
         return {
           success: false,
-          error: `API returned ${response.status}: ${errorText}`,
+          error: errorMessage,
         };
       }
 
       const data = (await response.json()) as any;
 
-      this.logger.debug(`Gelato connection test successful for store ${credentials.storeId}`);
+      this.logger.log(
+        `✅ Gelato API key validated successfully for store ${storeId.slice(0, 8)}...`
+      );
+      this.logger.debug(`Gelato response data: ${JSON.stringify(data).slice(0, 200)}`);
 
+      // API key is valid - connection successful
       return {
         success: true,
-        accountName: data.name || data.storeName || null,
-        accountEmail: data.email || data.contactEmail || null,
+        accountName: `Gelato Account (${data.catalogs?.length || 0} catalogs available)`,
+        accountEmail: null,
       };
     } catch (error) {
       this.logger.error(`Gelato connection test error: ${error.message}`);
+      this.logger.error(`Error stack: ${error.stack}`);
 
       return {
         success: false,
-        error: error.message || 'Connection failed',
+        error: `Network error: ${error.message}. Please check your internet connection.`,
       };
     }
   }
