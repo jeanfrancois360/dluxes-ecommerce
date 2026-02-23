@@ -14,7 +14,6 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedName, setSelectedName] = useState('');
-  const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -267,42 +266,16 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
                     >
                       <div className="flex items-center gap-3">
                         {/* Product Image */}
-                        <div className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded border border-gray-200 overflow-hidden relative">
+                        <div className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded border border-gray-200 overflow-hidden">
                           {productImage && !failedImages.has(productId) ? (
-                            <>
-                              {/* Loading Skeleton */}
-                              {loadingImages.has(productId) && (
-                                <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-                              )}
-
-                              {/* Actual Image */}
-                              <img
-                                src={productImage}
-                                alt={productName}
-                                loading="lazy"
-                                className={`w-full h-full object-cover transition-opacity duration-200 ${
-                                  loadingImages.has(productId) ? 'opacity-0' : 'opacity-100'
-                                }`}
-                                onLoadStart={() => {
-                                  setLoadingImages((prev) => new Set(prev).add(productId));
-                                }}
-                                onLoad={() => {
-                                  setLoadingImages((prev) => {
-                                    const next = new Set(prev);
-                                    next.delete(productId);
-                                    return next;
-                                  });
-                                }}
-                                onError={() => {
-                                  setLoadingImages((prev) => {
-                                    const next = new Set(prev);
-                                    next.delete(productId);
-                                    return next;
-                                  });
-                                  setFailedImages((prev) => new Set(prev).add(productId));
-                                }}
-                              />
-                            </>
+                            <img
+                              src={productImage}
+                              alt={productName}
+                              className="w-full h-full object-cover"
+                              onError={() => {
+                                setFailedImages((prev) => new Set(prev).add(productId));
+                              }}
+                            />
                           ) : (
                             // Fallback Icon for no image or failed load
                             <div className="w-full h-full flex items-center justify-center bg-gray-50">
