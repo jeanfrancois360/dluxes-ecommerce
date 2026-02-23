@@ -561,12 +561,12 @@ export class GelatoService implements OnModuleInit {
       };
     }
 
-    // Use Store Products API to get product details from seller's store
+    // Use E-commerce API to get product details from seller's store
     return this.request<GelatoProduct>(
       `/stores/${credentials.storeId}/products/${productUid}`,
-      {},
+      { method: 'GET' },
       credentials,
-      this.catalogBaseUrl
+      this.ecommerceBaseUrl
     );
   }
 

@@ -591,6 +591,47 @@ export default function ProductForm({
     setFormData((prev: any) => ({ ...prev, images: urls }));
   }, []);
 
+  const handleGelatoProductSelect = (productDetails: any) => {
+    // Auto-populate product details from Gelato
+    const markup = formData.gelatoMarkupPercent || 50; // Default 50% markup
+    let suggestedPrice: number | undefined;
+
+    // Calculate suggested price from first variant's base cost
+    if (productDetails.variants && productDetails.variants.length > 0) {
+      const firstVariant = productDetails.variants[0];
+      if (firstVariant.baseCost) {
+        const baseCost = parseFloat(firstVariant.baseCost.amount);
+        suggestedPrice = baseCost * (1 + markup / 100);
+      }
+    }
+
+    // Build auto-populated description
+    let autoDescription = productDetails.description || '';
+    if (productDetails.variants && productDetails.variants.length > 0) {
+      autoDescription += '\n\nAvailable options:\n';
+      productDetails.variants.forEach((variant: any) => {
+        const options = Object.entries(variant.options || {})
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(', ');
+        autoDescription += `- ${variant.title || 'Variant'} (${options})\n`;
+      });
+    }
+
+    setFormData((prev: any) => ({
+      ...prev,
+      // Only auto-fill if fields are empty
+      name: prev.name || productDetails.title || '',
+      description: prev.description || autoDescription.trim(),
+      price: prev.price || suggestedPrice,
+      // Add preview image if available and no images yet
+      ...(productDetails.previewUrl && (!prev.images || prev.images.length === 0)
+        ? { images: [productDetails.previewUrl] }
+        : {}),
+    }));
+
+    toast.success('Product details auto-filled from Gelato');
+  };
+
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
 
@@ -1423,6 +1464,7 @@ export default function ProductForm({
           designFileUrl={formData.designFileUrl}
           gelatoMarkupPercent={formData.gelatoMarkupPercent}
           onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+          onGelatoProductSelect={handleGelatoProductSelect}
           disabled={loading}
         />
       ) : (

@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useGelatoCatalog } from '@/hooks/use-gelato';
+import { gelatoApi, GelatoProduct } from '@/lib/api/gelato';
+import { toast } from 'sonner';
 
 interface GelatoProductSelectorProps {
   value: string;
-  onChange: (uid: string, productName?: string) => void;
+  onChange: (uid: string, productName?: string, productDetails?: GelatoProduct) => void;
   disabled?: boolean;
 }
 
@@ -63,19 +65,29 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
     }
   }, [value, products, selectedName]);
 
-  function handleSelect(uid: string, name: string) {
-    onChange(uid, name);
-    setSelectedName(name);
-    setIsOpen(false);
-    setSearch('');
-    setSelectedCategory('');
+  async function handleSelect(uid: string, name: string) {
+    try {
+      // Fetch full product details for auto-population
+      const productDetails = await gelatoApi.getProductDetails(uid);
+      onChange(uid, name, productDetails);
+      setSelectedName(name);
+      setIsOpen(false);
+      setSearch('');
+    } catch (error) {
+      console.error('Failed to fetch product details:', error);
+      toast.error('Failed to load product details');
+      // Still update with basic info
+      onChange(uid, name);
+      setSelectedName(name);
+      setIsOpen(false);
+      setSearch('');
+    }
   }
 
   function handleClear() {
     onChange('', '');
     setSelectedName('');
     setSearch('');
-    setSelectedCategory('');
   }
 
   return (
@@ -231,12 +243,10 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
                   />
                 </svg>
                 <p className="text-sm font-medium text-gray-700 mb-1">
-                  {debouncedSearch || selectedCategory ? 'No products found' : 'Start searching'}
+                  {debouncedSearch ? 'No products found' : 'Start searching'}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {debouncedSearch || selectedCategory
-                    ? 'Try different search terms or filters'
-                    : 'Type a product name or select a category to browse'}
+                  {debouncedSearch ? 'Try different search terms' : 'Type a product name to browse'}
                 </p>
               </div>
             ) : (
