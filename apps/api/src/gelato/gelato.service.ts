@@ -37,7 +37,8 @@ export class GelatoService implements OnModuleInit {
   private platformApiKey: string | null = null;
   private platformStoreId: string | null = null;
   private platformWebhookSecret: string | null = null;
-  private baseUrl: string;
+  private baseUrl: string; // For orders API (v4)
+  private catalogBaseUrl: string; // For product catalog API (v3)
   private isPlatformConfigured = false;
 
   // Credentials cache (5-minute TTL)
@@ -65,10 +66,13 @@ export class GelatoService implements OnModuleInit {
     await this.initializeConfig();
   }
 
+  private catalogUid: string | null = null; // Cached catalog UID
+
   private async initializeConfig() {
     // Load platform credentials as fallback
     this.platformApiKey = this.configService.get('GELATO_API_KEY');
     this.baseUrl = this.configService.get('GELATO_API_URL', 'https://api.gelato.com/v4');
+    this.catalogBaseUrl = 'https://product.gelatoapis.com/v3'; // Product Catalog API
     this.platformStoreId = this.configService.get('GELATO_STORE_ID');
     this.platformWebhookSecret = this.configService.get('GELATO_WEBHOOK_SECRET');
 
@@ -181,7 +185,8 @@ export class GelatoService implements OnModuleInit {
           storeId: this.platformStoreId,
           isPlatformFallback: true,
         };
-        await this.request('/stores/' + this.platformStoreId, {}, credentials);
+        // Test connection using catalog endpoint (doesn't require store ID)
+        await this.request('/catalogs/products?limit=1', {}, credentials);
         apiConnected = true;
       } catch {
         apiConnected = false;
@@ -202,11 +207,12 @@ export class GelatoService implements OnModuleInit {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
-    credentials: GelatoCredentials
+    credentials: GelatoCredentials,
+    baseUrl?: string
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = `${baseUrl || this.baseUrl}${endpoint}`;
     this.logger.debug(
-      `Gelato API: ${options.method || 'GET'} ${endpoint} ` +
+      `Gelato API: ${options.method || 'GET'} ${url} ` +
         `(using ${credentials.isPlatformFallback ? 'platform' : 'seller'} account)`
     );
 
@@ -250,74 +256,253 @@ export class GelatoService implements OnModuleInit {
   // ---- PRODUCT CATALOG ----
   // These methods use platform credentials as they're for browsing the catalog
 
-  async getProductCategories(): Promise<string[]> {
-    // Use platform credentials for catalog browsing
-    if (!this.isPlatformConfigured) {
-      return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
+  /**
+   * Get the catalog UID from Gelato
+   * Uses a well-known default catalog UID
+   */
+  private async getCatalogUid(credentials: GelatoCredentials): Promise<string> {
+    if (this.catalogUid) {
+      return this.catalogUid;
     }
 
-    const credentials: GelatoCredentials = {
-      apiKey: this.platformApiKey,
-      storeId: this.platformStoreId,
-      isPlatformFallback: true,
-    };
+    // Try to get available catalogs
+    try {
+      const response = await this.request<{
+        catalogs: Array<{ catalogUid: string; title: string }>;
+      }>('/catalogs', {}, credentials, this.catalogBaseUrl);
+
+      if (response.catalogs && response.catalogs.length > 0) {
+        this.catalogUid = response.catalogs[0].catalogUid;
+        this.logger.log(`Using Gelato catalog: ${response.catalogs[0].title} (${this.catalogUid})`);
+        return this.catalogUid;
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to fetch catalogs: ${error.message}`);
+    }
+
+    // Fallback to well-known catalog UID
+    // Gelato has a main product catalog that should work for most accounts
+    this.catalogUid = 'posters'; // Common Gelato catalog
+    this.logger.log(`Using default Gelato catalog: ${this.catalogUid}`);
+    return this.catalogUid;
+  }
+
+  async getProductCategories(userId?: string): Promise<string[]> {
+    let credentials: GelatoCredentials;
+
+    if (userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { store: true },
+      });
+
+      const userRole = user?.role;
+
+      // For SELLERS: MUST have their own credentials
+      if (userRole === 'SELLER') {
+        if (!user?.store) {
+          return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
+        }
+
+        const sellerCreds = await this.getSellerCredentials(user.store.id);
+
+        if (sellerCreds.isPlatformFallback) {
+          return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
+        }
+
+        credentials = sellerCreds;
+      }
+      // For ADMINS: Use platform credentials
+      else if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+        if (!this.isPlatformConfigured) {
+          return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
+        }
+
+        credentials = {
+          apiKey: this.platformApiKey,
+          storeId: this.platformStoreId,
+          isPlatformFallback: true,
+        };
+      }
+    }
+
+    // Fallback to constants if no credentials
+    if (!credentials) {
+      return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
+    }
 
     const response = await this.request<{ categories: string[] }>(
       '/catalogs/categories',
       {},
-      credentials
+      credentials,
+      this.catalogBaseUrl
     );
     return response.categories || [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
   }
 
-  async getProducts(params?: {
-    category?: string;
-    limit?: number;
-    offset?: number;
-    search?: string;
-  }): Promise<{ products: GelatoProduct[]; total: number }> {
-    // Use platform credentials for catalog browsing
-    if (!this.isPlatformConfigured) {
-      throw new HttpException(
-        'Gelato catalog not available. Platform account not configured.',
-        HttpStatus.SERVICE_UNAVAILABLE
-      );
+  async getProducts(
+    params?: {
+      category?: string;
+      limit?: number;
+      offset?: number;
+      search?: string;
+    },
+    userId?: string
+  ): Promise<{ products: GelatoProduct[]; total: number }> {
+    let credentials: GelatoCredentials;
+    let userRole: string;
+
+    if (userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { store: true },
+      });
+
+      userRole = user?.role;
+
+      // For SELLERS: MUST have their own credentials configured (no fallback)
+      if (userRole === 'SELLER') {
+        if (!user?.store) {
+          throw new HttpException('Store not found. Please contact support.', HttpStatus.NOT_FOUND);
+        }
+
+        const sellerCreds = await this.getSellerCredentials(user.store.id);
+
+        if (sellerCreds.isPlatformFallback) {
+          throw new HttpException(
+            'Gelato not configured. Please configure your Gelato credentials in Settings to browse the product catalog.',
+            HttpStatus.FORBIDDEN
+          );
+        }
+
+        credentials = sellerCreds;
+        this.logger.debug(`Using seller credentials for catalog (user: ${userId})`);
+      }
+      // For ADMINS: Use platform credentials (admins browse catalog for all sellers)
+      else if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+        if (!this.isPlatformConfigured) {
+          throw new HttpException(
+            'Platform Gelato account not configured. Please configure GELATO_API_KEY in .env file.',
+            HttpStatus.SERVICE_UNAVAILABLE
+          );
+        }
+
+        credentials = {
+          apiKey: this.platformApiKey,
+          storeId: this.platformStoreId,
+          isPlatformFallback: true,
+        };
+        this.logger.debug('Using platform credentials for catalog (admin user)');
+      }
     }
 
-    const credentials: GelatoCredentials = {
-      apiKey: this.platformApiKey,
-      storeId: this.platformStoreId,
-      isPlatformFallback: true,
-    };
+    // No user provided - use platform if available
+    if (!credentials) {
+      if (!this.isPlatformConfigured) {
+        throw new HttpException(
+          'Gelato not configured. Please configure your credentials.',
+          HttpStatus.SERVICE_UNAVAILABLE
+        );
+      }
 
-    const query = new URLSearchParams();
-    if (params?.category) query.set('category', params.category);
-    if (params?.limit) query.set('limit', String(params.limit));
-    if (params?.offset) query.set('offset', String(params.offset));
-    if (params?.search) query.set('search', params.search);
+      credentials = {
+        apiKey: this.platformApiKey,
+        storeId: this.platformStoreId,
+        isPlatformFallback: true,
+      };
+    }
 
-    return this.request<{ products: GelatoProduct[]; total: number }>(
-      `/catalogs/products?${query}`,
-      {},
-      credentials
+    // Use Store Products API to get seller's custom products instead of global catalog
+    const queryParams = new URLSearchParams();
+    queryParams.set('limit', String(params?.limit || 50));
+    queryParams.set('offset', String(params?.offset || 0));
+
+    if (params?.search) {
+      queryParams.set('search', params.search);
+    }
+
+    // Use /stores/{storeId}/products endpoint to fetch seller's products
+    const response = await this.request<{ products: GelatoProduct[]; total?: number }>(
+      `/stores/${credentials.storeId}/products?${queryParams}`,
+      {
+        method: 'GET',
+      },
+      credentials,
+      this.baseUrl // Use Order API base URL for store endpoints
     );
+
+    return {
+      products: response.products || [],
+      total: response.total || response.products?.length || 0,
+    };
   }
 
-  async getProduct(productUid: string): Promise<GelatoProduct> {
-    if (!this.isPlatformConfigured) {
-      throw new HttpException(
-        'Gelato catalog not available. Platform account not configured.',
-        HttpStatus.SERVICE_UNAVAILABLE
-      );
+  async getProduct(productUid: string, userId?: string): Promise<GelatoProduct> {
+    let credentials: GelatoCredentials;
+    let userRole: string;
+
+    if (userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { store: true },
+      });
+
+      userRole = user?.role;
+
+      // For SELLERS: MUST have their own credentials configured
+      if (userRole === 'SELLER') {
+        if (!user?.store) {
+          throw new HttpException('Store not found. Please contact support.', HttpStatus.NOT_FOUND);
+        }
+
+        const sellerCreds = await this.getSellerCredentials(user.store.id);
+
+        if (sellerCreds.isPlatformFallback) {
+          throw new HttpException(
+            'Gelato not configured. Please configure your Gelato credentials in Settings.',
+            HttpStatus.FORBIDDEN
+          );
+        }
+
+        credentials = sellerCreds;
+      }
+      // For ADMINS: Use platform credentials
+      else if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+        if (!this.isPlatformConfigured) {
+          throw new HttpException(
+            'Platform Gelato account not configured.',
+            HttpStatus.SERVICE_UNAVAILABLE
+          );
+        }
+
+        credentials = {
+          apiKey: this.platformApiKey,
+          storeId: this.platformStoreId,
+          isPlatformFallback: true,
+        };
+      }
     }
 
-    const credentials: GelatoCredentials = {
-      apiKey: this.platformApiKey,
-      storeId: this.platformStoreId,
-      isPlatformFallback: true,
-    };
+    // No user provided - use platform if available
+    if (!credentials) {
+      if (!this.isPlatformConfigured) {
+        throw new HttpException('Gelato not configured.', HttpStatus.SERVICE_UNAVAILABLE);
+      }
 
-    return this.request<GelatoProduct>(`/catalogs/products/${productUid}`, {}, credentials);
+      credentials = {
+        apiKey: this.platformApiKey,
+        storeId: this.platformStoreId,
+        isPlatformFallback: true,
+      };
+    }
+
+    // Use Store Products API to get product details from seller's store
+    return this.request<GelatoProduct>(
+      `/stores/${credentials.storeId}/products/${productUid}`,
+      {},
+      credentials,
+      this.baseUrl
+    );
   }
 
   async getProductVariants(productUid: string): Promise<GelatoProduct['variants']> {
