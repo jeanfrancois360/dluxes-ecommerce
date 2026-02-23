@@ -2,6 +2,7 @@
 
 import { GelatoProductSelector } from './gelato-product-selector';
 import { DesignUploader } from './design-uploader';
+import { GelatoProduct } from '@/lib/api/gelato';
 
 interface PodConfigurationSectionProps {
   fulfillmentType: string;
@@ -9,6 +10,7 @@ interface PodConfigurationSectionProps {
   designFileUrl: string;
   gelatoMarkupPercent?: number;
   onChange: (field: string, value: any) => void;
+  onGelatoProductSelect?: (productDetails: GelatoProduct) => void;
   disabled?: boolean;
 }
 
@@ -18,6 +20,7 @@ export function PodConfigurationSection({
   designFileUrl,
   gelatoMarkupPercent,
   onChange,
+  onGelatoProductSelect,
   disabled,
 }: PodConfigurationSectionProps) {
   const isPod = fulfillmentType === 'GELATO_POD';
@@ -114,7 +117,12 @@ export function PodConfigurationSection({
             </label>
             <GelatoProductSelector
               value={gelatoProductUid}
-              onChange={(uid, name) => onChange('gelatoProductUid', uid)}
+              onChange={(uid, name, productDetails) => {
+                onChange('gelatoProductUid', uid);
+                if (productDetails && onGelatoProductSelect) {
+                  onGelatoProductSelect(productDetails);
+                }
+              }}
               disabled={disabled}
             />
             {gelatoProductUid && (
