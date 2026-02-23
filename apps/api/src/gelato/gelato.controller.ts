@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -52,24 +53,30 @@ export class GelatoController {
   @Get('catalog/products')
   @Roles('ADMIN', 'SUPER_ADMIN', 'SELLER')
   async getCatalogProducts(
+    @Req() req: any,
     @Query('category') category?: string,
     @Query('search') search?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string
   ) {
-    const result = await this.productsService.getCatalog({
-      category,
-      search,
-      limit: limit ? parseInt(limit, 10) : 20,
-      offset: offset ? parseInt(offset, 10) : 0,
-    });
+    const userId = req.user?.id;
+    const result = await this.productsService.getCatalog(
+      {
+        category,
+        search,
+        limit: limit ? parseInt(limit, 10) : 20,
+        offset: offset ? parseInt(offset, 10) : 0,
+      },
+      userId
+    );
     return { success: true, data: result };
   }
 
   @Get('catalog/products/:productUid')
   @Roles('ADMIN', 'SUPER_ADMIN', 'SELLER')
-  async getCatalogProductDetails(@Param('productUid') productUid: string) {
-    const product = await this.productsService.getProductDetails(productUid);
+  async getCatalogProductDetails(@Req() req: any, @Param('productUid') productUid: string) {
+    const userId = req.user?.id;
+    const product = await this.productsService.getProductDetails(productUid, userId);
     return { success: true, data: product };
   }
 

@@ -13,21 +13,24 @@ export class GelatoProductsService {
     private readonly gelatoService: GelatoService
   ) {}
 
-  async getCatalog(params?: {
-    category?: string;
-    limit?: number;
-    offset?: number;
-    search?: string;
-  }) {
-    return this.gelatoService.getProducts(params);
+  async getCatalog(
+    params?: {
+      category?: string;
+      limit?: number;
+      offset?: number;
+      search?: string;
+    },
+    userId?: string
+  ) {
+    return this.gelatoService.getProducts(params, userId);
   }
 
-  async getCategories() {
-    return this.gelatoService.getProductCategories();
+  async getCategories(userId?: string) {
+    return this.gelatoService.getProductCategories(userId);
   }
 
-  async getProductDetails(productUid: string) {
-    return this.gelatoService.getProduct(productUid);
+  async getProductDetails(productUid: string, userId?: string) {
+    return this.gelatoService.getProduct(productUid, userId);
   }
 
   async configurePodProduct(productId: string, dto: CreatePodProductDto) {

@@ -39,6 +39,7 @@ export class GelatoService implements OnModuleInit {
   private platformWebhookSecret: string | null = null;
   private baseUrl: string; // For orders API (v4)
   private catalogBaseUrl: string; // For product catalog API (v3)
+  private ecommerceBaseUrl: string; // For ecommerce API (v1) - store products
   private isPlatformConfigured = false;
 
   // Credentials cache (5-minute TTL)
@@ -73,6 +74,7 @@ export class GelatoService implements OnModuleInit {
     this.platformApiKey = this.configService.get('GELATO_API_KEY');
     this.baseUrl = this.configService.get('GELATO_API_URL', 'https://api.gelato.com/v4');
     this.catalogBaseUrl = 'https://product.gelatoapis.com/v3'; // Product Catalog API
+    this.ecommerceBaseUrl = 'https://ecommerce.gelatoapis.com/v1'; // E-commerce API (store products)
     this.platformStoreId = this.configService.get('GELATO_STORE_ID');
     this.platformWebhookSecret = this.configService.get('GELATO_WEBHOOK_SECRET');
 
@@ -331,13 +333,47 @@ export class GelatoService implements OnModuleInit {
       return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
     }
 
-    const response = await this.request<{ categories: string[] }>(
-      '/catalogs/categories',
-      {},
-      credentials,
-      this.catalogBaseUrl
-    );
-    return response.categories || [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
+    // For E-commerce API: Extract categories from actual store products
+    try {
+      const ecommercePath = `/stores/${credentials.storeId}/products?limit=100&offset=0&order=desc&orderBy=createdAt`;
+      const response = await this.request<{ products?: any[] }>(
+        ecommercePath,
+        { method: 'GET' },
+        credentials,
+        this.ecommerceBaseUrl
+      );
+
+      const products = response.products || [];
+
+      if (products.length === 0) {
+        return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
+      }
+
+      // Extract unique categories from products
+      const categoriesSet = new Set<string>();
+      products.forEach((product: any) => {
+        // Check multiple possible category field names
+        const category =
+          product.category || product.productType || product.type || product.categoryName;
+        if (category && typeof category === 'string') {
+          categoriesSet.add(category);
+        }
+      });
+
+      const categories = Array.from(categoriesSet).sort();
+
+      if (categories.length > 0) {
+        this.logger.debug(
+          `Extracted ${categories.length} categories from store products: ${categories.join(', ')}`
+        );
+        return categories;
+      }
+
+      return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
+    } catch (error) {
+      this.logger.warn(`Failed to fetch categories from E-commerce API: ${error.message}`);
+      return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
+    }
   }
 
   async getProducts(
@@ -422,54 +458,96 @@ export class GelatoService implements OnModuleInit {
       queryParams.set('search', params.search);
     }
 
-    this.logger.debug(`Fetching product templates for store: ${credentials.storeId}`);
+    this.logger.debug(`Fetching store products for store: ${credentials.storeId}`);
 
-    // Try /stores/{storeId}/product-templates endpoint
+    // Try the E-commerce API endpoint first (correct endpoint for store products)
     try {
-      const response = await this.request<{ productTemplates: GelatoProduct[]; total?: number }>(
-        `/stores/${credentials.storeId}/product-templates?${queryParams}`,
-        {
-          method: 'GET',
-        },
+      const ecommerceQueryParams = new URLSearchParams();
+      ecommerceQueryParams.set('limit', String(params?.limit || 50));
+      ecommerceQueryParams.set('offset', String(params?.offset || 0));
+      ecommerceQueryParams.set('order', 'desc');
+      ecommerceQueryParams.set('orderBy', 'createdAt');
+
+      // Note: E-commerce API doesn't support search parameter, we'll filter client-side if needed
+      const ecommercePath = `/stores/${credentials.storeId}/products?${ecommerceQueryParams}`;
+
+      this.logger.debug(`Fetching from E-commerce API: ${this.ecommerceBaseUrl}${ecommercePath}`);
+
+      const response = await this.request<{ products?: GelatoProduct[]; total?: number }>(
+        ecommercePath,
+        { method: 'GET' },
         credentials,
-        this.catalogBaseUrl
+        this.ecommerceBaseUrl
       );
 
-      return {
-        products: response.productTemplates || [],
-        total: response.total || response.productTemplates?.length || 0,
-      };
-    } catch (error) {
-      // If templates endpoint doesn't exist, fall back to catalog search
-      this.logger.warn(
-        `Product templates endpoint failed (${error.message}), falling back to catalog`
-      );
+      let products = response.products || [];
 
-      const catalogUid = await this.getCatalogUid(credentials);
-      const searchBody: any = {
-        limit: params?.limit || 50,
-        offset: params?.offset || 0,
-      };
-
-      if (params?.search) {
-        searchBody.search = params.search;
+      // Debug: Log product structure to understand available fields
+      if (products.length > 0) {
+        this.logger.debug(`Sample product fields: ${JSON.stringify(Object.keys(products[0]))}`);
       }
 
-      const response = await this.request<{ products: GelatoProduct[]; total?: number }>(
-        `/catalogs/${catalogUid}/products:search`,
-        {
-          method: 'POST',
-          body: JSON.stringify(searchBody),
-        },
-        credentials,
-        this.catalogBaseUrl
-      );
+      // Client-side category filtering if category parameter provided
+      if (params?.category && products.length > 0) {
+        const categoryLower = params.category.toLowerCase();
+        products = products.filter((p: any) => {
+          // Check multiple possible category field names
+          const category = p.category || p.productType || p.type || p.categoryName || '';
+          return category.toLowerCase() === categoryLower;
+        });
+      }
 
+      // Client-side search filtering if search parameter provided
+      if (params?.search && products.length > 0) {
+        const searchLower = params.search.toLowerCase();
+        products = products.filter((p: any) => {
+          const title = p.title || p.name || '';
+          const uid = p.uid || p.id || '';
+          return (
+            title.toLowerCase().includes(searchLower) || uid.toLowerCase().includes(searchLower)
+          );
+        });
+      }
+
+      this.logger.log(`Successfully fetched ${products.length} products from E-commerce API`);
       return {
-        products: response.products || [],
-        total: response.total || response.products?.length || 0,
+        products,
+        total: response.total || products.length,
       };
+    } catch (error) {
+      this.logger.warn(
+        `E-commerce API endpoint failed (${error.message}), falling back to catalog search`
+      );
+      // Fall through to catalog search fallback below
     }
+
+    // If E-commerce API fails, fall back to catalog search
+    this.logger.warn(`Store products not accessible, falling back to catalog search`);
+
+    const catalogUid = await this.getCatalogUid(credentials);
+    const searchBody: any = {
+      limit: params?.limit || 50,
+      offset: params?.offset || 0,
+    };
+
+    if (params?.search) {
+      searchBody.search = params.search;
+    }
+
+    const response = await this.request<{ products: GelatoProduct[]; total?: number }>(
+      `/catalogs/${catalogUid}/products:search`,
+      {
+        method: 'POST',
+        body: JSON.stringify(searchBody),
+      },
+      credentials,
+      this.catalogBaseUrl
+    );
+
+    return {
+      products: response.products || [],
+      total: response.total || response.products?.length || 0,
+    };
   }
 
   async getProduct(productUid: string, userId?: string): Promise<GelatoProduct> {
