@@ -412,7 +412,8 @@ export class GelatoService implements OnModuleInit {
       };
     }
 
-    // Use Store Products API to get seller's custom products instead of global catalog
+    // Try to fetch seller's product templates (saved products in their store)
+    // Gelato stores custom products as "product templates"
     const queryParams = new URLSearchParams();
     queryParams.set('limit', String(params?.limit || 50));
     queryParams.set('offset', String(params?.offset || 0));
@@ -421,16 +422,54 @@ export class GelatoService implements OnModuleInit {
       queryParams.set('search', params.search);
     }
 
-    // Use /stores/{storeId}/products endpoint to fetch seller's products
-    this.logger.debug(`Fetching products for store: ${credentials.storeId}`);
-    const response = await this.request<{ products: GelatoProduct[]; total?: number }>(
-      `/stores/${credentials.storeId}/products?${queryParams}`,
-      {
-        method: 'GET',
-      },
-      credentials,
-      this.catalogBaseUrl // Store products are under Product API, not Order API
-    );
+    this.logger.debug(`Fetching product templates for store: ${credentials.storeId}`);
+
+    // Try /stores/{storeId}/product-templates endpoint
+    try {
+      const response = await this.request<{ productTemplates: GelatoProduct[]; total?: number }>(
+        `/stores/${credentials.storeId}/product-templates?${queryParams}`,
+        {
+          method: 'GET',
+        },
+        credentials,
+        this.catalogBaseUrl
+      );
+
+      return {
+        products: response.productTemplates || [],
+        total: response.total || response.productTemplates?.length || 0,
+      };
+    } catch (error) {
+      // If templates endpoint doesn't exist, fall back to catalog search
+      this.logger.warn(
+        `Product templates endpoint failed (${error.message}), falling back to catalog`
+      );
+
+      const catalogUid = await this.getCatalogUid(credentials);
+      const searchBody: any = {
+        limit: params?.limit || 50,
+        offset: params?.offset || 0,
+      };
+
+      if (params?.search) {
+        searchBody.search = params.search;
+      }
+
+      const response = await this.request<{ products: GelatoProduct[]; total?: number }>(
+        `/catalogs/${catalogUid}/products:search`,
+        {
+          method: 'POST',
+          body: JSON.stringify(searchBody),
+        },
+        credentials,
+        this.catalogBaseUrl
+      );
+
+      return {
+        products: response.products || [],
+        total: response.total || response.products?.length || 0,
+      };
+    }
 
     return {
       products: response.products || [],
