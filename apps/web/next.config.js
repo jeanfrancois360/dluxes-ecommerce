@@ -150,7 +150,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https: http://localhost:*",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https://api.stripe.com https://m.stripe.network https://*.supabase.co https://www.paypal.com http://localhost:* wss://localhost:*",
+              "connect-src 'self' https://api.nextpik.com https://api.stripe.com https://m.stripe.network https://*.supabase.co https://www.paypal.com http://localhost:* wss://localhost:*",
               "frame-src 'self' https://js.stripe.com https://m.stripe.network https://www.paypal.com",
               "object-src 'none'",
               "base-uri 'self'",
