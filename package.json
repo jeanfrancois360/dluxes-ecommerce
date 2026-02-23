@@ -37,6 +37,8 @@
     "reset:execute": "tsx scripts/reset-all-data.ts --execute",
     "analyze:db": "tsx scripts/analyze-all-data.ts",
     "create:admin": "tsx scripts/create-admin.ts",
+    "security:check": "bash security-check.sh",
+    "security:audit": "pnpm audit --audit-level=moderate",
     "prepare": "husky"
   },
   "devDependencies": {
