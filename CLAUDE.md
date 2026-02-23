@@ -2,7 +2,7 @@
 
 ## Project Context
 
-**NextPik** is a **production-ready multi-vendor luxury e-commerce platform** (v2.6.0) with:
+**NextPik** is a **production-ready multi-vendor luxury e-commerce platform** (v2.8.1) with:
 
 - **Stripe payment processing** with escrow system
 - **Multi-currency support** (46+ currencies)
@@ -10,7 +10,7 @@
 - **Real-time WebSocket updates**
 - **Admin, Seller, Buyer, and Delivery Partner portals**
 
-**Tech Stack:** Next.js 15 + NestJS + Prisma + PostgreSQL + Redis + Meilisearch
+**Tech Stack:** Next.js 16 + NestJS + Prisma + PostgreSQL + Redis + Meilisearch
 **Deadline:** January 3, 2026
 
 ## URLs
@@ -110,9 +110,29 @@
 
 - Use **underscore notation** for settings keys: `escrow_enabled` NOT `escrow.enabled`
 - Use `formatCurrencyAmount()` from `@/lib/utils/number-format` for prices
+- **ALWAYS sanitize user-generated HTML** - Use `sanitizeHtml()` from `@/lib/sanitize` before rendering
 - Follow existing patterns in the codebase
 - Add proper error handling with try-catch
 - Use DTOs for all API inputs with class-validator decorators
+
+### HTML Sanitization (Security)
+
+**CRITICAL:** Never render user-generated HTML without sanitization. Use the appropriate function from `@/lib/sanitize`:
+
+```typescript
+import { sanitizeHtml, sanitizeText, sanitizePaymentInstructions } from '@/lib/sanitize';
+
+// For rich product descriptions (allows safe HTML tags)
+<div dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }} />
+
+// For plain text (strips all HTML)
+const plainText = sanitizeText(userInput);
+
+// For payment gateway instructions (more restrictive)
+<div dangerouslySetInnerHTML={{ __html: sanitizePaymentInstructions(instructions) }} />
+```
+
+**Never use `dangerouslySetInnerHTML` without sanitization!**
 
 ### Field Name Mappings (Frontend ↔ Backend)
 
@@ -348,6 +368,44 @@ return {
 - CPU: 40-50% reduction
 - RAM: 54% reduction (5.5GB → 2.5GB)
 - Use `pnpm dev:web` or `pnpm dev:api` for single-area work
+
+### Security Hardening (v2.8.1 - Feb 23, 2026)
+
+**XSS Protection:**
+
+- Installed DOMPurify for HTML sanitization (`dompurify@3.3.1`, `isomorphic-dompurify@3.0.0`)
+- Created `apps/web/src/lib/sanitize.ts` with three sanitization levels:
+  - `sanitizeHtml()` - Rich HTML with safe formatting tags (for product descriptions)
+  - `sanitizeText()` - Strips all HTML, returns plain text
+  - `sanitizePaymentInstructions()` - Restrictive sanitization for payment gateway setup
+- Applied sanitization to:
+  - Product descriptions (`apps/web/src/app/products/[slug]/page.tsx`)
+  - Payment gateway setup instructions (`apps/web/src/components/settings/payment/PaymentGatewayCard.tsx`)
+
+**Rate Limiting:**
+
+- Added `@Throttle` decorator to critical payment endpoints (20 req/minute):
+  - `POST /payment/methods/setup` - Create SetupIntent
+  - `POST /payment/create-intent` - Create payment intent
+  - `POST /payment/create-intent-saved` - Create payment with saved method
+  - `POST /payment/paypal/create-order` - Create PayPal order
+- Auth endpoints already protected:
+  - Login: 5 req/15min
+  - Register: 3 req/hour
+  - Password reset: 3 req/hour
+  - Magic link: 3 req/hour
+
+**Dependencies Updated:**
+
+- Next.js: 15.5.6 → 16.1.6 (Turbopack improvements)
+- Fixed 17 critical vulnerabilities (58% reduction: 29 → 12)
+- Fixed DoS vulnerability in Next.js
+
+**Files:**
+
+- `apps/web/src/lib/sanitize.ts` - HTML sanitization utility
+- `apps/api/src/payment/payment.controller.ts` - Rate limiting
+- Pre-commit hooks already include secret detection
 
 ### Tax & Shipping Configuration (v2.7.0 - Jan 25, 2026)
 
@@ -589,6 +647,8 @@ nextpik/
 
 | Version | Date         | Key Changes                                                                          |
 | ------- | ------------ | ------------------------------------------------------------------------------------ |
+| 2.8.1   | Feb 23, 2026 | Security hardening: XSS protection (DOMPurify), payment endpoint rate limiting       |
+| 2.8.0   | Feb 17, 2026 | Gelato Print-on-Demand integration: POD products, auto-submission, webhook tracking  |
 | 2.6.1   | Feb 16, 2026 | Enhanced SEO: Brand differentiation, structured data, comprehensive meta tags        |
 | 2.6.0   | Jan 16, 2026 | Authentication enhancements: Email OTP 2FA, Google OAuth, seller store auto-creation |
 | 2.5.0   | Jan 3, 2026  | Stripe subscription integration with webhooks and billing portal                     |
@@ -616,8 +676,8 @@ Check DEADLINE_TRACKER.md and tell me what I should work on today
 
 ---
 
-_Last Updated: January 16, 2026_
-_Version: 2.6.0 - Authentication Enhancements_
+_Last Updated: February 23, 2026_
+_Version: 2.8.1 - Security Hardening_
 
 ---
 
