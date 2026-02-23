@@ -13,6 +13,7 @@ import {
   Request,
   Query,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { PaymentService } from './payment.service';
 import { PayPalService } from './paypal.service';
 import { PaymentMonitorService } from './payment-monitor.service';
@@ -57,6 +58,7 @@ export class PaymentController {
    * POST /payment/methods/setup
    */
   @Post('methods/setup')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   async createSetupIntent(@Request() req: any) {
     try {
@@ -186,6 +188,7 @@ export class PaymentController {
    * POST /payment/create-intent-saved
    */
   @Post('create-intent-saved')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   async createPaymentIntentWithSavedMethod(
     @Body() body: CreatePaymentIntentDto & { paymentMethodId: string },
@@ -222,6 +225,7 @@ export class PaymentController {
    * POST /payment/create-intent
    */
   @Post('create-intent')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   async createPaymentIntent(@Body() dto: CreatePaymentIntentDto, @Request() req: any) {
     return this.paymentService.createPaymentIntent(dto, req.user.userId || req.user.id);
@@ -348,6 +352,7 @@ export class PaymentController {
    * POST /payment/paypal/create-order
    */
   @Post('paypal/create-order')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   async createPayPalOrder(
     @Body()

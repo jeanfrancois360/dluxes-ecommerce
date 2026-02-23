@@ -16,6 +16,7 @@ import { useReviews, useCreateReview, useMarkHelpful, useReportReview } from '@/
 import { useWishlist } from '@/hooks/use-wishlist';
 import { useCart } from '@/hooks/use-cart';
 import { toast, standardToasts } from '@/lib/utils/toast';
+import { sanitizeHtml } from '@/lib/sanitize';
 import Link from 'next/link';
 import { useParams, useRouter, notFound } from 'next/navigation';
 import { useProduct, useRelatedProducts } from '@/hooks/use-product';
@@ -1092,7 +1093,7 @@ export default function ProductDetailPage() {
                   <div className="prose prose-lg max-w-none">
                     <div
                       dangerouslySetInnerHTML={{
-                        __html: product.richDescription || product.description,
+                        __html: sanitizeHtml(product.richDescription || product.description),
                       }}
                     />
                   </div>
