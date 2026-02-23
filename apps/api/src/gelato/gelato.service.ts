@@ -328,52 +328,11 @@ export class GelatoService implements OnModuleInit {
       }
     }
 
-    // Fallback to constants if no credentials
-    if (!credentials) {
-      return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
-    }
-
-    // For E-commerce API: Extract categories from actual store products
-    try {
-      const ecommercePath = `/stores/${credentials.storeId}/products?limit=100&offset=0&order=desc&orderBy=createdAt`;
-      const response = await this.request<{ products?: any[] }>(
-        ecommercePath,
-        { method: 'GET' },
-        credentials,
-        this.ecommerceBaseUrl
-      );
-
-      const products = response.products || [];
-
-      if (products.length === 0) {
-        return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
-      }
-
-      // Extract unique categories from products
-      const categoriesSet = new Set<string>();
-      products.forEach((product: any) => {
-        // Check multiple possible category field names
-        const category =
-          product.category || product.productType || product.type || product.categoryName;
-        if (category && typeof category === 'string') {
-          categoriesSet.add(category);
-        }
-      });
-
-      const categories = Array.from(categoriesSet).sort();
-
-      if (categories.length > 0) {
-        this.logger.debug(
-          `Extracted ${categories.length} categories from store products: ${categories.join(', ')}`
-        );
-        return categories;
-      }
-
-      return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
-    } catch (error) {
-      this.logger.warn(`Failed to fetch categories from E-commerce API: ${error.message}`);
-      return [...GELATO_CONSTANTS.PRODUCT_CATEGORIES];
-    }
+    // Note: E-commerce API products don't have category fields
+    // Categories are only applicable for the product catalog, not custom store products
+    // Return empty array to disable category filtering for custom products
+    this.logger.debug('Category filtering not supported for E-commerce API store products');
+    return [];
   }
 
   async getProducts(
@@ -487,15 +446,8 @@ export class GelatoService implements OnModuleInit {
         this.logger.debug(`Sample product fields: ${JSON.stringify(Object.keys(products[0]))}`);
       }
 
-      // Client-side category filtering if category parameter provided
-      if (params?.category && products.length > 0) {
-        const categoryLower = params.category.toLowerCase();
-        products = products.filter((p: any) => {
-          // Check multiple possible category field names
-          const category = p.category || p.productType || p.type || p.categoryName || '';
-          return category.toLowerCase() === categoryLower;
-        });
-      }
+      // Note: E-commerce API products don't have category fields
+      // Category filtering is not supported for custom store products
 
       // Client-side search filtering if search parameter provided
       if (params?.search && products.length > 0) {

@@ -12,12 +12,9 @@ interface GelatoProductSelectorProps {
 export function GelatoProductSelector({ value, onChange, disabled }: GelatoProductSelectorProps) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedName, setSelectedName] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const { categories, isLoading: categoriesLoading } = useGelatoCategories();
 
   const {
     products,
@@ -26,7 +23,7 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
     error,
   } = useGelatoCatalog({
     search: debouncedSearch,
-    category: selectedCategory,
+    // Note: E-commerce API doesn't support category filtering for custom store products
     limit: 50,
   });
 
@@ -161,37 +158,6 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
                 />
               </div>
             </div>
-
-            {/* Category Filter */}
-            {!categoriesLoading && categories.length > 0 && (
-              <div className="flex gap-1 overflow-x-auto pb-1">
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory('')}
-                  className={`px-3 py-1 text-xs rounded-full whitespace-nowrap transition-colors ${
-                    selectedCategory === ''
-                      ? 'bg-[#CBB57B] text-black font-medium'
-                      : 'bg-white border border-gray-200 text-gray-600 hover:border-[#CBB57B]'
-                  }`}
-                >
-                  All
-                </button>
-                {categories.map((category: string) => (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-3 py-1 text-xs rounded-full whitespace-nowrap transition-colors ${
-                      selectedCategory === category
-                        ? 'bg-[#CBB57B] text-black font-medium'
-                        : 'bg-white border border-gray-200 text-gray-600 hover:border-[#CBB57B]'
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Product List */}
