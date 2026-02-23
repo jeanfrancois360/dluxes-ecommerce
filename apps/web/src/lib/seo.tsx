@@ -339,6 +339,119 @@ export function generateItemListSchema({
   };
 }
 
+export function generateStoreSchema({
+  name,
+  description,
+  logo,
+  url,
+  slug,
+  rating,
+  reviewCount,
+}: {
+  name: string;
+  description?: string | null;
+  logo?: string | null;
+  url: string;
+  slug: string;
+  rating?: number | null;
+  reviewCount?: number | null;
+}) {
+  const schema: any = {
+    '@context': 'https://schema.org',
+    '@type': 'Store',
+    name,
+    description: description || `Shop ${name} on NextPik - verified seller with premium products.`,
+    url,
+    image: logo
+      ? logo.startsWith('http')
+        ? logo
+        : `${siteConfig.url}${logo}`
+      : `${siteConfig.url}/og-image.jpg`,
+    '@id': `${siteConfig.url}/store/${slug}`,
+    parentOrganization: {
+      '@type': 'Organization',
+      name: siteConfig.name,
+      url: siteConfig.url,
+    },
+  };
+
+  if (rating && reviewCount) {
+    schema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: rating.toString(),
+      reviewCount: reviewCount.toString(),
+      bestRating: '5',
+      worstRating: '1',
+    };
+  }
+
+  return schema;
+}
+
+export function generateFAQSchema(faqs: Array<{ question: string; answer: string }>) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  };
+}
+
+export function generateCategorySchema({
+  name,
+  description,
+  url,
+  slug,
+  products,
+}: {
+  name: string;
+  description?: string | null;
+  url: string;
+  slug: string;
+  products?: Array<{
+    name: string;
+    image?: string;
+    url: string;
+    price?: number;
+    currency?: string;
+  }>;
+}) {
+  const schemas: any[] = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: siteConfig.url },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Categories',
+          item: `${siteConfig.url}/categories`,
+        },
+        { '@type': 'ListItem', position: 3, name, item: url },
+      ],
+    },
+  ];
+
+  if (products && products.length > 0) {
+    schemas.push(
+      generateItemListSchema({
+        items: products,
+        name: `${name} Products`,
+        description: description || undefined,
+      })
+    );
+  }
+
+  return schemas;
+}
+
 // Helper to inject structured data into pages
 export function StructuredData({ data }: { data: any }) {
   return (

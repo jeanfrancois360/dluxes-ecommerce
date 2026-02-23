@@ -1,2 +1,44 @@
+#!/bin/sh
+
+# 🔒 Pre-commit Security Checks
+echo "🔒 Running pre-commit security checks..."
+
+# 1. Check for exposed secrets in staged files (excluding pattern definitions)
+echo "Checking for exposed secrets..."
+# Only flag actual secrets, not grep pattern definitions
+if git diff --cached --diff-filter=d | \
+   grep -v "grep.*sk_" | \
+   grep -v "grep.*pk_" | \
+   grep -v "\.husky" | \
+   grep -v "\.github" | \
+   grep -v "SECURITY\.md" | \
+   grep -v "security-check\.sh" | \
+   grep -E "(sk_live_|sk_test_|pk_live_|pk_test_)[a-zA-Z0-9]{20,}|-----BEGIN PRIVATE KEY" > /dev/null 2>&1; then
+    echo "❌ ERROR: Actual API keys or secrets detected in staged files!"
+    echo "Remove secrets before committing."
+    exit 1
+fi
+
+# 2. Check for suspicious changes in critical layout files
+if git diff --cached --name-only | grep -E "apps/web/src/components/layout/footer.tsx|apps/web/src/app/layout.tsx" > /dev/null 2>&1; then
+    echo "⚠️  Critical layout files modified - scanning for suspicious links..."
+
+    # Check for unexpected external links (excluding trusted domains)
+    if git diff --cached apps/web/src/components/layout/ apps/web/src/app/layout.tsx 2>/dev/null | \
+       grep -E "https?://" | \
+       grep -v "localhost\|nextpik\|instagram\|facebook\|twitter\|linkedin\|pinterest\|youtube\|tiktok\|fonts\|wikimedia\|stripe\|paypal\|supabase\|unsplash" > /dev/null 2>&1; then
+        echo "⚠️  WARNING: New external links detected in layout files."
+        echo "Review the changes carefully to ensure they're legitimate."
+        read -p "Continue with commit? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+fi
+
+echo "✅ Security checks passed"
+echo ""
+
 # Run lint-staged for code quality checks
 pnpm lint-staged
