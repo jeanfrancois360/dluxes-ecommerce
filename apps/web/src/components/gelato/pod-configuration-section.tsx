@@ -3,19 +3,11 @@
 import { GelatoProductSelector } from './gelato-product-selector';
 import { DesignUploader } from './design-uploader';
 
-const SHIPPING_METHODS = [
-  { value: 'standard', label: 'Standard' },
-  { value: 'express', label: 'Express' },
-  { value: 'overnight', label: 'Overnight' },
-  { value: 'economy', label: 'Economy' },
-];
-
 interface PodConfigurationSectionProps {
   fulfillmentType: string;
   gelatoProductUid: string;
   designFileUrl: string;
   gelatoMarkupPercent?: number;
-  gelatoShippingMethod?: string;
   onChange: (field: string, value: any) => void;
   disabled?: boolean;
 }
@@ -25,7 +17,6 @@ export function PodConfigurationSection({
   gelatoProductUid,
   designFileUrl,
   gelatoMarkupPercent,
-  gelatoShippingMethod,
   onChange,
   disabled,
 }: PodConfigurationSectionProps) {
@@ -175,25 +166,6 @@ export function PodConfigurationSection({
               <p className="text-xs text-gray-500 mt-1">
                 Override global markup. Leave blank to use system default.
               </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Default Shipping Method
-              </label>
-              <select
-                value={gelatoShippingMethod || ''}
-                onChange={(e) => onChange('gelatoShippingMethod', e.target.value || undefined)}
-                disabled={disabled}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-              >
-                <option value="">Use system default</option>
-                {SHIPPING_METHODS.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
 

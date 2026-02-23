@@ -1422,7 +1422,6 @@ export default function ProductForm({
           gelatoProductUid={formData.gelatoProductUid}
           designFileUrl={formData.designFileUrl}
           gelatoMarkupPercent={formData.gelatoMarkupPercent}
-          gelatoShippingMethod={formData.gelatoShippingMethod}
           onChange={(field, value) => setFormData({ ...formData, [field]: value })}
           disabled={loading}
         />

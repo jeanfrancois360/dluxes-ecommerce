@@ -185,7 +185,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     gelatoProductUid: (product as any)?.gelatoProductUid || '',
     designFileUrl: (product as any)?.designFileUrl || '',
     gelatoMarkupPercent: (product as any)?.gelatoMarkupPercent ?? undefined,
-    gelatoShippingMethod: (product as any)?.gelatoShippingMethod || '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -500,7 +499,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         gelatoProductUid: formData.gelatoProductUid || undefined,
         designFileUrl: formData.designFileUrl || undefined,
         gelatoMarkupPercent: formData.gelatoMarkupPercent,
-        gelatoShippingMethod: formData.gelatoShippingMethod || undefined,
       };
 
       // Add real estate fields if product type is REAL_ESTATE
@@ -1455,7 +1453,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           gelatoProductUid={formData.gelatoProductUid}
           designFileUrl={formData.designFileUrl}
           gelatoMarkupPercent={formData.gelatoMarkupPercent}
-          gelatoShippingMethod={formData.gelatoShippingMethod}
           onChange={handleChange}
           disabled={loading}
         />
