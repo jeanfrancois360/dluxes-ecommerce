@@ -384,6 +384,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       newErrors.slug = 'Slug must be lowercase letters, numbers, and hyphens only';
     }
 
+    // Store is required - critical for per-seller features (POD, commissions, etc.)
+    if (!formData.storeId?.trim()) {
+      newErrors.storeId = 'Store selection is required - please assign this product to a seller';
+    }
+
     // SKU is ALWAYS auto-generated - no validation needed
 
     // Purchase type specific validation
@@ -1094,15 +1099,16 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Organization</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Store Selector */}
-          <div>
+          <div id="storeId">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Store <span className="text-red-500">*</span>
             </label>
             <select
+              required
               value={formData.storeId}
               onChange={(e) => handleChange('storeId', e.target.value)}
               disabled={loadingStores}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent disabled:bg-gray-100"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent disabled:bg-gray-100 ${errors.storeId ? 'border-red-500' : 'border-gray-300'}`}
             >
               <option value="">{loadingStores ? 'Loading...' : 'Select store'}</option>
               {stores.map((store) => (
@@ -1112,8 +1118,10 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               ))}
             </select>
             <p className="mt-1 text-xs text-gray-500">
-              Assign this product to a specific seller's store
+              Assign this product to a specific seller's store (required for POD, commissions, and
+              payouts)
             </p>
+            <ErrorMessage field="storeId" />
           </div>
 
           <div>

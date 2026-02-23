@@ -130,9 +130,9 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
               </div>
             ) : (
               <>
-                {products.map((product: any) => (
+                {products.map((product: any, index: number) => (
                   <button
-                    key={product.uid}
+                    key={product.uid || `product-${index}`}
                     type="button"
                     onClick={() => handleSelect(product.uid, product.title || product.uid)}
                     className={`w-full text-left px-4 py-3 hover:bg-amber-50 border-b border-gray-50 last:border-0 ${
