@@ -422,13 +422,14 @@ export class GelatoService implements OnModuleInit {
     }
 
     // Use /stores/{storeId}/products endpoint to fetch seller's products
+    this.logger.debug(`Fetching products for store: ${credentials.storeId}`);
     const response = await this.request<{ products: GelatoProduct[]; total?: number }>(
       `/stores/${credentials.storeId}/products?${queryParams}`,
       {
         method: 'GET',
       },
       credentials,
-      this.baseUrl // Use Order API base URL for store endpoints
+      this.catalogBaseUrl // Store products are under Product API, not Order API
     );
 
     return {
@@ -501,7 +502,7 @@ export class GelatoService implements OnModuleInit {
       `/stores/${credentials.storeId}/products/${productUid}`,
       {},
       credentials,
-      this.baseUrl
+      this.catalogBaseUrl
     );
   }
 
