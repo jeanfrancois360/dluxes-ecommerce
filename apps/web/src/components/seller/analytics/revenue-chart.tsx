@@ -3,7 +3,15 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader } from '@nextpik/ui';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { useTranslations } from 'next-intl';
@@ -76,7 +84,7 @@ export function RevenueChart({
     );
   }
 
-  const isEmpty = !data || data.length === 0 || data.every(item => item.amount === 0);
+  const isEmpty = !data || data.length === 0 || data.every((item) => item.amount === 0);
 
   return (
     <motion.div
@@ -91,9 +99,11 @@ export function RevenueChart({
               <h3 className="text-lg font-semibold text-neutral-900">{t('revenueOverview')}</h3>
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-2xl font-bold text-neutral-900">{formatCurrency(total)}</p>
-                <div className={`flex items-center gap-1 text-sm font-medium px-2 py-1 rounded-full ${
-                  trend.isPositive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
-                }`}>
+                <div
+                  className={`flex items-center gap-1 text-sm font-medium px-2 py-1 rounded-full ${
+                    trend.isPositive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
+                  }`}
+                >
                   {trend.isPositive ? (
                     <TrendingUp className="h-4 w-4" />
                   ) : (
@@ -128,17 +138,12 @@ export function RevenueChart({
             <div className="h-[300px] flex items-center justify-center">
               <div className="text-center">
                 <p className="text-neutral-500 text-sm">{t('noRevenueData')}</p>
-                <p className="text-neutral-400 text-xs mt-1">
-                  {t('dataWillAppear')}
-                </p>
+                <p className="text-neutral-400 text-xs mt-1">{t('dataWillAppear')}</p>
               </div>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart
-                data={data}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
+              <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#CBB57B" stopOpacity={0.3} />
@@ -167,7 +172,7 @@ export function RevenueChart({
                     borderRadius: '8px',
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                   }}
-                  formatter={(value: any, name: string) => {
+                  formatter={(value: any, name: string | undefined) => {
                     if (name === 'amount') {
                       return [formatCurrency(Number(value)), t('revenue')];
                     }

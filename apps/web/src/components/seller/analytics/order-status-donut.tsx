@@ -21,11 +21,11 @@ interface OrderStatusDonutProps {
 }
 
 const STATUS_COLORS = {
-  pending: '#F59E0B',     // Orange
-  processing: '#3B82F6',  // Blue
-  shipped: '#8B5CF6',     // Purple
-  delivered: '#10B981',   // Green
-  cancelled: '#EF4444',   // Red
+  pending: '#F59E0B', // Orange
+  processing: '#3B82F6', // Blue
+  shipped: '#8B5CF6', // Purple
+  delivered: '#10B981', // Green
+  cancelled: '#EF4444', // Red
 };
 
 export function OrderStatusDonut({ data, isLoading }: OrderStatusDonutProps) {
@@ -52,7 +52,7 @@ export function OrderStatusDonut({ data, isLoading }: OrderStatusDonutProps) {
     { name: t('shipped'), value: data?.shipped || 0, color: STATUS_COLORS.shipped },
     { name: t('delivered'), value: data?.delivered || 0, color: STATUS_COLORS.delivered },
     { name: t('cancelled'), value: data?.cancelled || 0, color: STATUS_COLORS.cancelled },
-  ].filter(item => item.value > 0); // Only show non-zero values
+  ].filter((item) => item.value > 0); // Only show non-zero values
 
   const isEmpty = chartData.length === 0;
   const totalOrders = data?.total || 0;
@@ -103,9 +103,7 @@ export function OrderStatusDonut({ data, isLoading }: OrderStatusDonutProps) {
               <div className="text-center">
                 <ShoppingCart className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
                 <p className="text-neutral-500 text-sm">{t('noOrders')}</p>
-                <p className="text-neutral-400 text-xs mt-1">
-                  {t('orderBreakdown')}
-                </p>
+                <p className="text-neutral-400 text-xs mt-1">{t('orderBreakdown')}</p>
               </div>
             </div>
           ) : (
@@ -133,9 +131,9 @@ export function OrderStatusDonut({ data, isLoading }: OrderStatusDonutProps) {
                       borderRadius: '8px',
                       boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     }}
-                    formatter={(value: any, name: string) => {
+                    formatter={(value: any, name: string | undefined) => {
                       const percentage = ((Number(value) / totalOrders) * 100).toFixed(1);
-                      return [`${value} (${percentage}%)`, name];
+                      return [`${value} (${percentage}%)`, name || ''];
                     }}
                   />
                   {renderCenterLabel()}
