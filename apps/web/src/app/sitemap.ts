@@ -21,7 +21,8 @@ async function getProducts() {
     }
 
     const data = await response.json();
-    return data.products || [];
+    // API returns { success: true, data: { products: [...] } }
+    return data.data?.products || data.products || [];
   } catch (error) {
     console.error('Error fetching products for sitemap:', error);
     return [];
@@ -41,7 +42,8 @@ async function getCategories() {
     }
 
     const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    // API might return array directly or { data: [...] }
+    return Array.isArray(data) ? data : data.data || [];
   } catch (error) {
     console.error('Error fetching categories for sitemap:', error);
     return [];
