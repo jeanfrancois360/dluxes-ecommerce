@@ -212,7 +212,51 @@ pnpm docker:down          # Stop services
 
 # Production build
 pnpm build                # Build all packages
+
+# Security checks (IMPORTANT: Run before deploying)
+pnpm security:check       # Run full security scan
+pnpm security:audit       # Check for vulnerable dependencies
 ```
+
+---
+
+## 🔒 Security Commands
+
+**Run these regularly to ensure security:**
+
+```bash
+# Full security check (before deployment)
+pnpm security:check
+
+# Dependency vulnerability scan
+pnpm security:audit
+
+# Manual checks
+./security-check.sh       # Comprehensive security scan
+```
+
+**What the security check does:**
+
+1. TypeScript type checking
+2. Dependency vulnerability scan
+3. Secret detection in staged files
+4. Dangerous code pattern detection
+5. Critical file integrity verification
+6. Suspicious external link detection
+7. Production build test
+
+**Pre-commit hook automatically:**
+
+- Blocks commits with exposed secrets (API keys, tokens)
+- Warns when layout files are modified
+- Scans for suspicious external links
+
+**See `SECURITY.md` for:**
+
+- Full security guidelines
+- Incident response plan
+- Security audit checklist
+- Monitoring best practices
 
 ---
 
