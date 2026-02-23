@@ -37,12 +37,6 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
     }
   }, [products]);
 
-  // Reset image states when products change
-  useEffect(() => {
-    setLoadingImages(new Set());
-    setFailedImages(new Set());
-  }, [products]);
-
   // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
