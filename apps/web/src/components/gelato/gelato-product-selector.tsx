@@ -30,6 +30,14 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
     limit: 50,
   });
 
+  // Debug logging
+  useEffect(() => {
+    if (products.length > 0) {
+      console.log('[GelatoProductSelector] Products:', products);
+      console.log('[GelatoProductSelector] First product:', products[0]);
+    }
+  }, [products]);
+
   // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -266,76 +274,91 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
               </div>
             ) : (
               <>
-                {products.map((product: any, index: number) => (
-                  <button
-                    key={product.uid || `product-${index}`}
-                    type="button"
-                    onClick={() => handleSelect(product.uid, product.title || product.uid)}
-                    className={`w-full text-left px-4 py-3 hover:bg-amber-50 border-b border-gray-100 last:border-0 transition-colors ${
-                      value === product.uid ? 'bg-amber-50 border-l-4 border-l-[#CBB57B]' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Product Image */}
-                      <div className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded border border-gray-200 overflow-hidden">
-                        {product.previewUrl ? (
-                          <img
-                            src={product.previewUrl}
-                            alt={product.title || 'Product'}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <svg
-                              className="w-6 h-6 text-gray-400"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.5}
-                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                              />
-                            </svg>
-                          </div>
+                {products.map((product: any, index: number) => {
+                  // Extract product data with fallbacks for different API response formats
+                  const productId =
+                    product.uid || product.productUid || product.id || `product-${index}`;
+                  const productName =
+                    product.title || product.name || product.productName || productId;
+                  const productImage =
+                    product.previewUrl ||
+                    product.imageUrl ||
+                    product.thumbnailUrl ||
+                    product.image ||
+                    null;
+                  const productCategory = product.category || product.categoryName || '';
+
+                  return (
+                    <button
+                      key={productId}
+                      type="button"
+                      onClick={() => handleSelect(productId, productName)}
+                      className={`w-full text-left px-4 py-3 hover:bg-amber-50 border-b border-gray-100 last:border-0 transition-colors ${
+                        value === productId ? 'bg-amber-50 border-l-4 border-l-[#CBB57B]' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Product Image */}
+                        <div className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded border border-gray-200 overflow-hidden">
+                          {productImage ? (
+                            <img
+                              src={productImage}
+                              alt={productName}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <svg
+                                className="w-6 h-6 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {productName}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">ID: {productId}</p>
+                          {productCategory && (
+                            <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+                              {productCategory}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Selected Indicator */}
+                        {value === productId && (
+                          <svg
+                            className="w-5 h-5 text-[#CBB57B] shrink-0"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
                         )}
                       </div>
-
-                      {/* Product Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {product.title || product.uid}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">ID: {product.uid}</p>
-                        {product.category && (
-                          <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
-                            {product.category}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Selected Indicator */}
-                      {value === product.uid && (
-                        <svg
-                          className="w-5 h-5 text-[#CBB57B] shrink-0"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
 
                 {/* Results Summary */}
                 {total > 0 && (
