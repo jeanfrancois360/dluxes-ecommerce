@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useGelatoCatalog, useGelatoCategories } from '@/hooks/use-gelato';
+import { useGelatoCatalog } from '@/hooks/use-gelato';
 
 interface GelatoProductSelectorProps {
   value: string;
