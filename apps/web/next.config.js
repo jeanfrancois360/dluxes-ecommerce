@@ -97,6 +97,19 @@ const nextConfig = {
       },
     ],
   },
+  // Redirect HTTP → HTTPS and www → non-www in production
+  async redirects() {
+    if (process.env.NODE_ENV !== 'production') return [];
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.nextpik.com' }],
+        destination: 'https://nextpik.com/:path*',
+        permanent: true,
+      },
+    ];
+  },
+
   // Security and cache headers
   async headers() {
     return [
@@ -122,6 +135,29 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
+          },
+          // Tell browsers to always use HTTPS for this domain (1 year)
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+          // Content Security Policy - Prevents unauthorized script injection
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network https://www.paypal.com https://www.paypalobjects.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' data: blob: https: http://localhost:*",
+              "font-src 'self' data: https://fonts.gstatic.com",
+              "connect-src 'self' https://api.nextpik.com https://api.stripe.com https://m.stripe.network https://*.supabase.co https://www.paypal.com http://localhost:* wss://localhost:*",
+              "frame-src 'self' https://js.stripe.com https://m.stripe.network https://www.paypal.com",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'self'",
+              'upgrade-insecure-requests',
+            ].join('; '),
           },
         ],
       },

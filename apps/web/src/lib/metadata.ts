@@ -89,6 +89,62 @@ export function getProductMetadata(product: {
   });
 }
 
+// Store Metadata
+export function getStoreMetadata(store: {
+  name?: string | null;
+  description?: string | null;
+  logo?: string | null;
+  banner?: string | null;
+  slug?: string | null;
+  rating?: number | null;
+  reviewCount?: number | null;
+}): Metadata {
+  const storeName = store.name || 'Store';
+  const title = `${storeName} - Verified Store`;
+  const description = store.description
+    ? store.description.substring(0, 160)
+    : `Shop ${storeName} on NextPik - verified seller offering premium products with secure checkout and worldwide shipping.`;
+  const image = store.banner || store.logo;
+
+  return generateSeoMetadata({
+    title,
+    description,
+    image: image || undefined,
+    url: store.slug ? `/store/${store.slug}` : '/stores',
+    keywords: [storeName, 'verified seller', 'premium store', 'nextpik seller'],
+    type: 'website',
+  });
+}
+
+// Category Metadata
+export function getCategoryMetadata(category: {
+  name?: string | null;
+  description?: string | null;
+  image?: string | null;
+  slug?: string | null;
+}): Metadata {
+  const categoryName = category.name || 'Category';
+  const title = `${categoryName} - Shop ${categoryName} Online`;
+  const description = category.description
+    ? category.description.substring(0, 160)
+    : `Browse premium ${categoryName.toLowerCase()} from verified sellers on NextPik. Discover curated collections with secure payments and worldwide shipping.`;
+
+  return generateSeoMetadata({
+    title,
+    description,
+    image: category.image || undefined,
+    url: category.slug ? `/categories/${category.slug}` : '/categories',
+    keywords: [
+      categoryName,
+      `${categoryName.toLowerCase()} online`,
+      `buy ${categoryName.toLowerCase()}`,
+      `premium ${categoryName.toLowerCase()}`,
+      'nextpik',
+    ],
+    type: 'website',
+  });
+}
+
 // Auth Pages Metadata
 export const loginMetadata: Metadata = generateSeoMetadata({
   title: 'Sign In',
