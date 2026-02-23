@@ -470,11 +470,6 @@ export class GelatoService implements OnModuleInit {
         total: response.total || response.products?.length || 0,
       };
     }
-
-    return {
-      products: response.products || [],
-      total: response.total || response.products?.length || 0,
-    };
   }
 
   async getProduct(productUid: string, userId?: string): Promise<GelatoProduct> {
