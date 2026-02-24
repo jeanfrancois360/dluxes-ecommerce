@@ -572,9 +572,10 @@ export default function ProductForm({
     }
   }, [product]);
 
-  // Auto-calculate price from baseCost and markup percentage
+  // Auto-calculate price from baseCost and markup percentage (only for POD products)
   useEffect(() => {
     if (
+      formData.fulfillmentType === 'GELATO_POD' &&
       formData.baseCost &&
       formData.markupPercentage !== undefined &&
       formData.markupPercentage !== null
@@ -588,7 +589,7 @@ export default function ProductForm({
         }));
       }
     }
-  }, [formData.baseCost, formData.markupPercentage]);
+  }, [formData.baseCost, formData.markupPercentage, formData.fulfillmentType]);
 
   // Auto-generate slug from name
   const generateSlug = (name: string) => {
