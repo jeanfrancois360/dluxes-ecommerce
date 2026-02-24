@@ -128,6 +128,26 @@ export class GelatoController {
     return { success: true, data: { shippingMethods: methods } };
   }
 
+  @Get('catalog/products/:productUid/price')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'SELLER')
+  async getProductPrice(
+    @Req() req: any,
+    @Param('productUid') productUid: string,
+    @Query('quantity') quantity?: string,
+    @Query('country') country?: string
+  ) {
+    const userId = req.user?.id;
+    const pricing = await this.productsService.calculateProductPrice(
+      productUid,
+      {
+        quantity: quantity ? parseInt(quantity, 10) : 1,
+        country: country || 'US',
+      },
+      userId
+    );
+    return { success: true, data: pricing };
+  }
+
   // ---- POD ORDER MANAGEMENT ----
 
   @Get('orders')

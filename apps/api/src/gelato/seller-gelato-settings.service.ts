@@ -362,12 +362,21 @@ export class SellerGelatoSettingsService {
     }
 
     try {
+      const decryptedApiKey = this.encryptionService.decrypt(settings.gelatoApiKey);
+      const decryptedWebhookSecret = settings.gelatoWebhookSecret
+        ? this.encryptionService.decrypt(settings.gelatoWebhookSecret)
+        : undefined;
+
+      // Log decryption success with masked key info
+      this.logger.log(
+        `Decrypted Gelato credentials for store ${storeId}: ` +
+          `API Key: ${decryptedApiKey.substring(0, 8)}-••••-${decryptedApiKey.slice(-12)} (length: ${decryptedApiKey.length})`
+      );
+
       return {
-        apiKey: this.encryptionService.decrypt(settings.gelatoApiKey),
-        storeId: settings.gelatoStoreId,
-        webhookSecret: settings.gelatoWebhookSecret
-          ? this.encryptionService.decrypt(settings.gelatoWebhookSecret)
-          : undefined,
+        apiKey: decryptedApiKey.trim(), // Trim whitespace
+        storeId: settings.gelatoStoreId.trim(), // Trim whitespace
+        webhookSecret: decryptedWebhookSecret?.trim(),
       };
     } catch (error) {
       this.logger.error(

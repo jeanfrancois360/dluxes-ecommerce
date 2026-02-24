@@ -12,6 +12,7 @@ import { CreditsService } from '../credits/credits.service';
 import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
 import { SettingsService } from '../settings/settings.service';
 import { CurrencyService } from '../currency/currency.service';
+import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import { ProductStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -26,7 +27,8 @@ export class SellerService {
     private creditsService: CreditsService,
     private dhlTrackingService: DhlTrackingService,
     private settingsService: SettingsService,
-    private currencyService: CurrencyService
+    private currencyService: CurrencyService,
+    private gelatoOrdersService: GelatoOrdersService
   ) {}
 
   /**
@@ -898,6 +900,27 @@ export class SellerService {
         },
       },
     });
+
+    // Auto-submit Gelato POD items when order moves to PROCESSING
+    // This triggers after payment authorization (uncaptured) is confirmed
+    if (status === 'PROCESSING') {
+      try {
+        // Submit POD items - only for sellers with Gelato enabled
+        const result = await this.gelatoOrdersService.submitAllPodItems(orderId);
+        if (result.submitted > 0) {
+          this.logger.log(
+            `Gelato POD items submitted for order ${orderId}: ${result.submitted}/${result.results.length} items`
+          );
+        } else if (result.results.length > 0) {
+          this.logger.warn(
+            `No Gelato POD items submitted for order ${orderId} - sellers may not have Gelato enabled`
+          );
+        }
+      } catch (gelatoError) {
+        this.logger.error(`Gelato POD submission failed for order ${orderId}:`, gelatoError);
+        // Don't fail the status update if Gelato submission fails
+      }
+    }
 
     return {
       message: `Order status updated to ${status}`,

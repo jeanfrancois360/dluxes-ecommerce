@@ -13,6 +13,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { PaymentModule } from '../payment/payment.module';
 import { EmailModule } from '../email/email.module';
+import { GelatoModule } from '../gelato/gelato.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { EmailModule } from '../email/email.module';
     CurrencyModule,
     PaymentModule,
     EmailModule,
+    GelatoModule,
   ],
   controllers: [SellerController, SellerCreditsController],
   providers: [SellerService, SellerApprovalService, SellerCreditsService, CanPublishGuard],

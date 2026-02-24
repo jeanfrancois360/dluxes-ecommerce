@@ -1223,9 +1223,8 @@ export class PaymentService {
       // For now, we'll trigger it directly but wrapped in try-catch
       try {
         const { CommissionService } = await import('../commission/commission.service');
-        const { EnhancedCommissionService } = await import(
-          '../commission/enhanced-commission.service'
-        );
+        const { EnhancedCommissionService } =
+          await import('../commission/enhanced-commission.service');
         const commissionService = new CommissionService(this.prisma, this.settingsService);
         await commissionService.calculateCommissionForTransaction(transaction.id);
         this.logger.log(`Commissions calculated for transaction ${transaction.id}`);
@@ -1237,26 +1236,35 @@ export class PaymentService {
         // Don't fail the payment if commission calculation fails
       }
 
-      // Auto-submit Gelato POD items
+      // Auto-submit Gelato POD items (per-seller basis)
+      // Each seller controls their own Gelato integration via SellerGelatoSettings
+      // NOTE: This only triggers for CAPTURED payments (payment_intent.succeeded)
+      // For UNCAPTURED payments (escrow), Gelato submission happens when order status → PROCESSING
       try {
-        const gelatoEnabled = await this.settingsService.getSetting('gelato_enabled');
-        const gelatoAutoSubmit = await this.settingsService.getSetting('gelato_auto_submit_orders');
-        if (gelatoEnabled?.value === true && gelatoAutoSubmit?.value === true) {
-          const { GelatoService } = await import('../gelato/gelato.service');
-          const { GelatoOrdersService } = await import('../gelato/gelato-orders.service');
-          const gelatoService = new GelatoService(
-            this.prisma,
-            this.configService,
-            this.settingsService
+        const { GelatoService } = await import('../gelato/gelato.service');
+        const { GelatoOrdersService } = await import('../gelato/gelato-orders.service');
+        const gelatoService = new GelatoService(
+          this.prisma,
+          this.configService,
+          this.settingsService
+        );
+        await gelatoService.onModuleInit();
+        const gelatoOrdersService = new GelatoOrdersService(
+          this.prisma,
+          gelatoService,
+          this.settingsService
+        );
+
+        // Submit POD items - only for sellers with Gelato enabled
+        const result = await gelatoOrdersService.submitAllPodItems(orderId);
+        if (result.submitted > 0) {
+          this.logger.log(
+            `Gelato POD items submitted for order ${orderId}: ${result.submitted}/${result.results.length} items`
           );
-          await gelatoService.onModuleInit();
-          const gelatoOrdersService = new GelatoOrdersService(
-            this.prisma,
-            gelatoService,
-            this.settingsService
+        } else if (result.results.length > 0) {
+          this.logger.warn(
+            `No Gelato POD items submitted for order ${orderId} - sellers may not have Gelato enabled`
           );
-          await gelatoOrdersService.submitAllPodItems(orderId);
-          this.logger.log(`Gelato POD items submitted for order ${orderId}`);
         }
       } catch (gelatoError) {
         this.logger.error(`Gelato POD submission failed for order ${orderId}:`, gelatoError);
@@ -1432,7 +1440,8 @@ export class PaymentService {
             null as any, // emailService not needed for PDF generation
             null as any, // shippingTaxService not needed for PDF generation
             null as any, // cartService not needed for PDF generation
-            this
+            this,
+            null as any // gelatoOrdersService not needed for PDF generation
           );
 
           const invoicePdf = await ordersService.generateInvoicePdf(orderId, order.userId);

@@ -93,6 +93,17 @@ export const gelatoApi = {
     return response.data ?? response;
   },
 
+  async getProductPrice(
+    productUid: string,
+    params?: { quantity?: number; country?: string }
+  ): Promise<{ baseCost: number; currency: string; productUid: string }> {
+    const query = new URLSearchParams();
+    if (params?.quantity) query.set('quantity', String(params.quantity));
+    if (params?.country) query.set('country', params.country);
+    const response = await api.get(`/gelato/catalog/products/${productUid}/price?${query}`);
+    return response.data ?? response;
+  },
+
   async configurePodProduct(
     productId: string,
     config: {
