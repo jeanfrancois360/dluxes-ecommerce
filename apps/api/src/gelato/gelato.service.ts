@@ -24,7 +24,8 @@ interface GelatoCredentials {
 /**
  * Gelato Service (Multi-Tenant)
  *
- * Supports both platform-wide Gelato account (fallback) and per-seller accounts.
+ * Per-seller Gelato integration - sellers MUST configure their own accounts.
+ * Platform credentials are used ONLY by admins for catalog browsing.
  * Dynamically loads credentials based on seller context with caching.
  *
  * v2.9.0 - Refactored for per-seller Gelato integration
@@ -33,7 +34,7 @@ interface GelatoCredentials {
 export class GelatoService implements OnModuleInit {
   private readonly logger = new Logger(GelatoService.name);
 
-  // Platform credentials (fallback)
+  // Platform credentials (ADMIN ONLY - for catalog browsing)
   private platformApiKey: string | null = null;
   private platformStoreId: string | null = null;
   private platformWebhookSecret: string | null = null;
@@ -70,17 +71,29 @@ export class GelatoService implements OnModuleInit {
   private catalogUid: string | null = null; // Cached catalog UID
 
   private async initializeConfig() {
-    // Load platform credentials as fallback
+    // Load platform credentials (ADMIN ONLY - for catalog browsing)
     this.platformApiKey = this.configService.get('GELATO_API_KEY');
-    this.baseUrl = this.configService.get('GELATO_API_URL', 'https://api.gelato.com/v4');
+    this.baseUrl = this.configService.get('GELATO_API_URL', 'https://order.gelatoapis.com/v4'); // ✅ Correct Orders API endpoint
     this.catalogBaseUrl = 'https://product.gelatoapis.com/v3'; // Product Catalog API
     this.ecommerceBaseUrl = 'https://ecommerce.gelatoapis.com/v1'; // E-commerce API (store products)
     this.platformStoreId = this.configService.get('GELATO_STORE_ID');
     this.platformWebhookSecret = this.configService.get('GELATO_WEBHOOK_SECRET');
 
+    // DEBUG: Log loaded configuration
+    this.logger.log(`🔧 Gelato Config Loaded:`);
+    this.logger.log(`  - Base URL (Orders): ${this.baseUrl}`);
+    this.logger.log(`  - Catalog URL: ${this.catalogBaseUrl}`);
+    this.logger.log(`  - E-commerce URL: ${this.ecommerceBaseUrl}`);
+    this.logger.log(
+      `  - Store ID: ${this.platformStoreId ? this.platformStoreId.substring(0, 8) + '...' : 'NOT SET'}`
+    );
+    this.logger.log(
+      `  - API Key: ${this.platformApiKey ? this.platformApiKey.substring(0, 8) + '...' : 'NOT SET'}`
+    );
+
     if (this.platformApiKey && this.platformStoreId) {
       this.isPlatformConfigured = true;
-      this.logger.log('Gelato platform account configured (will be used as fallback)');
+      this.logger.log('Gelato platform account configured (admins can browse catalog)');
     } else {
       this.logger.warn(
         'Gelato platform account not configured. ' +
@@ -91,7 +104,7 @@ export class GelatoService implements OnModuleInit {
 
   /**
    * Get credentials for a seller's store
-   * Returns seller credentials if configured, otherwise falls back to platform
+   * Sellers MUST have their own credentials configured - NO fallback
    */
   async getSellerCredentials(storeId: string): Promise<GelatoCredentials> {
     // Check cache first (5min TTL)
@@ -118,38 +131,21 @@ export class GelatoService implements OnModuleInit {
           // Cache for 5 minutes
           this.credentialsCache.set(storeId, credentials);
 
-          this.logger.log(`Using seller's Gelato account for store ${storeId}`);
+          this.logger.log(`✅ Using seller's Gelato account for store ${storeId}`);
           return credentials;
         }
       } catch (error) {
-        this.logger.warn(
-          `Failed to load seller Gelato credentials for store ${storeId}: ${error.message}. ` +
-            'Falling back to platform account.'
+        this.logger.error(
+          `Failed to load seller Gelato credentials for store ${storeId}: ${error.message}`
         );
       }
     }
 
-    // Fallback to platform credentials
-    if (!this.isPlatformConfigured) {
-      throw new HttpException(
-        'Gelato integration not available. Please configure your Gelato account in store settings.',
-        HttpStatus.SERVICE_UNAVAILABLE
-      );
-    }
-
-    const fallbackCreds: GelatoCredentials = {
-      apiKey: this.platformApiKey,
-      storeId: this.platformStoreId,
-      webhookSecret: this.platformWebhookSecret,
-      isPlatformFallback: true,
-      cachedAt: Date.now(),
-    };
-
-    // Cache fallback too
-    this.credentialsCache.set(storeId, fallbackCreds);
-
-    this.logger.log(`Using platform Gelato account (fallback) for store ${storeId}`);
-    return fallbackCreds;
+    // NO FALLBACK - Seller must configure their own Gelato account
+    throw new HttpException(
+      'Gelato not configured. Please set up your Gelato account in Seller Settings to use Print-on-Demand features.',
+      HttpStatus.FORBIDDEN
+    );
   }
 
   /**
@@ -217,6 +213,12 @@ export class GelatoService implements OnModuleInit {
       `Gelato API: ${options.method || 'GET'} ${url} ` +
         `(using ${credentials.isPlatformFallback ? 'platform' : 'seller'} account)`
     );
+
+    // Debug: Log API key info (masked)
+    const apiKeyInfo = credentials.apiKey
+      ? `${credentials.apiKey.substring(0, 8)}-••••-${credentials.apiKey.slice(-12)} (length: ${credentials.apiKey.length})`
+      : 'EMPTY/NULL';
+    this.logger.log(`API Key: ${apiKeyInfo}`);
 
     try {
       const response = await fetch(url, {
@@ -584,15 +586,16 @@ export class GelatoService implements OnModuleInit {
       country: string;
       state?: string;
     },
-    storeId?: string
+    storeId: string
   ): Promise<GelatoShippingMethod[]> {
-    const credentials = storeId
-      ? await this.getSellerCredentials(storeId)
-      : ({
-          apiKey: this.platformApiKey,
-          storeId: this.platformStoreId,
-          isPlatformFallback: true,
-        } as GelatoCredentials);
+    if (!storeId) {
+      throw new HttpException(
+        'Store ID is required for shipping calculations',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const credentials = await this.getSellerCredentials(storeId);
 
     const response = await this.request<{ shippingMethods: GelatoShippingMethod[] }>(
       '/shipping/methods',
@@ -613,31 +616,111 @@ export class GelatoService implements OnModuleInit {
 
   async calculatePrice(
     params: {
-      items: Array<{ productUid: string; quantity: number }>;
+      items: Array<{ productUid: string; quantity: number; variantUid?: string }>;
       country: string;
       shippingMethodUid?: string;
     },
-    storeId?: string
+    storeId: string
   ): Promise<GelatoPriceCalculation> {
-    const credentials = storeId
-      ? await this.getSellerCredentials(storeId)
-      : ({
-          apiKey: this.platformApiKey,
-          storeId: this.platformStoreId,
-          isPlatformFallback: true,
-        } as GelatoCredentials);
+    if (!storeId) {
+      throw new HttpException(
+        'Store ID is required for price calculations',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const credentials = await this.getSellerCredentials(storeId);
+
+    // DEBUG: Log which credentials are being used
+    this.logger.log(`🔍 calculatePrice - Using seller credentials`);
+    this.logger.log(`  - Store ID: ${credentials.storeId?.substring(0, 12)}...`);
+    this.logger.log(`  - API Key (first 12 chars): ${credentials.apiKey?.substring(0, 12)}...`);
+    this.logger.log(`  - Will call: ${this.baseUrl}/orders:quote`);
+
+    // Fetch full product details to get template/variant information
+    const productDetails = await Promise.all(
+      params.items.map(async (item) => {
+        try {
+          // Try to fetch the product from E-commerce API to get full details
+          const productPath = `/stores/${credentials.storeId}/products/${item.productUid}`;
+          this.logger.debug(`Fetching product details: ${productPath}`);
+
+          const product = await this.request<any>(
+            productPath,
+            { method: 'GET' },
+            credentials,
+            this.ecommerceBaseUrl
+          );
+
+          // Log the product structure to understand what fields are available
+          this.logger.debug(`Product structure: ${JSON.stringify(Object.keys(product))}`);
+          if (product.variants && product.variants.length > 0) {
+            this.logger.debug(
+              `First variant structure: ${JSON.stringify(Object.keys(product.variants[0]))}`
+            );
+            this.logger.log(`📌 Variant productUid: ${product.variants[0].productUid}`);
+          }
+          this.logger.log(`📌 Product parentTemplateId: ${product.parentTemplateId}`);
+
+          return { ...item, productDetails: product };
+        } catch (error) {
+          this.logger.warn(
+            `Failed to fetch product details for ${item.productUid}: ${error.message}`
+          );
+          return { ...item, productDetails: null };
+        }
+      })
+    );
+
+    const requestBody = {
+      storeId: credentials.storeId,
+      orderReferenceId: `quote-${Date.now()}`,
+      currency: 'USD',
+      products: productDetails.map((item, index) => {
+        // Priority order for finding the catalog product UID:
+        // 1. Variant's productUid (most likely to be the catalog product)
+        // 2. Product's parentTemplateId
+        // 3. Product's templateId
+        // 4. Fall back to original productUid (will likely fail)
+        const catalogProductUid =
+          item.productDetails?.variants?.[0]?.productUid ||
+          item.productDetails?.parentTemplateId ||
+          item.productDetails?.templateId ||
+          item.productUid;
+
+        this.logger.log(`Product ${index}:`);
+        this.logger.log(`  - Store product ID: ${item.productUid}`);
+        this.logger.log(`  - Catalog product UID: ${catalogProductUid}`);
+        this.logger.log(
+          `  - Has personalizable variants: ${item.productDetails?.hasPersonalizableVariants}`
+        );
+        this.logger.log(`  - Product type: ${item.productDetails?.productType}`);
+
+        return {
+          itemReferenceId: `item-${index}-${Date.now()}`,
+          productUid: catalogProductUid,
+          quantity: item.quantity,
+        };
+      }),
+      shippingAddress: {
+        countryCode: params.country,
+        // Add more address details for US to avoid server errors
+        ...(params.country === 'US' && {
+          stateCode: 'NY',
+          city: 'New York',
+          postCode: '10001',
+        }),
+      },
+      ...(params.shippingMethodUid && { shipmentMethodUid: params.shippingMethodUid }),
+    };
+
+    this.logger.log(`📤 Request body: ${JSON.stringify(requestBody, null, 2)}`);
 
     return this.request<GelatoPriceCalculation>(
-      '/orders/quote',
+      '/orders:quote',
       {
         method: 'POST',
-        body: JSON.stringify({
-          storeId: credentials.storeId,
-          currency: 'USD',
-          items: params.items,
-          shippingAddress: { country: params.country },
-          shipmentMethodUid: params.shippingMethodUid,
-        }),
+        body: JSON.stringify(requestBody),
       },
       credentials
     );
@@ -647,15 +730,16 @@ export class GelatoService implements OnModuleInit {
 
   async createOrder(
     orderData: GelatoCreateOrderRequest,
-    storeId?: string
+    storeId: string
   ): Promise<GelatoOrderResponse> {
-    const credentials = storeId
-      ? await this.getSellerCredentials(storeId)
-      : ({
-          apiKey: this.platformApiKey,
-          storeId: this.platformStoreId,
-          isPlatformFallback: true,
-        } as GelatoCredentials);
+    if (!storeId) {
+      throw new HttpException(
+        'Store ID is required to create Gelato orders',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const credentials = await this.getSellerCredentials(storeId);
 
     return this.request<GelatoOrderResponse>(
       '/orders',
@@ -667,30 +751,32 @@ export class GelatoService implements OnModuleInit {
     );
   }
 
-  async getOrder(gelatoOrderId: string, storeId?: string): Promise<GelatoOrderResponse> {
-    const credentials = storeId
-      ? await this.getSellerCredentials(storeId)
-      : ({
-          apiKey: this.platformApiKey,
-          storeId: this.platformStoreId,
-          isPlatformFallback: true,
-        } as GelatoCredentials);
+  async getOrder(gelatoOrderId: string, storeId: string): Promise<GelatoOrderResponse> {
+    if (!storeId) {
+      throw new HttpException(
+        'Store ID is required to retrieve Gelato orders',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const credentials = await this.getSellerCredentials(storeId);
 
     return this.request<GelatoOrderResponse>(`/orders/${gelatoOrderId}`, {}, credentials);
   }
 
   async cancelOrder(
     gelatoOrderId: string,
-    storeId?: string
+    storeId: string
   ): Promise<{ success: boolean; message?: string }> {
+    if (!storeId) {
+      return {
+        success: false,
+        message: 'Store ID is required to cancel Gelato orders',
+      };
+    }
+
     try {
-      const credentials = storeId
-        ? await this.getSellerCredentials(storeId)
-        : ({
-            apiKey: this.platformApiKey,
-            storeId: this.platformStoreId,
-            isPlatformFallback: true,
-          } as GelatoCredentials);
+      const credentials = await this.getSellerCredentials(storeId);
 
       await this.request(`/orders/${gelatoOrderId}/cancel`, { method: 'POST' }, credentials);
       return { success: true };

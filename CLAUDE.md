@@ -645,13 +645,13 @@ nextpik/
 
 ## Gelato Print-on-Demand Integration
 
-**Implementation Model:** Per-Seller (Multi-Tenant) with Platform Fallback
+**Implementation Model:** Per-Seller (Multi-Tenant) - Sellers Must Configure Their Own Accounts
 
 **v2.9.0 Architecture:**
 
-- Each seller connects their own Gelato account via Seller Dashboard
+- Each seller MUST connect their own Gelato account via Seller Dashboard to use POD
 - Credentials encrypted (AES-256-GCM) and stored per-seller in database
-- Platform credentials serve as fallback for unconfigured sellers
+- NO platform fallback - sellers are required to set up their own Gelato credentials
 - Seller-specific webhook URLs for order tracking
 
 **Environment Variables Required:**
@@ -660,10 +660,7 @@ nextpik/
 # Encryption (REQUIRED)
 ENCRYPTION_KEY=<32-byte-base64-key>  # Generate: openssl rand -base64 32
 
-# Platform Gelato Account (Optional Fallback)
-GELATO_API_KEY=your_platform_api_key
-GELATO_STORE_ID=your_platform_store_id
-GELATO_WEBHOOK_SECRET=your_platform_webhook_secret
+# Gelato API URL (REQUIRED)
 GELATO_API_URL=https://api.gelato.com/v4
 ```
 
@@ -676,14 +673,13 @@ GELATO_API_URL=https://api.gelato.com/v4
    - Enables integration once verified
 
 2. **Order Flow:**
-   - Seller creates product with `fulfillmentType: GELATO_POD`
+   - Seller creates product with `fulfillmentType: GELATO_POD` (only if Gelato is configured)
    - Customer places order
-   - System loads seller's Gelato credentials (or uses platform fallback)
-   - Order submitted to appropriate Gelato account
+   - System loads seller's Gelato credentials (required - no fallback)
+   - Order submitted to seller's Gelato account
    - Gelato produces and ships directly to customer
 
 3. **Webhooks:**
-   - Platform webhook: `POST /webhooks/gelato` (backward compatible)
    - Seller webhook: `POST /webhooks/gelato/:base64(storeId)` (unique per seller)
    - Automatic status updates for production, shipping, delivery
 
@@ -700,8 +696,7 @@ model SellerGelatoSettings {
 }
 
 model GelatoPodOrder {
-  storeId               String?
-  usedPlatformAccount   Boolean  @default(false)
+  storeId               String  // Required - each order tied to seller's store
   // ... other fields
 }
 ```
@@ -724,17 +719,16 @@ GET    /seller/gelato/webhook-url  # Get webhook URL
 - Webhook verification using `crypto.timingSafeEqual()` to prevent timing attacks
 - 5-minute credential cache with automatic invalidation
 
-**Migration Notes:**
+**Important Notes:**
 
-- Platform account credentials still work as fallback
-- Existing POD orders continue to function
-- Sellers can optionally configure their own accounts
-- System tracks which orders used seller vs platform account
+- Sellers MUST configure their own Gelato account to use POD features
+- POD fulfillment option is only available for stores with verified Gelato credentials
+- Sellers without Gelato setup will be prompted to configure it when selecting POD
+- Each store has its own unique webhook URL for order tracking
 
 ---
 
 ## Version History
-
 
 ---
 
@@ -753,7 +747,6 @@ Check DEADLINE_TRACKER.md and tell me what I should work on today
 ```
 
 ---
-
 
 ---
 

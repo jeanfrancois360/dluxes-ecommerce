@@ -282,13 +282,22 @@ export class GelatoProductsService {
     productId: string,
     params: { quantity: number; country: string; state?: string }
   ) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
-    if (!product?.gelatoProductUid) throw new NotFoundException('POD product not found');
-
-    return this.gelatoService.getShippingMethods({
-      productUid: product.gelatoProductUid,
-      ...params,
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: { store: true },
     });
+    if (!product?.gelatoProductUid) throw new NotFoundException('POD product not found');
+    if (!product.storeId) {
+      throw new BadRequestException('Product must be associated with a store');
+    }
+
+    return this.gelatoService.getShippingMethods(
+      {
+        productUid: product.gelatoProductUid,
+        ...params,
+      },
+      product.storeId
+    );
   }
 
   async calculateOrderPrice(
@@ -301,6 +310,7 @@ export class GelatoProductsService {
         id: { in: items.map((i) => i.productId) },
         fulfillmentType: FulfillmentType.GELATO_POD,
       },
+      include: { store: true },
     });
 
     const gelatoItems = items.map((item) => {
@@ -308,9 +318,110 @@ export class GelatoProductsService {
       if (!product?.gelatoProductUid) {
         throw new BadRequestException(`Product ${item.productId} is not a valid POD product`);
       }
+      if (!product.storeId) {
+        throw new BadRequestException(`Product ${item.productId} must be associated with a store`);
+      }
       return { productUid: product.gelatoProductUid, quantity: item.quantity };
     });
 
-    return this.gelatoService.calculatePrice({ items: gelatoItems, country, shippingMethodUid });
+    // Verify all products are from the same store (POD orders must be single-seller)
+    const storeIds = [...new Set(products.map((p) => p.storeId))];
+    if (storeIds.length > 1) {
+      throw new BadRequestException(
+        'Cannot calculate price for products from multiple stores. POD orders must contain products from a single seller.'
+      );
+    }
+    if (storeIds.length === 0 || !storeIds[0]) {
+      throw new BadRequestException('Products must be associated with a store');
+    }
+
+    return this.gelatoService.calculatePrice(
+      { items: gelatoItems, country, shippingMethodUid },
+      storeIds[0]
+    );
+  }
+
+  /**
+   * Calculate price for a Gelato product by UID (for product selection preview)
+   * Used by frontend to show pricing before saving the product
+   */
+  async calculateProductPrice(
+    productUid: string,
+    params: { quantity: number; country: string },
+    userId?: string
+  ) {
+    this.logger.log(
+      `Fetching price for Gelato product ${productUid} (quantity: ${params.quantity}, country: ${params.country})`
+    );
+
+    // First, try to get the product details to check if it has pricing information
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { store: true },
+      });
+
+      if (user?.store?.id) {
+        const productDetails = await this.gelatoService.getProduct(productUid, userId);
+        this.logger.log(
+          `Product details fetched. Has ${productDetails.variants?.length || 0} variants`
+        );
+
+        // Check if variants have pricing information
+        if (productDetails.variants && productDetails.variants.length > 0) {
+          const firstVariant = productDetails.variants[0];
+          if (firstVariant.baseCost) {
+            this.logger.log(
+              `✅ Found base cost in variant: ${firstVariant.baseCost.amount} ${firstVariant.baseCost.currency}`
+            );
+            return {
+              baseCost: parseFloat(firstVariant.baseCost.amount),
+              currency: firstVariant.baseCost.currency,
+              productUid,
+            };
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Could not fetch product details for pricing: ${error.message}`);
+    }
+
+    try {
+      // Get user's store ID if seller
+      let storeId: string | undefined;
+      if (userId) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          include: { store: true },
+        });
+        storeId = user?.store?.id;
+      }
+
+      const pricing = await this.gelatoService.calculatePrice(
+        {
+          items: [{ productUid, quantity: params.quantity }],
+          country: params.country,
+        },
+        storeId
+      );
+
+      if (pricing.items && pricing.items.length > 0) {
+        const item = pricing.items[0];
+        const baseCost = parseFloat(item.itemCost.amount);
+
+        this.logger.log(`✅ Gelato price fetched: $${baseCost.toFixed(2)}`);
+
+        return {
+          baseCost,
+          currency: item.itemCost.currency,
+          productUid,
+        };
+      }
+
+      throw new BadRequestException('Unable to fetch pricing for this product');
+    } catch (error) {
+      this.logger.error(`Failed to fetch Gelato pricing: ${error.message}`);
+      throw new BadRequestException(`Failed to fetch pricing: ${error.message}`);
+    }
   }
 }

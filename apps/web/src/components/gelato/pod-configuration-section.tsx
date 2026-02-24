@@ -9,9 +9,12 @@ interface PodConfigurationSectionProps {
   gelatoProductUid: string;
   designFileUrl: string;
   gelatoMarkupPercent?: number;
+  productImages?: string[]; // Add product images to enable "Use Product Image" feature
   onChange: (field: string, value: any) => void;
   onGelatoProductSelect?: (productDetails: GelatoProduct) => void;
   disabled?: boolean;
+  isGelatoAvailable?: boolean; // Whether Gelato POD is available for selected store
+  storeSelected?: boolean; // Whether a store has been selected
 }
 
 export function PodConfigurationSection({
@@ -19,11 +22,15 @@ export function PodConfigurationSection({
   gelatoProductUid,
   designFileUrl,
   gelatoMarkupPercent,
+  productImages = [],
   onChange,
   onGelatoProductSelect,
   disabled,
+  isGelatoAvailable = true, // Default to true for seller forms (they configure their own)
+  storeSelected = true, // Default to true for seller forms
 }: PodConfigurationSectionProps) {
   const isPod = fulfillmentType === 'GELATO_POD';
+  const hasProductImages = productImages.length > 0;
 
   return (
     <div className="bg-white rounded-lg shadow p-6 space-y-6">
@@ -47,8 +54,9 @@ export function PodConfigurationSection({
             />
           </svg>
           <p className="text-xs text-blue-700">
-            <strong>Platform-managed fulfillment:</strong> POD products use the platform's Gelato
-            account for seamless order processing and global shipping.
+            <strong>Seller-managed fulfillment:</strong> POD products use your own Gelato account
+            for order processing and global shipping. Configure your Gelato credentials in Seller
+            Settings.
           </p>
         </div>
       </div>
@@ -83,12 +91,21 @@ export function PodConfigurationSection({
 
           <button
             type="button"
-            onClick={() => onChange('fulfillmentType', 'GELATO_POD')}
-            disabled={disabled}
+            onClick={() => isGelatoAvailable && onChange('fulfillmentType', 'GELATO_POD')}
+            disabled={disabled || !isGelatoAvailable}
+            title={
+              !storeSelected
+                ? 'Please select a store first'
+                : !isGelatoAvailable
+                  ? 'This store does not have Gelato POD configured'
+                  : 'Use Gelato Print-on-Demand'
+            }
             className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
               isPod
                 ? 'border-[#CBB57B] bg-amber-50 text-gray-900'
-                : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                : !isGelatoAvailable
+                  ? 'border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
+                  : 'border-gray-200 text-gray-500 hover:border-gray-300'
             }`}
           >
             <div className="flex items-center gap-2 justify-center">
@@ -101,10 +118,33 @@ export function PodConfigurationSection({
                 />
               </svg>
               Gelato POD
+              {!isGelatoAvailable && (
+                <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
             </div>
-            <p className="text-xs text-gray-400 mt-1 font-normal">Printed & shipped by Gelato</p>
+            <p className="text-xs text-gray-400 mt-1 font-normal">
+              {!isGelatoAvailable ? 'Not configured for this store' : 'Printed & shipped by Gelato'}
+            </p>
           </button>
         </div>
+        {!storeSelected && (
+          <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2">
+            <strong>Note:</strong> Please select a seller store first to see available fulfillment
+            options.
+          </p>
+        )}
+        {storeSelected && !isGelatoAvailable && (
+          <p className="mt-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-2">
+            <strong>Note:</strong> The selected store has not configured Gelato Print-on-Demand.
+            Sellers can enable POD in their settings.
+          </p>
+        )}
       </div>
 
       {/* POD Configuration Fields — only shown when POD is selected */}
@@ -125,9 +165,6 @@ export function PodConfigurationSection({
               }}
               disabled={disabled}
             />
-            {gelatoProductUid && (
-              <p className="text-xs text-gray-400 mt-1 font-mono">{gelatoProductUid}</p>
-            )}
             <p className="text-xs text-gray-500 mt-1">
               Select the base product from Gelato's catalog (e.g. unisex t-shirt, mug, poster)
             </p>
@@ -135,15 +172,71 @@ export function PodConfigurationSection({
 
           {/* Design File */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Design File</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Design File <span className="text-gray-400 text-xs font-normal">(Optional)</span>
+              </label>
+              {hasProductImages && !designFileUrl && (
+                <button
+                  type="button"
+                  onClick={() => onChange('designFileUrl', productImages[0])}
+                  disabled={disabled}
+                  className="text-xs text-[#CBB57B] hover:text-[#B89F63] font-medium flex items-center gap-1 transition-colors"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  Use Product Image
+                </button>
+              )}
+            </div>
             <DesignUploader
               value={designFileUrl}
               onChange={(url) => onChange('designFileUrl', url)}
               disabled={disabled}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Upload or link the print-ready design file that Gelato will use for production
-            </p>
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-gray-500">
+                Upload a print-ready design file for Gelato production, or leave empty for plain
+                products.
+              </p>
+              <div className="flex items-start gap-2 p-2 bg-blue-50 border border-blue-100 rounded text-xs">
+                <svg
+                  className="w-4 h-4 text-blue-600 shrink-0 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div className="text-blue-700">
+                  <strong>Tip:</strong> Product images are for display on your store. Design files
+                  are sent to Gelato for printing.
+                  {hasProductImages && (
+                    <>
+                      {' '}
+                      Click "Use Product Image" above to use your uploaded product image as the
+                      design file.
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Markup & Shipping row */}

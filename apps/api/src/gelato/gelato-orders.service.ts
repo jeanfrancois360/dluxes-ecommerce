@@ -225,18 +225,8 @@ export class GelatoOrdersService {
         `Currency=${order.currency || 'USD'}`
     );
 
-    // Submit to Gelato using seller's account (or platform fallback)
+    // Submit to Gelato using seller's own account (required - no fallback)
     const gelatoOrder = await this.gelatoService.createOrder(gelatoOrderRequest, storeId);
-
-    // Check if platform fallback was used
-    const credentials = await this.gelatoService.getSellerCredentials(storeId);
-    const usedPlatformAccount = credentials.isPlatformFallback;
-
-    if (usedPlatformAccount) {
-      this.logger.warn(
-        `Order ${orderId} submitted using platform Gelato account (seller has not configured their own account)`
-      );
-    }
 
     const podOrder = await this.prisma.gelatoPodOrder.create({
       data: {
@@ -244,7 +234,7 @@ export class GelatoOrdersService {
         orderItemId,
         productId: orderItem.productId,
         storeId, // v2.9.0: Track which seller's store
-        usedPlatformAccount, // v2.9.0: Track if platform fallback was used
+        usedPlatformAccount: false, // Always false - sellers must use their own account
         gelatoOrderId: gelatoOrder.id,
         gelatoOrderReference: gelatoOrderRequest.orderReferenceId,
         status: GelatoPodStatus.SUBMITTED,
@@ -347,7 +337,13 @@ export class GelatoOrdersService {
     }
 
     if (podOrder.gelatoOrderId) {
-      const cancelResult = await this.gelatoService.cancelOrder(podOrder.gelatoOrderId);
+      if (!podOrder.storeId) {
+        throw new BadRequestException('POD order missing store ID - cannot cancel with Gelato');
+      }
+      const cancelResult = await this.gelatoService.cancelOrder(
+        podOrder.gelatoOrderId,
+        podOrder.storeId
+      );
       if (!cancelResult.success) {
         throw new BadRequestException(cancelResult.message || 'Failed to cancel order in Gelato');
       }
@@ -383,7 +379,14 @@ export class GelatoOrdersService {
       ).includes(podOrder.status)
     ) {
       try {
-        gelatoStatus = await this.gelatoService.getOrder(podOrder.gelatoOrderId);
+        if (!podOrder.storeId) {
+          this.logger.warn('POD order missing store ID - cannot fetch Gelato status');
+        } else {
+          gelatoStatus = await this.gelatoService.getOrder(
+            podOrder.gelatoOrderId,
+            podOrder.storeId
+          );
+        }
       } catch (error) {
         this.logger.warn(`Failed to fetch Gelato status: ${error.message}`);
       }
@@ -422,8 +425,11 @@ export class GelatoOrdersService {
   async syncOrderStatus(podOrderId: string) {
     const podOrder = await this.prisma.gelatoPodOrder.findUnique({ where: { id: podOrderId } });
     if (!podOrder?.gelatoOrderId) throw new NotFoundException('POD order not found');
+    if (!podOrder.storeId) {
+      throw new BadRequestException('POD order missing store ID - cannot sync status');
+    }
 
-    const gelatoOrder = await this.gelatoService.getOrder(podOrder.gelatoOrderId);
+    const gelatoOrder = await this.gelatoService.getOrder(podOrder.gelatoOrderId, podOrder.storeId);
 
     const statusMap: Record<string, GelatoPodStatus> = {
       created: GelatoPodStatus.SUBMITTED,
