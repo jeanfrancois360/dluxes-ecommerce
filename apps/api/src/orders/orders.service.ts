@@ -17,6 +17,7 @@ import { CurrencyService } from '../currency/currency.service';
 import { EmailService } from '../email/email.service';
 import { CartService } from '../cart/cart.service';
 import { PaymentService } from '../payment/payment.service';
+import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import PDFDocument from 'pdfkit';
 
 /**
@@ -36,7 +37,8 @@ export class OrdersService {
     private readonly shippingTaxService: ShippingTaxService,
     @Inject(forwardRef(() => CartService))
     private readonly cartService: CartService,
-    private readonly paymentService: PaymentService
+    private readonly paymentService: PaymentService,
+    private readonly gelatoOrdersService: GelatoOrdersService
   ) {
     this.inventoryService = new InventoryService(prisma);
   }
@@ -693,6 +695,7 @@ export class OrdersService {
     // Calculate totals
     let subtotal = new Decimal(0);
     const orderItems: any[] = [];
+    const podItems: any[] = [];
 
     for (const item of items) {
       const product = await this.prisma.product.findUnique({
@@ -703,6 +706,7 @@ export class OrdersService {
                 where: { id: item.variantId },
               }
             : false,
+          store: true,
         },
       });
 
@@ -732,6 +736,15 @@ export class OrdersService {
         total: itemTotal,
         image: product.heroImage,
       });
+
+      // Track POD items for Gelato shipping calculation
+      if (product.fulfillmentType === 'GELATO_POD' && product.gelatoProductUid) {
+        podItems.push({
+          productUid: product.gelatoProductUid,
+          quantity: item.quantity,
+          storeId: product.storeId,
+        });
+      }
     }
 
     // Calculate shipping and tax using actual rates
@@ -760,7 +773,75 @@ export class OrdersService {
     );
 
     const selectedShipping = shippingOptions[0]; // Default to standard shipping
-    const shipping = new Decimal(selectedShipping?.price || 15);
+    let shipping = new Decimal(selectedShipping?.price || 15);
+
+    // Get real-time Gelato shipping for POD items
+    if (podItems.length > 0) {
+      try {
+        // Group POD items by storeId to get accurate quotes per seller
+        const storeGroups = new Map<string, any[]>();
+        for (const podItem of podItems) {
+          const storeId = podItem.storeId || 'platform';
+          if (!storeGroups.has(storeId)) {
+            storeGroups.set(storeId, []);
+          }
+          storeGroups.get(storeId)!.push({
+            productUid: podItem.productUid,
+            quantity: podItem.quantity,
+          });
+        }
+
+        // Get Gelato quotes for each store group
+        let totalGelatoShipping = new Decimal(0);
+        let unconfiguredStores: string[] = [];
+
+        for (const [storeId, items] of storeGroups) {
+          const gelatoQuote = await this.gelatoOrdersService.getQuote({
+            items,
+            country: shippingAddress.country,
+            state: shippingAddress.province,
+            city: shippingAddress.city,
+            postalCode: shippingAddress.postalCode,
+            storeId: storeId !== 'platform' ? storeId : undefined,
+          });
+
+          // Handle null quote (seller hasn't configured Gelato)
+          if (gelatoQuote === null) {
+            unconfiguredStores.push(storeId);
+            this.logger.warn(
+              `⚠️ Store ${storeId} has POD items but no Gelato configuration. ` +
+                `These items may not be fulfillable.`
+            );
+            continue; // Skip this store's shipping calculation
+          }
+
+          if (gelatoQuote?.shippingCost?.amount) {
+            totalGelatoShipping = totalGelatoShipping.add(
+              new Decimal(parseFloat(gelatoQuote.shippingCost.amount))
+            );
+          }
+        }
+
+        // Log warning if some stores are unconfigured
+        if (unconfiguredStores.length > 0) {
+          this.logger.warn(
+            `⚠️ Order contains POD items from ${unconfiguredStores.length} unconfigured store(s): ${unconfiguredStores.join(', ')}. ` +
+              `These items will be marked for manual fulfillment review.`
+          );
+        }
+
+        if (totalGelatoShipping.gt(0)) {
+          this.logger.log(`✅ Gelato shipping: $${totalGelatoShipping.toFixed(2)}`);
+          shipping = shipping.add(totalGelatoShipping);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `⚠️ Failed to fetch Gelato shipping quote: ${error.message}. Using default shipping.`
+        );
+        // Continue with standard shipping if Gelato quote fails
+      }
+    }
+
     const tax = new Decimal(taxCalc.amount);
     const total = subtotal.add(shipping).add(tax);
 
@@ -1069,6 +1150,50 @@ export class OrdersService {
     await this.prisma.orderTimeline.create({
       data: timelineData,
     });
+
+    // Auto-submit Gelato POD items when order moves to PROCESSING
+    // This triggers after payment authorization (uncaptured) is confirmed
+    // Payment will be captured later after delivery confirmation
+    if (status === OrderStatus.PROCESSING) {
+      // CRITICAL FIX: Validate POD readiness BEFORE allowing status change
+      try {
+        const validation = await this.gelatoOrdersService.validatePodReadiness(id);
+
+        if (!validation.ready) {
+          const unreadyProducts = validation.unreadyItems
+            .map((item) => `"${item.productName}" (${item.reason})`)
+            .join(', ');
+
+          this.logger.error(
+            `❌ Cannot move order ${id} to PROCESSING: ${validation.unreadyItems.length}/${validation.totalPodItems} POD items not ready for fulfillment: ${unreadyProducts}`
+          );
+
+          throw new BadRequestException(
+            `Cannot process order: ${validation.unreadyItems.length} POD item(s) cannot be fulfilled. ` +
+              `The following items require seller Gelato configuration: ${unreadyProducts}. ` +
+              `Please contact the seller(s) to enable Print-on-Demand fulfillment.`
+          );
+        }
+
+        // All POD items ready - proceed with submission
+        const result = await this.gelatoOrdersService.submitAllPodItems(id);
+        if (result.submitted > 0) {
+          this.logger.log(
+            `✅ Gelato POD items submitted for order ${id}: ${result.submitted}/${result.results.length} items`
+          );
+        } else if (result.results.length > 0) {
+          this.logger.warn(
+            `⚠️ No Gelato POD items submitted for order ${id} despite validation passing - this should not happen`
+          );
+        }
+      } catch (gelatoError) {
+        this.logger.error(`❌ Gelato POD submission failed for order ${id}:`, gelatoError.message);
+        // Re-throw to prevent status change if POD submission fails
+        throw new BadRequestException(
+          `Cannot process order: POD fulfillment validation or submission failed. ${gelatoError.message}`
+        );
+      }
+    }
 
     // TODO: Send status update email via queue
 

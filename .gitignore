@@ -59,3 +59,10 @@ storybook-static
 *secrets*
 .env*
 !.env.example
+
+# Temporary documentation and test files
+GELATO_QUICK_START.md
+GELATO_TEST_REPORT.md
+GELATO_WEBHOOK_FLOW.md
+GELATO_WEBHOOK_SETUP.md
+test-gelato-webhook.sh

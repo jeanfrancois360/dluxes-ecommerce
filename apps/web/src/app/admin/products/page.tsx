@@ -698,9 +698,6 @@ function ProductsContent() {
                         {t('table.headers.product')}
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
-                        {t('table.headers.sku')}
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
                         {t('table.headers.category')}
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-black">
@@ -765,18 +762,20 @@ function ProductsContent() {
                                 </svg>
                               )}
                             </div>
-                            <div>
-                              <div className="text-sm font-bold text-black group-hover:text-[#CBB57B] transition-colors">
+                            <div className="max-w-xs">
+                              <div
+                                className="text-sm font-semibold text-gray-900 leading-tight truncate group-hover:text-[#CBB57B] transition-colors"
+                                title={product.name}
+                              >
                                 {product.name}
                               </div>
-                              <div className="text-xs text-neutral-600">{product.slug}</div>
+                              {product.sku && (
+                                <div className="text-xs text-gray-500 mt-1 font-mono">
+                                  SKU: {product.sku}
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="font-mono text-xs bg-neutral-100 px-2 py-1 rounded text-neutral-700">
-                            {product.sku || product.slug}
-                          </span>
                         </td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#CBB57B]/10 border border-[#CBB57B]/30 rounded-lg text-xs font-semibold text-[#9a8854]">
