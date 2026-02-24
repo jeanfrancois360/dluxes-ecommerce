@@ -300,27 +300,35 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
           )}
         </h3>
         <div className="space-y-4">
-          <FloatingInput
-            label={t('addressLine1')}
-            value={formData.addressLine1}
-            onChange={(e) => handleChange('addressLine1', e.target.value)}
-            error={errors.addressLine1}
-            disabled={isLoading}
-            required
-            maxLength={35}
-            helperText={`${formData.addressLine1.length}/35 characters`}
-          />
-          <FloatingInput
-            label={t('addressLine2Optional')}
-            value={formData.addressLine2}
-            onChange={(e) => handleChange('addressLine2', e.target.value)}
-            error={errors.addressLine2}
-            disabled={isLoading}
-            maxLength={35}
-            helperText={
-              formData.addressLine2 ? `${formData.addressLine2.length}/35 characters` : undefined
-            }
-          />
+          <div>
+            <FloatingInput
+              label={t('addressLine1')}
+              value={formData.addressLine1}
+              onChange={(e) => handleChange('addressLine1', e.target.value)}
+              error={errors.addressLine1}
+              disabled={isLoading}
+              required
+              maxLength={35}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {formData.addressLine1.length}/35 characters
+            </p>
+          </div>
+          <div>
+            <FloatingInput
+              label={t('addressLine2Optional')}
+              value={formData.addressLine2}
+              onChange={(e) => handleChange('addressLine2', e.target.value)}
+              error={errors.addressLine2}
+              disabled={isLoading}
+              maxLength={35}
+            />
+            {formData.addressLine2 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {formData.addressLine2.length}/35 characters
+              </p>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FloatingInput
               label={t('city')}

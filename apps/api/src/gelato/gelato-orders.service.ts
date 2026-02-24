@@ -727,4 +727,40 @@ export class GelatoOrdersService {
       }
     }
   }
+
+  /**
+   * Get Gelato shipping quote for checkout
+   * Used by OrdersService to get real-time shipping costs
+   */
+  async getQuote(params: {
+    items: Array<{ productUid: string; quantity: number }>;
+    country: string;
+    state?: string;
+    city?: string;
+    postalCode?: string;
+    storeId?: string;
+  }) {
+    try {
+      // Convert country name to ISO-2 code if needed
+      const countryCode = convertCountryNameToISO2(params.country);
+
+      this.logger.log(
+        `Fetching Gelato quote: ${params.items.length} items, ${countryCode}${params.state ? `, ${params.state}` : ''}`
+      );
+
+      // Use GelatoService.calculatePrice which calls /orders/quote
+      const quote = await this.gelatoService.calculatePrice(
+        {
+          items: params.items,
+          country: countryCode,
+        },
+        params.storeId
+      );
+
+      return quote;
+    } catch (error) {
+      this.logger.error(`Failed to get Gelato quote: ${error.message}`);
+      throw error;
+    }
+  }
 }

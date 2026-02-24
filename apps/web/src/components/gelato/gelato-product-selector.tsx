@@ -11,11 +11,18 @@ interface GelatoProductSelectorProps {
   disabled?: boolean;
 }
 
+// Helper function to truncate UID for display
+function truncateUid(uid: string): string {
+  if (uid.length <= 16) return uid;
+  return `${uid.substring(0, 8)}...${uid.substring(uid.length - 8)}`;
+}
+
 export function GelatoProductSelector({ value, onChange, disabled }: GelatoProductSelectorProps) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedName, setSelectedName] = useState('');
+  const [selectedImage, setSelectedImage] = useState('');
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -55,22 +62,52 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Fetch selected product name if value exists
+  // Fetch selected product details when value exists (for editing existing products)
   useEffect(() => {
-    if (value && !selectedName) {
-      const product = products.find((p: any) => p.uid === value);
-      if (product) {
-        setSelectedName(product.title || product.uid);
-      }
+    if (!value) {
+      // Clear state if no value
+      setSelectedName('');
+      setSelectedImage('');
+      return;
+    }
+
+    // If we already have the name and the value hasn't changed, don't re-fetch
+    if (selectedName) {
+      return;
+    }
+
+    // Try to find in search results first (fast path)
+    const productInSearch = products.find((p: any) => p.uid === value);
+    if (productInSearch) {
+      setSelectedName(productInSearch.title || productInSearch.uid);
+      setSelectedImage(productInSearch.previewUrl || '');
+      return;
+    }
+
+    // If not in search results and we have a value, fetch directly from API
+    if (value) {
+      gelatoApi
+        .getProductDetails(value)
+        .then((product) => {
+          setSelectedName(product.title || product.uid);
+          setSelectedImage(product.previewUrl || '');
+        })
+        .catch((error) => {
+          console.error('Failed to fetch product details for UID:', value, error);
+          // Fallback: show truncated UID as name
+          setSelectedName(value);
+          setSelectedImage('');
+        });
     }
   }, [value, products, selectedName]);
 
-  async function handleSelect(uid: string, name: string) {
+  async function handleSelect(uid: string, name: string, image?: string) {
     try {
       // Fetch full product details for auto-population
       const productDetails = await gelatoApi.getProductDetails(uid);
       onChange(uid, name, productDetails);
       setSelectedName(name);
+      setSelectedImage(image || '');
       setIsOpen(false);
       setSearch('');
     } catch (error) {
@@ -79,6 +116,7 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
       // Still update with basic info
       onChange(uid, name);
       setSelectedName(name);
+      setSelectedImage(image || '');
       setIsOpen(false);
       setSearch('');
     }
@@ -87,59 +125,125 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
   function handleClear() {
     onChange('', '');
     setSelectedName('');
+    setSelectedImage('');
     setSearch('');
   }
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Trigger Button */}
-      <div
-        className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer transition-all ${
-          disabled
-            ? 'bg-gray-100 cursor-not-allowed'
-            : 'bg-white hover:border-[#CBB57B] hover:shadow-sm'
-        } ${value ? 'border-[#CBB57B] bg-amber-50/30' : 'border-gray-300'}`}
-        onClick={() => !disabled && setIsOpen((o) => !o)}
-      >
-        <div className="flex-1 min-w-0">
-          {value && selectedName ? (
-            <div>
-              <p className="text-sm font-medium text-gray-900 truncate">{selectedName}</p>
-              <p className="text-xs text-gray-500 truncate">{value}</p>
-            </div>
-          ) : (
-            <span className="text-sm text-gray-400">Search Gelato product catalog...</span>
-          )}
-        </div>
-        {value && !disabled && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClear();
-            }}
-            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-            title="Clear selection"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        )}
-        <svg
-          className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      {/* Trigger Button / Selected Product Card */}
+      {value && selectedName ? (
+        // Selected Product Card
+        <div
+          className={`relative overflow-hidden border rounded-lg transition-all ${
+            disabled
+              ? 'bg-gray-50 cursor-not-allowed'
+              : 'bg-gradient-to-br from-amber-50 to-white hover:shadow-md cursor-pointer'
+          } border-[#CBB57B]`}
+          onClick={() => !disabled && setIsOpen(true)}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </div>
+          <div className="flex items-center gap-3 p-3">
+            {/* Product Image */}
+            {selectedImage && (
+              <div className="w-14 h-14 flex-shrink-0 bg-white rounded border border-gray-200 overflow-hidden shadow-sm">
+                <img
+                  src={selectedImage}
+                  alt={selectedName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Product Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{selectedName}</p>
+                  <p className="text-xs text-gray-500 font-mono mt-0.5">{truncateUid(value)}</p>
+                </div>
+
+                {!disabled && (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(true);
+                      }}
+                      className="px-2 py-1 text-xs font-medium text-[#CBB57B] hover:text-[#B89F63] hover:bg-white/50 rounded transition-colors"
+                      title="Change product"
+                    >
+                      Change
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClear();
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-600 hover:bg-white rounded transition-colors"
+                      title="Clear selection"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Success indicator bar */}
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#CBB57B] to-[#B89F63]" />
+        </div>
+      ) : (
+        // Empty State - Search Trigger
+        <div
+          className={`flex items-center gap-2 px-4 py-3 border rounded-lg cursor-pointer transition-all ${
+            disabled
+              ? 'bg-gray-100 cursor-not-allowed border-gray-300'
+              : 'bg-white hover:border-[#CBB57B] hover:shadow-sm border-gray-300'
+          }`}
+          onClick={() => !disabled && setIsOpen(true)}
+        >
+          <svg
+            className="w-5 h-5 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <span className="flex-1 text-sm text-gray-400">Search Gelato product catalog...</span>
+          <svg
+            className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      )}
 
       {/* Dropdown Panel */}
       {isOpen && (
@@ -177,9 +281,19 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
           <div className="max-h-96 overflow-y-auto">
             {error ? (
               <div className="p-4">
-                <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div
+                  className={`flex items-start gap-3 p-4 border rounded-lg ${
+                    typeof error === 'object' && (error as any)?.status === 401
+                      ? 'bg-amber-50 border-amber-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}
+                >
                   <svg
-                    className="w-5 h-5 text-red-500 shrink-0 mt-0.5"
+                    className={`w-5 h-5 shrink-0 mt-0.5 ${
+                      typeof error === 'object' && (error as any)?.status === 401
+                        ? 'text-amber-500'
+                        : 'text-red-500'
+                    }`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -188,16 +302,51 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      d={
+                        typeof error === 'object' && (error as any)?.status === 401
+                          ? 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'
+                          : 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'
+                      }
                     />
                   </svg>
-                  <div className="text-sm">
-                    <p className="font-semibold text-red-800 mb-1">Failed to load products</p>
-                    <p className="text-red-600 text-xs">
-                      {typeof error === 'string'
-                        ? error
-                        : 'Unable to connect to Gelato. Please check your settings and try again.'}
-                    </p>
+                  <div className="text-sm flex-1">
+                    {typeof error === 'object' && (error as any)?.status === 401 ? (
+                      <>
+                        <p className="font-semibold text-amber-900 mb-1">Authentication Required</p>
+                        <p className="text-amber-700 text-xs mb-2">
+                          Please log in to access the Gelato product catalog. You need seller or
+                          admin permissions.
+                        </p>
+                        <a
+                          href="/login"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-700 underline"
+                        >
+                          Go to Login
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                        </a>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-red-800 mb-1">Failed to load products</p>
+                        <p className="text-red-600 text-xs">
+                          {typeof error === 'string'
+                            ? error
+                            : 'Unable to connect to Gelato. Please check your settings and try again.'}
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -269,7 +418,7 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
                     <button
                       key={productId}
                       type="button"
-                      onClick={() => handleSelect(productId, productName)}
+                      onClick={() => handleSelect(productId, productName, productImage)}
                       className={`w-full text-left px-4 py-3 hover:bg-amber-50 border-b border-gray-100 last:border-0 transition-colors ${
                         value === productId ? 'bg-amber-50 border-l-4 border-l-[#CBB57B]' : ''
                       }`}
