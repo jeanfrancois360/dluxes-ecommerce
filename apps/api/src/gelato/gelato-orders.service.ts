@@ -282,15 +282,7 @@ export class GelatoOrdersService {
           include: {
             product: {
               include: {
-                store: {
-                  include: {
-                    user: {
-                      include: {
-                        gelatoSettings: true,
-                      },
-                    },
-                  },
-                },
+                store: true,
               },
             },
           },
@@ -310,7 +302,12 @@ export class GelatoOrdersService {
 
     const unreadyItems = [];
     for (const item of podItems) {
-      const sellerGelatoSettings = item.product.store?.user?.gelatoSettings;
+      const storeId = item.product.storeId;
+
+      // FIXED: Query SellerGelatoSettings directly by storeId (relation doesn't exist in schema)
+      const sellerGelatoSettings = await this.prisma.sellerGelatoSettings.findUnique({
+        where: { storeId },
+      });
 
       // Check if seller has Gelato enabled and verified
       if (!sellerGelatoSettings?.isEnabled || !sellerGelatoSettings?.isVerified) {
@@ -340,15 +337,7 @@ export class GelatoOrdersService {
           include: {
             product: {
               include: {
-                store: {
-                  include: {
-                    user: {
-                      include: {
-                        gelatoSettings: true, // Load seller's Gelato settings
-                      },
-                    },
-                  },
-                },
+                store: true,
               },
             },
           },
@@ -365,7 +354,12 @@ export class GelatoOrdersService {
     const results = [];
     for (const item of podItems) {
       try {
-        const sellerGelatoSettings = item.product.store?.user?.gelatoSettings;
+        const storeId = item.product.storeId;
+
+        // FIXED: Query SellerGelatoSettings directly by storeId (relation doesn't exist in schema)
+        const sellerGelatoSettings = await this.prisma.sellerGelatoSettings.findUnique({
+          where: { storeId },
+        });
 
         // Check if seller has Gelato enabled
         if (!sellerGelatoSettings?.isEnabled) {
@@ -386,10 +380,10 @@ export class GelatoOrdersService {
         const result = await this.submitOrderToGelato(orderId, item.id);
         results.push({ itemId: item.id, success: true, podOrderId: result.podOrder.id });
         this.logger.log(
-          `Submitted item ${item.id} to Gelato for seller "${item.product.store?.name}"`
+          `✅ Submitted item ${item.id} to Gelato for seller "${item.product.store?.name}"`
         );
       } catch (error) {
-        this.logger.error(`Failed to submit item ${item.id}: ${error.message}`);
+        this.logger.error(`❌ Failed to submit item ${item.id}: ${error.message}`);
         results.push({ itemId: item.id, success: false, error: error.message });
       }
     }
@@ -399,7 +393,7 @@ export class GelatoOrdersService {
 
     if (skipped > 0) {
       this.logger.warn(
-        `Order ${orderId}: ${skipped} POD item(s) skipped because seller(s) have not configured Gelato`
+        `⚠️ Order ${orderId}: ${skipped} POD item(s) skipped because seller(s) have not configured Gelato`
       );
     }
 
