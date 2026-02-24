@@ -66,3 +66,17 @@ GELATO_TEST_REPORT.md
 GELATO_WEBHOOK_FLOW.md
 GELATO_WEBHOOK_SETUP.md
 test-gelato-webhook.sh
+
+# Gelato test scripts and temporary documentation
+GELATO_*.md
+POD_TESTING_CHECKLIST.md
+PRODUCT_IMAGES_VS_DESIGN_FILES.md
+apps/api/check-*.js
+apps/api/get-*.js
+apps/api/submit-*.js
+apps/api/resubmit-*.js
+apps/api/fix-*.js
+apps/api/sync-*.ts
+apps/api/test-*.ts
+apps/api/apps/
+check-pricing.js
