@@ -39,6 +39,77 @@ export class GelatoProductsService {
       throw new NotFoundException(`Gelato product ${dto.gelatoProductUid} not found`);
     }
 
+    // Get product to access storeId and current price
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: { store: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Product ${productId} not found`);
+    }
+
+    if (!product.storeId) {
+      throw new BadRequestException(
+        'Product must be associated with a store to configure Gelato POD'
+      );
+    }
+
+    // Auto-fetch Gelato's production cost
+    let baseCost = dto.baseCost;
+
+    try {
+      this.logger.log(
+        `Fetching Gelato production cost for ${dto.gelatoProductUid} (quantity: 1, country: US)`
+      );
+
+      const pricing = await this.gelatoService.calculatePrice(
+        {
+          items: [{ productUid: dto.gelatoProductUid, quantity: 1 }],
+          country: 'US', // Use US as default for base cost calculation
+        },
+        product.storeId
+      );
+
+      if (pricing.items && pricing.items.length > 0) {
+        baseCost = parseFloat(pricing.items[0].itemCost.amount);
+        this.logger.log(`✅ Gelato base cost: $${baseCost.toFixed(2)}`);
+      } else {
+        this.logger.warn('Could not fetch Gelato pricing - using provided baseCost or null');
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to fetch Gelato pricing: ${error.message} - continuing anyway`);
+      // Continue with provided baseCost or null
+    }
+
+    // Validate price is not below cost (if both are set)
+    if (baseCost && product.price) {
+      const productPrice =
+        typeof product.price === 'number' ? product.price : Number(product.price);
+      if (productPrice < baseCost) {
+        const suggestedPrice = (baseCost * 1.3).toFixed(2);
+        throw new BadRequestException(
+          `Product price ($${productPrice}) cannot be lower than Gelato production cost ($${baseCost.toFixed(2)}). ` +
+            `We recommend at least $${suggestedPrice} (30% markup) to cover shipping variations and ensure profitability.`
+        );
+      }
+    }
+
+    // Log pricing recommendation
+    if (baseCost && product.price) {
+      const productPrice =
+        typeof product.price === 'number' ? product.price : Number(product.price);
+      const markup = (((productPrice - baseCost) / baseCost) * 100).toFixed(1);
+      this.logger.log(
+        `Product pricing: Cost=$${baseCost.toFixed(2)}, Price=$${productPrice}, Markup=${markup}%`
+      );
+    } else if (baseCost && !product.price) {
+      const suggestedPrice = Math.ceil(baseCost * 1.5);
+      this.logger.log(
+        `Suggested retail price: $${suggestedPrice} (50% markup over Gelato cost of $${baseCost.toFixed(2)})`
+      );
+    }
+
     const updatedProduct = await this.prisma.product.update({
       where: { id: productId },
       data: {
@@ -47,7 +118,7 @@ export class GelatoProductsService {
         gelatoTemplateId: dto.gelatoTemplateId,
         designFileUrl: dto.designFileUrl,
         printAreas: dto.printAreas || null,
-        baseCost: dto.baseCost,
+        baseCost,
       },
     });
 
@@ -59,16 +130,58 @@ export class GelatoProductsService {
   }
 
   async updatePodProduct(productId: string, dto: UpdatePodProductDto) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: { store: true },
+    });
+
     if (!product) throw new NotFoundException(`Product ${productId} not found`);
     if (product.fulfillmentType !== FulfillmentType.GELATO_POD) {
       throw new BadRequestException('Product is not configured as a POD product');
     }
 
+    // If changing productUid, validate it exists and fetch new cost
+    let baseCost = dto.baseCost !== undefined ? dto.baseCost : product.baseCost;
+
     if (dto.gelatoProductUid && dto.gelatoProductUid !== product.gelatoProductUid) {
       const gelatoProduct = await this.gelatoService.getProduct(dto.gelatoProductUid);
       if (!gelatoProduct) {
         throw new NotFoundException(`Gelato product ${dto.gelatoProductUid} not found`);
+      }
+
+      // Fetch new cost for the new product
+      if (product.storeId) {
+        try {
+          this.logger.log(`Fetching updated Gelato cost for new product ${dto.gelatoProductUid}`);
+
+          const pricing = await this.gelatoService.calculatePrice(
+            {
+              items: [{ productUid: dto.gelatoProductUid, quantity: 1 }],
+              country: 'US',
+            },
+            product.storeId
+          );
+
+          if (pricing.items && pricing.items.length > 0) {
+            baseCost = parseFloat(pricing.items[0].itemCost.amount);
+            this.logger.log(`✅ Updated Gelato base cost: $${baseCost.toFixed(2)}`);
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to fetch updated Gelato pricing: ${error.message}`);
+        }
+      }
+    }
+
+    // Validate price is not below cost
+    if (baseCost && product.price) {
+      const productPrice =
+        typeof product.price === 'number' ? product.price : Number(product.price);
+      if (productPrice < baseCost) {
+        const suggestedPrice = (baseCost * 1.3).toFixed(2);
+        throw new BadRequestException(
+          `Product price ($${productPrice}) cannot be lower than Gelato production cost ($${baseCost.toFixed(2)}). ` +
+            `We recommend at least $${suggestedPrice} (30% markup).`
+        );
       }
     }
 
@@ -79,7 +192,7 @@ export class GelatoProductsService {
         gelatoTemplateId: dto.gelatoTemplateId,
         designFileUrl: dto.designFileUrl,
         printAreas: dto.printAreas,
-        baseCost: dto.baseCost,
+        baseCost,
       },
     });
   }
