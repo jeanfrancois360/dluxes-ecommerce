@@ -588,12 +588,13 @@ model Product {
   @@index([status, productType, purchaseType])
 
   // Print-on-Demand fields
-  fulfillmentType  FulfillmentType @default(SELF_FULFILLED)
-  gelatoProductUid String?         // Gelato product template UID
-  gelatoTemplateId String?         // Design template ID in Gelato
-  designFileUrl    String?         // URL to design file
-  printAreas       Json?           // Print area configs { front: {...}, back: {...} }
-  baseCost         Float?          // Base production cost from Gelato
+  fulfillmentType    FulfillmentType @default(SELF_FULFILLED)
+  gelatoProductUid   String?         // Gelato product template UID
+  gelatoTemplateId   String?         // Design template ID in Gelato
+  designFileUrl      String?         // URL to design file
+  printAreas         Json?           // Print area configs { front: {...}, back: {...} }
+  baseCost           Float?          // Base production cost from Gelato
+  markupPercentage   Float?          // Markup % over baseCost (e.g., 50 = 50% markup)
 
   // POD relation
   podOrders GelatoPodOrder[]

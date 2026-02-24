@@ -101,6 +101,7 @@ export const gelatoApi = {
       designFileUrl?: string;
       printAreas?: Record<string, any>;
       baseCost?: number;
+      markupPercentage?: number;
     }
   ) {
     const response = await api.post(`/gelato/products/${productId}/configure`, config);
@@ -113,6 +114,7 @@ export const gelatoApi = {
       gelatoProductUid?: string;
       designFileUrl?: string;
       printAreas?: Record<string, any>;
+      markupPercentage?: number;
     }
   ) {
     const response = await api.patch(`/gelato/products/${productId}/configure`, config);
@@ -121,6 +123,19 @@ export const gelatoApi = {
 
   async removePodConfiguration(productId: string) {
     const response = await api.delete(`/gelato/products/${productId}/configure`);
+    return response.data ?? response;
+  },
+
+  async refreshGelatoCost(productId: string): Promise<{
+    success: boolean;
+    product: any;
+    costUpdate: {
+      previous: number | null;
+      current: number;
+      changed: boolean;
+    };
+  }> {
+    const response = await api.post(`/gelato/products/${productId}/refresh-cost`);
     return response.data ?? response;
   },
 

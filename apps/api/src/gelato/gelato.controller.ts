@@ -106,6 +106,12 @@ export class GelatoController {
     return { success: true, data: product };
   }
 
+  @Post('products/:productId/refresh-cost')
+  @Roles('ADMIN', 'SUPER_ADMIN', 'SELLER')
+  async refreshGelatoCost(@Param('productId') productId: string) {
+    return await this.productsService.refreshGelatoCost(productId);
+  }
+
   @Get('products/:productId/shipping')
   @Roles('ADMIN', 'SUPER_ADMIN', 'SELLER')
   async getShippingEstimate(
