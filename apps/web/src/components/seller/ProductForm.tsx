@@ -17,7 +17,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { AlertTriangle, Lock, ArrowRight, Crown } from 'lucide-react';
+import { toast } from '@/lib/utils/toast';
 import { categoriesAPI, type Category } from '@/lib/api/categories';
+import { gelatoApi } from '@/lib/api/gelato';
 import { VariantManager } from '../admin/variant-manager';
 import { StockLevelIndicator } from '../admin/stock-status-badge';
 import {
@@ -28,6 +30,7 @@ import {
   RentalFields,
 } from '../admin/product-type-fields';
 import { PodConfigurationSection } from '../gelato/pod-configuration-section';
+import { GelatoPreviewModal } from '../gelato/gelato-preview-modal';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
 import { useCanListProductType } from '@/hooks/use-subscription';
 
@@ -390,12 +393,15 @@ export default function ProductForm({
       designFileUrl: (product as any)?.designFileUrl || '',
       printAreas: (product as any)?.printAreas || null,
       baseCost: (product as any)?.baseCost || undefined,
+      markupPercentage: (product as any)?.markupPercentage || undefined,
     };
   });
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [newTag, setNewTag] = useState('');
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [pendingGelatoData, setPendingGelatoData] = useState<any>(null);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -566,6 +572,24 @@ export default function ProductForm({
     }
   }, [product]);
 
+  // Auto-calculate price from baseCost and markup percentage
+  useEffect(() => {
+    if (
+      formData.baseCost &&
+      formData.markupPercentage !== undefined &&
+      formData.markupPercentage !== null
+    ) {
+      const calculatedPrice = formData.baseCost * (1 + formData.markupPercentage / 100);
+      // Only update if price is different (avoid infinite loop)
+      if (formData.price !== calculatedPrice) {
+        setFormData((prev: any) => ({
+          ...prev,
+          price: parseFloat(calculatedPrice.toFixed(2)),
+        }));
+      }
+    }
+  }, [formData.baseCost, formData.markupPercentage]);
+
   // Auto-generate slug from name
   const generateSlug = (name: string) => {
     return name
@@ -593,15 +617,16 @@ export default function ProductForm({
 
   const handleGelatoProductSelect = (productDetails: any) => {
     // Auto-populate product details from Gelato
-    const markup = formData.gelatoMarkupPercent || 50; // Default 50% markup
+    const markup = formData.markupPercentage !== undefined ? formData.markupPercentage : 50; // Default 50% markup
+    let extractedBaseCost: number | undefined;
     let suggestedPrice: number | undefined;
 
-    // Calculate suggested price from first variant's base cost
+    // Extract base cost from first variant
     if (productDetails.variants && productDetails.variants.length > 0) {
       const firstVariant = productDetails.variants[0];
       if (firstVariant.baseCost) {
-        const baseCost = parseFloat(firstVariant.baseCost.amount);
-        suggestedPrice = baseCost * (1 + markup / 100);
+        extractedBaseCost = parseFloat(firstVariant.baseCost.amount);
+        suggestedPrice = extractedBaseCost * (1 + markup / 100);
       }
     }
 
@@ -617,19 +642,58 @@ export default function ProductForm({
       });
     }
 
-    setFormData((prev: any) => ({
-      ...prev,
-      // Only auto-fill if fields are empty
-      name: prev.name || productDetails.title || '',
-      description: prev.description || autoDescription.trim(),
-      price: prev.price || suggestedPrice,
-      // Add preview image if available and no images yet
-      ...(productDetails.previewUrl && (!prev.images || prev.images.length === 0)
-        ? { images: [productDetails.previewUrl] }
-        : {}),
-    }));
+    const newName = productDetails.title || '';
+    const newSlug = generateSlug(newName);
+    const newDescription = autoDescription.trim();
+    const newPrice = suggestedPrice || 0;
+    const newImage = productDetails.previewUrl || '';
 
-    toast.success('Product details auto-filled from Gelato');
+    // Store pending data and open preview modal
+    setPendingGelatoData({
+      productTitle: productDetails.title,
+      newValues: {
+        name: newName,
+        slug: newSlug,
+        description: newDescription,
+        price: newPrice,
+        image: newImage,
+        baseCost: extractedBaseCost,
+        markupPercentage: markup,
+      },
+    });
+    setIsPreviewModalOpen(true);
+  };
+
+  const applyGelatoChanges = () => {
+    if (!pendingGelatoData) return;
+
+    const { newValues } = pendingGelatoData;
+
+    setFormData((prev: any) => {
+      const updates: any = {
+        ...prev,
+        name: newValues.name || prev.name,
+        slug: newValues.slug || prev.slug,
+        description: newValues.description || prev.description,
+        price: newValues.price || prev.price,
+        baseCost: newValues.baseCost !== undefined ? newValues.baseCost : prev.baseCost,
+        markupPercentage:
+          newValues.markupPercentage !== undefined
+            ? newValues.markupPercentage
+            : prev.markupPercentage,
+      };
+
+      // Update images - replace first image with Gelato preview
+      if (newValues.image) {
+        const existingImages = prev.images || [];
+        updates.images = [newValues.image, ...existingImages.slice(1)];
+      }
+
+      return updates;
+    });
+
+    toast.success('Product details applied from Gelato');
+    setPendingGelatoData(null);
   };
 
   const validateForm = (): boolean => {
@@ -988,7 +1052,163 @@ export default function ProductForm({
             </div>
             <p className="mt-1 text-sm text-gray-500">Original price to show savings</p>
           </div>
+        </div>
 
+        {/* POD Pricing Section - Only show for Gelato POD products */}
+        {formData.fulfillmentType === 'GELATO_POD' && (
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-blue-900">Print-on-Demand Pricing</h4>
+              {formData.gelatoProductUid && product?.id && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const result = await gelatoApi.refreshGelatoCost(product.id);
+                      if (result.success) {
+                        setFormData({ ...formData, baseCost: result.product.baseCost });
+                        toast.success(
+                          `Cost updated: $${result.costUpdate.previous?.toFixed(2) || '0.00'} → $${result.costUpdate.current.toFixed(2)}`
+                        );
+                      }
+                    } catch (error: any) {
+                      toast.error(error.message || 'Failed to refresh cost');
+                    }
+                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 hover:text-blue-800 hover:bg-blue-100 rounded-md transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  Refresh Cost
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Gelato Base Cost (Display Only) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Gelato Base Cost
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="text"
+                    value={formData.baseCost ? formData.baseCost.toFixed(2) : '—'}
+                    readOnly
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {formData.gelatoProductUid
+                    ? 'Production cost from Gelato'
+                    : 'Select Gelato product first'}
+                </p>
+              </div>
+
+              {/* Markup Percentage */}
+              <div>
+                <label
+                  htmlFor="markupPercentage"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Markup Percentage
+                </label>
+                <div className="relative">
+                  <input
+                    id="markupPercentage"
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={formData.markupPercentage || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        markupPercentage: parseFloat(e.target.value) || undefined,
+                      })
+                    }
+                    className="w-full pl-4 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                    placeholder="50"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">e.g., 50% = 1.5x base cost</p>
+              </div>
+
+              {/* Calculated Price (Auto-filled) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Calculated Price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="text"
+                    value={formData.price ? formData.price.toFixed(2) : '0.00'}
+                    readOnly
+                    className="w-full pl-8 pr-4 py-2 border border-green-300 rounded-lg bg-green-50 text-green-700 font-medium cursor-not-allowed"
+                  />
+                </div>
+                {formData.baseCost && formData.price && formData.price > formData.baseCost && (
+                  <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Profitable
+                  </p>
+                )}
+                {formData.baseCost && formData.price && formData.price < formData.baseCost && (
+                  <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Below cost!
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Pricing Info */}
+            {formData.baseCost && formData.markupPercentage && (
+              <div className="flex items-start gap-2 p-3 bg-white border border-blue-200 rounded-md">
+                <svg
+                  className="w-4 h-4 text-blue-600 shrink-0 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <p className="text-xs text-blue-700">
+                  <strong>Profit margin:</strong> $
+                  {((formData.price || 0) - formData.baseCost).toFixed(2)} per unit (
+                  {formData.price &&
+                    (((formData.price - formData.baseCost) / formData.baseCost) * 100).toFixed(1)}
+                  % markup)
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Stock/Inventory */}
           {formData.productType === 'PHYSICAL' && (
             <div>
@@ -1457,42 +1677,16 @@ export default function ProductForm({
       <VariantManager productId={product?.id} productPrice={formData.price} />
 
       {/* Print-on-Demand Configuration */}
-      {product?.id ? (
-        <PodConfigurationSection
-          fulfillmentType={formData.fulfillmentType}
-          gelatoProductUid={formData.gelatoProductUid}
-          designFileUrl={formData.designFileUrl}
-          gelatoMarkupPercent={formData.gelatoMarkupPercent}
-          onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-          onGelatoProductSelect={handleGelatoProductSelect}
-          disabled={loading}
-        />
-      ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Print-on-Demand (Gelato)</h3>
-          <div className="rounded-lg border-2 border-dashed border-amber-300 bg-amber-50 p-6 text-center">
-            <div className="text-amber-600 mb-2">
-              <svg
-                className="w-8 h-8 mx-auto"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-amber-800">Want to use Print-on-Demand?</p>
-            <p className="text-xs text-amber-600 mt-1">
-              Save your product first, then come back to configure Gelato POD settings.
-            </p>
-          </div>
-        </div>
-      )}
+      <PodConfigurationSection
+        fulfillmentType={formData.fulfillmentType}
+        gelatoProductUid={formData.gelatoProductUid}
+        designFileUrl={formData.designFileUrl}
+        gelatoMarkupPercent={formData.markupPercentage}
+        productImages={formData.images || []}
+        onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+        onGelatoProductSelect={handleGelatoProductSelect}
+        disabled={loading}
+      />
 
       {/* Form Actions */}
       <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
@@ -1515,6 +1709,27 @@ export default function ProductForm({
           {loading ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
         </button>
       </div>
+
+      {/* Gelato Preview Modal */}
+      {pendingGelatoData && (
+        <GelatoPreviewModal
+          isOpen={isPreviewModalOpen}
+          onClose={() => {
+            setIsPreviewModalOpen(false);
+            setPendingGelatoData(null);
+          }}
+          onApply={applyGelatoChanges}
+          currentValues={{
+            name: formData.name || '',
+            slug: formData.slug || '',
+            description: formData.description || '',
+            price: formData.price || 0,
+            image: formData.images?.[0] || '',
+          }}
+          newValues={pendingGelatoData.newValues}
+          productTitle={pendingGelatoData.productTitle}
+        />
+      )}
     </form>
   );
 }
