@@ -67,6 +67,23 @@ export class GelatoOrdersService {
       );
     }
 
+    // CRITICAL FIX: Validate seller has Gelato credentials configured BEFORE submission
+    // This prevents race conditions where credentials are checked early but become invalid before submission
+    try {
+      const credentialsCheck = await this.gelatoService.getSellerCredentials(storeId);
+      this.logger.log(
+        `✅ Seller credentials verified for store ${storeId} (using ${credentialsCheck.isPlatformFallback ? 'platform' : 'seller'} account)`
+      );
+    } catch (credError) {
+      this.logger.error(
+        `❌ Seller credentials check failed for store ${storeId}: ${credError.message}`
+      );
+      throw new BadRequestException(
+        `Cannot submit POD order: Seller (store: ${storeId}) has not configured Gelato credentials. ` +
+          `Product: "${orderItem.product.name}". Please ask the seller to configure Gelato in their settings.`
+      );
+    }
+
     // Resolve the actual catalog productUid from the store product UUID
     let catalogProductUid = orderItem.product.gelatoProductUid;
 
@@ -246,6 +263,73 @@ export class GelatoOrdersService {
 
     this.logger.log(`Order ${orderId} submitted to Gelato: ${gelatoOrder.id}`);
     return { podOrder, gelatoOrder };
+  }
+
+  /**
+   * Validate POD readiness before order processing
+   * Returns list of POD items that cannot be fulfilled
+   */
+  async validatePodReadiness(orderId: string): Promise<{
+    ready: boolean;
+    totalPodItems: number;
+    readyItems: number;
+    unreadyItems: Array<{ itemId: string; productName: string; reason: string }>;
+  }> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: {
+                store: {
+                  include: {
+                    user: {
+                      include: {
+                        gelatoSettings: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    const podItems = order.items.filter(
+      (item) => item.product.fulfillmentType === FulfillmentType.GELATO_POD
+    );
+
+    if (podItems.length === 0) {
+      return { ready: true, totalPodItems: 0, readyItems: 0, unreadyItems: [] };
+    }
+
+    const unreadyItems = [];
+    for (const item of podItems) {
+      const sellerGelatoSettings = item.product.store?.user?.gelatoSettings;
+
+      // Check if seller has Gelato enabled and verified
+      if (!sellerGelatoSettings?.isEnabled || !sellerGelatoSettings?.isVerified) {
+        unreadyItems.push({
+          itemId: item.id,
+          productName: item.product.name,
+          reason: !sellerGelatoSettings?.isEnabled
+            ? 'Seller has not enabled Gelato integration'
+            : 'Seller Gelato credentials not verified',
+        });
+      }
+    }
+
+    return {
+      ready: unreadyItems.length === 0,
+      totalPodItems: podItems.length,
+      readyItems: podItems.length - unreadyItems.length,
+      unreadyItems,
+    };
   }
 
   async submitAllPodItems(orderId: string) {
@@ -765,6 +849,17 @@ export class GelatoOrdersService {
 
       return quote;
     } catch (error) {
+      // Handle missing seller credentials gracefully (HTTP 403)
+      if (error.status === 403 || error.message?.includes('Gelato not configured')) {
+        this.logger.warn(
+          `Seller (store: ${params.storeId}) has not configured Gelato credentials. ` +
+            `Skipping POD shipping quote. Items may not be fulfillable.`
+        );
+        // Return null to indicate quote not available (not a fatal error)
+        return null;
+      }
+
+      // For other errors (network, API issues), log and re-throw
       this.logger.error(`Failed to get Gelato quote: ${error.message}`);
       throw error;
     }
