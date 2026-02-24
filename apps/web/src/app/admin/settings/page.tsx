@@ -35,6 +35,7 @@ import { CurrencySettingsSection } from '@/components/settings/currency-settings
 import { DeliverySettingsSection } from '@/components/settings/delivery-settings';
 import { TaxSettingsSection } from '@/components/settings/tax-settings';
 import { ShippingSettingsSection } from '@/components/settings/shipping-settings';
+import { FulfillmentSettingsSection } from '@/components/settings/fulfillment-settings';
 import { SecuritySettingsSection } from '@/components/settings/security-settings';
 import { NotificationSettingsSection } from '@/components/settings/notification-settings';
 import { SeoSettingsSection } from '@/components/settings/seo-settings';
@@ -104,6 +105,12 @@ function SettingsPageContent() {
       label: t('tabs.shipping.label'),
       icon: Calculator,
       description: t('tabs.shipping.description'),
+    },
+    {
+      value: 'fulfillment',
+      label: 'Fulfillment',
+      icon: Truck,
+      description: 'Configure POD and order fulfillment settings',
     },
     {
       value: 'delivery',
@@ -270,6 +277,10 @@ function SettingsPageContent() {
 
             <TabsContent value="shipping" className="mt-0">
               <ShippingSettingsSection />
+            </TabsContent>
+
+            <TabsContent value="fulfillment" className="mt-0">
+              <FulfillmentSettingsSection />
             </TabsContent>
 
             <TabsContent value="delivery" className="mt-0">

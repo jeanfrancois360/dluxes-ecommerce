@@ -17,7 +17,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { AlertTriangle, Lock, ArrowRight, Crown } from 'lucide-react';
+import { toast } from '@/lib/utils/toast';
 import { categoriesAPI, type Category } from '@/lib/api/categories';
+import { gelatoApi } from '@/lib/api/gelato';
 import { VariantManager } from '../admin/variant-manager';
 import { StockLevelIndicator } from '../admin/stock-status-badge';
 import {
@@ -27,6 +29,8 @@ import {
   ServiceFields,
   RentalFields,
 } from '../admin/product-type-fields';
+import { PodConfigurationSection } from '../gelato/pod-configuration-section';
+import { GelatoPreviewModal } from '../gelato/gelato-preview-modal';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
 import { useCanListProductType } from '@/hooks/use-subscription';
 
@@ -382,12 +386,22 @@ export default function ProductForm({
       rentalIncludes: (product as any)?.rentalIncludes || [],
       rentalExcludes: (product as any)?.rentalExcludes || [],
       rentalNotes: (product as any)?.rentalNotes || '',
+      // Gelato POD fields
+      fulfillmentType: (product as any)?.fulfillmentType || 'SELF_FULFILLED',
+      gelatoProductUid: (product as any)?.gelatoProductUid || '',
+      gelatoTemplateId: (product as any)?.gelatoTemplateId || '',
+      designFileUrl: (product as any)?.designFileUrl || '',
+      printAreas: (product as any)?.printAreas || null,
+      baseCost: (product as any)?.baseCost || undefined,
+      markupPercentage: (product as any)?.markupPercentage || undefined,
     };
   });
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [newTag, setNewTag] = useState('');
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [pendingGelatoData, setPendingGelatoData] = useState<any>(null);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -547,9 +561,35 @@ export default function ProductForm({
         rentalIncludes: (product as any)?.rentalIncludes || [],
         rentalExcludes: (product as any)?.rentalExcludes || [],
         rentalNotes: (product as any)?.rentalNotes || '',
+        // Gelato POD fields
+        fulfillmentType: (product as any)?.fulfillmentType || 'SELF_FULFILLED',
+        gelatoProductUid: (product as any)?.gelatoProductUid || '',
+        gelatoTemplateId: (product as any)?.gelatoTemplateId || '',
+        designFileUrl: (product as any)?.designFileUrl || '',
+        printAreas: (product as any)?.printAreas || null,
+        baseCost: (product as any)?.baseCost || undefined,
       });
     }
   }, [product]);
+
+  // Auto-calculate price from baseCost and markup percentage (only for POD products)
+  useEffect(() => {
+    if (
+      formData.fulfillmentType === 'GELATO_POD' &&
+      formData.baseCost &&
+      formData.markupPercentage !== undefined &&
+      formData.markupPercentage !== null
+    ) {
+      const calculatedPrice = formData.baseCost * (1 + formData.markupPercentage / 100);
+      // Only update if price is different (avoid infinite loop)
+      if (formData.price !== calculatedPrice) {
+        setFormData((prev: any) => ({
+          ...prev,
+          price: parseFloat(calculatedPrice.toFixed(2)),
+        }));
+      }
+    }
+  }, [formData.baseCost, formData.markupPercentage, formData.fulfillmentType]);
 
   // Auto-generate slug from name
   const generateSlug = (name: string) => {
@@ -575,6 +615,96 @@ export default function ProductForm({
   const handleImagesChange = useCallback((urls: string[]) => {
     setFormData((prev: any) => ({ ...prev, images: urls }));
   }, []);
+
+  // Utility function to strip HTML tags and convert to plain text
+  const stripHtmlTags = (html: string): string => {
+    if (!html) return '';
+    // Create a temporary div element to parse HTML
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    // Get text content and clean up whitespace
+    return tmp.textContent || tmp.innerText || '';
+  };
+
+  const handleGelatoProductSelect = async (productDetails: any) => {
+    console.log('[DEBUG] Product details received:', productDetails);
+
+    // Auto-populate product details from Gelato
+    const markup = formData.markupPercentage !== undefined ? formData.markupPercentage : 50; // Default 50% markup
+
+    // Get product UID - check multiple possible field names
+    const productUid = productDetails?.uid || productDetails?.productUid || productDetails?.id;
+
+    if (!productUid) {
+      console.error('[ERROR] No product UID found in productDetails:', productDetails);
+      toast.error('Could not identify Gelato product. Please try again.');
+      return;
+    }
+
+    // Build auto-populated description - strip HTML tags for plain text
+    let autoDescription = stripHtmlTags(productDetails.description || '');
+    if (productDetails.variants && productDetails.variants.length > 0) {
+      autoDescription += '\n\nAvailable options:\n';
+      productDetails.variants.forEach((variant: any) => {
+        const options = Object.entries(variant.options || {})
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(', ');
+        autoDescription += `- ${variant.title || 'Variant'} (${options})\n`;
+      });
+    }
+
+    const newName = productDetails.title || '';
+    const newSlug = generateSlug(newName);
+    const newDescription = autoDescription.trim();
+    const newImage = productDetails.previewUrl || '';
+
+    // Store pending data and open preview modal
+    setPendingGelatoData({
+      productTitle: productDetails.title,
+      newValues: {
+        name: newName,
+        slug: newSlug,
+        description: newDescription,
+        price: 0, // Will be calculated from baseCost + markup
+        image: newImage,
+        baseCost: undefined, // User must enter manually
+        markupPercentage: markup,
+      },
+    });
+    setIsPreviewModalOpen(true);
+  };
+
+  const applyGelatoChanges = () => {
+    if (!pendingGelatoData) return;
+
+    const { newValues } = pendingGelatoData;
+
+    setFormData((prev: any) => {
+      const updates: any = {
+        ...prev,
+        name: newValues.name || prev.name,
+        slug: newValues.slug || prev.slug,
+        description: newValues.description || prev.description,
+        price: newValues.price || prev.price,
+        baseCost: newValues.baseCost !== undefined ? newValues.baseCost : prev.baseCost,
+        markupPercentage:
+          newValues.markupPercentage !== undefined
+            ? newValues.markupPercentage
+            : prev.markupPercentage,
+      };
+
+      // Update images - replace first image with Gelato preview
+      if (newValues.image) {
+        const existingImages = prev.images || [];
+        updates.images = [newValues.image, ...existingImages.slice(1)];
+      }
+
+      return updates;
+    });
+
+    toast.success('Product details applied from Gelato');
+    setPendingGelatoData(null);
+  };
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
@@ -652,6 +782,7 @@ export default function ProductForm({
       // Remove fields that don't exist in backend or are handled separately
       delete dataToSubmit.tags; // Tags not supported in current schema
       delete dataToSubmit.sku; // SKU is auto-generated by backend, ignore frontend value
+      delete dataToSubmit.markupPercentage; // Used only for price calculation, not stored directly
 
       // Convert seoKeywords from comma-separated string to array
       if (typeof dataToSubmit.seoKeywords === 'string') {
@@ -711,6 +842,25 @@ export default function ProductForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Fulfillment Type Selection */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Fulfillment Method</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Choose how you'll fulfill orders for this product
+        </p>
+
+        <PodConfigurationSection
+          fulfillmentType={formData.fulfillmentType}
+          gelatoProductUid={formData.gelatoProductUid}
+          designFileUrl={formData.designFileUrl}
+          gelatoMarkupPercent={formData.markupPercentage}
+          productImages={formData.images || []}
+          onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+          onGelatoProductSelect={handleGelatoProductSelect}
+          disabled={loading}
+        />
+      </div>
+
       {/* Basic Information */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Basic Information</h3>
@@ -880,6 +1030,142 @@ export default function ProductForm({
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Pricing & Inventory</h3>
 
+        {/* POD Pricing Section - Show FIRST for Gelato POD products */}
+        {formData.fulfillmentType === 'GELATO_POD' && (
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
+            <div>
+              <h4 className="text-sm font-semibold text-blue-900 mb-3">Print-on-Demand Pricing</h4>
+
+              {/* Instructions for finding base cost */}
+              <div className="mb-4 p-3 bg-white border border-blue-300 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div className="text-xs text-blue-900">
+                    <p className="font-semibold mb-1">📋 How to find your production cost:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-blue-800">
+                      <li>
+                        Log in to your{' '}
+                        <a
+                          href="https://dashboard.gelato.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-blue-600"
+                        >
+                          Gelato Dashboard
+                        </a>
+                      </li>
+                      <li>
+                        Go to <strong>Products</strong> → Select your product
+                      </li>
+                      <li>
+                        View the <strong>"Production Cost"</strong> or <strong>"Base Price"</strong>
+                      </li>
+                      <li>Enter that amount below</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Gelato Base Cost (Manual Input) */}
+              <div>
+                <label htmlFor="baseCost" className="block text-sm font-medium text-gray-700 mb-2">
+                  Gelato Base Cost <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    id="baseCost"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.baseCost != null ? formData.baseCost : ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        baseCost: e.target.value ? parseFloat(e.target.value) : undefined,
+                      })
+                    }
+                    className="w-full pl-8 pr-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent bg-blue-50"
+                    placeholder="0.00"
+                    required={formData.fulfillmentType === 'GELATO_POD'}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-blue-700 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Find this in your Gelato product dashboard
+                </p>
+              </div>
+
+              {/* Markup Percentage */}
+              <div>
+                <label
+                  htmlFor="markupPercentage"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Markup Percentage
+                </label>
+                <div className="relative">
+                  <input
+                    id="markupPercentage"
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={formData.markupPercentage || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        markupPercentage: parseFloat(e.target.value) || undefined,
+                      })
+                    }
+                    className="w-full pl-4 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                    placeholder="50"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">e.g., 50% = 1.5x base cost</p>
+              </div>
+
+              {/* Calculated Price (Auto-filled) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Calculated Price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="text"
+                    value={formData.price != null ? Number(formData.price).toFixed(2) : '0.00'}
+                    readOnly
+                    className="w-full pl-8 pr-4 py-2 border border-green-300 rounded-lg bg-green-50 text-green-700 font-medium cursor-not-allowed"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Auto-calculated from base cost + markup
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Regular Pricing - Show below POD section or at top if not POD */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Price */}
           <div>
@@ -898,11 +1184,20 @@ export default function ProductForm({
                 }
                 className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
                   errors.price ? 'border-red-500' : 'border-gray-300'
-                }`}
+                } ${formData.fulfillmentType === 'GELATO_POD' ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                 placeholder="0.00"
+                readOnly={formData.fulfillmentType === 'GELATO_POD'}
+                title={
+                  formData.fulfillmentType === 'GELATO_POD'
+                    ? 'Auto-calculated from POD pricing above'
+                    : ''
+                }
               />
             </div>
             {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
+            {formData.fulfillmentType === 'GELATO_POD' && (
+              <p className="mt-1 text-xs text-gray-500">Auto-calculated from base cost + markup</p>
+            )}
           </div>
 
           {/* Compare At Price */}
@@ -932,7 +1227,9 @@ export default function ProductForm({
             </div>
             <p className="mt-1 text-sm text-gray-500">Original price to show savings</p>
           </div>
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           {/* Stock/Inventory */}
           {formData.productType === 'PHYSICAL' && (
             <div>
@@ -1421,6 +1718,27 @@ export default function ProductForm({
           {loading ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
         </button>
       </div>
+
+      {/* Gelato Preview Modal */}
+      {pendingGelatoData && (
+        <GelatoPreviewModal
+          isOpen={isPreviewModalOpen}
+          onClose={() => {
+            setIsPreviewModalOpen(false);
+            setPendingGelatoData(null);
+          }}
+          onApply={applyGelatoChanges}
+          currentValues={{
+            name: formData.name || '',
+            slug: formData.slug || '',
+            description: formData.description || '',
+            price: formData.price || 0,
+            image: formData.images?.[0] || '',
+          }}
+          newValues={pendingGelatoData.newValues}
+          productTitle={pendingGelatoData.productTitle}
+        />
+      )}
     </form>
   );
 }

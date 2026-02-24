@@ -10,7 +10,7 @@ import {
   ValidateNested,
   Validate,
 } from 'class-validator';
-import { ProductStatus, ProductType, PurchaseType } from '@prisma/client';
+import { ProductStatus, ProductType, PurchaseType, FulfillmentType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   RequiresPriceForInstantConstraint,
@@ -540,4 +540,31 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   rentalNotes?: string;
+
+  // ============ GELATO POD FIELDS ============
+  @IsOptional()
+  @IsEnum(FulfillmentType)
+  fulfillmentType?: FulfillmentType;
+
+  @IsOptional()
+  @IsString()
+  gelatoProductUid?: string;
+
+  @IsOptional()
+  @IsString()
+  gelatoTemplateId?: string;
+
+  @IsOptional()
+  @IsString()
+  designFileUrl?: string;
+
+  @IsOptional()
+  @IsObject()
+  printAreas?: any; // Print area configs { front: {...}, back: {...} }
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  baseCost?: number; // Base production cost from Gelato
 }

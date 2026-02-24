@@ -190,6 +190,10 @@ export function UniversalAddressForm({
       newErrors.address = 'Address is required';
     } else if (formData.address.trim().length < 5) {
       newErrors.address = 'Please provide a complete address';
+    } else if (formData.address.trim().length > 35) {
+      newErrors.address = 'Address must not exceed 35 characters (shipping provider limit)';
+    } else if (/[\n\r]/.test(formData.address)) {
+      newErrors.address = 'Address cannot contain line breaks';
     }
 
     // City (always required)
@@ -197,6 +201,8 @@ export function UniversalAddressForm({
       newErrors.city = 'City is required';
     } else if (formData.city.trim().length < 2) {
       newErrors.city = 'City name must be at least 2 characters';
+    } else if (formData.city.trim().length > 50) {
+      newErrors.city = 'City name must not exceed 50 characters';
     }
 
     // State (conditionally required)
@@ -340,18 +346,19 @@ export function UniversalAddressForm({
         <p className="text-xs text-muted-foreground">For delivery updates and contact</p>
       </div>
 
-      {/* Address (Textarea) */}
+      {/* Address (Single line input to prevent multi-line issues) */}
       <div className="space-y-2">
         <Label htmlFor="address">
           Address <span className="text-red-500">*</span>
         </Label>
-        <Textarea
+        <Input
           id="address"
           name="address"
+          type="text"
           value={formData.address}
           onChange={handleChange}
-          placeholder="Street address, building name, apartment number, area"
-          rows={3}
+          placeholder="123 Main St, Apt 4B"
+          maxLength={35}
           className={errors.address ? 'border-red-500' : ''}
           disabled={isSubmitting}
         />
@@ -361,7 +368,7 @@ export function UniversalAddressForm({
           </p>
         )}
         <p className="text-xs text-muted-foreground">
-          Include street, building, apartment/unit number
+          Street address (max 35 characters) - {formData.address.length}/35
         </p>
       </div>
 

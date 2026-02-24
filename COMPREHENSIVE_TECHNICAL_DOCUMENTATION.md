@@ -1,8 +1,9 @@
 # Comprehensive Technical Documentation
+
 # NextPik E-commerce Platform
 
-**Version:** 2.6.1
-**Last Updated:** January 31, 2026 (Price Stabilization Fix)
+**Version:** 2.8.0
+**Last Updated:** February 17, 2026 (Gelato Print-on-Demand Integration)
 **Status:** Production-Ready
 
 ---
@@ -22,6 +23,7 @@
 11. [Operational Notes](#11-operational-notes)
 12. [Version 2.6.1 Critical Fix](#12-version-261-critical-fix) **[NEW - Price Stabilization]**
 13. [Version 2.7.0 Changes & Enhancements](#13-version-270-changes--enhancements) **[NEW - Payment & Order Fixes]**
+    13.1 [Version 2.8.0 - Gelato Print-on-Demand Integration](#131-version-280---gelato-print-on-demand-integration) **[NEW - POD Integration]**
 14. [Version 2.6.0 Changes & Enhancements](#14-version-260-changes--enhancements)
 15. [Version 2.5.0 Changes & Enhancements](#15-version-250-changes--enhancements)
 16. [Version 2.4.0 Changes & Enhancements](#16-version-240-changes--enhancements)
@@ -52,6 +54,7 @@ The NextPik E-commerce Platform is a modern, enterprise-grade multi-vendor marke
 ### 1.3 Target Users and Stakeholders
 
 **Primary Users:**
+
 - **Buyers/Customers:** Browse and purchase luxury items across multiple categories
 - **Sellers:** Manage stores, products, orders, and track earnings
 - **Delivery Partners:** Handle order deliveries and track earnings
@@ -59,6 +62,7 @@ The NextPik E-commerce Platform is a modern, enterprise-grade multi-vendor marke
 - **Super Admins:** System-level configuration and user management
 
 **Stakeholders:**
+
 - Platform owners seeking commission-based revenue
 - Luxury brand sellers requiring premium marketplace presence
 - Delivery providers integrating with the platform
@@ -124,11 +128,13 @@ The NextPik E-commerce Platform is a modern, enterprise-grade multi-vendor marke
 ### 2.2 Architecture Patterns
 
 **Monorepo Architecture:**
+
 - **Turborepo** manages multiple packages and applications
 - **pnpm Workspaces** for efficient dependency management
 - Shared packages: `@nextpik/database`, `@nextpik/ui`, `@nextpik/shared`, `@nextpik/design-system`
 
 **Backend Architecture:**
+
 - **Modular NestJS** - 32+ modules with clear separation of concerns
 - **Service Layer Pattern** - Business logic isolated in services
 - **Repository Pattern** - Database access through Prisma ORM
@@ -136,6 +142,7 @@ The NextPik E-commerce Platform is a modern, enterprise-grade multi-vendor marke
 - **DTO Pattern** - Request/response validation with class-validator
 
 **Frontend Architecture:**
+
 - **Next.js App Router** - File-based routing with layouts
 - **Context + SWR** - State management and data fetching
 - **Component-Driven** - Reusable components in shared UI package
@@ -145,11 +152,13 @@ The NextPik E-commerce Platform is a modern, enterprise-grade multi-vendor marke
 ### 2.3 Deployment Model
 
 **Development Environment:**
+
 - Docker Compose orchestrates all services
 - Hot-reload enabled for both frontend and backend
 - PostgreSQL replica for read scaling
 
 **Production Considerations:**
+
 - Containerized applications ready for Kubernetes
 - Horizontal scaling supported via Redis adapter for WebSockets
 - Database connection pooling configured
@@ -161,64 +170,64 @@ The NextPik E-commerce Platform is a modern, enterprise-grade multi-vendor marke
 
 ### 3.1 Frontend Stack
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Next.js | 15.5.6 | React framework with App Router |
-| React | 19.0.0 | UI library |
-| TypeScript | 5.6.3 | Type-safe JavaScript |
-| Tailwind CSS | 3.4.15 | Utility-first CSS framework |
-| Framer Motion | 11.15.0 | Animation library |
-| GSAP | 3.12.5 | Advanced animations |
-| React Spring | 9.7.5 | Spring physics animations |
-| SWR | 2.3.6 | Data fetching and caching |
-| Axios | 1.13.2 | HTTP client |
-| React Hook Form | 7.67.0 | Form handling |
-| Zod | 3.23.8 | Schema validation |
-| Radix UI | Various | Accessible UI primitives |
-| Lucide React | 0.555.0 | Icon library |
-| Stripe JS | 8.4.0 | Payment integration |
-| Socket.IO Client | 4.8.1 | Real-time communication |
-| Recharts | 3.4.1 | Data visualization |
-| Zustand | 5.0.9 | Lightweight state management |
-| Sonner | 2.0.7 | Toast notifications |
+| Technology       | Version | Purpose                         |
+| ---------------- | ------- | ------------------------------- |
+| Next.js          | 15.5.6  | React framework with App Router |
+| React            | 19.0.0  | UI library                      |
+| TypeScript       | 5.6.3   | Type-safe JavaScript            |
+| Tailwind CSS     | 3.4.15  | Utility-first CSS framework     |
+| Framer Motion    | 11.15.0 | Animation library               |
+| GSAP             | 3.12.5  | Advanced animations             |
+| React Spring     | 9.7.5   | Spring physics animations       |
+| SWR              | 2.3.6   | Data fetching and caching       |
+| Axios            | 1.13.2  | HTTP client                     |
+| React Hook Form  | 7.67.0  | Form handling                   |
+| Zod              | 3.23.8  | Schema validation               |
+| Radix UI         | Various | Accessible UI primitives        |
+| Lucide React     | 0.555.0 | Icon library                    |
+| Stripe JS        | 8.4.0   | Payment integration             |
+| Socket.IO Client | 4.8.1   | Real-time communication         |
+| Recharts         | 3.4.1   | Data visualization              |
+| Zustand          | 5.0.9   | Lightweight state management    |
+| Sonner           | 2.0.7   | Toast notifications             |
 
 ### 3.2 Backend Stack
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| NestJS | 10.4.15 | Node.js framework |
-| TypeScript | 5.6.3 | Type-safe JavaScript |
-| Prisma | 6.1.0 | ORM and database toolkit |
-| PostgreSQL | 16 | Primary database |
-| Passport | 0.7.0 | Authentication middleware |
-| Passport JWT | 4.0.1 | JWT strategy |
-| Passport Google OAuth20 | 2.0.0 | Google OAuth strategy |
-| bcrypt | 5.1.1 | Password hashing |
-| Speakeasy | 2.0.0 | 2FA (TOTP) |
-| QRCode | 1.5.4 | QR code generation |
-| Stripe | 19.3.0 | Payment processing |
-| Resend | 6.4.2 | Email delivery |
-| Supabase | 2.86.0 | Cloud storage |
-| Sharp | 0.34.5 | Image processing |
-| Socket.IO | 4.8.1 | WebSocket server |
-| BullMQ | 5.29.4 | Job queue (optional) |
-| ioredis | 5.4.2 | Redis client |
-| class-validator | 0.14.1 | DTO validation |
-| class-transformer | 0.5.1 | DTO transformation |
+| Technology              | Version | Purpose                   |
+| ----------------------- | ------- | ------------------------- |
+| NestJS                  | 10.4.15 | Node.js framework         |
+| TypeScript              | 5.6.3   | Type-safe JavaScript      |
+| Prisma                  | 6.1.0   | ORM and database toolkit  |
+| PostgreSQL              | 16      | Primary database          |
+| Passport                | 0.7.0   | Authentication middleware |
+| Passport JWT            | 4.0.1   | JWT strategy              |
+| Passport Google OAuth20 | 2.0.0   | Google OAuth strategy     |
+| bcrypt                  | 5.1.1   | Password hashing          |
+| Speakeasy               | 2.0.0   | 2FA (TOTP)                |
+| QRCode                  | 1.5.4   | QR code generation        |
+| Stripe                  | 19.3.0  | Payment processing        |
+| Resend                  | 6.4.2   | Email delivery            |
+| Supabase                | 2.86.0  | Cloud storage             |
+| Sharp                   | 0.34.5  | Image processing          |
+| Socket.IO               | 4.8.1   | WebSocket server          |
+| BullMQ                  | 5.29.4  | Job queue (optional)      |
+| ioredis                 | 5.4.2   | Redis client              |
+| class-validator         | 0.14.1  | DTO validation            |
+| class-transformer       | 0.5.1   | DTO transformation        |
 
 ### 3.3 Infrastructure & DevOps
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Docker | Latest | Containerization |
-| Docker Compose | 3.8 | Multi-container orchestration |
-| Turborepo | 2.3.3 | Monorepo build system |
-| pnpm | 9.0.0 | Package manager |
-| PostgreSQL | 16-alpine | Primary database |
-| Redis | 7-alpine | Cache and session store |
-| Meilisearch | v1.11 | Search engine |
-| Adminer | Latest | Database GUI |
-| Node.js | ≥20.0.0 | Runtime environment |
+| Technology     | Version   | Purpose                       |
+| -------------- | --------- | ----------------------------- |
+| Docker         | Latest    | Containerization              |
+| Docker Compose | 3.8       | Multi-container orchestration |
+| Turborepo      | 2.3.3     | Monorepo build system         |
+| pnpm           | 9.0.0     | Package manager               |
+| PostgreSQL     | 16-alpine | Primary database              |
+| Redis          | 7-alpine  | Cache and session store       |
+| Meilisearch    | v1.11     | Search engine                 |
+| Adminer        | Latest    | Database GUI                  |
+| Node.js        | ≥20.0.0   | Runtime environment           |
 
 ### 3.4 External Services
 
@@ -238,11 +247,13 @@ The NextPik E-commerce Platform is a modern, enterprise-grade multi-vendor marke
 The backend consists of 32 modules organized by domain:
 
 **Core Modules:**
+
 - `AuthModule` - Basic and enhanced authentication
 - `UsersModule` - User management
 - `DatabaseModule` - Prisma ORM configuration
 
 **E-commerce Modules:**
+
 - `ProductsModule` - Product CRUD and filtering
 - `CategoriesModule` - Category management with hierarchy
 - `CollectionsModule` - Curated product collections
@@ -252,23 +263,27 @@ The backend consists of 32 modules organized by domain:
 - `ReviewsModule` - Product reviews and ratings
 
 **Multi-vendor Modules:**
+
 - `SellerModule` - Seller dashboard and product management
 - `StoresModule` - Store profile management
 - `CommissionModule` - Commission calculation and tracking
 - `PayoutModule` - Seller payout processing
 
 **Delivery Modules:**
+
 - `DeliveryModule` - Delivery tracking and confirmation
 - `DeliveryProviderModule` - Provider management
 - `DeliveryPartnerModule` - Partner assignment and tracking
 
 **Payment & Financial:**
+
 - `PaymentModule` - Stripe integration and webhooks
 - `EscrowModule` - Escrow transaction management
 - `CurrencyModule` - Multi-currency support
 - `ShippingModule` - Shipping zones and rates
 
 **Infrastructure:**
+
 - `UploadModule` - File upload to Supabase
 - `SearchModule` - Meilisearch integration
 - `SettingsModule` - Dynamic system configuration
@@ -278,6 +293,7 @@ The backend consists of 32 modules organized by domain:
 - `NotificationsModule` - Notification management
 
 **Admin & Ads:**
+
 - `AdminModule` - Admin dashboard and operations
 - `AdvertisementModule` - Ad management and analytics
 - `InventoryModule` - Stock tracking and management
@@ -287,6 +303,7 @@ The backend consists of 32 modules organized by domain:
 **Base URL:** `http://localhost:4000/api/v1`
 
 #### Authentication (`/auth`)
+
 - `POST /register` - User registration
 - `POST /login` - Login with email/password (supports `twoFactorCode` or `backupCode`)
 - `POST /magic-link/request` - Request passwordless login
@@ -307,6 +324,7 @@ The backend consists of 32 modules organized by domain:
 - `DELETE /sessions/revoke-all-other` - Revoke all sessions except current
 
 #### Products (`/products`)
+
 - `GET /products` - List products with filters
 - `GET /products/featured` - Featured products
 - `GET /products/trending` - Trending products
@@ -317,6 +335,7 @@ The backend consists of 32 modules organized by domain:
 - `POST /products/upload-image` - Upload product image
 
 #### Categories (`/categories`)
+
 - `GET /categories` - Get all categories
 - `GET /categories/navbar` - Navbar categories
 - `GET /categories/:slug` - Get category by slug
@@ -325,6 +344,7 @@ The backend consists of 32 modules organized by domain:
 - `DELETE /categories/:id` - Delete category
 
 #### Orders (`/orders`)
+
 - `GET /orders` - Get user orders
 - `GET /orders/:id` - Get order details
 - `POST /orders` - Create order
@@ -332,6 +352,7 @@ The backend consists of 32 modules organized by domain:
 - `POST /orders/:id/cancel` - Cancel order
 
 #### Cart (`/cart`)
+
 - `GET /cart` - Get cart
 - `POST /cart/items` - Add item
 - `PATCH /cart/items/:id` - Update quantity
@@ -339,7 +360,9 @@ The backend consists of 32 modules organized by domain:
 - `DELETE /cart` - Clear cart
 
 #### Payment (`/payment`)
+
 **Core Endpoints:**
+
 - `POST /payment/create-intent` - Create Stripe payment intent
   - **Body:** `{ orderId: string, amount: number, currency: string }`
   - **Returns:** `{ clientSecret: string, paymentIntentId: string, amount: number, currency: string }`
@@ -359,6 +382,7 @@ The backend consists of 32 modules organized by domain:
   - **Auth:** Required (admin only)
 
 **Monitoring & Health:**
+
 - `GET /payment/health` - Payment system health metrics
   - **Query:** `?days=7` (optional, default: 30)
   - **Returns:** `{ totalTransactions, successRate, failureRate, averageAmount, lastPaymentAt }`
@@ -369,6 +393,7 @@ The backend consists of 32 modules organized by domain:
   - **Auth:** Required (admin only)
 
 **Admin Configuration:**
+
 - `GET /settings/stripe/status` - Stripe connection status
   - **Returns:** `{ isConfigured: boolean, mode: 'test' | 'live', lastChecked: Date }`
   - **Auth:** Required (admin only)
@@ -378,12 +403,14 @@ The backend consists of 32 modules organized by domain:
   - **Auth:** Required (admin only)
 
 #### Seller (`/seller`)
+
 - `GET /seller/dashboard` - Seller dashboard stats
 - `GET /seller/products` - Seller's products
 - `POST /seller/products` - Create product
 - `GET /seller/orders` - Seller's orders
 
 #### Commission (`/commission`)
+
 - `GET /commission/my-summary` - Commission summary
 - `GET /commission/my-commissions` - Seller commissions
 - `GET /commission/my-payouts` - Seller payouts
@@ -391,6 +418,7 @@ The backend consists of 32 modules organized by domain:
 - `POST /commission/payouts` - Create payout (Admin)
 
 #### Delivery (`/deliveries`)
+
 - `POST /deliveries` - Create delivery
 - `PUT /deliveries/:id/assign` - Assign delivery
 - `PUT /deliveries/:id/status` - Update status
@@ -398,13 +426,17 @@ The backend consists of 32 modules organized by domain:
 - `GET /deliveries/track/:trackingNumber` - Track delivery
 
 #### Settings (`/settings`)
+
 **Public Endpoints:**
+
 - `GET /settings/public` - Get all public settings (accessible by frontend)
 
 **Authenticated Endpoints:**
+
 - `GET /settings/:key` - Get single setting by key
 
 **Admin Endpoints:**
+
 - `GET /settings` - Get all settings
 - `GET /settings/category/:category` - Get settings by category
 - `POST /settings` - Create new setting
@@ -418,16 +450,19 @@ The backend consists of 32 modules organized by domain:
 **Total Settings:** 38 configured settings
 
 #### Currency (`/currency`)
+
 - `GET /currency/rates` - Get exchange rates
 - `GET /currency/convert` - Convert amount
 - `POST /currency/admin/rates` - Create rate (Admin)
 - `PATCH /currency/admin/rates/:code` - Update rate
 
 #### Search (`/search`)
+
 - `GET /search` - Search products
 - `POST /search/index` - Index products (Admin)
 
 #### Admin (`/admin`)
+
 - `GET /admin/stats` - Dashboard statistics
 - `GET /admin/analytics` - Analytics data
 - `GET /admin/orders` - All orders
@@ -437,12 +472,14 @@ The backend consists of 32 modules organized by domain:
 ### 4.3 Authentication & Authorization
 
 **Authentication Methods:**
+
 1. **JWT Tokens:** Default method with 7-day expiry
 2. **Magic Link:** Passwordless authentication via email
 3. **Two-Factor (2FA):** TOTP-based using authenticator apps
 4. **Session Management:** Database-persisted sessions with device tracking
 
 **Authorization Roles:**
+
 - `BUYER` - Can purchase products
 - `SELLER` - Can sell products (includes buyer capabilities)
 - `CUSTOMER` - Legacy role (equivalent to BUYER)
@@ -451,6 +488,7 @@ The backend consists of 32 modules organized by domain:
 - `SUPER_ADMIN` - System-level administrator
 
 **Security Features:**
+
 - **Rate Limiting:** Configurable per endpoint (e.g., 5 login attempts/min)
 - **Account Lockout:** 15-minute lockout after 5 failed login attempts
 - **Session Timeout:** 30-minute inactivity timeout on frontend
@@ -469,6 +507,7 @@ The backend consists of 32 modules organized by domain:
 - **Google OAuth Auto-Link Guards:** Suspended accounts and 2FA-enabled accounts cannot be silently linked
 
 **Guards & Middleware:**
+
 - `JwtAuthGuard` - Validates JWT tokens
 - `LocalAuthGuard` - Email/password authentication
 - `RolesGuard` - Role-based access control
@@ -483,6 +522,7 @@ The backend consists of 32 modules organized by domain:
 **Key Model Groups:**
 
 **User Management (8 tables):**
+
 - `User` - Core user data with role-based access
 - `UserPreferences` - UI/locale preferences
 - `Address` - User addresses
@@ -493,6 +533,7 @@ The backend consists of 32 modules organized by domain:
 - `RefreshToken` - JWT refresh tokens
 
 **Product Catalog (11 tables):**
+
 - `Product` - Core product data with multiple types (PHYSICAL, REAL_ESTATE, VEHICLE, SERVICE, RENTAL, DIGITAL)
 - `ProductImage` - Product images with optimization metadata
 - `ProductVariant` - Size/color variants with pricing
@@ -506,6 +547,7 @@ The backend consists of 32 modules organized by domain:
 - `Review` - Product reviews with media
 
 **Shopping & Orders (9 tables):**
+
 - `Cart` - Shopping carts (session or user-based)
 - `CartItem` - Cart line items
 - `Order` - Order records with status tracking
@@ -517,6 +559,7 @@ The backend consists of 32 modules organized by domain:
 - `CurrencyRate` - Exchange rates
 
 **Multi-vendor System (10 tables):**
+
 - `Store` - Seller stores
 - `CommissionRule` - Flexible commission configuration
 - `Commission` - Commission ledger
@@ -529,6 +572,7 @@ The backend consists of 32 modules organized by domain:
 - `PayoutScheduleConfig` - Automated payout settings
 
 **Delivery System (4 tables):**
+
 - `DeliveryProvider` - Delivery companies/partners
 - `Delivery` - Delivery tracking records
 - `DeliveryProviderPayout` - Provider payments
@@ -536,6 +580,7 @@ The backend consists of 32 modules organized by domain:
 - `ShippingRate` - Tiered shipping rates
 
 **Advertisement System (5 tables):**
+
 - `Advertisement` - Ad campaigns
 - `AdAnalytics` - Ad performance tracking
 - `AdSubscription` - Subscription-based ad plans
@@ -543,6 +588,7 @@ The backend consists of 32 modules organized by domain:
 - `SellerPlanSubscription` - Seller ad subscriptions
 
 **System Configuration (2 tables):**
+
 - `SystemSetting` - Dynamic platform configuration
   - 38 settings across 8 categories (general, payment, commission, currency, delivery, security, notifications, seo)
   - Flexible JSON value storage with type enforcement (STRING, NUMBER, BOOLEAN, JSON, ARRAY)
@@ -559,6 +605,7 @@ The backend consists of 32 modules organized by domain:
 ### 4.5 Key Services
 
 **AuthService:**
+
 - User registration with email verification
 - Login with rate limiting
 - Magic link generation and verification
@@ -568,6 +615,7 @@ The backend consists of 32 modules organized by domain:
 - Login attempt tracking
 
 **ProductsService:**
+
 - CRUD operations with soft delete
 - Advanced filtering (price range, category, brand, colors, sizes, materials, availability, featured, on-sale)
 - Sorting (price, date, popularity, rating)
@@ -578,6 +626,7 @@ The backend consists of 32 modules organized by domain:
 - Search integration with Meilisearch
 
 **OrdersService:**
+
 - Order creation from cart
 - Inventory reservation and deduction
 - Shipping calculation
@@ -588,6 +637,7 @@ The backend consists of 32 modules organized by domain:
 - Timeline tracking
 
 **PaymentService:** (Production-Ready - v2.0)
+
 - **Dynamic Stripe Client Initialization:**
   - Real-time configuration from System Settings (no server restart required)
   - Automatic client reinitializa tion on settings update
@@ -640,11 +690,13 @@ The backend consists of 32 modules organized by domain:
   - **Monitoring:** Health endpoints, webhook retry tracking, error logging
 
 **Related Documentation:**
+
 - `STRIPE_INTEGRATION_SUMMARY.md` - Complete technical implementation details
 - `STRIPE_INTEGRATION_TEST_GUIDE.md` - Manual testing procedures (21 test scenarios)
 - `STRIPE_PRODUCTION_READINESS_REPORT.md` - Production validation and deployment checklist
 
 **CommissionService:**
+
 - Commission calculation based on rules
 - Rule priority evaluation
 - Category-specific rates
@@ -653,6 +705,7 @@ The backend consists of 32 modules organized by domain:
 - Commission status tracking (PENDING → CONFIRMED → PAID)
 
 **PayoutService:**
+
 - Automated payout scheduling
 - Batch payout creation
 - Commission aggregation
@@ -661,6 +714,7 @@ The backend consists of 32 modules organized by domain:
 - Seller notification
 
 **SettingsService:**
+
 - Dynamic setting management with 38 configured settings
 - Type-safe value storage (STRING, NUMBER, BOOLEAN, JSON, ARRAY)
 - Public vs private settings (public settings exposed to frontend)
@@ -678,6 +732,7 @@ The backend consists of 32 modules organized by domain:
   - Currency configuration (`default_currency`, `supported_currencies`)
 
 **UploadService:**
+
 - Supabase storage integration
 - Image optimization with Sharp
 - Multiple image upload
@@ -686,6 +741,7 @@ The backend consists of 32 modules organized by domain:
 - File deletion
 
 **SearchService:**
+
 - Meilisearch indexing
 - Full-text search
 - Faceted search (filters)
@@ -696,9 +752,11 @@ The backend consists of 32 modules organized by domain:
 ### 4.6 Background Jobs & Scheduled Tasks
 
 **Implemented:**
+
 - **PayoutSchedulerService:** Automated seller payout processing with configurable frequency (DAILY, WEEKLY, BIWEEKLY, MONTHLY)
 
 **Planned (Infrastructure Ready):**
+
 - Email queue processing with BullMQ
 - Image optimization queue
 - Search index updates
@@ -707,6 +765,7 @@ The backend consists of 32 modules organized by domain:
 - Automatic order status updates
 
 **Configuration:**
+
 - BullMQ and ioredis dependencies installed
 - Redis connection ready
 - Job queue infrastructure in place
@@ -717,12 +776,14 @@ The backend consists of 32 modules organized by domain:
 **Gateway:** Socket.IO with Redis adapter support
 
 **Events:**
+
 - `cart:updated` - Real-time cart updates
 - `order:updated` - Order status changes
 - Room-based messaging (`user-{userId}`)
 - Connection/disconnection tracking
 
 **Use Cases:**
+
 - Live order tracking
 - Real-time cart synchronization
 - Admin notifications
@@ -785,6 +846,7 @@ apps/web/
 ### 5.2 Pages and Routes
 
 **Public Routes:**
+
 - `/` - Homepage with product carousels
 - `/products` - Product listing with filters
 - `/products/[slug]` - Product detail page
@@ -793,6 +855,7 @@ apps/web/
 - `/about`, `/contact`, `/help` - Info pages
 
 **Authentication Routes:**
+
 - `/auth/login` - Login page
 - `/auth/register` - Registration
 - `/auth/forgot-password` - Password reset request
@@ -800,6 +863,7 @@ apps/web/
 - `/auth/verify-email` - Email verification
 
 **User Routes (Protected):**
+
 - `/account` - Account dashboard
 - `/account/profile` - Profile management
 - `/account/orders` - Order history
@@ -809,12 +873,14 @@ apps/web/
 - `/wishlist` - User wishlist
 
 **Seller Routes (Protected):**
+
 - `/seller/products` - Product management
 - `/seller/products/new` - Create product
 - `/seller/orders` - Seller orders
 - `/seller/store/settings` - Store settings
 
 **Admin Routes (Protected):**
+
 - `/admin/dashboard` - Admin dashboard
 - `/admin/products` - Product management
 - `/admin/categories` - Category management
@@ -827,6 +893,7 @@ apps/web/
 - `/admin/advertisements` - Ad management
 
 **Delivery Partner Routes (Protected):**
+
 - `/delivery-partner/dashboard` - Partner dashboard
 - `/delivery-partner/deliveries` - Active deliveries
 - `/delivery-partner/earnings` - Earnings tracking
@@ -836,6 +903,7 @@ apps/web/
 **Context-Based Architecture:**
 
 **AuthContext:**
+
 - User authentication state
 - Login/logout/register operations
 - Password management (reset, change)
@@ -847,6 +915,7 @@ apps/web/
 - Account deletion
 
 **CartContext:**
+
 - Shopping cart state
 - Add/update/remove items
 - Cart totals calculation (subtotal, tax, shipping, total)
@@ -857,6 +926,7 @@ apps/web/
 - 10% tax rate
 
 **LocaleContext:**
+
 - Language preference (English, French, Spanish)
 - Currency selection (USD, EUR)
 - Currency conversion with exchange rates
@@ -864,6 +934,7 @@ apps/web/
 - LocalStorage persistence
 
 **Data Fetching with SWR (Enhanced v2.0):**
+
 ```typescript
 // Default Configuration (v1.x - Deprecated)
 {
@@ -887,6 +958,7 @@ await mutate('/currency/rates', undefined, { revalidate: true });
 ```
 
 **Custom Hooks:**
+
 - `useAuth()` - Authentication operations
 - `useCart()` - Cart operations
 - `useLocale()` - Locale preferences (deprecated for currency)
@@ -907,6 +979,7 @@ await mutate('/currency/rates', undefined, { revalidate: true });
 **API Client Architecture:**
 
 **Base Client (`api/client.ts`):**
+
 ```typescript
 Features:
 - Token management (access & refresh tokens)
@@ -918,6 +991,7 @@ Features:
 ```
 
 **API Modules:**
+
 - `products.ts` - Product operations
 - `auth.ts` - Authentication operations
 - `cart.ts` - Cart operations
@@ -928,12 +1002,14 @@ Features:
 - `categories.ts` - Category operations
 
 **Token Management:**
+
 - Stored in both localStorage and cookies
 - Server-side middleware can access via cookies
 - Auto-expiry tracking
 - Secure token clearing on logout
 
 **Error Handling:**
+
 - Custom APIError class
 - Toast notifications for errors
 - Error boundary components
@@ -944,12 +1020,14 @@ Features:
 **Layout Components:**
 
 **TopBar:**
+
 - Currency selector
 - Language selector
 - User menu (login/register or account dropdown)
 - Free shipping banner
 
 **Navbar:**
+
 - Logo with animation
 - Navigation links with mega menu
 - Search bar (desktop) / search icon (mobile)
@@ -959,12 +1037,14 @@ Features:
 - Sticky on scroll
 
 **MegaMenu:**
+
 - Multi-column dropdown
 - Featured products
 - Category navigation
 - Hover-activated
 
 **Footer:**
+
 - Multi-column layout
 - Newsletter subscription
 - Social media links
@@ -974,6 +1054,7 @@ Features:
 **Shared Components:**
 
 **ProductCard:**
+
 - Product image with lazy loading
 - Product name and price
 - Discount badge
@@ -982,12 +1063,14 @@ Features:
 - Quick view modal
 
 **ProductGrid:**
+
 - Responsive grid layout
 - Loading skeletons
 - Infinite scroll ready
 - Filter/sort integration
 
 **Checkout Components:**
+
 - `CheckoutStepper` - Progress indicator
 - `AddressForm` - Shipping address with validation
 - `PaymentForm` - Stripe Elements integration
@@ -995,6 +1078,7 @@ Features:
 - `OrderSummary` - Cart summary with totals
 
 **Admin Components:**
+
 - `AdminLayout` - Admin sidebar navigation
 - `AdminHeader` - Admin top bar
 - `ModernTable` - Data table with sorting/filtering
@@ -1003,6 +1087,7 @@ Features:
 ### 5.6 Form Handling
 
 **Patterns:**
+
 - Controlled components with React state
 - Real-time validation
 - Error display per field
@@ -1010,12 +1095,14 @@ Features:
 - Success/error toast notifications
 
 **Validation:**
+
 - Custom TypeScript-based validation
 - Schema-based validation for settings
 - Field-level validation
 - Form-level validation before submit
 
 **Common Forms:**
+
 - Address form (checkout, account)
 - Payment form (Stripe Elements)
 - Product form (create/edit)
@@ -1026,6 +1113,7 @@ Features:
 ### 5.7 Client-Side Features
 
 **Shopping Experience:**
+
 - Product search with suggestions
 - Advanced filtering (category, price, brand, availability)
 - Sort options (relevance, price, rating, date)
@@ -1037,6 +1125,7 @@ Features:
 - Order tracking
 
 **User Features:**
+
 - Account dashboard
 - Order history with tracking
 - Address management
@@ -1047,6 +1136,7 @@ Features:
 - 2FA setup
 
 **Performance Optimizations:**
+
 - Code splitting with lazy loading
 - Image optimization (Next.js Image)
 - SWR caching with stale-while-revalidate
@@ -1057,6 +1147,7 @@ Features:
 - Skeleton loaders
 
 **Animations:**
+
 - Framer Motion for page transitions
 - GSAP for complex animations
 - React Spring for physics-based animations
@@ -1065,6 +1156,7 @@ Features:
 - Loading animations
 
 **Additional Features:**
+
 - WhatsApp chat widget
 - Toast notifications (Sonner)
 - Scroll to top button
@@ -1087,6 +1179,7 @@ Features:
 ### 6.2 Core Entities
 
 **User Management:**
+
 ```prisma
 User {
   id, email, firstName, lastName, password
@@ -1104,6 +1197,7 @@ User {
 ```
 
 **Product Catalog:**
+
 ```prisma
 Product {
   id, name, slug, description
@@ -1127,6 +1221,7 @@ Category {
 ```
 
 **Orders & Payments:**
+
 ```prisma
 Order {
   id, orderNumber, userId
@@ -1153,6 +1248,7 @@ PaymentTransaction {
 ```
 
 **Multi-Vendor System:**
+
 ```prisma
 Store {
   id, userId, name, slug
@@ -1180,6 +1276,7 @@ Payout {
 ```
 
 **Escrow System:**
+
 ```prisma
 EscrowTransaction {
   id, orderId, paymentTransactionId
@@ -1199,6 +1296,7 @@ DeliveryConfirmation {
 ```
 
 **Delivery System:**
+
 ```prisma
 DeliveryProvider {
   id, name, slug
@@ -1222,6 +1320,7 @@ Delivery {
 ### 6.3 Database Relationships
 
 **One-to-One:**
+
 - User ↔ UserPreferences
 - User ↔ Store (sellers only)
 - Order ↔ EscrowTransaction
@@ -1229,6 +1328,7 @@ Delivery {
 - Order ↔ Delivery
 
 **One-to-Many:**
+
 - User → Orders, Carts, Addresses, Sessions
 - Product → Images, Variants, Tags, Reviews
 - Order → OrderItems, PaymentTransactions
@@ -1236,6 +1336,7 @@ Delivery {
 - Category → Products (with hierarchy via self-reference)
 
 **Many-to-Many:**
+
 - Product ↔ Collection (via ProductCollection)
 - User ↔ Product (wishlist via WishlistItem)
 - Product recommendations (via ProductRecommendation)
@@ -1243,6 +1344,7 @@ Delivery {
 ### 6.4 Indexes
 
 **Performance-Critical Indexes:**
+
 - User: email, lastLoginAt, deliveryProviderId
 - Product: slug, status, featured, categoryId, price, rating, displayOrder
 - Order: userId, orderNumber, status, paymentStatus
@@ -1251,23 +1353,27 @@ Delivery {
 - Delivery: orderId, trackingNumber, currentStatus
 
 **Composite Indexes:**
+
 - Product: (status, featured, displayOrder)
 - Product: (status, categoryId, price)
 - Product: (status, viewCount, likeCount)
 - Product: (productType, purchaseType)
 
 **Full-Text Search:**
+
 - Product.searchVector (PostgreSQL tsvector with GIN index)
 
 ### 6.5 Database Migrations
 
 **Migration Strategy:**
+
 - Prisma migrations for schema changes
 - Seed scripts for initial data
 - Version-controlled migration history
 - Safe rollback capability
 
 **Initial Data:**
+
 - System settings with default values
 - Currency rates (USD, EUR)
 - Default categories
@@ -1281,6 +1387,7 @@ Delivery {
 ### 7.1 Environment Variables
 
 **Backend (`apps/api/.env`):**
+
 ```env
 # Server
 NODE_ENV=development
@@ -1321,6 +1428,7 @@ MEILISEARCH_API_KEY=masterKey
 ```
 
 **Frontend (`apps/web/.env.local`):**
+
 ```env
 # API
 NEXT_PUBLIC_API_URL=http://localhost:4000
@@ -1338,6 +1446,7 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 ```
 
 **Database (`packages/database/.env`):**
+
 ```env
 DATABASE_URL=postgresql://postgres:User@123!@localhost:5433/nextpik_ecommerce?schema=public
 ```
@@ -1345,6 +1454,7 @@ DATABASE_URL=postgresql://postgres:User@123!@localhost:5433/nextpik_ecommerce?sc
 ### 7.2 Build and Run Commands
 
 **Root Level:**
+
 ```bash
 pnpm install              # Install all dependencies
 pnpm dev                  # Start all apps in development mode
@@ -1357,6 +1467,7 @@ pnpm docker:down          # Stop Docker services
 ```
 
 **Backend (`apps/api`):**
+
 ```bash
 pnpm dev                  # Start in watch mode (port 3001)
 pnpm build                # Build for production
@@ -1367,6 +1478,7 @@ pnpm type-check           # TypeScript check
 ```
 
 **Frontend (`apps/web`):**
+
 ```bash
 pnpm dev                  # Start dev server (port 3000)
 pnpm build                # Build for production
@@ -1376,6 +1488,7 @@ pnpm type-check           # TypeScript check
 ```
 
 **Database:**
+
 ```bash
 pnpm prisma:generate      # Generate Prisma client
 pnpm prisma:migrate       # Run migrations
@@ -1411,10 +1524,12 @@ pnpm --filter @nextpik/database prisma:seed    # Seed database
    - Access: http://localhost:8080
 
 **Health Checks:**
+
 - All services have health checks configured
 - Automatic restart unless stopped
 
 **Start Services:**
+
 ```bash
 pnpm docker:up           # Start all services
 docker-compose up -d     # Alternative command
@@ -1428,22 +1543,26 @@ docker-compose logs -f   # View logs
 ### 7.4 Configuration Files
 
 **Monorepo Configuration:**
+
 - `turbo.json` - Turborepo pipeline configuration
 - `pnpm-workspace.yaml` - Workspace definition
 - `package.json` - Root package with workspace scripts
 
 **TypeScript Configuration:**
+
 - `tsconfig.json` - Root TypeScript config
 - `apps/api/tsconfig.json` - Backend TS config
 - `apps/web/tsconfig.json` - Frontend TS config
 - `packages/*/tsconfig.json` - Package-specific configs
 
 **Linting & Formatting:**
+
 - `.prettierrc` - Prettier configuration
 - `.eslintrc` - ESLint configuration (per package)
 - `.gitignore` - Git ignore rules
 
 **Build Outputs:**
+
 - `apps/api/dist/` - Compiled backend code
 - `apps/web/.next/` - Next.js build output
 - `packages/*/dist/` - Compiled package code
@@ -1455,6 +1574,7 @@ docker-compose logs -f   # View logs
 ### 8.1 Fully Completed Features
 
 ✅ **Authentication & Authorization**
+
 - Email/password authentication
 - JWT-based session management
 - Magic link (passwordless) authentication
@@ -1467,6 +1587,7 @@ docker-compose logs -f   # View logs
 - Maintenance mode support
 
 ✅ **User Management**
+
 - User registration and profile management
 - Avatar upload and deletion
 - Address management
@@ -1476,6 +1597,7 @@ docker-compose logs -f   # View logs
 - Login attempt tracking
 
 ✅ **Product Catalog**
+
 - Multiple product types (PHYSICAL, REAL_ESTATE, VEHICLE, SERVICE, RENTAL, DIGITAL)
 - Purchase types (INSTANT, INQUIRY)
 - Product CRUD operations
@@ -1490,6 +1612,7 @@ docker-compose logs -f   # View logs
 - Wishlist functionality
 
 ✅ **Shopping Experience**
+
 - Shopping cart (session-based for guests, user-based for logged-in users)
 - Cart persistence with localStorage
 - Real-time cart updates via WebSocket
@@ -1500,6 +1623,7 @@ docker-compose logs -f   # View logs
 - Order timeline visualization
 
 ✅ **Payment System** (Production-Ready - v2.0)
+
 - **Stripe Integration:**
   - Dynamic Stripe client initialization with real-time configuration
   - Test mode and Live mode support with admin toggle
@@ -1577,16 +1701,19 @@ docker-compose logs -f   # View logs
   - **Production Readiness:** Security audit passed, performance benchmarks met
 
 **Production Deployment Status:** ✅ **APPROVED FOR DEPLOYMENT**
+
 - Deployment Confidence: 95%
 - All critical features tested and validated
 - Comprehensive documentation available
 
 **Detailed Documentation:**
+
 - [`STRIPE_INTEGRATION_SUMMARY.md`](./STRIPE_INTEGRATION_SUMMARY.md) - Complete technical implementation (1500+ lines)
 - [`STRIPE_INTEGRATION_TEST_GUIDE.md`](./STRIPE_INTEGRATION_TEST_GUIDE.md) - Manual testing procedures (650+ lines, 21 test scenarios)
 - [`STRIPE_PRODUCTION_READINESS_REPORT.md`](./STRIPE_PRODUCTION_READINESS_REPORT.md) - Production validation report (400+ lines)
 
 ✅ **Multi-Vendor System**
+
 - Seller registration and store creation
 - Store profile management
 - Seller product management
@@ -1598,6 +1725,7 @@ docker-compose logs -f   # View logs
 - Seller dashboard with analytics
 
 ✅ **Delivery System**
+
 - Delivery provider management
 - Delivery partner assignment
 - Order tracking with tracking number
@@ -1609,6 +1737,7 @@ docker-compose logs -f   # View logs
 - Delivery provider payouts
 
 ✅ **Admin Portal**
+
 - Admin dashboard with statistics
 - Product management (approve, edit, delete)
 - Category management
@@ -1623,6 +1752,7 @@ docker-compose logs -f   # View logs
 - Analytics and reporting
 
 ✅ **Multi-Currency Support** (Enhanced v2.0)
+
 - Currency rate management with active/inactive status
 - Real-time currency conversion with exchange rate tracking
 - Price display in selected currency with thousand separators
@@ -1636,6 +1766,7 @@ docker-compose logs -f   # View logs
 - **NEW:** Professional number formatting with locale support (100,000.00 format)
 
 ✅ **Search & Discovery**
+
 - Full-text search with Meilisearch
 - Advanced product filtering
 - Sort options (price, date, popularity, rating)
@@ -1644,6 +1775,7 @@ docker-compose logs -f   # View logs
 - Featured collections
 
 ✅ **Advertisement System**
+
 - Ad campaign management
 - Multiple ad placements (homepage, sidebar, product pages)
 - Ad analytics (impressions, clicks, conversions)
@@ -1652,6 +1784,7 @@ docker-compose logs -f   # View logs
 - Ad approval workflow
 
 ✅ **System Configuration** (45 Settings Fully Implemented)
+
 - Dynamic settings management across 9 categories
 - Comprehensive settings audit logging with full change history
 - Settings rollback capability with one-click revert
@@ -1759,6 +1892,7 @@ docker-compose logs -f   # View logs
    - `inventory.transaction_history_page_size` - Pagination size (default: 20)
 
 **Settings Features:**
+
 - Real-time validation with character counters
 - Live calculation examples (commission, escrow)
 - Locked settings for critical configurations
@@ -1775,6 +1909,7 @@ docker-compose logs -f   # View logs
 - **NEW v2.0:** Debug logging for troubleshooting updates
 
 ✅ **Email Notifications**
+
 - Email verification
 - Password reset
 - Magic link authentication
@@ -1783,6 +1918,7 @@ docker-compose logs -f   # View logs
 - Transactional emails via Resend
 
 ✅ **Number Formatting System** (New in v2.0)
+
 - Centralized formatting utilities for consistent display
 - Thousand separator formatting (100,000.00 instead of 100000.00)
 - Locale-aware formatting using Intl.NumberFormat
@@ -1806,6 +1942,7 @@ docker-compose logs -f   # View logs
 - Ready for internationalization with locale parameter
 
 ✅ **Inventory Management System** (New in v2.0)
+
 - Complete stock tracking with transaction logging
 - Dynamic inventory configuration through System Settings
 - Multiple transaction types (RESTOCK, SALE, RETURN, ADJUSTMENT, DAMAGE, RESERVED, RELEASED)
@@ -1817,6 +1954,7 @@ docker-compose logs -f   # View logs
 - Admin UI for inventory management
 
 **Inventory Settings (7 settings):**
+
 1. **Inventory Management:**
    - `inventory.low_stock_threshold` - Stock level considered low (default: 10)
    - `inventory.auto_sku_generation` - Auto-generate SKUs for new products
@@ -1827,6 +1965,7 @@ docker-compose logs -f   # View logs
    - `inventory.transaction_history_page_size` - Pagination size (default: 20)
 
 **Backend Features:**
+
 - **Inventory Service** (`apps/api/src/products/inventory.service.ts`)
   - `adjustProductInventory()` - Adjust stock with transaction logging
   - `adjustVariantInventory()` - Adjust variant stock independently
@@ -1858,6 +1997,7 @@ docker-compose logs -f   # View logs
   - `getTransactionHistoryPageSize()` - Get pagination size
 
 **Frontend Features:**
+
 - **Admin UI Components:**
   - `InventorySettingsSection` - Complete settings management interface
     - Stock thresholds configuration
@@ -1909,7 +2049,9 @@ docker-compose logs -f   # View logs
   - `syncProductInventory()` - Sync from variants
 
 **Configuration:**
+
 - **Backend Constants** (`apps/api/src/common/constants/inventory.constants.ts`)
+
   ```typescript
   export const INVENTORY_DEFAULTS = {
     LOW_STOCK_THRESHOLD: 10,
@@ -1923,6 +2065,7 @@ docker-compose logs -f   # View logs
   ```
 
 - **Frontend Constants** (`apps/web/src/lib/constants/inventory.ts`)
+
   ```typescript
   export const INVENTORY_DEFAULTS = {
     LOW_STOCK_THRESHOLD: 10,
@@ -1942,6 +2085,7 @@ docker-compose logs -f   # View logs
   ```
 
 **Database Schema:**
+
 - **InventoryTransaction Model:**
   - `id` - Unique transaction ID
   - `productId` - Product reference (optional)
@@ -1956,6 +2100,7 @@ docker-compose logs -f   # View logs
   - `createdAt` - Transaction timestamp
 
 **Integration Points:**
+
 - System Settings module for dynamic configuration
 - Product Management for stock adjustments
 - Variant Management for variant-level inventory
@@ -1964,11 +2109,13 @@ docker-compose logs -f   # View logs
 - Analytics Dashboard for inventory insights
 
 **Settings Priority:**
+
 1. User-configured settings from database (via System Settings)
 2. Default constants as fallback if settings don't exist or API fails
 3. Component props can still override settings when needed
 
 **Testing:**
+
 - Comprehensive test suite with 17 automated tests
 - 100% pass rate (all tests passing)
 - Tests cover:
@@ -1982,6 +2129,7 @@ docker-compose logs -f   # View logs
 - Implementation guide: `INVENTORY_SYSTEM_SETTINGS_INTEGRATION.md`
 
 **Benefits:**
+
 - No hardcoded values - all configurable through settings
 - Centralized configuration - one place to manage all inventory parameters
 - Runtime changes - update settings without redeploying code
@@ -1990,13 +2138,32 @@ docker-compose logs -f   # View logs
 - Type-safe - TypeScript constants ensure compile-time safety
 - Developer-friendly - easy to add new settings in the future
 
+✅ **Gelato Print-on-Demand Integration** (New in v2.8.0)
+
+- Gelato product catalog browsing with search and filtering
+- POD product configuration on any NextPik product
+- Design file upload to Supabase storage
+- Automatic order submission to Gelato on payment confirmation
+- Webhook integration for real-time order status updates (production, shipping, delivery)
+- Admin POD Orders management page with sync and cancel actions
+- Support for mixed orders (POD + regular products in same cart)
+- Configurable markup percentage and default shipping methods per product
+- Manual order submission and cancellation capabilities
+- 14 REST API endpoints for complete lifecycle management
+- 5 system settings for full admin configuration
+- `FulfillmentType` (SELF_FULFILLED, GELATO_POD) and `GelatoPodStatus` enums
+- `GelatoPodOrder` and `GelatoWebhookEvent` database models
+- HMAC-SHA256 webhook signature verification
+
 ✅ **Real-Time Features**
+
 - WebSocket integration with Socket.IO
 - Real-time cart updates
 - Real-time order updates
 - Room-based messaging
 
 ✅ **File Management**
+
 - Image upload to Supabase Storage
 - Image optimization with Sharp
 - Multiple image upload
@@ -2004,6 +2171,7 @@ docker-compose logs -f   # View logs
 - File deletion
 
 ✅ **Performance Optimizations**
+
 - SWR caching for data fetching
 - Optimistic updates for cart/wishlist
 - Code splitting with lazy loading
@@ -2014,12 +2182,14 @@ docker-compose logs -f   # View logs
 ### 8.2 Partially Implemented Features
 
 ⚠️ **Background Job Processing**
+
 - Infrastructure ready (BullMQ, Redis)
 - PayoutSchedulerService implemented
 - Requires cron job setup for automation
 - Email queue not yet implemented
 
 ⚠️ **Analytics & Reporting**
+
 - Basic statistics implemented
 - Admin dashboard with key metrics
 - Product view tracking
@@ -2027,12 +2197,14 @@ docker-compose logs -f   # View logs
 - Advanced reporting incomplete
 
 ⚠️ **Inventory Management**
+
 - Basic inventory tracking
 - Stock reservation on order
 - Inventory transactions logged
 - Advanced features incomplete (low stock alerts, reorder points)
 
 ⚠️ **Mobile App**
+
 - Responsive web design implemented
 - PWA support ready
 - Native mobile app not implemented
@@ -2040,16 +2212,19 @@ docker-compose logs -f   # View logs
 ### 8.3 Experimental/Placeholder Components
 
 🧪 **WhatsApp Chat Widget**
+
 - Basic implementation
 - Configurable business number
 - Needs integration with WhatsApp Business API
 
 🧪 **Product Recommendations**
+
 - Data model implemented
 - Algorithm not yet sophisticated
 - Basic related products working
 
 🧪 **Email Templates**
+
 - Basic text emails working
 - Rich HTML templates not designed
 
@@ -2060,29 +2235,34 @@ docker-compose logs -f   # View logs
 ### 9.1 Missing Features
 
 ❌ **Testing**
+
 - No unit tests implemented
 - No integration tests
 - No e2e tests
 - Testing infrastructure not set up
 
 ❌ **Documentation**
+
 - API documentation not generated (Swagger/OpenAPI)
 - Component documentation (Storybook) not set up
 - Developer onboarding guides minimal
 
 ❌ **Security Enhancements**
+
 - CSRF protection not implemented
 - Rate limiting basic (needs Redis-based distributed rate limiting)
 - Input sanitization needs review
 - Security headers configuration incomplete
 
 ❌ **Deployment**
+
 - CI/CD pipeline not configured
 - Docker production images not optimized
 - Kubernetes manifests not created
 - Monitoring and logging not set up
 
 ❌ **Advanced Features**
+
 - Abandoned cart recovery
 - Product comparison
 - Advanced product recommendations (ML-based)
@@ -2093,11 +2273,13 @@ docker-compose logs -f   # View logs
 - Live chat support
 
 ❌ **Internationalization**
+
 - Multi-language support infrastructure ready
 - Translations not complete
 - RTL support not implemented
 
 ❌ **Performance Monitoring**
+
 - APM not integrated
 - Error tracking (Sentry) not set up
 - Performance monitoring not configured
@@ -2106,6 +2288,7 @@ docker-compose logs -f   # View logs
 ### 9.2 Technical Debt
 
 **Backend:**
+
 - Some services have grown large and need refactoring
 - Error handling inconsistent across modules
 - Logging strategy needs standardization
@@ -2114,6 +2297,7 @@ docker-compose logs -f   # View logs
 - Some DTOs need validation improvements
 
 **Frontend:**
+
 - Some components need splitting into smaller components
 - Styling inconsistency (Tailwind + inline styles)
 - Loading states inconsistent
@@ -2122,6 +2306,7 @@ docker-compose logs -f   # View logs
 - SEO optimization incomplete
 
 **Database:**
+
 - Some queries could benefit from optimization
 
 ### 9.3 Recent Fixes (December 12, 2025)
@@ -2155,6 +2340,7 @@ The Settings module underwent comprehensive verification and all issues have bee
 
 **Status:** Settings module fully tested and production-ready ✅
 **Documentation:**
+
 - Verification: `SETTINGS_MODULE_VERIFICATION_REPORT.md`
 - Fixes Applied: `SETTINGS_FIXES_APPLIED.md`
 - Pre-Deployment Summary: `SETTINGS_MODULE_FINAL_SUMMARY.md`
@@ -2163,6 +2349,7 @@ The Settings module underwent comprehensive verification and all issues have bee
 ---
 
 **Remaining Database Technical Debt:**
+
 - Missing indexes on some frequently queried fields
 - Database connection pooling configuration needs tuning
 - Backup strategy not documented
@@ -2170,31 +2357,37 @@ The Settings module underwent comprehensive verification and all issues have bee
 ### 9.4 Assumptions and Temporary Implementations
 
 **Authentication:**
+
 - Token expiry set to 7 days (should be configurable)
 - Refresh token rotation not implemented
 - Session timeout configurable via settings (`session_timeout_minutes`, default: 30 minutes) ✅
 
 **Payments:**
+
 - Only Stripe supported (needs additional gateways)
 - Webhook retry logic basic
 - Payment provider switching not supported
 
 **File Storage:**
+
 - Only Supabase supported
 - No CDN configuration
 - File size limits configurable via settings (`max_file_size_mb`, `allowed_file_types`) ✅
 
 **Email:**
+
 - Only Resend supported
 - Email templates basic
 - No email tracking/analytics
 
 **Search:**
+
 - Only Meilisearch supported
 - Search analytics incomplete
 - Search result relevance needs tuning
 
 **Escrow:**
+
 - Hold period configurable via settings (`escrow_default_hold_days`, default: 7 days) ✅
 - Dispute resolution manual only
 - Partial release for multi-vendor orders basic
@@ -2206,12 +2399,14 @@ The Settings module underwent comprehensive verification and all issues have bee
 ### 10.1 Prerequisites
 
 **Required:**
+
 - Node.js ≥ 20.0.0
 - pnpm ≥ 9.0.0
 - Docker and Docker Compose
 - Git
 
 **Recommended:**
+
 - VS Code with extensions:
   - Prisma
   - ESLint
@@ -2221,22 +2416,26 @@ The Settings module underwent comprehensive verification and all issues have bee
 ### 10.2 Local Development Setup
 
 **Step 1: Clone Repository**
+
 ```bash
 git clone <repository-url>
 cd nextpik
 ```
 
 **Step 2: Install Dependencies**
+
 ```bash
 pnpm install
 ```
 
 **Step 3: Start Docker Services**
+
 ```bash
 pnpm docker:up
 ```
 
 Wait for all services to be healthy:
+
 - PostgreSQL (localhost:5433)
 - Redis (localhost:6379)
 - Meilisearch (localhost:7700)
@@ -2245,6 +2444,7 @@ Wait for all services to be healthy:
 **Step 4: Configure Environment Variables**
 
 Copy example files:
+
 ```bash
 cp .env.example .env
 cp apps/api/.env.example apps/api/.env
@@ -2253,6 +2453,7 @@ cp packages/database/.env.example packages/database/.env
 ```
 
 Update with your credentials:
+
 - Database connection strings
 - JWT secret
 - Supabase credentials
@@ -2260,6 +2461,7 @@ Update with your credentials:
 - Resend API key
 
 **Step 5: Database Setup**
+
 ```bash
 # Generate Prisma client
 pnpm prisma:generate
@@ -2272,11 +2474,13 @@ pnpm --filter @nextpik/database prisma:seed
 ```
 
 **Step 6: Start Development Servers**
+
 ```bash
 pnpm dev
 ```
 
 This starts:
+
 - Backend API: http://localhost:4000
 - Frontend: http://localhost:3000
 
@@ -2289,6 +2493,7 @@ This starts:
 5. Test checkout flow
 
 **Admin Access:**
+
 - Create admin user via database or registration
 - Update user role to ADMIN in database
 - Access admin portal at http://localhost:3000/admin
@@ -2296,11 +2501,13 @@ This starts:
 ### 10.3 Build for Production
 
 **Full Build:**
+
 ```bash
 pnpm build
 ```
 
 **Start Production Servers:**
+
 ```bash
 # Backend
 cd apps/api
@@ -2314,6 +2521,7 @@ pnpm start
 ### 10.4 Common Development Tasks
 
 **Database Tasks:**
+
 ```bash
 # Open Prisma Studio
 pnpm --filter @nextpik/database prisma:studio
@@ -2329,6 +2537,7 @@ pnpm --filter @nextpik/database prisma:seed
 ```
 
 **Code Quality:**
+
 ```bash
 # Lint all packages
 pnpm lint
@@ -2341,6 +2550,7 @@ pnpm format
 ```
 
 **Docker Management:**
+
 ```bash
 # View logs
 docker-compose logs -f
@@ -2358,6 +2568,7 @@ docker exec -it nextpik-postgres psql -U postgres -d nextpik_ecommerce
 ### 10.5 Troubleshooting
 
 **Database Connection Issues:**
+
 ```bash
 # Check if PostgreSQL is running
 docker ps | grep postgres
@@ -2370,6 +2581,7 @@ docker exec -it nextpik-postgres psql -U postgres -d nextpik_ecommerce
 ```
 
 **Port Already in Use:**
+
 ```bash
 # Find process using port
 lsof -i :3000  # or :4000, :5433, etc.
@@ -2379,6 +2591,7 @@ kill -9 <PID>
 ```
 
 **Prisma Issues:**
+
 ```bash
 # Clear Prisma cache
 rm -rf node_modules/.prisma
@@ -2386,6 +2599,7 @@ pnpm prisma:generate
 ```
 
 **Build Errors:**
+
 ```bash
 # Clean all build artifacts
 pnpm clean
@@ -2403,18 +2617,21 @@ pnpm install
 ### 11.1 Logging and Error Handling
 
 **Backend Logging:**
+
 - NestJS built-in logger used throughout
 - Log levels: error, warn, log, debug, verbose
 - Logs include timestamp, context, and message
 - **Improvement Needed:** Centralized logging (Winston, Pino)
 
 **Frontend Error Handling:**
+
 - Error boundaries for component-level errors
 - Global error handler in API client
 - Toast notifications for user-facing errors
 - **Improvement Needed:** Error tracking (Sentry)
 
 **API Error Responses:**
+
 ```json
 {
   "statusCode": 400,
@@ -2426,6 +2643,7 @@ pnpm install
 ### 11.2 Security Considerations
 
 **Current Security Measures:**
+
 - Password hashing with bcrypt (10 rounds)
 - JWT tokens with expiration
 - Rate limiting on auth endpoints
@@ -2437,6 +2655,7 @@ pnpm install
 - Account lockout after failed attempts
 
 **Security Recommendations:**
+
 1. Enable HTTPS in production
 2. Configure security headers (Helmet.js)
 3. Implement CSRF protection
@@ -2447,6 +2666,7 @@ pnpm install
 8. Web Application Firewall (WAF)
 
 **Sensitive Data:**
+
 - Passwords: hashed with bcrypt
 - Payment info: handled by Stripe (PCI compliant)
 - Personal data: encrypted at rest (database encryption)
@@ -2456,23 +2676,27 @@ pnpm install
 ### 11.3 Performance Considerations
 
 **Database Performance:**
+
 - Connection pooling enabled
 - Indexes on frequently queried fields
 - Query optimization with Prisma
 - Read replica available for scaling
 
 **Caching Strategy:**
+
 - Redis for session storage
 - SWR for client-side caching
 - API response caching (not implemented)
 
 **Frontend Performance:**
+
 - Code splitting and lazy loading
 - Image optimization with Next.js Image
 - Static generation where possible
 - CDN ready for static assets
 
 **Optimization Opportunities:**
+
 1. Implement Redis caching for API responses
 2. Add database query caching
 3. Optimize large database queries
@@ -2483,11 +2707,13 @@ pnpm install
 ### 11.4 Monitoring and Alerting
 
 **Current State:**
+
 - Basic health checks on Docker services
 - Database health monitoring
 - Application logging
 
 **Recommended Additions:**
+
 1. **APM (Application Performance Monitoring):**
    - New Relic, Datadog, or similar
    - Track API response times
@@ -2522,21 +2748,25 @@ pnpm install
 ### 11.5 Backup and Disaster Recovery
 
 **Database Backups:**
+
 - PostgreSQL supports continuous archiving
 - **Recommendation:** Automated daily backups
 - **Recommendation:** Point-in-time recovery setup
 - **Recommendation:** Off-site backup storage
 
 **File Storage:**
+
 - Supabase handles storage redundancy
 - **Recommendation:** Periodic backup of Supabase bucket
 
 **Configuration Backups:**
+
 - Environment variables documented
 - Database schema version-controlled
 - **Recommendation:** Configuration management system
 
 **Recovery Procedures:**
+
 1. Document database restore process
 2. Test backup restoration regularly
 3. Maintain runbook for common issues
@@ -2559,17 +2789,20 @@ pnpm install
 Price inconsistencies across cart → checkout → payment flow caused by frontend recalculating prices instead of using backend's locked values. Users saw different prices at each step, breaking trust and potentially causing payment failures.
 
 **Root Causes:**
+
 1. Missing locked prices (`priceAtAdd`, `currencyAtAdd`) for existing cart items
 2. Frontend recalculating totals instead of using backend-calculated values
 3. Double currency conversion in Price component
 4. Shipping cost recalculated from USD on checkout page causing rounding differences
 
 **Impact:**
+
 - Cart showed €355.30 but Order Summary showed €297.03 (16% difference - double conversion)
 - Cart total €438.26 vs Checkout total €438.27 (€0.01 rounding difference)
 - Payment intent potentially created with wrong currency/amount
 
 **Files Affected:**
+
 - `apps/web/src/contexts/cart-context.tsx`
 - `apps/web/src/app/cart/page.tsx`
 - `apps/web/src/app/checkout/page.tsx`
@@ -2625,18 +2858,23 @@ COMMIT;
 **Key Changes:**
 
 1. **Store backend totals in localStorage:**
+
 ```typescript
 // In refreshCart() - Line 220-253
 if (typeof window !== 'undefined') {
-  localStorage.setItem('cart_backend_totals', JSON.stringify({
-    subtotal: cart.subtotal || 0,
-    total: cart.total || 0,
-    discount: cart.discount || 0,
-  }));
+  localStorage.setItem(
+    'cart_backend_totals',
+    JSON.stringify({
+      subtotal: cart.subtotal || 0,
+      total: cart.total || 0,
+      discount: cart.discount || 0,
+    })
+  );
 }
 ```
 
 2. **Use backend subtotal first, fallback to manual calculation:**
+
 ```typescript
 // In calculateTotals() - Line 155-198
 const calculateTotals = useCallback((cartItems: CartItem[]): CartTotals => {
@@ -2675,6 +2913,7 @@ const calculateTotals = useCallback((cartItems: CartItem[]): CartTotals => {
 ```
 
 3. **Clear backend totals when cart is cleared:**
+
 ```typescript
 // In clearCart() - Line 439-441
 if (typeof window !== 'undefined') {
@@ -2692,11 +2931,13 @@ if (typeof window !== 'undefined') {
 **Changes:**
 
 1. **Extract cartCurrency:**
+
 ```typescript
-const { items, totals, cartCurrency = 'USD', /* ... */ } = useCart() || {};
+const { items, totals, cartCurrency = 'USD' /* ... */ } = useCart() || {};
 ```
 
 2. **Use locked prices for item display:**
+
 ```typescript
 <Price
   amount={Number(item.priceAtAdd !== undefined ? item.priceAtAdd : item.price) * item.quantity}
@@ -2706,6 +2947,7 @@ const { items, totals, cartCurrency = 'USD', /* ... */ } = useCart() || {};
 ```
 
 3. **Use cartCurrency for Order Summary:**
+
 ```typescript
 <Price amount={totals.subtotal} fromCurrency={cartCurrency} />
 <Price amount={totals.shipping} fromCurrency={cartCurrency} />
@@ -2736,6 +2978,7 @@ const totalWithShipping = totals.total; // Already includes shipping
 ```
 
 **Save shipping with cart's value:**
+
 ```typescript
 if (methodConfig) {
   saveShippingMethod({
@@ -2748,6 +2991,7 @@ if (methodConfig) {
 ```
 
 **Pass cartCurrency to OrderSummary:**
+
 ```typescript
 <OrderSummary
   items={items}
@@ -2772,6 +3016,7 @@ if (methodConfig) {
 **Changes:**
 
 1. **Accept cartCurrency prop:**
+
 ```typescript
 interface OrderSummaryProps {
   items: CartItem[];
@@ -2785,6 +3030,7 @@ interface OrderSummaryProps {
 ```
 
 2. **Use allCurrencies to find currency object:**
+
 ```typescript
 const { currency } = useSelectedCurrency();
 const { convertPrice } = useCurrencyConverter();
@@ -2843,6 +3089,7 @@ KEY PRINCIPLE: Frontend DISPLAYS, Backend CALCULATES
 #### ✅ DO's:
 
 1. **Always use backend-calculated totals:**
+
 ```typescript
 // ✅ GOOD
 const totals = cart.totals; // From backend
@@ -2850,12 +3097,14 @@ const totals = cart.totals; // From backend
 ```
 
 2. **Pass locked currency to Price components:**
+
 ```typescript
 // ✅ GOOD
 <Price amount={item.priceAtAdd} fromCurrency={item.currencyAtAdd} />
 ```
 
 3. **Store locked prices when adding to cart:**
+
 ```typescript
 // ✅ GOOD (backend does this automatically)
 priceAtAdd: item.price * exchangeRate,
@@ -2863,14 +3112,16 @@ currencyAtAdd: cart.currency
 ```
 
 4. **Use consistent rounding:**
+
 ```typescript
 // ✅ GOOD
-Math.round(amount * 100) / 100
+Math.round(amount * 100) / 100;
 ```
 
 #### ❌ DON'Ts:
 
 1. **Never recalculate totals on frontend:**
+
 ```typescript
 // ❌ BAD
 const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -2880,6 +3131,7 @@ const subtotal = backendTotals.subtotal;
 ```
 
 2. **Never convert prices multiple times:**
+
 ```typescript
 // ❌ BAD
 const eurPrice = convertPrice(usdPrice, 'USD');
@@ -2890,6 +3142,7 @@ const displayPrice = convertPrice(eurPrice, 'EUR'); // Double conversion!
 ```
 
 3. **Never use USD prices for locked cart items:**
+
 ```typescript
 // ❌ BAD
 <Price amount={item.price} /> // This is USD!
@@ -2899,6 +3152,7 @@ const displayPrice = convertPrice(eurPrice, 'EUR'); // Double conversion!
 ```
 
 4. **Never recalculate shipping on checkout:**
+
 ```typescript
 // ❌ BAD
 const shipping = convertPrice(10, 'USD');
@@ -2913,19 +3167,20 @@ const shipping = totals.shipping; // From cart context
 
 **⚠️ ATTENTION REQUIRED:** The following files have potential price recalculation issues:
 
-| Priority | File | Issue | Line |
-|----------|------|-------|------|
-| **HIGH** | `apps/web/src/app/account/orders/[id]/page.tsx` | Recalculates historical order totals | 449 |
-| **HIGH** | `apps/web/src/app/admin/orders/[id]/page.tsx` | Admin sees wrong order amounts | 221 |
-| **HIGH** | `apps/web/src/components/admin/order-breakdown.tsx` | Recalculates commission base | 74, 86, 163 |
-| **MEDIUM** | `apps/web/src/app/seller/orders/[id]/page.tsx` | Seller subtotal recalculation | 216 |
-| **MEDIUM** | `apps/web/src/components/seller/packing-slip.tsx` | Verify item.total field integrity | 128-142 |
-| **MEDIUM** | `apps/api/src/orders/orders.service.ts` | Verify checkout-only usage | 48 |
+| Priority   | File                                                | Issue                                | Line        |
+| ---------- | --------------------------------------------------- | ------------------------------------ | ----------- |
+| **HIGH**   | `apps/web/src/app/account/orders/[id]/page.tsx`     | Recalculates historical order totals | 449         |
+| **HIGH**   | `apps/web/src/app/admin/orders/[id]/page.tsx`       | Admin sees wrong order amounts       | 221         |
+| **HIGH**   | `apps/web/src/components/admin/order-breakdown.tsx` | Recalculates commission base         | 74, 86, 163 |
+| **MEDIUM** | `apps/web/src/app/seller/orders/[id]/page.tsx`      | Seller subtotal recalculation        | 216         |
+| **MEDIUM** | `apps/web/src/components/seller/packing-slip.tsx`   | Verify item.total field integrity    | 128-142     |
+| **MEDIUM** | `apps/api/src/orders/orders.service.ts`             | Verify checkout-only usage           | 48          |
 
 **Recommended Action:**
 Review these files and ensure they use order's locked prices (`priceAtCheckout`, `total` fields) instead of recalculating from current product prices.
 
 **Pattern to Find:**
+
 ```bash
 # Search for price recalculation patterns
 grep -r "reduce.*price.*quantity" apps/web/src/
@@ -2950,17 +3205,20 @@ grep -r "item.price \*" apps/web/src/
 - [ ] Backend and frontend totals match exactly
 
 **Test Script:**
+
 ```javascript
 // Run on cart, checkout, and payment pages
 const sessionId = localStorage.getItem('cart_session_id');
 fetch('http://localhost:4000/api/v1/cart', {
-  headers: { 'X-Session-ID': sessionId }
-}).then(r => r.json()).then(cart => {
-  console.log('Backend total:', cart.total, cart.currency);
-  const displayedTotal = document.querySelector('.text-3xl.font-bold.text-black')?.textContent;
-  console.log('Displayed total:', displayedTotal);
-  console.log('Match:', displayedTotal === `€${cart.total}` ? '✅' : '❌');
-});
+  headers: { 'X-Session-ID': sessionId },
+})
+  .then((r) => r.json())
+  .then((cart) => {
+    console.log('Backend total:', cart.total, cart.currency);
+    const displayedTotal = document.querySelector('.text-3xl.font-bold.text-black')?.textContent;
+    console.log('Displayed total:', displayedTotal);
+    console.log('Match:', displayedTotal === `€${cart.total}` ? '✅' : '❌');
+  });
 ```
 
 ---
@@ -2968,18 +3226,21 @@ fetch('http://localhost:4000/api/v1/cart', {
 ### 12.7 Success Metrics
 
 **Before Fix:**
+
 - ❌ Cart: €355.30, Checkout: €297.03 (16% difference - double conversion)
 - ❌ Cart Total: €438.26, Checkout Total: €438.27 (€0.01 rounding difference)
 - ❌ USD prices showing in EUR cart
 - ❌ Payment intent potentially wrong currency
 
 **After Fix:**
+
 - ✅ Cart: €355.30, Checkout: €355.30 (exact match)
 - ✅ Cart Total: €438.26, Checkout Total: €438.26 (exact match)
 - ✅ All prices in locked EUR
 - ✅ Payment intent using correct EUR currency
 
 **Rollout Status:**
+
 - [x] Database migration applied
 - [x] Frontend code updated
 - [x] Type checking passes
@@ -3000,6 +3261,7 @@ fetch('http://localhost:4000/api/v1/cart', {
 Version 2.7.0 introduces **comprehensive payment and order flow fixes** addressing critical revenue protection, data integrity, and seller trust issues. This release implements automated payment capture strategies, duplicate order prevention, seller-specific financial reporting, and professional invoice delivery.
 
 **Key Highlights:**
+
 1. **Payment Capture System** - Automated capture on delivery with Day 6 fallback (prevents revenue loss)
 2. **Duplicate Order Prevention** - Idempotency key implementation for data integrity
 3. **Payment Intent Deduplication** - Prevents unnecessary Stripe API charges
@@ -3022,12 +3284,14 @@ Version 2.7.0 introduces **comprehensive payment and order flow fixes** addressi
 **Implementation:**
 
 **NEW Service: PaymentMonitorService** (`apps/api/src/payment/payment-monitor.service.ts`)
+
 - Cron job runs every 6 hours (`@Cron(CronExpression.EVERY_6_HOURS)`)
 - Monitors payments approaching 7-day Stripe authorization expiry
 - Auto-captures on Day 6 as safety fallback
 - Provides admin dashboard statistics
 
 **Key Methods:**
+
 ```typescript
 // Background monitoring
 @Cron(CronExpression.EVERY_6_HOURS)
@@ -3039,6 +3303,7 @@ async getUncapturedPaymentStats()
 ```
 
 **Payment Capture Strategy Method:**
+
 ```typescript
 async capturePaymentWithStrategy(
   orderId: string,
@@ -3048,6 +3313,7 @@ async capturePaymentWithStrategy(
 ```
 
 **Three Capture Triggers:**
+
 1. **DELIVERY_CONFIRMED** (Preferred)
    - Triggered when delivery is confirmed
    - Location: `delivery.service.ts:confirmDelivery()`
@@ -3064,10 +3330,12 @@ async capturePaymentWithStrategy(
    - Used for troubleshooting
 
 **System Settings:**
+
 - `payment_capture_strategy`: 'ON_DELIVERY_WITH_FALLBACK'
 - `payment_auto_capture_day`: 6
 
 **Admin Monitoring Endpoints:**
+
 ```typescript
 // Manual capture
 POST /payment/orders/:orderId/capture
@@ -3083,6 +3351,7 @@ Returns: totalUncaptured, approachingExpiry, urgent, oldestOrder
 ```
 
 **Flow Diagram:**
+
 ```
 Order Created
   ↓
@@ -3117,6 +3386,7 @@ Order Timeline: "Payment Captured"
 **Implementation:**
 
 **CreateOrderDto Enhancement:**
+
 ```typescript
 export class CreateOrderDto {
   // ... existing fields
@@ -3128,6 +3398,7 @@ export class CreateOrderDto {
 ```
 
 **Idempotency Check in OrdersService:**
+
 ```typescript
 async createOrderFromCart(
   userId: string,
@@ -3172,6 +3443,7 @@ async createOrderFromCart(
 **Usage:** Order.metadata JSON field stores idempotencyKey for future duplicate checks.
 
 **Frontend Integration (recommended):**
+
 ```typescript
 // Generate unique key per cart checkout attempt
 const idempotencyKey = `cart_${cartId}_${Date.now()}`;
@@ -3224,6 +3496,7 @@ async createPaymentIntent(dto: CreatePaymentIntentDto, userId: string) {
 ```
 
 **Benefits:**
+
 - Reduces Stripe API charges
 - Prevents orphaned payment intents
 - Improves checkout reliability
@@ -3237,6 +3510,7 @@ async createPaymentIntent(dto: CreatePaymentIntentDto, userId: string) {
 **Implementation in seller.service.ts:**
 
 **NEW Method: calculateSellerOrderTotals()**
+
 ```typescript
 private calculateSellerOrderTotals(order: Order & { items: OrderItem[] }) {
   // Calculate subtotal from seller's items only
@@ -3275,27 +3549,29 @@ private calculateSellerOrderTotals(order: Order & { items: OrderItem[] }) {
 ```
 
 **Enhanced getMyOrders() Response:**
+
 ```typescript
 {
   data: [
     {
       ...order,
       sellerTotals: {
-        subtotal: 70.00,
-        shipping: 10.50,
+        subtotal: 70.0,
+        shipping: 10.5,
         tax: 5.25,
-        discount: 0.00,
+        discount: 0.0,
         total: 85.75,
         itemCount: 2,
-        proportion: 0.7 // This seller's items = 70% of order value
+        proportion: 0.7, // This seller's items = 70% of order value
       },
-      originalTotal: 122.50 // Full order total (all sellers)
-    }
-  ]
+      originalTotal: 122.5, // Full order total (all sellers)
+    },
+  ];
 }
 ```
 
 **Example Calculation:**
+
 ```
 Order Total: $100
 - Seller A items: $70 (70%)
@@ -3319,6 +3595,7 @@ Order tax: $7.50
 **Implementation:**
 
 **NEW Method in orders.service.ts: generateInvoicePdf()**
+
 ```typescript
 import PDFDocument from 'pdfkit';
 
@@ -3357,10 +3634,12 @@ async generateInvoicePdf(orderId: string, userId: string): Promise<Buffer> {
 ```
 
 **Dependencies Added:**
+
 - `pdfkit`: PDF generation library (~2MB)
 - `@types/pdfkit`: TypeScript definitions
 
 **Email Template in email.service.ts:**
+
 ```typescript
 async sendPaymentConfirmationWithInvoice(
   email: string,
@@ -3389,6 +3668,7 @@ async sendPaymentConfirmationWithInvoice(
 ```
 
 **Integration in payment.service.ts:handlePaymentSuccess():**
+
 ```typescript
 private async handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
   // ... existing payment processing
@@ -3412,6 +3692,7 @@ private async handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
 ```
 
 **Invoice Features:**
+
 - NextPik branding with gold (#CBB57B) accents
 - Order number and date
 - Status badge (color-coded)
@@ -3432,6 +3713,7 @@ private async handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
 **Implementation in orders.service.ts:**
 
 **NEW Method: validateStatusTransition()**
+
 ```typescript
 private validateStatusTransition(
   currentStatus: OrderStatus,
@@ -3465,6 +3747,7 @@ private validateStatusTransition(
 ```
 
 **Integration in updateStatus():**
+
 ```typescript
 async updateStatus(id: string, status: OrderStatus) {
   const order = await this.prisma.order.findUnique({ where: { id } });
@@ -3477,6 +3760,7 @@ async updateStatus(id: string, status: OrderStatus) {
 ```
 
 **Valid Status Flow:**
+
 ```
 PENDING ──┬─→ CONFIRMED ──┬─→ PROCESSING ──┬─→ SHIPPED ──┬─→ DELIVERED ──→ REFUNDED
           │              │               │            │
@@ -3485,6 +3769,7 @@ PENDING ──┬─→ CONFIRMED ──┬─→ PROCESSING ──┬─→ SHI
 ```
 
 **Terminal States:**
+
 - `CANCELLED`: No further transitions allowed
 - `REFUNDED`: No further transitions allowed
 
@@ -3527,6 +3812,7 @@ async confirmDelivery(deliveryId: string, data: {...}) {
 ```
 
 **Non-Blocking Design:**
+
 - Delivery confirmation always succeeds
 - Payment capture errors are logged
 - Fallback: Day 6 auto-capture ensures revenue protection
@@ -3536,9 +3822,11 @@ async confirmDelivery(deliveryId: string, data: {...}) {
 ### 13.9 Files Modified
 
 **NEW Files Created:**
+
 - `apps/api/src/payment/payment-monitor.service.ts` (221 lines)
 
 **Core Services Modified:**
+
 - `apps/api/src/payment/payment.service.ts`
   - Added: `capturePaymentWithStrategy()` method
   - Added: Existing payment intent check
@@ -3570,11 +3858,13 @@ async confirmDelivery(deliveryId: string, data: {...}) {
   - Added: Payment capture trigger in `confirmDelivery()`
 
 **Database:**
+
 - `packages/database/prisma/seed-settings.ts`
   - Added: `payment_capture_strategy` setting
   - Added: `payment_auto_capture_day` setting
 
 **Dependencies:**
+
 - `package.json`: Added `pdfkit`, `@types/pdfkit`
 
 ---
@@ -3582,12 +3872,14 @@ async confirmDelivery(deliveryId: string, data: {...}) {
 ### 13.10 Testing & Validation
 
 **Automated Tests Passed:**
+
 - ✅ TypeScript compilation: CLEAN (0 errors)
 - ✅ Settings seeded successfully
 - ✅ Service integration verified
 - ✅ Module exports configured
 
 **Manual Tests Pending:**
+
 - ⏳ Admin API endpoints (requires admin JWT token)
 - ⏳ End-to-end flow: checkout → delivery → capture
 - ⏳ Invoice PDF generation and email delivery
@@ -3595,6 +3887,7 @@ async confirmDelivery(deliveryId: string, data: {...}) {
 - ⏳ Status validation edge cases
 
 **Test Scenarios Created:**
+
 1. Payment capture on delivery
 2. Day 6 auto-capture fallback
 3. Manual admin capture
@@ -3609,31 +3902,34 @@ async confirmDelivery(deliveryId: string, data: {...}) {
 
 ### 13.11 Impact Assessment
 
-| Area | Before | After | Impact |
-|------|--------|-------|--------|
-| **Uncaptured Payments** | Manual intervention required | Automated capture on delivery + Day 6 fallback | **$X,XXX revenue protected** |
-| **Duplicate Orders** | Possible on double-click/retry | Prevented via idempotency keys | **Data integrity improved** |
-| **Payment Intent Charges** | Multiple intents per order | Reuse existing valid intents | **Cost savings on Stripe API** |
-| **Seller Revenue View** | Full order total shown | Accurate proportional totals | **Seller trust improved** |
-| **Invoice Delivery** | Not implemented | Auto-sent on payment success | **Professional UX** |
-| **Status Transitions** | No validation | Enforced valid workflows | **Data consistency** |
+| Area                       | Before                         | After                                          | Impact                         |
+| -------------------------- | ------------------------------ | ---------------------------------------------- | ------------------------------ |
+| **Uncaptured Payments**    | Manual intervention required   | Automated capture on delivery + Day 6 fallback | **$X,XXX revenue protected**   |
+| **Duplicate Orders**       | Possible on double-click/retry | Prevented via idempotency keys                 | **Data integrity improved**    |
+| **Payment Intent Charges** | Multiple intents per order     | Reuse existing valid intents                   | **Cost savings on Stripe API** |
+| **Seller Revenue View**    | Full order total shown         | Accurate proportional totals                   | **Seller trust improved**      |
+| **Invoice Delivery**       | Not implemented                | Auto-sent on payment success                   | **Professional UX**            |
+| **Status Transitions**     | No validation                  | Enforced valid workflows                       | **Data consistency**           |
 
 ---
 
 ### 13.12 Security Considerations
 
 **Payment Security:**
+
 - Payment capture requires admin role (`ADMIN`, `SUPER_ADMIN`)
 - All payment operations logged with user ID
 - Non-blocking error handling prevents payment disruption
 - Idempotency keys prevent duplicate charges
 
 **Data Validation:**
+
 - Status transitions validated before execution
 - Clear error messages prevent accidental misuse
 - Terminal states enforced (CANCELLED, REFUNDED)
 
 **Email Security:**
+
 - PDF invoices generated on server (no client data)
 - Email delivery failures don't block payment processing
 - Sensitive data not exposed in logs
@@ -3643,16 +3939,19 @@ async confirmDelivery(deliveryId: string, data: {...}) {
 ### 13.13 Migration Notes
 
 **No Database Migration Required:**
+
 - All changes use existing `Order.metadata` JSON field
 - New settings auto-seeded on deployment
 
 **Backwards Compatibility:**
+
 - All changes are additive
 - Existing orders unaffected
 - `idempotencyKey` is optional
 - Payment intents work with or without deduplication check
 
 **Deployment Steps:**
+
 1. Deploy code to production
 2. Run seed script: `pnpm prisma db seed`
 3. Verify settings in admin panel
@@ -3665,6 +3964,7 @@ async confirmDelivery(deliveryId: string, data: {...}) {
 ### 13.14 Future Enhancements
 
 **Potential Improvements:**
+
 1. Admin dashboard UI for uncaptured payments monitoring
 2. Email notifications for orders approaching expiry
 3. Configurable capture strategies per seller/store
@@ -3679,23 +3979,27 @@ async confirmDelivery(deliveryId: string, data: {...}) {
 ### 13.15 Troubleshooting Guide
 
 **Issue: Payment not captured on delivery**
+
 - Check logs for capture errors
 - Verify order has valid payment transaction
 - Check Stripe payment intent status
 - Fallback: Manual capture via admin endpoint or Day 6 auto-capture
 
 **Issue: Duplicate orders still created**
+
 - Verify frontend sends idempotencyKey
 - Check Order.metadata field contains key
 - Ensure key format is unique per attempt
 
 **Issue: Invoice email not received**
+
 - Check logs for email errors
 - Verify RESEND_API_KEY configured
 - Check spam folder
 - Resend not configured: Check logs for development mode output
 
 **Issue: Status transition rejected**
+
 - Review error message for allowed transitions
 - Check current order status in database
 - Use admin panel to correct status if needed
@@ -3791,6 +4095,233 @@ Enhanced response includes sellerTotals object:
 
 ---
 
+## 13.1 Version 2.8.0 - Gelato Print-on-Demand Integration
+
+### Overview
+
+Version 2.8.0 introduces **complete Gelato Print-on-Demand integration**, enabling sellers to offer custom-printed products (t-shirts, mugs, posters, etc.) fulfilled automatically by Gelato's global production and shipping network.
+
+**Date:** February 17, 2026
+**Branch:** `gelato-integration`
+
+---
+
+### What Was Added
+
+#### Database Schema Changes
+
+**New Enums:**
+
+```prisma
+enum FulfillmentType {
+  SELF_FULFILLED
+  GELATO_POD
+}
+
+enum GelatoPodStatus {
+  PENDING
+  SUBMITTED
+  IN_PRODUCTION
+  PRODUCED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  FAILED
+}
+```
+
+**New Product Fields:**
+
+- `fulfillmentType` — `FulfillmentType` (default: SELF_FULFILLED)
+- `gelatoProductUid` — Gelato catalog product identifier
+- `designFileUrl` — URL to the print-ready design file
+- `gelatoMarkupPercent` — Per-product markup override (optional)
+- `gelatoShippingMethod` — Per-product default shipping (optional)
+- `podOrders` — Relation to `GelatoPodOrder[]`
+
+**New Models:**
+
+- `GelatoPodOrder` — Tracks each Gelato fulfillment with status, tracking info, timestamps
+- `GelatoWebhookEvent` — Idempotent log of all incoming Gelato webhook events
+
+---
+
+#### Backend Module (`apps/api/src/gelato/`)
+
+**Files Created:**
+
+- `gelato.service.ts` — Core Gelato API client (auth, catalog, shipping, orders)
+- `gelato-products.service.ts` — POD product configuration management
+- `gelato-orders.service.ts` — Order submission, cancellation, sync, webhook processing
+- `gelato.controller.ts` — 14 REST endpoints (admin/seller protected)
+- `gelato-webhook.controller.ts` — `POST /webhooks/gelato` with HMAC verification
+- `gelato.module.ts` — NestJS module wiring
+- `constants/gelato.constants.ts` — Event types, shipping methods, product categories
+- `interfaces/gelato-api.interface.ts` — Full TypeScript API interfaces
+- `dto/create-pod-product.dto.ts` — POD product config DTOs
+- `dto/submit-pod-order.dto.ts` — Order submission DTOs
+- `dto/gelato-webhook.dto.ts` — Webhook payload DTO
+
+**API Endpoints (14 total):**
+
+| Method   | Endpoint                             | Description                                      |
+| -------- | ------------------------------------ | ------------------------------------------------ |
+| `GET`    | `/gelato/status`                     | Integration status & API connectivity            |
+| `GET`    | `/gelato/catalog/categories`         | Gelato product categories                        |
+| `GET`    | `/gelato/catalog/products`           | Browse catalog with search/filter                |
+| `GET`    | `/gelato/catalog/products/:uid`      | Product details & variants                       |
+| `POST`   | `/gelato/products/:id/configure`     | Configure product as POD                         |
+| `PATCH`  | `/gelato/products/:id/configure`     | Update POD configuration                         |
+| `DELETE` | `/gelato/products/:id/configure`     | Remove POD configuration                         |
+| `GET`    | `/gelato/products/:id/shipping`      | Shipping estimates                               |
+| `GET`    | `/gelato/orders`                     | List all POD orders                              |
+| `GET`    | `/gelato/orders/:podOrderId`         | POD order details + live Gelato status           |
+| `POST`   | `/gelato/orders/submit`              | Submit single order item                         |
+| `POST`   | `/gelato/orders/:orderId/submit-all` | Submit all POD items in an order                 |
+| `POST`   | `/gelato/orders/:podOrderId/cancel`  | Cancel POD order                                 |
+| `POST`   | `/gelato/orders/:podOrderId/sync`    | Sync status from Gelato API                      |
+| `POST`   | `/webhooks/gelato`                   | Gelato webhook receiver (no auth, HMAC verified) |
+
+**Webhook Events Handled:**
+
+- `order_created`, `order_confirmed` → SUBMITTED
+- `order_in_production` → IN_PRODUCTION
+- `order_production_finished` → PRODUCED
+- `order_shipped` → SHIPPED (updates main order + tracking)
+- `order_delivered` → DELIVERED (marks main order delivered when all items done)
+- `order_cancelled` → CANCELLED
+- `order_failed` → FAILED
+
+---
+
+#### Payment Integration
+
+**`apps/api/src/payment/payment.service.ts`** (minimal change):
+
+- After successful payment confirmation, dynamically imports `GelatoService` + `GelatoOrdersService`
+- Calls `submitAllPodItems(orderId)` when `gelato_auto_submit_orders` setting is `true`
+- Wrapped in try-catch — Gelato failures never block payment confirmation
+
+---
+
+#### System Settings (5 new)
+
+| Key                              | Type    | Default  | Description                |
+| -------------------------------- | ------- | -------- | -------------------------- |
+| `gelato_enabled`                 | BOOLEAN | false    | Enable/disable integration |
+| `gelato_auto_submit_orders`      | BOOLEAN | true     | Auto-submit on payment     |
+| `gelato_default_shipping_method` | STRING  | standard | Default shipping tier      |
+| `gelato_markup_percentage`       | NUMBER  | 30       | Global markup %            |
+| `gelato_webhook_url`             | STRING  | —        | Webhook URL for reference  |
+
+---
+
+#### Frontend Components (`apps/web/src/components/gelato/`)
+
+**`gelato-product-selector.tsx`**
+
+- Searchable dropdown that queries the live Gelato product catalog
+- Debounced search, product image thumbnails, UID display, clear button
+
+**`design-uploader.tsx`**
+
+- HTML5 drag-and-drop file upload (no third-party dependency)
+- Toggle between file upload and direct URL entry
+- Uploads to `POST /upload/image?folder=gelato-designs`
+- Success state with file preview link
+
+**`pod-configuration-section.tsx`**
+
+- Integrated into the admin product form
+- Fulfillment type toggle: Self-Fulfilled ↔ Gelato POD
+- When POD selected: shows product selector, design uploader, markup %, shipping method
+
+**`apps/web/src/app/admin/pod-orders/page.tsx`**
+
+- Full POD orders management page
+- Status filter tabs, stat cards, data table
+- Sync status, cancel, and view actions per order
+
+**Other Frontend Files:**
+
+- `apps/web/src/lib/api/gelato.ts` — Full API client (14 methods)
+- `apps/web/src/hooks/use-gelato.ts` — SWR hooks: `useGelatoStatus`, `useGelatoCatalog`, `useGelatoProduct`, `usePodOrders`, `usePodOrder`
+
+---
+
+#### Product Form Integration
+
+**`apps/web/src/components/admin/product-form.tsx`** (updated):
+
+- 5 new POD fields in `formData`: `fulfillmentType`, `gelatoProductUid`, `designFileUrl`, `gelatoMarkupPercent`, `gelatoShippingMethod`
+- `<PodConfigurationSection>` rendered before the Variant Manager section
+- Fields included in `submitData` for API persistence
+
+---
+
+### Configuration (Setup Steps)
+
+**1. Environment Variables** (`apps/api/.env`):
+
+```env
+GELATO_API_KEY=your_api_key_here
+GELATO_STORE_ID=your_store_id_here
+GELATO_WEBHOOK_SECRET=your_webhook_secret_here
+GELATO_API_URL=https://api.gelato.com/v4
+```
+
+**2. Admin Settings:**
+
+- `gelato_enabled` → `true`
+- `gelato_auto_submit_orders` → `true` (recommended)
+
+**3. Gelato Dashboard Webhook:**
+
+```
+https://your-domain.com/api/v1/webhooks/gelato
+```
+
+---
+
+### Supported Use Cases
+
+| Use Case                             | Status |
+| ------------------------------------ | ------ |
+| Browse Gelato product catalog        | ✅     |
+| Select product template for POD      | ✅     |
+| Upload custom design file            | ✅     |
+| Set custom pricing with markup       | ✅     |
+| Customer buys POD product            | ✅     |
+| Auto-submit to Gelato on payment     | ✅     |
+| Track POD order status (admin)       | ✅     |
+| Receive shipping updates via webhook | ✅     |
+| Mixed cart (POD + regular products)  | ✅     |
+| Manual order submission (admin)      | ✅     |
+| Cancel POD order before production   | ✅     |
+
+---
+
+### Files Modified Summary
+
+| File                                              | Change                            |
+| ------------------------------------------------- | --------------------------------- |
+| `packages/database/prisma/schema.prisma`          | Added enums, fields, 2 new models |
+| `packages/database/prisma/seed-settings.ts`       | Added 5 Gelato settings           |
+| `apps/api/.env`                                   | Added 4 Gelato env vars           |
+| `apps/api/src/app.module.ts`                      | Added GelatoModule                |
+| `apps/api/src/orders/orders.module.ts`            | Added GelatoModule import         |
+| `apps/api/src/payment/payment.service.ts`         | Added auto-submit after payment   |
+| `apps/api/src/gelato/`                            | Created entire module (13 files)  |
+| `apps/web/src/components/gelato/`                 | Created 3 new components          |
+| `apps/web/src/components/admin/product-form.tsx`  | Added POD fields + section        |
+| `apps/web/src/app/admin/pod-orders/page.tsx`      | Created POD orders page           |
+| `apps/web/src/lib/api/gelato.ts`                  | Created API client                |
+| `apps/web/src/hooks/use-gelato.ts`                | Created SWR hooks                 |
+| `apps/web/src/components/admin/admin-sidebar.tsx` | Added POD Orders nav item         |
+| `apps/web/messages/*.json`                        | Added `podOrders` translations    |
+
+---
+
 ## 14. Version 2.6.0 Changes & Enhancements
 
 ### 14.1 Overview - Authentication Enhancements
@@ -3798,6 +4329,7 @@ Enhanced response includes sellerTotals object:
 Version 2.6.0 introduces **comprehensive authentication enhancements** including Email OTP 2FA, Google OAuth integration, and automatic seller store creation, significantly improving security and user experience.
 
 **Key Highlights:**
+
 1. **Email OTP 2FA System** - Complete email-based two-factor authentication with 6-digit codes
 2. **Google OAuth Integration** - Sign in with Google, account linking/unlinking
 3. **Seller Store Auto-Creation** - Stores automatically created with PENDING status on seller registration
@@ -3818,6 +4350,7 @@ Version 2.6.0 introduces **comprehensive authentication enhancements** including
 #### 12.2.1 New Enums
 
 **AuthProvider Enum:**
+
 ```prisma
 enum AuthProvider {
   LOCAL        // Traditional email/password
@@ -3827,6 +4360,7 @@ enum AuthProvider {
 ```
 
 **EmailOTPType Enum:**
+
 ```prisma
 enum EmailOTPType {
   TWO_FACTOR_BACKUP   // 2FA backup codes
@@ -3838,6 +4372,7 @@ enum EmailOTPType {
 #### 12.2.2 User Model Enhancements
 
 **New Fields Added:**
+
 ```prisma
 model User {
   // ... existing fields
@@ -3849,6 +4384,7 @@ model User {
 ```
 
 **Purpose:**
+
 - `googleId` - Stores Google account identifier for OAuth users
 - `authProvider` - Tracks authentication method used (LOCAL, GOOGLE, MAGIC_LINK)
 - `emailOTPEnabled` - Controls whether user has Email OTP 2FA enabled
@@ -3879,6 +4415,7 @@ model EmailOTP {
 ```
 
 **Features:**
+
 - 6-digit random OTP codes
 - 10-minute expiration window
 - Maximum 3 verification attempts
@@ -3917,6 +4454,7 @@ async cleanupExpiredOTPs(): Promise<void>
 ```
 
 **Security Features:**
+
 - Cryptographically random 6-digit codes
 - Automatic expiration after 10 minutes
 - Rate limiting with attempt tracking (max 3)
@@ -3950,6 +4488,7 @@ async unlinkGoogleAccount(
 ```
 
 **Features:**
+
 - Automatic account creation for new Google users
 - Account linking for existing email users
 - Session creation with JWT tokens
@@ -4007,6 +4546,7 @@ async register(data: RegisterDto, ipAddress: string, userAgent: string) {
 ```
 
 **Store Slug Generation:**
+
 - Converts to lowercase
 - Removes special characters
 - Replaces spaces with hyphens
@@ -4019,6 +4559,7 @@ async register(data: RegisterDto, ipAddress: string, userAgent: string) {
 #### 12.4.1 Email OTP Endpoints
 
 **Request OTP Code:**
+
 ```
 POST /auth/email-otp/request
 Auth: Bearer token required
@@ -4027,6 +4568,7 @@ Response: { success: true, expiresAt: Date, message: string }
 ```
 
 **Verify OTP Code:**
+
 ```
 POST /auth/email-otp/verify
 Auth: Bearer token required
@@ -4035,6 +4577,7 @@ Response: { success: true, message: string }
 ```
 
 **Enable Email OTP:**
+
 ```
 POST /auth/email-otp/enable
 Auth: Bearer token required
@@ -4042,6 +4585,7 @@ Response: { success: true, message: 'Email OTP 2FA enabled' }
 ```
 
 **Disable Email OTP:**
+
 ```
 POST /auth/email-otp/disable
 Auth: Bearer token required
@@ -4049,6 +4593,7 @@ Response: { success: true, message: 'Email OTP 2FA disabled' }
 ```
 
 **Check OTP Status:**
+
 ```
 GET /auth/email-otp/status
 Auth: Bearer token required
@@ -4056,6 +4601,7 @@ Response: { enabled: boolean }
 ```
 
 **Login with OTP:**
+
 ```
 POST /auth/login/email-otp
 Body: { email: string, password: string, otpCode: string }
@@ -4065,18 +4611,21 @@ Response: { accessToken, sessionToken, user }
 #### 12.4.2 Google OAuth Endpoints
 
 **Initiate Google OAuth:**
+
 ```
 GET /auth/google
 Redirects to Google OAuth consent screen
 ```
 
 **OAuth Callback:**
+
 ```
 GET /auth/google/callback
 Handled by Passport, returns JWT tokens
 ```
 
 **Link Google Account:**
+
 ```
 POST /auth/google/link
 Auth: Bearer token required
@@ -4084,6 +4633,7 @@ Response: { success: true, message: 'Google account linked' }
 ```
 
 **Unlink Google Account:**
+
 ```
 POST /auth/google/unlink
 Auth: Bearer token required
@@ -4099,6 +4649,7 @@ Response: { success: true, message: 'Google account unlinked' }
 **File:** `apps/api/src/email/templates/email-otp.template.ts`
 
 **Features:**
+
 - Professional branded design
 - Clear OTP code display
 - Security warnings
@@ -4108,6 +4659,7 @@ Response: { success: true, message: 'Google account unlinked' }
 - Support contact information
 
 **Dynamic Content:**
+
 - Subject line changes based on OTP type
 - Different messaging for 2FA vs recovery
 - Personalized greeting with user's first name
@@ -4130,14 +4682,11 @@ export const requestEmailOTP = (type: EmailOTPType) =>
 export const verifyEmailOTP = (code: string, type: EmailOTPType) =>
   api.post('/auth/email-otp/verify', { code, type });
 
-export const enableEmailOTP = () =>
-  api.post('/auth/email-otp/enable');
+export const enableEmailOTP = () => api.post('/auth/email-otp/enable');
 
-export const disableEmailOTP = () =>
-  api.post('/auth/email-otp/disable');
+export const disableEmailOTP = () => api.post('/auth/email-otp/disable');
 
-export const getEmailOTPStatus = () =>
-  api.get('/auth/email-otp/status');
+export const getEmailOTPStatus = () => api.get('/auth/email-otp/status');
 
 export const loginWithEmailOTP = (email: string, password: string, otpCode: string) =>
   api.post('/auth/login/email-otp', { email, password, otpCode });
@@ -4151,8 +4700,7 @@ export const initiateGoogleAuth = () => {
 export const linkGoogleAccount = (googleToken: string) =>
   api.post('/auth/google/link', { googleToken });
 
-export const unlinkGoogleAccount = () =>
-  api.post('/auth/google/unlink');
+export const unlinkGoogleAccount = () => api.post('/auth/google/unlink');
 ```
 
 #### 12.6.2 Registration Form Updates
@@ -4160,15 +4708,20 @@ export const unlinkGoogleAccount = () =>
 **File:** `apps/web/src/app/auth/register/page.tsx`
 
 **Changes:**
+
 - Added `storeName` and `storeDescription` fields for seller registration
 - Conditional rendering based on role selection
 - Sends store data to backend on seller registration
 - Displays success message about pending store approval
 
 **Seller Registration Flow:**
+
 ```typescript
 await register({
-  email, password, firstName, lastName,
+  email,
+  password,
+  firstName,
+  lastName,
   role: 'SELLER',
   storeName: formData.storeName,
   storeDescription: formData.storeDescription,
@@ -4182,6 +4735,7 @@ await register({
 **File:** `apps/web/src/app/auth/login/page.tsx`
 
 **Changes:**
+
 - Added "Sign in with Google" button
 - Integrated `initiateGoogleAuth()` function
 - Professional OAuth button styling
@@ -4264,6 +4818,7 @@ export class AuthModule {}
 ```
 
 **Key Changes:**
+
 - Added `EmailOTPService` for OTP management
 - Added `GoogleOAuthService` for OAuth flows
 - Added `GoogleStrategy` for Passport Google OAuth
@@ -4283,6 +4838,7 @@ export class AuthModule {}
 #### 12.9.2 Test Coverage
 
 **Database Tests:**
+
 - ✅ AuthProvider enum values verified
 - ✅ EmailOTPType enum values verified
 - ✅ User model fields confirmed
@@ -4290,6 +4846,7 @@ export class AuthModule {}
 - ✅ Indexes and constraints working
 
 **API Tests:**
+
 - ✅ Seller registration with store creation
 - ✅ Buyer registration
 - ✅ Email OTP enable/disable
@@ -4299,6 +4856,7 @@ export class AuthModule {}
 - ✅ Status checking
 
 **Integration Tests:**
+
 - ✅ Store created with PENDING status
 - ✅ Store slug generation unique
 - ✅ Store email set to user email
@@ -4379,6 +4937,7 @@ pnpm prisma db push
 #### 12.11.2 Environment Variables
 
 **Required for Google OAuth:**
+
 ```env
 # apps/api/.env
 GOOGLE_CLIENT_ID=your_google_client_id
@@ -4387,6 +4946,7 @@ GOOGLE_CALLBACK_URL=http://localhost:4000/api/v1/auth/google/callback
 ```
 
 **Frontend URL:**
+
 ```env
 # apps/api/.env
 FRONTEND_URL=http://localhost:3000
@@ -4404,6 +4964,7 @@ pnpm --filter @nextpik/api add passport-google-oauth20 @types/passport-google-oa
 ### 12.12 Production Deployment Checklist
 
 **Pre-Deployment:**
+
 - [ ] Run database migration: `pnpm prisma migrate deploy`
 - [ ] Set Google OAuth credentials in production `.env`
 - [ ] Update `GOOGLE_CALLBACK_URL` to production domain
@@ -4413,6 +4974,7 @@ pnpm --filter @nextpik/api add passport-google-oauth20 @types/passport-google-oa
 - [ ] Verify Google OAuth callback works in staging
 
 **Post-Deployment:**
+
 - [ ] Test seller registration creates stores
 - [ ] Verify stores have PENDING status
 - [ ] Test Email OTP enable/disable
@@ -4423,6 +4985,7 @@ pnpm --filter @nextpik/api add passport-google-oauth20 @types/passport-google-oa
 - [ ] Check database for email_otps table
 
 **Rollback Plan:**
+
 - Database changes are additive (no breaking changes)
 - Can disable features via feature flags if needed
 - Existing authentication flows unaffected
@@ -4443,18 +5006,21 @@ pnpm --filter @nextpik/api add passport-google-oauth20 @types/passport-google-oa
 ### 12.14 Future Enhancements
 
 **Phase 2 - Additional OAuth Providers:**
+
 1. Apple Sign In
 2. Facebook OAuth
 3. GitHub OAuth
 4. Microsoft OAuth
 
 **Phase 3 - Advanced 2FA:**
+
 1. TOTP (Time-based One-Time Password) with authenticator apps
 2. SMS OTP integration
 3. Hardware security key support (WebAuthn)
 4. ~~Backup codes generation~~ — **Done in Feb 2026 hardening (see Section 19)**
 
 **Phase 4 - Store Management:**
+
 1. Store verification badges
 2. Seller onboarding wizard
 3. Store analytics dashboard
@@ -4465,24 +5031,28 @@ pnpm --filter @nextpik/api add passport-google-oauth20 @types/passport-google-oa
 ### 12.15 Impact & Benefits
 
 **Security Improvements:**
+
 - ✅ Two-factor authentication option available
 - ✅ Multiple authentication methods supported
 - ✅ Enhanced session tracking with device info
 - ✅ Audit trail for authentication events
 
 **User Experience:**
+
 - ✅ Faster registration with Google OAuth
 - ✅ One-click sign in for Google users
 - ✅ Automatic store creation for sellers
 - ✅ Clear onboarding process
 
 **Developer Experience:**
+
 - ✅ Modular authentication architecture
 - ✅ Easy to add new OAuth providers
 - ✅ Comprehensive API coverage
 - ✅ Well-documented code
 
 **Platform Growth:**
+
 - ✅ Lower barrier to entry with social login
 - ✅ Improved conversion rates
 - ✅ Better seller onboarding
@@ -4493,6 +5063,7 @@ pnpm --filter @nextpik/api add passport-google-oauth20 @types/passport-google-oa
 ### 12.16 Testing Summary
 
 **Test Results:**
+
 ```
 ╔══════════════════════════════════════════════════════╗
 ║  Authentication Enhancement Tests                    ║
@@ -4526,6 +5097,7 @@ pnpm --filter @nextpik/api add passport-google-oauth20 @types/passport-google-oa
 Version 2.5.0 introduces **complete Stripe payment integration** for recurring seller subscriptions, enabling monetization through tiered subscription plans with automatic billing.
 
 **Key Highlights:**
+
 1. **Stripe Checkout Integration** - Full Stripe Checkout Sessions for subscription purchases
 2. **Webhook Synchronization** - Real-time subscription status updates from Stripe events
 3. **Billing Portal** - Self-service subscription management via Stripe Customer Portal
@@ -4548,13 +5120,15 @@ Version 2.5.0 introduces **complete Stripe payment integration** for recurring s
 **Features Implemented:**
 
 #### Customer Management
+
 - Create and retrieve Stripe customers
 - Link Stripe customer IDs to user accounts
 - Sync customer data across User and SellerSubscription tables
 
 #### Checkout Flow
+
 ```typescript
-POST /subscription/create-checkout
+POST / subscription / create - checkout;
 // Creates Stripe Checkout Session
 // Returns { sessionId, url } for redirect
 ```
@@ -4565,8 +5139,9 @@ POST /subscription/create-checkout
 - Success/cancel URL configuration
 
 #### Billing Portal
+
 ```typescript
-POST /subscription/create-portal
+POST / subscription / create - portal;
 // Creates Stripe Customer Portal Session
 // Returns { url } for billing management
 ```
@@ -4577,6 +5152,7 @@ POST /subscription/create-portal
 - Cancellation management
 
 #### Webhook Event Handling
+
 Handles 6 Stripe webhook event types:
 
 1. **checkout.session.completed**
@@ -4608,20 +5184,23 @@ Handles 6 Stripe webhook event types:
    - Triggers retry logic
 
 #### Subscription Management
+
 ```typescript
-POST /subscription/cancel      // Cancel at period end
-POST /subscription/resume      // Resume cancelled subscription
+POST / subscription / cancel; // Cancel at period end
+POST / subscription / resume; // Resume cancelled subscription
 ```
 
 #### Admin Functions
+
 ```typescript
-POST /subscription/admin/sync-stripe
+POST / subscription / admin / sync - stripe;
 // Syncs all active plans with Stripe
 // Creates products and prices automatically
 // Returns { synced: number, errors: string[] }
 ```
 
 **Price Sync Process:**
+
 1. Reads all active SubscriptionPlan records
 2. Creates Stripe Product for each plan (if not exists)
 3. Creates monthly Price (if not exists)
@@ -4635,7 +5214,8 @@ POST /subscription/admin/sync-stripe
 **Settings-Based Configuration (Primary):**
 
 Stripe keys managed via System Settings:
-- `stripe_secret_key` - Stripe secret key (sk_test_... or sk_live_...)
+
+- `stripe_secret_key` - Stripe secret key (sk*test*... or sk*live*...)
 - `stripe_publishable_key` - Stripe publishable key
 - `stripe_webhook_secret` - Webhook signing secret
 - `stripe_enabled` - Enable/disable Stripe
@@ -4643,12 +5223,14 @@ Stripe keys managed via System Settings:
 - `stripe_currency` - Default currency
 
 **Environment Variables (Fallback):**
+
 ```bash
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 **Configuration Flow:**
+
 ```typescript
 async initializeStripe(): Promise<void> {
   // 1. Try SettingsService (database)
@@ -4667,6 +5249,7 @@ async initializeStripe(): Promise<void> {
 ```
 
 **Benefits:**
+
 - ✅ Hot reload without restart
 - ✅ Admin UI configuration
 - ✅ Audit trail in SettingsAuditLog
@@ -4680,6 +5263,7 @@ async initializeStripe(): Promise<void> {
 
 **1. API Client**
 `apps/web/src/lib/api/subscription.ts` - Added Stripe methods:
+
 ```typescript
 subscriptionApi.createCheckout(planId, billingCycle)
   → Creates checkout session, returns { sessionId, url }
@@ -4699,6 +5283,7 @@ subscriptionApi.adminSyncStripePrices()
 
 **2. Plans Page**
 `apps/web/src/app/seller/plans/page.tsx` - Stripe checkout integration:
+
 - Billing cycle toggle (Monthly/Yearly)
 - Dynamic pricing display
 - Checkout loading states
@@ -4706,6 +5291,7 @@ subscriptionApi.adminSyncStripePrices()
 - Redirects to Stripe Checkout on upgrade
 
 **User Flow:**
+
 ```
 1. Seller navigates to /seller/plans
 2. Selects billing cycle (Monthly/Yearly)
@@ -4725,6 +5311,7 @@ subscriptionApi.adminSyncStripePrices()
 **Existing Stripe Fields (Already in Schema):**
 
 **SubscriptionPlan:**
+
 ```prisma
 stripeProductId      String?  // Stripe Product ID
 stripePriceIdMonthly String?  // Monthly Price ID
@@ -4732,12 +5319,14 @@ stripePriceIdYearly  String?  // Yearly Price ID
 ```
 
 **SellerSubscription:**
+
 ```prisma
 stripeSubscriptionId String?  // Stripe Subscription ID
 stripeCustomerId     String?  // Stripe Customer ID (cached)
 ```
 
 **User:**
+
 ```prisma
 stripeCustomerId String?  // Stripe Customer ID (primary)
 ```
@@ -4749,6 +5338,7 @@ stripeCustomerId String?  // Stripe Customer ID (primary)
 ### 12.6 Testing & Documentation
 
 **Updated Documentation:**
+
 1. `SUBSCRIPTION_INTEGRATION_REPORT.md` - Complete integration guide
    - Prerequisites and setup
    - Stripe testing instructions
@@ -4764,6 +5354,7 @@ stripeCustomerId String?  // Stripe Customer ID (primary)
 **Testing Resources:**
 
 **Stripe Test Cards:**
+
 ```
 Success:            4242 4242 4242 4242
 Decline:            4000 0000 0000 0002
@@ -4772,6 +5363,7 @@ Insufficient Funds: 4000 0000 0000 9995
 ```
 
 **Webhook Testing:**
+
 ```bash
 # Install Stripe CLI
 brew install stripe/stripe-cli/stripe
@@ -4786,6 +5378,7 @@ stripe trigger invoice.paid
 ```
 
 **Manual Testing Steps:**
+
 1. Configure Stripe keys in Admin Settings
 2. Run admin price sync
 3. Test checkout flow (Monthly/Yearly)
@@ -4799,6 +5392,7 @@ stripe trigger invoice.paid
 ### 12.7 API Endpoints Added
 
 **Seller Subscription Endpoints:**
+
 ```
 POST /subscription/create-checkout
   Body: { planId: string, billingCycle: 'MONTHLY' | 'YEARLY' }
@@ -4819,6 +5413,7 @@ POST /subscription/resume
 ```
 
 **Admin Endpoints:**
+
 ```
 POST /subscription/admin/sync-stripe
   Returns: { synced: number, errors: string[] }
@@ -4826,6 +5421,7 @@ POST /subscription/admin/sync-stripe
 ```
 
 **Webhook Endpoint (Already existed):**
+
 ```
 POST /payment/webhook
   - Now routes subscription events to StripeSubscriptionService
@@ -4839,32 +5435,34 @@ POST /payment/webhook
 ### 12.8 Module Architecture Updates
 
 **SubscriptionModule:**
+
 ```typescript
 @Module({
   imports: [
     DatabaseModule,
-    SettingsModule,    // For Stripe config
-    ConfigModule,      // For .env fallback
+    SettingsModule, // For Stripe config
+    ConfigModule, // For .env fallback
   ],
   controllers: [SubscriptionController],
   providers: [
     SubscriptionService,
-    StripeSubscriptionService,  // NEW
+    StripeSubscriptionService, // NEW
   ],
   exports: [
     SubscriptionService,
-    StripeSubscriptionService,  // Exported for PaymentModule
+    StripeSubscriptionService, // Exported for PaymentModule
   ],
 })
 export class SubscriptionModule {}
 ```
 
 **PaymentModule:**
+
 ```typescript
 @Module({
   imports: [
     // ... existing imports ...
-    SubscriptionModule,  // NEW - for webhook routing
+    SubscriptionModule, // NEW - for webhook routing
   ],
   // ...
 })
@@ -4872,6 +5470,7 @@ export class PaymentModule {}
 ```
 
 **Webhook Routing:**
+
 ```typescript
 // payment.service.ts
 async handleWebhook(signature: string, rawBody: Buffer) {
@@ -4903,6 +5502,7 @@ async handleWebhook(signature: string, rawBody: Buffer) {
 ### 12.9 Key Implementation Details
 
 **Lazy Initialization Pattern:**
+
 ```typescript
 private stripe: Stripe | null = null;
 
@@ -4922,12 +5522,14 @@ async getStripeClient(): Promise<Stripe> {
 ```
 
 **Benefits:**
+
 - No errors if Stripe not configured
 - Graceful degradation
 - Hot reload capability
 - Consistent error messages
 
 **Metadata Tracking:**
+
 ```typescript
 // All Stripe objects include metadata
 subscription_data: {
@@ -4940,12 +5542,14 @@ subscription_data: {
 ```
 
 Enables:
+
 - Webhook event attribution
 - User lookup from Stripe data
 - Plan identification
 - Audit trail
 
 **Status Mapping:**
+
 ```typescript
 private mapStripeStatus(stripeStatus: Stripe.Subscription.Status) {
   switch (stripeStatus) {
@@ -4964,6 +5568,7 @@ private mapStripeStatus(stripeStatus: Stripe.Subscription.Status) {
 ### 12.10 Production Deployment Checklist
 
 **Pre-Deployment:**
+
 - [ ] Configure Stripe live keys in Admin Settings
 - [ ] Update webhook URLs in Stripe Dashboard
 - [ ] Test webhook signature validation
@@ -4973,6 +5578,7 @@ private mapStripeStatus(stripeStatus: Stripe.Subscription.Status) {
 - [ ] Verify webhook events update database correctly
 
 **Post-Deployment:**
+
 - [ ] Monitor Stripe Dashboard for events
 - [ ] Check application logs for webhook processing
 - [ ] Verify subscription renewals work correctly
@@ -4981,6 +5587,7 @@ private mapStripeStatus(stripeStatus: Stripe.Subscription.Status) {
 - [ ] Set up Stripe webhook monitoring/alerts
 
 **Rollback Plan:**
+
 - System degrades gracefully if Stripe not configured
 - Can disable Stripe via `stripe_enabled` setting
 - No database migrations required
@@ -4999,19 +5606,22 @@ private mapStripeStatus(stripeStatus: Stripe.Subscription.Status) {
 ### 12.11.1 Recently Resolved
 
 ✅ **Success/Cancel Pages** - Dedicated post-checkout pages created:
+
 - `/seller/subscription/success` - Animated success page with subscription details and next steps
 - `/seller/subscription/cancel` - User-friendly cancellation page with retry options and help
 
 **Features:**
+
 - Professional animations using Framer Motion
 - Clear next steps and what to expect
 - Easy navigation to dashboard or subscription details
 - Helpful information for cancelled checkouts
 
 **Updated URLs in Stripe Service:**
+
 ```typescript
-success_url: `${frontendUrl}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`
-cancel_url: `${frontendUrl}/seller/subscription/cancel`
+success_url: `${frontendUrl}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`;
+cancel_url: `${frontendUrl}/seller/subscription/cancel`;
 ```
 
 ---
@@ -5019,6 +5629,7 @@ cancel_url: `${frontendUrl}/seller/subscription/cancel`
 ### 12.12 Future Enhancements
 
 **Phase 2 - Subscription Features:**
+
 1. Trial period configuration
 2. Proration handling for upgrades/downgrades
 3. Usage-based billing for credits
@@ -5029,6 +5640,7 @@ cancel_url: `${frontendUrl}/seller/subscription/cancel`
 8. Discount codes and promotions
 
 **Phase 3 - Advanced Features:**
+
 1. Custom billing intervals
 2. Metered billing
 3. Add-on services
@@ -5045,6 +5657,7 @@ cancel_url: `${frontendUrl}/seller/subscription/cancel`
 Version 2.4.0 introduced store management features and buyer-seller following system:
 
 **Key Highlights:**
+
 1. **Enhanced UI/UX** - Improved product cards, topbar, stock badges, and overall design consistency
 2. **Address Management** - Complete country selector with flag integration and improved address forms
 3. **Critical Stability Fixes** - Fixed admin dashboard, seller authentication, image uploads, and JWT issues
@@ -5065,6 +5678,7 @@ Version 2.4.0 introduced store management features and buyer-seller following sy
 #### 12.2.1 Product Card Improvements
 
 **Enhanced Visual Hierarchy:**
+
 - Improved product image display with better aspect ratios
 - Enhanced stock status indicators with color-coded badges
 - Better price formatting with currency symbols
@@ -5072,18 +5686,21 @@ Version 2.4.0 introduced store management features and buyer-seller following sy
 - Added visual feedback for user interactions
 
 **Stock Badge Design:**
+
 - Color-coded badges (green for in-stock, red for out-of-stock, amber for low stock)
 - Clear visual indicators for stock availability
 - Responsive badge positioning
 - Improved readability with contrast-optimized colors
 
 **Files Modified:**
+
 - `/apps/web/src/components/product-card.tsx`
 - Product card styling and layout components
 
 #### 12.2.2 Topbar & Navigation Improvements
 
 **Account Button Enhancement:**
+
 - Redesigned account dropdown menu
 - Improved user avatar display
 - Better mobile responsiveness
@@ -5091,18 +5708,21 @@ Version 2.4.0 introduced store management features and buyer-seller following sy
 - Smooth animations and transitions
 
 **Navigation Improvements:**
+
 - Clearer menu structure
 - Improved mobile menu experience
 - Better visual hierarchy
 - Enhanced search bar integration
 
 **Files Modified:**
+
 - `/apps/web/src/components/topbar.tsx`
 - Navigation and account menu components
 
 #### 12.2.3 Address Management & Country Selector
 
 **Complete Country Integration:**
+
 - Comprehensive country selector with 195+ countries
 - Flag emojis for visual country identification
 - Search functionality for quick country selection
@@ -5110,6 +5730,7 @@ Version 2.4.0 introduced store management features and buyer-seller following sy
 - Phone number formatting based on country
 
 **Address Form Improvements:**
+
 - Multi-line address support
 - City, state/province, postal code validation
 - Country-specific address formats
@@ -5117,11 +5738,13 @@ Version 2.4.0 introduced store management features and buyer-seller following sy
 - Autofill support for better UX
 
 **Components Added:**
+
 - Enhanced address input components
 - Country selector with flags
 - Address validation utilities
 
 **Files Modified:**
+
 - Address management components
 - Country data utilities
 - Form validation logic
@@ -5135,6 +5758,7 @@ Version 2.4.0 introduced store management features and buyer-seller following sy
 **Problem:** Frontend calling `/admin/dashboard/*` routes that didn't exist on backend (404 errors)
 
 **Solution:** Added 6 new dashboard routes to AdminController:
+
 - `GET /admin/dashboard/stats` - Dashboard statistics
 - `GET /admin/dashboard/revenue?days=30` - Revenue chart data
 - `GET /admin/dashboard/orders-by-status` - Orders distribution
@@ -5143,6 +5767,7 @@ Version 2.4.0 introduced store management features and buyer-seller following sy
 - `GET /admin/dashboard/recent-orders?limit=10` - Recent order list
 
 **Files Modified:**
+
 - `/apps/api/src/admin/admin.controller.ts` (added dashboard endpoints)
 
 **Impact:** Admin dashboard now loads all data successfully without errors
@@ -5150,6 +5775,7 @@ Version 2.4.0 introduced store management features and buyer-seller following sy
 #### 12.3.2 JWT Authentication Fixes
 
 **Problem:** `req.user.id` was undefined causing:
+
 - Store API failures (userId undefined in Prisma queries)
 - Seller dashboard 401 Unauthorized errors
 - Authentication failures across seller and store endpoints
@@ -5160,17 +5786,19 @@ Version 2.4.0 introduced store management features and buyer-seller following sy
 
 ```typescript
 return {
-  id: payload.sub,           // Primary - for req.user.id
-  userId: payload.sub,       // Backward compatibility
+  id: payload.sub, // Primary - for req.user.id
+  userId: payload.sub, // Backward compatibility
   email: payload.email,
-  role: payload.role
+  role: payload.role,
 };
 ```
 
 **Files Modified:**
+
 - `/apps/api/src/auth/strategies/jwt.strategy.ts`
 
 **Impact:**
+
 - Store API (`/api/v1/stores/me/store`) now works correctly
 - Seller Dashboard authentication fixed
 - All endpoints using `req.user.id` or `req.user.userId` work properly
@@ -5196,6 +5824,7 @@ imports: [
 ```
 
 **Files Modified:**
+
 - `/apps/api/src/upload/upload.module.ts`
 - `/apps/api/src/upload/upload.service.ts`
 
@@ -5206,18 +5835,21 @@ imports: [
 ### 12.4 Category Management Enhancements
 
 **Parent Category Selection:**
+
 - Improved dropdown for selecting parent categories
 - Better visual hierarchy showing category relationships
 - Validation to prevent circular parent-child relationships
 - Enhanced category tree visualization
 
 **Category Form Improvements:**
+
 - Better input validation
 - Clearer error messages
 - Improved save/cancel button placement
 - Real-time slug generation from category name
 
 **Files Modified:**
+
 - `/apps/web/src/app/admin/categories/page.tsx`
 - `/apps/api/src/categories/dto/create-category.dto.ts`
 
@@ -5239,6 +5871,7 @@ imports: [
    - ~2% CPU reduction
 
 3. **Optimized Development Scripts:**
+
    ```json
    {
      "dev:web": "Frontend only",
@@ -5247,6 +5880,7 @@ imports: [
      "docker:minimal": "Start essentials only"
    }
    ```
+
    - 40-50% resource reduction when working on single area
    - Faster startup times
 
@@ -5257,12 +5891,14 @@ imports: [
    - Smoother development experience
 
 **Performance Improvements:**
+
 - **CPU Usage:** 40-50% reduction (8-10% → 5-6% baseline)
 - **RAM Usage:** 54% reduction (5.5GB → 2.5GB overhead)
 - **Startup Time:** 30-40% faster with filtered scripts
 - **Hot Reload:** 40% smoother (2-3s → 1-2s lag)
 
 **Files Modified:**
+
 - `/package.json` (new dev scripts)
 - Performance configuration files
 
@@ -5271,12 +5907,14 @@ imports: [
 ### 12.6 Component & Preloading Improvements
 
 **Preload Resources Component:**
+
 - Better resource preloading strategy
 - Optimized font loading
 - Critical CSS prioritization
 - Improved initial page load performance
 
 **Files Modified:**
+
 - `/apps/web/src/components/preload-resources.tsx`
 
 ---
@@ -5284,19 +5922,23 @@ imports: [
 ### 12.7 Configuration Updates
 
 **Next.js Configuration:**
+
 - Enhanced image optimization settings
 - Better build output configuration
 - Improved development mode settings
 
 **Files Modified:**
+
 - `/apps/web/next.config.js`
 
 **Package Management:**
+
 - Updated root package.json with new scripts
 - Better workspace organization
 - Cleaner dependency management
 
 **Files Modified:**
+
 - `/package.json`
 
 ---
@@ -5304,6 +5946,7 @@ imports: [
 ### 12.8 Files Modified Summary
 
 **Backend (API):**
+
 - `/apps/api/src/admin/admin.controller.ts` - Dashboard routes + Admin notes endpoints added
 - `/apps/api/src/admin/admin.service.ts` - Admin notes service methods added
 - `/apps/api/src/auth/strategies/jwt.strategy.ts` - JWT user object fixed
@@ -5313,6 +5956,7 @@ imports: [
 - `/apps/api/src/main.ts` - Configuration updates
 
 **Frontend (Web):**
+
 - `/apps/web/src/app/admin/categories/page.tsx` - Category management UI
 - `/apps/web/src/app/admin/customers/[id]/page.tsx` - Customer detail page with admin notes
 - `/apps/web/src/lib/api/admin.ts` - Admin notes API client methods
@@ -5322,12 +5966,15 @@ imports: [
 - Product card, topbar, and address components (various files)
 
 **Configuration:**
+
 - `/package.json` - New dev scripts and optimizations
 
 **Database:**
+
 - `/packages/database/prisma/schema.prisma` - AdminNote model and User relations added
 
 **Deleted Files:**
+
 - `/apps/web/src/components/seller/ProductForm-incomplete.tsx` - Removed broken file
 
 ---
@@ -5335,6 +5982,7 @@ imports: [
 ### 12.9 Testing & Quality Assurance
 
 **Manual Testing Completed:**
+
 - ✅ Admin dashboard loads all data successfully
 - ✅ Seller authentication and dashboard access works
 - ✅ Store API endpoints function correctly
@@ -5346,6 +5994,7 @@ imports: [
 - ✅ Admin notes backend compiled and API endpoints created
 
 **Performance Testing:**
+
 - ✅ CPU usage reduced by 40-50%
 - ✅ RAM usage reduced by 54%
 - ✅ Development startup time improved by 30-40%
@@ -5361,6 +6010,7 @@ Complete backend and frontend implementation of the Admin Notes system for inter
 **Database Schema Changes:**
 
 Added new `AdminNote` model to Prisma schema:
+
 ```prisma
 model AdminNote {
   id        String   @id @default(cuid())
@@ -5412,6 +6062,7 @@ Added three methods to `AdminService`:
 **Frontend Integration:**
 
 Enhanced customer detail page (`/admin/customers/[id]/page.tsx`):
+
 - Added notes state management with React hooks
 - Note textarea input with character limit
 - Real-time note list display with author info and timestamps
@@ -5420,11 +6071,13 @@ Enhanced customer detail page (`/admin/customers/[id]/page.tsx`):
 - Toast notifications for success/error feedback
 
 Added API client methods to `adminCustomersApi`:
+
 - `getNotes(customerId)` - Fetch notes
 - `addNote(customerId, content)` - Create note
 - `deleteNote(customerId, noteId)` - Delete note
 
 **Files Modified:**
+
 - `packages/database/prisma/schema.prisma` - AdminNote model and User relations
 - `apps/api/src/admin/admin.service.ts` - Service methods for notes CRUD
 - `apps/api/src/admin/admin.controller.ts` - API endpoints and route handlers
@@ -5432,6 +6085,7 @@ Added API client methods to `adminCustomersApi`:
 - `apps/web/src/app/admin/customers/[id]/page.tsx` - UI integration
 
 **Security Features:**
+
 - JWT authentication required for all endpoints
 - Role-based access control (ADMIN, SUPER_ADMIN only)
 - Notes cascade delete when customer is deleted
@@ -5440,6 +6094,7 @@ Added API client methods to `adminCustomersApi`:
 
 **Usage:**
 Administrators can now:
+
 1. View all internal notes about a customer on their detail page
 2. Add new notes with rich text content
 3. See who created each note and when
@@ -5453,12 +6108,14 @@ Administrators can now:
 ### 12.11 Known Issues & Future Improvements
 
 **Monitoring Required:**
+
 1. Long-term stability of JWT authentication across all user roles
 2. Image upload performance with large files (>5MB)
 3. Category tree performance with deep nesting (>5 levels)
 4. Address validation for all supported countries
 
 **Planned Enhancements:**
+
 1. Add comprehensive end-to-end testing suite
 2. Implement automated performance benchmarking
 3. Add real user monitoring (RUM) for production
@@ -5469,6 +6126,7 @@ Administrators can now:
 ### 12.12 Migration Notes
 
 **Database Migration Required** for Admin Notes feature:
+
 ```bash
 cd packages/database
 pnpm prisma db push
@@ -5478,6 +6136,7 @@ pnpm prisma generate
 **All other changes** are backward compatible.
 
 **Optional Performance Improvements:**
+
 - Update local development workflow to use new `dev:web` or `dev:api` scripts
 - Adjust Docker Desktop resources to 2GB RAM / 4 CPUs for better M1 performance
 - Clear build caches if experiencing issues: `pnpm turbo clean`
@@ -5495,6 +6154,7 @@ pnpm prisma generate
 - ✅ Performance improvements validated
 
 **Deployment Steps:**
+
 1. Pull latest code from repository
 2. Run `pnpm install` to update dependencies
 3. Run database migration: `cd packages/database && pnpm prisma db push && pnpm prisma generate`
@@ -5508,6 +6168,7 @@ pnpm prisma generate
 ### 12.14 Impact & Benefits
 
 **User Experience:**
+
 - ✅ Smoother, more polished interface
 - ✅ Better visual feedback and interactions
 - ✅ Improved address entry with country support
@@ -5515,18 +6176,21 @@ pnpm prisma generate
 - ✅ More intuitive navigation
 
 **Developer Experience:**
+
 - ✅ Faster development workflows
 - ✅ Better performance on M1 Macs
 - ✅ Cleaner codebase with removed incomplete files
 - ✅ More reliable authentication system
 
 **System Stability:**
+
 - ✅ All critical production blockers resolved
 - ✅ Improved error handling
 - ✅ Better JWT authentication reliability
 - ✅ Fixed image upload functionality
 
 **Production Readiness:**
+
 - ✅ All major features tested and working
 - ✅ No critical bugs identified
 - ✅ Performance optimized for production
@@ -5546,6 +6210,7 @@ pnpm prisma generate
 A comprehensive audit and testing of the Settings module revealed that all backend functionality is working perfectly. The module is production-ready with full CRUD operations, audit logging, and security controls functioning correctly.
 
 **Test Results:**
+
 ```
 ╔══════════════════════════════════════════════════════╗
 ║  Test Results                                        ║
@@ -5557,22 +6222,23 @@ A comprehensive audit and testing of the Settings module revealed that all backe
 
 #### 12.14.2 Tests Performed
 
-| # | Test | Result | Details |
-|---|------|--------|---------|
-| 1 | GET /settings | ✅ PASS | Retrieved 10 settings |
-| 2 | GET /settings/:key | ✅ PASS | Single setting retrieval |
-| 3 | PATCH /settings/:key (NUMBER) | ✅ PASS | Updated number value |
-| 4 | PATCH /settings/:key (BOOLEAN) | ✅ PASS | Updated boolean value |
-| 5 | GET /settings/category/:category | ✅ PASS | Retrieved 4 PAYMENT settings |
-| 6 | GET /settings/public | ✅ PASS | Public endpoint accessible |
-| 7 | GET /settings/admin/audit-logs | ✅ PASS | Audit logs working |
-| 8 | GET /settings/:key/audit | ✅ PASS | Setting-specific audit logs |
-| 9 | PATCH non-editable setting | ✅ PASS | Protected correctly (401) |
-| 10 | PATCH non-existent setting | ✅ PASS | 404 error as expected |
+| #   | Test                             | Result  | Details                      |
+| --- | -------------------------------- | ------- | ---------------------------- |
+| 1   | GET /settings                    | ✅ PASS | Retrieved 10 settings        |
+| 2   | GET /settings/:key               | ✅ PASS | Single setting retrieval     |
+| 3   | PATCH /settings/:key (NUMBER)    | ✅ PASS | Updated number value         |
+| 4   | PATCH /settings/:key (BOOLEAN)   | ✅ PASS | Updated boolean value        |
+| 5   | GET /settings/category/:category | ✅ PASS | Retrieved 4 PAYMENT settings |
+| 6   | GET /settings/public             | ✅ PASS | Public endpoint accessible   |
+| 7   | GET /settings/admin/audit-logs   | ✅ PASS | Audit logs working           |
+| 8   | GET /settings/:key/audit         | ✅ PASS | Setting-specific audit logs  |
+| 9   | PATCH non-editable setting       | ✅ PASS | Protected correctly (401)    |
+| 10  | PATCH non-existent setting       | ✅ PASS | 404 error as expected        |
 
 #### 12.14.3 TypeScript Errors Fixed
 
 **1. Database Package Configuration**
+
 - **File:** `packages/database/tsconfig.json`
 - **Issue:** `rootDir` set to `./src` but `prisma/**/*` was included
 - **Fix:** Excluded prisma folder from type-checking (seed files don't need compilation)
@@ -5585,6 +6251,7 @@ A comprehensive audit and testing of the Settings module revealed that all backe
 ```
 
 **2. UI Package - Unused Variables**
+
 - **File:** `packages/ui/src/components/product-card.tsx:53`
 - **Issue:** `priority` parameter declared but not used
 - **Fix:** Prefixed with underscore: `priority: _priority = false`
@@ -5596,10 +6263,12 @@ A comprehensive audit and testing of the Settings module revealed that all backe
 #### 12.14.4 Database Verification
 
 **Tables Confirmed:**
+
 - ✅ `system_settings` - 10 rows
 - ✅ `settings_audit_logs` - Growing with each change
 
 **Current Settings in Database:**
+
 1. `commission_default_rate` (COMMISSION) - NUMBER
 2. `escrow_auto_release_enabled` (PAYMENT) - BOOLEAN
 3. `escrow_enabled` (PAYMENT) - BOOLEAN
@@ -5614,12 +6283,14 @@ A comprehensive audit and testing of the Settings module revealed that all backe
 #### 12.14.5 API Endpoints Verified
 
 **Public Endpoints (No Auth):**
+
 - `GET /settings/public` - Get public settings
 - `GET /settings/inventory/all` - Get inventory settings
 - `GET /settings/stripe/publishable-key` - Get Stripe public key
 - `GET /settings/stripe/configured` - Check Stripe configuration
 
 **Admin Endpoints (Auth Required):**
+
 - `GET /settings` - Get all settings
 - `GET /settings/:key` - Get single setting
 - `PATCH /settings/:key` - Update setting
@@ -5650,15 +6321,18 @@ A comprehensive audit and testing of the Settings module revealed that all backe
 #### 12.14.7 Integration Verification
 
 **Currency Service Integration:**
+
 - When `supported_currencies` setting updated → automatically activates/deactivates currency rates
 - Tested and working correctly
 
 **Payment Service Integration:**
+
 - Stripe configuration loaded from settings
 - Escrow hold period configurable
 - Auto-release settings functional
 
 **Inventory Service Integration:**
+
 - Low stock threshold configurable
 - Auto SKU generation settings working
 - Notification recipients configurable
@@ -5666,6 +6340,7 @@ A comprehensive audit and testing of the Settings module revealed that all backe
 #### 12.14.8 Production Hardening Recommendations
 
 **✅ Already Implemented:**
+
 1. Transaction safety with Prisma transactions
 2. Comprehensive audit logging
 3. Role-based access control
@@ -5674,6 +6349,7 @@ A comprehensive audit and testing of the Settings module revealed that all backe
 6. Sensitive data protection
 
 **🔶 Recommended Enhancements (Optional):**
+
 1. **Rate Limiting** - Add `@ThrottlerGuard` to prevent abuse
 2. **Enhanced Error Messages** - More specific error codes
 3. **Value Type Validation** - Validate value matches declared type
@@ -5698,6 +6374,7 @@ A comprehensive audit and testing of the Settings module revealed that all backe
 "Settings cannot be saved"
 
 **Investigation Results:**
+
 - ❌ NOT a backend API issue (all endpoints tested and working)
 - ❌ NOT a database issue (tables exist, migrations applied)
 - ❌ NOT a validation issue (DTOs configured correctly)
@@ -5705,6 +6382,7 @@ A comprehensive audit and testing of the Settings module revealed that all backe
 
 **Recommendation:**
 If settings cannot be saved via Admin UI, check:
+
 1. Browser console for JavaScript errors
 2. Admin session validity (not expired)
 3. Browser cache and localStorage
@@ -5728,6 +6406,7 @@ Complete implementation of store following/favorite functionality allowing buyer
 **Database Schema Changes:**
 
 Added new `StoreFollow` model to Prisma schema:
+
 ```prisma
 model StoreFollow {
   id        String   @id @default(cuid())
@@ -5749,17 +6428,18 @@ model StoreFollow {
 
 Five new endpoints for store following:
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/stores/:storeId/followers/count` | No | Get follower count for a store |
-| GET | `/stores/:storeId/is-following` | Yes | Check if current user follows store |
-| POST | `/stores/:storeId/follow` | Yes | Follow a store |
-| DELETE | `/stores/:storeId/follow` | Yes | Unfollow a store |
-| GET | `/stores/me/following` | Yes | Get stores current user follows |
+| Method | Endpoint                           | Auth | Description                         |
+| ------ | ---------------------------------- | ---- | ----------------------------------- |
+| GET    | `/stores/:storeId/followers/count` | No   | Get follower count for a store      |
+| GET    | `/stores/:storeId/is-following`    | Yes  | Check if current user follows store |
+| POST   | `/stores/:storeId/follow`          | Yes  | Follow a store                      |
+| DELETE | `/stores/:storeId/follow`          | Yes  | Unfollow a store                    |
+| GET    | `/stores/me/following`             | Yes  | Get stores current user follows     |
 
 **Backend Implementation:**
 
 Service methods added to `StoresService`:
+
 - `getFollowerCount(storeId)` - Returns follower count
 - `isFollowing(userId, storeId)` - Checks follow status
 - `followStore(userId, storeId)` - Creates follow relationship with validation
@@ -5767,6 +6447,7 @@ Service methods added to `StoresService`:
 - `getFollowingStores(userId, page, limit)` - Paginated list of followed stores
 
 **Validation Rules:**
+
 - Cannot follow your own store
 - Cannot follow inactive stores
 - Cannot follow the same store twice
@@ -5796,6 +6477,7 @@ Service methods added to `StoresService`:
    - Added "Following Stores" quick action link
 
 **Files Modified:**
+
 - `packages/database/prisma/schema.prisma` - StoreFollow model
 - `apps/api/src/stores/stores.controller.ts` - API endpoints
 - `apps/api/src/stores/stores.service.ts` - Service methods
@@ -5816,6 +6498,7 @@ Public store directory page allowing users to browse all active stores on the pl
 **Page Location:** `/stores`
 
 **Features Implemented:**
+
 - **Store Grid Display** - Responsive grid of store cards (12 per page)
 - **Store Cards** - Logo, banner, name, rating, product count, location, verified badge
 - **Search Functionality** - Client-side search by store name and description
@@ -5827,10 +6510,12 @@ Public store directory page allowing users to browse all active stores on the pl
 - **Empty State** - Message when no stores found
 
 **Navigation Integration:**
+
 - Added "Stores" link to main navigation navbar
 - Added "Browse Stores" link to footer
 
 **Files Modified:**
+
 - `apps/web/src/app/stores/page.tsx` - New store directory page
 - `apps/web/src/lib/api/stores.ts` - API response type fix
 - Navigation components (navbar, footer)
@@ -5846,11 +6531,13 @@ Public store directory page allowing users to browse all active stores on the pl
 **Root Cause:** The SWR fetcher was returning empty data instead of calling the API.
 
 **Solution:**
+
 - Updated SWR fetcher to call `storesAPI.getStoreReviews(store.id)`
 - Added proper response type `StoreReviewsResponse`
 - Connected rating breakdown component to API data
 
 **Files Modified:**
+
 - `apps/web/src/app/store/[slug]/page.tsx` - Reviews tab implementation
 
 **Tested:** ✅ Reviews now display correctly with rating breakdown chart
@@ -5865,6 +6552,7 @@ Added comprehensive seed data for testing store functionality with diverse produ
 **Seed File:** `packages/database/prisma/seeds/store-seed.ts`
 
 **Store Created:**
+
 - **Name:** Luxury Timepieces Co
 - **Slug:** `luxury-timepieces-co`
 - **URL:** `/store/luxury-timepieces-co`
@@ -5874,31 +6562,35 @@ Added comprehensive seed data for testing store functionality with diverse produ
 
 **Products Created (13 total):**
 
-| Type | Count | Examples |
-|------|-------|----------|
-| PHYSICAL (Watches) | 6 | Rolex Submariner, Omega Seamaster, Patek Philippe Nautilus |
-| PHYSICAL (Accessories) | 3 | Leather Watch Roll, Cleaning Kit, Watch Box |
-| REAL_ESTATE | 1 | Luxury Penthouse Manhattan ($2.5M) |
-| VEHICLE | 1 | 2023 Porsche 911 Turbo S ($215K) |
-| DIGITAL | 1 | Watch Authentication Guide (PDF, $29) |
-| SERVICE | 1 | Watch Appraisal Service ($150) |
+| Type                   | Count | Examples                                                   |
+| ---------------------- | ----- | ---------------------------------------------------------- |
+| PHYSICAL (Watches)     | 6     | Rolex Submariner, Omega Seamaster, Patek Philippe Nautilus |
+| PHYSICAL (Accessories) | 3     | Leather Watch Roll, Cleaning Kit, Watch Box                |
+| REAL_ESTATE            | 1     | Luxury Penthouse Manhattan ($2.5M)                         |
+| VEHICLE                | 1     | 2023 Porsche 911 Turbo S ($215K)                           |
+| DIGITAL                | 1     | Watch Authentication Guide (PDF, $29)                      |
+| SERVICE                | 1     | Watch Appraisal Service ($150)                             |
 
 **Additional Data:**
+
 - **Product Variants:** 3 (Rolex Submariner: Black, Blue, Green dial)
 - **Reviews:** 10 sample reviews (8 five-star, 2 four-star)
 - **Store Policies:** Return, shipping, and terms & conditions
 
 **Test Account:**
+
 - Email: `seller1@nextpik.com`
 - Password: `Password123!`
 
 **How to Run:**
+
 ```bash
 cd packages/database
 npx tsx prisma/seeds/store-seed.ts
 ```
 
 **Files Created:**
+
 - `packages/database/prisma/seeds/store-seed.ts`
 
 **Tested:** ✅ Seed runs successfully, all products created, reviews added
@@ -5910,6 +6602,7 @@ npx tsx prisma/seeds/store-seed.ts
 **Release Date:** December 31, 2025
 
 **New Features:**
+
 1. ✅ Store Following System (follow/unfollow stores)
 2. ✅ Following Stores Page (`/account/following`)
 3. ✅ Store Directory Page (`/stores`)
@@ -5917,6 +6610,7 @@ npx tsx prisma/seeds/store-seed.ts
 5. ✅ Comprehensive Store Seed Data
 
 **API Endpoints Added:**
+
 - `GET /stores/:storeId/followers/count`
 - `GET /stores/:storeId/is-following`
 - `POST /stores/:storeId/follow`
@@ -5924,15 +6618,18 @@ npx tsx prisma/seeds/store-seed.ts
 - `GET /stores/me/following`
 
 **Database Changes:**
+
 - Added `StoreFollow` model with unique constraint on userId+storeId
 
 **Files Modified:**
+
 - 7 files for store following feature
 - 3 files for store directory
 - 1 file for store reviews fix
 - 1 new seed file
 
 **Testing:**
+
 - ✅ All API endpoints verified
 - ✅ Follow/unfollow functionality tested
 - ✅ Store directory page functional
@@ -5962,6 +6659,7 @@ Version 2.3.0 focused on polishing the user experience, fixing critical producti
 Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integration with enterprise-grade features:
 
 **Key Highlights:**
+
 1. **Dynamic Stripe Configuration** - Zero-downtime updates via System Settings
 2. **Multi-Currency Support** - 46+ currencies with zero-decimal handling
 3. **Comprehensive Webhook Handling** - 16+ event types with automatic retry logic
@@ -5980,6 +6678,7 @@ Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integr
 #### 12.2.1 PaymentService Enhancements
 
 **Dynamic Stripe Client Initialization:**
+
 - Real-time configuration from System Settings (no server restart required)
 - Automatic client reinitialization on settings update
 - Secure API key management via encrypted database storage
@@ -5987,6 +6686,7 @@ Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integr
 - Connection status validation and health monitoring
 
 **Payment Intent Creation:**
+
 - Multi-currency support (46+ currencies including zero-decimal: JPY, KRW, RWF)
 - Automatic currency conversion with real-time exchange rates
 - Escrow-compatible manual capture method
@@ -5995,6 +6695,7 @@ Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integr
 - Client secret generation for frontend
 
 **Webhook Event Handling:**
+
 - 16+ Stripe webhook events fully implemented
 - Signature verification for security
 - Automatic retry logic with exponential backoff
@@ -6005,6 +6706,7 @@ Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integr
 #### 12.2.2 API Endpoints
 
 **New Payment Endpoints:**
+
 - `POST /payment/create-intent` - Create payment intent with multi-currency support
 - `POST /payment/webhook` - Webhook event handler with signature verification
 - `GET /payment/status/:orderId` - Get payment status
@@ -6016,6 +6718,7 @@ Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integr
 #### 12.2.3 System Settings Integration
 
 **New Stripe Settings (13 total in Payment category):**
+
 - `stripe.secret_key` - API secret key (encrypted, admin-only)
 - `stripe.publishable_key` - Publishable key (public)
 - `stripe.webhook_secret` - Webhook signing secret
@@ -6025,6 +6728,7 @@ Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integr
 - `stripe.enabled` - Enable/disable Stripe
 
 **Integration Features:**
+
 - Zero-downtime configuration updates
 - Real-time Stripe client reinitialization
 - Admin UI with dedicated Payment Settings tab
@@ -6034,6 +6738,7 @@ Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integr
 #### 12.2.4 Admin Dashboard Enhancements
 
 **Payment Dashboard Components:**
+
 - Real-time payment health metrics
 - Webhook event statistics and monitoring
 - Stripe connection status indicators
@@ -6043,23 +6748,27 @@ Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integr
 ### 12.3 Testing & Quality Assurance
 
 **Unit Testing:**
+
 - **Test Framework:** Jest with ts-jest
 - **Coverage:** 85% (22/26 tests passing)
 - **Test File:** `apps/api/src/payment/payment.service.spec.ts`
 - **Test Suites:** Currency validation, zero-decimal currencies, payment status, refund processing, edge cases
 
 **Integration Testing:**
+
 - **Manual Test Guide:** 21 detailed test scenarios
 - **Test Categories:** Basic payments, failed scenarios, 3D Secure, webhooks, multi-currency, escrow flow, security, performance
 - **Documentation:** `STRIPE_INTEGRATION_TEST_GUIDE.md` (650+ lines)
 
 **Performance Benchmarks:**
+
 - Payment intent creation: <500ms
 - Webhook processing: <100ms
 - Dashboard load time: <2 seconds
 - High volume webhook processing: 100 events with no errors
 
 **Security Validation:**
+
 - Webhook signature verification (HMAC-SHA256)
 - Encrypted API key storage
 - Access control for admin operations
@@ -6098,6 +6807,7 @@ Version 2.2.0 introduces a comprehensive, production-ready Stripe payment integr
 ### 12.5 Database Schema Updates
 
 **New PaymentTransaction Fields:**
+
 ```prisma
 model PaymentTransaction {
   id                    String         @id @default(cuid())
@@ -6127,6 +6837,7 @@ enum PaymentStatus {
 ```
 
 **New WebhookEvent Model:**
+
 ```prisma
 model WebhookEvent {
   id              String   @id @default(cuid())
@@ -6151,6 +6862,7 @@ model WebhookEvent {
 **No migration required** - New tables and fields are created automatically via Prisma migrations.
 
 **Setup Steps:**
+
 1. Run database migrations: `pnpm prisma:migrate`
 2. Access Admin Panel → Settings → Payment tab
 3. Enter Stripe API keys (test or live)
@@ -6161,6 +6873,7 @@ model WebhookEvent {
 ### 12.8 Deployment Checklist
 
 ✅ **Pre-Deployment:**
+
 - All unit tests passing (22/26 - 85%)
 - Manual test scenarios documented
 - Security audit completed
@@ -6168,6 +6881,7 @@ model WebhookEvent {
 - Documentation complete
 
 ✅ **Deployment:**
+
 - Database migrations applied
 - Stripe account configured
 - API keys securely stored
@@ -6175,6 +6889,7 @@ model WebhookEvent {
 - Admin panel accessible
 
 ✅ **Post-Deployment:**
+
 - Test transaction processed
 - Webhook events verified
 - Health metrics monitored
@@ -6182,14 +6897,14 @@ model WebhookEvent {
 
 ### 12.9 Production Readiness Assessment
 
-| Category | Rating | Details |
-|----------|--------|---------|
-| **Functionality** | ✅ Excellent | All 11 features complete |
-| **Test Coverage** | ✅ Good | 85% unit tests + manual validation |
-| **Security** | ✅ Excellent | Multi-layer security, audit passed |
-| **Performance** | ✅ Excellent | All benchmarks exceeded |
-| **Documentation** | ✅ Excellent | 2500+ lines comprehensive |
-| **Deployment Readiness** | ✅ Ready | Low risk, well-tested |
+| Category                 | Rating       | Details                            |
+| ------------------------ | ------------ | ---------------------------------- |
+| **Functionality**        | ✅ Excellent | All 11 features complete           |
+| **Test Coverage**        | ✅ Good      | 85% unit tests + manual validation |
+| **Security**             | ✅ Excellent | Multi-layer security, audit passed |
+| **Performance**          | ✅ Excellent | All benchmarks exceeded            |
+| **Documentation**        | ✅ Excellent | 2500+ lines comprehensive          |
+| **Deployment Readiness** | ✅ Ready     | Low risk, well-tested              |
 
 **Deployment Confidence:** 95%
 **Production Status:** ✅ **APPROVED FOR DEPLOYMENT**
@@ -6201,6 +6916,7 @@ model WebhookEvent {
 ### 16.1 Overview
 
 Version 2.1.1 focuses on critical product management improvements and comprehensive filter system enhancements:
+
 1. **Product Form Field Persistence** - Fixed SKU and inventory field saving issues
 2. **Advanced Filter System** - All filters (status, category, sort, search) working together seamlessly
 3. **Stock Badge Design** - Improved visual design preventing text cutting
@@ -6214,6 +6930,7 @@ Version 2.1.1 focuses on critical product management improvements and comprehens
 ### 12.2 Product Form Field Persistence Fixes
 
 **Problem Solved:**
+
 - SKU field was not being saved to database (missing from DTO)
 - Inventory/stock field was not persisting (field name mismatch)
 - Category field was not saving (field name mismatch in transformation layer)
@@ -6237,6 +6954,7 @@ Version 2.1.1 focuses on critical product management improvements and comprehens
 **Solutions Implemented:**
 
 #### Backend Fix - SKU Field (`apps/api/src/products/dto/create-product.dto.ts`)
+
 ```typescript
 export class CreateProductDto {
   @IsString()
@@ -6257,6 +6975,7 @@ export class CreateProductDto {
 ```
 
 #### Frontend Fix - Field Name Mapping (`apps/web/src/lib/api/admin.ts`)
+
 ```typescript
 function transformProductData(data: Partial<AdminProduct>): any {
   const transformed: any = {
@@ -6284,6 +7003,7 @@ function transformProductData(data: Partial<AdminProduct>): any {
 ```
 
 #### Frontend Fix - Nested Form (`apps/web/src/components/admin/variant-form.tsx`)
+
 ```typescript
 // ❌ BEFORE - Nested form
 return (
@@ -6310,6 +7030,7 @@ return (
 ### 12.3 Advanced Filter System Enhancements
 
 **Problem Solved:**
+
 - Status filter not working (always showed only ACTIVE products)
 - Sort by stock not supported (missing from sort field mapping)
 - Empty filter values causing API errors
@@ -6318,6 +7039,7 @@ return (
 **Solutions Implemented:**
 
 #### Backend - Status Filter Fix (`apps/api/src/products/products.service.ts`)
+
 ```typescript
 // ❌ BEFORE - Always defaulted to ACTIVE
 async findAll(query: ProductQueryDto) {
@@ -6348,6 +7070,7 @@ async findAll(query: ProductQueryDto) {
 ```
 
 #### Backend - Sort Field Mapping Enhancement
+
 ```typescript
 const sortByMapping: Record<string, string> = {
   relevance: 'viewCount',
@@ -6358,11 +7081,12 @@ const sortByMapping: Record<string, string> = {
   updatedAt: 'updatedAt',
   rating: 'rating',
   inventory: 'inventory', // ✅ ADDED
-  stock: 'inventory',     // ✅ ADDED (alias)
+  stock: 'inventory', // ✅ ADDED (alias)
 };
 ```
 
 #### Frontend - Status Values Fix (`apps/web/src/app/admin/products/page.tsx`)
+
 ```typescript
 // ✅ FIXED - Use uppercase values matching backend enum
 <select value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -6374,6 +7098,7 @@ const sortByMapping: Record<string, string> = {
 ```
 
 #### Frontend - Empty Value Handling (`apps/web/src/lib/api/admin.ts`)
+
 ```typescript
 // ❌ BEFORE - Empty strings sent to API
 function buildQueryString(params?: Record<string, any>): string {
@@ -6404,6 +7129,7 @@ function buildQueryString(params?: Record<string, any>): string {
 ### 12.4 Stock Badge Design Improvements
 
 **Problem Solved:**
+
 - Stock count text was being cut off
 - Badge layout inconsistent across different stock values
 - Visual design didn't match modern UI standards
@@ -6433,6 +7159,7 @@ return (
 ```
 
 **Improvements:**
+
 - Added `whitespace-nowrap` to prevent text wrapping
 - Changed from `rounded-full` to `rounded-lg` for cleaner look
 - Stock count in distinct mini-badge with white background
@@ -6441,10 +7168,12 @@ return (
 ### 12.5 API Response Mapping
 
 **Problem Solved:**
+
 - Backend returns `totalPages` but frontend expected `pages`
 - Product list endpoint responses inconsistent
 
 **Solution Implemented** (`apps/web/src/lib/api/admin.ts`):
+
 ```typescript
 async getAll(params?: {...}): Promise<{...}> {
   const response = await api.get(`/products${buildQueryString(params)}`);
@@ -6461,10 +7190,12 @@ async getAll(params?: {...}): Promise<{...}> {
 ### 12.6 TypeScript Build Fixes
 
 **Problem Solved:**
+
 - Type error in `settings.service.ts` preventing production builds
 - `JsonArray` type not assignable to `string[]`
 
 **Solution Implemented** (`apps/api/src/settings/settings.service.ts`):
+
 ```typescript
 async getStockNotificationRecipients(): Promise<string[]> {
   try {
@@ -6508,18 +7239,21 @@ curl "http://localhost:4000/api/v1/products?search=luxury&category=watches&statu
 ### 12.8 Impact & Benefits
 
 **User Experience:**
+
 - ✅ Product creation/editing now saves all fields correctly
 - ✅ Filters work individually and in any combination
 - ✅ Stock badges display clearly without visual issues
 - ✅ Admin can filter products by any criteria seamlessly
 
 **Developer Experience:**
+
 - ✅ Consistent field naming reduces confusion
 - ✅ TypeScript build succeeds without errors
 - ✅ API responses properly mapped to frontend expectations
 - ✅ Query parameter handling more robust
 
 **System Reliability:**
+
 - ✅ No data loss on product saves
 - ✅ Empty filter values handled gracefully
 - ✅ All 36 products visible by default
@@ -6528,16 +7262,12 @@ curl "http://localhost:4000/api/v1/products?search=luxury&category=watches&statu
 ### 12.9 Files Modified
 
 **Backend:**
+
 1. `apps/api/src/products/dto/create-product.dto.ts` - Added SKU field
 2. `apps/api/src/products/products.service.ts` - Fixed status filter, added inventory sort
 3. `apps/api/src/settings/settings.service.ts` - Fixed TypeScript type error
 
-**Frontend:**
-4. `apps/web/src/lib/api/admin.ts` - Fixed field mapping, empty value handling, response mapping
-5. `apps/web/src/app/admin/products/page.tsx` - Updated status values, sort options, export
-6. `apps/web/src/components/admin/variant-form.tsx` - Removed nested form
-7. `apps/web/src/components/admin/product-form.tsx` - Verified field names (no changes needed)
-8. `apps/web/src/components/admin/stock-status-badge.tsx` - Improved design
+**Frontend:** 4. `apps/web/src/lib/api/admin.ts` - Fixed field mapping, empty value handling, response mapping 5. `apps/web/src/app/admin/products/page.tsx` - Updated status values, sort options, export 6. `apps/web/src/components/admin/variant-form.tsx` - Removed nested form 7. `apps/web/src/components/admin/product-form.tsx` - Verified field names (no changes needed) 8. `apps/web/src/components/admin/stock-status-badge.tsx` - Improved design
 
 ---
 
@@ -6546,6 +7276,7 @@ curl "http://localhost:4000/api/v1/products?search=luxury&category=watches&statu
 ### 17.1 Overview
 
 Version 2.0 focuses on three major enhancements:
+
 1. **Currency System Settings Integration** - Seamless integration between Currency Management and System Settings
 2. **Real-Time Settings Updates** - Instant UI updates across all tabs without page refresh
 3. **Professional Number Formatting** - Thousand separator formatting across entire application
@@ -6557,6 +7288,7 @@ Version 2.0 focuses on three major enhancements:
 ### 13.2 Currency System Settings Integration
 
 **Problem Solved:**
+
 - Currency Management and System Settings were operating independently
 - Supported currencies were hardcoded in frontend
 - No synchronization between currency activation and settings
@@ -6567,6 +7299,7 @@ Version 2.0 focuses on three major enhancements:
 #### Backend Changes
 
 **1. Currency Service Enhancement** (`apps/api/src/currency/currency.service.ts`)
+
 ```typescript
 // Auto-sync with System Settings when toggling currency active status
 async toggleActive(currencyCode: string) {
@@ -6610,6 +7343,7 @@ private async syncSupportedCurrencies(currencyCode: string, isActive: boolean) {
 ```
 
 **2. Settings Service Enhancement** (`apps/api/src/settings/settings.service.ts`)
+
 ```typescript
 // Auto-sync currency active statuses when updating supported_currencies
 async updateSetting(key: string, newValue: any, ...) {
@@ -6643,6 +7377,7 @@ private async syncCurrencyActiveStatuses(supportedCurrencies: string[]) {
 #### Frontend Changes
 
 **1. New Settings API Client** (`apps/web/src/lib/api/settings.ts`)
+
 ```typescript
 export const settingsApi = {
   async getPublicSettings(): Promise<SystemSetting[]> {
@@ -6663,27 +7398,28 @@ export const settingsApi = {
 ```
 
 **2. Enhanced Currency Hooks** (`apps/web/src/hooks/use-currency.ts`)
+
 ```typescript
 // NEW: Hook to get currency settings from SystemSetting table
 export function useCurrencySettings() {
-  const { data: settings, error, isLoading } = useSWR(
-    '/settings/public',
-    settingsApi.getPublicSettings,
-    {
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      refreshInterval: 0,
-      dedupingInterval: 5000,
-    }
-  );
+  const {
+    data: settings,
+    error,
+    isLoading,
+  } = useSWR('/settings/public', settingsApi.getPublicSettings, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    refreshInterval: 0,
+    dedupingInterval: 5000,
+  });
 
   const defaultCurrency = useMemo(() => {
-    const setting = settings?.find(s => s.key === 'default_currency');
+    const setting = settings?.find((s) => s.key === 'default_currency');
     return setting?.value || 'USD';
   }, [settings]);
 
   const supportedCurrencies = useMemo(() => {
-    const setting = settings?.find(s => s.key === 'supported_currencies');
+    const setting = settings?.find((s) => s.key === 'supported_currencies');
     return setting?.value || ['USD', 'EUR', 'GBP', 'JPY', 'RWF'];
   }, [settings]);
 
@@ -6703,12 +7439,10 @@ export function useCurrencyRates() {
   // Filter currencies based on system settings
   const filteredCurrencies = useMemo(() => {
     if (!data) return [];
-    return data.filter(currency =>
-      supportedCurrencies.includes(currency.currencyCode)
-    );
+    return data.filter((currency) => supportedCurrencies.includes(currency.currencyCode));
   }, [data, supportedCurrencies]);
 
-  return { currencies: filteredCurrencies, /* ... */ };
+  return { currencies: filteredCurrencies /* ... */ };
 }
 
 // NEW: Admin hook fetches ALL currencies (not filtered)
@@ -6724,6 +7458,7 @@ export function useCurrencyAdmin() {
 ```
 
 **3. Dynamic Currency Settings UI** (`apps/web/src/components/settings/currency-settings.tsx`)
+
 ```typescript
 export function CurrencySettingsSection() {
   const { currencies: availableCurrencies, isLoading, error } = useCurrencyAdmin();
@@ -6764,6 +7499,7 @@ export function CurrencySettingsSection() {
 ```
 
 **Benefits Achieved:**
+
 - ✅ Currency Management ↔ System Settings bidirectional sync
 - ✅ Single source of truth for supported currencies
 - ✅ Dynamic dropdown based on database state
@@ -6773,6 +7509,7 @@ export function CurrencySettingsSection() {
 ### 13.3 Real-Time Settings Updates
 
 **Problem Solved:**
+
 - Settings changes required manual page refresh to see updates
 - Multiple browser tabs showed stale data
 - Poor user experience for administrators
@@ -6783,27 +7520,30 @@ export function CurrencySettingsSection() {
 #### SWR Configuration Enhancement
 
 **Before (v1.x):**
+
 ```typescript
 useSWR('/currency/rates', fetcher, {
-  revalidateOnFocus: false,      // ❌ No auto-refresh
-  revalidateOnReconnect: false,  // ❌ No reconnect refresh
-  dedupingInterval: 60000,       // ❌ Long cache (1 minute)
+  revalidateOnFocus: false, // ❌ No auto-refresh
+  revalidateOnReconnect: false, // ❌ No reconnect refresh
+  dedupingInterval: 60000, // ❌ Long cache (1 minute)
 });
 ```
 
 **After (v2.0):**
+
 ```typescript
 useSWR('/currency/rates', fetcher, {
-  revalidateOnFocus: true,       // ✅ Refresh on tab focus
-  revalidateOnReconnect: true,   // ✅ Refresh on reconnect
-  refreshInterval: 0,            // Manual updates only
-  dedupingInterval: 5000,        // ✅ Fast cache (5 seconds)
+  revalidateOnFocus: true, // ✅ Refresh on tab focus
+  revalidateOnReconnect: true, // ✅ Refresh on reconnect
+  refreshInterval: 0, // Manual updates only
+  dedupingInterval: 5000, // ✅ Fast cache (5 seconds)
 });
 ```
 
 #### Cache Invalidation System
 
 **New File:** `apps/web/src/lib/settings-cache.ts`
+
 ```typescript
 import { mutate } from 'swr';
 
@@ -6814,23 +7554,26 @@ export async function invalidateCurrencySettings() {
     mutate('/settings/public', undefined, { revalidate: true }),
     mutate('/currency/rates', undefined, { revalidate: true }),
     mutate('/currency/admin/all', undefined, { revalidate: true }),
-    mutate(
-      (key) => typeof key === 'string' && key.startsWith('/currency/'),
-      undefined,
-      { revalidate: true }
-    ),
+    mutate((key) => typeof key === 'string' && key.startsWith('/currency/'), undefined, {
+      revalidate: true,
+    }),
   ]);
 
   console.log('✅ Currency caches invalidated successfully');
 }
 
-export async function invalidatePaymentSettings() { /* ... */ }
-export async function invalidateDeliverySettings() { /* ... */ }
+export async function invalidatePaymentSettings() {
+  /* ... */
+}
+export async function invalidateDeliverySettings() {
+  /* ... */
+}
 ```
 
 #### Integration with Settings Save
 
 **Currency Settings Component:**
+
 ```typescript
 const onSubmit = async (data: CurrencySettings) => {
   try {
@@ -6864,6 +7607,7 @@ const onSubmit = async (data: CurrencySettings) => {
 6. **UI updates** instantly across all open tabs
 
 **Components That Auto-Update:**
+
 - Topbar currency selector
 - Product cards and listings
 - Cart and checkout pages
@@ -6871,6 +7615,7 @@ const onSubmit = async (data: CurrencySettings) => {
 - All price displays
 
 **Testing Real-Time Updates:**
+
 ```
 Test 1: Topbar Currency Dropdown
 1. Open app in two browser tabs
@@ -6894,6 +7639,7 @@ Test 3: Multiple Tabs Simultaneously
 ```
 
 **Performance Optimizations:**
+
 - Deduplication: Multiple components share single fetch
 - Smart revalidation: Only on focus/reconnect (not polling)
 - Batched updates: All cache invalidations in single operation
@@ -6902,6 +7648,7 @@ Test 3: Multiple Tabs Simultaneously
 ### 13.4 Professional Number Formatting
 
 **Problem Solved:**
+
 - Large numbers displayed without thousand separators (100000.00)
 - Inconsistent formatting across application
 - `.toFixed()` calls scattered throughout codebase
@@ -6914,6 +7661,7 @@ Test 3: Multiple Tabs Simultaneously
 #### Centralized Formatting Utilities
 
 **New File:** `apps/web/src/lib/utils/number-format.ts`
+
 ```typescript
 /**
  * Core formatting function with thousand separators
@@ -6949,10 +7697,7 @@ export function formatCurrencyAmount(
 /**
  * Format integers without decimals
  */
-export function formatInteger(
-  value: number | null | undefined,
-  locale: string = 'en-US'
-): string {
+export function formatInteger(value: number | null | undefined, locale: string = 'en-US'): string {
   return formatNumber(value, 0, locale);
 }
 
@@ -6971,10 +7716,7 @@ export function formatPercentage(
 /**
  * Compact notation (1K, 1.5M, 2B)
  */
-export function formatCompact(
-  value: number | null | undefined,
-  locale: string = 'en-US'
-): string {
+export function formatCompact(value: number | null | undefined, locale: string = 'en-US'): string {
   if (value == null || isNaN(value) || !isFinite(value)) {
     return '0';
   }
@@ -7003,6 +7745,7 @@ export function parseFormattedNumber(value: string): number {
 **Files Updated: 42+ Components**
 
 **ProductCard (UI Package):**
+
 ```typescript
 // Before (❌ Crashes on undefined)
 <span>${price.toFixed(2)}</span>
@@ -7012,6 +7755,7 @@ export function parseFormattedNumber(value: string): number {
 ```
 
 **Cart Drawer:**
+
 ```typescript
 // Before
 <span>Subtotal: ${totals.subtotal.toFixed(2)}</span>
@@ -7027,6 +7771,7 @@ export function parseFormattedNumber(value: string): number {
 ```
 
 **Checkout Order Summary:**
+
 ```typescript
 // Before
 <p>Add ${(200 - subtotal).toFixed(2)} more for free shipping</p>
@@ -7036,6 +7781,7 @@ export function parseFormattedNumber(value: string): number {
 ```
 
 **Currency API Client:**
+
 ```typescript
 // Before
 formatPrice(amount: number, currency: CurrencyRate): string {
@@ -7055,6 +7801,7 @@ formatPrice(amount: number, currency: CurrencyRate): string {
 ```
 
 **Components Updated:**
+
 - ✅ Product cards, grids, listings (4 files)
 - ✅ Cart drawer and items
 - ✅ Checkout flow (order summary, payment form, shipping)
@@ -7071,6 +7818,7 @@ formatPrice(amount: number, currency: CurrencyRate): string {
 **Visual Examples:**
 
 Before:
+
 ```
 Product Price:     100000.00
 Cart Total:        567850.99
@@ -7079,6 +7827,7 @@ Shipping:          2500.00
 ```
 
 After:
+
 ```
 Product Price:     100,000.00
 Cart Total:        567,850.99
@@ -7087,6 +7836,7 @@ Shipping:          2,500.00
 ```
 
 **Benefits Achieved:**
+
 - ✅ Professional, readable formatting
 - ✅ Null-safe (no more crashes on undefined)
 - ✅ Consistent across 42+ components
@@ -7118,11 +7868,13 @@ Shipping:          2,500.00
 **No migration required!** Version 2.0 is backward compatible.
 
 **Optional Cleanup:**
+
 - Update any custom components still using `.toFixed()` to use formatting utilities
 - Review SWR configurations to enable real-time updates
 - Consider removing hardcoded currency lists in favor of dynamic fetching
 
 **Recommended Actions:**
+
 1. Test currency changes across multiple tabs
 2. Verify number formatting in all financial displays
 3. Review admin settings workflow
@@ -7135,6 +7887,7 @@ Shipping:          2,500.00
 ### 18.1 Immediate Priorities (Next 1-3 Months)
 
 **High Priority:**
+
 1. **Testing Infrastructure**
    - Set up Jest for backend unit tests
    - Set up Vitest for frontend unit tests
@@ -7167,6 +7920,7 @@ Shipping:          2,500.00
 ### 14.2 Short-Term Goals (3-6 Months)
 
 **Feature Development:**
+
 1. **Advanced Search**
    - Faceted search improvements
    - Search analytics
@@ -7198,6 +7952,7 @@ Shipping:          2,500.00
 ### 14.3 Medium-Term Goals (6-12 Months)
 
 **Scalability:**
+
 1. **Infrastructure**
    - Kubernetes deployment
    - Microservices architecture refinement
@@ -7231,6 +7986,7 @@ Shipping:          2,500.00
 ### 14.4 Long-Term Vision (12+ Months)
 
 **Platform Evolution:**
+
 1. **Global Expansion**
    - Multi-region deployment
    - Localized content management
@@ -7258,12 +8014,14 @@ Shipping:          2,500.00
 ### 14.5 Technical Roadmap
 
 **Architecture Evolution:**
+
 1. **Phase 1:** Optimize current monolith
 2. **Phase 2:** Extract high-traffic services (products, orders)
 3. **Phase 3:** Full microservices architecture
 4. **Phase 4:** Event-driven architecture with message queues
 
 **Technology Upgrades:**
+
 - Keep dependencies up to date
 - Evaluate emerging technologies
 - Performance benchmarking
@@ -7286,6 +8044,7 @@ This section documents the security audit remediation and bug fixes applied to t
 ### 19.2 Security Fixes Applied (Phase 5.4 Audit)
 
 #### 19.2.1 User Enumeration Prevention (CRITICAL)
+
 **File:** `apps/api/src/auth/services/auth-core.service.ts`
 
 Login previously returned two distinguishable error messages: one when the email was not found and another when the password was wrong. Both paths now return the same string:
@@ -7295,9 +8054,11 @@ Login previously returned two distinguishable error messages: one when the email
 This prevents an attacker from enumerating valid email addresses by probing the login endpoint.
 
 #### 19.2.2 Session Fingerprint Hijack (CRITICAL)
+
 **File:** `apps/api/src/auth/services/session.service.ts`
 
 When a session's fingerprint (SHA-256 of `ip:userAgent`, truncated to 32 hex chars) did not match the current request, the service previously returned `{ valid: true, suspicious: true }` — the session remained usable. Now it:
+
 1. Sets `isActive: false` on the session row in the database.
 2. Logs via `LoggerService.logSuspiciousActivity`.
 3. Returns `{ valid: false }`.
@@ -7305,52 +8066,64 @@ When a session's fingerprint (SHA-256 of `ip:userAgent`, truncated to 32 hex cha
 This closes the window where a stolen session token could be used from a different device/IP.
 
 #### 19.2.3 Inline Body Types Bypassed Validation (CRITICAL)
+
 **Files:** `apps/api/src/auth/dto/auth.dto.ts`, `apps/api/src/auth/enhanced-auth.controller.ts`
 
 Two controller routes used inline object types (`{ token: string }`, `{ email: string }`) as `@Body()` parameters. NestJS's global `ValidationPipe` only decorates and validates class-based DTOs; inline objects pass through unvalidated. Three new DTOs were created:
+
 - `VerifyEmailDto` — `token: string` with `@IsString()`
 - `ResendVerificationDto` — `email: string` with `@IsEmail()` and `@Transform` for sanitization
 - `ChangePasswordDto` — `currentPassword: string`, `newPassword: string` with strength rules
 
 #### 19.2.4 Dead Session Route (HIGH)
+
 **File:** `apps/api/src/auth/enhanced-auth.controller.ts`
 
 A duplicate `@Get('sessions')` route (simple list, no `isCurrent` marking) appeared before the real one. NestJS binds the first matching route, so the version that marks the current session was unreachable dead code. The duplicate was removed.
 
 #### 19.2.5 Account-Takeover Vector: Broken `POST /google/link` (HIGH)
+
 **File:** `apps/api/src/auth/enhanced-auth.controller.ts`
 
 This endpoint accepted a `googleToken` field but never verified it against Google's token endpoint. It passed `req.user` (the authenticated JWT user) directly as the "Google identity", meaning any authenticated user could link any `googleId` string to their account. The endpoint was removed entirely. Google account linking now happens only through the standard OAuth callback flow (`POST /google/auth`).
 
 #### 19.2.6 CORS: No-Origin Bypass in Production (HIGH)
+
 **File:** `apps/api/src/main.ts`
 
 The CORS callback previously allowed requests with no `Origin` header unconditionally. Server-side tools (curl, Postman, internal scripts) send no Origin. In production, this was gated:
+
 ```typescript
 if (!origin && process.env.NODE_ENV === 'production') {
   return callback(new Error('Origin header is required'));
 }
 ```
+
 Development remains permissive for local tooling.
 
 #### 19.2.7 Google OAuth: Missing Auto-Link Guards (HIGH)
+
 **File:** `apps/api/src/auth/google-oauth.service.ts`
 
 Before auto-linking a Google identity to an existing email-based account, the service now checks:
+
 1. **Account not suspended** — throws `BadRequestException` directing user to support.
 2. **2FA not enabled** — a 2FA-protected account implies the user has taken explicit security steps; auto-linking bypasses that intent. The error directs the user to link manually from account settings.
 
 #### 19.2.8 Google OAuth: Session Bypass (HIGH)
+
 **File:** `apps/api/src/auth/google-oauth.service.ts`
 
 The service had its own private `createSession`, `getDeviceType`, and `getBrowser` methods that duplicated logic from `SessionService` — but without fingerprinting. All three calls were replaced with `sessionService.createSession(...)`. The dead private methods were deleted.
 
 #### 19.2.9 Google-Only Users: Empty-String Password (MEDIUM)
+
 **File:** `apps/api/src/auth/google-oauth.service.ts`
 
 Users created via Google OAuth had `password: ''` (empty string). While bcrypt would reject a compare against this, an empty string is truthy and could bypass `if (!user.password)` guards elsewhere. Changed to `password: null`.
 
 #### 19.2.10 Debug Info Leak in Production (MEDIUM)
+
 **File:** `apps/api/src/main.ts`
 
 `process.stderr.write` calls at module scope (Node version, CWD, bootstrap status) ran unconditionally. Gated behind `NODE_ENV !== 'production'`.
@@ -7360,9 +8133,11 @@ Users created via Google OAuth had `password: ''` (empty string). While bcrypt w
 ### 19.3 Bug Fixes (Phase 6)
 
 #### 19.3.1 2FA Backup Codes (Phase 6.5)
+
 **Files:** `schema.prisma`, `apps/api/src/auth/services/two-factor.service.ts`, `apps/api/src/auth/dto/auth.dto.ts`, `apps/api/src/auth/enhanced-auth.controller.ts`, `apps/api/src/auth/services/auth-core.service.ts`, `apps/api/src/logger/logger.service.ts`
 
 Full lifecycle implementation:
+
 - **Schema:** Added `backupCodes Json?` to the User model. Migration applied via `ALTER TABLE` (migration drift in dev; no Prisma migration file needed for this column).
 - **Generation:** On `POST /2fa/enable`, 10 codes are generated (`crypto.randomBytes(4).toString('hex')` → 8-char hex strings). Each code is hashed with SHA-256 before storage. The plaintext codes are returned once — the only time they are visible.
 - **Verification:** `POST /login` now accepts `backupCode` as an alternative to `twoFactorCode`. The incoming code is hashed; the hash is looked up in the stored array. If found, the used code is spliced out of the array (atomic update). The event is logged as `backup_code_used`.
@@ -7370,9 +8145,11 @@ Full lifecycle implementation:
 - **Cleanup:** `POST /2fa/disable` sets `backupCodes: null`.
 
 #### 19.3.2 Token Expiry Structured Response (Phase 6.1)
+
 **Files:** `apps/api/src/auth/services/email-verification.service.ts`, `apps/api/src/common/filters/http-exception.filter.ts`
 
 Expired email verification links previously threw a plain string error. Now the exception carries structured metadata:
+
 ```json
 {
   "statusCode": 401,
@@ -7381,9 +8158,11 @@ Expired email verification links previously threw a plain string error. Now the 
   "resendEmail": "user@example.com"
 }
 ```
+
 The `HttpExceptionFilter` was updated to spread any extra keys from the exception response into the JSON body, so the frontend can act on `canResend` without parsing the message string.
 
 #### 19.3.3 Concurrent Registration Race Condition (Phase 6.2)
+
 **File:** `apps/api/src/auth/services/auth-core.service.ts`
 
 A `findUnique` + `create` pattern for user registration had a TOCTOU window: two simultaneous registrations for the same email could both pass the `findUnique` check and then one would fail at the database unique constraint. The `prisma.user.create` call is now wrapped in a try/catch that catches Prisma error code `P2002` (unique constraint violation) and throws the same `ConflictException` as the pre-check.
@@ -7394,15 +8173,15 @@ A `findUnique` + `create` pattern for user registration had a TOCTOU window: two
 
 The original monolithic `enhanced-auth.service.ts` (909 lines) was split into focused services:
 
-| Service | File | Responsibility |
-|---------|------|----------------|
-| AuthCoreService | `services/auth-core.service.ts` | Register, login, rate limiting |
-| PasswordService | `services/password.service.ts` | Reset request, reset, change |
-| EmailVerificationService | `services/email-verification.service.ts` | Verify, resend |
-| MagicLinkService | `services/magic-link.service.ts` | Request, verify |
-| TwoFactorService | `services/two-factor.service.ts` | Setup, enable, disable, backup codes |
-| SessionService | `services/session.service.ts` | Create, validate, revoke, fingerprint |
-| GoogleOAuthService | `google-oauth.service.ts` | OAuth login/signup, auto-link |
+| Service                  | File                                     | Responsibility                        |
+| ------------------------ | ---------------------------------------- | ------------------------------------- |
+| AuthCoreService          | `services/auth-core.service.ts`          | Register, login, rate limiting        |
+| PasswordService          | `services/password.service.ts`           | Reset request, reset, change          |
+| EmailVerificationService | `services/email-verification.service.ts` | Verify, resend                        |
+| MagicLinkService         | `services/magic-link.service.ts`         | Request, verify                       |
+| TwoFactorService         | `services/two-factor.service.ts`         | Setup, enable, disable, backup codes  |
+| SessionService           | `services/session.service.ts`            | Create, validate, revoke, fingerprint |
+| GoogleOAuthService       | `google-oauth.service.ts`                | OAuth login/signup, auto-link         |
 
 All services are under 200 lines. The controller (`enhanced-auth.controller.ts`) remains the single entry point and delegates to the appropriate service.
 
@@ -7411,12 +8190,14 @@ All services are under 200 lines. The controller (`enhanced-auth.controller.ts`)
 ### 19.5 Swagger / OpenAPI Documentation (Phase 7.1)
 
 All auth routes are decorated with `@nestjs/swagger` decorators:
+
 - `@ApiTags('Authentication')` on the controller class
 - `@ApiOperation({ summary })` on each method
 - `@ApiResponse` for 200, 201, 400, 401, 409, 429 status codes
 - `@ApiBearerAuth()` on all authenticated routes
 
 Swagger UI is served at `GET /docs` in non-production environments. The `DocumentBuilder` is configured with:
+
 - Title: "NextPik E-commerce API"
 - Version: 2.6.0
 - Bearer auth scheme (JWT)
@@ -7426,6 +8207,7 @@ Swagger UI is served at `GET /docs` in non-production environments. The `Documen
 ### 19.6 Logging
 
 A Winston-based `LoggerService` (`apps/api/src/logger/logger.service.ts`) provides structured logging:
+
 - **Console transport:** Colorized human-readable format in development; JSON in production.
 - **File transports:** `combined.log` and `error.log` (10 MB max, 5 rotations) in production only.
 - **Auth-specific helpers:**
@@ -7437,25 +8219,26 @@ A Winston-based `LoggerService` (`apps/api/src/logger/logger.service.ts`) provid
 
 ### 19.7 Files Modified
 
-| File | Changes |
-|------|---------|
-| `apps/api/src/main.ts` | Helmet CSP/HSTS, compression, CORS production guard, Swagger setup, debug stderr gate |
-| `apps/api/src/auth/enhanced-auth.controller.ts` | Removed dead route + broken google/link; added password/change, 2fa/regenerate-backup-codes; replaced inline body types; Swagger decorators |
-| `apps/api/src/auth/services/auth-core.service.ts` | Unified login error messages; P2002 race condition guard; backup code login path |
-| `apps/api/src/auth/services/session.service.ts` | Fingerprint mismatch now invalidates session row |
-| `apps/api/src/auth/services/two-factor.service.ts` | Backup code generate/verify/regenerate lifecycle; disable clears codes |
-| `apps/api/src/auth/services/email-verification.service.ts` | Structured expiry error with `canResend` |
-| `apps/api/src/auth/google-oauth.service.ts` | SessionService injection; auto-link guards; password null; deleted dead methods |
-| `apps/api/src/auth/dto/auth.dto.ts` | VerifyEmailDto, ResendVerificationDto, ChangePasswordDto; backupCode on LoginDto |
-| `apps/api/src/common/filters/http-exception.filter.ts` | Spread extra keys from exception response |
-| `apps/api/src/logger/logger.service.ts` | Added `backup_code_used` to logAuthEvent union |
-| `packages/database/prisma/schema.prisma` | Added `backupCodes Json?` to User model |
+| File                                                       | Changes                                                                                                                                     |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api/src/main.ts`                                     | Helmet CSP/HSTS, compression, CORS production guard, Swagger setup, debug stderr gate                                                       |
+| `apps/api/src/auth/enhanced-auth.controller.ts`            | Removed dead route + broken google/link; added password/change, 2fa/regenerate-backup-codes; replaced inline body types; Swagger decorators |
+| `apps/api/src/auth/services/auth-core.service.ts`          | Unified login error messages; P2002 race condition guard; backup code login path                                                            |
+| `apps/api/src/auth/services/session.service.ts`            | Fingerprint mismatch now invalidates session row                                                                                            |
+| `apps/api/src/auth/services/two-factor.service.ts`         | Backup code generate/verify/regenerate lifecycle; disable clears codes                                                                      |
+| `apps/api/src/auth/services/email-verification.service.ts` | Structured expiry error with `canResend`                                                                                                    |
+| `apps/api/src/auth/google-oauth.service.ts`                | SessionService injection; auto-link guards; password null; deleted dead methods                                                             |
+| `apps/api/src/auth/dto/auth.dto.ts`                        | VerifyEmailDto, ResendVerificationDto, ChangePasswordDto; backupCode on LoginDto                                                            |
+| `apps/api/src/common/filters/http-exception.filter.ts`     | Spread extra keys from exception response                                                                                                   |
+| `apps/api/src/logger/logger.service.ts`                    | Added `backup_code_used` to logAuthEvent union                                                                                              |
+| `packages/database/prisma/schema.prisma`                   | Added `backupCodes Json?` to User model                                                                                                     |
 
 ---
 
 ### 19.8 Testing
 
 All changes compile clean (`tsc --noEmit` exit 0) after each phase. Manual verification performed via curl against the running API for:
+
 - Login with backup code
 - Session invalidation on fingerprint change
 - Google OAuth auto-link guards
@@ -7468,6 +8251,7 @@ All changes compile clean (`tsc --noEmit` exit 0) after each phase. Manual verif
 This comprehensive technical documentation provides a complete overview of the NextPik E-commerce Platform as it exists today. The platform is production-ready with robust features for multi-vendor commerce, but has clear opportunities for enhancement in testing, monitoring, and advanced features.
 
 **Key Strengths:**
+
 - Modern, scalable architecture
 - Type-safe full-stack TypeScript
 - Comprehensive multi-vendor system
@@ -7476,6 +8260,7 @@ This comprehensive technical documentation provides a complete overview of the N
 - Strong foundation for future growth
 
 **Next Steps for New Developers:**
+
 1. Follow the Developer Setup Guide (Section 10)
 2. Explore the API endpoints via Postman or similar tool
 3. Review the database schema in Prisma Studio
@@ -7483,12 +8268,14 @@ This comprehensive technical documentation provides a complete overview of the N
 5. Run the application locally and test key flows
 
 **For Contributors:**
+
 - Follow the coding standards established in existing code
 - Write tests for new features (once testing infrastructure is set up)
 - Document new features and APIs
 - Submit pull requests with clear descriptions
 
 **For Platform Owners:**
+
 - Review the Roadmap Snapshot (Section 12) for planning
 - Prioritize Known Gaps & Limitations (Section 9) for improvements
 - Monitor Operational Notes (Section 11) for production readiness

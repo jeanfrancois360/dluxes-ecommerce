@@ -95,6 +95,14 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'cdn.simpleicons.org',
       },
+      {
+        protocol: 'https',
+        hostname: '**.s3.*.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.s3.amazonaws.com',
+      },
     ],
   },
   // Redirect HTTP → HTTPS and www → non-www in production
@@ -150,7 +158,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https: http://localhost:*",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https://api.nextpik.com https://api.stripe.com https://m.stripe.network https://*.supabase.co https://www.paypal.com http://localhost:* wss://localhost:*",
+              "connect-src 'self' https://api.nextpik.com https://api.stripe.com https://m.stripe.network https://*.supabase.co https://www.paypal.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
               "frame-src 'self' https://js.stripe.com https://m.stripe.network https://www.paypal.com",
               "object-src 'none'",
               "base-uri 'self'",

@@ -643,20 +643,92 @@ nextpik/
 
 ---
 
-## Version History
+## Gelato Print-on-Demand Integration
 
-| Version | Date         | Key Changes                                                                          |
-| ------- | ------------ | ------------------------------------------------------------------------------------ |
-| 2.8.1   | Feb 23, 2026 | Security hardening: XSS protection (DOMPurify), payment endpoint rate limiting       |
-| 2.8.0   | Feb 17, 2026 | Gelato Print-on-Demand integration: POD products, auto-submission, webhook tracking  |
-| 2.6.1   | Feb 16, 2026 | Enhanced SEO: Brand differentiation, structured data, comprehensive meta tags        |
-| 2.6.0   | Jan 16, 2026 | Authentication enhancements: Email OTP 2FA, Google OAuth, seller store auto-creation |
-| 2.5.0   | Jan 3, 2026  | Stripe subscription integration with webhooks and billing portal                     |
-| 2.4.0   | Dec 31, 2025 | Store following system, admin notes, enhanced UI/UX                                  |
-| 2.3.0   | Dec 26, 2025 | UI/UX fixes, JWT auth fix, upload fix, M1 optimizations                              |
-| 2.2.0   | Dec 13, 2025 | Stripe integration (production-ready)                                                |
-| 2.1.1   | Dec 13, 2025 | Product form fixes, filter system                                                    |
-| 2.0.0   | Dec 13, 2025 | Currency settings, real-time updates, number formatting                              |
+**Implementation Model:** Per-Seller (Multi-Tenant) - Sellers Must Configure Their Own Accounts
+
+**v2.9.0 Architecture:**
+
+- Each seller MUST connect their own Gelato account via Seller Dashboard to use POD
+- Credentials encrypted (AES-256-GCM) and stored per-seller in database
+- NO platform fallback - sellers are required to set up their own Gelato credentials
+- Seller-specific webhook URLs for order tracking
+
+**Environment Variables Required:**
+
+```bash
+# Encryption (REQUIRED)
+ENCRYPTION_KEY=<32-byte-base64-key>  # Generate: openssl rand -base64 32
+
+# Gelato API URL (REQUIRED)
+GELATO_API_URL=https://api.gelato.com/v4
+```
+
+**How It Works:**
+
+1. **Seller Setup:**
+   - Seller navigates to `/seller/gelato-settings`
+   - Enters Gelato API Key, Store ID, and optional Webhook Secret
+   - Tests connection to verify credentials
+   - Enables integration once verified
+
+2. **Order Flow:**
+   - Seller creates product with `fulfillmentType: GELATO_POD` (only if Gelato is configured)
+   - Customer places order
+   - System loads seller's Gelato credentials (required - no fallback)
+   - Order submitted to seller's Gelato account
+   - Gelato produces and ships directly to customer
+
+3. **Webhooks:**
+   - Seller webhook: `POST /webhooks/gelato/:base64(storeId)` (unique per seller)
+   - Automatic status updates for production, shipping, delivery
+
+**Database Schema:**
+
+```prisma
+model SellerGelatoSettings {
+  gelatoApiKey       String?  // AES-256-GCM encrypted
+  gelatoStoreId      String?
+  gelatoWebhookSecret String? // AES-256-GCM encrypted
+  isEnabled          Boolean  @default(false)
+  isVerified         Boolean  @default(false)
+  webhookUrl         String?  // Auto-generated
+}
+
+model GelatoPodOrder {
+  storeId               String  // Required - each order tied to seller's store
+  // ... other fields
+}
+```
+
+**API Endpoints:**
+
+```
+GET    /seller/gelato              # Get settings
+POST   /seller/gelato              # Save/update settings
+POST   /seller/gelato/test         # Test connection
+PATCH  /seller/gelato/toggle       # Enable/disable
+DELETE /seller/gelato              # Delete settings
+GET    /seller/gelato/webhook-url  # Get webhook URL
+```
+
+**Security:**
+
+- Credentials encrypted at rest using AES-256-GCM
+- API keys masked in frontend: `dc0d0b41-••••••••-e7947ae3baf7`
+- Webhook verification using `crypto.timingSafeEqual()` to prevent timing attacks
+- 5-minute credential cache with automatic invalidation
+
+**Important Notes:**
+
+- Sellers MUST configure their own Gelato account to use POD features
+- POD fulfillment option is only available for stores with verified Gelato credentials
+- Sellers without Gelato setup will be prompted to configure it when selecting POD
+- Each store has its own unique webhook URL for order tracking
+
+---
+
+## Version History
 
 ---
 
@@ -675,9 +747,6 @@ Check DEADLINE_TRACKER.md and tell me what I should work on today
 ```
 
 ---
-
-_Last Updated: February 23, 2026_
-_Version: 2.8.1 - Security Hardening_
 
 ---
 

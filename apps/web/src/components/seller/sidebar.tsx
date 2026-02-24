@@ -21,6 +21,7 @@ import {
   Receipt,
   User,
   Shield,
+  Zap,
 } from 'lucide-react';
 
 interface NavItem {
@@ -88,6 +89,7 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'myProfile', href: '/seller/profile', icon: User },
       { nameKey: 'security', href: '/seller/security', icon: Shield },
       { nameKey: 'storeSettings', href: '/seller/store/settings', icon: Settings },
+      { nameKey: 'gelatoIntegration', href: '/seller/gelato-settings', icon: Zap },
       { nameKey: 'vacationMode', href: '/seller/vacation-mode', icon: Plane },
     ],
   },

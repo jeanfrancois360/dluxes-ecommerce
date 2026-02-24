@@ -16,6 +16,7 @@
       "analytics": "Analytics",
       "products": "Products",
       "orders": "Orders",
+      "podOrders": "POD Orders",
       "categories": "Categories",
       "reviews": "Reviews",
       "customers": "Customers",
@@ -3421,6 +3422,7 @@
       "myProfile": "My Profile",
       "security": "Security",
       "storeSettings": "Store Settings",
+      "gelatoIntegration": "Gelato POD",
       "vacationMode": "Vacation Mode"
     },
     "topbar": {

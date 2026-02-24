@@ -881,6 +881,21 @@ export class ProductsService {
 
     const updateData: any = { ...productData };
 
+    // Validate POD product pricing (prevent selling below Gelato cost)
+    if (
+      updateProductDto.price !== undefined &&
+      existingProduct.fulfillmentType === 'GELATO_POD' &&
+      existingProduct.baseCost
+    ) {
+      if (updateProductDto.price < existingProduct.baseCost) {
+        const suggestedPrice = (existingProduct.baseCost * 1.3).toFixed(2);
+        throw new BadRequestException(
+          `Price ($${updateProductDto.price}) cannot be lower than Gelato production cost ($${existingProduct.baseCost.toFixed(2)}). ` +
+            `Minimum recommended: $${suggestedPrice} (30% markup).`
+        );
+      }
+    }
+
     if (badges !== undefined) updateData.badges = badges;
     if (seoKeywords !== undefined) updateData.seoKeywords = seoKeywords;
     if (colors !== undefined) updateData.colors = colors;
