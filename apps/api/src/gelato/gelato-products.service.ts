@@ -119,6 +119,7 @@ export class GelatoProductsService {
         designFileUrl: dto.designFileUrl,
         printAreas: dto.printAreas || null,
         baseCost,
+        markupPercentage: dto.markupPercentage,
       },
     });
 
@@ -193,6 +194,7 @@ export class GelatoProductsService {
         designFileUrl: dto.designFileUrl,
         printAreas: dto.printAreas,
         baseCost,
+        markupPercentage: dto.markupPercentage,
       },
     });
   }
@@ -207,8 +209,73 @@ export class GelatoProductsService {
         designFileUrl: null,
         printAreas: null,
         baseCost: null,
+        markupPercentage: null,
       },
     });
+  }
+
+  /**
+   * Refresh Gelato production cost for a POD product
+   * Useful when Gelato prices change or to get latest pricing
+   */
+  async refreshGelatoCost(productId: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: { store: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Product ${productId} not found`);
+    }
+
+    if (product.fulfillmentType !== FulfillmentType.GELATO_POD || !product.gelatoProductUid) {
+      throw new BadRequestException('Product is not configured as a Gelato POD product');
+    }
+
+    if (!product.storeId) {
+      throw new BadRequestException('Product must be associated with a store');
+    }
+
+    this.logger.log(
+      `Refreshing Gelato cost for product ${productId} (${product.gelatoProductUid})`
+    );
+
+    // Fetch latest Gelato pricing
+    const pricing = await this.gelatoService.calculatePrice(
+      {
+        items: [{ productUid: product.gelatoProductUid, quantity: 1 }],
+        country: 'US',
+      },
+      product.storeId
+    );
+
+    if (!pricing.items || pricing.items.length === 0) {
+      throw new BadRequestException('Failed to fetch Gelato pricing');
+    }
+
+    const newBaseCost = parseFloat(pricing.items[0].itemCost.amount);
+    const oldBaseCost = product.baseCost;
+
+    // Update product with new baseCost
+    const updatedProduct = await this.prisma.product.update({
+      where: { id: productId },
+      data: { baseCost: newBaseCost },
+    });
+
+    this.logger.log(
+      `✅ Cost refreshed: ${oldBaseCost ? `$${oldBaseCost} → ` : ''}$${newBaseCost.toFixed(2)}`
+    );
+
+    // Return update info
+    return {
+      success: true,
+      product: updatedProduct,
+      costUpdate: {
+        previous: oldBaseCost,
+        current: newBaseCost,
+        changed: oldBaseCost !== null && Math.abs(oldBaseCost - newBaseCost) > 0.01,
+      },
+    };
   }
 
   async getShippingEstimate(

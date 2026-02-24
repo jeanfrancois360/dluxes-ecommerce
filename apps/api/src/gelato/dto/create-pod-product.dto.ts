@@ -27,6 +27,11 @@ export class CreatePodProductDto {
   @IsNumber()
   @Min(0)
   baseCost?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  markupPercentage?: number;
 }
 
 export class UpdatePodProductDto {
@@ -50,4 +55,9 @@ export class UpdatePodProductDto {
   @IsNumber()
   @Min(0)
   baseCost?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  markupPercentage?: number;
 }
