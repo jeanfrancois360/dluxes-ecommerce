@@ -13,6 +13,7 @@ export interface GelatoAddress {
 }
 
 export interface GelatoOrderItem {
+  itemReferenceId: string; // Required by Gelato API
   productUid: string;
   quantity: number;
   files?: GelatoFileSpec[];
@@ -20,7 +21,33 @@ export interface GelatoOrderItem {
 }
 
 export interface GelatoFileSpec {
-  type: 'default' | 'preview' | 'mockup';
+  type:
+    | 'default'
+    | 'preview'
+    | 'mockup'
+    // Embroidery file types
+    | 'chest-left-embroidery'
+    | 'chest-right-embroidery'
+    | 'chest-center-embroidery'
+    | 'chest-large-embroidery'
+    | 'wrist-left-embroidery'
+    | 'wrist-right-embroidery'
+    | 'sleeve-left-embroidery'
+    | 'sleeve-right-embroidery'
+    | 'front-embroidery'
+    | 'back-embroidery'
+    | 'left-embroidery'
+    | 'right-embroidery'
+    | 'outer-left-leg-embroidery'
+    | 'outer-right-leg-embroidery'
+    | 'back-large-embroidery'
+    | 'right-corner-embroidery'
+    | 'right-bottom-corner-embroidery'
+    | 'right-bottom-corner-large-embroidery'
+    | 'center-bottom-large-embroidery'
+    | 'bottom-center-embroidery'
+    | 'front-left-embroidery'
+    | 'front-right-embroidery';
   url: string;
   areaName?: string;
 }

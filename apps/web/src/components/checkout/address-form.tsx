@@ -146,10 +146,20 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
 
     if (!formData.addressLine1.trim()) {
       newErrors.addressLine1 = t('addressRequired');
+    } else if (formData.addressLine1.trim().length > 35) {
+      newErrors.addressLine1 = 'Address must not exceed 35 characters (shipping provider limit)';
+    } else if (/[\n\r]/.test(formData.addressLine1)) {
+      newErrors.addressLine1 = 'Address cannot contain line breaks';
+    }
+
+    if (formData.addressLine2 && formData.addressLine2.trim().length > 35) {
+      newErrors.addressLine2 = 'Address line 2 must not exceed 35 characters';
     }
 
     if (!formData.city.trim()) {
       newErrors.city = t('cityRequired');
+    } else if (formData.city.trim().length > 50) {
+      newErrors.city = 'City name must not exceed 50 characters';
     }
 
     if (!formData.state.trim()) {
@@ -158,7 +168,10 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
 
     if (!formData.postalCode.trim()) {
       newErrors.postalCode = t('postalCodeRequired');
-    } else if (formData.country === 'United States' && !/^\d{5}(-\d{4})?$/.test(formData.postalCode)) {
+    } else if (
+      formData.country === 'United States' &&
+      !/^\d{5}(-\d{4})?$/.test(formData.postalCode)
+    ) {
       newErrors.postalCode = t('invalidPostalCode');
     }
 
@@ -222,8 +235,18 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
           animate={{ opacity: 1, y: 0 }}
           className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-start gap-3"
         >
-          <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div className="flex-1">
             <p className="text-sm font-semibold text-green-900">{t('usingSavedAddress')}</p>
@@ -236,7 +259,9 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
       <div className={!isUsingNewAddress ? 'opacity-60 pointer-events-none' : ''}>
         <h3 className="text-lg font-serif font-semibold mb-4">
           {t('contactInformation')}
-          {!isUsingNewAddress && <span className="ml-2 text-sm font-normal text-neutral-500">{t('readOnly')}</span>}
+          {!isUsingNewAddress && (
+            <span className="ml-2 text-sm font-normal text-neutral-500">{t('readOnly')}</span>
+          )}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FloatingInput
@@ -270,7 +295,9 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
       <div className={!isUsingNewAddress ? 'opacity-60 pointer-events-none' : ''}>
         <h3 className="text-lg font-serif font-semibold mb-4">
           {t('shippingAddress')}
-          {!isUsingNewAddress && <span className="ml-2 text-sm font-normal text-neutral-500">{t('readOnly')}</span>}
+          {!isUsingNewAddress && (
+            <span className="ml-2 text-sm font-normal text-neutral-500">{t('readOnly')}</span>
+          )}
         </h3>
         <div className="space-y-4">
           <FloatingInput
@@ -280,12 +307,19 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
             error={errors.addressLine1}
             disabled={isLoading}
             required
+            maxLength={35}
+            helperText={`${formData.addressLine1.length}/35 characters`}
           />
           <FloatingInput
             label={t('addressLine2Optional')}
             value={formData.addressLine2}
             onChange={(e) => handleChange('addressLine2', e.target.value)}
+            error={errors.addressLine2}
             disabled={isLoading}
+            maxLength={35}
+            helperText={
+              formData.addressLine2 ? `${formData.addressLine2.length}/35 characters` : undefined
+            }
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FloatingInput
@@ -443,7 +477,12 @@ export function AddressForm({ initialAddress, onSubmit, onBack, isLoading }: Add
             <>
               {isUsingNewAddress ? t('saveAndContinue') : t('continueToShipping')}
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M14 5l7 7m0 0l-7 7m7-7H3"
+                />
               </svg>
             </>
           )}

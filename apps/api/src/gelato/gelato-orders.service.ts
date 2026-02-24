@@ -11,6 +11,7 @@ import {
 } from '@prisma/client';
 import { GelatoCreateOrderRequest } from './interfaces';
 import { GELATO_CONSTANTS } from './constants/gelato.constants';
+import { convertCountryNameToISO2 } from './utils/country-codes.util';
 
 @Injectable()
 export class GelatoOrdersService {
@@ -50,9 +51,86 @@ export class GelatoOrdersService {
         `Product "${orderItem.product.name}" is missing a Gelato product template — configure it in the product settings`
       );
     }
+    // Design file is optional for standard products without customization
+    // Only log a warning if missing
     if (!orderItem.product.designFileUrl) {
+      this.logger.warn(
+        `Product "${orderItem.product.name}" has no design file — using Gelato's default product design`
+      );
+    }
+
+    // Get seller's store ID for Gelato credentials
+    const storeId = orderItem.product.storeId;
+    if (!storeId) {
       throw new BadRequestException(
-        `Product "${orderItem.product.name}" is missing a design file — upload one before submitting to Gelato`
+        'POD product must be associated with a store. Please assign this product to a seller.'
+      );
+    }
+
+    // Resolve the actual catalog productUid from the store product UUID
+    let catalogProductUid = orderItem.product.gelatoProductUid;
+
+    // If the stored productUid is a UUID (store product ID), fetch the actual catalog productUid
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      catalogProductUid
+    );
+
+    if (isUUID) {
+      this.logger.log(
+        `Detected store product UUID "${catalogProductUid}" - fetching catalog productUid from Gelato...`
+      );
+
+      try {
+        // Get seller's Gelato credentials to fetch from their store
+        const sellerCreds = await this.gelatoService.getSellerCredentials(storeId);
+
+        // Fetch store product using seller's credentials
+        const ecommerceUrl = `https://ecommerce.gelatoapis.com/v1/stores/${sellerCreds.storeId}/products/${catalogProductUid}`;
+
+        const response = await fetch(ecommerceUrl, {
+          method: 'GET',
+          headers: {
+            'X-API-KEY': sellerCreds.apiKey,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Gelato API returned ${response.status}`);
+        }
+
+        const storeProduct: any = await response.json();
+
+        if (storeProduct.variants && storeProduct.variants.length > 0) {
+          // Get the first variant's productUid (catalog productUid)
+          const variantProductUid = storeProduct.variants[0].productUid;
+
+          if (variantProductUid) {
+            catalogProductUid = variantProductUid;
+            this.logger.log(
+              `✅ Resolved catalog productUid: ${catalogProductUid.substring(0, 60)}...`
+            );
+          } else {
+            throw new BadRequestException(
+              `Store product "${orderItem.product.name}" has no valid catalog productUid in variants`
+            );
+          }
+        } else {
+          throw new BadRequestException(
+            `Store product "${orderItem.product.name}" has no variants configured`
+          );
+        }
+      } catch (error) {
+        this.logger.error(
+          `Failed to fetch catalog productUid for store product ${catalogProductUid}: ${error.message}`
+        );
+        throw new BadRequestException(
+          `Could not resolve Gelato product. Please check the product configuration in your Gelato dashboard.`
+        );
+      }
+    } else {
+      this.logger.debug(
+        `Using stored catalog productUid: ${catalogProductUid.substring(0, 60)}...`
       );
     }
 
@@ -69,16 +147,55 @@ export class GelatoOrdersService {
     const order = orderItem.order;
     const addr = order.shippingAddress;
 
+    // Convert country name to ISO 2-letter code for Gelato API
+    const countryISO2 = convertCountryNameToISO2(addr.country);
+
+    this.logger.debug(`Country conversion: "${addr.country}" -> "${countryISO2}"`);
+
+    // Determine file type based on product type
+    type FileType =
+      | 'default'
+      | 'preview'
+      | 'mockup'
+      | 'front-embroidery'
+      | 'chest-center-embroidery';
+    let fileType: FileType = 'default';
+
+    // Check if this is an embroidered product by examining the productUid
+    const isEmbroideredProduct =
+      catalogProductUid.includes('_emb_') || catalogProductUid.includes('_gpr_');
+
+    if (isEmbroideredProduct && orderItem.product.designFileUrl) {
+      // For embroidered products, determine the embroidery area based on product category
+      // For beanies/hats: front-embroidery is most common
+      // For apparel: chest-left-embroidery, chest-center-embroidery, back-embroidery, etc.
+
+      if (catalogProductUid.includes('_gsc_beanie_') || catalogProductUid.includes('_gsc_hat_')) {
+        fileType = 'front-embroidery';
+      } else if (
+        catalogProductUid.includes('_gsc_tshirt_') ||
+        catalogProductUid.includes('_gsc_hoodie_')
+      ) {
+        fileType = 'chest-center-embroidery';
+      } else {
+        // Default embroidery location for other products
+        fileType = 'front-embroidery';
+      }
+
+      this.logger.debug(`Detected embroidered product - using file type: ${fileType}`);
+    }
+
     const gelatoOrderRequest: GelatoCreateOrderRequest = {
       orderReferenceId: `${orderId}-${orderItemId}`,
       customerReferenceId: order.userId,
       currency: order.currency || 'USD',
       items: [
         {
-          productUid: orderItem.product.gelatoProductUid,
+          itemReferenceId: orderItemId, // Required by Gelato API
+          productUid: catalogProductUid, // Use resolved catalog productUid, not store UUID
           quantity: orderItem.quantity,
           files: orderItem.product.designFileUrl
-            ? [{ type: 'default', url: orderItem.product.designFileUrl }]
+            ? [{ type: fileType, url: orderItem.product.designFileUrl }]
             : undefined,
         },
       ],
@@ -90,7 +207,7 @@ export class GelatoOrdersService {
         city: addr.city,
         state: addr.province || undefined,
         postCode: addr.postalCode || '',
-        country: addr.country,
+        country: countryISO2, // Use ISO 2-letter code instead of full country name
         email: order.user.email,
         phone: addr.phone || undefined,
       },
@@ -100,15 +217,13 @@ export class GelatoOrdersService {
       },
     };
 
-    // v2.9.0: Get seller's store ID for per-seller Gelato credentials
-    const storeId = orderItem.product.storeId;
-    if (!storeId) {
-      throw new BadRequestException(
-        'POD product must be associated with a store. Please assign this product to a seller.'
-      );
-    }
-
     this.logger.log(`Submitting order ${orderId} to Gelato using store ${storeId} credentials...`);
+    this.logger.debug(
+      `Order details: Product="${orderItem.product.name}", ` +
+        `CatalogProductUid="${catalogProductUid.substring(0, 60)}...", ` +
+        `Quantity=${orderItem.quantity}, ` +
+        `Currency=${order.currency || 'USD'}`
+    );
 
     // Submit to Gelato using seller's account (or platform fallback)
     const gelatoOrder = await this.gelatoService.createOrder(gelatoOrderRequest, storeId);
@@ -146,7 +261,25 @@ export class GelatoOrdersService {
   async submitAllPodItems(orderId: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
-      include: { items: { include: { product: true } } },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: {
+                store: {
+                  include: {
+                    user: {
+                      include: {
+                        gelatoSettings: true, // Load seller's Gelato settings
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
     if (!order) throw new NotFoundException('Order not found');
 
@@ -158,15 +291,45 @@ export class GelatoOrdersService {
     const results = [];
     for (const item of podItems) {
       try {
+        const sellerGelatoSettings = item.product.store?.user?.gelatoSettings;
+
+        // Check if seller has Gelato enabled
+        if (!sellerGelatoSettings?.isEnabled) {
+          this.logger.warn(
+            `Skipping item ${item.id} - Seller has not enabled Gelato integration. ` +
+              `Product: "${item.product.name}", Store: "${item.product.store?.name || 'Unknown'}"`
+          );
+          results.push({
+            itemId: item.id,
+            success: false,
+            error: 'Seller has not enabled Gelato integration',
+            skipped: true,
+          });
+          continue;
+        }
+
+        // Submit to Gelato using seller's credentials
         const result = await this.submitOrderToGelato(orderId, item.id);
         results.push({ itemId: item.id, success: true, podOrderId: result.podOrder.id });
+        this.logger.log(
+          `Submitted item ${item.id} to Gelato for seller "${item.product.store?.name}"`
+        );
       } catch (error) {
         this.logger.error(`Failed to submit item ${item.id}: ${error.message}`);
         results.push({ itemId: item.id, success: false, error: error.message });
       }
     }
 
-    return { submitted: results.filter((r) => r.success).length, results };
+    const submitted = results.filter((r) => r.success).length;
+    const skipped = results.filter((r) => r.skipped).length;
+
+    if (skipped > 0) {
+      this.logger.warn(
+        `Order ${orderId}: ${skipped} POD item(s) skipped because seller(s) have not configured Gelato`
+      );
+    }
+
+    return { submitted, skipped, results };
   }
 
   async cancelPodOrder(podOrderId: string, reason?: string) {
