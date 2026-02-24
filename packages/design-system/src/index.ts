@@ -1,26 +1,13 @@
 /**
  * @nextpik/design-system
  * Complete design system for luxury e-commerce platform
+ *
+ * Use direct imports for better tree-shaking and Turbopack compatibility:
+ * - import { colors } from '@nextpik/design-system/colors'
+ * - import { typography } from '@nextpik/design-system/typography'
+ * - import { spacing } from '@nextpik/design-system/spacing'
+ * - import { animations } from '@nextpik/design-system/animations'
  */
 
-// Re-export all tokens with explicit named exports for Turbopack compatibility
-export { colors, cssVariables } from './tokens/colors';
-export { fontFamily, fontSize, fontWeight, typography } from './tokens/typography';
-export { spacing, containerMaxWidth, sectionSpacing, componentSpacing } from './tokens/spacing';
-export {
-  duration,
-  easing,
-  animations,
-  transitions,
-  springs,
-  gsapEasing,
-  framerMotion,
-} from './tokens/animations';
-export { shadows, glass } from './tokens/shadows';
-
-// Re-export everything from tokens
-export * from './tokens/colors';
-export * from './tokens/typography';
-export * from './tokens/spacing';
-export * from './tokens/animations';
-export * from './tokens/shadows';
+// Empty main export - use direct imports from subpaths instead
+export {};

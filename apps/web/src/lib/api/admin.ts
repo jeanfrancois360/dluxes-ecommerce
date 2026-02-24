@@ -947,6 +947,10 @@ export interface AdminStore {
   _count: {
     products: number;
   };
+  gelatoSettings?: {
+    isEnabled: boolean;
+    isVerified: boolean;
+  } | null;
 }
 
 // Stores APIs

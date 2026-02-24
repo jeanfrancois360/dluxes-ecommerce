@@ -403,11 +403,6 @@ export default function SellerProductsPage() {
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
-                        {t('table.sku')} <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
-                      </div>
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
-                      <div className="flex items-center gap-2 text-black">
                         {t('table.category')}{' '}
                         <div className="w-1.5 h-1.5 rounded-full bg-gold"></div>
                       </div>
@@ -477,17 +472,19 @@ export default function SellerProductsPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-bold text-black group-hover:text-gold/80 transition-colors">
-                          {product.name}
+                        <div className="max-w-xs">
+                          <div
+                            className="font-semibold text-gray-900 text-sm leading-tight truncate group-hover:text-[#CBB57B] transition-colors"
+                            title={product.name}
+                          >
+                            {product.name}
+                          </div>
+                          {product.sku && (
+                            <div className="text-xs text-gray-500 mt-1 font-mono">
+                              SKU: {product.sku}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-xs text-neutral-600 mt-0.5 font-medium">
-                          {product.slug}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-mono text-xs bg-neutral-100 px-2 py-1 rounded text-neutral-800 font-semibold">
-                          {product.sku || product.slug}
-                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gold/10 border border-gold rounded-lg text-xs font-semibold text-gold">

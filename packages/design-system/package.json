@@ -9,7 +9,8 @@
     "./colors": "./src/tokens/colors.ts",
     "./typography": "./src/tokens/typography.ts",
     "./spacing": "./src/tokens/spacing.ts",
-    "./animations": "./src/tokens/animations.ts"
+    "./animations": "./src/tokens/animations.ts",
+    "./shadows": "./src/tokens/shadows.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit",
