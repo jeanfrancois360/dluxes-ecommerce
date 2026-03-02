@@ -76,11 +76,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Shipping settings from backend (stored in USD)
   const [freeShippingEnabled, setFreeShippingEnabled] = useState<boolean>(true);
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(DEFAULT_FREE_SHIPPING_THRESHOLD);
-  const [standardShippingCost, setStandardShippingCost] = useState<number>(DEFAULT_STANDARD_SHIPPING_COST);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(
+    DEFAULT_FREE_SHIPPING_THRESHOLD
+  );
+  const [standardShippingCost, setStandardShippingCost] = useState<number>(
+    DEFAULT_STANDARD_SHIPPING_COST
+  );
 
   // Tax settings from backend (uses new tax_calculation_mode)
-  const [taxCalculationMode, setTaxCalculationMode] = useState<'disabled' | 'simple' | 'by_state'>('disabled');
+  const [taxCalculationMode, setTaxCalculationMode] = useState<'disabled' | 'simple' | 'by_state'>(
+    'disabled'
+  );
   const [taxRate, setTaxRate] = useState<number>(0);
 
   // Fetch settings from backend
@@ -91,12 +97,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const settings = response.data?.data || response.data;
 
         // ===== SHIPPING SETTINGS =====
-        const freeShippingEnabledSetting = settings.find((s: any) => s.key === 'free_shipping_enabled');
-        const freeShippingThresholdSetting = settings.find((s: any) => s.key === 'free_shipping_threshold');
-        const standardShippingRateSetting = settings.find((s: any) => s.key === 'shipping_standard_rate');
+        const freeShippingEnabledSetting = settings.find(
+          (s: any) => s.key === 'free_shipping_enabled'
+        );
+        const freeShippingThresholdSetting = settings.find(
+          (s: any) => s.key === 'free_shipping_threshold'
+        );
+        const standardShippingRateSetting = settings.find(
+          (s: any) => s.key === 'shipping_standard_rate'
+        );
 
         if (freeShippingEnabledSetting) {
-          setFreeShippingEnabled(freeShippingEnabledSetting.value === true || freeShippingEnabledSetting.value === 'true');
+          setFreeShippingEnabled(
+            freeShippingEnabledSetting.value === true || freeShippingEnabledSetting.value === 'true'
+          );
         }
 
         if (freeShippingThresholdSetting) {
@@ -152,49 +166,58 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Calculate totals using backend settings with currency conversion
-  const calculateTotals = useCallback((cartItems: CartItem[]): CartTotals => {
-    // 🔒 Try to use backend-calculated subtotal (uses locked prices correctly)
-    let subtotal = 0;
-    if (typeof window !== 'undefined') {
-      try {
-        const backendTotals = localStorage.getItem('cart_backend_totals');
-        if (backendTotals) {
-          const parsed = JSON.parse(backendTotals);
-          subtotal = Number(parsed.subtotal) || 0;
+  const calculateTotals = useCallback(
+    (cartItems: CartItem[]): CartTotals => {
+      // 🔒 Try to use backend-calculated subtotal (uses locked prices correctly)
+      let subtotal = 0;
+      if (typeof window !== 'undefined') {
+        try {
+          const backendTotals = localStorage.getItem('cart_backend_totals');
+          if (backendTotals) {
+            const parsed = JSON.parse(backendTotals);
+            subtotal = Number(parsed.subtotal) || 0;
+          }
+        } catch (e) {
+          console.warn('Failed to parse backend totals:', e);
         }
-      } catch (e) {
-        console.warn('Failed to parse backend totals:', e);
       }
-    }
 
-    // Fallback: Calculate manually if backend totals not available
-    if (subtotal === 0 && cartItems.length > 0) {
-      subtotal = cartItems.reduce((sum, item) => {
-        // If priceAtAdd exists, use it directly (already in locked currency)
-        // Otherwise, convert from USD (backward compatibility)
-        const itemPrice = item.priceAtAdd !== undefined
-          ? item.priceAtAdd
-          : convertPrice(item.price, 'USD');
+      // Fallback: Calculate manually if backend totals not available
+      if (subtotal === 0 && cartItems.length > 0) {
+        subtotal = cartItems.reduce((sum, item) => {
+          // If priceAtAdd exists, use it directly (already in locked currency)
+          // Otherwise, convert from USD (backward compatibility)
+          const itemPrice =
+            item.priceAtAdd !== undefined ? item.priceAtAdd : convertPrice(item.price, 'USD');
 
-        return sum + itemPrice * item.quantity;
-      }, 0);
-    }
+          return sum + itemPrice * item.quantity;
+        }, 0);
+      }
 
-    // 🎯 Cart-level totals: Show only subtotal
-    // Shipping and tax will be calculated at checkout after address entry
-    const shipping = 0; // Not calculated until checkout
-    const tax = 0; // Not calculated until checkout
-    const total = subtotal; // Cart total = subtotal only
-    const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+      // 🎯 Cart-level totals: Show only subtotal
+      // Shipping and tax will be calculated at checkout after address entry
+      const shipping = 0; // Not calculated until checkout
+      const tax = 0; // Not calculated until checkout
+      const total = subtotal; // Cart total = subtotal only
+      const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-    return {
-      subtotal: Math.round(subtotal * 100) / 100,
-      shipping: Math.round(shipping * 100) / 100,
-      tax: Math.round(tax * 100) / 100,
-      total: Math.round(total * 100) / 100,
-      itemCount,
-    };
-  }, [freeShippingEnabled, freeShippingThreshold, standardShippingCost, convertPrice, taxRate, taxCalculationMode]);
+      return {
+        subtotal: Math.round(subtotal * 100) / 100,
+        shipping: Math.round(shipping * 100) / 100,
+        tax: Math.round(tax * 100) / 100,
+        total: Math.round(total * 100) / 100,
+        itemCount,
+      };
+    },
+    [
+      freeShippingEnabled,
+      freeShippingThreshold,
+      standardShippingCost,
+      convertPrice,
+      taxRate,
+      taxCalculationMode,
+    ]
+  );
 
   // Calculate totals reactively - updates whenever items change
   const totals = useMemo(() => calculateTotals(items), [items, calculateTotals]);
@@ -227,11 +250,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       // 🔒 Store backend-calculated totals (using locked prices)
       if (typeof window !== 'undefined') {
-        localStorage.setItem('cart_backend_totals', JSON.stringify({
-          subtotal: cart.subtotal || 0,
-          total: cart.total || 0,
-          discount: cart.discount || 0,
-        }));
+        localStorage.setItem(
+          'cart_backend_totals',
+          JSON.stringify({
+            subtotal: cart.subtotal || 0,
+            total: cart.total || 0,
+            discount: cart.discount || 0,
+          })
+        );
       }
 
       // Only sync cart currency to selector if cart has items (currency is locked)
@@ -244,7 +270,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (cart.currency !== selectedCurrency) {
           console.log(
             `[Cart] 🔒 Currency LOCKED to ${cart.currency} ` +
-            `(rate: ${cart.exchangeRate}, locked at: ${cart.rateLockedAt})`
+              `(rate: ${cart.exchangeRate}, locked at: ${cart.rateLockedAt})`
           );
           setSelectedCurrency(cart.currency);
         }
@@ -301,116 +327,124 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [getSessionId, selectedCurrency, setSelectedCurrency]);
+  }, [getSessionId]); // Removed selectedCurrency and setSelectedCurrency to prevent infinite loop
 
   // Add item to cart
-  const addItem = useCallback(async (productId: string, quantity: number, variantId?: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const sessionId = getSessionId();
+  const addItem = useCallback(
+    async (productId: string, quantity: number, variantId?: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const sessionId = getSessionId();
 
-      if (!sessionId) throw new Error('No session ID');
+        if (!sessionId) throw new Error('No session ID');
 
-      // Fetch product details to validate if it can be added to cart
-      const productResponse = await axios.get(`${API_URL}/products/${productId}`);
-      const product = productResponse.data?.data || productResponse.data;
+        // Fetch product details to validate if it can be added to cart
+        const productResponse = await axios.get(`${API_URL}/products/${productId}`);
+        const product = productResponse.data?.data || productResponse.data;
 
-      // Block inquiry-based products from being added to cart
-      const isInquiryProduct =
-        product?.purchaseType === 'INQUIRY' ||
-        product?.productType === 'REAL_ESTATE' ||
-        product?.productType === 'VEHICLE';
+        // Block inquiry-based products from being added to cart
+        const isInquiryProduct =
+          product?.purchaseType === 'INQUIRY' ||
+          product?.productType === 'REAL_ESTATE' ||
+          product?.productType === 'VEHICLE';
 
-      if (isInquiryProduct) {
-        const errorMessage = 'This product requires contacting the seller. It cannot be added to cart.';
-        setError(errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      const response = await axios.post(
-        `${API_URL}/cart/items`,
-        {
-          productId,
-          quantity,
-          variantId,
-          currency: selectedCurrency || cartCurrency || 'USD' // Ensure we always send a valid currency
-        },
-        {
-          headers: {
-            'x-session-id': sessionId,
-          },
+        if (isInquiryProduct) {
+          const errorMessage =
+            'This product requires contacting the seller. It cannot be added to cart.';
+          setError(errorMessage);
+          throw new Error(errorMessage);
         }
-      );
 
-      // Refresh cart after adding
-      await refreshCart();
-    } catch (err: any) {
-      console.error('Error adding item to cart:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to add item');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [getSessionId, refreshCart, selectedCurrency]);
+        const response = await axios.post(
+          `${API_URL}/cart/items`,
+          {
+            productId,
+            quantity,
+            variantId,
+            currency: selectedCurrency || cartCurrency || 'USD', // Ensure we always send a valid currency
+          },
+          {
+            headers: {
+              'x-session-id': sessionId,
+            },
+          }
+        );
+
+        // Refresh cart after adding
+        await refreshCart();
+      } catch (err: any) {
+        console.error('Error adding item to cart:', err);
+        setError(err.response?.data?.message || err.message || 'Failed to add item');
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [getSessionId, refreshCart, selectedCurrency]
+  );
 
   // Update item quantity
-  const updateQuantity = useCallback(async (itemId: string, quantity: number) => {
-    if (quantity < 1) {
-      return removeItem(itemId);
-    }
+  const updateQuantity = useCallback(
+    async (itemId: string, quantity: number) => {
+      if (quantity < 1) {
+        return removeItem(itemId);
+      }
 
-    try {
-      setIsLoading(true);
-      setError(null);
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      // Optimistic update - update UI immediately
-      setItems((prev) =>
-        prev.map((item) => (item.id === itemId ? { ...item, quantity } : item))
-      );
+        // Optimistic update - update UI immediately
+        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, quantity } : item)));
 
-      // Send update to backend
-      await axios.patch(`${API_URL}/cart/items/${itemId}`, { quantity });
+        // Send update to backend
+        await axios.patch(`${API_URL}/cart/items/${itemId}`, { quantity });
 
-      // Refresh cart to get updated backend totals (this updates cart_backend_totals in localStorage)
-      await refreshCart();
-    } catch (err: any) {
-      console.error('Error updating item quantity:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to update quantity');
-      // Revert optimistic update
-      await refreshCart();
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [refreshCart]);
+        // Refresh cart to get updated backend totals (this updates cart_backend_totals in localStorage)
+        await refreshCart();
+      } catch (err: any) {
+        console.error('Error updating item quantity:', err);
+        setError(err.response?.data?.message || err.message || 'Failed to update quantity');
+        // Revert optimistic update
+        await refreshCart();
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [refreshCart]
+  );
 
   // Remove item from cart
-  const removeItem = useCallback(async (itemId: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const removeItem = useCallback(
+    async (itemId: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      // Optimistic update
-      setItems((prev) => prev.filter((item) => item.id !== itemId));
+        // Optimistic update
+        setItems((prev) => prev.filter((item) => item.id !== itemId));
 
-      await axios.delete(`${API_URL}/cart/items/${itemId}`);
+        await axios.delete(`${API_URL}/cart/items/${itemId}`);
 
-      // Sync to localStorage
-      if (typeof window !== 'undefined') {
-        const updatedItems = items.filter((item) => item.id !== itemId);
-        localStorage.setItem('cart_items', JSON.stringify(updatedItems));
+        // Sync to localStorage
+        if (typeof window !== 'undefined') {
+          const updatedItems = items.filter((item) => item.id !== itemId);
+          localStorage.setItem('cart_items', JSON.stringify(updatedItems));
+        }
+      } catch (err: any) {
+        console.error('Error removing item from cart:', err);
+        setError(err.response?.data?.message || err.message || 'Failed to remove item');
+        // Revert optimistic update
+        await refreshCart();
+        throw err;
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err: any) {
-      console.error('Error removing item from cart:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to remove item');
-      // Revert optimistic update
-      await refreshCart();
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [items, refreshCart]);
+    },
+    [items, refreshCart]
+  );
 
   // Clear cart
   const clearCart = useCallback(async () => {
@@ -457,30 +491,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [getSessionId, refreshCart, selectedCurrency]);
 
   // 🔒 Handle currency change requests
-  const handleCurrencyChange = useCallback(async (newCurrency: string): Promise<{ allowed: boolean; message?: string }> => {
-    // If cart is empty, allow currency change
-    if (!isCurrencyLocked || items.length === 0) {
-      console.log(`[Cart] ✅ Currency change allowed (cart empty): ${selectedCurrency} → ${newCurrency}`);
+  const handleCurrencyChange = useCallback(
+    async (newCurrency: string): Promise<{ allowed: boolean; message?: string }> => {
+      // If cart is empty, allow currency change
+      if (!isCurrencyLocked || items.length === 0) {
+        console.log(
+          `[Cart] ✅ Currency change allowed (cart empty): ${selectedCurrency} → ${newCurrency}`
+        );
+        return { allowed: true };
+      }
+
+      // If cart has items and currency is locked, prevent change
+      if (isCurrencyLocked && items.length > 0 && newCurrency !== cartCurrency) {
+        const message =
+          `Your cart is locked to ${cartCurrency}. ` +
+          `To change currency to ${newCurrency}, please clear your cart first.`;
+
+        console.warn(
+          `[Cart] 🔒 Currency change BLOCKED: Cart locked to ${cartCurrency} with ${items.length} item(s)`
+        );
+
+        return {
+          allowed: false,
+          message,
+        };
+      }
+
+      // Same currency - no change needed
       return { allowed: true };
-    }
-
-    // If cart has items and currency is locked, prevent change
-    if (isCurrencyLocked && items.length > 0 && newCurrency !== cartCurrency) {
-      const message =
-        `Your cart is locked to ${cartCurrency}. ` +
-        `To change currency to ${newCurrency}, please clear your cart first.`;
-
-      console.warn(`[Cart] 🔒 Currency change BLOCKED: Cart locked to ${cartCurrency} with ${items.length} item(s)`);
-
-      return {
-        allowed: false,
-        message,
-      };
-    }
-
-    // Same currency - no change needed
-    return { allowed: true };
-  }, [isCurrencyLocked, items.length, cartCurrency, selectedCurrency]);
+    },
+    [isCurrencyLocked, items.length, cartCurrency, selectedCurrency]
+  );
 
   // Load cart on mount
   useEffect(() => {
