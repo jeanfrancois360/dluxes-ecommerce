@@ -6,12 +6,7 @@ export const authAPI = {
 
   register: (data: RegisterData) => api.post<AuthResponse>('/auth/register', data),
 
-  logout: () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-    }
-  },
+  logout: () => api.post('/auth/logout'),
 
   getProfile: () => api.get('/auth/me'),
 
@@ -33,7 +28,15 @@ export const authAPI = {
 // Export individual functions for convenience
 export const login = (credentials: LoginCredentials) => authAPI.login(credentials);
 export const register = (data: RegisterData) => authAPI.register(data);
-export const logout = () => authAPI.logout();
+export const logout = async () => {
+  try {
+    // Call backend logout endpoint to invalidate session
+    await authAPI.logout();
+  } catch (error) {
+    // Continue with logout even if API call fails
+    console.error('Logout API error:', error);
+  }
+};
 export const getCurrentUser = () => authAPI.getProfile();
 export const updateProfile = (data: ProfileUpdateData) => authAPI.updateProfile(data);
 export const changePassword = (
