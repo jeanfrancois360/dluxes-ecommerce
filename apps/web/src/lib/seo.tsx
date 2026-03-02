@@ -176,7 +176,12 @@ export function generateProductSchema({
     '@type': 'Product',
     name,
     description,
-    image: image.startsWith('http') ? image : `${siteConfig.url}${image}`,
+    image:
+      image && image.startsWith('http')
+        ? image
+        : image
+          ? `${siteConfig.url}${image}`
+          : `${siteConfig.url}/placeholder-product.jpg`,
     sku,
     brand: brand
       ? {
