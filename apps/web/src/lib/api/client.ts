@@ -36,7 +36,13 @@ function setCookie(name: string, value: string, days: number = 7): void {
 
 function deleteCookie(name: string): void {
   if (typeof window === 'undefined') return;
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+
+  // To delete a cookie, we must use the same attributes that were used when setting it
+  const isSecure = window.location.protocol === 'https:';
+  const secureFlag = isSecure ? ';Secure' : '';
+
+  // Delete with exact same attributes as setCookie
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax${secureFlag}`;
 }
 
 export const TokenManager = {
