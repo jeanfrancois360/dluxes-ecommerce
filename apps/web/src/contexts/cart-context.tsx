@@ -541,6 +541,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     refreshCart();
   }, [refreshCart]);
 
+  // Listen for logout events and clear cart
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleLogout = () => {
+      console.log('[Cart] User logged out - clearing cart');
+      // Clear cart state
+      setItems([]);
+      setIsCurrencyLocked(false);
+      setExchangeRate(1);
+      setRateLockedAt(null);
+      setError(null);
+
+      // Clear localStorage
+      localStorage.removeItem('cart_items');
+      localStorage.removeItem('cart_backend_totals');
+      localStorage.removeItem('cart_session_id');
+    };
+
+    window.addEventListener('api:logout', handleLogout);
+    return () => window.removeEventListener('api:logout', handleLogout);
+  }, []);
+
   // Convert threshold to selected currency for display
   const convertedThreshold = convertPrice(freeShippingThreshold, 'USD');
 

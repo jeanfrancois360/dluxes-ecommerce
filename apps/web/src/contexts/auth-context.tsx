@@ -38,7 +38,9 @@ export interface AuthContextValue {
   error: string | null;
 
   // Authentication Methods
-  login: (credentials: LoginRequest) => Promise<{ requires2FA?: boolean; userId?: string; success?: boolean } | void>;
+  login: (
+    credentials: LoginRequest
+  ) => Promise<{ requires2FA?: boolean; userId?: string; success?: boolean } | void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -46,7 +48,11 @@ export interface AuthContextValue {
   // Password Methods
   requestPasswordReset: (email: string) => Promise<void>;
   confirmPasswordReset: (token: string, password: string, confirmPassword: string) => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) => Promise<void>;
+  changePassword: (
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string
+  ) => Promise<void>;
 
   // Magic Link Methods
   requestMagicLink: (email: string) => Promise<void>;
@@ -303,7 +309,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         return { success: true };
       } catch (error: any) {
-        const errorMessage = error.response?.data?.message || error.message || 'Login failed. Please try again.';
+        const errorMessage =
+          error.response?.data?.message || error.message || 'Login failed. Please try again.';
         setError(errorMessage);
         throw error;
       } finally {
@@ -358,7 +365,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         router.push('/account');
       } catch (error: any) {
         const errorMessage =
-          error.response?.data?.message || error.message || 'Registration failed. Please try again.';
+          error.response?.data?.message ||
+          error.message ||
+          'Registration failed. Please try again.';
         setError(errorMessage);
         throw error;
       } finally {
@@ -379,6 +388,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null);
       clearAllAuthData();
 
+      // Dispatch logout event for other contexts (cart, etc.)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('api:logout'));
+      }
+
       standardToasts.auth.logoutSuccess();
 
       // Redirect to home page
@@ -388,6 +402,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear auth data even if API call fails
       setUser(null);
       clearAllAuthData();
+
+      // Dispatch logout event even on error
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('api:logout'));
+      }
+
       router.push('/');
     } finally {
       setIsLoading(false);
@@ -422,8 +442,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authApi.requestPasswordReset({ email });
       standardToasts.auth.passwordResetSent();
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message || 'Failed to send password reset email';
+      const errorMessage = error.response?.data?.message || 'Failed to send password reset email';
       setError(errorMessage);
       throw error;
     } finally {
@@ -519,8 +538,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const redirectUrl = getAuthRedirectUrl(response.user);
         router.push(redirectUrl);
       } catch (error: any) {
-        const errorMessage =
-          error.response?.data?.message || 'Failed to verify magic link';
+        const errorMessage = error.response?.data?.message || 'Failed to verify magic link';
         setError(errorMessage);
         throw error;
       } finally {
@@ -534,24 +552,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Email Verification Methods
   // ============================================================================
 
-  const verifyEmail = useCallback(async (token: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const verifyEmail = useCallback(
+    async (token: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      await authApi.verifyEmail(token);
-      standardToasts.auth.emailVerified();
+        await authApi.verifyEmail(token);
+        standardToasts.auth.emailVerified();
 
-      // Refresh user data
-      await refreshUser();
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to verify email';
-      setError(errorMessage);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [refreshUser]);
+        // Refresh user data
+        await refreshUser();
+      } catch (error: any) {
+        const errorMessage = error.response?.data?.message || 'Failed to verify email';
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [refreshUser]
+  );
 
   const resendEmailVerification = useCallback(async () => {
     try {
@@ -561,8 +582,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authApi.resendEmailVerification();
       toast.success('Verification email sent to your email address');
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message || 'Failed to send verification email';
+      const errorMessage = error.response?.data?.message || 'Failed to send verification email';
       setError(errorMessage);
       throw error;
     } finally {
@@ -589,45 +609,51 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  const enableTwoFactor = useCallback(async (code: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const enableTwoFactor = useCallback(
+    async (code: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      const data = await authApi.enableTwoFactor({ code });
-      standardToasts.otp.enabled();
+        const data = await authApi.enableTwoFactor({ code });
+        standardToasts.otp.enabled();
 
-      // Refresh user data
-      await refreshUser();
+        // Refresh user data
+        await refreshUser();
 
-      return data;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to enable 2FA';
-      setError(errorMessage);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [refreshUser]);
+        return data;
+      } catch (error: any) {
+        const errorMessage = error.response?.data?.message || 'Failed to enable 2FA';
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [refreshUser]
+  );
 
-  const disableTwoFactor = useCallback(async (code: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const disableTwoFactor = useCallback(
+    async (code: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      await authApi.disableTwoFactor({ code });
-      standardToasts.otp.disabled();
+        await authApi.disableTwoFactor({ code });
+        standardToasts.otp.disabled();
 
-      // Refresh user data
-      await refreshUser();
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to disable 2FA';
-      setError(errorMessage);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [refreshUser]);
+        // Refresh user data
+        await refreshUser();
+      } catch (error: any) {
+        const errorMessage = error.response?.data?.message || 'Failed to disable 2FA';
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [refreshUser]
+  );
 
   const verifyTwoFactor = useCallback(
     async (code: string, loginToken: string) => {
@@ -677,8 +703,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       return data;
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message || 'Failed to regenerate backup codes';
+      const errorMessage = error.response?.data?.message || 'Failed to regenerate backup codes';
       setError(errorMessage);
       throw error;
     } finally {
@@ -710,28 +735,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  const uploadAvatar = useCallback(
-    async (file: File, onProgress?: (progress: number) => void) => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  const uploadAvatar = useCallback(async (file: File, onProgress?: (progress: number) => void) => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-        const updatedUser = await authApi.uploadAvatar(file, onProgress);
+      const updatedUser = await authApi.uploadAvatar(file, onProgress);
 
-        setUser(updatedUser);
-        storeUser(updatedUser);
+      setUser(updatedUser);
+      storeUser(updatedUser);
 
-        toast.success('Avatar updated successfully');
-      } catch (error: any) {
-        const errorMessage = error.response?.data?.message || 'Failed to upload avatar';
-        setError(errorMessage);
-        throw error;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
+      toast.success('Avatar updated successfully');
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to upload avatar';
+      setError(errorMessage);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const deleteAvatar = useCallback(async () => {
     try {
