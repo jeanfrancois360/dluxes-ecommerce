@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api/client';
+import { useAuth } from '@/hooks/use-auth';
 
 export interface Notification {
   id: string;
@@ -25,6 +26,7 @@ export interface NotificationResponse {
 }
 
 export function useNotifications(options?: { unreadOnly?: boolean; pollInterval?: number }) {
+  const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,11 @@ export function useNotifications(options?: { unreadOnly?: boolean; pollInterval?
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
+    // Don't fetch if not authenticated
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
     try {
       const params = new URLSearchParams({
         page: '1',
@@ -51,10 +58,14 @@ export function useNotifications(options?: { unreadOnly?: boolean; pollInterval?
     } finally {
       setLoading(false);
     }
-  }, [unreadOnly]);
+  }, [unreadOnly, isAuthenticated]);
 
   // Fetch unread count
   const fetchUnreadCount = useCallback(async () => {
+    // Don't fetch if not authenticated
+    if (!isAuthenticated) {
+      return;
+    }
     try {
       const response = await api.get<{ count: number }>('/notifications/unread/count');
       // API client already unwraps the response
@@ -62,7 +73,7 @@ export function useNotifications(options?: { unreadOnly?: boolean; pollInterval?
     } catch (err) {
       console.error('Failed to fetch unread count:', err);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId: string) => {
@@ -114,9 +125,9 @@ export function useNotifications(options?: { unreadOnly?: boolean; pollInterval?
     fetchUnreadCount();
   }, [fetchNotifications, fetchUnreadCount]);
 
-  // Polling for new notifications
+  // Polling for new notifications (only when authenticated)
   useEffect(() => {
-    if (!pollInterval) return;
+    if (!pollInterval || !isAuthenticated) return;
 
     const interval = setInterval(() => {
       fetchNotifications();
@@ -124,7 +135,17 @@ export function useNotifications(options?: { unreadOnly?: boolean; pollInterval?
     }, pollInterval);
 
     return () => clearInterval(interval);
-  }, [pollInterval, fetchNotifications, fetchUnreadCount]);
+  }, [pollInterval, isAuthenticated, fetchNotifications, fetchUnreadCount]);
+
+  // Clear notifications when user logs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      setError(null);
+    }
+  }, [isAuthenticated]);
 
   return {
     notifications,
