@@ -24,7 +24,7 @@ export class HealthController {
     private prismaHealth: PrismaHealthIndicator,
     private prisma: PrismaService,
     private redisHealth: RedisHealthIndicator,
-    private emailHealth: EmailHealthIndicator,
+    private emailHealth: EmailHealthIndicator
   ) {}
 
   /**
@@ -53,9 +53,7 @@ export class HealthController {
   @Public()
   @HealthCheck()
   checkDatabase() {
-    return this.health.check([
-      () => this.prismaHealth.pingCheck('database', this.prisma),
-    ]);
+    return this.health.check([() => this.prismaHealth.pingCheck('database', this.prisma)]);
   }
 
   /**
@@ -68,9 +66,7 @@ export class HealthController {
   @Public()
   @HealthCheck()
   checkRedis() {
-    return this.health.check([
-      () => this.redisHealth.isHealthy('redis'),
-    ]);
+    return this.health.check([() => this.redisHealth.isHealthy('redis')]);
   }
 
   /**
@@ -83,9 +79,7 @@ export class HealthController {
   @Public()
   @HealthCheck()
   checkEmail() {
-    return this.health.check([
-      () => this.emailHealth.isHealthy('email'),
-    ]);
+    return this.health.check([() => this.emailHealth.isHealthy('email')]);
   }
 
   /**
@@ -103,5 +97,24 @@ export class HealthController {
       () => this.redisHealth.isHealthy('redis'),
       () => this.emailHealth.isHealthy('email'),
     ]);
+  }
+
+  /**
+   * Version information
+   * GET /health/version
+   *
+   * Returns current deployment version and build info
+   */
+  @Get('version')
+  @Public()
+  getVersion() {
+    return {
+      version: process.env.APP_VERSION || 'unknown',
+      commit: process.env.GIT_COMMIT || 'unknown',
+      buildTime: process.env.BUILD_TIME || 'unknown',
+      nodeVersion: process.version,
+      environment: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+    };
   }
 }

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "export GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown') && export BUILD_TIME=$(date -u +\"%Y-%m-%dT%H:%M:%SZ\") && nest build",
     "start": "node dist/main",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,test}/**/*.ts\"",
