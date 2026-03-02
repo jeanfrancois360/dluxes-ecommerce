@@ -401,7 +401,7 @@ export default function WishlistPage() {
 
       {/* Quick View Modal */}
       <QuickViewModal
-        isOpen={!!quickViewSlug}
+        isOpen={!!quickViewSlug && !!quickViewProduct}
         onClose={() => {
           setQuickViewSlug(null);
           setQuickViewProduct(null);

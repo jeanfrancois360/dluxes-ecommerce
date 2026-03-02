@@ -535,7 +535,7 @@ export default function HomeClient() {
       {/* Quick View Modal */}
       <Suspense fallback={null}>
         <QuickViewModal
-          isOpen={!!quickViewSlug}
+          isOpen={!!quickViewSlug && !!quickViewProduct}
           onClose={() => {
             setQuickViewSlug(null);
             setQuickViewProduct(null);

@@ -1309,7 +1309,7 @@ export default function PublicStorePage() {
 
       {/* Quick View Modal */}
       <QuickViewModal
-        isOpen={!!quickViewSlug}
+        isOpen={!!quickViewSlug && !!quickViewProduct}
         onClose={() => {
           setQuickViewSlug(null);
           setQuickViewProduct(null);
