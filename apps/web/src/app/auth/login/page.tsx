@@ -31,6 +31,44 @@ export default function LoginPage() {
   const t = useTranslations('auth.login');
   const tc = useTranslations('common');
 
+  // Clear any stale authentication cookies/tokens when login page loads
+  // This prevents middleware redirect loops from old sessions
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('auth_token');
+
+      // If no token in localStorage, clear all auth cookies
+      if (!token) {
+        // Clear all possible auth cookie names
+        const cookieNames = [
+          'nextpik_ecommerce_access_token',
+          'nextpik_ecommerce_refresh_token',
+          'auth_token',
+          'refresh_token',
+        ];
+
+        const hostname = window.location.hostname;
+        const parts = hostname.split('.');
+        const domains = [''];
+
+        // Add domain variations for production
+        if (hostname !== 'localhost' && !hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+          if (parts.length >= 2) {
+            domains.push('.' + parts.slice(-2).join('.'));
+          }
+        }
+
+        // Clear cookies with all domain variations
+        cookieNames.forEach((name) => {
+          domains.forEach((domain) => {
+            const domainAttr = domain ? `;domain=${domain}` : '';
+            document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/${domainAttr}`;
+          });
+        });
+      }
+    }
+  }, []);
+
   // Show error from OAuth redirect (e.g. ?error=Account+suspended)
   useEffect(() => {
     const oauthError = searchParams.get('error');
