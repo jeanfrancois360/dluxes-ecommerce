@@ -31,22 +31,10 @@ function setCookie(name: string, value: string, days: number = 7): void {
   const isSecure = window.location.protocol === 'https:';
   const secureFlag = isSecure ? ';Secure' : '';
 
-  // In production, explicitly set domain to root domain (e.g., .nextpik.com)
-  // This allows the cookie to be shared across all subdomains
-  let domainAttr = '';
-  const hostname = window.location.hostname;
-
-  // Don't set domain for localhost or IP addresses
-  if (hostname !== 'localhost' && !hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
-    const parts = hostname.split('.');
-    if (parts.length >= 2) {
-      // Set to root domain (.example.com) for production
-      const rootDomain = '.' + parts.slice(-2).join('.');
-      domainAttr = `;domain=${rootDomain}`;
-    }
-  }
-
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax${secureFlag}${domainAttr}`;
+  // For Cloudflare-proxied sites, don't set explicit domain
+  // Let the browser handle it automatically to avoid conflicts with CF cookies
+  // This prevents "__cf_bm has been rejected for invalid domain" errors
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax${secureFlag}`;
 }
 
 function deleteCookie(name: string): void {
@@ -56,49 +44,23 @@ function deleteCookie(name: string): void {
   const isSecure = window.location.protocol === 'https:';
   const secureFlag = isSecure ? ';Secure' : '';
 
-  // Extract domain from hostname (e.g., example.com from www.example.com or api.example.com)
+  // For Cloudflare-proxied sites, use simple deletion without explicit domain
+  // This matches how we SET cookies (no domain attribute)
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax${secureFlag}`;
+  document.cookie = `${name}=;max-age=0;path=/;SameSite=Lax${secureFlag}`;
+
+  // Also try with root domain for legacy cookies that might have domain set
   const hostname = window.location.hostname;
-  const parts = hostname.split('.');
-
-  // For production domains, try both with and without domain attribute
-  const domains: string[] = [];
-
-  // Try without domain attribute (default)
-  domains.push('');
-
-  // For production domains (not localhost), try with domain attribute
   if (hostname !== 'localhost' && !hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+    const parts = hostname.split('.');
     if (parts.length >= 2) {
-      // Try root domain (.example.com)
       const rootDomain = '.' + parts.slice(-2).join('.');
-      domains.push(rootDomain);
-    }
-    if (parts.length >= 3) {
-      // Try with subdomain included (.www.example.com)
-      const fullDomain = '.' + hostname;
-      domains.push(fullDomain);
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=${rootDomain}`;
     }
   }
 
-  // Try deleting cookie with all possible domain combinations
-  // This ensures we delete the cookie regardless of how it was set
-  domains.forEach((domain) => {
-    const domainAttr = domain ? `;domain=${domain}` : '';
-
-    // Try multiple deletion strategies to ensure cookie is removed
-    // 1. With all attributes matching setCookie
-    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax${secureFlag}${domainAttr}`;
-
-    // 2. Also try with Max-Age (more reliable in some browsers)
-    document.cookie = `${name}=;max-age=0;path=/;SameSite=Lax${secureFlag}${domainAttr}`;
-
-    // 3. Try with different SameSite values (in case cookie was set differently)
-    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Strict${secureFlag}${domainAttr}`;
-    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=None${secureFlag}${domainAttr}`;
-  });
-
-  // Also try deleting with no attributes at all (fallback)
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC`;
+  // Fallback with no attributes
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
 }
 
 export const TokenManager = {
