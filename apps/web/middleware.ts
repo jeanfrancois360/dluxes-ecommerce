@@ -95,14 +95,7 @@ const ADMIN_ROUTES = ['/admin'];
 const DELIVERY_PARTNER_ROUTES = ['/delivery-partner'];
 
 // Routes that should always be accessible
-const ALWAYS_ACCESSIBLE = [
-  '/api',
-  '/_next',
-  '/favicon.ico',
-  '/static',
-  '/images',
-  '/fonts',
-];
+const ALWAYS_ACCESSIBLE = ['/api', '/_next', '/favicon.ico', '/static', '/images', '/fonts'];
 
 // ============================================================================
 // Helper Functions
@@ -129,9 +122,7 @@ function isAuthRoute(pathname: string): boolean {
  * Check if route requires authentication
  */
 function isProtectedRoute(pathname: string): boolean {
-  return PROTECTED_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  );
+  return PROTECTED_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
 /**
@@ -241,7 +232,9 @@ function isBuyerRoute(pathname: string): boolean {
  * Check if route is delivery partner route
  */
 function isDeliveryPartnerRoute(pathname: string): boolean {
-  return DELIVERY_PARTNER_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  return DELIVERY_PARTNER_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
 }
 
 /**
@@ -282,6 +275,34 @@ export function middleware(request: NextRequest) {
   const token = getTokenFromCookies(request);
   const isAuthenticated = token ? isTokenValid(token) : false;
 
+  // If token exists but is invalid/expired, clear it immediately
+  if (token && !isAuthenticated) {
+    const response = NextResponse.next();
+
+    // Clear the invalid token cookie with all possible attribute combinations
+    const isProduction = process.env.NODE_ENV === 'production';
+    const hostname = request.nextUrl.hostname;
+
+    // Delete cookie without domain (default)
+    response.cookies.delete(TOKEN_KEY);
+
+    // Also try with domain attribute for production
+    if (isProduction && hostname !== 'localhost') {
+      const parts = hostname.split('.');
+      if (parts.length >= 2) {
+        const rootDomain = '.' + parts.slice(-2).join('.');
+        response.cookies.set(TOKEN_KEY, '', {
+          path: '/',
+          expires: new Date(0),
+          domain: rootDomain,
+        });
+      }
+    }
+
+    // Continue with the cleared cookie
+    return handleLocale(request, response);
+  }
+
   // ============================================================================
   // Handle Auth Routes (Login, Register, etc.)
   // ============================================================================
@@ -289,23 +310,52 @@ export function middleware(request: NextRequest) {
   if (isAuthRoute(pathname)) {
     // If user is already authenticated, redirect to appropriate dashboard
     if (isAuthenticated && token) {
-      const returnUrl = searchParams.get('returnUrl');
-
-      // If there's a return URL, use it
-      if (returnUrl) {
-        try {
-          const url = new URL(returnUrl, request.url);
-          if (url.origin === request.nextUrl.origin) {
-            return handleLocale(request, NextResponse.redirect(new URL(url.pathname + url.search, request.url)));
-          }
-        } catch {
-          // Invalid URL, fallthrough to dashboard redirect
+      // Double-check token validity before redirecting
+      try {
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+          // Invalid token structure, allow access to login
+          const response = NextResponse.next();
+          response.cookies.delete(TOKEN_KEY);
+          return handleLocale(request, response);
         }
-      }
 
-      // Redirect to role-specific dashboard
-      const dashboardUrl = getDashboardForRole(token);
-      return handleLocale(request, NextResponse.redirect(new URL(dashboardUrl, request.url)));
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const exp = payload.exp;
+        const now = Math.floor(Date.now() / 1000);
+
+        // If token is expired (with 1 minute buffer), clear it and allow login
+        if (!exp || exp <= now + 60) {
+          const response = NextResponse.next();
+          response.cookies.delete(TOKEN_KEY);
+          return handleLocale(request, response);
+        }
+
+        // Token is valid, check for return URL
+        const returnUrl = searchParams.get('returnUrl');
+        if (returnUrl) {
+          try {
+            const url = new URL(returnUrl, request.url);
+            if (url.origin === request.nextUrl.origin) {
+              return handleLocale(
+                request,
+                NextResponse.redirect(new URL(url.pathname + url.search, request.url))
+              );
+            }
+          } catch {
+            // Invalid URL, fallthrough to dashboard redirect
+          }
+        }
+
+        // Redirect to role-specific dashboard
+        const dashboardUrl = getDashboardForRole(token);
+        return handleLocale(request, NextResponse.redirect(new URL(dashboardUrl, request.url)));
+      } catch (error) {
+        // Token parsing error, clear cookie and allow login
+        const response = NextResponse.next();
+        response.cookies.delete(TOKEN_KEY);
+        return handleLocale(request, response);
+      }
     }
 
     // Allow access to auth routes for non-authenticated users
