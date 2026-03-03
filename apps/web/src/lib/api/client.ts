@@ -1,3 +1,5 @@
+import { setCookie, deleteCookie, clearAllAuthCookies } from '@/lib/cookie-manager';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 export class APIError extends Error {
@@ -20,49 +22,6 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 const COOKIE_ACCESS_TOKEN_KEY = 'nextpik_ecommerce_access_token';
 const COOKIE_REFRESH_TOKEN_KEY = 'nextpik_ecommerce_refresh_token';
 
-// Cookie utility functions
-function setCookie(name: string, value: string, days: number = 7): void {
-  if (typeof window === 'undefined') return;
-
-  const expires = new Date();
-  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-
-  // Add Secure flag for HTTPS (production)
-  const isSecure = window.location.protocol === 'https:';
-  const secureFlag = isSecure ? ';Secure' : '';
-
-  // For Cloudflare-proxied sites, don't set explicit domain
-  // Let the browser handle it automatically to avoid conflicts with CF cookies
-  // This prevents "__cf_bm has been rejected for invalid domain" errors
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax${secureFlag}`;
-}
-
-function deleteCookie(name: string): void {
-  if (typeof window === 'undefined') return;
-
-  // To delete a cookie, we must use the same attributes that were used when setting it
-  const isSecure = window.location.protocol === 'https:';
-  const secureFlag = isSecure ? ';Secure' : '';
-
-  // For Cloudflare-proxied sites, use simple deletion without explicit domain
-  // This matches how we SET cookies (no domain attribute)
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax${secureFlag}`;
-  document.cookie = `${name}=;max-age=0;path=/;SameSite=Lax${secureFlag}`;
-
-  // Also try with root domain for legacy cookies that might have domain set
-  const hostname = window.location.hostname;
-  if (hostname !== 'localhost' && !hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
-    const parts = hostname.split('.');
-    if (parts.length >= 2) {
-      const rootDomain = '.' + parts.slice(-2).join('.');
-      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=${rootDomain}`;
-    }
-  }
-
-  // Fallback with no attributes
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
-}
-
 export const TokenManager = {
   getAccessToken(): string | null {
     if (typeof window === 'undefined') return null;
@@ -78,14 +37,14 @@ export const TokenManager = {
     if (typeof window === 'undefined') return;
     localStorage.setItem(ACCESS_TOKEN_KEY, token);
     // Also set in cookie for server-side middleware access
-    setCookie(COOKIE_ACCESS_TOKEN_KEY, token, 7);
+    setCookie(COOKIE_ACCESS_TOKEN_KEY, token, { days: 7 });
   },
 
   setRefreshToken(token: string): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(REFRESH_TOKEN_KEY, token);
     // Also set in cookie for server-side middleware access
-    setCookie(COOKIE_REFRESH_TOKEN_KEY, token, 30);
+    setCookie(COOKIE_REFRESH_TOKEN_KEY, token, { days: 30 });
   },
 
   setTokens(accessToken: string, refreshToken: string): void {
@@ -96,52 +55,20 @@ export const TokenManager = {
   clearTokens(): void {
     if (typeof window === 'undefined') return;
 
-    // Debug logging for production
-    if (process.env.NODE_ENV === 'production') {
-      console.log('[TokenManager] Clearing tokens from:', window.location.hostname);
-      console.log('[TokenManager] Cookies before clear:', document.cookie);
-    }
+    console.log('[TokenManager] Starting token clearance...');
+    console.log('[TokenManager] Location:', window.location.hostname);
 
     // Clear localStorage
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem('nextpik_ecommerce_user');
+    localStorage.removeItem('nextpik_ecommerce_token_expiry');
+    console.log('[TokenManager] ✅ LocalStorage cleared');
 
-    // Clear all auth-related cookies with multiple strategies
-    deleteCookie(COOKIE_ACCESS_TOKEN_KEY);
-    deleteCookie(COOKIE_REFRESH_TOKEN_KEY);
+    // Use unified cookie manager to clear ALL auth cookies
+    clearAllAuthCookies();
 
-    // Also clear any potential legacy or alternate cookie names
-    const cookieNames = [
-      'nextpik_ecommerce_access_token',
-      'nextpik_ecommerce_refresh_token',
-      'auth_token',
-      'refresh_token',
-      'access_token',
-      'nextpik_session_token',
-      'nextpik_ecommerce_user',
-    ];
-
-    cookieNames.forEach((name) => {
-      deleteCookie(name);
-    });
-
-    // Debug logging for production
-    if (process.env.NODE_ENV === 'production') {
-      console.log('[TokenManager] Cookies after clear:', document.cookie);
-      console.log('[TokenManager] LocalStorage cleared:', {
-        accessToken: localStorage.getItem(ACCESS_TOKEN_KEY),
-        refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY),
-      });
-    }
-
-    // Nuclear option: Clear ALL cookies on the domain (be careful with this)
-    // Uncomment only if absolutely necessary
-    // document.cookie.split(';').forEach((c) => {
-    //   const name = c.split('=')[0].trim();
-    //   if (name.includes('nextpik') || name.includes('auth') || name.includes('token')) {
-    //     deleteCookie(name);
-    //   }
-    // });
+    console.log('[TokenManager] ✅ Token clearance complete');
   },
 
   isAuthenticated(): boolean {
