@@ -10,6 +10,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useTranslations } from 'next-intl';
 import { formatDistanceToNow } from 'date-fns';
@@ -94,6 +95,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useUser();
+  const { logout } = useAuth();
   const breadcrumbs = getBreadcrumbs(pathname);
   const pageTitle = getPageTitle(pathname);
 
@@ -136,9 +138,19 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    router.push('/auth/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force logout even if API call fails
+      localStorage.clear();
+      document.cookie.split(';').forEach((c) => {
+        const name = c.split('=')[0].trim();
+        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+      });
+      router.push('/');
+    }
   };
 
   // Real notifications from API
