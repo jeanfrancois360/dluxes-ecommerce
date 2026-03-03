@@ -118,8 +118,9 @@ export function useSelectedCurrency() {
         initializedRef.current = true;
       }
     }
-  }, [settingsDefaultCurrency, defaultCurrency, setDefaultCurrency, setSelectedCurrency]);
-  // Removed selectedCurrency from dependencies to prevent infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsDefaultCurrency, defaultCurrency]);
+  // Removed setDefaultCurrency, setSelectedCurrency from dependencies to prevent infinite loop
 
   // Determine the effective selected currency
   const effectiveCurrency = selectedCurrency || settingsDefaultCurrency || 'USD';
