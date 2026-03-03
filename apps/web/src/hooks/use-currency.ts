@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import useSWR from 'swr';
 import { currencyApi, currencyAdminApi, CurrencyRate } from '@/lib/api/currency';
 import { settingsApi } from '@/lib/api/settings';
-import { useCallback, useMemo, useEffect } from 'react';
+import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
 // Currency store for managing selected currency
@@ -32,26 +32,26 @@ export const useCurrencyStore = create<CurrencyStore>()(
  * Hook to get system settings for currencies
  */
 export function useCurrencySettings() {
-  const { data: settings, error, isLoading } = useSWR(
-    '/settings/public',
-    settingsApi.getPublicSettings,
-    {
-      revalidateOnFocus: true, // ✅ Enable revalidation on focus
-      revalidateOnReconnect: true, // ✅ Enable revalidation on reconnect
-      refreshInterval: 0, // Don't auto-refresh (only manual invalidation)
-      dedupingInterval: 5000, // Reduce deduping to 5 seconds for faster updates
-    }
-  );
+  const {
+    data: settings,
+    error,
+    isLoading,
+  } = useSWR('/settings/public', settingsApi.getPublicSettings, {
+    revalidateOnFocus: true, // ✅ Enable revalidation on focus
+    revalidateOnReconnect: true, // ✅ Enable revalidation on reconnect
+    refreshInterval: 0, // Don't auto-refresh (only manual invalidation)
+    dedupingInterval: 5000, // Reduce deduping to 5 seconds for faster updates
+  });
 
   const defaultCurrency = useMemo(() => {
     if (!settings || !Array.isArray(settings)) return 'USD';
-    const setting = settings.find(s => s.key === 'default_currency');
+    const setting = settings.find((s) => s.key === 'default_currency');
     return setting?.value || 'USD';
   }, [settings]);
 
   const supportedCurrencies = useMemo(() => {
     if (!settings || !Array.isArray(settings)) return ['USD', 'EUR', 'GBP', 'JPY', 'RWF'];
-    const setting = settings.find(s => s.key === 'supported_currencies');
+    const setting = settings.find((s) => s.key === 'supported_currencies');
     return setting?.value || ['USD', 'EUR', 'GBP', 'JPY', 'RWF'];
   }, [settings]);
 
@@ -83,9 +83,7 @@ export function useCurrencyRates() {
   // Filter currencies based on system settings
   const filteredCurrencies = useMemo(() => {
     if (!data) return [];
-    return data.filter(currency =>
-      supportedCurrencies.includes(currency.currencyCode)
-    );
+    return data.filter((currency) => supportedCurrencies.includes(currency.currencyCode));
   }, [data, supportedCurrencies]);
 
   return {
@@ -101,28 +99,36 @@ export function useCurrencyRates() {
  * Hook to get the currently selected currency
  */
 export function useSelectedCurrency() {
-  const { selectedCurrency, setSelectedCurrency, defaultCurrency, setDefaultCurrency } = useCurrencyStore();
+  const { selectedCurrency, setSelectedCurrency, defaultCurrency, setDefaultCurrency } =
+    useCurrencyStore();
   const { currencies, isLoading } = useCurrencyRates();
-  const { defaultCurrency: settingsDefaultCurrency, isLoading: settingsLoading } = useCurrencySettings();
+  const { defaultCurrency: settingsDefaultCurrency, isLoading: settingsLoading } =
+    useCurrencySettings();
+
+  // Track if we've initialized to prevent infinite loops
+  const initializedRef = useRef(false);
 
   // Update default currency from settings
   useEffect(() => {
     if (settingsDefaultCurrency && settingsDefaultCurrency !== defaultCurrency) {
       setDefaultCurrency(settingsDefaultCurrency);
-      // If no currency is selected yet, use the default from settings
-      if (!selectedCurrency) {
+      // If no currency is selected yet, use the default from settings (only once)
+      if (!initializedRef.current && !selectedCurrency) {
         setSelectedCurrency(settingsDefaultCurrency);
+        initializedRef.current = true;
       }
     }
-  }, [settingsDefaultCurrency, defaultCurrency, selectedCurrency, setDefaultCurrency, setSelectedCurrency]);
+  }, [settingsDefaultCurrency, defaultCurrency, setDefaultCurrency, setSelectedCurrency]);
+  // Removed selectedCurrency from dependencies to prevent infinite loop
 
   // Determine the effective selected currency
   const effectiveCurrency = selectedCurrency || settingsDefaultCurrency || 'USD';
 
   // Get the currency object
-  const current = currencies.find((c) => c.currencyCode === effectiveCurrency) ||
-                 currencies.find((c) => c.currencyCode === settingsDefaultCurrency) ||
-                 currencies.find((c) => c.currencyCode === 'USD');
+  const current =
+    currencies.find((c) => c.currencyCode === effectiveCurrency) ||
+    currencies.find((c) => c.currencyCode === settingsDefaultCurrency) ||
+    currencies.find((c) => c.currencyCode === 'USD');
 
   return {
     currency: current,
@@ -140,57 +146,66 @@ export function useCurrencyConverter() {
   const { selectedCurrency: effectiveSelectedCurrency } = useSelectedCurrency();
   const { allCurrencies } = useCurrencyRates();
 
-  const convertPrice = useCallback((price: number, fromCurrency: string = 'USD'): number => {
-    // Validate input
-    if (typeof price !== 'number' || isNaN(price) || !isFinite(price)) {
-      return 0;
-    }
+  const convertPrice = useCallback(
+    (price: number, fromCurrency: string = 'USD'): number => {
+      // Validate input
+      if (typeof price !== 'number' || isNaN(price) || !isFinite(price)) {
+        return 0;
+      }
 
-    if (fromCurrency === effectiveSelectedCurrency || !allCurrencies.length) {
-      return price;
-    }
+      if (fromCurrency === effectiveSelectedCurrency || !allCurrencies.length) {
+        return price;
+      }
 
-    const fromRate = allCurrencies.find((c) => c.currencyCode === fromCurrency);
-    const toRate = allCurrencies.find((c) => c.currencyCode === effectiveSelectedCurrency);
+      const fromRate = allCurrencies.find((c) => c.currencyCode === fromCurrency);
+      const toRate = allCurrencies.find((c) => c.currencyCode === effectiveSelectedCurrency);
 
-    if (!fromRate || !toRate || !fromRate.rate || !toRate.rate) {
-      return price;
-    }
+      if (!fromRate || !toRate || !fromRate.rate || !toRate.rate) {
+        return price;
+      }
 
-    // Convert to USD first (base currency), then to target currency
-    const baseAmount = price / fromRate.rate;
-    const convertedAmount = baseAmount * toRate.rate;
+      // Convert to USD first (base currency), then to target currency
+      const baseAmount = price / fromRate.rate;
+      const convertedAmount = baseAmount * toRate.rate;
 
-    // Ensure we return a valid number
-    const decimalDigits = toRate.decimalDigits || 2;
-    const result = Number(convertedAmount.toFixed(decimalDigits));
+      // Ensure we return a valid number
+      const decimalDigits = toRate.decimalDigits || 2;
+      const result = Number(convertedAmount.toFixed(decimalDigits));
 
-    return isNaN(result) || !isFinite(result) ? price : result;
-  }, [effectiveSelectedCurrency, allCurrencies]);
+      return isNaN(result) || !isFinite(result) ? price : result;
+    },
+    [effectiveSelectedCurrency, allCurrencies]
+  );
 
-  const formatPrice = useCallback((price: number, fromCurrency: string = 'USD'): string => {
-    const convertedPrice = convertPrice(price, fromCurrency);
-    const currency = allCurrencies.find((c) => c.currencyCode === effectiveSelectedCurrency);
+  const formatPrice = useCallback(
+    (price: number, fromCurrency: string = 'USD'): string => {
+      const convertedPrice = convertPrice(price, fromCurrency);
+      const currency = allCurrencies.find((c) => c.currencyCode === effectiveSelectedCurrency);
 
-    if (!currency) {
-      // Fallback with thousand separators
-      return `$${formatCurrencyAmount(price, 2)}`;
-    }
+      if (!currency) {
+        // Fallback with thousand separators
+        return `$${formatCurrencyAmount(price, 2)}`;
+      }
 
-    return currencyApi.formatPrice(convertedPrice, currency);
-  }, [convertPrice, allCurrencies, effectiveSelectedCurrency]);
+      return currencyApi.formatPrice(convertedPrice, currency);
+    },
+    [convertPrice, allCurrencies, effectiveSelectedCurrency]
+  );
 
-  const formatPriceWithCode = useCallback((price: number, fromCurrency: string = 'USD'): string => {
-    const convertedPrice = convertPrice(price, fromCurrency);
-    const currency = allCurrencies.find((c) => c.currencyCode === effectiveSelectedCurrency);
+  const formatPriceWithCode = useCallback(
+    (price: number, fromCurrency: string = 'USD'): string => {
+      const convertedPrice = convertPrice(price, fromCurrency);
+      const currency = allCurrencies.find((c) => c.currencyCode === effectiveSelectedCurrency);
 
-    if (!currency) {
-      // Fallback with thousand separators
-      return `$${formatCurrencyAmount(price, 2)} / USD`;
-    }
+      if (!currency) {
+        // Fallback with thousand separators
+        return `$${formatCurrencyAmount(price, 2)} / USD`;
+      }
 
-    return currencyApi.formatPriceWithCode(convertedPrice, currency);
-  }, [convertPrice, allCurrencies, effectiveSelectedCurrency]);
+      return currencyApi.formatPriceWithCode(convertedPrice, currency);
+    },
+    [convertPrice, allCurrencies, effectiveSelectedCurrency]
+  );
 
   return {
     convertPrice,
