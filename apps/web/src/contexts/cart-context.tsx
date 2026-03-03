@@ -539,7 +539,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     // Then fetch from API
     refreshCart();
-  }, [refreshCart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount to prevent infinite loop
 
   // Listen for logout events and clear cart
   useEffect(() => {
