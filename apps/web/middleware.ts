@@ -308,8 +308,12 @@ export function middleware(request: NextRequest) {
   // ============================================================================
 
   if (isAuthRoute(pathname)) {
+    // Allow force login bypass for clearing stale sessions
+    const forceLogin = searchParams.get('force_login') === 'true';
+
     // If user is already authenticated, redirect to appropriate dashboard
-    if (isAuthenticated && token) {
+    // UNLESS they explicitly want to login again (force_login=true)
+    if (isAuthenticated && token && !forceLogin) {
       // Double-check token validity before redirecting
       try {
         const parts = token.split('.');
