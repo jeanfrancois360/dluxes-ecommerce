@@ -31,7 +31,22 @@ function setCookie(name: string, value: string, days: number = 7): void {
   const isSecure = window.location.protocol === 'https:';
   const secureFlag = isSecure ? ';Secure' : '';
 
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax${secureFlag}`;
+  // In production, explicitly set domain to root domain (e.g., .nextpik.com)
+  // This allows the cookie to be shared across all subdomains
+  let domainAttr = '';
+  const hostname = window.location.hostname;
+
+  // Don't set domain for localhost or IP addresses
+  if (hostname !== 'localhost' && !hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      // Set to root domain (.example.com) for production
+      const rootDomain = '.' + parts.slice(-2).join('.');
+      domainAttr = `;domain=${rootDomain}`;
+    }
+  }
+
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax${secureFlag}${domainAttr}`;
 }
 
 function deleteCookie(name: string): void {
@@ -41,8 +56,49 @@ function deleteCookie(name: string): void {
   const isSecure = window.location.protocol === 'https:';
   const secureFlag = isSecure ? ';Secure' : '';
 
-  // Delete with exact same attributes as setCookie
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax${secureFlag}`;
+  // Extract domain from hostname (e.g., example.com from www.example.com or api.example.com)
+  const hostname = window.location.hostname;
+  const parts = hostname.split('.');
+
+  // For production domains, try both with and without domain attribute
+  const domains: string[] = [];
+
+  // Try without domain attribute (default)
+  domains.push('');
+
+  // For production domains (not localhost), try with domain attribute
+  if (hostname !== 'localhost' && !hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+    if (parts.length >= 2) {
+      // Try root domain (.example.com)
+      const rootDomain = '.' + parts.slice(-2).join('.');
+      domains.push(rootDomain);
+    }
+    if (parts.length >= 3) {
+      // Try with subdomain included (.www.example.com)
+      const fullDomain = '.' + hostname;
+      domains.push(fullDomain);
+    }
+  }
+
+  // Try deleting cookie with all possible domain combinations
+  // This ensures we delete the cookie regardless of how it was set
+  domains.forEach((domain) => {
+    const domainAttr = domain ? `;domain=${domain}` : '';
+
+    // Try multiple deletion strategies to ensure cookie is removed
+    // 1. With all attributes matching setCookie
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax${secureFlag}${domainAttr}`;
+
+    // 2. Also try with Max-Age (more reliable in some browsers)
+    document.cookie = `${name}=;max-age=0;path=/;SameSite=Lax${secureFlag}${domainAttr}`;
+
+    // 3. Try with different SameSite values (in case cookie was set differently)
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Strict${secureFlag}${domainAttr}`;
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=None${secureFlag}${domainAttr}`;
+  });
+
+  // Also try deleting with no attributes at all (fallback)
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC`;
 }
 
 export const TokenManager = {
@@ -77,11 +133,53 @@ export const TokenManager = {
 
   clearTokens(): void {
     if (typeof window === 'undefined') return;
+
+    // Debug logging for production
+    if (process.env.NODE_ENV === 'production') {
+      console.log('[TokenManager] Clearing tokens from:', window.location.hostname);
+      console.log('[TokenManager] Cookies before clear:', document.cookie);
+    }
+
+    // Clear localStorage
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
-    // Also clear cookies
+
+    // Clear all auth-related cookies with multiple strategies
     deleteCookie(COOKIE_ACCESS_TOKEN_KEY);
     deleteCookie(COOKIE_REFRESH_TOKEN_KEY);
+
+    // Also clear any potential legacy or alternate cookie names
+    const cookieNames = [
+      'nextpik_ecommerce_access_token',
+      'nextpik_ecommerce_refresh_token',
+      'auth_token',
+      'refresh_token',
+      'access_token',
+      'nextpik_session_token',
+      'nextpik_ecommerce_user',
+    ];
+
+    cookieNames.forEach((name) => {
+      deleteCookie(name);
+    });
+
+    // Debug logging for production
+    if (process.env.NODE_ENV === 'production') {
+      console.log('[TokenManager] Cookies after clear:', document.cookie);
+      console.log('[TokenManager] LocalStorage cleared:', {
+        accessToken: localStorage.getItem(ACCESS_TOKEN_KEY),
+        refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY),
+      });
+    }
+
+    // Nuclear option: Clear ALL cookies on the domain (be careful with this)
+    // Uncomment only if absolutely necessary
+    // document.cookie.split(';').forEach((c) => {
+    //   const name = c.split('=')[0].trim();
+    //   if (name.includes('nextpik') || name.includes('auth') || name.includes('token')) {
+    //     deleteCookie(name);
+    //   }
+    // });
   },
 
   isAuthenticated(): boolean {
