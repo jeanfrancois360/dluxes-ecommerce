@@ -395,15 +395,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       standardToasts.auth.logoutSuccess();
 
-      // In production, do a full page reload to ensure complete logout
+      // Always do a full page reload to ensure complete logout
       // This clears all React state, service workers, and cached data
-      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+      if (typeof window !== 'undefined') {
         // Small delay to show the toast
         setTimeout(() => {
           window.location.href = '/';
         }, 500);
       } else {
-        // In development, use router navigation
+        // Fallback to router navigation if window is undefined
         router.push('/');
       }
     } catch (error) {
@@ -417,8 +417,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         window.dispatchEvent(new CustomEvent('api:logout'));
       }
 
-      // Force full page reload on error as well in production
-      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+      // Force full page reload on error as well
+      if (typeof window !== 'undefined') {
         setTimeout(() => {
           window.location.href = '/';
         }, 500);
