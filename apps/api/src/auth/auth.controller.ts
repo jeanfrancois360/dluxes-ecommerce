@@ -51,27 +51,56 @@ export class AuthController {
       await this.authService.logout(token, req.user?.id);
     }
 
-    // Clear authentication cookies with proper attributes
-    const cookieOptions = {
+    // Get hostname from request for domain handling
+    const hostname = req.hostname || req.get('host')?.split(':')[0] || 'localhost';
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isSecure = isProduction || req.protocol === 'https';
+
+    // Cookie options matching frontend exactly
+    const baseCookieOptions = {
       path: '/',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      httpOnly: false, // Frontend needs to read these
+      secure: isSecure,
       sameSite: 'lax' as const,
       expires: new Date(0),
     };
 
-    // Clear all possible cookie variations
+    // All possible cookie variations
     const cookieNames = [
       'nextpik_ecommerce_access_token',
       'nextpik_ecommerce_refresh_token',
       'auth_token',
       'refresh_token',
       'access_token',
+      'nextpik_session_token',
+      'nextpik_ecommerce_user',
+      'token',
+      'jwt',
     ];
 
+    // Strategy 1: Clear without domain (matches how frontend sets them)
     cookieNames.forEach((name) => {
-      res.clearCookie(name, cookieOptions);
+      res.clearCookie(name, baseCookieOptions);
     });
+
+    // Strategy 2: Clear with root domain for Cloudflare/production
+    if (hostname !== 'localhost' && !hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+      const parts = hostname.split('.');
+      if (parts.length >= 2) {
+        const rootDomain = '.' + parts.slice(-2).join('.');
+        const domainOptions = { ...baseCookieOptions, domain: rootDomain };
+        cookieNames.forEach((name) => {
+          res.clearCookie(name, domainOptions);
+        });
+      }
+    }
+
+    // Log for production debugging
+    if (isProduction) {
+      this.authService['logger'].log(
+        `Logout complete for user ${req.user?.id || 'unknown'} from ${hostname}`
+      );
+    }
 
     return res.status(200).json({
       success: true,
