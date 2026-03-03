@@ -1,4 +1,10 @@
-import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
@@ -19,7 +25,7 @@ export class AuthService {
     private jwtService: JwtService,
     private cartService: CartService,
     private settingsService: SettingsService,
-    private prisma: PrismaService,
+    private prisma: PrismaService
   ) {}
 
   /**
@@ -48,7 +54,9 @@ export class AuthService {
       });
 
       if (lastAttempt) {
-        const unlockTime = new Date(lastAttempt.createdAt.getTime() + LOCKOUT_DURATION_MINUTES * 60 * 1000);
+        const unlockTime = new Date(
+          lastAttempt.createdAt.getTime() + LOCKOUT_DURATION_MINUTES * 60 * 1000
+        );
         const remainingMs = unlockTime.getTime() - Date.now();
         const remainingMinutes = Math.ceil(remainingMs / 60000);
 
@@ -113,11 +121,23 @@ export class AuthService {
     return Math.max(0, MAX_LOGIN_ATTEMPTS - failedAttempts);
   }
 
-  async validateUser(email: string, password: string, ipAddress?: string, userAgent?: string): Promise<any> {
+  async validateUser(
+    email: string,
+    password: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<any> {
     // Check if account is locked
     const lockStatus = await this.isAccountLocked(email);
     if (lockStatus.locked) {
-      await this.recordLoginAttempt(email, false, ipAddress || 'unknown', userAgent, undefined, 'account_locked');
+      await this.recordLoginAttempt(
+        email,
+        false,
+        ipAddress || 'unknown',
+        userAgent,
+        undefined,
+        'account_locked'
+      );
       throw new ForbiddenException(
         `Account is temporarily locked due to too many failed login attempts. Please try again in ${lockStatus.remainingMinutes} minute(s).`
       );
@@ -126,7 +146,14 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      await this.recordLoginAttempt(email, false, ipAddress || 'unknown', userAgent, undefined, 'user_not_found');
+      await this.recordLoginAttempt(
+        email,
+        false,
+        ipAddress || 'unknown',
+        userAgent,
+        undefined,
+        'user_not_found'
+      );
       const remaining = await this.getRemainingAttempts(email);
       throw new UnauthorizedException(
         remaining > 0
@@ -138,7 +165,14 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      await this.recordLoginAttempt(email, false, ipAddress || 'unknown', userAgent, user.id, 'invalid_password');
+      await this.recordLoginAttempt(
+        email,
+        false,
+        ipAddress || 'unknown',
+        userAgent,
+        user.id,
+        'invalid_password'
+      );
       const remaining = await this.getRemainingAttempts(email);
       throw new UnauthorizedException(
         remaining > 0
@@ -157,10 +191,14 @@ export class AuthService {
     return result;
   }
 
-  async login(user: any, sessionId?: string, deviceInfo?: {
-    ipAddress?: string;
-    userAgent?: string;
-  }) {
+  async login(
+    user: any,
+    sessionId?: string,
+    deviceInfo?: {
+      ipAddress?: string;
+      userAgent?: string;
+    }
+  ) {
     const payload = { email: user.email, sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload);
 
@@ -209,10 +247,12 @@ export class AuthService {
         lastName: user.lastName,
         role: user.role,
       },
-      cart: cart ? {
-        id: cart.id,
-        itemCount: cart.items?.length || 0,
-      } : null,
+      cart: cart
+        ? {
+            id: cart.id,
+            itemCount: cart.items?.length || 0,
+          }
+        : null,
       sessionId: userSession?.id,
     };
   }
@@ -366,9 +406,47 @@ export class AuthService {
     }
 
     if (errors.length > 0) {
-      throw new BadRequestException(
-        `Password must contain: ${errors.join(', ')}`
-      );
+      throw new BadRequestException(`Password must contain: ${errors.join(', ')}`);
+    }
+  }
+
+  /**
+   * Logout user by invalidating their session
+   */
+  async logout(token: string, userId?: string): Promise<void> {
+    try {
+      // Invalidate session by token
+      if (token) {
+        await this.prisma.userSession.updateMany({
+          where: {
+            token,
+            isActive: true,
+          },
+          data: {
+            isActive: false,
+            lastActiveAt: new Date(),
+          },
+        });
+        this.logger.log(`Invalidated session with token for user ${userId || 'unknown'}`);
+      }
+
+      // Also invalidate all sessions for this user if userId provided
+      if (userId) {
+        await this.prisma.userSession.updateMany({
+          where: {
+            userId,
+            isActive: true,
+          },
+          data: {
+            isActive: false,
+            lastActiveAt: new Date(),
+          },
+        });
+        this.logger.log(`Invalidated all sessions for user ${userId}`);
+      }
+    } catch (error) {
+      this.logger.error('Error during logout:', error);
+      // Don't throw - we still want to clear cookies even if DB update fails
     }
   }
 }
