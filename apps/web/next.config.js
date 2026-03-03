@@ -9,6 +9,16 @@ const nextConfig = {
   // outside the project if a stray lockfile exists above it
   outputFileTracingRoot: path.join(__dirname, '../..'),
   reactStrictMode: true,
+  // Force cache invalidation on every deployment
+  generateBuildId: async () => {
+    // Use git commit hash for build ID to ensure unique bundles
+    const { execSync } = require('child_process');
+    try {
+      return execSync('git rev-parse --short HEAD').toString().trim();
+    } catch {
+      return `build-${Date.now()}`;
+    }
+  },
   // swcMinify: true,
   eslint: {
     // Warning: This allows production builds to successfully complete even if
