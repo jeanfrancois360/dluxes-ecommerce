@@ -381,6 +381,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsLoading(true);
 
+      // Determine redirect URL based on user role BEFORE clearing user data
+      const userRole = user?.role;
+      const redirectUrl =
+        userRole === 'BUYER' || userRole === 'CUSTOMER'
+          ? '/' // Buyers go to homepage (can browse as guest)
+          : '/auth/login'; // Admin/Seller/Delivery go to login page
+
       // Call logout API
       await authApi.logout();
 
@@ -400,14 +407,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (typeof window !== 'undefined') {
         // Small delay to show the toast
         setTimeout(() => {
-          window.location.href = '/auth/login';
+          window.location.href = redirectUrl;
         }, 500);
       } else {
         // Fallback to router navigation if window is undefined
-        router.push('/auth/login');
+        router.push(redirectUrl);
       }
     } catch (error) {
       console.error('Logout error:', error);
+
+      // Determine redirect URL based on user role BEFORE clearing user data
+      const userRole = user?.role;
+      const redirectUrl =
+        userRole === 'BUYER' || userRole === 'CUSTOMER'
+          ? '/' // Buyers go to homepage
+          : '/auth/login'; // Others go to login page
+
       // Clear auth data even if API call fails
       setUser(null);
       clearAllAuthData();
@@ -420,15 +435,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Force full page reload on error as well
       if (typeof window !== 'undefined') {
         setTimeout(() => {
-          window.location.href = '/auth/login';
+          window.location.href = redirectUrl;
         }, 500);
       } else {
-        router.push('/auth/login');
+        router.push(redirectUrl);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [router]);
+  }, [router, user?.role]);
 
   const refreshUser = useCallback(async () => {
     try {
