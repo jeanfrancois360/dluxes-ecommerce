@@ -140,6 +140,7 @@ enum AuthProvider {
 }
 
 enum EmailOTPType {
+  LOGIN                // Mandatory 2FA for all logins
   TWO_FACTOR_BACKUP
   ACCOUNT_RECOVERY
   SENSITIVE_ACTION
