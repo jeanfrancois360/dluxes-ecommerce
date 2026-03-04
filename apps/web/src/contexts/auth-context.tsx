@@ -400,11 +400,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (typeof window !== 'undefined') {
         // Small delay to show the toast
         setTimeout(() => {
-          window.location.href = '/';
+          window.location.href = '/auth/login';
         }, 500);
       } else {
         // Fallback to router navigation if window is undefined
-        router.push('/');
+        router.push('/auth/login');
       }
     } catch (error) {
       console.error('Logout error:', error);
@@ -420,10 +420,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Force full page reload on error as well
       if (typeof window !== 'undefined') {
         setTimeout(() => {
-          window.location.href = '/';
+          window.location.href = '/auth/login';
         }, 500);
       } else {
-        router.push('/');
+        router.push('/auth/login');
       }
     } finally {
       setIsLoading(false);
