@@ -22,7 +22,7 @@ export const authAPI = {
 
   verifyEmail: (token: string) => api.post('/auth/verify-email', { token }),
 
-  resendVerification: (email: string) => api.post('/auth/resend-verification', { email }),
+  resendVerification: (email: string) => api.post('/auth/email/resend-verification', { email }),
 };
 
 // Export individual functions for convenience
@@ -51,7 +51,7 @@ export const confirmPasswordReset = (data: {
   confirmPassword: string;
 }) => authAPI.resetPassword({ token: data.token, newPassword: data.password });
 export const verifyEmail = (token: string) => authAPI.verifyEmail(token);
-export const resendEmailVerification = () => api.post('/auth/resend-verification');
+export const resendEmailVerification = () => api.post('/auth/email/resend-verification');
 export const refreshToken = () => api.post('/auth/refresh');
 
 // Magic link functions
