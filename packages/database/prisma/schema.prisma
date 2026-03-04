@@ -29,7 +29,7 @@ model User {
   // OAuth & Email OTP
   googleId        String?      @unique
   authProvider    AuthProvider @default(LOCAL)
-  emailOTPEnabled Boolean      @default(false)
+  emailOTPEnabled Boolean      @default(true) // Mandatory 2FA via email
 
   // Account status
   isActive    Boolean   @default(true)

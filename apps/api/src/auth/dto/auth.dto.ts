@@ -1,4 +1,12 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsBoolean, IsEnum, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  MinLength,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
+  Matches,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 // Sanitization helper functions
@@ -31,13 +39,10 @@ export class RegisterDto {
 
   @IsString()
   @MinLength(12, { message: 'Password must be at least 12 characters long' })
-  @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-    {
-      message:
-        'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
-    },
-  )
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
+  })
   password!: string;
 
   @Transform(({ value }) => sanitizeString(value))
@@ -87,7 +92,11 @@ export class LoginDto {
 
   @IsOptional()
   @IsString()
-  twoFactorCode?: string;
+  emailOTPCode?: string; // Mandatory 2FA via email
+
+  @IsOptional()
+  @IsString()
+  twoFactorCode?: string; // Optional TOTP 2FA (authenticator app)
 
   @IsOptional()
   @IsString()
@@ -116,13 +125,10 @@ export class PasswordResetDto {
 
   @IsString()
   @MinLength(12, { message: 'Password must be at least 12 characters long' })
-  @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-    {
-      message:
-        'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
-    },
-  )
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
+  })
   newPassword!: string;
 }
 
@@ -158,12 +164,9 @@ export class ChangePasswordDto {
 
   @IsString()
   @MinLength(12, { message: 'Password must be at least 12 characters long' })
-  @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-    {
-      message:
-        'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
-    },
-  )
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
+  })
   newPassword!: string;
 }
