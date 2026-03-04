@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth';
 import { useNotifications } from '@/hooks/use-notifications';
 import { formatDistanceToNow } from 'date-fns';
 import Breadcrumbs from '@/components/shared/breadcrumbs';
@@ -34,6 +35,7 @@ export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: Ad
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useUser();
+  const { logout } = useAuth();
 
   const [showSearch, setShowSearch] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -89,9 +91,15 @@ export default function AdminTopbar({ onMobileMenuToggle, isMobileMenuOpen }: Ad
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    router.push('/auth/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force logout even if API call fails
+      localStorage.clear();
+      router.push('/auth/login');
+    }
   };
 
   return (
