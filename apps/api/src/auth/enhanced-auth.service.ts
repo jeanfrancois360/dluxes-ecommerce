@@ -44,7 +44,7 @@ export class EnhancedAuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private emailService: EmailService,
-    private emailOTPService: EmailOTPService,
+    private emailOTPService: EmailOTPService
   ) {}
 
   // ============================================================================
@@ -84,12 +84,13 @@ export class EnhancedAuthService {
     let store = null;
     if (userRole === 'SELLER') {
       const storeName = data.storeName || `${user.firstName}'s Store`;
-      const slug = storeName
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim() + `-${Date.now()}`;
+      const slug =
+        storeName
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .trim() + `-${Date.now()}`;
 
       store = await this.prisma.store.create({
         data: {
@@ -157,9 +158,11 @@ export class EnhancedAuthService {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    // Check if email is verified (skip in development mode)
-    if (!user.emailVerified && process.env.NODE_ENV !== 'development') {
-      throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for the verification link.');
+    // MANDATORY: Check if email is verified (no bypass)
+    if (!user.emailVerified) {
+      throw new UnauthorizedException(
+        'Please verify your email before logging in. Check your inbox for the verification link.'
+      );
     }
 
     // Verify password
@@ -170,16 +173,61 @@ export class EnhancedAuthService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
 
     if (!isPasswordValid) {
-      await this.recordLoginAttempt(user.id, dto.email, ipAddress, userAgent, false, 'invalid_password');
+      await this.recordLoginAttempt(
+        user.id,
+        dto.email,
+        ipAddress,
+        userAgent,
+        false,
+        'invalid_password'
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Check 2FA
+    // MANDATORY: Email OTP (2FA via email) - Required for all users
+    if (!dto.emailOTPCode) {
+      // Generate and send OTP
+      const { code } = await this.emailOTPService.createEmailOTP(
+        user.id,
+        EmailOTPType.LOGIN,
+        ipAddress,
+        userAgent
+      );
+
+      // Send OTP email
+      await this.emailService.sendEmailOTP(
+        user.email,
+        user.firstName,
+        code,
+        EmailOTPType.LOGIN,
+        ipAddress
+      );
+
+      return {
+        requiresEmailOTP: true,
+        userId: user.id,
+        message: 'Please enter the verification code sent to your email',
+      };
+    }
+
+    // Verify email OTP
+    const isEmailOTPValid = await this.emailOTPService.verifyEmailOTP(
+      user.id,
+      dto.emailOTPCode,
+      EmailOTPType.LOGIN
+    );
+
+    if (!isEmailOTPValid) {
+      throw new UnauthorizedException('Invalid or expired verification code');
+    }
+
+    // Optional: Check TOTP 2FA (if user has it enabled)
     if (user.twoFactorEnabled) {
       if (!dto.twoFactorCode) {
         return {
           requires2FA: true,
           userId: user.id,
+          message: 'Please enter your authenticator code',
         };
       }
 
@@ -206,7 +254,7 @@ export class EnhancedAuthService {
       user.id,
       ipAddress,
       userAgent,
-      dto.rememberMe || false,
+      dto.rememberMe || false
     );
 
     // Generate JWT
@@ -630,10 +678,7 @@ export class EnhancedAuthService {
    * Used for detecting suspicious session activity
    */
   private generateFingerprint(ipAddress: string, userAgent: string): string {
-    return createHash('sha256')
-      .update(`${ipAddress}:${userAgent}`)
-      .digest('hex')
-      .substring(0, 32); // Truncate to 32 chars for storage
+    return createHash('sha256').update(`${ipAddress}:${userAgent}`).digest('hex').substring(0, 32); // Truncate to 32 chars for storage
   }
 
   /**
@@ -643,7 +688,7 @@ export class EnhancedAuthService {
   private async detectSuspiciousActivity(
     userId: string,
     currentIp: string,
-    currentUserAgent: string,
+    currentUserAgent: string
   ): Promise<string[]> {
     const suspiciousFlags: string[] = [];
 
@@ -698,7 +743,7 @@ export class EnhancedAuthService {
     userId: string,
     ipAddress: string,
     userAgent: string,
-    rememberMe: boolean,
+    rememberMe: boolean
   ): Promise<string> {
     const token = randomBytes(32).toString('hex');
     const expiryDuration = rememberMe ? this.SESSION_EXPIRY_REMEMBER : this.SESSION_EXPIRY_DEFAULT;
@@ -711,7 +756,7 @@ export class EnhancedAuthService {
     if (suspiciousFlags.length > 0) {
       // Log suspicious activity (in production, this would trigger alerts/notifications)
       console.warn(
-        `[SECURITY] Suspicious activity detected for user ${userId}: ${suspiciousFlags.join(', ')}`,
+        `[SECURITY] Suspicious activity detected for user ${userId}: ${suspiciousFlags.join(', ')}`
       );
       // In production, you could:
       // - Send email notification to user
@@ -741,7 +786,7 @@ export class EnhancedAuthService {
   async validateSession(
     sessionToken: string,
     currentIp: string,
-    currentUserAgent: string,
+    currentUserAgent: string
   ): Promise<{ valid: boolean; suspicious?: boolean; session?: any }> {
     const session = await this.prisma.userSession.findUnique({
       where: { token: sessionToken },
@@ -763,7 +808,7 @@ export class EnhancedAuthService {
       if (session.fingerprint !== currentFingerprint) {
         // Fingerprint mismatch - potential session hijacking
         console.warn(
-          `[SECURITY] Session fingerprint mismatch for user ${session.userId}. Potential session hijacking attempt.`,
+          `[SECURITY] Session fingerprint mismatch for user ${session.userId}. Potential session hijacking attempt.`
         );
         // In production, you might want to:
         // - Invalidate the session
@@ -850,11 +895,11 @@ export class EnhancedAuthService {
     if (failedAttempts.length >= this.MAX_LOGIN_ATTEMPTS) {
       const oldestAttempt = failedAttempts[0];
       const timeRemaining = Math.ceil(
-        (oldestAttempt.createdAt.getTime() + this.LOCKOUT_DURATION - Date.now()) / 1000 / 60,
+        (oldestAttempt.createdAt.getTime() + this.LOCKOUT_DURATION - Date.now()) / 1000 / 60
       );
 
       throw new TooManyRequestsException(
-        `Too many failed login attempts. Please try again in ${timeRemaining} minutes.`,
+        `Too many failed login attempts. Please try again in ${timeRemaining} minutes.`
       );
     }
   }
@@ -865,7 +910,7 @@ export class EnhancedAuthService {
     ipAddress: string,
     userAgent: string,
     success: boolean,
-    reason?: string,
+    reason?: string
   ) {
     await this.prisma.loginAttempt.create({
       data: {
@@ -939,7 +984,7 @@ export class EnhancedAuthService {
     userId: string,
     type: EmailOTPType,
     ipAddress?: string,
-    userAgent?: string,
+    userAgent?: string
   ) {
     // Get user details
     const user = await this.prisma.user.findUnique({
@@ -959,7 +1004,7 @@ export class EnhancedAuthService {
       userId,
       type,
       ipAddress,
-      userAgent,
+      userAgent
     );
 
     // Send email with OTP
@@ -968,7 +1013,7 @@ export class EnhancedAuthService {
       user.firstName || 'User',
       code,
       type,
-      ipAddress,
+      ipAddress
     );
 
     return {
@@ -1033,7 +1078,7 @@ export class EnhancedAuthService {
     password: string,
     otpCode: string,
     ipAddress: string,
-    userAgent: string,
+    userAgent: string
   ) {
     // First verify password
     const user = await this.prisma.user.findUnique({
@@ -1050,19 +1095,10 @@ export class EnhancedAuthService {
     }
 
     // Verify OTP
-    await this.emailOTPService.verifyEmailOTP(
-      user.id,
-      otpCode,
-      EmailOTPType.TWO_FACTOR_BACKUP,
-    );
+    await this.emailOTPService.verifyEmailOTP(user.id, otpCode, EmailOTPType.TWO_FACTOR_BACKUP);
 
     // Create session
-    const sessionToken = await this.createSession(
-      user.id,
-      ipAddress,
-      userAgent,
-      false,
-    );
+    const sessionToken = await this.createSession(user.id, ipAddress, userAgent, false);
 
     // Generate JWT
     const accessToken = this.generateJWT(user);
