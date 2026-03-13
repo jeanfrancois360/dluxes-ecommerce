@@ -13,11 +13,21 @@ import { useAuth } from '@/hooks/use-auth';
 import { useCurrencyConverter } from '@/hooks/use-currency';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { CheckoutStepper, CheckoutStep } from '@/components/checkout/checkout-stepper';
-import { UniversalAddressForm, AddressFormData, PaymentMethodSelector, PaymentMethodType, PayPalPayment } from '@/components/checkout';
+import {
+  UniversalAddressForm,
+  AddressFormData,
+  PaymentMethodSelector,
+  PaymentMethodType,
+  PayPalPayment,
+} from '@/components/checkout';
 import { getCountryConfig, getAllCountries } from '@/lib/data/address-countries';
 import { useAddresses } from '@/hooks/use-addresses';
 import { Address as APIAddress } from '@/lib/api/addresses';
-import { ordersAPI, ShippingOption as APIShippingOption, OrderCalculationResponse } from '@/lib/api/orders';
+import {
+  ordersAPI,
+  ShippingOption as APIShippingOption,
+  OrderCalculationResponse,
+} from '@/lib/api/orders';
 
 // Legacy Address interface for backend compatibility (matches backend schema)
 interface Address {
@@ -97,7 +107,7 @@ function convertApiAddressToFormData(apiAddress: APIAddress): Partial<AddressFor
 
   // Find country code from country name
   const allCountries = getAllCountries();
-  const countryMatch = allCountries.find(c => c.name === apiAddress.country);
+  const countryMatch = allCountries.find((c) => c.name === apiAddress.country);
   const countryCode = countryMatch?.code || 'US';
 
   return {
@@ -134,23 +144,21 @@ function StripeElementsWrapper({
 
   useEffect(() => {
     // Load Stripe instance
-    getStripe().then((stripe) => {
-      setStripePromise(Promise.resolve(stripe));
-    }).catch((error) => {
-      console.error('Failed to load Stripe:', error);
-      toast.error('Failed to initialize payment system. Please check your settings.');
-    });
+    getStripe()
+      .then((stripe) => {
+        setStripePromise(Promise.resolve(stripe));
+      })
+      .catch((error) => {
+        console.error('Failed to load Stripe:', error);
+        toast.error('Failed to initialize payment system. Please check your settings.');
+      });
   }, []);
 
   if (!stripePromise) {
     return (
       <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
         <div className="flex flex-col items-center justify-center py-12">
-          <svg
-            className="animate-spin h-12 w-12 text-gold mb-4"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
+          <svg className="animate-spin h-12 w-12 text-gold mb-4" fill="none" viewBox="0 0 24 24">
             <circle
               className="opacity-25"
               cx="12"
@@ -220,73 +228,95 @@ export default function CheckoutPage() {
   // Saved addresses
   const { addresses, isLoading: addressesLoading } = useAddresses();
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
-  const [savedAddressFormData, setSavedAddressFormData] = useState<Partial<AddressFormData> | undefined>(undefined);
+  const [savedAddressFormData, setSavedAddressFormData] = useState<
+    Partial<AddressFormData> | undefined
+  >(undefined);
 
   // Dynamic shipping options from backend
   const [availableShippingOptions, setAvailableShippingOptions] = useState<APIShippingOption[]>([]);
   const [isLoadingShippingOptions, setIsLoadingShippingOptions] = useState(false);
-  const [backendCalculation, setBackendCalculation] = useState<OrderCalculationResponse | null>(null);
+  const [backendCalculation, setBackendCalculation] = useState<OrderCalculationResponse | null>(
+    null
+  );
 
   // Calculate shipping and tax on checkout (not in cart)
   const [calculatedShipping, setCalculatedShipping] = useState<number>(0);
   const [calculatedTax, setCalculatedTax] = useState<number>(0);
 
   // Fetch shipping options and tax from backend after address is entered
-  const fetchShippingOptionsAndTax = useCallback(async (addressId: string) => {
-    if (!addressId || items.length === 0) return;
+  const fetchShippingOptionsAndTax = useCallback(
+    async (addressId: string) => {
+      if (!addressId || items.length === 0) return;
 
-    setIsLoadingShippingOptions(true);
-    try {
-      const calculation = await ordersAPI.calculateTotals({
-        items: items.map(item => ({
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          price: item.priceAtAdd || 0, // Use locked price, fallback to 0
-        })),
-        shippingAddressId: addressId,
-        shippingMethod: selectedShippingMethod,
-        currency: cartCurrency,
-      });
+      setIsLoadingShippingOptions(true);
+      try {
+        const calculation = await ordersAPI.calculateTotals({
+          items: items.map((item) => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            price: item.priceAtAdd || 0, // Use locked price, fallback to 0
+          })),
+          shippingAddressId: addressId,
+          shippingMethod: selectedShippingMethod,
+          currency: cartCurrency,
+        });
 
-      // API client auto-unwraps { success, data } responses
-      setBackendCalculation(calculation);
-      setAvailableShippingOptions(calculation.shippingOptions);
+        // API client auto-unwraps { success, data } responses
+        setBackendCalculation(calculation);
 
-      // Set initial tax from backend
-      setCalculatedTax(calculation.tax.amount);
+        // ✅ Safe: Default to empty array if undefined
+        setAvailableShippingOptions(calculation.shippingOptions || []);
 
-      // If a shipping method is selected, use its price
-      if (selectedShippingMethod) {
-        const selectedOption = calculation.shippingOptions.find(
-          (opt: APIShippingOption) => opt.id === selectedShippingMethod
-        );
-        if (selectedOption) {
-          setCalculatedShipping(selectedOption.price);
+        // ✅ Safe: Default to 0 if tax is missing
+        setCalculatedTax(calculation.tax?.amount || 0);
+
+        // ✅ Safe: Check shippingOptions exists before using .find()
+        if (selectedShippingMethod && calculation.shippingOptions) {
+          const selectedOption = calculation.shippingOptions.find(
+            (opt: APIShippingOption) => opt.id === selectedShippingMethod
+          );
+          if (selectedOption) {
+            setCalculatedShipping(selectedOption.price);
+          }
         }
-      }
 
-      console.log('Backend shipping options:', calculation.shippingOptions);
-      console.log('Tax calculation:', calculation.tax);
-    } catch (error: any) {
-      console.error('Failed to fetch shipping options:', error);
-      // Fallback to hardcoded options if backend fails
-      toast.error(t('couldNotLoadShipping'));
-    } finally {
-      setIsLoadingShippingOptions(false);
-    }
-  }, [items, selectedShippingMethod, cartCurrency, t]);
+        console.log('Backend shipping options:', calculation.shippingOptions);
+        console.log('Tax calculation:', calculation.tax);
+
+        // ⚠️ Warn user if tax or shipping missing
+        if (!calculation.tax) {
+          console.warn('[Checkout] Tax calculation missing from backend response');
+          toast.warning('Tax calculation unavailable. Proceeding with $0 tax.');
+        }
+        if (!calculation.shippingOptions || calculation.shippingOptions.length === 0) {
+          console.error('[Checkout] No shipping options available');
+          toast.error('No shipping options available for your address. Please contact support.');
+        }
+      } catch (error: any) {
+        console.error('Failed to fetch shipping options:', error);
+        // Fallback to hardcoded options if backend fails
+        toast.error(t('couldNotLoadShipping'));
+      } finally {
+        setIsLoadingShippingOptions(false);
+      }
+    },
+    [items, selectedShippingMethod, cartCurrency, t]
+  );
 
   // Update shipping cost when shipping method changes
   // Only calculate if we've completed the shipping address step
   useEffect(() => {
     if (completedSteps.includes('shipping') && backendCalculation) {
       // Use backend calculation
-      const selectedOption = backendCalculation.shippingOptions.find(
-        opt => opt.id === selectedShippingMethod
-      );
-      if (selectedOption) {
-        setCalculatedShipping(selectedOption.price);
+      // ✅ Safe: Check shippingOptions exists
+      if (backendCalculation.shippingOptions) {
+        const selectedOption = backendCalculation.shippingOptions.find(
+          (opt) => opt.id === selectedShippingMethod
+        );
+        if (selectedOption) {
+          setCalculatedShipping(selectedOption.price);
+        }
       }
     } else if (!completedSteps.includes('shipping')) {
       // Reset shipping if we go back to address step
@@ -315,7 +345,14 @@ export default function CheckoutPage() {
 
   // Create order and payment intent when shipping method is confirmed
   useEffect(() => {
-    if (step === 'payment' && shippingMethodConfirmed && !clientSecret && items.length > 0 && shippingAddress && user) {
+    if (
+      step === 'payment' &&
+      shippingMethodConfirmed &&
+      !clientSecret &&
+      items.length > 0 &&
+      shippingAddress &&
+      user
+    ) {
       // Create totals with calculated shipping and tax from checkout
       const checkoutTotals = {
         ...totals,
@@ -333,7 +370,22 @@ export default function CheckoutPage() {
         goToStep('shipping');
       });
     }
-  }, [step, shippingMethodConfirmed, clientSecret, items, selectedShippingMethod, totals, calculatedShipping, calculatedTax, shippingAddress, createOrderAndPaymentIntent, goToStep, user, cartCurrency, t]);
+  }, [
+    step,
+    shippingMethodConfirmed,
+    clientSecret,
+    items,
+    selectedShippingMethod,
+    totals,
+    calculatedShipping,
+    calculatedTax,
+    shippingAddress,
+    createOrderAndPaymentIntent,
+    goToStep,
+    user,
+    cartCurrency,
+    t,
+  ]);
 
   // Reset shipping method confirmation when leaving payment step
   useEffect(() => {
@@ -361,7 +413,7 @@ export default function CheckoutPage() {
     }
 
     // Find selected address
-    const selectedAddress = addresses.find(addr => addr.id === addressId);
+    const selectedAddress = addresses.find((addr) => addr.id === addressId);
     if (selectedAddress) {
       setSelectedSavedAddressId(addressId);
       setSavedAddressFormData(convertApiAddressToFormData(selectedAddress));
@@ -397,7 +449,7 @@ export default function CheckoutPage() {
 
   const handleShippingMethodContinue = () => {
     // First check if this is a backend shipping option
-    const backendOption = availableShippingOptions.find(opt => opt.id === selectedShippingMethod);
+    const backendOption = availableShippingOptions.find((opt) => opt.id === selectedShippingMethod);
 
     if (backendOption) {
       // Using backend/zone-based shipping option
@@ -516,7 +568,12 @@ export default function CheckoutPage() {
                       <div className="mb-6">
                         <div className="bg-gradient-to-br from-gold/5 to-neutral-50 rounded-lg border-2 border-gold/20 p-5">
                           <div className="flex items-center gap-2 mb-4">
-                            <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg
+                              className="w-5 h-5 text-gold"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
                               <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -524,7 +581,9 @@ export default function CheckoutPage() {
                                 d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                               />
                             </svg>
-                            <h3 className="text-base font-semibold text-black">{t('useSavedAddress')}</h3>
+                            <h3 className="text-base font-semibold text-black">
+                              {t('useSavedAddress')}
+                            </h3>
                           </div>
 
                           <div className="space-y-3">
@@ -546,10 +605,22 @@ export default function CheckoutPage() {
                               />
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                  <svg className="w-4 h-4 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                  <svg
+                                    className="w-4 h-4 text-neutral-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M12 4v16m8-8H4"
+                                    />
                                   </svg>
-                                  <span className="font-medium text-black">{t('enterNewAddress')}</span>
+                                  <span className="font-medium text-black">
+                                    {t('enterNewAddress')}
+                                  </span>
                                 </div>
                               </div>
                             </label>
@@ -595,7 +666,12 @@ export default function CheckoutPage() {
                                   </p>
                                   {address.phone && (
                                     <p className="text-sm text-neutral-500 mt-1">
-                                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <svg
+                                        className="w-4 h-4 inline mr-1"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
                                         <path
                                           strokeLinecap="round"
                                           strokeLinejoin="round"
@@ -617,7 +693,10 @@ export default function CheckoutPage() {
                     {/* Address Form */}
                     <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
                       <UniversalAddressForm
-                        initialData={savedAddressFormData || (shippingAddress ? convertFromLegacyAddress(shippingAddress) : undefined)}
+                        initialData={
+                          savedAddressFormData ||
+                          (shippingAddress ? convertFromLegacyAddress(shippingAddress) : undefined)
+                        }
                         onSubmit={handleAddressSubmit}
                         submitLabel={t('continueToShipping')}
                         key={selectedSavedAddressId || 'new'}
@@ -662,106 +741,118 @@ export default function CheckoutPage() {
                       )}
 
                       {/* Loading Payment Intent - Show when confirmed but no clientSecret yet (Stripe only) */}
-                      {shippingMethodConfirmed && selectedPaymentMethod === 'stripe' && !clientSecret && (
-                        <motion.div
-                          key="loading-payment"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.3 }}
-                          className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm"
-                        >
-                          <div className="flex flex-col items-center justify-center py-12">
-                            <svg
-                              className="animate-spin h-12 w-12 text-gold mb-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              />
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              />
-                            </svg>
-                            <p className="text-neutral-600 mb-2">{t('initializingPayment')}</p>
-                            <p className="text-sm text-neutral-500">{t('preparingOrder')}</p>
-                          </div>
-                        </motion.div>
-                      )}
+                      {shippingMethodConfirmed &&
+                        selectedPaymentMethod === 'stripe' &&
+                        !clientSecret && (
+                          <motion.div
+                            key="loading-payment"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm"
+                          >
+                            <div className="flex flex-col items-center justify-center py-12">
+                              <svg
+                                className="animate-spin h-12 w-12 text-gold mb-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                />
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                />
+                              </svg>
+                              <p className="text-neutral-600 mb-2">{t('initializingPayment')}</p>
+                              <p className="text-sm text-neutral-500">{t('preparingOrder')}</p>
+                            </div>
+                          </motion.div>
+                        )}
 
                       {/* Payment Form - Show for Stripe (with clientSecret) or PayPal (no clientSecret needed) */}
-                      {shippingMethodConfirmed && (selectedPaymentMethod === 'paypal' || (selectedPaymentMethod === 'stripe' && clientSecret)) && (
-                        <motion.div
-                          key="payment-form"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.3 }}
-                          className="space-y-6"
-                        >
-                          {/* Show selected shipping method summary */}
-                          <ShippingSummaryCard
-                            shippingMethod={{
-                              name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
-                              price: shippingCost,
-                              estimatedDays: getShippingMethodById(selectedShippingMethod)?.estimatedDays || '5-7 business days',
-                            }}
-                            shippingAddress={shippingAddress ? {
-                              firstName: shippingAddress.firstName,
-                              lastName: shippingAddress.lastName,
-                              addressLine1: shippingAddress.addressLine1,
-                              city: shippingAddress.city,
-                              state: shippingAddress.state,
-                              postalCode: shippingAddress.postalCode,
-                            } : undefined}
-                          />
-
-                          {/* Payment Method Selector */}
-                          <PaymentMethodSelector
-                            selectedMethod={selectedPaymentMethod}
-                            onMethodChange={setSelectedPaymentMethod}
-                          />
-
-                          {/* Conditional Payment Form - Stripe or PayPal */}
-                          {selectedPaymentMethod === 'stripe' ? (
-                            <StripeElementsWrapper
-                              clientSecret={clientSecret || ''}
-                              amount={totalWithShipping}
-                              currency={cartCurrency || 'USD'}
-                              onSuccess={onPaymentSuccess}
-                              onError={handlePaymentError}
-                              onBack={() => setShippingMethodConfirmed(false)}
-                            />
-                          ) : (
-                            <PayPalPayment
-                              orderId={orderId || ''}
-                              amount={totalWithShipping}
-                              currency={cartCurrency}
-                              items={items.map((item) => ({
-                                name: item.name || 'Product',
-                                quantity: item.quantity,
-                                price: item.priceAtAdd || 0,
-                              }))}
-                              shippingAddress={shippingAddress}
-                              onSuccess={async (paypalOrderId) => {
-                                // Handle PayPal payment success
-                                toast.success('Payment successful! Redirecting...');
-                                router.push(`/orders/${orderId}`);
+                      {shippingMethodConfirmed &&
+                        (selectedPaymentMethod === 'paypal' ||
+                          (selectedPaymentMethod === 'stripe' && clientSecret)) && (
+                          <motion.div
+                            key="payment-form"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="space-y-6"
+                          >
+                            {/* Show selected shipping method summary */}
+                            <ShippingSummaryCard
+                              shippingMethod={{
+                                name:
+                                  getShippingMethodById(selectedShippingMethod)?.name ||
+                                  'Standard Shipping',
+                                price: shippingCost,
+                                estimatedDays:
+                                  getShippingMethodById(selectedShippingMethod)?.estimatedDays ||
+                                  '5-7 business days',
                               }}
-                              onError={handlePaymentError}
-                              onBack={() => setShippingMethodConfirmed(false)}
+                              shippingAddress={
+                                shippingAddress
+                                  ? {
+                                      firstName: shippingAddress.firstName,
+                                      lastName: shippingAddress.lastName,
+                                      addressLine1: shippingAddress.addressLine1,
+                                      city: shippingAddress.city,
+                                      state: shippingAddress.state,
+                                      postalCode: shippingAddress.postalCode,
+                                    }
+                                  : undefined
+                              }
                             />
-                          )}
-                        </motion.div>
-                      )}
+
+                            {/* Payment Method Selector */}
+                            <PaymentMethodSelector
+                              selectedMethod={selectedPaymentMethod}
+                              onMethodChange={setSelectedPaymentMethod}
+                            />
+
+                            {/* Conditional Payment Form - Stripe or PayPal */}
+                            {selectedPaymentMethod === 'stripe' ? (
+                              <StripeElementsWrapper
+                                clientSecret={clientSecret || ''}
+                                amount={totalWithShipping}
+                                currency={cartCurrency || 'USD'}
+                                onSuccess={onPaymentSuccess}
+                                onError={handlePaymentError}
+                                onBack={() => setShippingMethodConfirmed(false)}
+                              />
+                            ) : (
+                              <PayPalPayment
+                                orderId={orderId || ''}
+                                amount={totalWithShipping}
+                                currency={cartCurrency}
+                                items={items.map((item) => ({
+                                  name: item.name || 'Product',
+                                  quantity: item.quantity,
+                                  price: item.priceAtAdd || 0,
+                                }))}
+                                shippingAddress={shippingAddress}
+                                onSuccess={async (paypalOrderId) => {
+                                  // Handle PayPal payment success
+                                  toast.success('Payment successful! Redirecting...');
+                                  router.push(`/orders/${orderId}`);
+                                }}
+                                onError={handlePaymentError}
+                                onBack={() => setShippingMethodConfirmed(false)}
+                              />
+                            )}
+                          </motion.div>
+                        )}
                     </AnimatePresence>
                   </motion.div>
                 )}
@@ -846,12 +937,8 @@ export default function CheckoutPage() {
                   <h3 className="text-xl font-serif font-bold text-black mb-2">
                     {t('processingOrder')}
                   </h3>
-                  <p className="text-neutral-600 mb-4">
-                    {t('pleaseWait')}
-                  </p>
-                  <p className="text-sm text-neutral-500">
-                    {t('doNotClose')}
-                  </p>
+                  <p className="text-neutral-600 mb-4">{t('pleaseWait')}</p>
+                  <p className="text-sm text-neutral-500">{t('doNotClose')}</p>
                 </div>
               </motion.div>
             </motion.div>
