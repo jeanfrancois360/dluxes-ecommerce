@@ -1595,4 +1595,50 @@ export class ProductsService {
       this.logger.error(`Failed to delete product ${productId} from Meilisearch: ${error.message}`);
     });
   }
+
+  // ==================== POD VALIDATION ====================
+
+  /**
+   * Validate if a POD product can be fulfilled
+   * Checks if seller has configured Gelato credentials
+   */
+  async validatePodFulfillment(productId: string): Promise<{
+    canFulfill: boolean;
+    reason?: string;
+  }> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: { store: true },
+    });
+
+    if (!product) {
+      return {
+        canFulfill: false,
+        reason: 'Product not found',
+      };
+    }
+
+    // Not a POD product - can always fulfill
+    if (product.fulfillmentType !== 'GELATO_POD') {
+      return { canFulfill: true };
+    }
+
+    // Check if seller has Gelato configured
+    const gelatoSettings = await this.prisma.sellerGelatoSettings.findUnique({
+      where: { storeId: product.storeId },
+    });
+
+    if (!gelatoSettings?.isEnabled || !gelatoSettings?.isVerified) {
+      this.logger.warn(
+        `POD product ${productId} from store ${product.storeId} cannot be fulfilled - seller has not configured Gelato`
+      );
+      return {
+        canFulfill: false,
+        reason:
+          'This print-on-demand product is temporarily unavailable. The seller is setting up their production service.',
+      };
+    }
+
+    return { canFulfill: true };
+  }
 }

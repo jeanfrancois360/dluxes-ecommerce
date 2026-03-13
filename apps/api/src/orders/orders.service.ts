@@ -640,6 +640,7 @@ export class OrdersService {
       billingAddressId,
       paymentMethod,
       notes,
+      shippingMethodId,
       currency: orderCurrency,
       idempotencyKey,
     } = createOrderDto;
@@ -757,7 +758,7 @@ export class OrdersService {
       Number(subtotal)
     );
 
-    // Get shipping options and use standard by default
+    // Get shipping options
     const shippingOptions = await this.shippingTaxService.calculateShippingOptions(
       {
         country: shippingAddress?.country || 'US',
@@ -772,7 +773,22 @@ export class OrdersService {
       Number(subtotal)
     );
 
-    const selectedShipping = shippingOptions[0]; // Default to standard shipping
+    // ✅ Use selected shipping method if provided, otherwise default to first option
+    let selectedShipping = shippingOptions[0]; // Default fallback
+    if (shippingMethodId) {
+      const foundMethod = shippingOptions.find((opt) => opt.id === shippingMethodId);
+      if (foundMethod) {
+        selectedShipping = foundMethod;
+        this.logger.log(
+          `✅ Using selected shipping method: ${foundMethod.name} ($${foundMethod.price})`
+        );
+      } else {
+        this.logger.warn(
+          `⚠️ Shipping method '${shippingMethodId}' not found. Using default: ${selectedShipping.name}`
+        );
+      }
+    }
+
     let shipping = new Decimal(selectedShipping?.price || 15);
 
     // Get real-time Gelato shipping for POD items
@@ -1175,17 +1191,30 @@ export class OrdersService {
           );
         }
 
-        // All POD items ready - proceed with submission
+        // All POD items ready - proceed with submission (ALL-OR-NOTHING)
         const result = await this.gelatoOrdersService.submitAllPodItems(id);
-        if (result.submitted > 0) {
-          this.logger.log(
-            `✅ Gelato POD items submitted for order ${id}: ${result.submitted}/${result.results.length} items`
+
+        // ✅ Check if ALL items submitted successfully
+        if (!result.success) {
+          const failedItems = result.results.filter((r) => r.status === 'failed');
+          const errorList = failedItems
+            .map((item) => `• ${item.productName}: ${item.error}`)
+            .join('\n');
+
+          this.logger.error(
+            `❌ Gelato submission failed for order ${id}: ${result.failed} of ${result.results.length} items failed`
           );
-        } else if (result.results.length > 0) {
-          this.logger.warn(
-            `⚠️ No Gelato POD items submitted for order ${id} despite validation passing - this should not happen`
+
+          throw new BadRequestException(
+            `Cannot process order: ${result.failed} POD item(s) failed to submit to Gelato.\n\n` +
+              `Failed items:\n${errorList}\n\n` +
+              `Please ensure all sellers have configured their Gelato integration and try again.`
           );
         }
+
+        this.logger.log(
+          `✅ All Gelato POD items submitted successfully for order ${id}: ${result.submitted} item(s)`
+        );
       } catch (gelatoError) {
         this.logger.error(`❌ Gelato POD submission failed for order ${id}:`, gelatoError.message);
         // Re-throw to prevent status change if POD submission fails

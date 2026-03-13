@@ -329,7 +329,22 @@ export class GelatoOrdersService {
     };
   }
 
-  async submitAllPodItems(orderId: string) {
+  /**
+   * Submit all POD items to Gelato
+   * ✅ ALL-OR-NOTHING: Returns success only if ALL items submitted successfully
+   */
+  async submitAllPodItems(orderId: string): Promise<{
+    success: boolean;
+    submitted: number;
+    failed: number;
+    results: Array<{
+      itemId: string;
+      productName: string;
+      status: 'submitted' | 'failed';
+      podOrderId?: string;
+      error?: string;
+    }>;
+  }> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -349,55 +364,73 @@ export class GelatoOrdersService {
     const podItems = order.items.filter(
       (item) => item.product.fulfillmentType === FulfillmentType.GELATO_POD
     );
-    if (podItems.length === 0) return { submitted: 0, results: [] };
+
+    if (podItems.length === 0) {
+      return { success: true, submitted: 0, failed: 0, results: [] };
+    }
 
     const results = [];
+    let hasFailures = false;
+
     for (const item of podItems) {
       try {
         const storeId = item.product.storeId;
 
-        // FIXED: Query SellerGelatoSettings directly by storeId (relation doesn't exist in schema)
+        // Check if seller has Gelato configured (should have been validated earlier, but double-check)
         const sellerGelatoSettings = await this.prisma.sellerGelatoSettings.findUnique({
           where: { storeId },
         });
 
-        // Check if seller has Gelato enabled
-        if (!sellerGelatoSettings?.isEnabled) {
-          this.logger.warn(
-            `Skipping item ${item.id} - Seller has not enabled Gelato integration. ` +
+        if (!sellerGelatoSettings?.isEnabled || !sellerGelatoSettings?.isVerified) {
+          hasFailures = true;
+          this.logger.error(
+            `❌ Cannot submit item ${item.id} - Seller has not configured Gelato. ` +
               `Product: "${item.product.name}", Store: "${item.product.store?.name || 'Unknown'}"`
           );
           results.push({
             itemId: item.id,
-            success: false,
-            error: 'Seller has not enabled Gelato integration',
-            skipped: true,
+            productName: item.product.name,
+            status: 'failed',
+            error: `Seller "${item.product.store?.name || 'Unknown'}" has not configured Gelato`,
           });
           continue;
         }
 
         // Submit to Gelato using seller's credentials
         const result = await this.submitOrderToGelato(orderId, item.id);
-        results.push({ itemId: item.id, success: true, podOrderId: result.podOrder.id });
+        results.push({
+          itemId: item.id,
+          productName: item.product.name,
+          status: 'submitted',
+          podOrderId: result.podOrder.id,
+        });
         this.logger.log(
-          `✅ Submitted item ${item.id} to Gelato for seller "${item.product.store?.name}"`
+          `✅ Submitted item ${item.id} (${item.product.name}) to Gelato for seller "${item.product.store?.name}"`
         );
       } catch (error) {
-        this.logger.error(`❌ Failed to submit item ${item.id}: ${error.message}`);
-        results.push({ itemId: item.id, success: false, error: error.message });
+        hasFailures = true;
+        this.logger.error(
+          `❌ Failed to submit item ${item.id} (${item.product.name}): ${error.message}`
+        );
+        results.push({
+          itemId: item.id,
+          productName: item.product.name,
+          status: 'failed',
+          error: error.message,
+        });
       }
     }
 
-    const submitted = results.filter((r) => r.success).length;
-    const skipped = results.filter((r) => r.skipped).length;
+    const submitted = results.filter((r) => r.status === 'submitted').length;
+    const failed = results.filter((r) => r.status === 'failed').length;
 
-    if (skipped > 0) {
-      this.logger.warn(
-        `⚠️ Order ${orderId}: ${skipped} POD item(s) skipped because seller(s) have not configured Gelato`
-      );
-    }
-
-    return { submitted, skipped, results };
+    // ✅ Return success only if ALL items submitted
+    return {
+      success: !hasFailures,
+      submitted,
+      failed,
+      results,
+    };
   }
 
   async cancelPodOrder(podOrderId: string, reason?: string) {
