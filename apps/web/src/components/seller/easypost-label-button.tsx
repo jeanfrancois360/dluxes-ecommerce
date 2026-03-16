@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+  Badge,
+} from '@nextpik/ui';
 import { Loader2, Truck, Download, ExternalLink, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';

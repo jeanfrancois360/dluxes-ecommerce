@@ -1,9 +1,14 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Button,
+} from '@nextpik/ui';
 import {
   Package,
   Truck,
@@ -37,13 +42,13 @@ export function EasyPostTrackingDisplay({
     return (
       <Card>
         <CardHeader>
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-4 w-48 mt-2" />
+          <div className="h-6 w-32 bg-neutral-200 rounded animate-pulse" />
+          <div className="h-4 w-48 mt-2 bg-neutral-200 rounded animate-pulse" />
         </CardHeader>
         <CardContent className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
+          <div className="h-12 w-full bg-neutral-200 rounded animate-pulse" />
+          <div className="h-12 w-full bg-neutral-200 rounded animate-pulse" />
+          <div className="h-12 w-full bg-neutral-200 rounded animate-pulse" />
         </CardContent>
       </Card>
     );
