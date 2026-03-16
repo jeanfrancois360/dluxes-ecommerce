@@ -19,6 +19,7 @@
     "test:e2e:cov": "jest --config jest-e2e.config.js --coverage"
   },
   "dependencies": {
+    "@easypost/api": "^8.8.0",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^10.4.22",
     "@nestjs/config": "^3.3.0",

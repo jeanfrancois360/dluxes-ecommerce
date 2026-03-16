@@ -2,7 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
 import { DhlRatesService } from '../integrations/dhl/dhl-rates.service';
+import { EasyPostRatesService } from '../integrations/easypost/easypost-rates.service';
 import { ShippingService } from '../shipping/shipping.service';
+import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 
 export interface ShippingAddress {
   country: string;
@@ -37,6 +39,9 @@ export interface CartItem {
   quantity: number;
   price: number;
   weight?: number; // in grams
+  fulfillmentType?: 'SELF_FULFILLED' | 'GELATO_POD';
+  gelatoProductUid?: string;
+  storeId?: string; // Required for Gelato quotes (seller-specific)
 }
 
 @Injectable()
@@ -47,39 +52,134 @@ export class ShippingTaxService {
     private readonly configService: ConfigService,
     private readonly settingsService: SettingsService,
     private readonly dhlRatesService: DhlRatesService,
-    private readonly shippingService: ShippingService
+    private readonly easyPostRatesService: EasyPostRatesService,
+    private readonly shippingService: ShippingService,
+    private readonly gelatoOrdersService: GelatoOrdersService
   ) {}
 
   /**
    * Calculate available shipping options based on address and cart
-   * CASCADE FALLBACK: DHL → Zones → Manual
+   * CASCADE FALLBACK: Gelato (POD) → EasyPost → DHL → Zones → Manual
+   *
+   * - TIER 0 (Gelato): For POD items, gets real-time shipping quotes
+   *   - Pure POD carts: Returns Gelato shipping only
+   *   - Mixed carts: Combines Gelato cost + fallback shipping for regular items
+   * - TIER 1 (EasyPost): If enabled, returns carrier rates
+   * - TIER 2 (DHL): If mode is 'dhl_api' or 'hybrid'
+   * - TIER 3 (Zones/Manual): Final fallback based on settings
    */
   async calculateShippingOptions(
     address: ShippingAddress,
     items: CartItem[],
     subtotal: number
   ): Promise<ShippingOption[]> {
-    // Calculate total weight for zone/DHL calculations
-    const totalWeightGrams = items.reduce(
+    // TIER 0: Try Gelato for POD items first (highest priority for POD)
+    let gelatoCost = 0;
+    let podItems: CartItem[] = [];
+    let nonPodItems: CartItem[] = [];
+
+    try {
+      const gelatoResult = await this.calculateGelatoShipping(address, items);
+
+      if (gelatoResult && gelatoResult.amount > 0) {
+        // Separate POD and non-POD items
+        podItems = items.filter(
+          (item) => item.fulfillmentType === 'GELATO_POD' && item.gelatoProductUid
+        );
+        nonPodItems = items.filter((item) => item.fulfillmentType !== 'GELATO_POD');
+
+        const isPurePodCart = podItems.length === items.length;
+
+        if (isPurePodCart) {
+          // Pure POD cart: Return only Gelato shipping options
+          this.logger.log(
+            `[Gelato Shipping] Pure POD cart detected. Using Gelato rates: $${gelatoResult.amount.toFixed(2)}`
+          );
+
+          return [
+            {
+              id: 'gelato-standard',
+              name: 'Gelato POD Shipping',
+              description: '5-7 business days (Print-on-Demand)',
+              price: gelatoResult.amount,
+              estimatedDays: 7,
+              carrier: 'Gelato',
+            },
+          ];
+        } else {
+          // Mixed cart: Store Gelato cost to add to fallback options later
+          gelatoCost = gelatoResult.amount;
+          this.logger.log(
+            `[Gelato Shipping] Mixed cart detected. Gelato portion: $${gelatoCost.toFixed(2)}, ` +
+              `calculating fallback shipping for ${nonPodItems.length} non-POD items...`
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`[Gelato Shipping] Failed to get Gelato quote: ${error.message}`);
+      // Continue to next tier with all items
+      nonPodItems = items;
+    }
+
+    // For mixed carts, calculate weight of non-POD items only
+    // For non-POD carts, use all items
+    const itemsForShipping = gelatoCost > 0 ? nonPodItems : items;
+    const totalWeightGrams = itemsForShipping.reduce(
       (sum, item) => sum + (item.weight || 500) * item.quantity,
       0
     );
     const totalWeightKg = totalWeightGrams / 1000;
+    const totalWeightOz = totalWeightGrams / 28.35; // Convert to ounces for EasyPost
 
     // Get shipping mode from settings
     const shippingMode = await this.settingsService.getShippingMode();
 
-    // STEP 1: Try DHL API if mode is 'dhl_api' or 'hybrid'
+    // Helper function to add Gelato cost to shipping options (for mixed carts)
+    const addGelatoCost = (options: ShippingOption[]): ShippingOption[] => {
+      if (gelatoCost === 0) return options;
+
+      return options.map((option) => ({
+        ...option,
+        name: `${option.name} + Gelato POD`,
+        description: `${option.description} (includes POD shipping)`,
+        price: option.price + gelatoCost,
+      }));
+    };
+
+    // TIER 1: Try EasyPost first (if enabled)
+    try {
+      const easypostEnabled = await this.settingsService.getSetting('easypost_enabled');
+      if (easypostEnabled?.value === true) {
+        const easypostOptions = await this.calculateEasyPostShippingOptions(
+          address,
+          itemsForShipping,
+          totalWeightOz
+        );
+
+        if (easypostOptions.length > 0) {
+          this.logger.log(`[EasyPost] Using EasyPost rates (${easypostOptions.length} options)`);
+          return addGelatoCost(easypostOptions);
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`[EasyPost] Failed, falling back to DHL/zones: ${error.message}`);
+    }
+
+    // TIER 2: Try DHL API if mode is 'dhl_api' or 'hybrid'
     if (shippingMode === 'dhl_api' || shippingMode === 'hybrid') {
       try {
-        const dhlOptions = await this.calculateDhlShippingOptions(address, items, subtotal);
+        const dhlOptions = await this.calculateDhlShippingOptions(
+          address,
+          itemsForShipping,
+          subtotal
+        );
 
         if (dhlOptions.length > 0) {
           // DHL API succeeded
           if (shippingMode === 'dhl_api') {
             // DHL-only mode: return DHL rates only
             this.logger.log(`[DHL API] Using DHL Express rates (${dhlOptions.length} options)`);
-            return dhlOptions;
+            return addGelatoCost(dhlOptions);
           } else {
             // Hybrid mode: combine DHL with zones/manual fallback
             const fallbackOptions = await this.getZonesOrManualRates(
@@ -90,7 +190,7 @@ export class ShippingTaxService {
             this.logger.log(
               `[Hybrid] ${dhlOptions.length} DHL + ${fallbackOptions.length} fallback options`
             );
-            return [...dhlOptions, ...fallbackOptions];
+            return addGelatoCost([...dhlOptions, ...fallbackOptions]);
           }
         } else {
           // DHL returned no options
@@ -115,7 +215,8 @@ export class ShippingTaxService {
 
     // STEP 2: Try Shipping Zones or Manual Rates (fallback chain)
     // Only reaches here if: mode is 'manual', OR mode is 'hybrid' and DHL failed
-    return this.getZonesOrManualRates(address, subtotal, totalWeightKg);
+    const fallbackOptions = await this.getZonesOrManualRates(address, subtotal, totalWeightKg);
+    return addGelatoCost(fallbackOptions);
   }
 
   /**
@@ -175,6 +276,92 @@ export class ShippingTaxService {
   }
 
   /**
+   * Calculate shipping options using EasyPost API
+   */
+  private async calculateEasyPostShippingOptions(
+    address: ShippingAddress,
+    items: CartItem[],
+    weightOz: number
+  ): Promise<ShippingOption[]> {
+    // Check if EasyPost is enabled
+    if (!this.easyPostRatesService) {
+      return [];
+    }
+
+    // Get origin address from settings
+    let fromAddress = {
+      street1: '123 Main St',
+      city: 'New York',
+      state: 'NY',
+      zip: '10001',
+      country: 'US',
+    };
+
+    try {
+      const street1Setting = await this.settingsService.getSetting('origin_street1');
+      const citySetting = await this.settingsService.getSetting('origin_city');
+      const stateSetting = await this.settingsService.getSetting('origin_state');
+      const postalSetting = await this.settingsService.getSetting('origin_postal_code');
+      const countrySetting = await this.settingsService.getSetting('origin_country');
+
+      if (street1Setting?.value) fromAddress.street1 = String(street1Setting.value);
+      if (citySetting?.value) fromAddress.city = String(citySetting.value);
+      if (stateSetting?.value) fromAddress.state = String(stateSetting.value);
+      if (postalSetting?.value) fromAddress.zip = String(postalSetting.value);
+      if (countrySetting?.value) fromAddress.country = String(countrySetting.value);
+    } catch (error) {
+      this.logger.warn('Failed to get origin address from settings, using defaults');
+    }
+
+    // Prepare destination address
+    const toAddress = {
+      street1: '123 Customer St', // Placeholder, not needed for rate shopping
+      city: address.city || 'Unknown',
+      state: address.state || '',
+      zip: address.postalCode || '',
+      country: address.country || 'US',
+    };
+
+    // Prepare parcel (default dimensions for rate shopping)
+    const parcel = {
+      length: 10,
+      width: 8,
+      height: 4,
+      weight: Math.max(1, weightOz), // Minimum 1oz
+    };
+
+    try {
+      // Get rates from EasyPost
+      const easypostResult = await this.easyPostRatesService.getLowestRate(
+        {
+          fromAddress,
+          toAddress,
+          parcel,
+        },
+        undefined, // no carrier filter
+        undefined // no service filter
+      );
+
+      // Return top 3 rates (cheapest to most expensive)
+      const topRates = easypostResult.allRates.slice(0, 3);
+
+      return topRates.map((rate) => ({
+        id: rate.id,
+        name: `${rate.carrier} ${rate.service}`,
+        description: rate.deliveryDays
+          ? `${rate.deliveryDays} business days`
+          : 'Estimated delivery time varies',
+        price: rate.rate,
+        estimatedDays: rate.deliveryDays || 7,
+        carrier: rate.carrier,
+      }));
+    } catch (error) {
+      this.logger.error('EasyPost rate fetch failed:', error.message);
+      return [];
+    }
+  }
+
+  /**
    * Calculate shipping options using DHL Express API
    * SECURITY: Uses environment variables only
    */
@@ -231,6 +418,106 @@ export class ShippingTaxService {
       estimatedDays: rate.estimatedDays,
       carrier: 'DHL Express',
     }));
+  }
+
+  /**
+   * Calculate Gelato shipping quote for POD items
+   * Returns null if no POD items or quote fails
+   * Handles multi-seller carts by getting quotes per seller
+   */
+  private async calculateGelatoShipping(
+    address: ShippingAddress,
+    items: CartItem[]
+  ): Promise<{ amount: number; storeBreakdown: Map<string, number> } | null> {
+    // Filter POD items
+    const podItems = items.filter(
+      (item) => item.fulfillmentType === 'GELATO_POD' && item.gelatoProductUid
+    );
+
+    if (podItems.length === 0) {
+      return null;
+    }
+
+    this.logger.log(`[Gelato Shipping] Found ${podItems.length} POD items in cart`);
+
+    // Group by store (seller) to get per-seller quotes
+    const storeGroups = new Map<string, CartItem[]>();
+    for (const item of podItems) {
+      const storeId = item.storeId || 'platform';
+      if (!storeGroups.has(storeId)) {
+        storeGroups.set(storeId, []);
+      }
+      storeGroups.get(storeId)!.push(item);
+    }
+
+    let totalShipping = 0;
+    const storeBreakdown = new Map<string, number>();
+    const unconfiguredStores: string[] = [];
+
+    // Get quote for each seller's items
+    for (const [storeId, storeItems] of storeGroups) {
+      try {
+        const gelatoQuote = await this.gelatoOrdersService.getQuote({
+          items: storeItems.map((item) => ({
+            productUid: item.gelatoProductUid!,
+            quantity: item.quantity,
+          })),
+          country: address.country,
+          state: address.state,
+          city: address.city,
+          postalCode: address.postalCode,
+          storeId: storeId !== 'platform' ? storeId : undefined,
+        });
+
+        // Handle null quote (seller hasn't configured Gelato)
+        if (gelatoQuote === null) {
+          unconfiguredStores.push(storeId);
+          this.logger.warn(
+            `[Gelato Shipping] Store ${storeId} has POD items but no Gelato configuration. ` +
+              `Will use fallback shipping rates.`
+          );
+          continue;
+        }
+
+        if (gelatoQuote?.shippingCost?.amount) {
+          const shippingCost = parseFloat(gelatoQuote.shippingCost.amount);
+          totalShipping += shippingCost;
+          storeBreakdown.set(storeId, shippingCost);
+
+          this.logger.log(
+            `[Gelato Shipping] Quote for store ${storeId}: $${shippingCost.toFixed(2)} ` +
+              `(${storeItems.length} items)`
+          );
+        }
+      } catch (error) {
+        this.logger.warn(
+          `[Gelato Shipping] Failed to get quote for store ${storeId}: ${error.message}. ` +
+            `Will use fallback rates.`
+        );
+        // Continue with other stores
+      }
+    }
+
+    // If all stores failed/unconfigured, return null to use fallback
+    if (storeBreakdown.size === 0) {
+      this.logger.warn(
+        `[Gelato Shipping] No valid Gelato quotes obtained. Using fallback shipping rates.`
+      );
+      return null;
+    }
+
+    // Log warning if some stores are unconfigured
+    if (unconfiguredStores.length > 0) {
+      this.logger.warn(
+        `[Gelato Shipping] ${unconfiguredStores.length} store(s) with POD items have no Gelato config: ` +
+          `${unconfiguredStores.join(', ')}. Their items use fallback rates.`
+      );
+    }
+
+    return {
+      amount: totalShipping,
+      storeBreakdown,
+    };
   }
 
   /**

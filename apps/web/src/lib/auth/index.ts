@@ -19,7 +19,6 @@ export { AuthProvider } from '@/providers/auth-provider';
 // Components
 export { ProtectedRoute } from '@/components/protected-route';
 export { AdminRoute, AccessDenied } from '@/components/admin-route';
-export { ToastListener } from '@/components/toast-listener';
 
 // Utilities
 export {

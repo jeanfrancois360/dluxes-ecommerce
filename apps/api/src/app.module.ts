@@ -42,6 +42,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { CreditsModule } from './credits/credits.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { DhlModule } from './integrations/dhl/dhl.module';
+import { EasyPostModule } from './integrations/easypost/easypost.module';
 import { LoggerModule } from './logger/logger.module';
 import { HealthModule } from './health/health.module';
 import { HotDealsModule } from './hot-deals/hot-deals.module';
@@ -73,6 +74,7 @@ import { SellerCreditsCronService } from './cron/seller-credits.cron';
     LoggerModule,
     HealthModule,
     DhlModule,
+    EasyPostModule,
     AuthModule,
     UsersModule,
     ProductsModule,
