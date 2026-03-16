@@ -1192,6 +1192,10 @@ model Order {
   deliveryConfirmation DeliveryConfirmation?
   delivery             Delivery?
 
+  // Shipping provider tracking
+  shippingProvider     String? // 'EASYPOST', 'DHL', 'GELATO', 'MANUAL'
+  shippingProviderData Json? // Provider-specific metadata
+
   // Multi-Vendor Shipments
   sellerShipments SellerShipment[]
 
@@ -1200,6 +1204,9 @@ model Order {
 
   // POD
   podOrders GelatoPodOrder[]
+
+  // EasyPost Shipments
+  easypostShipments EasyPostShipment[]
 
   @@index([userId])
   @@index([orderNumber])
@@ -3624,4 +3631,148 @@ enum ResponseStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+// ============================================================================
+// EasyPost Shipping Integration
+// ============================================================================
+
+// EasyPost Shipment - stores label purchases and tracking
+model EasyPostShipment {
+  id                    String                   @id @default(cuid())
+  orderId               String
+  orderItemId           String?
+  sellerId              String
+  storeId               String?
+
+  // EasyPost IDs
+  easypostShipmentId    String                   @unique
+  easypostRateId        String?
+  easypostTrackerId     String?
+  easypostInsuranceId   String?
+
+  // Carrier & Service
+  carrier               String // e.g., "USPS", "UPS", "FedEx"
+  service               String // e.g., "Priority", "Ground", "Express"
+
+  // Rates
+  rate                  Float
+  currency              String                   @default("USD")
+  retailRate            Float?
+  listRate              Float?
+
+  // Label
+  labelUrl              String?
+  labelFormat           String                   @default("PNG") // PNG, PDF, ZPL, EPL2
+  labelSize             String? // e.g., "4x6"
+
+  // Tracking
+  trackingNumber        String?
+  trackingUrl           String? // Public tracking URL
+  estimatedDeliveryDate DateTime?
+  deliveryDays          Int?
+
+  // Status
+  status                EasyPostShipmentStatus   @default(PENDING)
+  refundStatus          EasyPostRefundStatus?
+
+  // Addresses (JSON for flexibility)
+  fromAddress           Json
+  toAddress             Json
+  parcel                Json
+  customsInfo           Json? // For international shipments
+
+  // Insurance
+  insuredAmount         Float?
+  insuranceFee          Float?
+
+  // Shipping options used
+  options               Json?
+
+  // Fees breakdown
+  postageFee            Float?
+
+  // Timestamps
+  purchasedAt           DateTime?
+  refundedAt            DateTime?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  // Relations
+  order                 Order                    @relation(fields: [orderId], references: [id])
+  trackingEvents        EasyPostTrackingEvent[]
+
+  @@index([orderId])
+  @@index([sellerId])
+  @@index([trackingNumber])
+  @@index([easypostShipmentId])
+  @@index([status])
+  @@map("easypost_shipments")
+}
+
+enum EasyPostShipmentStatus {
+  PENDING          // Created but not purchased
+  RATED            // Rates retrieved
+  PURCHASED        // Label purchased
+  IN_TRANSIT       // Package picked up
+  OUT_FOR_DELIVERY
+  DELIVERED
+  RETURN_TO_SENDER
+  FAILURE
+  CANCELLED
+  UNKNOWN
+}
+
+enum EasyPostRefundStatus {
+  SUBMITTED
+  REFUNDED
+  REJECTED
+}
+
+// Tracking Events - stores tracking history
+model EasyPostTrackingEvent {
+  id           String           @id @default(cuid())
+  shipmentId   String
+
+  // Event details
+  status       String // pre_transit, in_transit, out_for_delivery, delivered, etc.
+  statusDetail String? // More specific status
+  message      String // Carrier message
+  description  String?
+
+  // Location
+  city    String?
+  state   String?
+  country String?
+  zip     String?
+
+  // Timing
+  eventDatetime DateTime
+  source        String? // Carrier name
+  carrierCode   String?
+
+  createdAt DateTime @default(now())
+
+  shipment EasyPostShipment @relation(fields: [shipmentId], references: [id])
+
+  @@index([shipmentId])
+  @@index([eventDatetime])
+  @@map("easypost_tracking_events")
+}
+
+// Webhook Event Log - for idempotency
+model EasyPostWebhookLog {
+  id           String    @id @default(cuid())
+  eventId      String    @unique // EasyPost event ID (evt_xxx)
+  eventType    String // tracker.created, tracker.updated, etc.
+  status       String    @default("PENDING") // PENDING, PROCESSED, FAILED
+  payload      Json
+  errorMessage String?
+  processedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([eventId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("easypost_webhook_logs")
 }

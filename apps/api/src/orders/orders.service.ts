@@ -439,6 +439,10 @@ export class OrdersService {
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
+        weight: item.product?.weight || undefined,
+        fulfillmentType: item.product?.fulfillmentType || undefined,
+        gelatoProductUid: item.product?.gelatoProductUid || undefined,
+        storeId: item.product?.storeId || undefined,
       })),
       Number(subtotal)
     );
@@ -736,6 +740,10 @@ export class OrdersService {
         price: item.price,
         total: itemTotal,
         image: product.heroImage,
+        weight: product.weight || undefined,
+        fulfillmentType: product.fulfillmentType || undefined,
+        gelatoProductUid: product.gelatoProductUid || undefined,
+        storeId: product.storeId || undefined,
       });
 
       // Track POD items for Gelato shipping calculation
@@ -769,6 +777,10 @@ export class OrdersService {
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
+        weight: item.weight || undefined,
+        fulfillmentType: item.fulfillmentType || undefined,
+        gelatoProductUid: item.gelatoProductUid || undefined,
+        storeId: item.storeId || undefined,
       })),
       Number(subtotal)
     );
@@ -1761,6 +1773,10 @@ export class OrdersService {
           quantity: item.quantity,
           price: verifiedPrice,
           total: itemTotal,
+          weight: product.weight || undefined,
+          fulfillmentType: product.fulfillmentType || undefined,
+          gelatoProductUid: product.gelatoProductUid || undefined,
+          storeId: product.storeId || undefined,
         });
       }
 

@@ -35,6 +35,7 @@ import { CurrencySettingsSection } from '@/components/settings/currency-settings
 import { DeliverySettingsSection } from '@/components/settings/delivery-settings';
 import { TaxSettingsSection } from '@/components/settings/tax-settings';
 import { ShippingSettingsSection } from '@/components/settings/shipping-settings';
+import { EasyPostSettingsSection } from '@/components/settings/easypost-settings';
 import { FulfillmentSettingsSection } from '@/components/settings/fulfillment-settings';
 import { SecuritySettingsSection } from '@/components/settings/security-settings';
 import { NotificationSettingsSection } from '@/components/settings/notification-settings';
@@ -107,9 +108,15 @@ function SettingsPageContent() {
       description: t('tabs.shipping.description'),
     },
     {
+      value: 'easypost',
+      label: 'EasyPost Shipping',
+      icon: Truck,
+      description: 'Multi-carrier shipping with 100+ carriers worldwide',
+    },
+    {
       value: 'fulfillment',
       label: 'Fulfillment',
-      icon: Truck,
+      icon: Package,
       description: 'Configure POD and order fulfillment settings',
     },
     {
@@ -277,6 +284,10 @@ function SettingsPageContent() {
 
             <TabsContent value="shipping" className="mt-0">
               <ShippingSettingsSection />
+            </TabsContent>
+
+            <TabsContent value="easypost" className="mt-0">
+              <EasyPostSettingsSection />
             </TabsContent>
 
             <TabsContent value="fulfillment" className="mt-0">
