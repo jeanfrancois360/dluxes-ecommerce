@@ -73,11 +73,20 @@ export function EasyPostSettingsSection() {
         'easypost_default_carriers',
       ];
 
-      const promises = settingsToLoad.map((key) =>
-        fetch(`/api/v1/settings/${key}`, { credentials: 'include' })
-          .then((res) => (res.ok ? res.json() : null))
-          .catch(() => null)
-      );
+      const promises = settingsToLoad.map(async (key) => {
+        try {
+          const res = await fetch(`/api/v1/settings/${key}`, { credentials: 'include' });
+          if (res.status === 401) {
+            throw new Error('AUTHENTICATION_REQUIRED');
+          }
+          return res.ok ? res.json() : null;
+        } catch (error: any) {
+          if (error.message === 'AUTHENTICATION_REQUIRED') {
+            throw error;
+          }
+          return null;
+        }
+      });
 
       const results = await Promise.all(promises);
 
@@ -89,9 +98,13 @@ export function EasyPostSettingsSection() {
       });
 
       setSettings((prev) => ({ ...prev, ...loadedSettings }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load EasyPost settings:', error);
-      toast.error('Failed to load settings');
+      if (error.message === 'AUTHENTICATION_REQUIRED') {
+        toast.error('Please log in as admin to access EasyPost settings');
+      } else {
+        toast.error('Failed to load settings');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -107,30 +120,55 @@ export function EasyPostSettingsSection() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update setting');
+        const errorData = await response.json().catch(() => ({}));
+
+        // Handle specific error cases
+        if (response.status === 401) {
+          throw new Error('Please log in as admin to save settings');
+        } else if (response.status === 403) {
+          throw new Error('You do not have permission to modify settings');
+        }
+
+        const errorMessage = errorData.message || `Failed to update setting (${response.status})`;
+        console.error(`Failed to update ${key}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        });
+        throw new Error(errorMessage);
       }
 
       return true;
     } catch (error) {
       console.error(`Failed to update ${key}:`, error);
-      return false;
+      throw error; // Re-throw so handleSave can catch it
     }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const updates = Object.entries(settings).map(([key, value]) => updateSetting(key, value));
+      const updates = Object.entries(settings).map(async ([key, value]) => {
+        try {
+          await updateSetting(key, value);
+          return { key, success: true };
+        } catch (error: any) {
+          return { key, success: false, error: error.message };
+        }
+      });
 
       const results = await Promise.all(updates);
+      const failed = results.filter((r) => !r.success);
 
-      if (results.every((r) => r)) {
+      if (failed.length === 0) {
         toast.success('EasyPost settings saved successfully');
+      } else if (failed.length === results.length) {
+        toast.error(`Failed to save settings: ${failed[0].error}`);
       } else {
-        toast.error('Some settings failed to save');
+        toast.error(`Some settings failed to save: ${failed.map((f) => f.key).join(', ')}`);
       }
-    } catch (error) {
-      toast.error('Failed to save settings');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save settings');
     } finally {
       setIsSaving(false);
     }
