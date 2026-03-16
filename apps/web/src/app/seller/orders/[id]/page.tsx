@@ -418,10 +418,12 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                   <p className="font-medium text-black">
                     {order.user.firstName || ''} {order.user.lastName || ''}
                   </p>
-                  <p>{order.shippingAddress.street}</p>
+                  <p>{order.shippingAddress.address1 || order.shippingAddress.street}</p>
+                  {order.shippingAddress.address2 && <p>{order.shippingAddress.address2}</p>}
                   <p>
-                    {order.shippingAddress.city}, {order.shippingAddress.state}{' '}
-                    {order.shippingAddress.zipCode}
+                    {order.shippingAddress.city},{' '}
+                    {order.shippingAddress.province || order.shippingAddress.state}{' '}
+                    {order.shippingAddress.postalCode || order.shippingAddress.zipCode}
                   </p>
                   <p>{order.shippingAddress.country}</p>
                   {order.shippingAddress.phone && (
@@ -609,10 +611,19 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                                 name: storeData.name || 'Store',
                               }}
                               toAddress={{
-                                street1: order.shippingAddress.street,
+                                street1:
+                                  order.shippingAddress.address1 ||
+                                  order.shippingAddress.street ||
+                                  '',
                                 city: order.shippingAddress.city,
-                                state: order.shippingAddress.state,
-                                zip: order.shippingAddress.zipCode,
+                                state:
+                                  order.shippingAddress.province ||
+                                  order.shippingAddress.state ||
+                                  '',
+                                zip:
+                                  order.shippingAddress.postalCode ||
+                                  order.shippingAddress.zipCode ||
+                                  '',
                                 country: order.shippingAddress.country || 'US',
                                 name: `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim(),
                               }}
