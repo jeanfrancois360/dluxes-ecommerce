@@ -18,6 +18,7 @@ import useSWR from 'swr';
 import { PackingSlip } from '@/components/seller/packing-slip';
 import { MarkAsShippedModal } from '@/components/seller/mark-as-shipped-modal';
 import { ShipmentCard } from '@/components/seller/shipment-card';
+import { EasyPostLabelButton } from '@/components/seller/easypost-label-button';
 import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
@@ -557,7 +558,7 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                 <div className="flex-1">
                   <h2 className="text-lg font-semibold text-black mb-1">Create Shipment</h2>
                   <p className="text-sm text-neutral-600">
-                    Generate shipping labels and tracking via DHL API
+                    Generate shipping labels and tracking via DHL or EasyPost (100+ carriers)
                   </p>
                 </div>
               </div>
@@ -588,9 +589,47 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                       <>
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
                           <p className="text-sm text-blue-800">
-                            📦 Ready to ship! Click below to create a shipment with DHL tracking.
+                            📦 Ready to ship! Choose your preferred shipping method below.
                           </p>
                         </div>
+
+                        {/* EasyPost Multi-Carrier Shipping */}
+                        {order.shippingAddress && user && storeData && (
+                          <div className="mb-3">
+                            <EasyPostLabelButton
+                              orderId={order.id}
+                              sellerId={user.id}
+                              storeId={storeData.id}
+                              fromAddress={{
+                                street1: storeData.address?.street || '123 Seller St',
+                                city: storeData.address?.city || 'San Francisco',
+                                state: storeData.address?.state || 'CA',
+                                zip: storeData.address?.zipCode || '94107',
+                                country: storeData.address?.country || 'US',
+                                name: storeData.name || 'Store',
+                              }}
+                              toAddress={{
+                                street1: order.shippingAddress.street,
+                                city: order.shippingAddress.city,
+                                state: order.shippingAddress.state,
+                                zip: order.shippingAddress.zipCode,
+                                country: order.shippingAddress.country || 'US',
+                                name: `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim(),
+                              }}
+                              parcel={{
+                                length: 12,
+                                width: 8,
+                                height: 6,
+                                weight: order.items.reduce(
+                                  (sum, item) => sum + item.quantity * 16,
+                                  0
+                                ), // 16 oz per item default
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* DHL Shipping (Legacy) */}
                         <button
                           onClick={() => setShowMarkAsShippedModal(true)}
                           disabled={updating}
