@@ -676,9 +676,22 @@ export class OrdersService {
         );
         this.logger.log(`Returning existing order ${existingOrder.id}`);
 
+        // Convert Decimal fields to numbers for frontend compatibility
         return {
           success: true,
-          data: existingOrder,
+          data: {
+            ...existingOrder,
+            subtotal: Number(existingOrder.subtotal),
+            shipping: Number(existingOrder.shipping),
+            tax: Number(existingOrder.tax),
+            total: Number(existingOrder.total),
+            exchangeRate: existingOrder.exchangeRate ? Number(existingOrder.exchangeRate) : null,
+            items: existingOrder.items?.map((item) => ({
+              ...item,
+              price: Number(item.price),
+              total: Number(item.total),
+            })),
+          },
           message: 'Order already exists (duplicate prevented)',
           isDuplicate: true,
         };
@@ -1135,7 +1148,20 @@ export class OrdersService {
       this.logger.error('Failed to send seller notification emails:', sellerEmailError);
     }
 
-    return order;
+    // Convert Decimal fields to numbers for frontend compatibility
+    return {
+      ...order,
+      subtotal: Number(order.subtotal),
+      shipping: Number(order.shipping),
+      tax: Number(order.tax),
+      total: Number(order.total),
+      exchangeRate: order.exchangeRate ? Number(order.exchangeRate) : null,
+      items: order.items?.map((item) => ({
+        ...item,
+        price: Number(item.price),
+        total: Number(item.total),
+      })),
+    };
   }
 
   /**
