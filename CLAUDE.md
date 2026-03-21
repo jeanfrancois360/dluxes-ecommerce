@@ -840,7 +840,7 @@ GET    /easypost/test               # Test API connection (no auth)
 
 **Important Notes:**
 
-- EasyPost is the PRIMARY shipping provider (checked first in cascade)
+- EasyPost is the PRIMARY/DEFAULT shipping provider (enabled by default, checked first in cascade)
 - Test mode is FREE (no charges for label purchases)
 - Production requires switching to production API key (`EZAK...`)
 - Address fields in DB: `street` (not `address1`), `state` (not `province`), `zipCode` (not `postalCode`)

@@ -2342,6 +2342,290 @@ export class SellerService {
   }
 
   /**
+   * Mark pickup order as ready for customer collection
+   * Self-Pickup Feature (v2.10.0)
+   */
+  async markReadyForPickup(userId: string, orderId: string, notes?: string) {
+    // Get seller's store
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Find order and verify it's a pickup order for this seller
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                storeId: true,
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Verify it's a pickup order
+    if (!order.isPickup) {
+      throw new BadRequestException('This is not a pickup order');
+    }
+
+    // Verify it's for this seller's store
+    if (order.pickupStoreId !== store.id) {
+      throw new ForbiddenException('This pickup order is not for your store');
+    }
+
+    // Validate order status
+    if (order.status === 'CANCELLED' || order.status === 'REFUNDED') {
+      throw new BadRequestException('Cannot mark cancelled or refunded order as ready');
+    }
+
+    if (order.status === 'READY_FOR_PICKUP') {
+      throw new BadRequestException('Order is already marked as ready for pickup');
+    }
+
+    if (order.status === 'PICKED_UP') {
+      throw new BadRequestException('Order has already been picked up');
+    }
+
+    try {
+      // Update order status to READY_FOR_PICKUP
+      const updatedOrder = await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'READY_FOR_PICKUP',
+        },
+      });
+
+      // Create timeline entry
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId: order.id,
+          status: 'READY_FOR_PICKUP',
+          title: 'Order Ready for Pickup',
+          description:
+            notes ||
+            `Your order is ready to be picked up from ${store.name}. Please bring your pickup code: ${order.pickupCode}`,
+          icon: 'bell',
+        },
+      });
+
+      // Send email notification to customer
+      try {
+        if (order.user.email) {
+          const pickupStore = await this.prisma.store.findUnique({
+            where: { id: store.id },
+            select: {
+              name: true,
+              pickupAddress: true,
+              address: true,
+              city: true,
+              state: true,
+              zipCode: true,
+              pickupInstructions: true,
+            },
+          });
+
+          if (pickupStore) {
+            const storeAddress =
+              pickupStore.pickupAddress ||
+              `${pickupStore.address || ''}, ${pickupStore.city || ''}, ${pickupStore.state || ''} ${pickupStore.zipCode || ''}`.trim();
+
+            const customerName =
+              `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer';
+
+            await this.emailService.sendPickupReadyNotification(order.user.email, {
+              orderNumber: order.orderNumber,
+              customerName,
+              pickupCode: order.pickupCode || '',
+              storeName: pickupStore.name,
+              storeAddress,
+              pickupInstructions: pickupStore.pickupInstructions || undefined,
+              orderId: order.id,
+            });
+
+            this.logger.log(`Pickup ready email sent to ${order.user.email}`);
+          }
+        }
+      } catch (emailError) {
+        this.logger.error('Error sending pickup ready email:', emailError);
+        // Don't fail the operation if email fails
+      }
+
+      this.logger.log(
+        `Order ${orderId} marked as ready for pickup at store ${store.name} (${store.id})`
+      );
+
+      return {
+        success: true,
+        message: 'Order marked as ready for pickup',
+        data: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          status: updatedOrder.status,
+          pickupCode: order.pickupCode,
+          storeName: store.name,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to mark order ${orderId} as ready for pickup`, error.message);
+      throw new BadRequestException('Failed to mark order as ready for pickup');
+    }
+  }
+
+  /**
+   * Confirm customer picked up their order
+   * Self-Pickup Feature (v2.10.0)
+   */
+  async confirmPickup(userId: string, orderId: string, pickupCode: string, notes?: string) {
+    // Get seller's store
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Find order and verify it's a pickup order for this seller
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                storeId: true,
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Verify it's a pickup order
+    if (!order.isPickup) {
+      throw new BadRequestException('This is not a pickup order');
+    }
+
+    // Verify it's for this seller's store
+    if (order.pickupStoreId !== store.id) {
+      throw new ForbiddenException('This pickup order is not for your store');
+    }
+
+    // Verify pickup code matches
+    if (order.pickupCode !== pickupCode) {
+      this.logger.warn(
+        `Invalid pickup code attempted for order ${orderId}: expected ${order.pickupCode}, got ${pickupCode}`
+      );
+      throw new BadRequestException('Invalid pickup code');
+    }
+
+    // Validate order status
+    if (order.status === 'CANCELLED' || order.status === 'REFUNDED') {
+      throw new BadRequestException('Cannot confirm pickup for cancelled or refunded order');
+    }
+
+    if (order.status === 'PICKED_UP') {
+      throw new BadRequestException('Order has already been picked up');
+    }
+
+    try {
+      // Update order status to PICKED_UP
+      const updatedOrder = await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'PICKED_UP',
+          pickupCompletedAt: new Date(),
+        },
+      });
+
+      // Create timeline entry
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId: order.id,
+          status: 'PICKED_UP',
+          title: 'Order Picked Up',
+          description:
+            notes ||
+            `Order successfully picked up from ${store.name}. Thank you for your purchase!`,
+          icon: 'check-circle',
+        },
+      });
+
+      // Send confirmation email to customer
+      try {
+        if (order.user.email) {
+          const customerName =
+            `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer';
+
+          await this.emailService.sendPickupConfirmedNotification(order.user.email, {
+            orderNumber: order.orderNumber,
+            customerName,
+            storeName: store.name,
+            pickedUpAt: updatedOrder.pickupCompletedAt || new Date(),
+            orderId: order.id,
+          });
+
+          this.logger.log(`Pickup confirmed email sent to ${order.user.email}`);
+        }
+      } catch (emailError) {
+        this.logger.error('Error sending pickup confirmed email:', emailError);
+        // Don't fail the operation if email fails
+      }
+
+      this.logger.log(
+        `Order ${orderId} confirmed as picked up from store ${store.name} (${store.id})`
+      );
+
+      return {
+        success: true,
+        message: 'Pickup confirmed successfully',
+        data: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          status: updatedOrder.status,
+          pickedUpAt: updatedOrder.pickupCompletedAt,
+          storeName: store.name,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to confirm pickup for order ${orderId}`, error.message);
+      throw new BadRequestException('Failed to confirm pickup');
+    }
+  }
+
+  /**
    * Get human-readable label for product type
    */
   private getProductTypeLabel(productType: string): string {
@@ -2455,5 +2739,111 @@ export class SellerService {
       const timestamp = Date.now().toString(36).toUpperCase();
       return `NEXTPIK-${timestamp}`;
     }
+  }
+
+  // ============================================================================
+  // Self-Pickup Settings (v2.10.0)
+  // ============================================================================
+
+  /**
+   * Get seller's pickup configuration
+   */
+  async getPickupSettings(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: {
+        pickupEnabled: true,
+        pickupAddress: true,
+        pickupInstructions: true,
+        pickupHours: true,
+        pickupRadius: true,
+        pickupFee: true,
+        pickupEstimatedMinutes: true,
+        // Include store address as fallback
+        address1: true,
+        address2: true,
+        city: true,
+        province: true,
+        country: true,
+        postalCode: true,
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    return {
+      success: true,
+      data: {
+        pickupEnabled: store.pickupEnabled,
+        pickupAddress: store.pickupAddress || null,
+        pickupInstructions: store.pickupInstructions || null,
+        pickupHours: store.pickupHours || null,
+        pickupRadius: store.pickupRadius || 25, // Default 25km
+        pickupFee: store.pickupFee ? Number(store.pickupFee) : 0,
+        pickupEstimatedMinutes: store.pickupEstimatedMinutes || 30,
+        // Store address (for reference)
+        storeAddress: {
+          address1: store.address1,
+          address2: store.address2,
+          city: store.city,
+          province: store.province,
+          country: store.country,
+          postalCode: store.postalCode,
+        },
+      },
+    };
+  }
+
+  /**
+   * Update seller's pickup configuration
+   */
+  async updatePickupSettings(userId: string, data: any) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Update pickup settings
+    const updated = await this.prisma.store.update({
+      where: { userId },
+      data: {
+        pickupEnabled: data.pickupEnabled,
+        pickupAddress: data.pickupAddress || null,
+        pickupInstructions: data.pickupInstructions || null,
+        pickupHours: data.pickupHours || null,
+        pickupRadius: data.pickupRadius || null,
+        pickupFee: data.pickupFee !== undefined ? data.pickupFee : null,
+        pickupEstimatedMinutes: data.pickupEstimatedMinutes || null,
+      },
+      select: {
+        id: true,
+        name: true,
+        pickupEnabled: true,
+        pickupAddress: true,
+        pickupInstructions: true,
+        pickupHours: true,
+        pickupRadius: true,
+        pickupFee: true,
+        pickupEstimatedMinutes: true,
+      },
+    });
+
+    this.logger.log(
+      `Pickup settings updated for store ${store.name} (${store.id}): ${data.pickupEnabled ? 'ENABLED' : 'DISABLED'}`
+    );
+
+    return {
+      success: true,
+      message: `Pickup settings ${data.pickupEnabled ? 'enabled' : 'disabled'} successfully`,
+      data: {
+        ...updated,
+        pickupFee: updated.pickupFee ? Number(updated.pickupFee) : 0,
+      },
+    };
   }
 }

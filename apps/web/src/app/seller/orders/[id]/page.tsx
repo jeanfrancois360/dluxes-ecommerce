@@ -19,6 +19,7 @@ import { PackingSlip } from '@/components/seller/packing-slip';
 import { MarkAsShippedModal } from '@/components/seller/mark-as-shipped-modal';
 import { ShipmentCard } from '@/components/seller/shipment-card';
 import { EasyPostLabelButton } from '@/components/seller/easypost-label-button';
+import { ConfirmPickupModal } from '@/components/seller/confirm-pickup-modal';
 import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
@@ -87,6 +88,7 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   const [shippingCarrier, setShippingCarrier] = useState('');
   const [showPackingSlip, setShowPackingSlip] = useState(false);
   const [showMarkAsShippedModal, setShowMarkAsShippedModal] = useState(false);
+  const [showConfirmPickupModal, setShowConfirmPickupModal] = useState(false);
   const packingSlipRef = useRef<HTMLDivElement>(null);
 
   // Fetch order data
@@ -205,6 +207,22 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
     setTimeout(() => {
       window.print();
     }, 100);
+  };
+
+  const handleMarkReadyForPickup = async () => {
+    if (!order) return;
+
+    try {
+      setUpdating(true);
+      await sellerAPI.markReadyForPickup(order.id);
+      await mutate();
+      toast.success('Order marked as ready for pickup');
+    } catch (error: any) {
+      console.error('Failed to mark ready for pickup:', error);
+      toast.error(error?.message || 'Failed to mark order as ready for pickup');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   if (authLoading || isLoading) {
@@ -430,6 +448,81 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                       {order.shippingAddress.phone}
                     </p>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Pickup Information */}
+            {order.isPickup && (
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-black mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-green-600" />
+                  Self-Pickup Order
+                </h2>
+                <div className="space-y-4">
+                  {/* Pickup Code */}
+                  <div className="bg-white rounded-lg p-4 border-2 border-dashed border-green-300">
+                    <p className="text-xs font-medium text-neutral-600 mb-1">PICKUP CODE</p>
+                    <p className="text-3xl font-bold text-green-600 tracking-wider text-center">
+                      {order.pickupCode}
+                    </p>
+                  </div>
+
+                  {/* Pickup Status */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-neutral-700 font-medium">Pickup Status</span>
+                    <StatusBadge status={order.status} type="order" />
+                  </div>
+
+                  {/* Store Name */}
+                  {order.pickupStore && (
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">Store</span>
+                      <span className="text-black font-medium">{order.pickupStore.name}</span>
+                    </div>
+                  )}
+
+                  {/* Pickup Address */}
+                  {order.pickupStore?.pickupAddress && (
+                    <div>
+                      <span className="text-neutral-600 text-sm">Pickup Location</span>
+                      <p className="text-black mt-1">{order.pickupStore.pickupAddress}</p>
+                    </div>
+                  )}
+
+                  {/* Pickup Instructions */}
+                  {order.pickupInstructions && (
+                    <div>
+                      <span className="text-neutral-600 text-sm">Instructions</span>
+                      <p className="text-black mt-1 text-sm italic">{order.pickupInstructions}</p>
+                    </div>
+                  )}
+
+                  {/* Pickup Completed */}
+                  {order.pickupCompletedAt && (
+                    <div className="bg-green-100 border border-green-200 rounded-lg p-3 mt-4">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <div>
+                          <p className="text-sm font-medium text-green-900">
+                            Picked up successfully
+                          </p>
+                          <p className="text-xs text-green-700 mt-0.5">
+                            {formatDate(order.pickupCompletedAt)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Customer Info */}
+                  <div className="border-t border-green-200 pt-4 mt-4">
+                    <p className="text-xs text-neutral-500 mb-2">CUSTOMER DETAILS</p>
+                    <p className="font-medium text-black">
+                      {order.user.firstName || ''} {order.user.lastName || ''}
+                    </p>
+                    <p className="text-sm text-neutral-600">{order.user.email}</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -661,6 +754,114 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
               </div>
             </div>
 
+            {/* Pickup Actions */}
+            {order.isPickup && (
+              <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-green-200">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-lg font-semibold text-black mb-1">Pickup Management</h2>
+                    <p className="text-sm text-neutral-600">
+                      Manage customer pickup for this order
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Pickup Code Display */}
+                  <div className="bg-green-50 border-2 border-dashed border-green-300 rounded-lg p-4 text-center">
+                    <p className="text-xs font-medium text-neutral-600 mb-1">PICKUP CODE</p>
+                    <p className="text-3xl font-bold text-green-600 tracking-widest">
+                      {order.pickupCode}
+                    </p>
+                    <p className="text-xs text-neutral-500 mt-2">Customer must show this code</p>
+                  </div>
+
+                  {/* Pickup Status */}
+                  {order.status === 'PICKED_UP' ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <p className="text-sm font-medium text-green-900">
+                          Order picked up successfully
+                        </p>
+                      </div>
+                      {order.pickupCompletedAt && (
+                        <p className="text-xs text-green-700">
+                          Completed: {formatDate(order.pickupCompletedAt)}
+                        </p>
+                      )}
+                    </div>
+                  ) : order.status === 'READY_FOR_PICKUP' ? (
+                    <>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-blue-600" />
+                          <p className="text-sm text-blue-800 font-medium">
+                            Ready for pickup - waiting for customer
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Confirm Pickup Button */}
+                      <button
+                        onClick={() => setShowConfirmPickupModal(true)}
+                        disabled={updating}
+                        className="w-full px-4 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {updating ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-5 h-5" />
+                            Confirm Customer Pickup
+                          </>
+                        )}
+                      </button>
+                    </>
+                  ) : order.status === 'PENDING' || order.status === 'PROCESSING' ? (
+                    <>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p className="text-sm text-yellow-800">
+                          📦 Prepare the order and mark it ready when the customer can pick it up
+                        </p>
+                      </div>
+
+                      {/* Mark Ready Button */}
+                      <button
+                        onClick={handleMarkReadyForPickup}
+                        disabled={updating}
+                        className="w-full px-4 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {updating ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-5 h-5" />
+                            Mark Ready for Pickup
+                          </>
+                        )}
+                      </button>
+                    </>
+                  ) : (
+                    <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 text-center">
+                      <p className="text-sm text-neutral-600">
+                        Order status: <strong>{order.status}</strong>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Payment Info */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-semibold text-black mb-4 flex items-center gap-2">
@@ -772,6 +973,21 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
           currency={order.currency}
           onSuccess={() => {
             mutateShipments();
+            mutate();
+          }}
+        />
+      )}
+
+      {/* Confirm Pickup Modal */}
+      {order && order.isPickup && (
+        <ConfirmPickupModal
+          isOpen={showConfirmPickupModal}
+          onClose={() => setShowConfirmPickupModal(false)}
+          orderId={order.id}
+          orderNumber={order.orderNumber}
+          expectedPickupCode={order.pickupCode || ''}
+          storeName={order.pickupStore?.name || storeData?.name || 'Store'}
+          onSuccess={() => {
             mutate();
           }}
         />

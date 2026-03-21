@@ -290,6 +290,15 @@ model Store {
   vacationAutoReply    String?   @db.Text // Auto-reply for inquiries during vacation
   vacationHideProducts Boolean   @default(false) // Hide products from search during vacation
 
+  // Self-Pickup Configuration (v2.10.0 - Local Pickup)
+  pickupEnabled          Boolean  @default(false)
+  pickupAddress          String?  @db.Text // Full pickup address (if different from store address)
+  pickupInstructions     String?  @db.Text // e.g., "Ring doorbell, wait at loading dock"
+  pickupHours            Json? // Structured pickup hours { monday: "9am-5pm", ... }
+  pickupRadius           Int? // Max distance in km for pickup eligibility
+  pickupFee              Decimal? @default(0) @db.Decimal(10, 2) // Optional pickup fee
+  pickupEstimatedMinutes Int?     @default(30) // How long to prepare order
+
   // SEO
   metaTitle       String?
   metaDescription String?
@@ -325,10 +334,14 @@ model Store {
   // Gelato POD Settings (v2.9.0 - Per-seller Gelato integration)
   gelatoSettings SellerGelatoSettings?
 
+  // Self-Pickup Orders (v2.10.0 - Local Pickup)
+  pickupOrders Order[] @relation("OrderPickupStore")
+
   @@index([slug])
   @@index([status])
   @@index([userId])
   @@index([rating])
+  @@index([pickupEnabled])
   @@map("stores")
 }
 
@@ -1193,8 +1206,18 @@ model Order {
   delivery             Delivery?
 
   // Shipping provider tracking
-  shippingProvider     String? // 'EASYPOST', 'DHL', 'GELATO', 'MANUAL'
+  shippingProvider     String? // 'EASYPOST', 'DHL', 'GELATO', 'MANUAL', 'SELF_PICKUP'
   shippingProviderData Json? // Provider-specific metadata
+
+  // Self-Pickup Fields (v2.10.0 - Local Pickup)
+  isPickup              Boolean   @default(false)
+  pickupStoreId         String?
+  pickupScheduledAt     DateTime? // When customer plans to pickup
+  pickupCompletedAt     DateTime? // When order was picked up
+  pickupCode            String?   // 6-digit verification code
+  pickupInstructions    String?   @db.Text // From seller
+
+  pickupStore Store? @relation("OrderPickupStore", fields: [pickupStoreId], references: [id], onDelete: SetNull)
 
   // Multi-Vendor Shipments
   sellerShipments SellerShipment[]
@@ -1212,6 +1235,9 @@ model Order {
   @@index([orderNumber])
   @@index([status])
   @@index([paymentStatus])
+  @@index([isPickup])
+  @@index([pickupStoreId])
+  @@index([pickupCode])
   @@map("orders")
 }
 
@@ -1224,6 +1250,11 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
   REFUNDED
+
+  // Self-Pickup Statuses (v2.10.0)
+  READY_FOR_PICKUP // Seller marks order ready for customer pickup
+  PICKED_UP        // Customer picked up order (terminal status)
+  PICKUP_EXPIRED   // Customer didn't pickup within timeframe
 }
 
 enum GelatoPodStatus {

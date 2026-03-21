@@ -1219,4 +1219,401 @@ export class EmailService {
       return false;
     }
   }
+
+  // ============================================================================
+  // SELF-PICKUP EMAIL NOTIFICATIONS (v2.10.0)
+  // ============================================================================
+
+  /**
+   * Send pickup order placed notification to customer
+   */
+  async sendPickupOrderPlacedNotification(
+    email: string,
+    pickupData: {
+      orderNumber: string;
+      customerName: string;
+      pickupCode: string;
+      storeName: string;
+      storeAddress: string;
+      pickupInstructions?: string;
+      items: Array<{
+        name: string;
+        quantity: number;
+        price: number;
+        image?: string;
+      }>;
+      subtotal: number;
+      tax: number;
+      pickupFee: number;
+      total: number;
+      currency: string;
+      orderId: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const orderUrl = `${this.frontendUrl}/account/orders/${pickupData.orderId}`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 PICKUP ORDER PLACED FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Order: #${pickupData.orderNumber}`);
+        this.logger.log(`Pickup Code: ${pickupData.pickupCode}`);
+        this.logger.log(`Store: ${pickupData.storeName}`);
+        this.logger.log(`Address: ${pickupData.storeAddress}`);
+        this.logger.log(`Total: ${pickupData.currency} ${pickupData.total.toFixed(2)}`);
+        this.logger.log(`URL: ${orderUrl}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <tr>
+              <td style="padding: 40px 30px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h1 style="margin: 0; color: #ffffff; font-size: 28px;">📍 Pickup Order Confirmed</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 30px;">
+                <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #333333;">
+                  Hi ${pickupData.customerName},
+                </p>
+                <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #333333;">
+                  Your order <strong>#${pickupData.orderNumber}</strong> has been confirmed and will be ready for pickup soon!
+                </p>
+
+                <div style="background-color: #f8f9fa; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0;">
+                  <h2 style="margin: 0 0 15px; font-size: 20px; color: #667eea;">🔑 Your Pickup Code</h2>
+                  <div style="background-color: #ffffff; padding: 15px; text-align: center; border-radius: 8px; border: 2px dashed #667eea;">
+                    <span style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 4px;">${pickupData.pickupCode}</span>
+                  </div>
+                  <p style="margin: 15px 0 0; font-size: 14px; color: #666666;">
+                    Show this code when collecting your order
+                  </p>
+                </div>
+
+                <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0;">
+                  <h3 style="margin: 0 0 10px; font-size: 18px; color: #856404;">📍 Pickup Location</h3>
+                  <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #856404;">
+                    <strong>${pickupData.storeName}</strong><br>
+                    ${pickupData.storeAddress}
+                  </p>
+                  ${
+                    pickupData.pickupInstructions
+                      ? `
+                    <p style="margin: 15px 0 0; font-size: 14px; color: #856404;">
+                      <strong>Instructions:</strong> ${pickupData.pickupInstructions}
+                    </p>
+                  `
+                      : ''
+                  }
+                </div>
+
+                <h3 style="margin: 30px 0 15px; font-size: 18px; color: #333333;">Order Summary</h3>
+                ${pickupData.items
+                  .map(
+                    (item) => `
+                  <div style="padding: 15px 0; border-bottom: 1px solid #eeeeee;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="font-size: 16px; color: #333333;">${item.name} × ${item.quantity}</span>
+                      <span style="font-size: 16px; font-weight: bold; color: #333333;">${pickupData.currency} ${(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                  </div>
+                `
+                  )
+                  .join('')}
+
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #eeeeee;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-size: 16px; color: #666666;">Subtotal:</span>
+                    <span style="font-size: 16px; color: #666666;">${pickupData.currency} ${pickupData.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-size: 16px; color: #666666;">Pickup Fee:</span>
+                    <span style="font-size: 16px; color: #666666;">${pickupData.currency} ${pickupData.pickupFee.toFixed(2)}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-size: 16px; color: #666666;">Tax:</span>
+                    <span style="font-size: 16px; color: #666666;">${pickupData.currency} ${pickupData.tax.toFixed(2)}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; padding-top: 15px; border-top: 2px solid #333333;">
+                    <span style="font-size: 18px; font-weight: bold; color: #333333;">Total:</span>
+                    <span style="font-size: 18px; font-weight: bold; color: #667eea;">${pickupData.currency} ${pickupData.total.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div style="margin-top: 30px; text-align: center;">
+                  <a href="${orderUrl}" style="display: inline-block; padding: 15px 30px; background-color: #667eea; color: #ffffff; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">Track Your Order</a>
+                </div>
+
+                <p style="margin: 30px 0 0; font-size: 14px; line-height: 1.6; color: #666666;">
+                  You'll receive another email when your order is ready for pickup.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 30px; text-align: center; background-color: #f8f9fa; border-top: 1px solid #eeeeee;">
+                <p style="margin: 0; font-size: 14px; color: #666666;">
+                  Need help? Contact us at <a href="mailto:support@nextpik.com" style="color: #667eea;">support@nextpik.com</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `📍 Pickup Order Confirmed - #${pickupData.orderNumber}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send pickup order placed email', error);
+        return false;
+      }
+
+      this.logger.log(`Pickup order placed email sent to ${email} (ID: ${data?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending pickup order placed email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send pickup ready notification to customer
+   */
+  async sendPickupReadyNotification(
+    email: string,
+    pickupData: {
+      orderNumber: string;
+      customerName: string;
+      pickupCode: string;
+      storeName: string;
+      storeAddress: string;
+      pickupInstructions?: string;
+      orderId: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const orderUrl = `${this.frontendUrl}/account/orders/${pickupData.orderId}`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 PICKUP READY FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Order: #${pickupData.orderNumber}`);
+        this.logger.log(`Pickup Code: ${pickupData.pickupCode}`);
+        this.logger.log(`Store: ${pickupData.storeName}`);
+        this.logger.log(`URL: ${orderUrl}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <tr>
+              <td style="padding: 40px 30px; text-align: center; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);">
+                <h1 style="margin: 0; color: #ffffff; font-size: 28px;">✅ Order Ready for Pickup!</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 30px;">
+                <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #333333;">
+                  Hi ${pickupData.customerName},
+                </p>
+                <p style="margin: 0 0 20px; font-size: 18px; line-height: 1.6; color: #333333; font-weight: bold;">
+                  Great news! Your order <strong>#${pickupData.orderNumber}</strong> is ready for pickup! 🎉
+                </p>
+
+                <div style="background-color: #f0fdf4; border-left: 4px solid #48bb78; padding: 20px; margin: 20px 0;">
+                  <h2 style="margin: 0 0 15px; font-size: 20px; color: #48bb78;">🔑 Your Pickup Code</h2>
+                  <div style="background-color: #ffffff; padding: 15px; text-align: center; border-radius: 8px; border: 2px dashed #48bb78;">
+                    <span style="font-size: 32px; font-weight: bold; color: #48bb78; letter-spacing: 4px;">${pickupData.pickupCode}</span>
+                  </div>
+                  <p style="margin: 15px 0 0; font-size: 14px; color: #666666;">
+                    Show this code when collecting your order
+                  </p>
+                </div>
+
+                <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0;">
+                  <h3 style="margin: 0 0 10px; font-size: 18px; color: #856404;">📍 Pickup Location</h3>
+                  <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #856404;">
+                    <strong>${pickupData.storeName}</strong><br>
+                    ${pickupData.storeAddress}
+                  </p>
+                  ${
+                    pickupData.pickupInstructions
+                      ? `
+                    <p style="margin: 15px 0 0; font-size: 14px; color: #856404;">
+                      <strong>Instructions:</strong> ${pickupData.pickupInstructions}
+                    </p>
+                  `
+                      : ''
+                  }
+                </div>
+
+                <div style="margin-top: 30px; text-align: center;">
+                  <a href="${orderUrl}" style="display: inline-block; padding: 15px 30px; background-color: #48bb78; color: #ffffff; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">View Order Details</a>
+                </div>
+
+                <p style="margin: 30px 0 0; font-size: 14px; line-height: 1.6; color: #666666;">
+                  Please collect your order within 7 days.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 30px; text-align: center; background-color: #f8f9fa; border-top: 1px solid #eeeeee;">
+                <p style="margin: 0; font-size: 14px; color: #666666;">
+                  Need help? Contact us at <a href="mailto:support@nextpik.com" style="color: #48bb78;">support@nextpik.com</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `✅ Order Ready for Pickup - #${pickupData.orderNumber}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send pickup ready email', error);
+        return false;
+      }
+
+      this.logger.log(`Pickup ready email sent to ${email} (ID: ${data?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending pickup ready email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send pickup confirmed notification to customer
+   */
+  async sendPickupConfirmedNotification(
+    email: string,
+    pickupData: {
+      orderNumber: string;
+      customerName: string;
+      storeName: string;
+      pickedUpAt: Date;
+      orderId: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const orderUrl = `${this.frontendUrl}/account/orders/${pickupData.orderId}`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 PICKUP CONFIRMED FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Order: #${pickupData.orderNumber}`);
+        this.logger.log(`Store: ${pickupData.storeName}`);
+        this.logger.log(`Picked up at: ${pickupData.pickedUpAt}`);
+        this.logger.log(`URL: ${orderUrl}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <tr>
+              <td style="padding: 40px 30px; text-align: center; background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);">
+                <h1 style="margin: 0; color: #ffffff; font-size: 28px;">🎉 Pickup Complete!</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 30px;">
+                <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #333333;">
+                  Hi ${pickupData.customerName},
+                </p>
+                <p style="margin: 0 0 20px; font-size: 18px; line-height: 1.6; color: #333333;">
+                  Thank you for picking up your order <strong>#${pickupData.orderNumber}</strong> from <strong>${pickupData.storeName}</strong>!
+                </p>
+
+                <div style="background-color: #ebf8ff; border-left: 4px solid #4299e1; padding: 20px; margin: 20px 0; text-align: center;">
+                  <p style="margin: 0; font-size: 16px; color: #2c5282;">
+                    <strong>Picked up on:</strong><br>
+                    ${pickupData.pickedUpAt.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+
+                <p style="margin: 20px 0; font-size: 16px; line-height: 1.6; color: #333333;">
+                  We hope you enjoy your purchase! If you have any questions or concerns, please don't hesitate to reach out.
+                </p>
+
+                <div style="margin-top: 30px; text-align: center;">
+                  <a href="${orderUrl}" style="display: inline-block; padding: 15px 30px; background-color: #4299e1; color: #ffffff; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">View Order Details</a>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 30px; text-align: center; background-color: #f8f9fa; border-top: 1px solid #eeeeee;">
+                <p style="margin: 0 0 15px; font-size: 16px; font-weight: bold; color: #333333;">
+                  Thank you for shopping with NextPik! 💜
+                </p>
+                <p style="margin: 0; font-size: 14px; color: #666666;">
+                  Need help? Contact us at <a href="mailto:support@nextpik.com" style="color: #4299e1;">support@nextpik.com</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `🎉 Pickup Complete - #${pickupData.orderNumber}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send pickup confirmed email', error);
+        return false;
+      }
+
+      this.logger.log(`Pickup confirmed email sent to ${email} (ID: ${data?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending pickup confirmed email', error);
+      return false;
+    }
+  }
 }

@@ -282,6 +282,18 @@ export interface SellerOrderDetail {
       contactPhone: string | null;
     } | null;
   } | null;
+  // Pickup fields (v2.10.0)
+  isPickup?: boolean;
+  pickupStoreId?: string | null;
+  pickupCode?: string | null;
+  pickupInstructions?: string | null;
+  pickupScheduledAt?: string | null;
+  pickupCompletedAt?: string | null;
+  pickupStore?: {
+    id: string;
+    name: string;
+    pickupAddress?: string | null;
+  } | null;
 }
 
 // Inquiry Types
@@ -438,6 +450,13 @@ export const sellerAPI = {
     // Don't set Content-Type manually - browser will set it with boundary
     return api.post(`/seller/orders/${id}/upload-proof`, formData);
   },
+
+  // Pickup Orders (v2.10.0)
+  markReadyForPickup: (id: string, notes?: string) =>
+    api.post(`/seller/orders/${id}/mark-ready-pickup`, { notes }),
+
+  confirmPickup: (id: string, pickupCode: string, notes?: string) =>
+    api.post(`/seller/orders/${id}/confirm-pickup`, { pickupCode, notes }),
 
   // Commissions
   getCommissions: (params?: {

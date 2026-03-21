@@ -59,13 +59,16 @@ export class ShippingTaxService {
 
   /**
    * Calculate available shipping options based on address and cart
-   * CASCADE FALLBACK: Gelato (POD) → EasyPost → DHL → Zones → Manual
+   * CASCADE FALLBACK: Gelato (POD) → Self-Pickup → EasyPost → DHL → Zones → Manual
    *
    * - TIER 0 (Gelato): For POD items, gets real-time shipping quotes
    *   - Pure POD carts: Returns Gelato shipping only
    *   - Mixed carts: Combines Gelato cost + fallback shipping for regular items
-   * - TIER 1 (EasyPost): If enabled, returns carrier rates
-   * - TIER 2 (DHL): If mode is 'dhl_api' or 'hybrid'
+   * - TIER 0.5 (Self-Pickup): If store has pickup enabled and customer is within radius
+   *   - Returns immediately if available (no need to check other providers)
+   *   - Simple radius check: same zip code or city+state match
+   * - TIER 1 (EasyPost): PRIMARY/DEFAULT provider - Multi-carrier rates (USPS, UPS, FedEx, DHL, etc.)
+   * - TIER 2 (DHL): DHL Express only (if mode is 'dhl_api' or 'hybrid')
    * - TIER 3 (Zones/Manual): Final fallback based on settings
    */
   async calculateShippingOptions(
@@ -146,7 +149,21 @@ export class ShippingTaxService {
       }));
     };
 
-    // TIER 1: Try EasyPost first (if enabled)
+    // TIER 0.5: Try Self-Pickup (if stores have pickup enabled)
+    try {
+      const pickupOptions = await this.calculatePickupOptions(address, items, subtotal);
+
+      if (pickupOptions.length > 0) {
+        this.logger.log(`[Pickup] Found ${pickupOptions.length} pickup option(s)`);
+        // Return pickup options BEFORE other shipping options
+        // Pickup doesn't combine with Gelato (pickup is for physical stores only)
+        return pickupOptions;
+      }
+    } catch (error) {
+      this.logger.warn(`[Pickup] Failed, continuing to shipping providers: ${error.message}`);
+    }
+
+    // TIER 1: EasyPost (PRIMARY/DEFAULT PROVIDER - enabled by default)
     try {
       const easypostEnabled = await this.settingsService.getSetting('easypost_enabled');
       if (easypostEnabled?.value === true) {
@@ -774,6 +791,145 @@ export class ShippingTaxService {
     }
 
     return deliveryDate;
+  }
+
+  /**
+   * Calculate self-pickup options (TIER 0.5)
+   * Returns pickup options from stores that have pickup enabled and are within radius
+   */
+  private async calculatePickupOptions(
+    address: ShippingAddress,
+    items: CartItem[],
+    subtotal: number
+  ): Promise<ShippingOption[]> {
+    try {
+      // Check if pickup is enabled platform-wide
+      const pickupEnabled = await this.settingsService.isPickupEnabled();
+      if (!pickupEnabled) {
+        this.logger.log('[Pickup] Self-pickup is disabled platform-wide');
+        return [];
+      }
+      // Group items by storeId
+      const storeGroups = new Map<string, CartItem[]>();
+      for (const item of items) {
+        const storeId = item.storeId || 'platform';
+        if (!storeGroups.has(storeId)) {
+          storeGroups.set(storeId, []);
+        }
+        storeGroups.get(storeId)!.push(item);
+      }
+
+      const pickupOptions: ShippingOption[] = [];
+
+      // Check each store for pickup availability
+      for (const [storeId, storeItems] of storeGroups) {
+        try {
+          // Get store pickup settings from database
+          const store = await this.settingsService.prisma.store.findUnique({
+            where: { id: storeId },
+            select: {
+              id: true,
+              name: true,
+              pickupEnabled: true,
+              pickupAddress: true,
+              pickupInstructions: true,
+              pickupHours: true,
+              pickupRadius: true,
+              pickupFee: true,
+              pickupEstimatedMinutes: true,
+              city: true,
+              state: true,
+              zipCode: true,
+            },
+          });
+
+          if (!store || !store.pickupEnabled) {
+            continue; // Store doesn't have pickup enabled
+          }
+
+          // Check if customer is within pickup radius (simple MVP: same zip or city+state)
+          const isWithinRadius = this.isWithinPickupRadius(
+            address,
+            {
+              city: store.city,
+              state: store.state,
+              postalCode: store.zipCode,
+            },
+            store.pickupRadius || 50
+          );
+
+          if (!isWithinRadius) {
+            this.logger.log(`[Pickup] Store ${store.name} (${storeId}) is outside pickup radius`);
+            continue;
+          }
+
+          // Calculate total items for this store
+          const itemCount = storeItems.reduce((sum, item) => sum + item.quantity, 0);
+
+          // Add pickup option
+          const pickupFee = store.pickupFee ? parseFloat(store.pickupFee.toString()) : 0;
+          const estimatedMinutes = store.pickupEstimatedMinutes || 30;
+
+          pickupOptions.push({
+            id: `pickup-${storeId}`,
+            name: `Self-Pickup from ${store.name}`,
+            description: `Ready in ~${estimatedMinutes} mins • ${itemCount} item(s) • ${store.pickupAddress || store.city}`,
+            price: pickupFee,
+            estimatedDays: 0, // Same day pickup
+            carrier: 'SELF_PICKUP',
+          });
+
+          this.logger.log(
+            `[Pickup] Option available for ${store.name}: $${pickupFee.toFixed(2)} ` +
+              `(${itemCount} items, ready in ${estimatedMinutes} mins)`
+          );
+        } catch (error) {
+          this.logger.warn(
+            `[Pickup] Failed to check pickup for store ${storeId}: ${error.message}`
+          );
+          continue;
+        }
+      }
+
+      return pickupOptions;
+    } catch (error) {
+      this.logger.error(`[Pickup] Failed to calculate pickup options: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Check if customer address is within pickup radius
+   * MVP: Simple check using zip code or city+state match
+   */
+  private isWithinPickupRadius(
+    customerAddress: ShippingAddress,
+    storeAddress: { city?: string | null; state?: string | null; postalCode?: string | null },
+    radiusKm: number
+  ): boolean {
+    // Same postal code = within radius
+    if (
+      customerAddress.postalCode &&
+      storeAddress.postalCode &&
+      customerAddress.postalCode === storeAddress.postalCode
+    ) {
+      return true;
+    }
+
+    // Same city + state = within radius
+    if (
+      customerAddress.city &&
+      storeAddress.city &&
+      customerAddress.state &&
+      storeAddress.state &&
+      customerAddress.city.toLowerCase() === storeAddress.city.toLowerCase() &&
+      customerAddress.state.toUpperCase() === storeAddress.state.toUpperCase()
+    ) {
+      return true;
+    }
+
+    // For future: Integrate geocoding API (Google Maps, Mapbox) to calculate actual distance
+    return false;
   }
 
   /**

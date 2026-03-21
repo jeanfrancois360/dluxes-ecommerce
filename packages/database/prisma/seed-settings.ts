@@ -898,18 +898,19 @@ const defaultSettings = [
     defaultValue: 10,
   },
 
-  // DHL API INTEGRATION SETTINGS
+  // SHIPPING PROVIDER CONFIGURATION
   {
     key: 'shipping_primary_provider',
     category: 'delivery',
-    value: 'DHL',
+    value: 'EasyPost',
     valueType: SettingValueType.STRING,
     label: 'Primary Shipping Provider',
-    description: 'Primary shipping carrier for deliveries',
+    description:
+      'Primary shipping carrier for deliveries (EasyPost: multi-carrier, DHL: DHL Express only)',
     isPublic: true,
-    isEditable: false,
+    isEditable: true,
     requiresRestart: false,
-    defaultValue: 'DHL',
+    defaultValue: 'EasyPost',
   },
 
   // NOTE: DHL API credentials (DHL_API_KEY, DHL_API_SECRET, DHL_TRACKING_ENABLED, DHL_API_BASE_URL, DHL_TRACKING_CACHE_TTL)
@@ -920,14 +921,15 @@ const defaultSettings = [
   {
     key: 'easypost_enabled',
     category: 'delivery',
-    value: false,
+    value: true,
     valueType: SettingValueType.BOOLEAN,
     label: 'Enable EasyPost Shipping',
-    description: 'Enable EasyPost multi-carrier shipping integration',
+    description:
+      'Enable EasyPost multi-carrier shipping integration (DEFAULT: Primary shipping provider)',
     isPublic: false,
     isEditable: true,
     requiresRestart: false,
-    defaultValue: false,
+    defaultValue: true,
   },
   {
     key: 'easypost_api_key',
@@ -976,7 +978,7 @@ const defaultSettings = [
     isEditable: true,
     requiresRestart: false,
     defaultValue: 'PNG',
-    validationRules: JSON.stringify({
+    validationRule: JSON.stringify({
       enum: ['PNG', 'PDF', 'ZPL', 'EPL2'],
     }),
   },
@@ -1007,6 +1009,92 @@ const defaultSettings = [
 
   // NOTE: EasyPost API credentials can also be configured via environment variables (.env)
   // for security reasons. See apps/api/.env for EasyPost configuration.
+
+  // SELF-PICKUP SETTINGS (v2.10.0)
+  {
+    key: 'pickup_enabled',
+    category: 'delivery',
+    value: true,
+    valueType: SettingValueType.BOOLEAN,
+    label: 'Enable Self-Pickup',
+    description: 'Allow customers to pick up orders from seller locations',
+    isPublic: true,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: true,
+  },
+  {
+    key: 'pickup_default_radius_km',
+    category: 'delivery',
+    value: 50,
+    valueType: SettingValueType.INTEGER,
+    label: 'Default Pickup Radius (km)',
+    description: 'Default radius in kilometers for pickup availability (sellers can override)',
+    isPublic: false,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: 50,
+    validationRule: JSON.stringify({
+      min: 1,
+      max: 200,
+    }),
+  },
+  {
+    key: 'pickup_require_code_verification',
+    category: 'delivery',
+    value: true,
+    valueType: SettingValueType.BOOLEAN,
+    label: 'Require Pickup Code Verification',
+    description: 'Require sellers to verify 6-digit pickup code when customer collects order',
+    isPublic: false,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: true,
+  },
+  {
+    key: 'pickup_expiration_days',
+    category: 'delivery',
+    value: 7,
+    valueType: SettingValueType.INTEGER,
+    label: 'Pickup Expiration (Days)',
+    description: 'Number of days before uncollected pickup orders expire',
+    isPublic: false,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: 7,
+    validationRule: JSON.stringify({
+      min: 1,
+      max: 30,
+    }),
+  },
+  {
+    key: 'pickup_allow_scheduling',
+    category: 'delivery',
+    value: false,
+    valueType: SettingValueType.BOOLEAN,
+    label: 'Allow Pickup Scheduling',
+    description: 'Allow customers to schedule a specific pickup time (future feature)',
+    isPublic: false,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: false,
+  },
+  {
+    key: 'pickup_default_fee',
+    category: 'delivery',
+    value: 0,
+    valueType: SettingValueType.DECIMAL,
+    label: 'Default Pickup Fee',
+    description: 'Default fee for pickup orders (sellers can override)',
+    isPublic: false,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: 0,
+    validationRule: JSON.stringify({
+      min: 0,
+      max: 50,
+    }),
+  },
 
   // SECURITY SETTINGS
   {
