@@ -380,9 +380,18 @@ export class SettingsService {
   async getSiteInfo() {
     try {
       const [siteName, siteTagline, contactEmail, timezone] = await Promise.all([
-        this.getSetting('site_name').catch(() => ({ key: 'site_name', value: 'NextPik E-commerce' })),
-        this.getSetting('site_tagline').catch(() => ({ key: 'site_tagline', value: 'Where Elegance Meets Excellence' })),
-        this.getSetting('contact_email').catch(() => ({ key: 'contact_email', value: 'support@luxury.com' })),
+        this.getSetting('site_name').catch(() => ({
+          key: 'site_name',
+          value: 'NextPik E-commerce',
+        })),
+        this.getSetting('site_tagline').catch(() => ({
+          key: 'site_tagline',
+          value: 'Where Elegance Meets Excellence',
+        })),
+        this.getSetting('contact_email').catch(() => ({
+          key: 'contact_email',
+          value: 'support@luxury.com',
+        })),
         this.getSetting('timezone').catch(() => ({ key: 'timezone', value: 'UTC' })),
       ]);
 
@@ -517,7 +526,7 @@ export class SettingsService {
   async getStockNotificationRecipients(): Promise<string[]> {
     try {
       const setting = await this.getSetting('inventory.notification_recipients');
-      return Array.isArray(setting.value) ? setting.value as string[] : ['inventory@luxury.com'];
+      return Array.isArray(setting.value) ? (setting.value as string[]) : ['inventory@luxury.com'];
     } catch (error) {
       return ['inventory@luxury.com'];
     }
@@ -554,21 +563,27 @@ export class SettingsService {
     try {
       const settings = await this.getSettingsByCategory('inventory');
 
-      const settingsMap = settings.reduce((acc, setting) => {
-        acc[setting.key] = setting.value;
-        return acc;
-      }, {} as Record<string, any>);
+      const settingsMap = settings.reduce(
+        (acc, setting) => {
+          acc[setting.key] = setting.value;
+          return acc;
+        },
+        {} as Record<string, any>
+      );
 
       return {
         lowStockThreshold: Number(settingsMap['inventory.low_stock_threshold']) || 10,
         autoSkuGeneration: Boolean(settingsMap['inventory.auto_sku_generation'] ?? true),
         skuPrefix: String(settingsMap['inventory.sku_prefix']) || 'PROD',
-        enableStockNotifications: Boolean(settingsMap['inventory.enable_stock_notifications'] ?? true),
+        enableStockNotifications: Boolean(
+          settingsMap['inventory.enable_stock_notifications'] ?? true
+        ),
         notificationRecipients: Array.isArray(settingsMap['inventory.notification_recipients'])
           ? settingsMap['inventory.notification_recipients']
           : ['inventory@luxury.com'],
         allowNegativeStock: Boolean(settingsMap['inventory.allow_negative_stock'] ?? false),
-        transactionHistoryPageSize: Number(settingsMap['inventory.transaction_history_page_size']) || 20,
+        transactionHistoryPageSize:
+          Number(settingsMap['inventory.transaction_history_page_size']) || 20,
       };
     } catch (error) {
       // Return defaults if settings don't exist
@@ -591,21 +606,15 @@ export class SettingsService {
    */
   async getStripeConfig() {
     try {
-      const [
-        enabled,
-        testMode,
-        currency,
-        captureMethod,
-        statementDescriptor,
-        autoPayoutEnabled,
-      ] = await Promise.all([
-        this.getSetting('stripe_enabled').catch(() => ({ value: false })),
-        this.getSetting('stripe_test_mode').catch(() => ({ value: true })),
-        this.getSetting('stripe_currency').catch(() => ({ value: 'USD' })),
-        this.getSetting('stripe_capture_method').catch(() => ({ value: 'manual' })),
-        this.getSetting('stripe_statement_descriptor').catch(() => ({ value: 'LUXURY ECOM' })),
-        this.getSetting('stripe_auto_payout_enabled').catch(() => ({ value: false })),
-      ]);
+      const [enabled, testMode, currency, captureMethod, statementDescriptor, autoPayoutEnabled] =
+        await Promise.all([
+          this.getSetting('stripe_enabled').catch(() => ({ value: false })),
+          this.getSetting('stripe_test_mode').catch(() => ({ value: true })),
+          this.getSetting('stripe_currency').catch(() => ({ value: 'USD' })),
+          this.getSetting('stripe_capture_method').catch(() => ({ value: 'manual' })),
+          this.getSetting('stripe_statement_descriptor').catch(() => ({ value: 'LUXURY ECOM' })),
+          this.getSetting('stripe_auto_payout_enabled').catch(() => ({ value: false })),
+        ]);
 
       // Read API keys from environment variables
       const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || '';
@@ -717,9 +726,9 @@ export class SettingsService {
     try {
       const setting = await this.getSetting('tax_default_rate');
       const rate = Number(setting.value);
-      return isNaN(rate) ? 0.10 : rate;
+      return isNaN(rate) ? 0.1 : rate;
     } catch (error) {
-      return 0.10; // Default 10%
+      return 0.1; // Default 10%
     }
   }
 
@@ -770,14 +779,14 @@ export class SettingsService {
         this.getSetting('shipping_standard_rate').catch(() => ({ value: 9.99 })),
         this.getSetting('shipping_express_rate').catch(() => ({ value: 19.99 })),
         this.getSetting('shipping_overnight_rate').catch(() => ({ value: 29.99 })),
-        this.getSetting('shipping_international_surcharge').catch(() => ({ value: 15.00 })),
+        this.getSetting('shipping_international_surcharge').catch(() => ({ value: 15.0 })),
       ]);
 
       return {
         standard: Number(standard.value) || 9.99,
         express: Number(express.value) || 19.99,
         overnight: Number(overnight.value) || 29.99,
-        internationalSurcharge: Number(intlSurcharge.value) || 15.00,
+        internationalSurcharge: Number(intlSurcharge.value) || 15.0,
       };
     } catch (error) {
       // Fallback to hardcoded defaults
@@ -785,8 +794,121 @@ export class SettingsService {
         standard: 9.99,
         express: 19.99,
         overnight: 29.99,
-        internationalSurcharge: 15.00,
+        internationalSurcharge: 15.0,
       };
     }
+  }
+
+  // ============================================================================
+  // SELF-PICKUP SETTINGS (v2.10.0)
+  // ============================================================================
+
+  /**
+   * Check if self-pickup is enabled platform-wide
+   */
+  async isPickupEnabled(): Promise<boolean> {
+    try {
+      const setting = await this.getSetting('pickup_enabled');
+      return Boolean(setting.value);
+    } catch (error) {
+      return true; // Default to enabled
+    }
+  }
+
+  /**
+   * Get default pickup radius in kilometers
+   */
+  async getPickupDefaultRadius(): Promise<number> {
+    try {
+      const setting = await this.getSetting('pickup_default_radius_km');
+      return Number(setting.value) || 50;
+    } catch (error) {
+      return 50; // Default to 50km
+    }
+  }
+
+  /**
+   * Check if pickup code verification is required
+   */
+  async isPickupCodeVerificationRequired(): Promise<boolean> {
+    try {
+      const setting = await this.getSetting('pickup_require_code_verification');
+      return Boolean(setting.value);
+    } catch (error) {
+      return true; // Default to required
+    }
+  }
+
+  /**
+   * Get pickup expiration days
+   */
+  async getPickupExpirationDays(): Promise<number> {
+    try {
+      const setting = await this.getSetting('pickup_expiration_days');
+      return Number(setting.value) || 7;
+    } catch (error) {
+      return 7; // Default to 7 days
+    }
+  }
+
+  /**
+   * Check if pickup scheduling is allowed
+   */
+  async isPickupSchedulingAllowed(): Promise<boolean> {
+    try {
+      const setting = await this.getSetting('pickup_allow_scheduling');
+      return Boolean(setting.value);
+    } catch (error) {
+      return false; // Default to not allowed (future feature)
+    }
+  }
+
+  /**
+   * Get default pickup fee
+   */
+  async getPickupDefaultFee(): Promise<number> {
+    try {
+      const setting = await this.getSetting('pickup_default_fee');
+      return Number(setting.value) || 0;
+    } catch (error) {
+      return 0; // Default to free
+    }
+  }
+
+  /**
+   * Get all pickup settings (convenience method)
+   */
+  async getPickupSettings(): Promise<{
+    enabled: boolean;
+    defaultRadius: number;
+    requireCodeVerification: boolean;
+    expirationDays: number;
+    allowScheduling: boolean;
+    defaultFee: number;
+  }> {
+    const [
+      enabled,
+      defaultRadius,
+      requireCodeVerification,
+      expirationDays,
+      allowScheduling,
+      defaultFee,
+    ] = await Promise.all([
+      this.isPickupEnabled(),
+      this.getPickupDefaultRadius(),
+      this.isPickupCodeVerificationRequired(),
+      this.getPickupExpirationDays(),
+      this.isPickupSchedulingAllowed(),
+      this.getPickupDefaultFee(),
+    ]);
+
+    return {
+      enabled,
+      defaultRadius,
+      requireCodeVerification,
+      expirationDays,
+      allowScheduling,
+      defaultFee,
+    };
   }
 }

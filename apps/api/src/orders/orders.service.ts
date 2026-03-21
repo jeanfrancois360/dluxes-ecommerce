@@ -353,7 +353,8 @@ export class OrdersService {
     shippingAddressId: string,
     billingAddressId?: string,
     notes?: string,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    shippingMethodId?: string
   ) {
     // 1. Check for duplicate order (idempotency)
     if (idempotencyKey) {
@@ -455,6 +456,34 @@ export class OrdersService {
     // 6. Generate order number
     const orderNumber = `ORD-${Date.now()}`;
 
+    // 6.5 Detect if this is a pickup order and generate pickup data
+    let isPickup = false;
+    let pickupStoreId: string | null = null;
+    let pickupCode: string | null = null;
+    let pickupInstructions: string | null = null;
+
+    if (shippingMethodId && shippingMethodId.startsWith('pickup-')) {
+      isPickup = true;
+      // Extract storeId from shippingMethodId (format: "pickup-{storeId}")
+      pickupStoreId = shippingMethodId.replace('pickup-', '');
+
+      // Generate 6-digit pickup code
+      pickupCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Get store pickup instructions
+      const store = await this.prisma.store.findUnique({
+        where: { id: pickupStoreId },
+        select: { pickupInstructions: true, pickupAddress: true, name: true },
+      });
+
+      if (store) {
+        pickupInstructions =
+          store.pickupInstructions ||
+          `Pick up your order at ${store.name}. Show your pickup code: ${pickupCode}`;
+        this.logger.log(`✅ Pickup order for store ${store.name} - Code: ${pickupCode}`);
+      }
+    }
+
     this.logger.log(
       `💰 Order totals: subtotal=${subtotal} ${orderCurrency}, ` +
         `shipping=${shipping}, tax=${tax}, total=${total}`
@@ -498,6 +527,13 @@ export class OrdersService {
           billingAddressId: billingAddressId || shippingAddressId,
           notes,
 
+          // Pickup fields
+          isPickup,
+          pickupStoreId,
+          pickupCode,
+          pickupInstructions,
+          shippingProvider: isPickup ? 'SELF_PICKUP' : undefined,
+
           // Store idempotency key to prevent duplicate orders
           metadata: idempotencyKey ? { idempotencyKey } : null,
 
@@ -521,9 +557,11 @@ export class OrdersService {
         data: {
           orderId: newOrder.id,
           status: OrderStatus.PENDING,
-          title: 'Order Placed',
-          description: 'Your order has been received and is being processed.',
-          icon: 'shopping-bag',
+          title: isPickup ? 'Pickup Order Placed' : 'Order Placed',
+          description: isPickup
+            ? `Your order is being prepared for pickup. Pickup code: ${pickupCode}`
+            : 'Your order has been received and is being processed.',
+          icon: isPickup ? 'map-pin' : 'shopping-bag',
         },
       });
 
@@ -567,29 +605,74 @@ export class OrdersService {
         const customerName =
           `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
 
-        await this.emailService.sendOrderConfirmation(user.email, {
-          orderNumber: order.orderNumber,
-          customerName,
-          items: order.items.map((item) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: Number(item.price),
-            total: Number(item.total),
-          })),
-          subtotal: Number(subtotal),
-          shipping: Number(shipping),
-          tax: Number(tax),
-          total: Number(total),
-          currency: orderCurrency,
-          shippingAddress: {
-            street: order.shippingAddress.address1 || '',
-            city: order.shippingAddress.city || '',
-            state: order.shippingAddress.province || '',
-            zipCode: order.shippingAddress.postalCode || '',
-            country: order.shippingAddress.country || '',
-          },
-          orderId: order.id,
-        });
+        if (isPickup && pickupStoreId) {
+          // Send pickup order placed email
+          const pickupStore = await this.prisma.store.findUnique({
+            where: { id: pickupStoreId },
+            select: {
+              name: true,
+              pickupAddress: true,
+              address: true,
+              city: true,
+              state: true,
+              zipCode: true,
+            },
+          });
+
+          if (pickupStore) {
+            const storeAddress =
+              pickupStore.pickupAddress ||
+              `${pickupStore.address || ''}, ${pickupStore.city || ''}, ${pickupStore.state || ''} ${pickupStore.zipCode || ''}`.trim();
+
+            await this.emailService.sendPickupOrderPlacedNotification(user.email, {
+              orderNumber: order.orderNumber,
+              customerName,
+              pickupCode: pickupCode || '',
+              storeName: pickupStore.name,
+              storeAddress,
+              pickupInstructions: pickupInstructions || undefined,
+              items: order.items.map((item) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: Number(item.price),
+                image: item.image,
+              })),
+              subtotal: Number(subtotal),
+              tax: Number(tax),
+              pickupFee: Number(shipping), // Pickup fee stored as shipping
+              total: Number(total),
+              currency: orderCurrency,
+              orderId: order.id,
+            });
+
+            this.logger.log(`Pickup order placed email queued for ${user.email}`);
+          }
+        } else {
+          // Send regular order confirmation email
+          await this.emailService.sendOrderConfirmation(user.email, {
+            orderNumber: order.orderNumber,
+            customerName,
+            items: order.items.map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: Number(item.price),
+              total: Number(item.total),
+            })),
+            subtotal: Number(subtotal),
+            shipping: Number(shipping),
+            tax: Number(tax),
+            total: Number(total),
+            currency: orderCurrency,
+            shippingAddress: {
+              street: order.shippingAddress.address1 || '',
+              city: order.shippingAddress.city || '',
+              state: order.shippingAddress.province || '',
+              zipCode: order.shippingAddress.postalCode || '',
+              country: order.shippingAddress.country || '',
+            },
+            orderId: order.id,
+          });
+        }
       }
     } catch (emailError) {
       this.logger.error('Error sending order confirmation email:', emailError);
@@ -889,6 +972,34 @@ export class OrdersService {
     // Generate order number
     const orderNumber = `ORD-${Date.now()}`;
 
+    // Detect if this is a pickup order and generate pickup data
+    let isPickup = false;
+    let pickupStoreId: string | null = null;
+    let pickupCode: string | null = null;
+    let pickupInstructions: string | null = null;
+
+    if (shippingMethodId && shippingMethodId.startsWith('pickup-')) {
+      isPickup = true;
+      // Extract storeId from shippingMethodId (format: "pickup-{storeId}")
+      pickupStoreId = shippingMethodId.replace('pickup-', '');
+
+      // Generate 6-digit pickup code
+      pickupCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Get store pickup instructions
+      const store = await this.prisma.store.findUnique({
+        where: { id: pickupStoreId },
+        select: { pickupInstructions: true, pickupAddress: true, name: true },
+      });
+
+      if (store) {
+        pickupInstructions =
+          store.pickupInstructions ||
+          `Pick up your order at ${store.name}. Show your pickup code: ${pickupCode}`;
+        this.logger.log(`✅ Pickup order for store ${store.name} - Code: ${pickupCode}`);
+      }
+    }
+
     // Get currency and exchange rate for order
     const currency = orderCurrency || 'USD';
     const baseCurrency = 'USD';
@@ -925,6 +1036,12 @@ export class OrdersService {
           shippingAddressId,
           billingAddressId: billingAddressId || shippingAddressId,
           notes,
+          // Pickup fields
+          isPickup,
+          pickupStoreId,
+          pickupCode,
+          pickupInstructions,
+          shippingProvider: isPickup ? 'SELF_PICKUP' : undefined,
           // Store idempotency key to prevent duplicate orders
           metadata: idempotencyKey ? { idempotencyKey } : null,
           items: {
@@ -947,9 +1064,11 @@ export class OrdersService {
         data: {
           orderId: newOrder.id,
           status: OrderStatus.PENDING,
-          title: 'Order Placed',
-          description: 'Your order has been received and is being processed.',
-          icon: 'shopping-bag',
+          title: isPickup ? 'Pickup Order Placed' : 'Order Placed',
+          description: isPickup
+            ? `Your order is being prepared for pickup. Pickup code: ${pickupCode}`
+            : 'Your order has been received and is being processed.',
+          icon: isPickup ? 'map-pin' : 'shopping-bag',
         },
       });
 
@@ -990,31 +1109,76 @@ export class OrdersService {
         const customerName =
           `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
 
-        await this.emailService.sendOrderConfirmation(user.email, {
-          orderNumber: order.orderNumber,
-          customerName,
-          items: orderItems.map((item) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: Number(item.price),
-            image: item.image,
-          })),
-          subtotal: Number(subtotal),
-          tax: Number(tax),
-          shipping: Number(shipping),
-          total: Number(total),
-          currency,
-          shippingAddress: {
-            street: order.shippingAddress.address1,
-            city: order.shippingAddress.city,
-            state: order.shippingAddress.province || '',
-            zipCode: order.shippingAddress.postalCode,
-            country: order.shippingAddress.country,
-          },
-          orderId: order.id,
-        });
+        if (isPickup && pickupStoreId) {
+          // Send pickup order placed email
+          const pickupStore = await this.prisma.store.findUnique({
+            where: { id: pickupStoreId },
+            select: {
+              name: true,
+              pickupAddress: true,
+              address: true,
+              city: true,
+              state: true,
+              zipCode: true,
+            },
+          });
 
-        this.logger.log(`Order confirmation email queued for ${user.email}`);
+          if (pickupStore) {
+            const storeAddress =
+              pickupStore.pickupAddress ||
+              `${pickupStore.address || ''}, ${pickupStore.city || ''}, ${pickupStore.state || ''} ${pickupStore.zipCode || ''}`.trim();
+
+            await this.emailService.sendPickupOrderPlacedNotification(user.email, {
+              orderNumber: order.orderNumber,
+              customerName,
+              pickupCode: pickupCode || '',
+              storeName: pickupStore.name,
+              storeAddress,
+              pickupInstructions: pickupInstructions || undefined,
+              items: orderItems.map((item) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: Number(item.price),
+                image: item.image,
+              })),
+              subtotal: Number(subtotal),
+              tax: Number(tax),
+              pickupFee: Number(shipping), // Pickup fee stored as shipping
+              total: Number(total),
+              currency,
+              orderId: order.id,
+            });
+
+            this.logger.log(`Pickup order placed email queued for ${user.email}`);
+          }
+        } else {
+          // Send regular order confirmation email
+          await this.emailService.sendOrderConfirmation(user.email, {
+            orderNumber: order.orderNumber,
+            customerName,
+            items: orderItems.map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: Number(item.price),
+              image: item.image,
+            })),
+            subtotal: Number(subtotal),
+            tax: Number(tax),
+            shipping: Number(shipping),
+            total: Number(total),
+            currency,
+            shippingAddress: {
+              street: order.shippingAddress.address1,
+              city: order.shippingAddress.city,
+              state: order.shippingAddress.province || '',
+              zipCode: order.shippingAddress.postalCode,
+              country: order.shippingAddress.country,
+            },
+            orderId: order.id,
+          });
+
+          this.logger.log(`Order confirmation email queued for ${user.email}`);
+        }
       }
     } catch (emailError) {
       // Don't fail the order if email fails
