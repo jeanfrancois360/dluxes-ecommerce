@@ -1,7 +1,7 @@
 {
-  "version": "v1.0.0-3f3ecec",
-  "commit": "3f3ecec",
-  "branch": "main",
-  "buildTime": "2026-03-03T12:44:46.613Z",
+  "version": "v1.0.0-c36626a",
+  "commit": "c36626a",
+  "branch": "sendcloud-integration",
+  "buildTime": "2026-03-22T17:05:18.034Z",
   "nodeVersion": "v20.19.5"
 }
