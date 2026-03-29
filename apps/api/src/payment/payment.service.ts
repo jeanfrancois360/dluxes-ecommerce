@@ -5,6 +5,7 @@ import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { CurrencyService } from '../currency/currency.service';
 import { StripeSubscriptionService } from '../subscription/stripe-subscription.service';
+import { ReferralService } from '../referral/referral.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import {
   PaymentStatus,
@@ -77,7 +78,8 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
     private readonly currencyService: CurrencyService,
-    @Optional() private readonly stripeSubscriptionService?: StripeSubscriptionService
+    @Optional() private readonly stripeSubscriptionService?: StripeSubscriptionService,
+    @Optional() private readonly referralService?: ReferralService
   ) {
     // Initialize Stripe on first use (lazy loading)
     this.logger.log('PaymentService initialized - Stripe will be configured on first use');
@@ -1227,6 +1229,15 @@ export class PaymentService {
       });
 
       this.logger.log(`Order ${orderId} payment confirmed (transaction: ${transaction.id})`);
+
+      // Referral System (v2.11.0) - Check buyer qualification (NON-BLOCKING)
+      if (this.referralService) {
+        this.referralService.checkBuyerQualification(orderId).catch((err) => {
+          this.logger.warn(
+            `Referral buyer qualification check failed for order ${orderId}: ${err.message}`
+          );
+        });
+      }
 
       // Calculate and create commissions
       // Note: This would typically be done in a queue/background job

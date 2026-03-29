@@ -8,6 +8,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
 import { CreditsModule } from '../credits/credits.module';
 import { SearchModule } from '../search/search.module';
 import { SettingsModule } from '../settings/settings.module';
+import { ReferralModule } from '../referral/referral.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { SettingsModule } from '../settings/settings.module';
     CreditsModule,
     SearchModule,
     SettingsModule,
+    ReferralModule,
   ],
   providers: [ProductsService, InventoryService],
   controllers: [ProductsController],

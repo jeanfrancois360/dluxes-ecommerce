@@ -8,9 +8,17 @@ import { DatabaseModule } from '../database/database.module';
 import { SettingsModule } from '../settings/settings.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
+import { ReferralModule } from '../referral/referral.module';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, SettingsModule, CurrencyModule, SubscriptionModule],
+  imports: [
+    ConfigModule,
+    DatabaseModule,
+    SettingsModule,
+    CurrencyModule,
+    SubscriptionModule,
+    ReferralModule,
+  ],
   controllers: [PaymentController],
   providers: [PaymentService, PayPalService, PaymentMonitorService],
   exports: [PaymentService, PayPalService, PaymentMonitorService],
