@@ -10,6 +10,8 @@ import { SettingsModule } from '../settings/settings.module';
 import { PaymentModule } from '../payment/payment.module';
 import { DhlModule } from '../integrations/dhl/dhl.module';
 import { EasyPostModule } from '../integrations/easypost/easypost.module';
+import { SendcloudModule } from '../integrations/sendcloud/sendcloud.module';
+import { EasyshipModule } from '../integrations/easyship/easyship.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { GelatoModule } from '../gelato/gelato.module';
 
@@ -23,6 +25,8 @@ import { GelatoModule } from '../gelato/gelato.module';
     PaymentModule,
     DhlModule,
     EasyPostModule,
+    SendcloudModule,
+    EasyshipModule,
     ShippingModule,
     GelatoModule,
   ],
