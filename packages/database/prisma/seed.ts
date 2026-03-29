@@ -1905,6 +1905,116 @@ async function main() {
       },
     }),
 
+    prisma.systemSetting.upsert({
+      where: { key: 'payout_processing_days' },
+      update: {},
+      create: {
+        key: 'payout_processing_days',
+        category: 'payout',
+        value: 3,
+        valueType: 'NUMBER',
+        label: 'Payout Processing Days',
+        description: 'Business days for bank transfer to arrive after payout is processed',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 3,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'payout_hold_days' },
+      update: {},
+      create: {
+        key: 'payout_hold_days',
+        category: 'payout',
+        value: 7,
+        valueType: 'NUMBER',
+        label: 'Payout Hold Days',
+        description: 'Days to hold funds after delivery before payout eligibility',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 7,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'payout_methods_enabled' },
+      update: {},
+      create: {
+        key: 'payout_methods_enabled',
+        category: 'payout',
+        value: ['bank_transfer', 'stripe_connect'],
+        valueType: 'ARRAY',
+        label: 'Enabled Payout Methods',
+        description:
+          'List of active payout methods available for sellers. Options: bank_transfer, stripe_connect, paypal, wise',
+        isPublic: true,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: ['bank_transfer', 'stripe_connect'],
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'paypal_enabled' },
+      update: {},
+      create: {
+        key: 'paypal_enabled',
+        category: 'payment',
+        value: false,
+        valueType: 'BOOLEAN',
+        label: 'Enable PayPal Payouts',
+        description: 'Enable PayPal as a payout method (requires PayPal API keys)',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: false,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'wise_enabled' },
+      update: {},
+      create: {
+        key: 'wise_enabled',
+        category: 'payment',
+        value: false,
+        valueType: 'BOOLEAN',
+        label: 'Enable Wise Payouts',
+        description: 'Enable Wise (TransferWise) as a payout method (requires Wise API keys)',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: false,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'payout_manual_request_enabled' },
+      update: {},
+      create: {
+        key: 'payout_manual_request_enabled',
+        category: 'payout',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Allow Manual Payout Requests',
+        description:
+          'Allow sellers to manually request payouts before the scheduled date (still subject to minimum amount)',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
     // Audit & Logging
     prisma.systemSetting.upsert({
       where: { key: 'audit_log_all_escrow_actions' },
