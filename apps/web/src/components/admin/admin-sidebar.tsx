@@ -24,6 +24,7 @@ import {
   PackageCheck,
   Store,
   Bell,
+  Gift,
 } from 'lucide-react';
 
 interface NavItem {
@@ -95,6 +96,7 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'advertisements', href: '/admin/advertisements', icon: Megaphone },
       { nameKey: 'advertisementPlans', href: '/admin/advertisement-plans', icon: CreditCard },
       { nameKey: 'announcements', href: '/admin/announcements', icon: Bell },
+      { nameKey: 'referrals', href: '/admin/referrals', icon: Gift },
     ],
   },
   {

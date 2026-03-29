@@ -37,6 +37,7 @@
       "advertisements": "Advertisements",
       "advertisementPlans": "Advertisement Plans",
       "announcements": "Announcements",
+      "referrals": "Referrals",
       "settings": "Settings"
     },
     "viewWebsite": "View Website",
@@ -3734,8 +3735,8 @@
         "description": "Shipping cost calculator & pricing"
       },
       "delivery": {
-        "label": "Fulfillment",
-        "description": "Order fulfillment & delivery partners"
+        "label": "Delivery Partners",
+        "description": "Manage delivery partner accounts and settings"
       },
       "security": {
         "label": "Security",

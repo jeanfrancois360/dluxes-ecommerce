@@ -1,10 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
 import { SearchService } from '../search/search.service';
 import { SettingsService } from '../settings/settings.service';
+import { ReferralService } from '../referral/referral.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -27,7 +34,8 @@ export class ProductsService {
     private readonly subscriptionService: SubscriptionService,
     private readonly creditsService: CreditsService,
     private readonly searchService: SearchService,
-    private readonly settingsService: SettingsService
+    private readonly settingsService: SettingsService,
+    @Optional() private readonly referralService?: ReferralService
   ) {}
 
   /**
@@ -864,6 +872,15 @@ export class ProductsService {
         where: { id: storeId },
         data: { totalProducts: { increment: 1 } },
       });
+
+      // Referral System (v2.11.0) - Check seller qualification (NON-BLOCKING)
+      if (this.referralService) {
+        this.referralService.checkSellerQualification(storeId).catch((err) => {
+          this.logger.warn(
+            `Referral seller qualification check failed for store ${storeId}: ${err.message}`
+          );
+        });
+      }
     }
 
     return product;

@@ -21,6 +21,7 @@ import * as QRCode from 'qrcode';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
 import { EmailOTPService } from './email-otp.service';
+import { ReferralService } from '../referral/referral.service';
 import { EmailOTPType } from '@prisma/client';
 import {
   RegisterDto,
@@ -44,7 +45,8 @@ export class EnhancedAuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private emailService: EmailService,
-    private emailOTPService: EmailOTPService
+    private emailOTPService: EmailOTPService,
+    private referralService: ReferralService
   ) {}
 
   // ============================================================================
@@ -79,6 +81,19 @@ export class EnhancedAuthService {
         lastLoginIp: ipAddress,
       },
     });
+
+    // Referral System (v2.11.0) - NON-BLOCKING
+    // Auto-generate referral code for new user
+    this.referralService.generateReferralCode(user.id).catch((err) => {
+      console.error(`Failed to generate referral code for user ${user.id}:`, err);
+    });
+
+    // Apply referral code if provided
+    if (data.referralCode) {
+      this.referralService.applyReferralCode(data.referralCode, user.id).catch((err) => {
+        console.error(`Failed to apply referral code ${data.referralCode}:`, err);
+      });
+    }
 
     // Auto-create store for all sellers (v2.6.0 feature)
     let store = null;
