@@ -5,6 +5,7 @@ import { DhlRatesService } from '../integrations/dhl/dhl-rates.service';
 import { EasyPostRatesService } from '../integrations/easypost/easypost-rates.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
+import { PrismaService } from '../database/prisma.service';
 
 export interface ShippingAddress {
   country: string;
@@ -54,7 +55,8 @@ export class ShippingTaxService {
     private readonly dhlRatesService: DhlRatesService,
     private readonly easyPostRatesService: EasyPostRatesService,
     private readonly shippingService: ShippingService,
-    private readonly gelatoOrdersService: GelatoOrdersService
+    private readonly gelatoOrdersService: GelatoOrdersService,
+    private readonly prisma: PrismaService
   ) {}
 
   /**
@@ -164,9 +166,11 @@ export class ShippingTaxService {
     }
 
     // TIER 1: EasyPost (PRIMARY/DEFAULT PROVIDER - enabled by default)
-    try {
-      const easypostEnabled = await this.settingsService.getSetting('easypost_enabled');
-      if (easypostEnabled?.value === true) {
+    // Falls back to DHL/Zones/Manual if EasyPost fails or returns no rates
+    const easypostEnabled = await this.settingsService.getSetting('easypost_enabled');
+    if (easypostEnabled?.value === true) {
+      this.logger.log('[EasyPost] Attempting to fetch rates (will fallback if unavailable)...');
+      try {
         const easypostOptions = await this.calculateEasyPostShippingOptions(
           address,
           itemsForShipping,
@@ -174,15 +178,86 @@ export class ShippingTaxService {
         );
 
         if (easypostOptions.length > 0) {
-          this.logger.log(`[EasyPost] Using EasyPost rates (${easypostOptions.length} options)`);
+          this.logger.log(
+            `[EasyPost] ✅ SUCCESS - Using EasyPost rates (${easypostOptions.length} options)`
+          );
           return addGelatoCost(easypostOptions);
+        } else {
+          this.logger.warn('[EasyPost] No rates available, falling back to next provider...');
         }
+      } catch (error) {
+        // Log error and fall back to next provider
+        this.logger.warn(
+          `[EasyPost] Failed to fetch rates: ${error.message}. Falling back to next provider...`
+        );
       }
-    } catch (error) {
-      this.logger.warn(`[EasyPost] Failed, falling back to DHL/zones: ${error.message}`);
+    } else {
+      this.logger.log('[EasyPost] Disabled, skipping to next provider...');
     }
 
-    // TIER 2: Try DHL API if mode is 'dhl_api' or 'hybrid'
+    // TIER 2: DHL Express (if enabled and configured in settings)
+    const dhlEnabled = await this.settingsService.getSetting('dhl_enabled');
+    const dhlKey = process.env.DHL_EXPRESS_API_KEY;
+    if (dhlEnabled?.value === true && dhlKey) {
+      this.logger.log('[DHL] Attempting to fetch rates...');
+      try {
+        // Get origin address for DHL
+        let originCountry = 'US';
+        let originPostalCode = '10001';
+        let originCity = 'New York';
+
+        try {
+          const countrySetting = await this.settingsService.getSetting('origin_country');
+          const postalSetting = await this.settingsService.getSetting('origin_postal_code');
+          const citySetting = await this.settingsService.getSetting('origin_city');
+          originCountry = String(countrySetting.value) || 'US';
+          originPostalCode = String(postalSetting.value) || '10001';
+          originCity = String(citySetting.value) || 'New York';
+        } catch (error) {
+          this.logger.warn('Failed to get origin address from settings, using defaults');
+        }
+
+        const dhlRates = await this.dhlRatesService.getSimplifiedRates({
+          originCountryCode: originCountry,
+          originPostalCode: originPostalCode,
+          originCityName: originCity,
+          destinationCountryCode: address.country,
+          destinationPostalCode: address.postalCode || '',
+          destinationCityName: address.city,
+          weight: Math.max(0.5, totalWeightKg), // Minimum 0.5kg
+        });
+
+        if (dhlRates && dhlRates.length > 0) {
+          this.logger.log(
+            `[DHL] ✅ SUCCESS - Using DHL Express rates (${dhlRates.length} options)`
+          );
+          return addGelatoCost(
+            dhlRates.map((rate) => ({
+              id: rate.id,
+              name: rate.name,
+              description: rate.description,
+              price: rate.price,
+              estimatedDays: rate.estimatedDays,
+              carrier: 'DHL Express',
+            }))
+          );
+        } else {
+          this.logger.warn('[DHL] No rates available, falling back to next provider...');
+        }
+      } catch (err) {
+        this.logger.warn(
+          `[DHL] Failed to fetch rates: ${err.message}. Falling back to next provider...`
+        );
+      }
+    } else {
+      if (!dhlKey) {
+        this.logger.log('[DHL] Not configured (missing DHL_EXPRESS_API_KEY), skipping...');
+      } else {
+        this.logger.log('[DHL] Disabled, skipping to next provider...');
+      }
+    }
+
+    // TIER 3 (LEGACY): Try DHL API if mode is 'dhl_api' or 'hybrid'
     if (shippingMode === 'dhl_api' || shippingMode === 'hybrid') {
       try {
         const dhlOptions = await this.calculateDhlShippingOptions(
@@ -348,16 +423,23 @@ export class ShippingTaxService {
     };
 
     try {
-      // Get rates from EasyPost
-      const easypostResult = await this.easyPostRatesService.getLowestRate(
-        {
-          fromAddress,
-          toAddress,
-          parcel,
-        },
-        undefined, // no carrier filter
-        undefined // no service filter
-      );
+      // Get rates from EasyPost with 10-second timeout (for testing)
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('EasyPost request timed out after 10 seconds')), 10000);
+      });
+
+      const easypostResult = await Promise.race([
+        this.easyPostRatesService.getLowestRate(
+          {
+            fromAddress,
+            toAddress,
+            parcel,
+          },
+          undefined, // no carrier filter
+          undefined // no service filter
+        ),
+        timeoutPromise,
+      ]);
 
       // Return top 3 rates (cheapest to most expensive)
       const topRates = easypostResult.allRates.slice(0, 3);
@@ -374,7 +456,8 @@ export class ShippingTaxService {
       }));
     } catch (error) {
       this.logger.error('EasyPost rate fetch failed:', error.message);
-      return [];
+      // Throw the actual error so it can be caught and reported properly
+      throw new Error(`Failed to fetch EasyPost rates: ${error.message}`);
     }
   }
 
@@ -825,7 +908,7 @@ export class ShippingTaxService {
       for (const [storeId, storeItems] of storeGroups) {
         try {
           // Get store pickup settings from database
-          const store = await this.settingsService.prisma.store.findUnique({
+          const store = await this.prisma.store.findUnique({
             where: { id: storeId },
             select: {
               id: true,
@@ -838,8 +921,8 @@ export class ShippingTaxService {
               pickupFee: true,
               pickupEstimatedMinutes: true,
               city: true,
-              state: true,
-              zipCode: true,
+              province: true,
+              postalCode: true,
             },
           });
 
@@ -852,8 +935,8 @@ export class ShippingTaxService {
             address,
             {
               city: store.city,
-              state: store.state,
-              postalCode: store.zipCode,
+              state: store.province,
+              postalCode: store.postalCode,
             },
             store.pickupRadius || 50
           );

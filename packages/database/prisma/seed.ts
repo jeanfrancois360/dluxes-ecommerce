@@ -2071,6 +2071,122 @@ async function main() {
         lastUpdatedBy: superAdmin.id,
       },
     }),
+
+    // EasyPost Shipping Settings
+    prisma.systemSetting.upsert({
+      where: { key: 'easypost_enabled' },
+      update: {},
+      create: {
+        key: 'easypost_enabled',
+        category: 'shipping',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable EasyPost Multi-Carrier Shipping',
+        description:
+          'Enable EasyPost as the primary shipping provider. When enabled, EasyPost will be the first provider checked in the shipping cascade (EasyPost → DHL → Zones → Manual). Configure API key in .env: EASYPOST_API_KEY',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'easypost_test_mode' },
+      update: {},
+      create: {
+        key: 'easypost_test_mode',
+        category: 'shipping',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'EasyPost Test Mode',
+        description:
+          'Use EasyPost in test mode. Test mode is FREE and does not charge for label purchases. Set to false in production (requires production API key starting with EZAK).',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'easypost_default_label_format' },
+      update: {},
+      create: {
+        key: 'easypost_default_label_format',
+        category: 'shipping',
+        value: 'PDF',
+        valueType: 'STRING',
+        label: 'Default Label Format',
+        description:
+          'Default format for shipping labels. Options: PDF (recommended for desktop printing), PNG (image format), ZPL (Zebra thermal printers), EPL2 (older thermal printers).',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 'PDF',
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'easypost_default_carriers' },
+      update: {},
+      create: {
+        key: 'easypost_default_carriers',
+        category: 'shipping',
+        value: ['USPS', 'UPS', 'FedEx'],
+        valueType: 'ARRAY',
+        label: 'Default Carriers',
+        description:
+          'Preferred carriers for rate comparison. EasyPost will prioritize these carriers when fetching shipping rates. Available: USPS, UPS, FedEx, DHL, Canada Post, Australia Post, and 100+ more.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: ['USPS', 'UPS', 'FedEx'],
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'easypost_address_verification' },
+      update: {},
+      create: {
+        key: 'easypost_address_verification',
+        category: 'shipping',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable Address Verification',
+        description:
+          'Automatically verify and correct shipping addresses using EasyPost address validation API. Helps prevent delivery failures due to incorrect addresses.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    // DHL Express Shipping Settings
+    prisma.systemSetting.upsert({
+      where: { key: 'dhl_enabled' },
+      update: {},
+      create: {
+        key: 'dhl_enabled',
+        category: 'shipping',
+        value: false,
+        valueType: 'BOOLEAN',
+        label: 'Enable DHL Express Shipping',
+        description:
+          'Use DHL Express as Tier 2 shipping provider in the cascade (after EasyPost). When enabled, DHL will be checked if EasyPost fails or returns no rates. Requires DHL credentials in .env: DHL_EXPRESS_API_KEY, DHL_EXPRESS_API_SECRET, DHL_ACCOUNT_NUMBER.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: false,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
   ]);
 
   console.log(`✅ Created ${settings.length} system settings`);
