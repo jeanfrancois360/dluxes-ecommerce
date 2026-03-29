@@ -2,6 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from '../database/database.module';
 import { SettingsModule } from '../settings/settings.module';
+import { UploadModule } from '../upload/upload.module';
 import { GelatoService } from './gelato.service';
 import { GelatoProductsService } from './gelato-products.service';
 import { GelatoOrdersService } from './gelato-orders.service';
@@ -23,7 +24,7 @@ import { EncryptionService } from '../common/services/encryption.service';
  * - Webhook controller supports both platform and seller-specific endpoints
  */
 @Module({
-  imports: [ConfigModule, DatabaseModule, SettingsModule],
+  imports: [ConfigModule, DatabaseModule, SettingsModule, UploadModule],
   controllers: [
     GelatoController,
     GelatoWebhookController,
