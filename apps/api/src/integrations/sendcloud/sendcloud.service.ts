@@ -1,0 +1,214 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import axios, { AxiosInstance } from 'axios';
+
+// Sendcloud supported ship-from countries
+export const SENDCLOUD_SUPPORTED_COUNTRIES = [
+  'AT', // Austria
+  'BE', // Belgium
+  'FR', // France
+  'DE', // Germany
+  'IT', // Italy
+  'NL', // Netherlands
+  'ES', // Spain
+  'GB', // United Kingdom
+  'CZ', // Czech Republic
+  'DK', // Denmark
+  'PL', // Poland
+  'PT', // Portugal
+  'SE', // Sweden
+];
+
+export interface SendcloudRate {
+  provider: 'sendcloud';
+  serviceCode: string; // shipping method id as string
+  serviceName: string; // shipping method name
+  carrierName: string; // carrier name
+  totalCharge: number; // price in euros
+  currency: string; // 'EUR'
+  minDeliveryDays: number;
+  maxDeliveryDays: number;
+}
+
+export interface SendcloudGetRatesRequest {
+  fromCountry: string;
+  toCountry: string;
+  weightGrams: number;
+  items: Array<{
+    name: string;
+    quantity: number;
+    value: number;
+  }>;
+}
+
+@Injectable()
+export class SendcloudService {
+  private readonly logger = new Logger(SendcloudService.name);
+  private client: AxiosInstance | null = null;
+  private readonly baseUrl = 'https://panel.sendcloud.sc/api/v2';
+
+  constructor(private readonly configService: ConfigService) {
+    this.initializeClient();
+  }
+
+  /**
+   * Initialize Sendcloud API client with HTTP Basic Auth
+   */
+  private initializeClient(): void {
+    const publicKey = this.configService.get<string>('SENDCLOUD_PUBLIC_KEY');
+    const secretKey = this.configService.get<string>('SENDCLOUD_SECRET_KEY');
+
+    if (!publicKey || !secretKey) {
+      this.logger.warn(
+        'Sendcloud credentials not configured. Set SENDCLOUD_PUBLIC_KEY and SENDCLOUD_SECRET_KEY'
+      );
+      return;
+    }
+
+    this.client = axios.create({
+      baseURL: this.baseUrl,
+      auth: {
+        username: publicKey,
+        password: secretKey,
+      },
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 10000,
+    });
+
+    this.logger.log('Sendcloud client initialized');
+  }
+
+  /**
+   * Check if Sendcloud supports a given ship-from country
+   */
+  isCountrySupported(countryCode: string): boolean {
+    return SENDCLOUD_SUPPORTED_COUNTRIES.includes(countryCode.toUpperCase());
+  }
+
+  /**
+   * Check if Sendcloud is configured
+   */
+  isConfigured(): boolean {
+    return this.client !== null;
+  }
+
+  /**
+   * Get shipping rates from Sendcloud
+   */
+  async getRates(request: SendcloudGetRatesRequest): Promise<SendcloudRate[]> {
+    if (!this.client) {
+      throw new Error('Sendcloud is not configured');
+    }
+
+    if (!this.isCountrySupported(request.fromCountry)) {
+      throw new Error(
+        `Sendcloud does not support shipping from ${request.fromCountry}. ` +
+          `Supported countries: ${SENDCLOUD_SUPPORTED_COUNTRIES.join(', ')}`
+      );
+    }
+
+    try {
+      // GET /shipping_methods?from_country=FR&to_country=DE&weight=1000
+      const response = await this.client.get('/shipping_methods', {
+        params: {
+          from_country: request.fromCountry.toUpperCase(),
+          to_country: request.toCountry.toUpperCase(),
+          weight: request.weightGrams,
+        },
+      });
+
+      const shippingMethods = response.data?.shipping_methods || [];
+
+      if (shippingMethods.length === 0) {
+        this.logger.warn(
+          `No Sendcloud shipping methods found for ${request.fromCountry} → ${request.toCountry}`
+        );
+        return [];
+      }
+
+      // Extract rates from shipping methods
+      const rates: SendcloudRate[] = [];
+
+      for (const method of shippingMethods) {
+        // Find price for destination country
+        const countryData = method.countries?.find(
+          (c: any) => c.iso_2 === request.toCountry.toUpperCase()
+        );
+
+        if (!countryData || !countryData.price) {
+          continue; // Skip if no price for this destination
+        }
+
+        rates.push({
+          provider: 'sendcloud',
+          serviceCode: String(method.id),
+          serviceName: method.name || 'Standard Shipping',
+          carrierName: method.carrier || 'Sendcloud',
+          totalCharge: parseFloat(countryData.price),
+          currency: 'EUR',
+          minDeliveryDays: method.min_delivery_time || 3,
+          maxDeliveryDays: method.max_delivery_time || 7,
+        });
+      }
+
+      // Sort by price (cheapest first)
+      rates.sort((a, b) => a.totalCharge - b.totalCharge);
+
+      // Return top 5 cheapest options
+      return rates.slice(0, 5);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        this.logger.error(
+          `Sendcloud API error: ${error.response?.status} - ${JSON.stringify(error.response?.data)}`
+        );
+        throw new Error(`Sendcloud API error: ${error.response?.data?.message || error.message}`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get health status - validates credentials
+   */
+  async getHealthStatus(): Promise<{
+    enabled: boolean;
+    configured: boolean;
+    accountName?: string;
+    error?: string;
+  }> {
+    if (!this.client) {
+      return {
+        enabled: false,
+        configured: false,
+        error: 'Credentials not configured',
+      };
+    }
+
+    try {
+      // GET /user to validate credentials
+      const response = await this.client.get('/user');
+      const user = response.data?.user;
+
+      return {
+        enabled: true,
+        configured: true,
+        accountName: user?.company_name || user?.email || 'Sendcloud Account',
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return {
+          enabled: false,
+          configured: false,
+          error: `API error: ${error.response?.status} - ${error.response?.data?.message || error.message}`,
+        };
+      }
+      return {
+        enabled: false,
+        configured: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+}

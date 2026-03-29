@@ -2168,6 +2168,46 @@ async function main() {
       },
     }),
 
+    // Sendcloud Shipping Settings (EU sellers)
+    prisma.systemSetting.upsert({
+      where: { key: 'sendcloud_enabled' },
+      update: {},
+      create: {
+        key: 'sendcloud_enabled',
+        category: 'shipping',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable Sendcloud Shipping',
+        description:
+          'Sendcloud shipping for EU sellers (Tier 1). Supported ship-from countries: AT, BE, FR, DE, IT, NL, ES, GB, CZ, DK, PL, PT, SE. Requires credentials in .env: SENDCLOUD_PUBLIC_KEY, SENDCLOUD_SECRET_KEY.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    // Easyship Shipping Settings
+    prisma.systemSetting.upsert({
+      where: { key: 'easyship_enabled' },
+      update: {},
+      create: {
+        key: 'easyship_enabled',
+        category: 'shipping',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable Easyship Shipping',
+        description:
+          'Easyship shipping for select countries (Tier 2). Supported ship-from countries: AU, BE, CA, FR, DE, HK, NL, SG, US, GB. Requires API key in .env: EASYSHIP_API_KEY.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
     // DHL Express Shipping Settings
     prisma.systemSetting.upsert({
       where: { key: 'dhl_enabled' },
