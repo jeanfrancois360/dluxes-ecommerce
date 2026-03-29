@@ -155,8 +155,30 @@ export class SubscriptionService {
     // For subscription-required types, check subscription credits (not store credits)
     // The subscription must be active and have credits remaining
     const subscriptionCreditsRemaining = subscription.creditsAllocated - subscription.creditsUsed;
+
+    // Check grace period for subscription (PAST_DUE status)
+    let inGracePeriod = false;
+    try {
+      const gracePeriodSetting = await this.settingsService.getSetting('subscription_grace_days');
+      const graceDays = Number(gracePeriodSetting.value) || 3;
+
+      if (subscription.status === 'PAST_DUE' && subscription.currentPeriodEnd) {
+        const graceEndDate = new Date(subscription.currentPeriodEnd);
+        graceEndDate.setDate(graceEndDate.getDate() + graceDays);
+        inGracePeriod = new Date() < graceEndDate;
+      }
+    } catch (error) {
+      // Grace period setting not found, use default of 3 days
+      const graceDays = 3;
+      if (subscription.status === 'PAST_DUE' && subscription.currentPeriodEnd) {
+        const graceEndDate = new Date(subscription.currentPeriodEnd);
+        graceEndDate.setDate(graceEndDate.getDate() + graceDays);
+        inGracePeriod = new Date() < graceEndDate;
+      }
+    }
+
     const hasSubscriptionCredits =
-      subscription.status === 'ACTIVE' &&
+      (subscription.status === 'ACTIVE' || inGracePeriod) &&
       (plan.tier !== 'FREE' || subscriptionCreditsRemaining > 0);
 
     // Log the check results
@@ -728,6 +750,96 @@ export class SubscriptionService {
     }
 
     return { allowed: true };
+  }
+
+  /**
+   * Get unified credit summary for seller (both store credits and subscription credits)
+   */
+  async getSellerCreditSummary(userId: string): Promise<{
+    storeCredits: {
+      balance: number;
+      expiresAt: Date | null;
+      graceEndsAt: Date | null;
+      inGracePeriod: boolean;
+      canListPhysical: boolean;
+    };
+    subscriptionCredits: {
+      allocated: number;
+      used: number;
+      remaining: number;
+      resetDate: Date;
+      planName: string;
+      planTier: string;
+      allowedTypes: string[];
+      canListService: boolean;
+      canListRealEstate: boolean;
+      canListVehicle: boolean;
+      canListRental: boolean;
+    };
+    subscription: {
+      status: string;
+      planName: string;
+      nextBillingDate: Date | null;
+      cancelAtPeriodEnd: boolean;
+    };
+  }> {
+    // Get store credits
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: {
+        creditsBalance: true,
+        creditsExpiresAt: true,
+        creditsGraceEndsAt: true,
+        status: true,
+      },
+    });
+
+    const now = new Date();
+    const storeInGracePeriod =
+      store?.creditsBalance === 0 &&
+      store?.creditsGraceEndsAt &&
+      new Date(store.creditsGraceEndsAt) > now;
+
+    const canListPhysical =
+      store?.status === 'ACTIVE' && ((store?.creditsBalance ?? 0) > 0 || storeInGracePeriod);
+
+    // Get subscription
+    const subscription = await this.getOrCreateSubscription(userId);
+    const plan = subscription.plan;
+
+    const allowedTypes = (plan.allowedProductTypes as string[]) || [];
+
+    // Calculate next reset date (1st of next month)
+    const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    return {
+      storeCredits: {
+        balance: store?.creditsBalance ?? 0,
+        expiresAt: store?.creditsExpiresAt ?? null,
+        graceEndsAt: store?.creditsGraceEndsAt ?? null,
+        inGracePeriod: storeInGracePeriod,
+        canListPhysical,
+      },
+      subscriptionCredits: {
+        allocated: subscription.creditsAllocated,
+        used: subscription.creditsUsed,
+        remaining: subscription.creditsAllocated - subscription.creditsUsed,
+        resetDate,
+        planName: plan.name,
+        planTier: plan.tier,
+        allowedTypes,
+        canListService: allowedTypes.includes('SERVICE'),
+        canListRealEstate: allowedTypes.includes('REAL_ESTATE'),
+        canListVehicle: allowedTypes.includes('VEHICLE'),
+        canListRental: allowedTypes.includes('RENTAL'),
+      },
+      subscription: {
+        status: subscription.status,
+        planName: plan.name,
+        nextBillingDate: subscription.currentPeriodEnd,
+        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      },
+    };
   }
 
   /**
