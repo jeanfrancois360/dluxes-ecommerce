@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import {
   Button,
-  Input,
   Label,
   Switch,
   Select,
@@ -18,17 +17,36 @@ import {
   CardDescription,
   Badge,
 } from '@nextpik/ui';
-import { Loader2, Save, CheckCircle2, XCircle, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import {
+  Loader2,
+  Save,
+  CheckCircle2,
+  XCircle,
+  ExternalLink,
+  AlertCircle,
+  Info,
+  RefreshCw,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '@/lib/api/client';
 
 interface EasyPostSettings {
   easypost_enabled: boolean;
-  easypost_api_key: string;
   easypost_test_mode: boolean;
-  easypost_webhook_secret: string;
   easypost_default_label_format: 'PNG' | 'PDF' | 'ZPL' | 'EPL2';
   easypost_address_verification: boolean;
   easypost_default_carriers: string[];
+}
+
+interface EasyPostHealthStatus {
+  enabled: boolean;
+  configured: boolean;
+  credentialsValid: boolean;
+  testMode: boolean;
+  webhookSecretConfigured: boolean;
+  apiKey: string;
+  connectionError: string | null;
+  message: string;
 }
 
 const AVAILABLE_CARRIERS = [
@@ -43,13 +61,11 @@ const AVAILABLE_CARRIERS = [
 export function EasyPostSettingsSection() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+  const [healthStatus, setHealthStatus] = useState<EasyPostHealthStatus | null>(null);
   const [settings, setSettings] = useState<EasyPostSettings>({
     easypost_enabled: false,
-    easypost_api_key: '',
     easypost_test_mode: true,
-    easypost_webhook_secret: '',
     easypost_default_label_format: 'PDF',
     easypost_address_verification: true,
     easypost_default_carriers: ['USPS', 'UPS', 'FedEx'],
@@ -57,17 +73,28 @@ export function EasyPostSettingsSection() {
 
   useEffect(() => {
     loadSettings();
+    checkHealth();
   }, []);
+
+  const checkHealth = async () => {
+    setIsCheckingHealth(true);
+    try {
+      const data = await api.get('/easypost/health');
+      setHealthStatus(data);
+    } catch (error) {
+      console.error('Failed to check EasyPost health:', error);
+    } finally {
+      setIsCheckingHealth(false);
+    }
+  };
 
   const loadSettings = async () => {
     setIsLoading(true);
     try {
-      // Load all EasyPost settings
+      // Load EasyPost settings (excluding API keys - those are in .env now)
       const settingsToLoad = [
         'easypost_enabled',
-        'easypost_api_key',
         'easypost_test_mode',
-        'easypost_webhook_secret',
         'easypost_default_label_format',
         'easypost_address_verification',
         'easypost_default_carriers',
@@ -75,14 +102,11 @@ export function EasyPostSettingsSection() {
 
       const promises = settingsToLoad.map(async (key) => {
         try {
-          const res = await fetch(`/api/v1/settings/${key}`, { credentials: 'include' });
-          if (res.status === 401) {
-            throw new Error('AUTHENTICATION_REQUIRED');
-          }
-          return res.ok ? res.json() : null;
+          const result = await api.get(`/settings/${key}`);
+          return result;
         } catch (error: any) {
-          if (error.message === 'AUTHENTICATION_REQUIRED') {
-            throw error;
+          if (error.status === 401) {
+            throw new Error('AUTHENTICATION_REQUIRED');
           }
           return null;
         }
@@ -112,31 +136,7 @@ export function EasyPostSettingsSection() {
 
   const updateSetting = async (key: string, value: any) => {
     try {
-      const response = await fetch(`/api/v1/settings/${key}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ value }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-
-        // Handle specific error cases
-        if (response.status === 401) {
-          throw new Error('Please log in as admin to save settings');
-        } else if (response.status === 403) {
-          throw new Error('You do not have permission to modify settings');
-        }
-
-        const errorMessage = errorData.message || `Failed to update setting (${response.status})`;
-        console.error(`Failed to update ${key}:`, {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-        });
-        throw new Error(errorMessage);
-      }
+      await api.patch(`/settings/${key}`, { value });
 
       return true;
     } catch (error) {
@@ -162,6 +162,8 @@ export function EasyPostSettingsSection() {
 
       if (failed.length === 0) {
         toast.success('EasyPost settings saved successfully');
+        // Reload health status after saving
+        await checkHealth();
       } else if (failed.length === results.length) {
         toast.error(`Failed to save settings: ${failed[0].error}`);
       } else {
@@ -189,13 +191,6 @@ export function EasyPostSettingsSection() {
         };
       }
     });
-  };
-
-  const maskApiKey = (key: string) => {
-    if (!key || key.length < 16) return key;
-    const start = key.substring(0, 12);
-    const end = key.substring(key.length - 12);
-    return `${start}${'•'.repeat(16)}${end}`;
   };
 
   if (isLoading) {
@@ -231,6 +226,151 @@ export function EasyPostSettingsSection() {
         </Badge>
       </div>
 
+      {/* Connection Status Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Connection Status</CardTitle>
+              <CardDescription>EasyPost API connection and configuration status</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={checkHealth}
+              disabled={isCheckingHealth}
+              className="gap-2"
+            >
+              {isCheckingHealth ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {healthStatus ? (
+            <>
+              {/* Status Indicator */}
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
+                {healthStatus.configured && healthStatus.credentialsValid ? (
+                  <>
+                    <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-green-900 dark:text-green-100">
+                        {healthStatus.message}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        EasyPost is ready to process shipping requests
+                      </p>
+                    </div>
+                  </>
+                ) : healthStatus.configured && !healthStatus.credentialsValid ? (
+                  <>
+                    <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-red-900 dark:text-red-100">
+                        {healthStatus.message}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {healthStatus.connectionError || 'Check your API credentials'}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-yellow-900 dark:text-yellow-100">
+                        {healthStatus.message}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Configure API credentials in environment variables
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Configuration Details */}
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Environment</p>
+                  <p className="font-medium">
+                    {healthStatus.testMode ? 'Test (Sandbox)' : 'Production'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">API Key</p>
+                  <p className="font-mono text-sm">
+                    {healthStatus.configured ? healthStatus.apiKey : 'Not Configured'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Webhook Secret</p>
+                  <p className="font-medium">
+                    {healthStatus.webhookSecretConfigured ? 'Configured ✓' : 'Not Set'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Integration Status</p>
+                  <p className="font-medium">{healthStatus.enabled ? 'Enabled ✓' : 'Disabled'}</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* API Configuration Instructions */}
+      <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900">
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div className="flex-1">
+              <CardTitle className="text-base">API Configuration</CardTitle>
+              <CardDescription className="mt-1">
+                EasyPost API credentials are configured via <strong>environment variables</strong>{' '}
+                for security.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="p-3 bg-muted/50 rounded-md font-mono text-xs">
+            <p className="text-muted-foreground mb-1"># Server Environment Variables:</p>
+            <p>EASYPOST_API_KEY=EZTK_test_xxxxx</p>
+            <p>EASYPOST_WEBHOOK_SECRET=whsec_xxxxx</p>
+          </div>
+          <div className="space-y-1 text-sm">
+            <p className="font-semibold">How to configure:</p>
+            <ol className="list-decimal list-inside space-y-1 ml-2">
+              <li>
+                Get your API key from{' '}
+                <a
+                  href="https://easypost.com/account/api-keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                >
+                  EasyPost Dashboard
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </li>
+              <li>Add the environment variables to your server (apps/api/.env)</li>
+              <li>Restart the API server to load new variables</li>
+              <li>Click &quot;Refresh&quot; above to verify connection</li>
+            </ol>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Enable/Disable Card */}
       <Card>
         <CardHeader>
@@ -255,60 +395,6 @@ export function EasyPostSettingsSection() {
               }
             />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* API Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle>API Configuration</CardTitle>
-          <CardDescription>Configure your EasyPost API credentials</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* API Key */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="api-key">API Key</Label>
-              <a
-                href="https://easypost.com/account/api-keys"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-              >
-                Get API Key
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-            <div className="relative">
-              <Input
-                id="api-key"
-                type={showApiKey ? 'text' : 'password'}
-                value={
-                  showApiKey ? settings.easypost_api_key : maskApiKey(settings.easypost_api_key)
-                }
-                onChange={(e) =>
-                  setSettings((prev) => ({
-                    ...prev,
-                    easypost_api_key: e.target.value,
-                  }))
-                }
-                placeholder="EASYPOST_TEST_xxxxx or EASYPOST_PROD_xxxxx"
-                className="pr-10"
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3"
-                onClick={() => setShowApiKey(!showApiKey)}
-              >
-                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Use test key (EASYPOST_TEST_) for development, production key (EASYPOST_PROD_) for
-              live transactions
-            </p>
-          </div>
 
           {/* Test Mode */}
           <div className="flex items-center justify-between">
@@ -316,7 +402,9 @@ export function EasyPostSettingsSection() {
               <Label htmlFor="test-mode" className="text-base">
                 Test Mode
               </Label>
-              <p className="text-sm text-muted-foreground">Use test environment for development</p>
+              <p className="text-sm text-muted-foreground">
+                Use test environment for development (free, no charges)
+              </p>
             </div>
             <Switch
               id="test-mode"
@@ -327,36 +415,15 @@ export function EasyPostSettingsSection() {
             />
           </div>
 
-          {/* Webhook Secret */}
-          <div className="space-y-2">
-            <Label htmlFor="webhook-secret">Webhook Secret (Optional)</Label>
-            <div className="relative">
-              <Input
-                id="webhook-secret"
-                type={showWebhookSecret ? 'text' : 'password'}
-                value={settings.easypost_webhook_secret}
-                onChange={(e) =>
-                  setSettings((prev) => ({
-                    ...prev,
-                    easypost_webhook_secret: e.target.value,
-                  }))
-                }
-                placeholder="Webhook HMAC secret"
-                className="pr-10"
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3"
-                onClick={() => setShowWebhookSecret(!showWebhookSecret)}
-              >
-                {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
+          {settings.easypost_test_mode && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
+              <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                Test mode uses test API keys (EZTK_) and won&apos;t charge for label purchases.
+                Perfect for development!
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Optional: Add webhook secret for signature verification
-            </p>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -389,6 +456,9 @@ export function EasyPostSettingsSection() {
                 <SelectItem value="EPL2">EPL2 (Thermal Printers)</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              PDF works with standard printers. ZPL/EPL2 for thermal label printers.
+            </p>
           </div>
 
           {/* Address Verification */}

@@ -27,22 +27,54 @@ export class EasyPostService implements OnModuleInit {
         return;
       }
 
-      // Try settings first, fall back to env
-      let apiKey: string;
-      try {
-        const keySetting = await this.settingsService.getSetting('easypost_api_key');
-        apiKey = keySetting?.value as string;
-      } catch {
-        apiKey = this.configService.get<string>('EASYPOST_API_KEY');
-      }
+      // SECURITY FIX: ONLY use environment variables for API credentials
+      // API keys should NEVER be stored in the database
+      const apiKey = this.configService.get<string>('EASYPOST_API_KEY');
 
       if (!apiKey) {
-        this.logger.warn('EasyPost API key not configured');
+        this.logger.warn(
+          'EasyPost API key not configured. Set EASYPOST_API_KEY in environment variables. ' +
+            'See documentation: https://docs.easypost.com/docs/authentication'
+        );
+        return;
+      }
+
+      // Validate API key format and match with test mode setting
+      const testModeSetting = await this.settingsService.getSetting('easypost_test_mode');
+      const isTestMode = testModeSetting?.value ?? true; // Default to test mode for safety
+
+      // Test keys start with EZTK, production keys start with EZAK
+      const isTestKey = apiKey.startsWith('EZTK');
+      const isProdKey = apiKey.startsWith('EZAK');
+
+      if (!isTestKey && !isProdKey) {
+        this.logger.error(
+          'Invalid EasyPost API key format. Keys should start with EZTK (test) or EZAK (production)'
+        );
+        return;
+      }
+
+      // Warn if key type doesn't match configured mode
+      if (isTestMode && !isTestKey) {
+        this.logger.error(
+          'Test mode is enabled but API key starts with EZAK (production key). ' +
+            'Either disable test mode or use a test key (EZTK)'
+        );
+        return;
+      }
+
+      if (!isTestMode && !isProdKey) {
+        this.logger.error(
+          'Production mode is enabled but API key starts with EZTK (test key). ' +
+            'Either enable test mode or use a production key (EZAK)'
+        );
         return;
       }
 
       this.client = new EasyPost(apiKey);
-      this.logger.log('EasyPost client initialized successfully');
+      this.logger.log(
+        `EasyPost client initialized successfully (${isTestMode ? 'test' : 'production'} mode)`
+      );
     } catch (error) {
       this.logger.error('Failed to initialize EasyPost client', error);
     }
