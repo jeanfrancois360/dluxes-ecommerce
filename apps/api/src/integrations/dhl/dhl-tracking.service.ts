@@ -4,7 +4,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { DeliveryStatus } from '@prisma/client';
 import axios, { AxiosInstance } from 'axios';
 
-interface DhlLocation {
+export interface DhlLocation {
   address?: {
     addressLocality?: string; // City
     countryCode?: string;
@@ -14,7 +14,7 @@ interface DhlLocation {
   };
 }
 
-interface DhlEvent {
+export interface DhlEvent {
   timestamp: string;
   statusCode: string;
   status: string;
@@ -22,7 +22,7 @@ interface DhlEvent {
   location?: DhlLocation;
 }
 
-interface DhlShipment {
+export interface DhlShipment {
   id: string;
   service: string;
   origin: DhlLocation;
@@ -38,11 +38,11 @@ interface DhlShipment {
   events: DhlEvent[];
 }
 
-interface DhlTrackingResponse {
+export interface DhlTrackingResponse {
   shipments: DhlShipment[];
 }
 
-interface TrackingOptions {
+export interface TrackingOptions {
   service?: string;
   recipientPostalCode?: string;
   originCountryCode?: string;
@@ -56,7 +56,7 @@ export class DhlTrackingService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService
   ) {
     const baseUrl = this.configService.get<string>('DHL_API_BASE_URL', 'https://api-eu.dhl.com');
 
@@ -64,7 +64,7 @@ export class DhlTrackingService {
       baseURL: baseUrl,
       timeout: 30000, // 30 seconds
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
       },
     });
@@ -88,14 +88,14 @@ export class DhlTrackingService {
   async trackShipment(
     trackingNumber: string,
     options?: TrackingOptions,
-    retryCount: number = 0,
+    retryCount: number = 0
   ): Promise<DhlTrackingResponse> {
     const maxRetries = 3;
 
     if (!this.isApiEnabled()) {
       throw new HttpException(
         'DHL API integration is disabled. Set DHL_TRACKING_ENABLED=true in .env',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -105,7 +105,7 @@ export class DhlTrackingService {
     if (!apiKey) {
       throw new HttpException(
         'DHL API key not configured. Please set DHL_API_KEY in .env file.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
 
@@ -130,15 +130,12 @@ export class DhlTrackingService {
 
     try {
       // ✅ CORRECT: Simple API key in header (NOT Bearer token)
-      const response = await this.apiClient.get<DhlTrackingResponse>(
-        '/track/shipments',
-        {
-          params,
-          headers: {
-            'DHL-API-Key': apiKey,  // ✅ Correct header name
-          },
+      const response = await this.apiClient.get<DhlTrackingResponse>('/track/shipments', {
+        params,
+        headers: {
+          'DHL-API-Key': apiKey, // ✅ Correct header name
         },
-      );
+      });
 
       this.logger.log(`DHL tracking data fetched for ${trackingNumber}`);
       return response.data;
@@ -153,17 +150,17 @@ export class DhlTrackingService {
         const delay = Math.pow(2, retryCount) * 1000;
 
         this.logger.warn(
-          `DHL API error ${error.response?.status}. Retrying after ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`,
+          `DHL API error ${error.response?.status}. Retrying after ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`
         );
 
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
         return this.trackShipment(trackingNumber, options, retryCount + 1);
       }
 
       // Log and rethrow error
       this.logger.error(
         `Failed to track DHL shipment ${trackingNumber}:`,
-        error.response?.data || error.message,
+        error.response?.data || error.message
       );
 
       if (error.response?.status === 404) {
@@ -173,20 +170,20 @@ export class DhlTrackingService {
       if (error.response?.status === 429) {
         throw new HttpException(
           'DHL API rate limit exceeded. Please try again later.',
-          HttpStatus.TOO_MANY_REQUESTS,
+          HttpStatus.TOO_MANY_REQUESTS
         );
       }
 
       if (error.response?.status === 401 || error.response?.status === 403) {
         throw new HttpException(
           'Invalid DHL API key. Please check your credentials.',
-          HttpStatus.UNAUTHORIZED,
+          HttpStatus.UNAUTHORIZED
         );
       }
 
       throw new HttpException(
         `Failed to fetch tracking data from DHL: ${error.response?.data?.detail || error.message}`,
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
@@ -198,33 +195,33 @@ export class DhlTrackingService {
     const statusMap: Record<string, DeliveryStatus> = {
       // Pre-transit
       'pre-transit': 'PENDING_PICKUP',
-      'PU': 'PICKED_UP',
+      PU: 'PICKED_UP',
 
       // In transit
-      'transit': 'IN_TRANSIT',
-      'IT': 'IN_TRANSIT',
-      'DF': 'IN_TRANSIT', // Departed facility
-      'AF': 'IN_TRANSIT', // Arrived at facility
+      transit: 'IN_TRANSIT',
+      IT: 'IN_TRANSIT',
+      DF: 'IN_TRANSIT', // Departed facility
+      AF: 'IN_TRANSIT', // Arrived at facility
 
       // Out for delivery
-      'OD': 'OUT_FOR_DELIVERY',
+      OD: 'OUT_FOR_DELIVERY',
       'out-for-delivery': 'OUT_FOR_DELIVERY',
 
       // Delivered
-      'delivered': 'DELIVERED',
-      'OK': 'DELIVERED',
-      'DL': 'DELIVERED',
+      delivered: 'DELIVERED',
+      OK: 'DELIVERED',
+      DL: 'DELIVERED',
 
       // Failed/Exception
-      'failure': 'FAILED_DELIVERY',
-      'FD': 'FAILED_DELIVERY',
-      'exception': 'EXCEPTION',
-      'NH': 'EXCEPTION', // Not home
-      'CD': 'EXCEPTION', // Clearance delay
+      failure: 'FAILED_DELIVERY',
+      FD: 'FAILED_DELIVERY',
+      exception: 'EXCEPTION',
+      NH: 'EXCEPTION', // Not home
+      CD: 'EXCEPTION', // Clearance delay
 
       // Returned
-      'RD': 'RETURNED',
-      'returned': 'RETURNED',
+      RD: 'RETURNED',
+      returned: 'RETURNED',
     };
 
     return statusMap[statusCode] || 'IN_TRANSIT'; // Default to IN_TRANSIT
@@ -249,10 +246,7 @@ export class DhlTrackingService {
    * @param deliveryId Delivery ID to update
    * @param options Optional parameters for DHL API
    */
-  async updateDeliveryFromDhl(
-    deliveryId: string,
-    options?: TrackingOptions,
-  ): Promise<void> {
+  async updateDeliveryFromDhl(deliveryId: string, options?: TrackingOptions): Promise<void> {
     const delivery = await this.prisma.delivery.findUnique({
       where: { id: deliveryId },
       select: {
@@ -267,17 +261,11 @@ export class DhlTrackingService {
     }
 
     if (!delivery.trackingNumber) {
-      throw new HttpException(
-        'Delivery has no tracking number',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('Delivery has no tracking number', HttpStatus.BAD_REQUEST);
     }
 
     // Fetch tracking data from DHL
-    const trackingResponse = await this.trackShipment(
-      delivery.trackingNumber,
-      options,
-    );
+    const trackingResponse = await this.trackShipment(delivery.trackingNumber, options);
 
     if (!trackingResponse.shipments || trackingResponse.shipments.length === 0) {
       this.logger.warn(`No DHL tracking data available for delivery ${deliveryId}`);
@@ -367,10 +355,7 @@ export class DhlTrackingService {
         trackingNumber: {
           not: null,
         },
-        OR: [
-          { dhlLastSyncedAt: null },
-          { dhlLastSyncedAt: { lt: cacheExpiry } },
-        ],
+        OR: [{ dhlLastSyncedAt: null }, { dhlLastSyncedAt: { lt: cacheExpiry } }],
       },
       select: {
         id: true,
@@ -395,18 +380,13 @@ export class DhlTrackingService {
         successCount++;
 
         // Rate limiting: Wait 5 seconds between requests (DHL limit: 1 call per 5 seconds)
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       } catch (error) {
         errorCount++;
-        this.logger.error(
-          `Failed to sync delivery ${delivery.id}`,
-          error.message,
-        );
+        this.logger.error(`Failed to sync delivery ${delivery.id}`, error.message);
       }
     }
 
-    this.logger.log(
-      `DHL sync completed: ${successCount} successful, ${errorCount} failed`,
-    );
+    this.logger.log(`DHL sync completed: ${successCount} successful, ${errorCount} failed`);
   }
 }

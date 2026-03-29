@@ -996,6 +996,7 @@ model ProductImage {
   mimeType     String? // MIME type
   optimizedUrl String? // Optimized version URL
   storagePath  String? // Path in Supabase storage
+  originalUrl  String? // Original Gelato S3 URL before re-upload
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
 
@@ -1230,6 +1231,9 @@ model Order {
 
   // EasyPost Shipments
   easypostShipments EasyPostShipment[]
+
+  // DHL Shipments
+  dhlShipments DhlShipment[]
 
   @@index([userId])
   @@index([orderNumber])
@@ -3806,4 +3810,61 @@ model EasyPostWebhookLog {
   @@index([eventType])
   @@index([createdAt])
   @@map("easypost_webhook_logs")
+}
+
+// ============================================================================
+// DHL EXPRESS INTEGRATION
+// ============================================================================
+
+model DhlShipment {
+  id                 String           @id @default(cuid())
+  orderId            String
+  sellerId           String?
+  storeId            String?
+
+  // DHL Shipment IDs
+  shipmentId         String?          // DHL shipment tracking number
+  trackingNumber     String?          // Primary tracking number
+  dispatchConfirmationNumber String? // DHL confirmation number
+
+  // Carrier & Service
+  productCode        String?          // DHL product code (P, U, K, etc.)
+  productName        String?          // Human-readable product name
+
+  // Label
+  labelUrl           String?          // URL to shipping label PDF
+  labelFormat        String?          // PDF, PNG, ZPL, EPL
+  labelContent       String?          @db.Text // Base64 encoded label (if stored)
+  waybillUrl         String?          // URL to waybill document
+
+  // Tracking
+  trackingUrl        String?          // Public tracking URL
+  estimatedDeliveryDate DateTime?
+  totalTransitDays   Int?
+
+  // Pricing
+  totalPrice         Float?
+  currency           String           @default("USD")
+
+  // Status
+  status             String           @default("CREATED") // CREATED, PURCHASED, IN_TRANSIT, DELIVERED, CANCELLED
+
+  // Raw Response (for debugging/auditing)
+  rawResponse        Json?
+
+  // Timestamps
+  purchasedAt        DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  // Relations
+  order              Order            @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([sellerId])
+  @@index([trackingNumber])
+  @@index([shipmentId])
+  @@index([status])
+  @@map("dhl_shipments")
 }
