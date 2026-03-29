@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
 import { DhlRatesService } from '../integrations/dhl/dhl-rates.service';
 import { EasyPostRatesService } from '../integrations/easypost/easypost-rates.service';
+import { SendcloudService } from '../integrations/sendcloud/sendcloud.service';
+import { EasyshipService } from '../integrations/easyship/easyship.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import { PrismaService } from '../database/prisma.service';
@@ -54,10 +56,76 @@ export class ShippingTaxService {
     private readonly settingsService: SettingsService,
     private readonly dhlRatesService: DhlRatesService,
     private readonly easyPostRatesService: EasyPostRatesService,
+    private readonly sendcloudService: SendcloudService,
+    private readonly easyshipService: EasyshipService,
     private readonly shippingService: ShippingService,
     private readonly gelatoOrdersService: GelatoOrdersService,
     private readonly prisma: PrismaService
   ) {}
+
+  /**
+   * Get seller's origin address from Store
+   * CRITICAL: This fixes EasyPost to use actual seller address instead of platform default
+   */
+  private async getSellerOriginAddress(items: CartItem[]): Promise<{
+    street1: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+  } | null> {
+    try {
+      // Get first item's store ID
+      const firstItem = items?.[0];
+      const storeId = firstItem?.storeId;
+
+      if (!storeId) {
+        this.logger.warn('[Seller Address] No storeId found in items, using platform default');
+        return null;
+      }
+
+      // Fetch store with embedded address fields
+      const store = await this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: {
+          address1: true,
+          city: true,
+          province: true,
+          country: true,
+          postalCode: true,
+        },
+      });
+
+      if (!store || !store.address1 || !store.city || !store.country) {
+        this.logger.warn(
+          `[Seller Address] Store ${storeId} has incomplete address, using platform default`
+        );
+        return null;
+      }
+
+      return {
+        street1: store.address1,
+        city: store.city,
+        state: store.province || '',
+        zip: store.postalCode || '',
+        country: store.country,
+      };
+    } catch (err) {
+      this.logger.warn(
+        `[Seller Address] Could not get seller address: ${err.message}, using platform default`
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Get seller country code from items
+   * Used for geo-routing logic (Sendcloud/Easyship/EasyPost)
+   */
+  private async getSellerCountry(items: CartItem[]): Promise<string | null> {
+    const address = await this.getSellerOriginAddress(items);
+    return address?.country || null;
+  }
 
   /**
    * Calculate available shipping options based on address and cart
@@ -165,11 +233,85 @@ export class ShippingTaxService {
       this.logger.warn(`[Pickup] Failed, continuing to shipping providers: ${error.message}`);
     }
 
-    // TIER 1: EasyPost (PRIMARY/DEFAULT PROVIDER - enabled by default)
-    // Falls back to DHL/Zones/Manual if EasyPost fails or returns no rates
+    // Get seller country ONCE for geo-routing decisions
+    const sellerCountry = await this.getSellerCountry(itemsForShipping);
+    this.logger.log(`[Geo-Routing] Seller country detected: ${sellerCountry || 'unknown'}`);
+
+    // TIER 1: Sendcloud (for EU sellers: AT,BE,FR,DE,IT,NL,ES,GB,CZ,DK,PL,PT,SE)
+    const sendcloudEnabled = await this.settingsService.getSetting('sendcloud_enabled');
+    if (
+      sendcloudEnabled?.value === true &&
+      sellerCountry &&
+      this.sendcloudService.isCountrySupported(sellerCountry)
+    ) {
+      this.logger.log(`[Sendcloud] Seller country ${sellerCountry} supported, attempting rates...`);
+      try {
+        const sendcloudOptions = await this.calculateSendcloudShippingOptions(
+          address,
+          itemsForShipping,
+          totalWeightGrams
+        );
+
+        if (sendcloudOptions.length > 0) {
+          this.logger.log(
+            `[Sendcloud] ✅ SUCCESS - Using Sendcloud rates (${sendcloudOptions.length} options)`
+          );
+          return addGelatoCost(sendcloudOptions);
+        } else {
+          this.logger.warn('[Sendcloud] No rates available, falling back to next provider...');
+        }
+      } catch (error) {
+        this.logger.warn(
+          `[Sendcloud] Failed to fetch rates: ${error.message}. Falling back to next provider...`
+        );
+      }
+    } else {
+      if (sendcloudEnabled?.value === true) {
+        this.logger.log(
+          `[Sendcloud] Skipping - seller country ${sellerCountry} not supported (EU only)`
+        );
+      }
+    }
+
+    // TIER 2: Easyship (for AU,BE,CA,FR,DE,HK,NL,SG,US,GB sellers)
+    const easyshipEnabled = await this.settingsService.getSetting('easyship_enabled');
+    if (
+      easyshipEnabled?.value === true &&
+      sellerCountry &&
+      this.easyshipService.isCountrySupported(sellerCountry)
+    ) {
+      this.logger.log(`[Easyship] Seller country ${sellerCountry} supported, attempting rates...`);
+      try {
+        const easyshipOptions = await this.calculateEasyshipShippingOptions(
+          address,
+          itemsForShipping,
+          totalWeightKg
+        );
+
+        if (easyshipOptions.length > 0) {
+          this.logger.log(
+            `[Easyship] ✅ SUCCESS - Using Easyship rates (${easyshipOptions.length} options)`
+          );
+          return addGelatoCost(easyshipOptions);
+        } else {
+          this.logger.warn('[Easyship] No rates available, falling back to next provider...');
+        }
+      } catch (error) {
+        this.logger.warn(
+          `[Easyship] Failed to fetch rates: ${error.message}. Falling back to next provider...`
+        );
+      }
+    } else {
+      if (easyshipEnabled?.value === true) {
+        this.logger.log(`[Easyship] Skipping - seller country ${sellerCountry} not supported`);
+      }
+    }
+
+    // TIER 3: EasyPost (GLOBAL FALLBACK - any country, using real seller address)
+    // Works globally but strongest for US, CA, AU, UK, and countries not covered by Sendcloud/Easyship
     const easypostEnabled = await this.settingsService.getSetting('easypost_enabled');
     if (easypostEnabled?.value === true) {
-      this.logger.log('[EasyPost] Attempting to fetch rates (will fallback if unavailable)...');
+      this.logger.log('[EasyPost] Attempting to fetch rates (global provider)...');
       try {
         const easypostOptions = await this.calculateEasyPostShippingOptions(
           address,
@@ -195,7 +337,7 @@ export class ShippingTaxService {
       this.logger.log('[EasyPost] Disabled, skipping to next provider...');
     }
 
-    // TIER 2: DHL Express (if enabled and configured in settings)
+    // TIER 4: DHL Express (if enabled and configured in settings)
     const dhlEnabled = await this.settingsService.getSetting('dhl_enabled');
     const dhlKey = process.env.DHL_EXPRESS_API_KEY;
     if (dhlEnabled?.value === true && dhlKey) {
@@ -369,6 +511,7 @@ export class ShippingTaxService {
 
   /**
    * Calculate shipping options using EasyPost API
+   * UPDATED: Now uses actual seller address instead of platform settings
    */
   private async calculateEasyPostShippingOptions(
     address: ShippingAddress,
@@ -380,7 +523,10 @@ export class ShippingTaxService {
       return [];
     }
 
-    // Get origin address from settings
+    // Get seller's real origin address (CRITICAL FIX)
+    const sellerAddress = await this.getSellerOriginAddress(items);
+
+    // Build fromAddress - use seller address if available, fallback to platform settings
     let fromAddress = {
       street1: '123 Main St',
       city: 'New York',
@@ -389,20 +535,30 @@ export class ShippingTaxService {
       country: 'US',
     };
 
-    try {
-      const street1Setting = await this.settingsService.getSetting('origin_street1');
-      const citySetting = await this.settingsService.getSetting('origin_city');
-      const stateSetting = await this.settingsService.getSetting('origin_state');
-      const postalSetting = await this.settingsService.getSetting('origin_postal_code');
-      const countrySetting = await this.settingsService.getSetting('origin_country');
+    if (sellerAddress) {
+      // Use actual seller address
+      fromAddress = sellerAddress;
+      this.logger.log(
+        `[EasyPost] Using seller address: ${sellerAddress.city}, ${sellerAddress.country}`
+      );
+    } else {
+      // Fallback to platform settings
+      this.logger.log('[EasyPost] Using platform default address (no seller address found)');
+      try {
+        const street1Setting = await this.settingsService.getSetting('origin_street1');
+        const citySetting = await this.settingsService.getSetting('origin_city');
+        const stateSetting = await this.settingsService.getSetting('origin_state');
+        const postalSetting = await this.settingsService.getSetting('origin_postal_code');
+        const countrySetting = await this.settingsService.getSetting('origin_country');
 
-      if (street1Setting?.value) fromAddress.street1 = String(street1Setting.value);
-      if (citySetting?.value) fromAddress.city = String(citySetting.value);
-      if (stateSetting?.value) fromAddress.state = String(stateSetting.value);
-      if (postalSetting?.value) fromAddress.zip = String(postalSetting.value);
-      if (countrySetting?.value) fromAddress.country = String(countrySetting.value);
-    } catch (error) {
-      this.logger.warn('Failed to get origin address from settings, using defaults');
+        if (street1Setting?.value) fromAddress.street1 = String(street1Setting.value);
+        if (citySetting?.value) fromAddress.city = String(citySetting.value);
+        if (stateSetting?.value) fromAddress.state = String(stateSetting.value);
+        if (postalSetting?.value) fromAddress.zip = String(postalSetting.value);
+        if (countrySetting?.value) fromAddress.country = String(countrySetting.value);
+      } catch (error) {
+        this.logger.warn('Failed to get origin address from settings, using hardcoded defaults');
+      }
     }
 
     // Prepare destination address
@@ -458,6 +614,98 @@ export class ShippingTaxService {
       this.logger.error('EasyPost rate fetch failed:', error.message);
       // Throw the actual error so it can be caught and reported properly
       throw new Error(`Failed to fetch EasyPost rates: ${error.message}`);
+    }
+  }
+
+  /**
+   * Calculate shipping options using Sendcloud API (EU sellers)
+   * Supports: AT,BE,FR,DE,IT,NL,ES,GB,CZ,DK,PL,PT,SE
+   */
+  private async calculateSendcloudShippingOptions(
+    address: ShippingAddress,
+    items: CartItem[],
+    weightGrams: number
+  ): Promise<ShippingOption[]> {
+    if (!this.sendcloudService.isConfigured()) {
+      throw new Error('Sendcloud is not configured');
+    }
+
+    // Get seller country
+    const sellerCountry = await this.getSellerCountry(items);
+    if (!sellerCountry) {
+      throw new Error('Cannot determine seller country for Sendcloud');
+    }
+
+    try {
+      const rates = await this.sendcloudService.getRates({
+        fromCountry: sellerCountry,
+        toCountry: address.country,
+        weightGrams: Math.max(100, weightGrams), // Minimum 100g
+        items: items.map((item) => ({
+          name: `Item ${item.productId}`,
+          quantity: item.quantity,
+          value: item.price,
+        })),
+      });
+
+      // Map Sendcloud rates to ShippingOption format
+      return rates.map((rate) => ({
+        id: rate.serviceCode,
+        name: `${rate.carrierName} - ${rate.serviceName}`,
+        description: `${rate.minDeliveryDays}-${rate.maxDeliveryDays} business days`,
+        price: rate.totalCharge,
+        estimatedDays: rate.maxDeliveryDays,
+        carrier: rate.carrierName,
+      }));
+    } catch (error) {
+      this.logger.error('Sendcloud rate fetch failed:', error.message);
+      throw new Error(`Failed to fetch Sendcloud rates: ${error.message}`);
+    }
+  }
+
+  /**
+   * Calculate shipping options using Easyship API
+   * Supports: AU,BE,CA,FR,DE,HK,NL,SG,US,GB
+   */
+  private async calculateEasyshipShippingOptions(
+    address: ShippingAddress,
+    items: CartItem[],
+    weightKg: number
+  ): Promise<ShippingOption[]> {
+    if (!this.easyshipService.isConfigured()) {
+      throw new Error('Easyship is not configured');
+    }
+
+    // Get seller country
+    const sellerCountry = await this.getSellerCountry(items);
+    if (!sellerCountry) {
+      throw new Error('Cannot determine seller country for Easyship');
+    }
+
+    try {
+      const rates = await this.easyshipService.getRates({
+        fromCountry: sellerCountry,
+        toCountry: address.country,
+        weightKg: Math.max(0.1, weightKg), // Minimum 0.1kg
+        items: items.map((item) => ({
+          quantity: item.quantity,
+          value: item.price,
+          name: `Item ${item.productId}`,
+        })),
+      });
+
+      // Map Easyship rates to ShippingOption format
+      return rates.map((rate) => ({
+        id: rate.serviceCode,
+        name: `${rate.carrierName} - ${rate.serviceName}`,
+        description: `${rate.minDeliveryDays}-${rate.maxDeliveryDays} business days`,
+        price: rate.totalCharge,
+        estimatedDays: rate.maxDeliveryDays,
+        carrier: rate.carrierName,
+      }));
+    } catch (error) {
+      this.logger.error('Easyship rate fetch failed:', error.message);
+      throw new Error(`Failed to fetch Easyship rates: ${error.message}`);
     }
   }
 
