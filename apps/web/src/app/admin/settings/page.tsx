@@ -27,6 +27,7 @@ import {
   Calculator,
   PackageCheck,
   Store,
+  Box,
 } from 'lucide-react';
 import { GeneralSettingsSection } from '@/components/settings/general-settings';
 import { PaymentSettingsSection } from '@/components/settings/payment-settings';

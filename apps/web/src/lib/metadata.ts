@@ -83,7 +83,7 @@ export function getProductMetadata(product: {
     title,
     description,
     keywords,
-    image: product.heroImage || undefined,
+    image: product.heroImage || '/og-image.jpg',
     url: product.slug ? `/products/${product.slug}` : '/products',
     type: 'product',
   });
