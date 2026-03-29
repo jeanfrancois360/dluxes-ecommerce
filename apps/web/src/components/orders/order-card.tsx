@@ -15,7 +15,7 @@ export function OrderCard({ order }: OrderCardProps) {
   const t = useTranslations('components.orderCard');
   const firstItem = order.items[0];
   const itemCount = order.items.length;
-  const isPickup = (order as any).isPickup;
+  const isPickup = order.isPickup;
 
   // Get image from product or fallback to order item's stored image
   const productImage = firstItem?.product?.heroImage || firstItem?.image;
@@ -117,13 +117,13 @@ export function OrderCard({ order }: OrderCardProps) {
         </div>
 
         {/* Pickup Info */}
-        {isPickup && (order as any).pickupCode && (
+        {isPickup && order.pickupCode && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-green-700 font-medium mb-1">PICKUP CODE</p>
                 <p className="text-lg font-bold text-green-600 tracking-wider">
-                  {(order as any).pickupCode}
+                  {order.pickupCode}
                 </p>
               </div>
               {order.status.toUpperCase() === 'READY_FOR_PICKUP' && (
@@ -132,8 +132,8 @@ export function OrderCard({ order }: OrderCardProps) {
                 </div>
               )}
             </div>
-            {(order as any).pickupStore?.name && (
-              <p className="text-xs text-green-600 mt-2">📍 {(order as any).pickupStore.name}</p>
+            {order.pickupStore?.name && (
+              <p className="text-xs text-green-600 mt-2">📍 {order.pickupStore.name}</p>
             )}
           </div>
         )}

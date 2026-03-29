@@ -2436,10 +2436,10 @@ export class SellerService {
             select: {
               name: true,
               pickupAddress: true,
-              address: true,
+              address1: true,
               city: true,
-              state: true,
-              zipCode: true,
+              province: true,
+              postalCode: true,
               pickupInstructions: true,
             },
           });
@@ -2447,7 +2447,7 @@ export class SellerService {
           if (pickupStore) {
             const storeAddress =
               pickupStore.pickupAddress ||
-              `${pickupStore.address || ''}, ${pickupStore.city || ''}, ${pickupStore.state || ''} ${pickupStore.zipCode || ''}`.trim();
+              `${pickupStore.address1 || ''}, ${pickupStore.city || ''}, ${pickupStore.province || ''} ${pickupStore.postalCode || ''}`.trim();
 
             const customerName =
               `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer';
