@@ -45,6 +45,15 @@ export class EasyPostRatesService {
         : undefined,
     });
 
+    // Log detailed shipment info for debugging
+    this.logger.debug(`EasyPost Shipment Created: ${shipment.id}`);
+    this.logger.debug(`From: ${dto.fromAddress.country}, To: ${dto.toAddress.country}`);
+    this.logger.debug(`Rates returned: ${shipment.rates?.length || 0}`);
+
+    if (shipment.rates?.length === 0 && shipment.messages?.length > 0) {
+      this.logger.warn(`EasyPost Messages: ${JSON.stringify(shipment.messages)}`);
+    }
+
     // Transform rates for frontend
     const rates = shipment.rates.map((rate) => ({
       id: rate.id,
