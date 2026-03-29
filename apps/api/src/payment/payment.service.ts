@@ -2806,6 +2806,11 @@ export class PaymentService {
       return { paymentMethods: [], defaultPaymentMethodId: null };
     }
 
+    // Sync and cleanup orphaned records (non-blocking)
+    this.syncPaymentMethods(userId).catch((err) =>
+      this.logger.warn('Background sync failed:', err)
+    );
+
     // Get customer to find default payment method
     let defaultPaymentMethodId: string | null = null;
     try {
@@ -2852,6 +2857,65 @@ export class PaymentService {
       }),
       defaultPaymentMethodId,
     };
+  }
+
+  /**
+   * Sync payment methods with Stripe and cleanup orphaned records
+   * Removes payment methods from database that no longer exist in Stripe
+   */
+  async syncPaymentMethods(userId: string): Promise<{ cleaned: number; synced: number }> {
+    try {
+      const stripe = await this.getStripeClient();
+
+      // Get user with stripe customer ID
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { stripeCustomerId: true },
+      });
+
+      if (!user?.stripeCustomerId) {
+        return { cleaned: 0, synced: 0 };
+      }
+
+      // List payment methods from Stripe
+      const stripePaymentMethods = await stripe.paymentMethods.list({
+        customer: user.stripeCustomerId,
+        type: 'card',
+      });
+
+      const stripePaymentMethodIds = new Set(stripePaymentMethods.data.map((pm) => pm.id));
+
+      // Get saved payment methods from database
+      const savedMethods = await this.prisma.savedPaymentMethod.findMany({
+        where: { userId },
+      });
+
+      // Find orphaned records (exist in DB but not in Stripe)
+      const orphanedMethods = savedMethods.filter(
+        (sm) => !stripePaymentMethodIds.has(sm.stripePaymentMethodId)
+      );
+
+      // Delete orphaned records
+      let cleanedCount = 0;
+      if (orphanedMethods.length > 0) {
+        const orphanedIds = orphanedMethods.map((m) => m.id);
+        const result = await this.prisma.savedPaymentMethod.deleteMany({
+          where: {
+            id: { in: orphanedIds },
+          },
+        });
+        cleanedCount = result.count;
+        this.logger.log(`Cleaned up ${cleanedCount} orphaned payment methods for user ${userId}`);
+      }
+
+      return {
+        cleaned: cleanedCount,
+        synced: stripePaymentMethods.data.length,
+      };
+    } catch (error) {
+      this.logger.error('Failed to sync payment methods:', error);
+      return { cleaned: 0, synced: 0 };
+    }
   }
 
   /**

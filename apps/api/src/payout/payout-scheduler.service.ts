@@ -220,6 +220,7 @@ export class PayoutSchedulerService {
       where: { id: sellerId },
       include: {
         store: true,
+        payoutSettings: true, // Include payout settings to determine payment method
         escrowTransactions: {
           where: {
             status: EscrowStatus.RELEASED,
@@ -279,6 +280,13 @@ export class PayoutSchedulerService {
     // Get currency dynamically
     const currency = await this.getPayoutCurrency(sellerId, seller.store!.id);
 
+    // Determine payment method from seller settings
+    // Priority: seller payout settings → store settings → default
+    const paymentMethod =
+      seller.payoutSettings?.paymentMethod ||
+      (seller.store as any)?.payoutMethod ||
+      'bank_transfer'; // Default fallback
+
     // Create payout in transaction
     const payout = await this.prisma.$transaction(async (prisma) => {
       // Create payout record
@@ -290,11 +298,11 @@ export class PayoutSchedulerService {
           currency, // Dynamic currency based on seller preference
           commissionCount: seller.commissions.length,
           status: PayoutStatus.PENDING,
-          paymentMethod: 'bank_transfer', // Default - can be configured per seller
+          paymentMethod, // Dynamic payment method based on seller preference
           periodStart,
           periodEnd,
           scheduledAt: now,
-          notes: `Automated payout - ${config.frequency}`,
+          notes: `Automated payout - ${config.frequency} via ${paymentMethod}`,
         },
       });
 
