@@ -21,6 +21,8 @@ import { InlineAd } from '@/components/ads';
 import { ProductGridSkeleton } from '@/components/loading/skeleton';
 import { ScrollToTop } from '@/components/scroll-to-top';
 import { navigateWithLoading } from '@/lib/navigation';
+import { StructuredData } from '@/components/seo/structured-data';
+import { generateItemListSchema } from '@/lib/seo';
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -303,6 +305,25 @@ export default function ProductsPage() {
 
   return (
     <PageLayout>
+      {/* SEO: ItemList Schema */}
+      {products.length > 0 && (
+        <StructuredData
+          schema={generateItemListSchema({
+            items: products.map((p) => ({
+              name: p.name,
+              url: `/products/${p.slug}`,
+              image: p.image,
+              price: p.price,
+              currency: currency?.currencyCode || 'USD',
+            })),
+            name: filters.category ? `${filters.category} Products` : 'All Products',
+            description: filters.query
+              ? `Search results for "${filters.query}"`
+              : 'Browse our curated collection of luxury products',
+          })}
+        />
+      )}
+
       {/* Hero Banner */}
       <section className="relative h-[40vh] sm:h-[45vh] md:h-[50vh] min-h-[300px] sm:min-h-[350px] md:min-h-[400px] flex items-center justify-center bg-black text-white overflow-hidden">
         <motion.div
