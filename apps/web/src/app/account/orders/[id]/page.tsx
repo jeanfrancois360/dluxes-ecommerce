@@ -445,26 +445,26 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           )}
 
           {/* Pickup Tracking (v2.10.0) */}
-          {(order as any).isPickup && (order as any).pickupCode && (
+          {order.isPickup && order.pickupCode && (
             <PickupTrackingCard
-              pickupCode={(order as any).pickupCode}
+              pickupCode={order.pickupCode}
               orderStatus={order.status}
-              storeName={(order as any).pickupStore?.name || 'Store'}
-              storeAddress={(order as any).pickupStore?.address}
-              storeCity={(order as any).pickupStore?.city}
-              storeState={(order as any).pickupStore?.state}
-              storeZipCode={(order as any).pickupStore?.zipCode}
-              storePhone={(order as any).pickupStore?.phone}
-              pickupAddress={(order as any).pickupStore?.pickupAddress}
-              pickupInstructions={(order as any).pickupInstructions}
-              pickupHours={(order as any).pickupStore?.pickupHours}
-              pickupScheduledAt={(order as any).pickupScheduledAt}
-              pickupCompletedAt={(order as any).pickupCompletedAt}
+              storeName={order.pickupStore?.name || 'Store'}
+              storeAddress={order.pickupStore?.address}
+              storeCity={order.pickupStore?.city}
+              storeState={order.pickupStore?.state}
+              storeZipCode={order.pickupStore?.zipCode}
+              storePhone={order.pickupStore?.phone}
+              pickupAddress={order.pickupStore?.pickupAddress}
+              pickupInstructions={order.pickupInstructions}
+              pickupHours={order.pickupStore?.pickupHours}
+              pickupScheduledAt={order.pickupScheduledAt}
+              pickupCompletedAt={order.pickupCompletedAt}
             />
           )}
 
           {/* Legacy Delivery Tracking (if available and no shipments, not pickup) */}
-          {order.delivery && shipments.length === 0 && !(order as any).isPickup && (
+          {order.delivery && shipments.length === 0 && !order.isPickup && (
             <DeliveryTrackingSection delivery={order.delivery} />
           )}
 

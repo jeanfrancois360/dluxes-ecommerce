@@ -612,17 +612,19 @@ export class OrdersService {
             select: {
               name: true,
               pickupAddress: true,
-              address: true,
+              pickupInstructions: true,
+              address1: true,
+              address2: true,
               city: true,
-              state: true,
-              zipCode: true,
+              province: true,
+              postalCode: true,
             },
           });
 
           if (pickupStore) {
             const storeAddress =
               pickupStore.pickupAddress ||
-              `${pickupStore.address || ''}, ${pickupStore.city || ''}, ${pickupStore.state || ''} ${pickupStore.zipCode || ''}`.trim();
+              `${pickupStore.address1 || ''}, ${pickupStore.city || ''}, ${pickupStore.province || ''} ${pickupStore.postalCode || ''}`.trim();
 
             await this.emailService.sendPickupOrderPlacedNotification(user.email, {
               orderNumber: order.orderNumber,
@@ -1116,17 +1118,19 @@ export class OrdersService {
             select: {
               name: true,
               pickupAddress: true,
-              address: true,
+              pickupInstructions: true,
+              address1: true,
+              address2: true,
               city: true,
-              state: true,
-              zipCode: true,
+              province: true,
+              postalCode: true,
             },
           });
 
           if (pickupStore) {
             const storeAddress =
               pickupStore.pickupAddress ||
-              `${pickupStore.address || ''}, ${pickupStore.city || ''}, ${pickupStore.state || ''} ${pickupStore.zipCode || ''}`.trim();
+              `${pickupStore.address1 || ''}, ${pickupStore.city || ''}, ${pickupStore.province || ''} ${pickupStore.postalCode || ''}`.trim();
 
             await this.emailService.sendPickupOrderPlacedNotification(user.email, {
               orderNumber: order.orderNumber,
@@ -1470,6 +1474,7 @@ export class OrdersService {
       [OrderStatus.PROCESSING]: [
         OrderStatus.PARTIALLY_SHIPPED,
         OrderStatus.SHIPPED,
+        OrderStatus.READY_FOR_PICKUP, // For pickup orders
         OrderStatus.CANCELLED,
       ],
       [OrderStatus.PARTIALLY_SHIPPED]: [
@@ -1481,6 +1486,14 @@ export class OrdersService {
       [OrderStatus.DELIVERED]: [OrderStatus.REFUNDED], // Can't cancel delivered orders
       [OrderStatus.CANCELLED]: [], // Terminal state - no transitions allowed
       [OrderStatus.REFUNDED]: [], // Terminal state - no transitions allowed
+      // Pickup-specific statuses
+      [OrderStatus.READY_FOR_PICKUP]: [
+        OrderStatus.PICKED_UP,
+        OrderStatus.PICKUP_EXPIRED,
+        OrderStatus.CANCELLED,
+      ],
+      [OrderStatus.PICKED_UP]: [], // Terminal state - successful pickup
+      [OrderStatus.PICKUP_EXPIRED]: [OrderStatus.CANCELLED, OrderStatus.REFUNDED],
     };
 
     const allowedStatuses = validTransitions[currentStatus] || [];
@@ -2357,5 +2370,76 @@ export class OrdersService {
       REFUNDED: '#FF9800',
     };
     return colors[status] || '#666';
+  }
+
+  /**
+   * Get available pickup stores for given products
+   * Returns stores that have pickup enabled and carry the specified products
+   * v2.10.0 - Self-Pickup Feature
+   */
+  async getAvailablePickupStores(productIds: string[]) {
+    if (!productIds || productIds.length === 0) {
+      return [];
+    }
+
+    try {
+      // Find all stores that have at least one of the specified products
+      // AND have pickup enabled
+      const stores = await this.prisma.store.findMany({
+        where: {
+          pickupEnabled: true,
+          status: 'ACTIVE', // Only active stores
+          products: {
+            some: {
+              id: {
+                in: productIds,
+              },
+              status: 'ACTIVE', // Only active products
+            },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          // Store address fields
+          address1: true,
+          address2: true,
+          city: true,
+          province: true,
+          postalCode: true,
+          country: true,
+          phone: true,
+          // Pickup-specific fields
+          pickupAddress: true,
+          pickupInstructions: true,
+          pickupHours: true,
+          pickupEstimatedMinutes: true,
+          pickupFee: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      });
+
+      // Transform to match frontend PickupStore interface
+      return stores.map((store) => ({
+        id: store.id,
+        name: store.name,
+        // Use pickup address if set, otherwise use store address
+        address: store.pickupAddress || store.address1 || null,
+        city: store.city,
+        state: store.province,
+        zipCode: store.postalCode,
+        phone: store.phone,
+        pickupAddress: store.pickupAddress,
+        pickupInstructions: store.pickupInstructions,
+        pickupHours: store.pickupHours as Record<string, string> | null,
+        pickupEstimatedMinutes: store.pickupEstimatedMinutes,
+      }));
+    } catch (error) {
+      this.logger.error('Failed to fetch available pickup stores', error);
+      throw new Error('Failed to fetch available pickup stores');
+    }
   }
 }

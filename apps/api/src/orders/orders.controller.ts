@@ -23,6 +23,7 @@ import { UserRole } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CalculateTotalsDto } from './dto/calculate-totals.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { GetPickupStoresDto } from './dto/get-pickup-stores.dto';
 
 /**
  * Orders Controller
@@ -335,6 +336,30 @@ export class OrdersController {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Get available pickup stores for given products
+   * @route POST /orders/available-pickup-stores
+   * Returns stores that have pickup enabled and carry the specified products
+   */
+  @Post('available-pickup-stores')
+  @HttpCode(HttpStatus.OK)
+  async getAvailablePickupStores(@Body() dto: GetPickupStoresDto) {
+    try {
+      const stores = await this.ordersService.getAvailablePickupStores(dto.productIds);
+
+      return {
+        success: true,
+        data: stores,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to fetch pickup stores',
+        data: [],
       };
     }
   }

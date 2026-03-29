@@ -619,6 +619,9 @@ export class ShipmentsService {
       [OrderStatus.DELIVERED]: 'Delivered',
       [OrderStatus.CANCELLED]: 'Cancelled',
       [OrderStatus.REFUNDED]: 'Refunded',
+      [OrderStatus.READY_FOR_PICKUP]: 'Ready for Pickup',
+      [OrderStatus.PICKED_UP]: 'Picked Up',
+      [OrderStatus.PICKUP_EXPIRED]: 'Pickup Expired',
     };
     return titles[status];
   }
@@ -641,6 +644,9 @@ export class ShipmentsService {
       [OrderStatus.DELIVERED]: 'All items delivered',
       [OrderStatus.CANCELLED]: 'Order cancelled',
       [OrderStatus.REFUNDED]: 'Order refunded',
+      [OrderStatus.READY_FOR_PICKUP]: 'Your order is ready for pickup',
+      [OrderStatus.PICKED_UP]: 'Order has been picked up',
+      [OrderStatus.PICKUP_EXPIRED]: 'Pickup window has expired',
     };
     return descriptions[status];
   }
@@ -655,6 +661,9 @@ export class ShipmentsService {
       [OrderStatus.DELIVERED]: 'check-circle',
       [OrderStatus.CANCELLED]: 'x-circle',
       [OrderStatus.REFUNDED]: 'arrow-left',
+      [OrderStatus.READY_FOR_PICKUP]: 'store',
+      [OrderStatus.PICKED_UP]: 'check-circle',
+      [OrderStatus.PICKUP_EXPIRED]: 'clock',
     };
     return icons[status];
   }
