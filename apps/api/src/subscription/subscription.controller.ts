@@ -23,7 +23,7 @@ import { SubscriptionTier } from '@prisma/client';
 export class SubscriptionController {
   constructor(
     private readonly subscriptionService: SubscriptionService,
-    private readonly stripeSubscriptionService: StripeSubscriptionService,
+    private readonly stripeSubscriptionService: StripeSubscriptionService
   ) {}
 
   // ==========================================================================
@@ -45,9 +45,18 @@ export class SubscriptionController {
   @Get('my-subscription')
   @UseGuards(JwtAuthGuard)
   async getMySubscription(@Req() req: any) {
-    const data = await this.subscriptionService.getSubscriptionInfo(
-      req.user.id,
-    );
+    const data = await this.subscriptionService.getSubscriptionInfo(req.user.id);
+    return { success: true, data };
+  }
+
+  /**
+   * Get unified credit summary (both store credits and subscription credits)
+   */
+  @Get('seller/credit-summary')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
+  async getSellerCreditSummary(@Req() req: any) {
+    const data = await this.subscriptionService.getSellerCreditSummary(req.user.id);
     return { success: true, data };
   }
 
@@ -56,14 +65,8 @@ export class SubscriptionController {
    */
   @Get('can-list/:productType')
   @UseGuards(JwtAuthGuard)
-  async canListProductType(
-    @Req() req: any,
-    @Param('productType') productType: string,
-  ) {
-    const data = await this.subscriptionService.canListProductType(
-      req.user.id,
-      productType,
-    );
+  async canListProductType(@Req() req: any, @Param('productType') productType: string) {
+    const data = await this.subscriptionService.canListProductType(req.user.id, productType);
     return { success: true, data };
   }
 
@@ -78,8 +81,7 @@ export class SubscriptionController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   async adminGetPlans(@Query('isActive') isActive?: string) {
-    const params =
-      isActive !== undefined ? { isActive: isActive === 'true' } : undefined;
+    const params = isActive !== undefined ? { isActive: isActive === 'true' } : undefined;
     const data = await this.subscriptionService.adminGetPlans(params);
     return { success: true, data };
   }
@@ -176,7 +178,7 @@ export class SubscriptionController {
     @Query('tier') tier?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('limit') limit?: string
   ) {
     const data = await this.subscriptionService.adminGetSellerSubscriptions({
       status,
@@ -237,12 +239,12 @@ export class SubscriptionController {
   @Roles('SELLER')
   async createCheckout(
     @Req() req: any,
-    @Body() body: { planId: string; billingCycle: 'MONTHLY' | 'YEARLY' },
+    @Body() body: { planId: string; billingCycle: 'MONTHLY' | 'YEARLY' }
   ) {
     const data = await this.stripeSubscriptionService.createCheckoutSession(
       req.user.id,
       body.planId,
-      body.billingCycle,
+      body.billingCycle
     );
     return { success: true, data };
   }
@@ -254,13 +256,10 @@ export class SubscriptionController {
   @Post('verify-checkout')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
-  async verifyCheckout(
-    @Req() req: any,
-    @Body() body: { sessionId: string },
-  ) {
+  async verifyCheckout(@Req() req: any, @Body() body: { sessionId: string }) {
     const data = await this.stripeSubscriptionService.verifyAndActivateCheckout(
       req.user.id,
-      body.sessionId,
+      body.sessionId
     );
     return { success: true, data };
   }
@@ -284,7 +283,10 @@ export class SubscriptionController {
   @Roles('SELLER')
   async cancelSubscription(@Req() req: any) {
     await this.stripeSubscriptionService.cancelSubscription(req.user.id);
-    return { success: true, message: 'Subscription will be cancelled at the end of the billing period' };
+    return {
+      success: true,
+      message: 'Subscription will be cancelled at the end of the billing period',
+    };
   }
 
   /**

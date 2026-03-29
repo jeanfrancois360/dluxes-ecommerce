@@ -532,6 +532,18 @@ const defaultSettings = [
     requiresRestart: false,
     defaultValue: 300,
   },
+  {
+    key: 'subscription_grace_days',
+    category: 'payment',
+    value: 3,
+    valueType: SettingValueType.NUMBER,
+    label: 'Subscription Grace Period (Days)',
+    description: 'Days after payment failure before blocking subscription access (PAST_DUE status)',
+    isPublic: false,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: 3,
+  },
 
   // COMMISSION SETTINGS
   {

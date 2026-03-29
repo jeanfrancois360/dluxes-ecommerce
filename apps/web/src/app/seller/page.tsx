@@ -17,6 +17,7 @@ import { useTranslations } from 'next-intl';
 import StatCard from '@/components/seller/stat-card';
 import QuickActionCard from '@/components/seller/quick-action-card';
 import PageHeader from '@/components/seller/page-header';
+import CreditSummary from '@/components/seller/credit-summary';
 import { useSellerDashboard } from '@/hooks/use-seller-dashboard';
 
 export default function SellerDashboardPage() {
@@ -118,6 +119,9 @@ export default function SellerDashboardPage() {
             />
           </div>
         </section>
+
+        {/* Credits Overview */}
+        <CreditSummary />
 
         {/* Quick Actions */}
         <section>
