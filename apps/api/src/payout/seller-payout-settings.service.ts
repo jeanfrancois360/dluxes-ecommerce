@@ -1,15 +1,20 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { EncryptionService } from '../common/services/encryption.service';
 
 /**
  * Seller Payout Settings Service
  * Manages seller payout configuration and payment method setup
+ * v2.11.1: Added encryption for sensitive banking data
  */
 @Injectable()
 export class SellerPayoutSettingsService {
   private readonly logger = new Logger(SellerPayoutSettingsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly encryptionService: EncryptionService
+  ) {}
 
   /**
    * Get seller's payout settings
@@ -40,11 +45,13 @@ export class SellerPayoutSettingsService {
       return this.getDefaultSettings(sellerId);
     }
 
-    // Mask sensitive data
+    // Mask sensitive data (decrypt then mask for display)
     return {
       ...settings,
-      accountNumber: settings.accountNumber ? this.maskAccountNumber(settings.accountNumber) : null,
-      iban: settings.iban ? this.maskIBAN(settings.iban) : null,
+      accountNumber: this.maskAccountNumberSafe(settings.accountNumber),
+      routingNumber: this.maskAccountNumberSafe(settings.routingNumber),
+      iban: this.maskIBANSafe(settings.iban),
+      swiftCode: settings.swiftCode ? '****' : null, // Mask entirely
     };
   }
 
@@ -104,29 +111,34 @@ export class SellerPayoutSettingsService {
       where: { sellerId },
     });
 
+    // Encrypt sensitive banking data before storing
+    const encryptedData = {
+      paymentMethod: data.paymentMethod,
+      bankName: data.bankName,
+      accountHolderName: data.accountHolderName,
+      accountNumber: this.encryptField(data.accountNumber),
+      routingNumber: this.encryptField(data.routingNumber),
+      iban: this.encryptField(data.iban),
+      swiftCode: this.encryptField(data.swiftCode),
+      bankAddress: data.bankAddress,
+      bankCountry: data.bankCountry,
+      stripeAccountId: data.stripeAccountId,
+      paypalEmail: data.paypalEmail,
+      wiseEmail: data.wiseEmail,
+      wiseRecipientId: data.wiseRecipientId,
+      taxId: data.taxId,
+      taxCountry: data.taxCountry,
+      taxFormType: data.taxFormType,
+      taxFormUrl: data.taxFormUrl,
+      payoutCurrency: data.payoutCurrency || 'USD',
+    };
+
     if (existing) {
       // Update existing settings
       return this.prisma.sellerPayoutSettings.update({
         where: { sellerId },
         data: {
-          paymentMethod: data.paymentMethod,
-          bankName: data.bankName,
-          accountHolderName: data.accountHolderName,
-          accountNumber: data.accountNumber, // TODO: Encrypt in production
-          routingNumber: data.routingNumber,
-          iban: data.iban,
-          swiftCode: data.swiftCode,
-          bankAddress: data.bankAddress,
-          bankCountry: data.bankCountry,
-          stripeAccountId: data.stripeAccountId,
-          paypalEmail: data.paypalEmail,
-          wiseEmail: data.wiseEmail,
-          wiseRecipientId: data.wiseRecipientId,
-          taxId: data.taxId,
-          taxCountry: data.taxCountry,
-          taxFormType: data.taxFormType,
-          taxFormUrl: data.taxFormUrl,
-          payoutCurrency: data.payoutCurrency || 'USD',
+          ...encryptedData,
           verified: false, // Reset verification on update
         },
       });
@@ -136,24 +148,7 @@ export class SellerPayoutSettingsService {
         data: {
           sellerId,
           storeId: seller.store.id,
-          paymentMethod: data.paymentMethod,
-          bankName: data.bankName,
-          accountHolderName: data.accountHolderName,
-          accountNumber: data.accountNumber, // TODO: Encrypt in production
-          routingNumber: data.routingNumber,
-          iban: data.iban,
-          swiftCode: data.swiftCode,
-          bankAddress: data.bankAddress,
-          bankCountry: data.bankCountry,
-          stripeAccountId: data.stripeAccountId,
-          paypalEmail: data.paypalEmail,
-          wiseEmail: data.wiseEmail,
-          wiseRecipientId: data.wiseRecipientId,
-          taxId: data.taxId,
-          taxCountry: data.taxCountry,
-          taxFormType: data.taxFormType,
-          taxFormUrl: data.taxFormUrl,
-          payoutCurrency: data.payoutCurrency || 'USD',
+          ...encryptedData,
         },
       });
     }
@@ -251,11 +246,13 @@ export class SellerPayoutSettingsService {
       this.prisma.sellerPayoutSettings.count({ where }),
     ]);
 
-    // Mask sensitive data
+    // Mask sensitive data (decrypt then mask for admin display)
     const maskedSettings = settings.map((s) => ({
       ...s,
-      accountNumber: s.accountNumber ? this.maskAccountNumber(s.accountNumber) : null,
-      iban: s.iban ? this.maskIBAN(s.iban) : null,
+      accountNumber: this.maskAccountNumberSafe(s.accountNumber),
+      routingNumber: this.maskAccountNumberSafe(s.routingNumber),
+      iban: this.maskIBANSafe(s.iban),
+      swiftCode: s.swiftCode ? '****' : null,
     }));
 
     return {
@@ -404,18 +401,74 @@ export class SellerPayoutSettingsService {
   }
 
   /**
-   * Mask account number for security
+   * Encrypt sensitive banking data
    */
-  private maskAccountNumber(accountNumber: string): string {
-    if (accountNumber.length <= 4) return accountNumber;
-    return '*'.repeat(accountNumber.length - 4) + accountNumber.slice(-4);
+  private encryptField(value: string | null | undefined): string | null {
+    if (!value) return null;
+    try {
+      return this.encryptionService.encrypt(value);
+    } catch (error) {
+      this.logger.error('Failed to encrypt field:', error);
+      throw new BadRequestException('Failed to encrypt sensitive data');
+    }
   }
 
   /**
-   * Mask IBAN for security
+   * Decrypt sensitive banking data
    */
-  private maskIBAN(iban: string): string {
-    if (iban.length <= 4) return iban;
-    return iban.slice(0, 2) + '*'.repeat(iban.length - 6) + iban.slice(-4);
+  private decryptField(value: string | null | undefined): string | null {
+    if (!value) return null;
+
+    // Check if already encrypted (has : separators)
+    if (!this.encryptionService.isEncrypted(value)) {
+      // Legacy unencrypted data - return as is but log warning
+      this.logger.warn('Found unencrypted banking data in database');
+      return value;
+    }
+
+    try {
+      return this.encryptionService.decrypt(value);
+    } catch (error) {
+      this.logger.error('Failed to decrypt field:', error);
+      return null; // Return null instead of throwing to prevent breaking existing data
+    }
+  }
+
+  /**
+   * Mask account number for display
+   * Decrypts if needed, then masks
+   */
+  private maskAccountNumberSafe(encryptedValue: string | null | undefined): string | null {
+    if (!encryptedValue) return null;
+
+    try {
+      const decrypted = this.decryptField(encryptedValue);
+      if (!decrypted || decrypted.length <= 4) {
+        return '****';
+      }
+      return '****' + decrypted.slice(-4);
+    } catch (error) {
+      this.logger.error('Failed to mask account number:', error);
+      return '****'; // Safe fallback
+    }
+  }
+
+  /**
+   * Mask IBAN for display
+   * Decrypts if needed, then masks
+   */
+  private maskIBANSafe(encryptedValue: string | null | undefined): string | null {
+    if (!encryptedValue) return null;
+
+    try {
+      const decrypted = this.decryptField(encryptedValue);
+      if (!decrypted || decrypted.length <= 4) {
+        return '****';
+      }
+      return decrypted.slice(0, 2) + '*'.repeat(decrypted.length - 6) + decrypted.slice(-4);
+    } catch (error) {
+      this.logger.error('Failed to mask IBAN:', error);
+      return '****'; // Safe fallback
+    }
   }
 }
