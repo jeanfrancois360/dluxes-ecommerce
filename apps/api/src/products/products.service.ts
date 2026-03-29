@@ -798,6 +798,24 @@ export class ProductsService {
       ...productData
     } = createProductDto;
 
+    // Check subscription status (block PAST_DUE, CANCELLED, EXPIRED sellers)
+    if (storeId) {
+      // Get seller ID from store
+      const store = await this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: { userId: true },
+      });
+
+      if (store) {
+        const { allowed, reason } = await this.subscriptionService.canSellerListProduct(
+          store.userId
+        );
+        if (!allowed) {
+          throw new BadRequestException(reason);
+        }
+      }
+    }
+
     // ALWAYS auto-generate SKU (custom SKUs not allowed)
     const finalSKU = await this.generateSKU();
 
