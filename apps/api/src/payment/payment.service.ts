@@ -445,6 +445,16 @@ export class PaymentService {
         throw new BadRequestException('Order not found');
       }
 
+      // Verify amount matches order total
+      const expectedAmount = Number(order.total);
+      const sentAmount = Number(dto.amount);
+      const tolerance = 0.01; // Allow 1 cent rounding difference
+      if (Math.abs(expectedAmount - sentAmount) > tolerance) {
+        throw new BadRequestException(
+          `Amount mismatch: expected ${expectedAmount}, received ${sentAmount}`
+        );
+      }
+
       // Check if a payment intent already exists for this order
       const existingTransaction = await this.prisma.paymentTransaction.findFirst({
         where: {
@@ -1459,6 +1469,105 @@ export class PaymentService {
           this.logger.log(
             `Invoice email sent for order ${order.orderNumber} to ${order.user.email}`
           );
+
+          // Send seller notifications
+          try {
+            // Group items by seller
+            const sellerItems = new Map<string, any[]>();
+            for (const item of order.items) {
+              if (item.product?.store) {
+                const sellerId = item.product.store.userId;
+                if (!sellerItems.has(sellerId)) {
+                  sellerItems.set(sellerId, []);
+                }
+                sellerItems.get(sellerId)!.push({
+                  ...item,
+                  store: item.product.store,
+                });
+              }
+            }
+
+            // Send notification to each seller
+            for (const [sellerId, items] of sellerItems) {
+              try {
+                const seller = await this.prisma.user.findUnique({
+                  where: { id: sellerId },
+                  select: { email: true, firstName: true, lastName: true },
+                });
+
+                if (!seller) continue;
+
+                const store = items[0].store;
+                const sellerSubtotal = items.reduce((sum, item) => sum + Number(item.total), 0);
+
+                // Calculate seller's commission (approximation - actual commission is per-item)
+                const commissions = await this.prisma.commission.findMany({
+                  where: {
+                    transactionId: transaction.id,
+                    sellerId,
+                  },
+                });
+
+                const totalCommission = commissions.reduce(
+                  (sum, c) => sum + Number(c.commissionAmount),
+                  0
+                );
+                const avgCommissionRate =
+                  commissions.length > 0
+                    ? commissions.reduce((sum, c) => sum + Number(c.ruleValue), 0) /
+                      commissions.length /
+                      100 // Convert percentage to decimal
+                    : 0;
+
+                await emailService.sendSellerOrderNotification(seller.email, {
+                  sellerName:
+                    `${seller.firstName || ''} ${seller.lastName || ''}`.trim() || 'Seller',
+                  storeName: store.name,
+                  orderNumber: order.orderNumber,
+                  customerName:
+                    `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() ||
+                    'Customer',
+                  items: items.map((item) => ({
+                    name: item.product.name,
+                    quantity: item.quantity,
+                    price: Number(item.price),
+                    image: item.product.heroImage,
+                    sku: item.product.sku,
+                  })),
+                  subtotal: sellerSubtotal,
+                  commission: totalCommission,
+                  commissionRate: avgCommissionRate,
+                  netPayout: sellerSubtotal - totalCommission,
+                  currency: order.currency,
+                  shippingAddress: {
+                    street: order.shippingAddress?.address1 || '',
+                    city: order.shippingAddress?.city || '',
+                    state: order.shippingAddress?.province || '',
+                    zipCode: order.shippingAddress?.postalCode || '',
+                    country: order.shippingAddress?.country || '',
+                  },
+                  orderId: order.id,
+                  sellerId,
+                });
+
+                this.logger.log(
+                  `Seller notification sent for order ${order.orderNumber} to ${seller.email}`
+                );
+              } catch (sellerEmailError) {
+                this.logger.error(
+                  `Failed to send seller notification to seller ${sellerId}:`,
+                  sellerEmailError
+                );
+                // Continue to next seller if one fails
+              }
+            }
+          } catch (sellerNotificationError) {
+            this.logger.error(
+              `Failed to process seller notifications for order ${orderId}:`,
+              sellerNotificationError
+            );
+            // Don't fail the payment if seller notification fails
+          }
         }
       } catch (emailError) {
         this.logger.error(`Failed to send invoice email for order ${orderId}:`, emailError);
