@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { getStoreMetadata } from '@/lib/metadata';
 import { StructuredData, generateStoreSchema, siteConfig } from '@/lib/seo';
 
@@ -38,6 +39,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function StoreLayout({ params, children }: Props) {
   const { slug } = await params;
   const store = await getStore(slug);
+
+  if (!store) {
+    notFound();
+  }
 
   return (
     <>

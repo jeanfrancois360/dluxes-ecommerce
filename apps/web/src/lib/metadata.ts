@@ -292,14 +292,12 @@ export const termsMetadata: Metadata = generateSeoMetadata({
   title: 'Terms of Service',
   description: 'Read our terms of service and conditions for using NextPik.',
   url: '/terms',
-  noIndex: true,
 });
 
 export const privacyMetadata: Metadata = generateSeoMetadata({
   title: 'Privacy Policy',
   description: 'Learn how we collect, use, and protect your personal information.',
   url: '/privacy',
-  noIndex: true,
 });
 
 // Additional Pages Metadata
@@ -315,7 +313,6 @@ export const becomeSellerMetadata: Metadata = generateSeoMetadata({
   title: 'Become a Seller',
   description: 'Join our marketplace and start selling your products.',
   url: '/become-seller',
-  noIndex: true,
 });
 
 export const dashboardMetadata: Metadata = generateSeoMetadata({
