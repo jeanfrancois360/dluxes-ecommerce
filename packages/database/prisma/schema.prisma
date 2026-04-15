@@ -983,6 +983,7 @@ model ProductImage {
   mimeType     String? // MIME type
   optimizedUrl String? // Optimized version URL
   storagePath  String? // Path in Supabase storage
+  originalUrl  String? // Original Gelato S3 URL before re-upload
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
 
