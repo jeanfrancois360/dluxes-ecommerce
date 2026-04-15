@@ -122,9 +122,6 @@ importers:
       '@types/speakeasy':
         specifier: ^2.0.10
         version: 2.0.10
-      axios:
-        specifier: ^1.13.5
-        version: 1.13.5
       bcrypt:
         specifier: ^5.1.1
         version: 5.1.1
@@ -216,6 +213,9 @@ importers:
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
+      '@types/form-data':
+        specifier: ^2.5.2
+        version: 2.5.2
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
@@ -240,9 +240,15 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.56.1
         version: 8.56.1(eslint@8.57.1)(typescript@5.9.3)
+      axios:
+        specifier: ^1.13.5
+        version: 1.13.5
       eslint:
         specifier: ^8.57.1
         version: 8.57.1
+      form-data:
+        specifier: ^4.0.5
+        version: 4.0.5
       jest:
         specifier: ^30.2.0
         version: 30.2.0(@types/node@22.19.11)(esbuild-register@3.6.0(esbuild@0.27.3))(ts-node@10.9.2(@swc/core@1.15.13(@swc/helpers@0.5.19))(@types/node@22.19.11)(typescript@5.9.3))
@@ -4807,6 +4813,13 @@ packages:
       {
         integrity: sha512-sKYVuV7Sv9fbPIt/442koC7+IIwK5olP1KWeD88e/idgoJqDm3JV/YUiPwkoKK92ylff2MGxSz1CSjsXelx0YA==,
       }
+
+  '@types/form-data@2.5.2':
+    resolution:
+      {
+        integrity: sha512-tfmcyHn1Pp9YHAO5r40+UuZUPAZbUEgqTel3EuEKpmF9hPkXgR4l41853raliXnb4gwyPNoQOfvgGGlHN5WSog==,
+      }
+    deprecated: This is a stub types definition. form-data provides its own type definitions, so you do not need this installed.
 
   '@types/glob@7.2.0':
     resolution:
@@ -16572,6 +16585,10 @@ snapshots:
       '@types/body-parser': 1.19.6
       '@types/express-serve-static-core': 5.1.1
       '@types/serve-static': 2.2.0
+
+  '@types/form-data@2.5.2':
+    dependencies:
+      form-data: 4.0.5
 
   '@types/glob@7.2.0':
     dependencies:

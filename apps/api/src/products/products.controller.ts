@@ -608,7 +608,7 @@ export class ProductsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getLowStockProducts(@Query('threshold') threshold?: string) {
     const data = await this.inventoryService.getLowStockProducts(
-      threshold ? parseInt(threshold) : 10
+      threshold !== undefined ? parseInt(threshold) : undefined
     );
     return {
       success: true,

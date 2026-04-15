@@ -16,7 +16,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PayoutFrequency } from '@prisma/client';
 
-@Controller('api/v1/payouts')
+@Controller('payouts')
 export class PayoutController {
   constructor(private readonly payoutService: PayoutSchedulerService) {}
 

@@ -1,0 +1,756 @@
+import axios, { AxiosInstance } from 'axios';
+
+export interface TestResult {
+  test: string;
+  status: 'pass' | 'fail' | 'warn' | 'skip';
+  message?: string;
+  duration?: number;
+  error?: any;
+}
+
+export function pass(test: string, message?: string, duration?: number): TestResult {
+  return { test, status: 'pass', message, duration };
+}
+
+export function fail(test: string, message: string, error?: any, duration?: number): TestResult {
+  return { test, status: 'fail', message, error, duration };
+}
+
+export function warn(test: string, message: string, duration?: number): TestResult {
+  return { test, status: 'warn', message, duration };
+}
+
+export function skip(test: string, message: string): TestResult {
+  return { test, status: 'skip', message };
+}
+
+/**
+ * Cart & Order Agent
+ * Tests cart operations, order creation, and payment intent verification
+ */
+export class CartOrderAgent {
+  private client: AxiosInstance;
+  private sessionId: string;
+  private cartId: string | null = null;
+  private cartItemId: string | null = null;
+  private orderId: string | null = null;
+  private productId: string | null = null;
+
+  constructor(
+    private baseUrl: string,
+    private accessToken: string,
+    private adminToken?: string
+  ) {
+    this.client = axios.create({
+      baseURL: baseUrl,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      validateStatus: () => true, // Don't throw on any status
+    });
+
+    // Generate unique session ID for cart
+    this.sessionId = `test-session-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  }
+
+  /**
+   * Run all cart and order tests
+   */
+  async runAll(): Promise<TestResult[]> {
+    const results: TestResult[] = [];
+
+    // Setup: Get a product to test with
+    results.push(await this.testGetProducts());
+
+    // Cart Operations
+    results.push(await this.testGetEmptyCart());
+    results.push(await this.testAddItemToCart());
+    results.push(await this.testUpdateCartItemQuantity());
+    results.push(await this.testUpdateCartCurrency());
+    results.push(await this.testGetCartWithItems());
+
+    // Order Operations
+    results.push(await this.testCalculateOrderTotals());
+    results.push(await this.testCreateOrder());
+    results.push(await this.testGetUserOrders());
+    results.push(await this.testGetOrderDetails());
+    results.push(await this.testCreatePaymentIntent());
+    results.push(await this.testVerifyPaymentAmount());
+
+    // Cleanup
+    results.push(await this.testRemoveCartItem());
+    results.push(await this.testClearCart());
+
+    return results;
+  }
+
+  /**
+   * Get available products for testing
+   */
+  private async testGetProducts(): Promise<TestResult> {
+    const start = Date.now();
+    try {
+      const response = await this.client.get('/products', {
+        params: { limit: 1, status: 'ACTIVE' },
+      });
+
+      if (response.status === 200 && response.data.data?.products?.length > 0) {
+        this.productId = response.data.data.products[0].id;
+        return {
+          test: 'Get Products for Testing',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: { productId: this.productId },
+        };
+      }
+
+      return {
+        test: 'Get Products for Testing',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: 'No active products found',
+      };
+    } catch (error) {
+      return {
+        test: 'Get Products for Testing',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test GET /cart - Empty cart
+   */
+  private async testGetEmptyCart(): Promise<TestResult> {
+    const start = Date.now();
+    try {
+      const response = await this.client.get('/cart', {
+        headers: { 'x-session-id': this.sessionId },
+      });
+
+      if (response.status === 200 && response.data.id) {
+        this.cartId = response.data.id;
+        return {
+          test: 'GET /cart - Empty Cart',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: { cartId: this.cartId, itemsCount: response.data.items?.length || 0 },
+        };
+      }
+
+      return {
+        test: 'GET /cart - Empty Cart',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Expected 200, got ${response.status}`,
+      };
+    } catch (error) {
+      return {
+        test: 'GET /cart - Empty Cart',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test POST /cart/items - Add item to cart
+   */
+  private async testAddItemToCart(): Promise<TestResult> {
+    const start = Date.now();
+
+    if (!this.productId) {
+      return {
+        test: 'POST /cart/items - Add Item',
+        status: 'skip',
+        duration: 0,
+        error: 'No product available for testing',
+      };
+    }
+
+    try {
+      const response = await this.client.post(
+        '/cart/items',
+        {
+          productId: this.productId,
+          quantity: 2,
+          variantId: null,
+        },
+        {
+          headers: { 'x-session-id': this.sessionId },
+        }
+      );
+
+      if (response.status === 200 || response.status === 201) {
+        const cartItem = response.data.items?.find((item: any) => item.productId === this.productId);
+        if (cartItem) {
+          this.cartItemId = cartItem.id;
+        }
+
+        return {
+          test: 'POST /cart/items - Add Item',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: {
+            cartItemId: this.cartItemId,
+            quantity: cartItem?.quantity,
+            price: cartItem?.price
+          },
+        };
+      }
+
+      return {
+        test: 'POST /cart/items - Add Item',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Expected 200/201, got ${response.status}: ${response.data.message || 'Unknown error'}`,
+      };
+    } catch (error) {
+      return {
+        test: 'POST /cart/items - Add Item',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test PATCH /cart/items/:id - Update quantity
+   */
+  private async testUpdateCartItemQuantity(): Promise<TestResult> {
+    const start = Date.now();
+
+    if (!this.cartItemId) {
+      return {
+        test: 'PATCH /cart/items/:id - Update Quantity',
+        status: 'skip',
+        duration: 0,
+        error: 'No cart item to update',
+      };
+    }
+
+    try {
+      const response = await this.client.patch(`/cart/items/${this.cartItemId}`, {
+        quantity: 3,
+      });
+
+      if (response.status === 200 && response.data.quantity === 3) {
+        return {
+          test: 'PATCH /cart/items/:id - Update Quantity',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: { newQuantity: response.data.quantity },
+        };
+      }
+
+      return {
+        test: 'PATCH /cart/items/:id - Update Quantity',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Expected quantity 3, got ${response.data.quantity}`,
+      };
+    } catch (error) {
+      return {
+        test: 'PATCH /cart/items/:id - Update Quantity',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test PATCH /cart/currency - Update cart currency
+   */
+  private async testUpdateCartCurrency(): Promise<TestResult> {
+    const start = Date.now();
+    try {
+      const response = await this.client.patch(
+        '/cart/currency',
+        { currency: 'EUR' },
+        { headers: { 'x-session-id': this.sessionId } }
+      );
+
+      if (response.status === 200 && response.data.currency === 'EUR') {
+        return {
+          test: 'PATCH /cart/currency - Update Currency',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: { currency: response.data.currency },
+        };
+      }
+
+      return {
+        test: 'PATCH /cart/currency - Update Currency',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Expected EUR, got ${response.data.currency}`,
+      };
+    } catch (error) {
+      return {
+        test: 'PATCH /cart/currency - Update Currency',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test GET /cart - Get cart with items
+   */
+  private async testGetCartWithItems(): Promise<TestResult> {
+    const start = Date.now();
+    try {
+      const response = await this.client.get('/cart', {
+        headers: { 'x-session-id': this.sessionId },
+      });
+
+      if (response.status === 200 && response.data.items?.length > 0) {
+        return {
+          test: 'GET /cart - Cart With Items',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: {
+            itemsCount: response.data.items.length,
+            total: response.data.total,
+            currency: response.data.currency
+          },
+        };
+      }
+
+      return {
+        test: 'GET /cart - Cart With Items',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: 'Cart should have items',
+      };
+    } catch (error) {
+      return {
+        test: 'GET /cart - Cart With Items',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test POST /orders/calculate - Calculate order totals
+   */
+  private async testCalculateOrderTotals(): Promise<TestResult> {
+    const start = Date.now();
+
+    if (!this.cartId) {
+      return {
+        test: 'POST /orders/calculate - Calculate Totals',
+        status: 'skip',
+        duration: 0,
+        error: 'No cart available',
+      };
+    }
+
+    try {
+      const response = await this.client.post('/orders/calculate', {
+        cartId: this.cartId,
+        shippingAddressId: null,
+        shippingMethod: 'STANDARD',
+        currency: 'EUR',
+      });
+
+      if (response.status === 200 && response.data.success) {
+        return {
+          test: 'POST /orders/calculate - Calculate Totals',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: {
+            subtotal: response.data.data.subtotal,
+            tax: response.data.data.tax,
+            shipping: response.data.data.shipping,
+            total: response.data.data.total,
+          },
+        };
+      }
+
+      return {
+        test: 'POST /orders/calculate - Calculate Totals',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Expected 200, got ${response.status}`,
+      };
+    } catch (error) {
+      return {
+        test: 'POST /orders/calculate - Calculate Totals',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test POST /orders - Create order
+   */
+  private async testCreateOrder(): Promise<TestResult> {
+    const start = Date.now();
+
+    if (!this.cartId) {
+      return {
+        test: 'POST /orders - Create Order',
+        status: 'skip',
+        duration: 0,
+        error: 'No cart available',
+      };
+    }
+
+    try {
+      const response = await this.client.post('/orders', {
+        cartId: this.cartId,
+        shippingMethod: 'STANDARD',
+        shippingAddress: {
+          firstName: 'Test',
+          lastName: 'User',
+          street: '123 Test St',
+          city: 'Test City',
+          state: 'CA',
+          zipCode: '12345',
+          country: 'US',
+          phone: '+1234567890',
+        },
+        billingAddress: {
+          firstName: 'Test',
+          lastName: 'User',
+          street: '123 Test St',
+          city: 'Test City',
+          state: 'CA',
+          zipCode: '12345',
+          country: 'US',
+          phone: '+1234567890',
+        },
+        paymentMethod: 'STRIPE',
+        currency: 'EUR',
+      });
+
+      if ((response.status === 200 || response.status === 201) && response.data.id) {
+        this.orderId = response.data.id;
+        return {
+          test: 'POST /orders - Create Order',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: {
+            orderId: this.orderId,
+            total: response.data.total,
+            status: response.data.status
+          },
+        };
+      }
+
+      return {
+        test: 'POST /orders - Create Order',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Expected 200/201, got ${response.status}: ${response.data.message || 'Unknown error'}`,
+      };
+    } catch (error) {
+      return {
+        test: 'POST /orders - Create Order',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test GET /orders - Get user orders
+   */
+  private async testGetUserOrders(): Promise<TestResult> {
+    const start = Date.now();
+    try {
+      const response = await this.client.get('/orders', {
+        params: { page: 1, limit: 10 },
+      });
+
+      if (response.status === 200 && response.data.success) {
+        return {
+          test: 'GET /orders - User Orders',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: {
+            ordersCount: response.data.data.orders?.length || 0,
+            total: response.data.data.total
+          },
+        };
+      }
+
+      return {
+        test: 'GET /orders - User Orders',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Expected 200, got ${response.status}`,
+      };
+    } catch (error) {
+      return {
+        test: 'GET /orders - User Orders',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test GET /orders/:id - Get order details
+   */
+  private async testGetOrderDetails(): Promise<TestResult> {
+    const start = Date.now();
+
+    if (!this.orderId) {
+      return {
+        test: 'GET /orders/:id - Order Details',
+        status: 'skip',
+        duration: 0,
+        error: 'No order created',
+      };
+    }
+
+    try {
+      const response = await this.client.get(`/orders/${this.orderId}`);
+
+      if (response.status === 200 && response.data.id === this.orderId) {
+        return {
+          test: 'GET /orders/:id - Order Details',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: {
+            orderId: response.data.id,
+            itemsCount: response.data.items?.length || 0,
+            total: response.data.total
+          },
+        };
+      }
+
+      return {
+        test: 'GET /orders/:id - Order Details',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Expected order ${this.orderId}, got ${response.data.id}`,
+      };
+    } catch (error) {
+      return {
+        test: 'GET /orders/:id - Order Details',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test POST /payment/create-intent - Create payment intent
+   */
+  private async testCreatePaymentIntent(): Promise<TestResult> {
+    const start = Date.now();
+
+    if (!this.orderId) {
+      return {
+        test: 'POST /payment/create-intent - Payment Intent',
+        status: 'skip',
+        duration: 0,
+        error: 'No order created',
+      };
+    }
+
+    try {
+      const response = await this.client.post('/payment/create-intent', {
+        orderId: this.orderId,
+        savePaymentMethod: false,
+      });
+
+      if (response.status === 200 && response.data.clientSecret) {
+        return {
+          test: 'POST /payment/create-intent - Payment Intent',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: {
+            hasClientSecret: !!response.data.clientSecret,
+            amount: response.data.amount,
+            currency: response.data.currency
+          },
+        };
+      }
+
+      return {
+        test: 'POST /payment/create-intent - Payment Intent',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Expected 200 with clientSecret, got ${response.status}`,
+      };
+    } catch (error) {
+      return {
+        test: 'POST /payment/create-intent - Payment Intent',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test payment amount verification
+   */
+  private async testVerifyPaymentAmount(): Promise<TestResult> {
+    const start = Date.now();
+
+    if (!this.orderId) {
+      return {
+        test: 'Verify Payment Amount Matches Order',
+        status: 'skip',
+        duration: 0,
+        error: 'No order created',
+      };
+    }
+
+    try {
+      // Get order details
+      const orderResponse = await this.client.get(`/orders/${this.orderId}`);
+
+      if (orderResponse.status !== 200) {
+        return {
+          test: 'Verify Payment Amount Matches Order',
+          status: 'fail',
+          duration: Date.now() - start,
+          error: 'Could not fetch order details',
+        };
+      }
+
+      // Create payment intent
+      const paymentResponse = await this.client.post('/payment/create-intent', {
+        orderId: this.orderId,
+        savePaymentMethod: false,
+      });
+
+      if (paymentResponse.status !== 200) {
+        return {
+          test: 'Verify Payment Amount Matches Order',
+          status: 'fail',
+          duration: Date.now() - start,
+          error: 'Could not create payment intent',
+        };
+      }
+
+      const orderTotal = Number(orderResponse.data.total);
+      const paymentAmount = Number(paymentResponse.data.amount) / 100; // Stripe uses cents
+
+      const amountsMatch = Math.abs(orderTotal - paymentAmount) < 0.01; // Allow 1 cent difference
+
+      if (amountsMatch) {
+        return {
+          test: 'Verify Payment Amount Matches Order',
+          status: 'pass',
+          duration: Date.now() - start,
+          details: {
+            orderTotal,
+            paymentAmount,
+            currency: paymentResponse.data.currency
+          },
+        };
+      }
+
+      return {
+        test: 'Verify Payment Amount Matches Order',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Amount mismatch: Order ${orderTotal} vs Payment ${paymentAmount}`,
+      };
+    } catch (error) {
+      return {
+        test: 'Verify Payment Amount Matches Order',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test DELETE /cart/items/:id - Remove item
+   */
+  private async testRemoveCartItem(): Promise<TestResult> {
+    const start = Date.now();
+
+    if (!this.cartItemId) {
+      return {
+        test: 'DELETE /cart/items/:id - Remove Item',
+        status: 'skip',
+        duration: 0,
+        error: 'No cart item to remove',
+      };
+    }
+
+    try {
+      const response = await this.client.delete(`/cart/items/${this.cartItemId}`);
+
+      if (response.status === 200) {
+        return {
+          test: 'DELETE /cart/items/:id - Remove Item',
+          status: 'pass',
+          duration: Date.now() - start,
+        };
+      }
+
+      return {
+        test: 'DELETE /cart/items/:id - Remove Item',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: `Expected 200, got ${response.status}`,
+      };
+    } catch (error) {
+      return {
+        test: 'DELETE /cart/items/:id - Remove Item',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Test DELETE /cart - Clear cart
+   */
+  private async testClearCart(): Promise<TestResult> {
+    const start = Date.now();
+    try {
+      const response = await this.client.delete('/cart', {
+        headers: { 'x-session-id': this.sessionId },
+      });
+
+      if (response.status === 200 && response.data.items?.length === 0) {
+        return {
+          test: 'DELETE /cart - Clear Cart',
+          status: 'pass',
+          duration: Date.now() - start,
+        };
+      }
+
+      return {
+        test: 'DELETE /cart - Clear Cart',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: 'Cart should be empty after clearing',
+      };
+    } catch (error) {
+      return {
+        test: 'DELETE /cart - Clear Cart',
+        status: 'fail',
+        duration: Date.now() - start,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+}

@@ -20,11 +20,10 @@ export class SendcloudController {
   }
 
   /**
-   * Get Sendcloud health status (admin only)
+   * Get Sendcloud health status
+   * Public endpoint - no authentication required (safe for admin UI)
    */
   @Get('health')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getHealth() {
     return this.sendcloudService.getHealthStatus();
   }

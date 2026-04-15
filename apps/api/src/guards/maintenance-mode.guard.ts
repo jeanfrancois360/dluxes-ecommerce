@@ -7,6 +7,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
 
 export const IS_PUBLIC_KEY = 'isPublic';
@@ -18,7 +20,9 @@ export class MaintenanceModeGuard implements CanActivate {
 
   constructor(
     private readonly settingsService: SettingsService,
-    private readonly reflector: Reflector
+    private readonly reflector: Reflector,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -31,17 +35,35 @@ export class MaintenanceModeGuard implements CanActivate {
         return true; // Normal operation
       }
 
-      // In maintenance mode - check if user is admin
+      // Maintenance is ON — check if requester is admin/super_admin.
+      // request.user is always null here because JwtAuthGuard hasn't run yet
+      // (MaintenanceModeGuard is registered first as APP_GUARD).
+      // Manually verify the JWT from the Authorization header instead.
       const request = context.switchToHttp().getRequest();
-      const user = request.user;
 
-      // Allow admins to access during maintenance
-      if (user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) {
-        this.logger.log(`Admin ${user.email} accessing during maintenance mode`);
+      // Always allow the settings endpoint so admins can turn maintenance back off via API
+      const path: string = request.path || '';
+      if (path.includes('/settings/maintenance_mode') || path.includes('/auth/login')) {
         return true;
       }
 
-      // Block all other requests
+      try {
+        const authHeader: string | undefined = request.headers?.authorization;
+        if (authHeader?.startsWith('Bearer ')) {
+          const token = authHeader.substring(7);
+          const jwtSecret = this.configService.get<string>('JWT_SECRET');
+          const payload = this.jwtService.verify(token, { secret: jwtSecret });
+          const role: string | undefined = payload?.role;
+          if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+            this.logger.log(`Admin (role=${role}) accessing during maintenance mode — allowed`);
+            return true;
+          }
+        }
+      } catch {
+        // Invalid or missing token — fall through to block
+      }
+
+      // Non-admin during maintenance — return 503
       throw new ServiceUnavailableException({
         statusCode: 503,
         message: 'The site is currently under maintenance. Please try again later.',
@@ -54,14 +76,12 @@ export class MaintenanceModeGuard implements CanActivate {
 
       // Handle missing setting gracefully
       if (error instanceof NotFoundException && error.message?.includes('maintenance_mode')) {
-        // Log warning only once to avoid spam
         if (!this.hasLoggedMissingSetting) {
           this.logger.warn(
-            'Setting "maintenance_mode" not found in database. Defaulting to maintenance mode OFF. Run database seed to add missing settings.'
+            'Setting "maintenance_mode" not found in database. Defaulting to maintenance mode OFF.'
           );
           this.hasLoggedMissingSetting = true;
         }
-        // Default to maintenance mode OFF when setting is missing
         return true;
       }
 

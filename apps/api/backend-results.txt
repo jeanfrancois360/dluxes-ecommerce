@@ -1,0 +1,163 @@
+[1m[36mNextPik Backend Testing Suite[0m
+Started at: 2026-03-29T17:01:42.542Z
+
+
+================================================================================
+[1m[36mPHASE 1: Authentication Tests[0m
+================================================================================
+
+Running AuthAgent to obtain test tokens...
+
+
+[32m✓ Auth tests completed[0m
+  Note: Each agent handles its own authentication independently
+
+
+================================================================================
+[1m[36mPHASE 2: Parallel Agent Execution[0m
+================================================================================
+
+Running 7 agents in parallel (each handles own authentication)...
+
+[32m✓ All agents completed[0m
+
+
+================================================================================
+[1m[36mNEXTPIK BACKEND TEST REPORT[0m
+================================================================================
+
+
+[1m[35mAuth Agent[0m
+Duration: 145ms
+
+  [31mFAIL[0m Register Buyer (101ms) - Request failed
+  [31mFAIL[0m Register Seller (17ms) - Request failed
+  [31mFAIL[0m Duplicate Email Validation (3ms) - Request failed
+  [31mFAIL[0m Login Buyer (5ms) - Request failed
+  [31mFAIL[0m Login Seller (2ms) - Request failed
+  [31mFAIL[0m Invalid Login (1ms) - Request failed
+  [34mSKIP[0m Get Current User - No buyer token available
+  [31mFAIL[0m Get Current User (Unauth) (2ms) - Request failed
+  [31mFAIL[0m Magic Link Request (2ms) - Request failed
+  [31mFAIL[0m Password Reset Request (5ms) - Request failed
+  [31mFAIL[0m Invalid Password Reset (2ms) - Request failed
+  [31mFAIL[0m Validation Errors (1ms) - Request failed
+
+[1m[35mProduct Agent[0m
+Duration: 81ms
+
+  [31mFAIL[0m Get Products (10ms) - Request failed
+  [31mFAIL[0m Get Featured Products (9ms) - Request failed
+  [31mFAIL[0m Get Trending Products (8ms) - Request failed
+  [31mFAIL[0m Get Categories (14ms) - Request failed
+  [31mFAIL[0m Search Products (3ms) - Request failed
+  [34mSKIP[0m Filter by Category - No category ID available
+  [31mFAIL[0m Filter by Price Range (20ms) - Request failed
+  [31mFAIL[0m Pagination Products (7ms) - Request failed
+  [34mSKIP[0m Create Product - No seller token available
+  [34mSKIP[0m Get Product by Slug - No product slug available
+  [34mSKIP[0m Update Product - No seller token or product ID available
+  [34mSKIP[0m Get Seller Products - No seller token available
+  [34mSKIP[0m Upload Product Image - No seller token or product ID available
+  [34mSKIP[0m Update Inventory - No seller token or product ID available
+  [31mFAIL[0m Create Product (Unauth) (9ms) - Request failed
+  [34mSKIP[0m Create Product (Buyer) - No buyer token available
+  [34mSKIP[0m Invalid Product Data - No seller token available
+
+[1m[35mCart & Order Agent[0m
+Duration: 8ms
+
+  undefinedFAIL[0m undefined (4ms)
+  undefinedFAIL[0m undefined (2ms)
+  undefinedSKIP[0m undefined
+  undefinedSKIP[0m undefined
+  undefinedFAIL[0m undefined (1ms)
+  undefinedFAIL[0m undefined
+  undefinedSKIP[0m undefined
+  undefinedSKIP[0m undefined
+  undefinedFAIL[0m undefined (1ms)
+  undefinedSKIP[0m undefined
+  undefinedSKIP[0m undefined
+  undefinedSKIP[0m undefined
+  undefinedSKIP[0m undefined
+  undefinedFAIL[0m undefined
+
+[1m[35mReferral Agent[0m
+Duration: 7ms
+
+  undefinedFAIL[0m undefined (3ms)
+  undefinedFAIL[0m undefined (1ms)
+  undefinedFAIL[0m undefined
+  undefinedSKIP[0m undefined
+  undefinedFAIL[0m undefined
+  undefinedFAIL[0m undefined
+  undefinedFAIL[0m undefined (1ms)
+
+[1m[35mSeller Agent[0m
+Duration: 15ms
+
+  [34mSKIP[0m Seller Dashboard - No seller token available
+  [34mSKIP[0m Seller Products - No seller token available
+  [34mSKIP[0m Seller Orders - No seller token available
+  [34mSKIP[0m Seller Credit Summary - No seller token available
+  [34mSKIP[0m Seller Payout History - No seller token available
+  [31mFAIL[0m Seller Dashboard (Unauth) (12ms) - Request failed
+  [34mSKIP[0m Seller Products (Buyer Token) - No buyer token available
+
+[1m[35mAdmin Agent[0m
+Duration: 17ms
+
+  [34mSKIP[0m Admin Dashboard Stats - No admin token available
+  [34mSKIP[0m Admin Dashboard Revenue - No admin token available
+  [34mSKIP[0m Admin Dashboard Orders By Status - No admin token available
+  [34mSKIP[0m Admin Dashboard Top Products - No admin token available
+  [34mSKIP[0m Admin Dashboard Customer Growth - No admin token available
+  [34mSKIP[0m Admin Dashboard Recent Orders - No admin token available
+  [34mSKIP[0m Admin Orders - No admin token available
+  [34mSKIP[0m Admin Users - No admin token available
+  [34mSKIP[0m Admin Payout Stats - No admin token available
+  [34mSKIP[0m Admin Subscription Plans - No admin token available
+  [34mSKIP[0m Admin Referral Stats - No admin token available
+  [31mFAIL[0m Admin Dashboard (Unauth) (13ms) - Request failed
+  [34mSKIP[0m Admin Dashboard (Seller Token) - No seller token available
+
+[1m[35mShipping Agent[0m
+Duration: 76ms
+
+  [31mFAIL[0m EasyPost Health (10ms) - Request failed
+  [31mFAIL[0m EasyPost Test Connection (9ms) - Request failed
+  [31mFAIL[0m SendCloud Health (14ms) - Request failed
+  [31mFAIL[0m EasyShip Health (6ms) - Request failed
+  [31mFAIL[0m DHL Health (3ms) - Request failed
+  [31mFAIL[0m Shipping Settings (20ms) - Request failed
+  [31mFAIL[0m Origin Address Settings (4ms) - Request failed
+  [31mFAIL[0m EasyPost Settings (10ms) - Request failed
+
+[1m[35mSettings Agent[0m
+Duration: 79ms
+
+  [31mFAIL[0m Public Settings (10ms) - Request failed
+  [31mFAIL[0m Required Settings (9ms) - Request failed
+  [31mFAIL[0m Currency Rates (16ms) - Request failed
+  [31mFAIL[0m Currency Conversion (5ms) - Request failed
+  [31mFAIL[0m Tax Settings (7ms) - Request failed
+  [31mFAIL[0m Payment Settings (16ms) - Request failed
+  [31mFAIL[0m Escrow Settings (10ms) - Request failed
+  [31mFAIL[0m Commission Settings (6ms) - Request failed
+
+================================================================================
+[1m[36mTEST SUMMARY[0m
+================================================================================
+
+Total Tests:    [1m86[0m
+Passed:         [32m0[0m
+Failed:         [31m37[0m
+Warnings:       [33m0[0m
+Skipped:        [34m28[0m
+Success Rate:   [1m0.00%[0m
+Total Duration: [1m249ms[0m (0.25s)
+
+================================================================================
+[1m[31m✗ SOME TESTS FAILED[0m
+================================================================================
+

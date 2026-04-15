@@ -203,7 +203,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const t = useTranslations('checkout');
   const { user, isLoading: authLoading, isInitialized } = useAuth();
-  const { items, totals, clearCart, cartCurrency } = useCart();
+  const { items, totals, clearCart, cartCurrency, freeShippingThreshold } = useCart();
   const { convertPrice, selectedCurrency } = useCurrencyConverter();
   const {
     step,
@@ -236,8 +236,10 @@ export default function CheckoutPage() {
     Partial<AddressFormData> | undefined
   >(undefined);
 
-  // Dynamic shipping options from backend
-  const [availableShippingOptions, setAvailableShippingOptions] = useState<APIShippingOption[]>([]);
+  // Dynamic shipping options from backend (undefined = not yet loaded, show hardcoded fallback)
+  const [availableShippingOptions, setAvailableShippingOptions] = useState<
+    APIShippingOption[] | undefined
+  >(undefined);
   const [isLoadingShippingOptions, setIsLoadingShippingOptions] = useState(false);
   const [backendCalculation, setBackendCalculation] = useState<OrderCalculationResponse | null>(
     null
@@ -277,13 +279,16 @@ export default function CheckoutPage() {
         // API client auto-unwraps { success, data } responses
         setBackendCalculation(calculation);
 
-        // ✅ Safe: Default to empty array if undefined
-        setAvailableShippingOptions(calculation.shippingOptions || []);
+        // Use backend options if available; fall back to undefined so hardcoded methods show
+        const backendOptions = calculation.shippingOptions?.length
+          ? calculation.shippingOptions
+          : undefined;
+        setAvailableShippingOptions(backendOptions);
 
-        // ✅ Safe: Default to 0 if tax is missing
+        // Default to 0 if tax is missing
         setCalculatedTax(calculation.tax?.amount || 0);
 
-        // ✅ Safe: Check shippingOptions exists before using .find()
+        // Update calculated shipping cost for the selected method
         if (selectedShippingMethod && calculation.shippingOptions) {
           const selectedOption = calculation.shippingOptions.find(
             (opt: APIShippingOption) => opt.id === selectedShippingMethod
@@ -293,22 +298,14 @@ export default function CheckoutPage() {
           }
         }
 
-        console.log('Backend shipping options:', calculation.shippingOptions);
-        console.log('Tax calculation:', calculation.tax);
-
-        // ⚠️ Warn user if tax or shipping missing
         if (!calculation.tax) {
           console.warn('[Checkout] Tax calculation missing from backend response');
-          toast.warning('Tax calculation unavailable. Proceeding with $0 tax.');
-        }
-        if (!calculation.shippingOptions || calculation.shippingOptions.length === 0) {
-          console.error('[Checkout] No shipping options available');
-          toast.error('No shipping options available for your address. Please contact support.');
         }
       } catch (error: any) {
         console.error('Failed to fetch shipping options:', error);
-        // Fallback to hardcoded options if backend fails
         toast.error(t('couldNotLoadShipping'));
+        // Reset to undefined so the hardcoded fallback methods are shown
+        setAvailableShippingOptions(undefined);
       } finally {
         setIsLoadingShippingOptions(false);
       }
@@ -492,7 +489,9 @@ export default function CheckoutPage() {
 
   const handleShippingMethodContinue = () => {
     // First check if this is a backend shipping option
-    const backendOption = availableShippingOptions.find((opt) => opt.id === selectedShippingMethod);
+    const backendOption = availableShippingOptions?.find(
+      (opt) => opt.id === selectedShippingMethod
+    );
 
     if (backendOption) {
       // Using backend/zone-based shipping option
@@ -508,10 +507,13 @@ export default function CheckoutPage() {
     // Fallback to hardcoded shipping method (for backward compatibility)
     const methodConfig = getShippingMethodById(selectedShippingMethod);
     if (methodConfig) {
+      // Apply free shipping threshold to hardcoded method price
+      const isFreeShipping = totals.subtotal >= freeShippingThreshold;
+      const hardcodedPrice = isFreeShipping ? 0 : methodConfig.basePrice;
       saveShippingMethod({
         id: methodConfig.id,
         name: methodConfig.name,
-        price: calculatedShipping, // Use checkout's calculated shipping
+        price: hardcodedPrice,
       });
       setShippingMethodConfirmed(true);
     } else {
@@ -575,9 +577,19 @@ export default function CheckoutPage() {
   // Calculate checkout totals (shipping and tax calculated here, not in cart)
   const methodConfig = getShippingMethodById(selectedShippingMethod);
 
-  // Use calculated shipping and tax from checkout (not cart)
+  // Determine effective shipping cost:
+  // - Backend options available: use calculatedShipping (backend applied free shipping logic)
+  // - Hardcoded fallback (no backend options): compute from methodConfig with free shipping threshold
+  const isUsingHardcodedFallback = !availableShippingOptions;
+  const hardcodedShippingPrice = methodConfig
+    ? totals.subtotal >= freeShippingThreshold
+      ? 0
+      : methodConfig.basePrice
+    : 0;
+  const effectiveShipping = isUsingHardcodedFallback ? hardcodedShippingPrice : calculatedShipping;
+
   // Pickup orders have $0 shipping cost (v2.10.0)
-  const shippingCost = deliveryType === 'pickup' ? 0 : calculatedShipping;
+  const shippingCost = deliveryType === 'pickup' ? 0 : effectiveShipping;
   const taxAmount = calculatedTax;
   const totalWithShipping = totals.subtotal + shippingCost + taxAmount;
 
@@ -839,6 +851,7 @@ export default function CheckoutPage() {
                             shippingOptions={availableShippingOptions}
                             isLoadingOptions={isLoadingShippingOptions}
                             currency={cartCurrency}
+                            freeShippingThreshold={freeShippingThreshold}
                           />
                         </motion.div>
                       )}

@@ -1240,21 +1240,29 @@ export class PaymentService {
       }
 
       // Calculate and create commissions
-      // Note: This would typically be done in a queue/background job
-      // For now, we'll trigger it directly but wrapped in try-catch
-      try {
-        const { CommissionService } = await import('../commission/commission.service');
-        const { EnhancedCommissionService } =
-          await import('../commission/enhanced-commission.service');
-        const commissionService = new CommissionService(this.prisma, this.settingsService);
-        await commissionService.calculateCommissionForTransaction(transaction.id);
-        this.logger.log(`Commissions calculated for transaction ${transaction.id}`);
-      } catch (commissionError) {
-        this.logger.error(
-          `Error calculating commissions for transaction ${transaction.id}:`,
-          commissionError
+      // Idempotency guard: skip if commissions already exist for this transaction
+      // (prevents duplicates when both amount_capturable_updated and succeeded fire)
+      const existingCommissionCount = await this.prisma.commission.count({
+        where: { transactionId: transaction.id },
+      });
+
+      if (existingCommissionCount > 0) {
+        this.logger.log(
+          `Commissions already exist for transaction ${transaction.id} (count: ${existingCommissionCount}). Skipping.`
         );
-        // Don't fail the payment if commission calculation fails
+      } else {
+        try {
+          const { CommissionService } = await import('../commission/commission.service');
+          const commissionService = new CommissionService(this.prisma, this.settingsService);
+          await commissionService.calculateCommissionForTransaction(transaction.id);
+          this.logger.log(`Commissions calculated for transaction ${transaction.id}`);
+        } catch (commissionError) {
+          this.logger.error(
+            `Error calculating commissions for transaction ${transaction.id}:`,
+            commissionError
+          );
+          // Don't fail the payment if commission calculation fails
+        }
       }
 
       // Auto-submit Gelato POD items (per-seller basis)
@@ -1306,120 +1314,130 @@ export class PaymentService {
       }
 
       if (escrowEnabled && !immediatePayoutEnabled) {
-        try {
-          const order = await this.prisma.order.findUnique({
-            where: { id: orderId },
-            include: {
-              items: {
-                include: {
-                  product: {
-                    include: {
-                      store: true,
+        // Idempotency guard: skip if escrow already exists for this order
+        const existingEscrowCount = await this.prisma.escrowTransaction.count({
+          where: { orderId },
+        });
+
+        if (existingEscrowCount > 0) {
+          this.logger.log(
+            `Escrow already exists for order ${orderId} (count: ${existingEscrowCount}). Skipping.`
+          );
+        } else
+          try {
+            const order = await this.prisma.order.findUnique({
+              where: { id: orderId },
+              include: {
+                items: {
+                  include: {
+                    product: {
+                      include: {
+                        store: true,
+                      },
                     },
                   },
                 },
               },
-            },
-          });
-
-          if (order && order.items.length > 0) {
-            // For multi-vendor orders, create escrow per seller
-            const sellerOrders = new Map<string, any>();
-
-            for (const item of order.items) {
-              if (item.product.store) {
-                const sellerId = item.product.store.userId;
-                if (!sellerOrders.has(sellerId)) {
-                  sellerOrders.set(sellerId, {
-                    sellerId,
-                    storeId: item.product.storeId!,
-                    totalAmount: 0,
-                    platformFee: 0,
-                  });
-                }
-                const sellerOrder = sellerOrders.get(sellerId)!;
-                sellerOrder.totalAmount += Number(item.total);
-              }
-            }
-
-            // Calculate platform fee from commissions
-            const commissions = await this.prisma.commission.findMany({
-              where: { transactionId: transaction.id },
             });
 
-            const totalPlatformFee = commissions.reduce(
-              (sum, c) => sum + Number(c.commissionAmount),
-              0
-            );
-
-            // Create escrow transaction with hold period from settings
-            if (sellerOrders.size === 1) {
-              // Single seller order
-              const sellerOrder = Array.from(sellerOrders.values())[0];
-              const { EscrowService } = await import('../escrow/escrow.service');
-              const escrowService = new EscrowService(this.prisma, this.settingsService);
-
-              await escrowService.createEscrowTransaction({
-                orderId,
-                paymentTransactionId: transaction.id,
-                sellerId: sellerOrder.sellerId,
-                storeId: sellerOrder.storeId,
-                totalAmount: Number(transaction.amount),
-                platformFee: totalPlatformFee,
-                currency: transaction.currency,
-                holdPeriodDays, // Use hold period from system settings
-              });
-
-              this.logger.log(
-                `Escrow created for order ${orderId}: ${transaction.amount} ${transaction.currency} (platform fee: ${totalPlatformFee}, hold period: ${holdPeriodDays} days)`
-              );
-            } else {
-              // Multi-vendor order - create escrow with split allocations
-              const { EscrowService } = await import('../escrow/escrow.service');
-              const escrowService = new EscrowService(this.prisma, this.settingsService);
-
-              // Build split items with commission data
-              const splitItems = [];
+            if (order && order.items.length > 0) {
+              // For multi-vendor orders, create escrow per seller
+              const sellerOrders = new Map<string, any>();
 
               for (const item of order.items) {
                 if (item.product.store) {
-                  // Find commission for this specific item
-                  const itemCommission = commissions.find((c) => c.orderItemId === item.id);
-
-                  splitItems.push({
-                    orderItemId: item.id,
-                    sellerId: item.product.store.userId,
-                    storeId: item.product.storeId!,
-                    amount: Number(item.total),
-                    platformFee: itemCommission ? Number(itemCommission.commissionAmount) : 0,
-                  });
+                  const sellerId = item.product.store.userId;
+                  if (!sellerOrders.has(sellerId)) {
+                    sellerOrders.set(sellerId, {
+                      sellerId,
+                      storeId: item.product.storeId!,
+                      totalAmount: 0,
+                      platformFee: 0,
+                    });
+                  }
+                  const sellerOrder = sellerOrders.get(sellerId)!;
+                  sellerOrder.totalAmount += Number(item.total);
                 }
               }
 
-              if (splitItems.length > 0) {
-                await escrowService.createEscrowWithSplits({
+              // Calculate platform fee from commissions
+              const commissions = await this.prisma.commission.findMany({
+                where: { transactionId: transaction.id },
+              });
+
+              const totalPlatformFee = commissions.reduce(
+                (sum, c) => sum + Number(c.commissionAmount),
+                0
+              );
+
+              // Create escrow transaction with hold period from settings
+              if (sellerOrders.size === 1) {
+                // Single seller order
+                const sellerOrder = Array.from(sellerOrders.values())[0];
+                const { EscrowService } = await import('../escrow/escrow.service');
+                const escrowService = new EscrowService(this.prisma, this.settingsService);
+
+                await escrowService.createEscrowTransaction({
                   orderId,
                   paymentTransactionId: transaction.id,
+                  sellerId: sellerOrder.sellerId,
+                  storeId: sellerOrder.storeId,
+                  totalAmount: Number(transaction.amount),
+                  platformFee: totalPlatformFee,
                   currency: transaction.currency,
-                  holdPeriodDays,
-                  items: splitItems,
+                  holdPeriodDays, // Use hold period from system settings
                 });
 
                 this.logger.log(
-                  `Multi-vendor escrow created for order ${orderId}: ${splitItems.length} sellers, ${sellerOrders.size} stores (hold period: ${holdPeriodDays} days)`
+                  `Escrow created for order ${orderId}: ${transaction.amount} ${transaction.currency} (platform fee: ${totalPlatformFee}, hold period: ${holdPeriodDays} days)`
                 );
               } else {
-                this.logger.warn(`No split items found for multi-vendor order ${orderId}`);
+                // Multi-vendor order - create escrow with split allocations
+                const { EscrowService } = await import('../escrow/escrow.service');
+                const escrowService = new EscrowService(this.prisma, this.settingsService);
+
+                // Build split items with commission data
+                const splitItems = [];
+
+                for (const item of order.items) {
+                  if (item.product.store) {
+                    // Find commission for this specific item
+                    const itemCommission = commissions.find((c) => c.orderItemId === item.id);
+
+                    splitItems.push({
+                      orderItemId: item.id,
+                      sellerId: item.product.store.userId,
+                      storeId: item.product.storeId!,
+                      amount: Number(item.total),
+                      platformFee: itemCommission ? Number(itemCommission.commissionAmount) : 0,
+                    });
+                  }
+                }
+
+                if (splitItems.length > 0) {
+                  await escrowService.createEscrowWithSplits({
+                    orderId,
+                    paymentTransactionId: transaction.id,
+                    currency: transaction.currency,
+                    holdPeriodDays,
+                    items: splitItems,
+                  });
+
+                  this.logger.log(
+                    `Multi-vendor escrow created for order ${orderId}: ${splitItems.length} sellers, ${sellerOrders.size} stores (hold period: ${holdPeriodDays} days)`
+                  );
+                } else {
+                  this.logger.warn(`No split items found for multi-vendor order ${orderId}`);
+                }
               }
             }
+          } catch (escrowError) {
+            this.logger.error(
+              `Error creating escrow for transaction ${transaction.id}:`,
+              escrowError
+            );
+            // Don't fail the payment if escrow creation fails
           }
-        } catch (escrowError) {
-          this.logger.error(
-            `Error creating escrow for transaction ${transaction.id}:`,
-            escrowError
-          );
-          // Don't fail the payment if escrow creation fails
-        }
       } else if (immediatePayoutEnabled) {
         this.logger.warn(
           `IMMEDIATE PAYOUT MODE ENABLED: Funds will be paid to seller immediately for order ${orderId}. This should only be used for testing or trusted sellers!`
@@ -1707,6 +1725,20 @@ export class PaymentService {
         this.logger.error(
           `Error cancelling commissions for order ${transaction.orderId}:`,
           commissionError
+        );
+      }
+
+      // Update escrow status to REFUNDED
+      try {
+        await this.prisma.escrowTransaction.updateMany({
+          where: { orderId: transaction.orderId },
+          data: { status: 'REFUNDED' as any },
+        });
+        this.logger.log(`Escrow marked as REFUNDED for order ${transaction.orderId}`);
+      } catch (escrowError) {
+        this.logger.error(
+          `Error updating escrow status for order ${transaction.orderId}:`,
+          escrowError
         );
       }
 
@@ -2356,7 +2388,81 @@ export class PaymentService {
         throw new BadRequestException('Invalid refund amount');
       }
 
-      // Create Stripe refund
+      // Check if the PaymentIntent is in requires_capture state (uncaptured authorization).
+      // Stripe does not allow refunding a charge that was never captured — instead, the
+      // authorization must be cancelled via paymentIntents.cancel().
+      const paymentIntent = await this.stripe.paymentIntents.retrieve(
+        transaction.stripePaymentIntentId
+      );
+
+      if (paymentIntent.status === 'requires_capture') {
+        // Cancel the uncaptured authorization — this reverses the hold on the customer's card
+        await this.stripe.paymentIntents.cancel(transaction.stripePaymentIntentId);
+        this.logger.log(
+          `PaymentIntent ${transaction.stripePaymentIntentId} cancelled (was requires_capture) for order ${orderId}`
+        );
+
+        const isFullRefund = true; // Cancellation always releases the full authorization
+
+        // Update payment transaction
+        await this.prisma.paymentTransaction.update({
+          where: { id: transaction.id },
+          data: {
+            status: PaymentTransactionStatus.REFUNDED,
+            refundedAmount: new Decimal(maxRefundable),
+            refundedAt: new Date(),
+          },
+        });
+
+        // Update order status
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: {
+            paymentStatus: PaymentStatus.REFUNDED,
+            status: 'REFUNDED' as any,
+          },
+        });
+
+        // Update escrow status
+        await this.prisma.escrowTransaction.updateMany({
+          where: { orderId },
+          data: { status: 'REFUNDED' as any },
+        });
+
+        // Cancel commissions
+        try {
+          const { CommissionService } = await import('../commission/commission.service');
+          const commissionService = new CommissionService(this.prisma, this.settingsService);
+          await commissionService.cancelCommissionsForOrder(orderId);
+        } catch (commissionError) {
+          this.logger.error(`Error cancelling commissions for order ${orderId}:`, commissionError);
+        }
+
+        // Create timeline entry
+        await this.prisma.orderTimeline.create({
+          data: {
+            orderId,
+            status: 'REFUNDED' as any,
+            title: 'Authorization Cancelled',
+            description: `Payment authorization of $${maxRefundable.toFixed(2)} has been cancelled.`,
+            icon: 'undo',
+          },
+        });
+
+        this.logger.log(
+          `Authorization cancelled for order ${orderId}: $${maxRefundable.toFixed(2)}`
+        );
+
+        return {
+          success: true,
+          refundId: `cancelled_${transaction.stripePaymentIntentId}`,
+          amount: maxRefundable,
+          status: 'cancelled',
+          message: 'Payment authorization cancelled successfully',
+        };
+      }
+
+      // Create Stripe refund (for already-captured payments)
       const refund = await this.stripe.refunds.create({
         payment_intent: transaction.stripePaymentIntentId,
         amount: amountInCents,

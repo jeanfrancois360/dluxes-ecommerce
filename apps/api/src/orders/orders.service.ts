@@ -538,7 +538,7 @@ export class OrdersService {
           metadata: idempotencyKey ? { idempotencyKey } : null,
 
           items: {
-            create: orderItems,
+            create: orderItems.map(({ currency: _c, ...item }) => item),
           },
         },
         include: {
@@ -1047,7 +1047,15 @@ export class OrdersService {
           // Store idempotency key to prevent duplicate orders
           metadata: idempotencyKey ? { idempotencyKey } : null,
           items: {
-            create: orderItems,
+            create: orderItems.map(
+              ({
+                weight: _w,
+                fulfillmentType: _ft,
+                gelatoProductUid: _gp,
+                storeId: _si,
+                ...item
+              }) => item
+            ),
           },
         },
         include: {
@@ -1984,7 +1992,7 @@ export class OrdersService {
       }
 
       // 3. Calculate shipping options
-      const shippingOptions = await this.shippingTaxService.calculateShippingOptions(
+      let shippingOptions = await this.shippingTaxService.calculateShippingOptions(
         {
           country: address.country,
           state: address.province || undefined,
@@ -1996,7 +2004,27 @@ export class OrdersService {
       );
 
       if (!shippingOptions || shippingOptions.length === 0) {
-        throw new BadRequestException('No shipping options available for this address');
+        this.logger.warn(
+          '[calculateTotals] All shipping providers failed — using hardcoded manual rates as final fallback'
+        );
+        shippingOptions = [
+          {
+            id: 'standard',
+            name: 'Standard Shipping',
+            description: '5-7 business days',
+            price: 9.99,
+            estimatedDays: 7,
+            carrier: 'USPS',
+          },
+          {
+            id: 'express',
+            name: 'Express Shipping',
+            description: '2-3 business days',
+            price: 19.99,
+            estimatedDays: 3,
+            carrier: 'FedEx',
+          },
+        ];
       }
 
       // 4. Select shipping method

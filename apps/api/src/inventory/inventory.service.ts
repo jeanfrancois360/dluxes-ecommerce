@@ -209,7 +209,23 @@ export class InventoryService {
     const page = filters?.page || 1;
     const limit = filters?.limit || 20;
     const skip = (page - 1) * limit;
-    const threshold = filters?.threshold || this.LOW_STOCK_THRESHOLD;
+    // Read threshold from system settings; fall back to the class constant if unavailable
+    let settingThreshold = this.LOW_STOCK_THRESHOLD;
+    try {
+      const setting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'inventory.low_stock_threshold' },
+      });
+      if (
+        setting?.value !== null &&
+        setting?.value !== undefined &&
+        typeof setting.value === 'number'
+      ) {
+        settingThreshold = setting.value as number;
+      }
+    } catch {
+      // Use fallback silently
+    }
+    const threshold = filters?.threshold !== undefined ? filters.threshold : settingThreshold;
 
     const where: any = {
       inventory: { lte: threshold, gt: 0 },

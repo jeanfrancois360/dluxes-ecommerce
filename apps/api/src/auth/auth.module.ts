@@ -78,6 +78,7 @@ import { ReferralModule } from '../referral/referral.module';
     AuthCoreService,
     EmailOTPService,
     GoogleOAuthService,
+    JwtModule,
   ],
 })
 export class AuthModule {}
