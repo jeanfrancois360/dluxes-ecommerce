@@ -2,17 +2,20 @@
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nextpik/ui';
-import { Truck, Package } from 'lucide-react';
+import { Truck, Package, Globe, Ship, ArrowDownUp } from 'lucide-react';
 import { ShippingSettingsSection } from './shipping-settings';
 import { EasyPostSettingsSection } from './easypost-settings';
+import { SendCloudSettingsSection } from './sendcloud-settings';
+import { EasyShipSettingsSection } from './easyship-settings';
+import { ShippingCascadeSettings } from './shipping-cascade-settings';
 
 /**
  * Unified Shipping Settings Component
- * Combines manual shipping rates and EasyPost multi-carrier shipping
- * into a single tabbed interface
+ * Combines manual shipping rates and multi-carrier shipping integrations
+ * (EasyPost, SendCloud, EasyShip) into a single tabbed interface
  */
 export function UnifiedShippingSettingsSection() {
-  const [activeSubTab, setActiveSubTab] = useState('rates');
+  const [activeSubTab, setActiveSubTab] = useState('cascade');
 
   return (
     <div className="space-y-6">
@@ -26,16 +29,32 @@ export function UnifiedShippingSettingsSection() {
 
       {/* Sub-tabs for different shipping methods */}
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="cascade" className="gap-2">
+            <ArrowDownUp className="h-4 w-4" />
+            Cascade Overview
+          </TabsTrigger>
           <TabsTrigger value="rates" className="gap-2">
             <Package className="h-4 w-4" />
-            Shipping Rates
+            Manual Rates
           </TabsTrigger>
           <TabsTrigger value="easypost" className="gap-2">
             <Truck className="h-4 w-4" />
-            EasyPost (Multi-Carrier)
+            EasyPost
+          </TabsTrigger>
+          <TabsTrigger value="sendcloud" className="gap-2">
+            <Globe className="h-4 w-4" />
+            SendCloud
+          </TabsTrigger>
+          <TabsTrigger value="easyship" className="gap-2">
+            <Ship className="h-4 w-4" />
+            EasyShip
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="cascade" className="mt-6">
+          <ShippingCascadeSettings />
+        </TabsContent>
 
         <TabsContent value="rates" className="mt-6">
           <ShippingSettingsSection />
@@ -43,6 +62,14 @@ export function UnifiedShippingSettingsSection() {
 
         <TabsContent value="easypost" className="mt-6">
           <EasyPostSettingsSection />
+        </TabsContent>
+
+        <TabsContent value="sendcloud" className="mt-6">
+          <SendCloudSettingsSection />
+        </TabsContent>
+
+        <TabsContent value="easyship" className="mt-6">
+          <EasyShipSettingsSection />
         </TabsContent>
       </Tabs>
     </div>

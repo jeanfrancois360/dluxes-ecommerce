@@ -233,18 +233,32 @@ export class ShippingTaxService {
       this.logger.warn(`[Pickup] Failed, continuing to shipping providers: ${error.message}`);
     }
 
+    // Helper: normalize setting value to boolean (handles both JS boolean and string "true"/"false")
+    const isEnabled = (value: any): boolean =>
+      value === true || value === 'true' || value === 1 || value === '1';
+
+    // Helper: safely get a setting — returns null instead of throwing if key doesn't exist
+    const getSetting = async (key: string) => {
+      try {
+        return await this.settingsService.getSetting(key);
+      } catch {
+        this.logger.warn(`[Cascade] Setting '${key}' not found in DB — treating as disabled`);
+        return null;
+      }
+    };
+
     // Get seller country ONCE for geo-routing decisions
     const sellerCountry = await this.getSellerCountry(itemsForShipping);
     this.logger.log(`[Geo-Routing] Seller country detected: ${sellerCountry || 'unknown'}`);
 
-    // TIER 1: Sendcloud (for EU sellers: AT,BE,FR,DE,IT,NL,ES,GB,CZ,DK,PL,PT,SE)
-    const sendcloudEnabled = await this.settingsService.getSetting('sendcloud_enabled');
+    // TIER 1: SendCloud (EU sellers: AT,BE,CZ,DK,FR,DE,IT,NL,PL,PT,ES,SE,GB)
+    const sendcloudEnabled = await getSetting('sendcloud_enabled');
     if (
-      sendcloudEnabled?.value === true &&
+      isEnabled(sendcloudEnabled?.value) &&
       sellerCountry &&
       this.sendcloudService.isCountrySupported(sellerCountry)
     ) {
-      this.logger.log(`[Sendcloud] Seller country ${sellerCountry} supported, attempting rates...`);
+      this.logger.log(`[SendCloud] Seller country ${sellerCountry} supported, attempting rates...`);
       try {
         const sendcloudOptions = await this.calculateSendcloudShippingOptions(
           address,
@@ -254,64 +268,29 @@ export class ShippingTaxService {
 
         if (sendcloudOptions.length > 0) {
           this.logger.log(
-            `[Sendcloud] ✅ SUCCESS - Using Sendcloud rates (${sendcloudOptions.length} options)`
+            `[SendCloud] ✅ SUCCESS - Using SendCloud rates (${sendcloudOptions.length} options)`
           );
           return addGelatoCost(sendcloudOptions);
         } else {
-          this.logger.warn('[Sendcloud] No rates available, falling back to next provider...');
+          this.logger.warn('[SendCloud] No rates returned, falling back to next provider...');
         }
       } catch (error) {
-        this.logger.warn(
-          `[Sendcloud] Failed to fetch rates: ${error.message}. Falling back to next provider...`
-        );
+        this.logger.warn(`[SendCloud] Failed: ${error.message}. Falling back to next provider...`);
       }
     } else {
-      if (sendcloudEnabled?.value === true) {
+      if (!isEnabled(sendcloudEnabled?.value)) {
+        this.logger.log('[SendCloud] Disabled, skipping...');
+      } else {
         this.logger.log(
-          `[Sendcloud] Skipping - seller country ${sellerCountry} not supported (EU only)`
+          `[SendCloud] Skipping - seller country ${sellerCountry} not in EU supported list`
         );
       }
     }
 
-    // TIER 2: Easyship (for AU,BE,CA,FR,DE,HK,NL,SG,US,GB sellers)
-    const easyshipEnabled = await this.settingsService.getSetting('easyship_enabled');
-    if (
-      easyshipEnabled?.value === true &&
-      sellerCountry &&
-      this.easyshipService.isCountrySupported(sellerCountry)
-    ) {
-      this.logger.log(`[Easyship] Seller country ${sellerCountry} supported, attempting rates...`);
-      try {
-        const easyshipOptions = await this.calculateEasyshipShippingOptions(
-          address,
-          itemsForShipping,
-          totalWeightKg
-        );
-
-        if (easyshipOptions.length > 0) {
-          this.logger.log(
-            `[Easyship] ✅ SUCCESS - Using Easyship rates (${easyshipOptions.length} options)`
-          );
-          return addGelatoCost(easyshipOptions);
-        } else {
-          this.logger.warn('[Easyship] No rates available, falling back to next provider...');
-        }
-      } catch (error) {
-        this.logger.warn(
-          `[Easyship] Failed to fetch rates: ${error.message}. Falling back to next provider...`
-        );
-      }
-    } else {
-      if (easyshipEnabled?.value === true) {
-        this.logger.log(`[Easyship] Skipping - seller country ${sellerCountry} not supported`);
-      }
-    }
-
-    // TIER 3: EasyPost (GLOBAL FALLBACK - any country, using real seller address)
-    // Works globally but strongest for US, CA, AU, UK, and countries not covered by Sendcloud/Easyship
-    const easypostEnabled = await this.settingsService.getSetting('easypost_enabled');
-    if (easypostEnabled?.value === true) {
-      this.logger.log('[EasyPost] Attempting to fetch rates (global provider)...');
+    // TIER 2: EasyPost (Primary global aggregator - 100+ carriers worldwide)
+    const easypostEnabled = await getSetting('easypost_enabled');
+    if (isEnabled(easypostEnabled?.value)) {
+      this.logger.log('[EasyPost] Attempting to fetch rates (primary global provider)...');
       try {
         const easypostOptions = await this.calculateEasyPostShippingOptions(
           address,
@@ -325,22 +304,55 @@ export class ShippingTaxService {
           );
           return addGelatoCost(easypostOptions);
         } else {
-          this.logger.warn('[EasyPost] No rates available, falling back to next provider...');
+          this.logger.warn('[EasyPost] No rates returned, falling back to next provider...');
         }
       } catch (error) {
-        // Log error and fall back to next provider
-        this.logger.warn(
-          `[EasyPost] Failed to fetch rates: ${error.message}. Falling back to next provider...`
-        );
+        this.logger.warn(`[EasyPost] Failed: ${error.message}. Falling back to next provider...`);
       }
     } else {
       this.logger.log('[EasyPost] Disabled, skipping to next provider...');
     }
 
-    // TIER 4: DHL Express (if enabled and configured in settings)
-    const dhlEnabled = await this.settingsService.getSetting('dhl_enabled');
+    // TIER 3: EasyShip (Regional fallback for APAC markets: AU,BE,CA,FR,DE,HK,NL,SG,US,GB)
+    const easyshipEnabled = await getSetting('easyship_enabled');
+    if (
+      isEnabled(easyshipEnabled?.value) &&
+      sellerCountry &&
+      this.easyshipService.isCountrySupported(sellerCountry)
+    ) {
+      this.logger.log(`[EasyShip] Seller country ${sellerCountry} supported, attempting rates...`);
+      try {
+        const easyshipOptions = await this.calculateEasyshipShippingOptions(
+          address,
+          itemsForShipping,
+          totalWeightKg
+        );
+
+        if (easyshipOptions.length > 0) {
+          this.logger.log(
+            `[EasyShip] ✅ SUCCESS - Using EasyShip rates (${easyshipOptions.length} options)`
+          );
+          return addGelatoCost(easyshipOptions);
+        } else {
+          this.logger.warn('[EasyShip] No rates returned, falling back to next provider...');
+        }
+      } catch (error) {
+        this.logger.warn(`[EasyShip] Failed: ${error.message}. Falling back to next provider...`);
+      }
+    } else {
+      if (!isEnabled(easyshipEnabled?.value)) {
+        this.logger.log('[EasyShip] Disabled, skipping...');
+      } else {
+        this.logger.log(
+          `[EasyShip] Skipping - seller country ${sellerCountry} not in supported APAC list`
+        );
+      }
+    }
+
+    // TIER 4: DHL Express (legacy fallback - requires DHL_EXPRESS_API_KEY env var)
+    const dhlEnabled = await getSetting('dhl_enabled');
     const dhlKey = process.env.DHL_EXPRESS_API_KEY;
-    if (dhlEnabled?.value === true && dhlKey) {
+    if (isEnabled(dhlEnabled?.value) && dhlKey) {
       this.logger.log('[DHL] Attempting to fetch rates...');
       try {
         // Get origin address for DHL
@@ -882,7 +894,11 @@ export class ShippingTaxService {
     // Calculate total weight
     const totalWeight = items.reduce((sum, item) => sum + (item.weight || 500) * item.quantity, 0);
     const isInternational = address.country !== 'US' && address.country !== 'USA';
-    const isFreeShippingEligible = subtotal >= 200; // TODO: Make this configurable via settings
+
+    // Read free shipping threshold from settings (respects admin configuration)
+    const isFreeShippingEnabled = await this.shippingService.isFreeShippingEnabled();
+    const freeShippingThreshold = await this.shippingService.getFreeShippingThreshold();
+    const isFreeShippingEligible = isFreeShippingEnabled && subtotal >= freeShippingThreshold;
 
     const options: ShippingOption[] = [];
 

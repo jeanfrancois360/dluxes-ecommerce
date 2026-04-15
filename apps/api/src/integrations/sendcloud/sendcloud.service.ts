@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../database/prisma.service';
 import axios, { AxiosInstance } from 'axios';
 
 // Sendcloud supported ship-from countries
@@ -47,7 +48,10 @@ export class SendcloudService {
   private client: AxiosInstance | null = null;
   private readonly baseUrl = 'https://panel.sendcloud.sc/api/v2';
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService
+  ) {
     this.initializeClient();
   }
 
@@ -175,14 +179,30 @@ export class SendcloudService {
   async getHealthStatus(): Promise<{
     enabled: boolean;
     configured: boolean;
-    accountName?: string;
-    error?: string;
+    credentialsValid: boolean;
+    publicKey: string;
+    connectionError: string | null;
+    message: string;
+    supportedCountries: string[];
   }> {
+    // Read actual enabled status from database
+    const enabledSetting = await this.prisma.systemSetting.findUnique({
+      where: { key: 'sendcloud_enabled' },
+    });
+    const isEnabled = enabledSetting?.value === true || enabledSetting?.value === 'true';
+
+    const publicKey = this.configService.get<string>('SENDCLOUD_PUBLIC_KEY');
+    const maskedKey = publicKey ? `${publicKey.slice(0, 8)}...${publicKey.slice(-4)}` : '';
+
     if (!this.client) {
       return {
-        enabled: false,
+        enabled: isEnabled,
         configured: false,
-        error: 'Credentials not configured',
+        credentialsValid: false,
+        publicKey: 'Not Configured',
+        connectionError: 'SENDCLOUD_PUBLIC_KEY and SENDCLOUD_SECRET_KEY not set',
+        message: 'SendCloud not configured',
+        supportedCountries: SENDCLOUD_SUPPORTED_COUNTRIES,
       };
     }
 
@@ -192,22 +212,34 @@ export class SendcloudService {
       const user = response.data?.user;
 
       return {
-        enabled: true,
+        enabled: isEnabled,
         configured: true,
-        accountName: user?.company_name || user?.email || 'Sendcloud Account',
+        credentialsValid: true,
+        publicKey: maskedKey,
+        connectionError: null,
+        message: `SendCloud connected (${user?.company_name || user?.email || 'Account'})`,
+        supportedCountries: SENDCLOUD_SUPPORTED_COUNTRIES,
       };
     } catch (error) {
       if (axios.isAxiosError(error)) {
         return {
-          enabled: false,
-          configured: false,
-          error: `API error: ${error.response?.status} - ${error.response?.data?.message || error.message}`,
+          enabled: isEnabled,
+          configured: true,
+          credentialsValid: false,
+          publicKey: maskedKey,
+          connectionError: `API error: ${error.response?.status} - ${error.response?.data?.message || error.message}`,
+          message: 'SendCloud credentials invalid',
+          supportedCountries: SENDCLOUD_SUPPORTED_COUNTRIES,
         };
       }
       return {
-        enabled: false,
-        configured: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        enabled: isEnabled,
+        configured: true,
+        credentialsValid: false,
+        publicKey: maskedKey,
+        connectionError: error instanceof Error ? error.message : 'Unknown error',
+        message: 'SendCloud connection error',
+        supportedCountries: SENDCLOUD_SUPPORTED_COUNTRIES,
       };
     }
   }

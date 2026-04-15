@@ -59,7 +59,7 @@ export class EasyPostController {
       let credentialsValid = false;
       let connectionError: string | null = null;
 
-      if (enabled && configured) {
+      if (configured) {
         try {
           const client = this.easypostService.getClient();
 

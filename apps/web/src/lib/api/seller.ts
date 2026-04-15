@@ -481,13 +481,13 @@ export const sellerAPI = {
 
   // Payouts
   getPayouts: (params?: { page?: number; limit?: number; status?: string }) =>
-    api.get<{ data: Payout[]; total: number }>('/seller/payouts', {
+    api.get<{ data: Payout[]; total: number }>('/payouts/seller/history', {
       params,
     } as any),
 
-  getPayout: (id: string) => api.get<Payout>(`/seller/payouts/${id}`),
+  getPayout: (id: string) => api.get<Payout>(`/payouts/seller/history`),
 
-  requestPayout: () => api.post('/seller/payouts/request'),
+  requestPayout: () => api.post('/payouts/seller/request'),
 
   // Store
   getStore: () => api.get('/seller/store'),

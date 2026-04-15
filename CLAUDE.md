@@ -850,6 +850,105 @@ GET    /easypost/test               # Test API connection (no auth)
 
 ---
 
+## SendCloud Shipping Integration
+
+**Implementation Model:** Platform-Wide European Shipping
+
+**v2.11.1 Architecture:**
+
+- European-focused multi-carrier shipping (13 countries)
+- HTTP Basic Auth (public key + secret key)
+- EUR currency for all transactions
+- Real-time rates from multiple European carriers
+
+**Environment Variables Required:**
+
+```bash
+# SendCloud API (REQUIRED)
+SENDCLOUD_PUBLIC_KEY=your_public_key
+SENDCLOUD_SECRET_KEY=your_secret_key
+```
+
+**Supported Ship-From Countries:**
+
+Austria (AT), Belgium (BE), Czech Republic (CZ), Denmark (DK), France (FR), Germany (DE), Italy (IT), Netherlands (NL), Poland (PL), Portugal (PT), Spain (ES), Sweden (SE), United Kingdom (GB)
+
+**API Endpoints:**
+
+```
+POST   /sendcloud/rates              # Get shipping rates
+GET    /sendcloud/health             # Health check (ADMIN)
+```
+
+**System Settings (1 setting):**
+
+- `sendcloud_enabled` (BOOLEAN) - Enable/disable integration
+
+**Frontend Components:**
+
+- `apps/web/src/components/settings/sendcloud-settings.tsx` - Admin configuration
+- Integration status card with connection health
+- Supported countries display
+- Enable/disable toggle
+
+**Important Notes:**
+
+- SendCloud specializes in European shipping
+- All rates returned in EUR
+- Requires both public and secret keys
+- API credentials configured via environment variables only
+
+---
+
+## EasyShip Shipping Integration
+
+**Implementation Model:** Platform-Wide Global Shipping
+
+**v2.11.1 Architecture:**
+
+- Global multi-carrier shipping (10 countries)
+- Bearer token authentication
+- USD default currency with multi-currency support
+- Real-time rates from international carriers
+
+**Environment Variables Required:**
+
+```bash
+# EasyShip API (REQUIRED)
+EASYSHIP_API_KEY=your_api_key
+```
+
+**Supported Ship-From Countries:**
+
+Australia (AU), Belgium (BE), Canada (CA), France (FR), Germany (DE), Hong Kong (HK), Netherlands (NL), Singapore (SG), United Kingdom (GB), United States (US)
+
+**API Endpoints:**
+
+```
+POST   /easyship/rates               # Get shipping rates
+GET    /easyship/health              # Health check (ADMIN)
+```
+
+**System Settings (1 setting):**
+
+- `easyship_enabled` (BOOLEAN) - Enable/disable integration
+
+**Frontend Components:**
+
+- `apps/web/src/components/settings/easyship-settings.tsx` - Admin configuration
+- Integration status card with connection health
+- Supported countries display
+- Enable/disable toggle
+
+**Important Notes:**
+
+- EasyShip provides global shipping with customs support
+- Supports multiple currencies (defaults to USD)
+- Single API key authentication
+- Ideal for international e-commerce
+
+---
+
 ## Version History
 
 ---

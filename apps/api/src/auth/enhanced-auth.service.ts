@@ -33,7 +33,7 @@ import {
 
 @Injectable()
 export class EnhancedAuthService {
-  private readonly MAX_LOGIN_ATTEMPTS = 5;
+  private readonly MAX_LOGIN_ATTEMPTS_DEFAULT = 5; // fallback when setting unavailable
   private readonly LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
   private readonly MAGIC_LINK_EXPIRY = 15 * 60 * 1000; // 15 minutes
   private readonly PASSWORD_RESET_EXPIRY = 60 * 60 * 1000; // 1 hour
@@ -896,6 +896,21 @@ export class EnhancedAuthService {
   // ============================================================================
 
   private async checkRateLimit(email: string, ipAddress: string) {
+    let maxLoginAttempts = this.MAX_LOGIN_ATTEMPTS_DEFAULT;
+    try {
+      const setting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'max_login_attempts' },
+      });
+      if (setting?.value !== null && setting?.value !== undefined) {
+        const parsed = Number(setting.value);
+        if (!isNaN(parsed) && parsed > 0) {
+          maxLoginAttempts = parsed;
+        }
+      }
+    } catch {
+      // Use fallback silently
+    }
+
     const recentAttempts = await this.prisma.loginAttempt.findMany({
       where: {
         OR: [{ email }, { ipAddress }],
@@ -907,7 +922,7 @@ export class EnhancedAuthService {
 
     const failedAttempts = recentAttempts.filter((attempt) => !attempt.success);
 
-    if (failedAttempts.length >= this.MAX_LOGIN_ATTEMPTS) {
+    if (failedAttempts.length >= maxLoginAttempts) {
       const oldestAttempt = failedAttempts[0];
       const timeRemaining = Math.ceil(
         (oldestAttempt.createdAt.getTime() + this.LOCKOUT_DURATION - Date.now()) / 1000 / 60

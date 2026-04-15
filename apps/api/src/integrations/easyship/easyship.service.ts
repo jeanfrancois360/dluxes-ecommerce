@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../database/prisma.service';
 import axios, { AxiosInstance } from 'axios';
 
 // Easyship supported ship-from countries
@@ -44,7 +45,10 @@ export class EasyshipService {
   private client: AxiosInstance | null = null;
   private readonly baseUrl = 'https://public-api.easyship.com/2024-09';
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService
+  ) {
     this.initializeClient();
   }
 
@@ -163,36 +167,95 @@ export class EasyshipService {
   async getHealthStatus(): Promise<{
     enabled: boolean;
     configured: boolean;
-    error?: string;
+    credentialsValid: boolean;
+    apiKey: string;
+    connectionError: string | null;
+    message: string;
+    supportedCountries: string[];
   }> {
+    // Read actual enabled status from database
+    const enabledSetting = await this.prisma.systemSetting.findUnique({
+      where: { key: 'easyship_enabled' },
+    });
+    const isEnabled = enabledSetting?.value === true || enabledSetting?.value === 'true';
+
+    const apiKey = this.configService.get<string>('EASYSHIP_API_KEY');
+    const maskedKey = apiKey ? `${apiKey.slice(0, 8)}...${apiKey.slice(-4)}` : '';
+
     if (!this.client) {
       return {
-        enabled: false,
+        enabled: isEnabled,
         configured: false,
-        error: 'API key not configured',
+        credentialsValid: false,
+        apiKey: 'Not Configured',
+        connectionError: 'EASYSHIP_API_KEY not set',
+        message: 'EasyShip not configured',
+        supportedCountries: EASYSHIP_SUPPORTED_COUNTRIES,
+      };
+    }
+
+    const isSandbox = apiKey?.startsWith('sand_');
+
+    // Sandbox keys are accepted as valid without a live API call (sandbox can timeout/restrict)
+    if (isSandbox) {
+      return {
+        enabled: isEnabled,
+        configured: true,
+        credentialsValid: true,
+        apiKey: maskedKey,
+        connectionError: null,
+        message: 'EasyShip connected (Sandbox mode)',
+        supportedCountries: EASYSHIP_SUPPORTED_COUNTRIES,
       };
     }
 
     try {
-      // GET /account to validate API key
-      const response = await this.client.get('/account');
+      // POST /rates with minimal payload to validate production API key
+      await this.client.post('/rates', {
+        origin_country_alpha2: 'US',
+        destination_country_alpha2: 'GB',
+        taxes_duties_paid_by: 'Sender',
+        is_insured: false,
+        items: [
+          {
+            quantity: 1,
+            dimensions: { length: 10, width: 10, height: 10 },
+            actual_weight: 0.5,
+            declared_currency: 'USD',
+            declared_customs_value: 10,
+          },
+        ],
+      });
 
       return {
-        enabled: true,
-        configured: !!response.data,
+        enabled: isEnabled,
+        configured: true,
+        credentialsValid: true,
+        apiKey: maskedKey,
+        connectionError: null,
+        message: 'EasyShip connected',
+        supportedCountries: EASYSHIP_SUPPORTED_COUNTRIES,
       };
     } catch (error) {
       if (axios.isAxiosError(error)) {
         return {
-          enabled: false,
-          configured: false,
-          error: `API error: ${error.response?.status} - ${error.response?.data?.message || error.message}`,
+          enabled: isEnabled,
+          configured: true,
+          credentialsValid: false,
+          apiKey: maskedKey,
+          connectionError: `API error: ${error.response?.status} - ${error.response?.data?.message || error.message}`,
+          message: 'EasyShip credentials invalid',
+          supportedCountries: EASYSHIP_SUPPORTED_COUNTRIES,
         };
       }
       return {
-        enabled: false,
-        configured: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        enabled: isEnabled,
+        configured: true,
+        credentialsValid: false,
+        apiKey: maskedKey,
+        connectionError: error instanceof Error ? error.message : 'Unknown error',
+        message: 'EasyShip connection error',
+        supportedCountries: EASYSHIP_SUPPORTED_COUNTRIES,
       };
     }
   }

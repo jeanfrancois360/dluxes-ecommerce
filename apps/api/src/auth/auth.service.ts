@@ -13,8 +13,9 @@ import { SettingsService } from '../settings/settings.service';
 import { PrismaService } from '../database/prisma.service';
 import { ReferralService } from '../referral/referral.service';
 
-// Account lockout configuration
-const MAX_LOGIN_ATTEMPTS = 5;
+// Account lockout configuration — MAX_LOGIN_ATTEMPTS is now read dynamically from SystemSettings
+// This constant is the safe fallback when the setting cannot be read
+const MAX_LOGIN_ATTEMPTS_DEFAULT = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
 
 @Injectable()
@@ -36,6 +37,17 @@ export class AuthService {
   async isAccountLocked(email: string): Promise<{ locked: boolean; remainingMinutes?: number }> {
     const lockoutTime = new Date(Date.now() - LOCKOUT_DURATION_MINUTES * 60 * 1000);
 
+    // Read max_login_attempts from system settings (falls back to default if unavailable)
+    let maxLoginAttempts = MAX_LOGIN_ATTEMPTS_DEFAULT;
+    try {
+      const setting = await this.settingsService.getSetting('max_login_attempts');
+      if (setting?.value && typeof setting.value === 'number') {
+        maxLoginAttempts = setting.value;
+      }
+    } catch {
+      // Use fallback silently
+    }
+
     // Count failed attempts in the lockout window
     const failedAttempts = await this.prisma.loginAttempt.count({
       where: {
@@ -45,7 +57,7 @@ export class AuthService {
       },
     });
 
-    if (failedAttempts >= MAX_LOGIN_ATTEMPTS) {
+    if (failedAttempts >= maxLoginAttempts) {
       // Find the most recent failed attempt to calculate remaining lockout time
       const lastAttempt = await this.prisma.loginAttempt.findFirst({
         where: {
@@ -112,6 +124,16 @@ export class AuthService {
   async getRemainingAttempts(email: string): Promise<number> {
     const lockoutTime = new Date(Date.now() - LOCKOUT_DURATION_MINUTES * 60 * 1000);
 
+    let maxLoginAttempts = MAX_LOGIN_ATTEMPTS_DEFAULT;
+    try {
+      const setting = await this.settingsService.getSetting('max_login_attempts');
+      if (setting?.value && typeof setting.value === 'number') {
+        maxLoginAttempts = setting.value;
+      }
+    } catch {
+      // Use fallback silently
+    }
+
     const failedAttempts = await this.prisma.loginAttempt.count({
       where: {
         email: email.toLowerCase(),
@@ -120,7 +142,7 @@ export class AuthService {
       },
     });
 
-    return Math.max(0, MAX_LOGIN_ATTEMPTS - failedAttempts);
+    return Math.max(0, maxLoginAttempts - failedAttempts);
   }
 
   async validateUser(
