@@ -21,29 +21,34 @@ export class EasyPostService implements OnModuleInit {
 
   async initializeClient(): Promise<void> {
     try {
-      const enabled = await this.settingsService.getSetting('easypost_enabled');
-      if (!enabled?.value) {
+      // Check DB setting for enabled flag (non-fatal if missing)
+      let isEnabled = true;
+      try {
+        const enabled = await this.settingsService.getSetting('easypost_enabled');
+        isEnabled = enabled?.value !== false && enabled?.value !== 'false';
+      } catch {
+        // Setting not found — default to enabled
+      }
+
+      if (!isEnabled) {
         this.logger.log('EasyPost is disabled in settings');
         return;
       }
 
       // SECURITY FIX: ONLY use environment variables for API credentials
-      // API keys should NEVER be stored in the database
       const apiKey = this.configService.get<string>('EASYPOST_API_KEY');
 
       if (!apiKey) {
         this.logger.warn(
-          'EasyPost API key not configured. Set EASYPOST_API_KEY in environment variables. ' +
-            'See documentation: https://docs.easypost.com/docs/authentication'
+          'EasyPost API key not configured. Set EASYPOST_API_KEY in environment variables.'
         );
         return;
       }
 
-      // Validate API key format and match with test mode setting
-      const testModeSetting = await this.settingsService.getSetting('easypost_test_mode');
-      const isTestMode = testModeSetting?.value ?? true; // Default to test mode for safety
+      // Determine mode from env first, fall back to DB
+      const envTestMode = this.configService.get<string>('EASYPOST_TEST_MODE');
+      const isTestMode = envTestMode !== undefined ? envTestMode !== 'false' : true;
 
-      // Test keys start with EZTK, production keys start with EZAK
       const isTestKey = apiKey.startsWith('EZTK');
       const isProdKey = apiKey.startsWith('EZAK');
 
@@ -54,26 +59,20 @@ export class EasyPostService implements OnModuleInit {
         return;
       }
 
-      // Warn if key type doesn't match configured mode
-      if (isTestMode && !isTestKey) {
-        this.logger.error(
-          'Test mode is enabled but API key starts with EZAK (production key). ' +
-            'Either disable test mode or use a test key (EZTK)'
+      // Log warning if key type doesn't match mode but still initialize
+      if (isTestMode && isProdKey) {
+        this.logger.warn(
+          'EASYPOST_TEST_MODE=true but production key (EZAK) detected — initializing in production mode'
         );
-        return;
-      }
-
-      if (!isTestMode && !isProdKey) {
-        this.logger.error(
-          'Production mode is enabled but API key starts with EZTK (test key). ' +
-            'Either enable test mode or use a production key (EZAK)'
+      } else if (!isTestMode && isTestKey) {
+        this.logger.warn(
+          'EASYPOST_TEST_MODE=false but test key (EZTK) detected — initializing in test mode'
         );
-        return;
       }
 
       this.client = new EasyPost(apiKey);
       this.logger.log(
-        `EasyPost client initialized successfully (${isTestMode ? 'test' : 'production'} mode)`
+        `EasyPost client initialized successfully (${isProdKey ? 'production' : 'test'} mode)`
       );
     } catch (error) {
       this.logger.error('Failed to initialize EasyPost client', error);

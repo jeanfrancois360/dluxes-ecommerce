@@ -294,7 +294,7 @@ export class EasyPostController {
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('rates')
-  @Roles('SELLER', 'ADMIN')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
   async getRates(@Body() dto: GetRatesDto) {
     return this.ratesService.getRates(dto);
   }
@@ -303,8 +303,9 @@ export class EasyPostController {
    * Get lowest rate for a package
    * POST /easypost/rates/lowest
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('rates/lowest')
-  @Roles('SELLER', 'ADMIN')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
   async getLowestRate(
     @Body() dto: GetRatesDto,
     @Query('carriers') carriers?: string,
@@ -319,8 +320,9 @@ export class EasyPostController {
    * Purchase a shipping label
    * POST /easypost/purchase
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('purchase')
-  @Roles('SELLER', 'ADMIN')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
   async purchaseLabel(@Body() dto: PurchaseLabelDto, @Req() req) {
     // Ensure seller can only purchase labels for their own orders
     if (req.user.role === 'SELLER' && dto.sellerId !== req.user.id) {
@@ -333,8 +335,9 @@ export class EasyPostController {
    * Create a return label
    * POST /easypost/return-label
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('return-label')
-  @Roles('SELLER', 'ADMIN')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
   async createReturnLabel(@Body() dto: PurchaseLabelDto, @Req() req) {
     if (req.user.role === 'SELLER' && dto.sellerId !== req.user.id) {
       throw new Error('Unauthorized: Cannot create return labels for other sellers');
@@ -346,8 +349,9 @@ export class EasyPostController {
    * Refund a shipping label
    * POST /easypost/refund/:shipmentId
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('refund/:shipmentId')
-  @Roles('SELLER', 'ADMIN')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
   async refundLabel(@Param('shipmentId') shipmentId: string, @Req() req) {
     // TODO: Add authorization check to ensure seller owns this shipment
     return this.shipmentService.refundLabel(shipmentId);
@@ -357,8 +361,9 @@ export class EasyPostController {
    * Convert label format
    * POST /easypost/convert/:shipmentId
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('convert/:shipmentId')
-  @Roles('SELLER', 'ADMIN')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
   async convertLabelFormat(
     @Param('shipmentId') shipmentId: string,
     @Body('format') format: 'PDF' | 'ZPL' | 'EPL2'
@@ -370,8 +375,9 @@ export class EasyPostController {
    * Get shipment details
    * GET /easypost/shipment/:id
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('shipment/:id')
-  @Roles('SELLER', 'ADMIN', 'BUYER')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN', 'BUYER')
   async getShipment(@Param('id') id: string) {
     return this.shipmentService.getShipment(id);
   }
@@ -380,8 +386,9 @@ export class EasyPostController {
    * Get shipments for an order
    * GET /easypost/order/:orderId/shipments
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('order/:orderId/shipments')
-  @Roles('SELLER', 'ADMIN', 'BUYER')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN', 'BUYER')
   async getOrderShipments(@Param('orderId') orderId: string) {
     return this.shipmentService.getOrderShipments(orderId);
   }
@@ -390,8 +397,9 @@ export class EasyPostController {
    * Get tracking information
    * GET /easypost/tracking/:shipmentId
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('tracking/:shipmentId')
-  @Roles('SELLER', 'ADMIN', 'BUYER')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN', 'BUYER')
   async getTracking(@Param('shipmentId') shipmentId: string) {
     return this.trackingService.getTracking(shipmentId);
   }
@@ -400,8 +408,9 @@ export class EasyPostController {
    * Create a tracker for external tracking number
    * POST /easypost/tracker
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('tracker')
-  @Roles('SELLER', 'ADMIN')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
   async createTracker(
     @Body('trackingNumber') trackingNumber: string,
     @Body('carrier') carrier?: string
@@ -413,8 +422,9 @@ export class EasyPostController {
    * Verify an address
    * POST /easypost/verify-address
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('verify-address')
-  @Roles('SELLER', 'ADMIN', 'BUYER')
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN', 'BUYER')
   async verifyAddress(@Body() address: AddressDto, @Query('strict') strict?: boolean) {
     return this.addressService.verifyAddress(address, strict === true);
   }

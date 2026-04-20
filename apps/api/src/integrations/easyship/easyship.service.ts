@@ -30,7 +30,12 @@ export interface EasyshipRate {
 
 export interface EasyshipGetRatesRequest {
   fromCountry: string;
+  fromCity?: string;
+  fromPostalCode?: string;
+  fromState?: string;
   toCountry: string;
+  toCity?: string;
+  toPostalCode?: string;
   weightKg: number;
   items: Array<{
     quantity: number;
@@ -43,7 +48,8 @@ export interface EasyshipGetRatesRequest {
 export class EasyshipService {
   private readonly logger = new Logger(EasyshipService.name);
   private client: AxiosInstance | null = null;
-  private readonly baseUrl = 'https://public-api.easyship.com/2024-09';
+  private readonly productionBaseUrl = 'https://public-api.easyship.com/2024-09';
+  private readonly sandboxBaseUrl = 'https://public-api-sandbox.easyship.com/2024-09';
 
   constructor(
     private readonly configService: ConfigService,
@@ -54,6 +60,7 @@ export class EasyshipService {
 
   /**
    * Initialize Easyship API client with Bearer token
+   * Automatically selects sandbox or production base URL based on key prefix
    */
   private initializeClient(): void {
     const apiKey = this.configService.get<string>('EASYSHIP_API_KEY');
@@ -63,8 +70,11 @@ export class EasyshipService {
       return;
     }
 
+    const isSandbox = apiKey.startsWith('sand_');
+    const baseURL = isSandbox ? this.sandboxBaseUrl : this.productionBaseUrl;
+
     this.client = axios.create({
-      baseURL: this.baseUrl,
+      baseURL,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
@@ -72,7 +82,7 @@ export class EasyshipService {
       timeout: 10000,
     });
 
-    this.logger.log('Easyship client initialized');
+    this.logger.log(`Easyship client initialized (${isSandbox ? 'sandbox' : 'production'})`);
   }
 
   /**
@@ -105,23 +115,36 @@ export class EasyshipService {
     }
 
     try {
-      // POST /rates
+      // POST /2024-09/rates — v2024-09 format
+      const originAddress: any = {
+        country_alpha2: request.fromCountry.toUpperCase(),
+        city: request.fromCity || 'City',
+        postal_code: request.fromPostalCode || '1000',
+      };
+      if (request.fromState) originAddress.state = request.fromState;
+
+      const destinationAddress: any = {
+        country_alpha2: request.toCountry.toUpperCase(),
+        city: request.toCity || 'City',
+        postal_code: request.toPostalCode || '1000',
+      };
+
       const response = await this.client.post('/rates', {
-        origin_country_alpha2: request.fromCountry.toUpperCase(),
-        destination_country_alpha2: request.toCountry.toUpperCase(),
-        taxes_duties_paid_by: 'Sender',
-        is_insured: false,
-        items: request.items.map((item) => ({
-          quantity: item.quantity,
-          dimensions: {
-            length: 10,
-            width: 10,
-            height: 10,
+        origin_address: originAddress,
+        destination_address: destinationAddress,
+        incoterms: 'DDU',
+        parcels: [
+          {
+            total_actual_weight: request.weightKg,
+            items: request.items.map((item) => ({
+              quantity: item.quantity,
+              declared_currency: 'USD',
+              declared_customs_value: item.value,
+              hs_code: '621790', // Generic HS code for miscellaneous goods
+              dimensions: { length: 10, width: 10, height: 10 },
+            })),
           },
-          actual_weight: request.weightKg / request.items.length, // Distribute weight across items
-          declared_currency: 'USD',
-          declared_customs_value: item.value,
-        })),
+        ],
       });
 
       const rates = response.data?.rates || [];
@@ -133,13 +156,13 @@ export class EasyshipService {
         return [];
       }
 
-      // Map to our EasyshipRate format
+      // Map to our EasyshipRate format — v2024-09 response structure
       const easyshipRates: EasyshipRate[] = rates.map((rate: any) => ({
         provider: 'easyship' as const,
-        serviceCode: rate.courier_id,
-        serviceName: rate.courier_name,
-        carrierName: rate.courier_name,
-        totalCharge: parseFloat(rate.total_charge || rate.shipment_charge),
+        serviceCode: rate.courier_service?.id || rate.courier_service?.courier_id,
+        serviceName: rate.courier_service?.name || rate.courier_service?.umbrella_name,
+        carrierName: rate.courier_service?.umbrella_name || rate.courier_service?.name,
+        totalCharge: parseFloat(rate.total_charge || rate.shipment_charge || 0),
         currency: rate.currency || 'USD',
         minDeliveryDays: rate.min_delivery_time || 3,
         maxDeliveryDays: rate.max_delivery_time || 7,
@@ -196,33 +219,24 @@ export class EasyshipService {
 
     const isSandbox = apiKey?.startsWith('sand_');
 
-    // Sandbox keys are accepted as valid without a live API call (sandbox can timeout/restrict)
-    if (isSandbox) {
-      return {
-        enabled: isEnabled,
-        configured: true,
-        credentialsValid: true,
-        apiKey: maskedKey,
-        connectionError: null,
-        message: 'EasyShip connected (Sandbox mode)',
-        supportedCountries: EASYSHIP_SUPPORTED_COUNTRIES,
-      };
-    }
-
     try {
-      // POST /rates with minimal payload to validate production API key
+      // POST /2024-09/rates with minimal payload to validate API key (both sandbox and production)
       await this.client.post('/rates', {
-        origin_country_alpha2: 'US',
-        destination_country_alpha2: 'GB',
-        taxes_duties_paid_by: 'Sender',
-        is_insured: false,
-        items: [
+        origin_address: { country_alpha2: 'BE', city: 'Brussels', postal_code: '1000' },
+        destination_address: { country_alpha2: 'GB', city: 'London', postal_code: 'SW1A 1AA' },
+        incoterms: 'DDU',
+        parcels: [
           {
-            quantity: 1,
-            dimensions: { length: 10, width: 10, height: 10 },
-            actual_weight: 0.5,
-            declared_currency: 'USD',
-            declared_customs_value: 10,
+            total_actual_weight: 0.5,
+            items: [
+              {
+                quantity: 1,
+                declared_currency: 'USD',
+                declared_customs_value: 10,
+                category: 'gifts',
+                dimensions: { length: 10, width: 10, height: 10 },
+              },
+            ],
           },
         ],
       });
@@ -233,17 +247,30 @@ export class EasyshipService {
         credentialsValid: true,
         apiKey: maskedKey,
         connectionError: null,
-        message: 'EasyShip connected',
+        message: `EasyShip connected (${isSandbox ? 'Sandbox' : 'Production'} mode)`,
         supportedCountries: EASYSHIP_SUPPORTED_COUNTRIES,
       };
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        // 422 = request understood but no routes available — credentials are valid
+        if (status === 422) {
+          return {
+            enabled: isEnabled,
+            configured: true,
+            credentialsValid: true,
+            apiKey: maskedKey,
+            connectionError: null,
+            message: `EasyShip connected (${isSandbox ? 'Sandbox' : 'Production'} mode)`,
+            supportedCountries: EASYSHIP_SUPPORTED_COUNTRIES,
+          };
+        }
         return {
           enabled: isEnabled,
           configured: true,
           credentialsValid: false,
           apiKey: maskedKey,
-          connectionError: `API error: ${error.response?.status} - ${error.response?.data?.message || error.message}`,
+          connectionError: `API error: ${status} - ${error.response?.data?.message || error.message}`,
           message: 'EasyShip credentials invalid',
           supportedCountries: EASYSHIP_SUPPORTED_COUNTRIES,
         };
