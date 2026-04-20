@@ -12,6 +12,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { EasyPostTrackingService } from './easypost-tracking.service';
 import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../../settings/settings.service';
+import { EmailService } from '../../email/email.service';
 import * as crypto from 'crypto';
 
 @Controller('webhooks/easypost')
@@ -22,7 +23,8 @@ export class EasyPostWebhookController {
     private readonly trackingService: EasyPostTrackingService,
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly settingsService: SettingsService
+    private readonly settingsService: SettingsService,
+    private readonly emailService: EmailService
   ) {}
 
   @Post()
@@ -102,8 +104,13 @@ export class EasyPostWebhookController {
 
     switch (eventType) {
       case 'tracker.created':
+        await this.trackingService.processTrackingUpdate(result.id, result);
+        await this.sendBuyerShippingEmail(result.id, 'label_purchased', result);
+        break;
+
       case 'tracker.updated':
         await this.trackingService.processTrackingUpdate(result.id, result);
+        await this.sendBuyerShippingEmail(result.id, result.status, result);
         break;
 
       case 'insurance.purchased':
@@ -146,6 +153,61 @@ export class EasyPostWebhookController {
         where: { id: shipment.id },
         data: { refundStatus: 'REJECTED' },
       });
+    }
+  }
+
+  private async sendBuyerShippingEmail(trackerId: string, status: string, trackerData: any) {
+    try {
+      const shipment = await this.prisma.easyPostShipment.findFirst({
+        where: { easypostTrackerId: trackerId },
+      });
+
+      if (!shipment?.orderId) return;
+
+      const order = await this.prisma.order.findUnique({
+        where: { id: shipment.orderId },
+        include: { user: true },
+      });
+
+      if (!order?.user) return;
+
+      const frontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:3000';
+      const customerName = `${order.user.firstName} ${order.user.lastName}`;
+      const baseData = {
+        orderNumber: order.orderNumber,
+        customerName,
+        orderId: order.id,
+        trackingNumber: shipment.trackingNumber ?? undefined,
+        carrier: shipment.carrier,
+        trackingUrl: shipment.trackingUrl ?? undefined,
+      };
+
+      if (status === 'label_purchased') {
+        await this.emailService.sendOrderShipped(order.user.email, baseData);
+      } else if (status === 'out_for_delivery') {
+        const estimatedDelivery = trackerData.est_delivery_date
+          ? new Date(trackerData.est_delivery_date).toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+            })
+          : undefined;
+        await this.emailService.sendOrderOutForDelivery(order.user.email, {
+          ...baseData,
+          estimatedDelivery,
+        });
+      } else if (status === 'delivered') {
+        const reviewUrl = `${frontendUrl}/account/orders/${order.id}#review`;
+        await this.emailService.sendOrderDelivered(order.user.email, {
+          orderNumber: order.orderNumber,
+          customerName,
+          orderId: order.id,
+          reviewUrl,
+        });
+      }
+    } catch (error) {
+      // Non-fatal: log and continue so the webhook still returns 200
+      this.logger.error(`Failed to send buyer shipping email for tracker ${trackerId}:`, error);
     }
   }
 
