@@ -9,6 +9,73 @@ import { ShippingService } from '../shipping/shipping.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import { PrismaService } from '../database/prisma.service';
 
+// Map full country names → ISO 2-letter codes (for stores that store full names)
+const COUNTRY_NAME_TO_ISO: Record<string, string> = {
+  Afghanistan: 'AF',
+  Albania: 'AL',
+  Algeria: 'DZ',
+  Australia: 'AU',
+  Austria: 'AT',
+  Belgium: 'BE',
+  Brazil: 'BR',
+  Canada: 'CA',
+  China: 'CN',
+  'Czech Republic': 'CZ',
+  Denmark: 'DK',
+  Finland: 'FI',
+  France: 'FR',
+  Germany: 'DE',
+  Ghana: 'GH',
+  Greece: 'GR',
+  'Hong Kong': 'HK',
+  India: 'IN',
+  Indonesia: 'ID',
+  Ireland: 'IE',
+  Israel: 'IL',
+  Italy: 'IT',
+  Japan: 'JP',
+  Kenya: 'KE',
+  Mexico: 'MX',
+  Morocco: 'MA',
+  Netherlands: 'NL',
+  'New Zealand': 'NZ',
+  Nigeria: 'NG',
+  Norway: 'NO',
+  Pakistan: 'PK',
+  Poland: 'PL',
+  Portugal: 'PT',
+  Romania: 'RO',
+  Russia: 'RU',
+  Rwanda: 'RW',
+  'Saudi Arabia': 'SA',
+  Singapore: 'SG',
+  'South Africa': 'ZA',
+  'South Korea': 'KR',
+  Spain: 'ES',
+  Sweden: 'SE',
+  Switzerland: 'CH',
+  Turkey: 'TR',
+  Uganda: 'UG',
+  Ukraine: 'UA',
+  'United Arab Emirates': 'AE',
+  'United Kingdom': 'GB',
+  'United States': 'US',
+  Vietnam: 'VN',
+};
+
+function normalizeCountryCode(country: string): string {
+  if (!country) return country;
+  // Already a 2-letter code
+  if (country.length === 2) return country.toUpperCase();
+  // Try exact match in map
+  const iso = COUNTRY_NAME_TO_ISO[country];
+  if (iso) return iso;
+  // Try case-insensitive
+  const lower = country.toLowerCase();
+  const found = Object.entries(COUNTRY_NAME_TO_ISO).find(([k]) => k.toLowerCase() === lower);
+  return found ? found[1] : country;
+}
+
 export interface ShippingAddress {
   country: string;
   state?: string;
@@ -108,7 +175,7 @@ export class ShippingTaxService {
         city: store.city,
         state: store.province || '',
         zip: store.postalCode || '',
-        country: store.country,
+        country: normalizeCountryCode(store.country),
       };
     } catch (err) {
       this.logger.warn(
@@ -349,11 +416,11 @@ export class ShippingTaxService {
       }
     }
 
-    // TIER 4: DHL Express (legacy fallback - requires DHL_EXPRESS_API_KEY env var)
+    // TIER 4: DHL Express — Belgium (BE) shipments only
     const dhlEnabled = await getSetting('dhl_enabled');
     const dhlKey = process.env.DHL_EXPRESS_API_KEY;
-    if (isEnabled(dhlEnabled?.value) && dhlKey) {
-      this.logger.log('[DHL] Attempting to fetch rates...');
+    if (isEnabled(dhlEnabled?.value) && dhlKey && sellerCountry === 'BE') {
+      this.logger.log('[DHL] Seller country is BE — attempting to fetch rates...');
       try {
         // Get origin address for DHL
         let originCountry = 'US';
@@ -406,13 +473,17 @@ export class ShippingTaxService {
     } else {
       if (!dhlKey) {
         this.logger.log('[DHL] Not configured (missing DHL_EXPRESS_API_KEY), skipping...');
+      } else if (sellerCountry !== 'BE') {
+        this.logger.log(
+          `[DHL] Skipping — only available for BE sellers (seller is ${sellerCountry || 'unknown'})`
+        );
       } else {
         this.logger.log('[DHL] Disabled, skipping to next provider...');
       }
     }
 
-    // TIER 3 (LEGACY): Try DHL API if mode is 'dhl_api' or 'hybrid'
-    if (shippingMode === 'dhl_api' || shippingMode === 'hybrid') {
+    // TIER 3 (LEGACY): Try DHL API if mode is 'dhl_api' or 'hybrid' — Belgium (BE) only
+    if ((shippingMode === 'dhl_api' || shippingMode === 'hybrid') && sellerCountry === 'BE') {
       try {
         const dhlOptions = await this.calculateDhlShippingOptions(
           address,
