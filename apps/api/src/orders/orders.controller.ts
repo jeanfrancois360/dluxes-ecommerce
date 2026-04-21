@@ -244,7 +244,7 @@ export class OrdersController {
   @Post(':id/cancel')
   async cancel(@Param('id') id: string, @Request() req) {
     try {
-      const data = await this.ordersService.cancel(id, req.user.userId);
+      const data = await this.ordersService.cancel(id, req.user.userId, { role: req.user.role });
       return {
         success: true,
         data,
