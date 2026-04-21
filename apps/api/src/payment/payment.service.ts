@@ -12,6 +12,7 @@ import {
   PaymentTransactionStatus,
   PaymentMethod,
   WebhookStatus,
+  OrderStatus,
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -1706,12 +1707,34 @@ export class PaymentService {
         },
       });
 
+      // Do not overwrite terminal CANCELLED status. When an order is cancelled
+      // via OrdersService.cancel() on a PAID order, createRefund() triggers a
+      // Stripe refund which fires charge.refunded ~0.5-2s later. Without this
+      // guard, the webhook would flip status=CANCELLED back to status=REFUNDED,
+      // incorrectly including the order in revenue metrics (admin dashboard
+      // filters on status != CANCELLED to count revenue).
+      //
+      // paymentStatus is still updated below — that transition (PAID -> REFUNDED)
+      // is correct regardless of whether the order was cancelled or not.
+      const isOrderCancelled = transaction.order.status === OrderStatus.CANCELLED;
+
+      if (isOrderCancelled) {
+        this.logger.log(
+          `handleRefund: preserving CANCELLED status for order ${transaction.orderId} (refund was triggered from cancel flow)`
+        );
+      }
+
       // Update order status
       await this.prisma.order.update({
         where: { id: transaction.orderId },
         data: {
           paymentStatus: isFullRefund ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED,
-          status: isFullRefund ? 'REFUNDED' : transaction.order.status,
+          // Preserve CANCELLED status; allow transition to REFUNDED for non-cancelled orders
+          status: isOrderCancelled
+            ? transaction.order.status // Keep CANCELLED
+            : isFullRefund
+              ? 'REFUNDED'
+              : transaction.order.status,
         },
       });
 
