@@ -1,3 +1,5 @@
+import { baseEmailTemplate } from './base.template';
+
 interface SellerOrderItem {
   name: string;
   quantity: number;
@@ -28,182 +30,157 @@ interface SellerOrderNotificationData {
   };
   orderUrl: string;
   dashboardUrl: string;
+  frontendUrl?: string;
 }
 
 export function sellerOrderNotificationTemplate(data: SellerOrderNotificationData): string {
-  const currencySymbol = data.currency === 'USD' ? '$' : data.currency;
+  const fmt = (n: number) => n.toFixed(2);
+  const sym = data.currency === 'USD' ? '$' : data.currency + ' ';
 
   const itemsHtml = data.items
     .map(
       (item) => `
     <tr>
-      <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5;">
-        <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">${item.name}</p>
-        <p style="color: #737373; font-size: 13px; margin: 0;">SKU: ${item.sku || 'N/A'} | Qty: ${item.quantity}</p>
+      <td style="padding: 11px 0; border-bottom: 1px solid #E5E7EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+        <p style="color: #0A0A0A; font-size: 14px; font-weight: 600; margin: 0 0 3px 0;">${item.name}</p>
+        <p style="color: #6B7280; font-size: 12px; margin: 0;">
+          ${item.sku ? `SKU: ${item.sku} &nbsp;|&nbsp;` : ''}Qty: ${item.quantity}
+        </p>
       </td>
-      <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; text-align: right;">
-        <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0;">${currencySymbol}${(item.price * item.quantity).toFixed(2)}</p>
+      <td style="padding: 11px 0; border-bottom: 1px solid #E5E7EB; text-align: right; vertical-align: top; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+        <p style="color: #0A0A0A; font-size: 14px; font-weight: 600; margin: 0;">${sym}${fmt(item.price * item.quantity)}</p>
       </td>
-    </tr>
-  `
+    </tr>`
     )
     .join('');
 
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Order - NextPik</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #ffffff;">
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #000000; padding: 28px 32px; text-align: center; border-bottom: 2px solid #10B981;">
-              <span style="color: #ffffff; font-size: 18px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;">NextPik</span>
-            </td>
-          </tr>
+  const content = `
+    <h1 style="color: #0A0A0A; font-size: 24px; font-weight: 700; margin: 0 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.3px;">
+      New order received
+    </h1>
 
-          <!-- Content -->
-          <tr>
-            <td style="padding: 40px 32px; background-color: #ffffff;">
-              <div style="text-align: center;">
-                <div style="width: 56px; height: 56px; background-color: #10B981; border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center;">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2">
-                    <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                  </svg>
-                </div>
-              </div>
+    <p style="color: #4B5563; font-size: 15px; line-height: 1.65; margin: 0 0 24px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Hello ${data.sellerName}, <strong style="color: #0A0A0A;">${data.storeName}</strong> has a new order from ${data.customerName}.
+    </p>
 
-              <h2 style="color: #000000; font-size: 22px; font-weight: 600; margin-bottom: 16px; text-align: center;">
-                New Order Received
-              </h2>
+    <!-- Order / customer row -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
+      <tr>
+        <td width="49%" style="background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 14px 16px; vertical-align: top;">
+          <p style="color: #9CA3AF; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin: 0 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Order</p>
+          <p style="color: #0A0A0A; font-size: 15px; font-weight: 700; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">#${data.orderNumber}</p>
+        </td>
+        <td width="2%"></td>
+        <td width="49%" style="background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 14px 16px; vertical-align: top;">
+          <p style="color: #9CA3AF; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin: 0 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Customer</p>
+          <p style="color: #0A0A0A; font-size: 15px; font-weight: 700; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${data.customerName}</p>
+        </td>
+      </tr>
+    </table>
 
-              <p style="color: #525252; font-size: 15px; line-height: 1.6; margin-bottom: 32px; text-align: center;">
-                Hello ${data.sellerName}, your store <strong>${data.storeName}</strong> has a new order.
-              </p>
+    <!-- Items -->
+    <p style="color: #0A0A0A; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin: 0 0 2px 0; padding-bottom: 10px; border-bottom: 2px solid #0A0A0A; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Items to ship
+    </p>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
+      ${itemsHtml}
+    </table>
 
-              <!-- Order Info -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
-                <tr>
-                  <td style="background-color: #FAFAFA; border-left: 3px solid #10B981; padding: 16px; width: 50%;">
-                    <p style="color: #737373; font-size: 12px; margin: 0 0 4px 0; text-transform: uppercase;">Order Number</p>
-                    <p style="color: #000000; font-size: 16px; font-weight: 600; margin: 0;">#${data.orderNumber}</p>
-                  </td>
-                  <td style="background-color: #FAFAFA; border-left: 3px solid #CBB57B; padding: 16px; width: 50%;">
-                    <p style="color: #737373; font-size: 12px; margin: 0 0 4px 0; text-transform: uppercase;">Customer</p>
-                    <p style="color: #000000; font-size: 16px; font-weight: 600; margin: 0;">${data.customerName}</p>
-                  </td>
-                </tr>
-              </table>
+    <!-- Earnings -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0; background-color: #F9FAFB; border: 1px solid #E5E7EB;">
+      <tr>
+        <td style="padding: 20px 20px 0;">
+          <p style="color: #0A0A0A; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin: 0 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Earnings breakdown
+          </p>
+          <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+            <tr>
+              <td style="padding: 6px 0; color: #6B7280; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Order subtotal</td>
+              <td style="padding: 6px 0; text-align: right; color: #0A0A0A; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${sym}${fmt(data.subtotal)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #6B7280; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Platform commission (${data.commissionRate.toFixed(1)}%)</td>
+              <td style="padding: 6px 0; text-align: right; color: #DC2626; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&minus;${sym}${fmt(data.commission)}</td>
+            </tr>
+            ${
+              data.transactionFee && data.transactionFee > 0
+                ? `
+            <tr>
+              <td style="padding: 6px 0; color: #6B7280; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Processing fee${data.transactionFeeRate ? ` (${data.transactionFeeRate.toFixed(2)}%)` : ''}</td>
+              <td style="padding: 6px 0; text-align: right; color: #DC2626; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&minus;${sym}${fmt(data.transactionFee)}</td>
+            </tr>
+            `
+                : ''
+            }
+            <tr>
+              <td style="padding: 14px 0; color: #0A0A0A; font-size: 14px; font-weight: 700; border-top: 1px solid #E5E7EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Your payout</td>
+              <td style="padding: 14px 0; text-align: right; color: #0A0A0A; font-size: 18px; font-weight: 700; border-top: 1px solid #E5E7EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${sym}${fmt(data.netPayout)}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 0 20px 16px;">
+          <p style="color: #9CA3AF; font-size: 12px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Payout is processed after the order is delivered and confirmed.
+          </p>
+        </td>
+      </tr>
+    </table>
 
-              <!-- Items -->
-              <p style="color: #000000; font-size: 16px; font-weight: 600; margin: 0 0 12px 0; padding-bottom: 8px; border-bottom: 2px solid #E5E5E5;">
-                Items to Ship
-              </p>
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
-                ${itemsHtml}
-              </table>
+    <!-- Ship to -->
+    <p style="color: #0A0A0A; font-size: 13px; font-weight: 600; margin: 0 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Ship to
+    </p>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 28px 0; background-color: #F9FAFB; border: 1px solid #E5E7EB;">
+      <tr>
+        <td style="padding: 14px 18px;">
+          <p style="color: #0A0A0A; font-size: 14px; font-weight: 600; margin: 0 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${data.customerName}</p>
+          <p style="color: #4B5563; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            ${data.shippingAddress.street}<br />
+            ${data.shippingAddress.city}, ${data.shippingAddress.state} ${data.shippingAddress.zipCode}<br />
+            ${data.shippingAddress.country}
+          </p>
+        </td>
+      </tr>
+    </table>
 
-              <!-- Earnings Breakdown -->
-              <div style="background-color: #FAFAFA; padding: 20px; margin-bottom: 24px; border: 1px solid #E5E5E5;">
-                <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 16px 0;">💰 Your Earnings Breakdown</p>
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td style="padding: 8px 0; color: #737373; font-size: 14px;">Order Subtotal</td>
-                    <td style="padding: 8px 0; text-align: right; color: #000000; font-size: 14px; font-weight: 500;">${currencySymbol}${data.subtotal.toFixed(2)}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E5E5E5;">
-                    <td colspan="2" style="padding: 8px 0;">
-                      <p style="color: #DC2626; font-size: 13px; margin: 4px 0 0 0; font-style: italic;">Deductions:</p>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 6px 0 6px 16px; color: #737373; font-size: 13px;">
-                      Platform Commission (${data.commissionRate.toFixed(1)}%)
-                    </td>
-                    <td style="padding: 6px 0; text-align: right; color: #DC2626; font-size: 13px;">-${currencySymbol}${data.commission.toFixed(2)}</td>
-                  </tr>
-                  ${
-                    data.transactionFee && data.transactionFee > 0
-                      ? `
-                  <tr>
-                    <td style="padding: 6px 0 6px 16px; color: #737373; font-size: 13px;">
-                      Payment Processing Fee (${data.transactionFeeRate ? data.transactionFeeRate.toFixed(2) + '% + fixed' : ''})
-                    </td>
-                    <td style="padding: 6px 0; text-align: right; color: #DC2626; font-size: 13px;">-${currencySymbol}${data.transactionFee.toFixed(2)}</td>
-                  </tr>
-                  `
-                      : ''
-                  }
-                  <tr>
-                    <td style="padding: 14px 0 0 0; color: #000000; font-size: 16px; font-weight: 600; border-top: 2px solid #10B981;">Your Net Payout</td>
-                    <td style="padding: 14px 0 0 0; text-align: right; color: #10B981; font-size: 20px; font-weight: 700; border-top: 2px solid #10B981;">${currencySymbol}${data.netPayout.toFixed(2)}</td>
-                  </tr>
-                </table>
-                <p style="color: #737373; font-size: 11px; margin: 12px 0 0 0; line-height: 1.5;">
-                  💡 <strong>Note:</strong> Your payout will be processed according to your payment schedule after the order is delivered and confirmed.
-                </p>
-              </div>
+    <!-- Action required -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 28px 0;">
+      <tr>
+        <td style="background-color: #F9FAFB; border-left: 3px solid #CBB57B; padding: 14px 18px;">
+          <p style="color: #0A0A0A; font-size: 13px; font-weight: 600; margin: 0 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Action required</p>
+          <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+            <tr><td style="padding: 3px 0; color: #4B5563; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&#x2014; Prepare items for shipment</td></tr>
+            <tr><td style="padding: 3px 0; color: #4B5563; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&#x2014; Update order status in your dashboard</td></tr>
+            <tr><td style="padding: 3px 0; color: #4B5563; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&#x2014; Add tracking information once shipped</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-              <!-- Shipping Address -->
-              <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">Ship To:</p>
-              <div style="background-color: #FAFAFA; padding: 16px; margin-bottom: 24px; border: 1px solid #E5E5E5;">
-                <p style="color: #000000; font-size: 14px; font-weight: 500; margin: 0 0 4px 0;">${data.customerName}</p>
-                <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0;">
-                  ${data.shippingAddress.street}<br/>
-                  ${data.shippingAddress.city}, ${data.shippingAddress.state} ${data.shippingAddress.zipCode}<br/>
-                  ${data.shippingAddress.country}
-                </p>
-              </div>
+    <!-- CTA -->
+    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 16px 0;">
+      <tr>
+        <td style="background-color: #0A0A0A; padding: 13px 28px;">
+          <a href="${data.orderUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
+            View Order
+          </a>
+        </td>
+      </tr>
+    </table>
 
-              <!-- Action Required -->
-              <div style="background-color: #FFFFFF; border-left: 3px solid #CBB57B; padding: 16px 20px; margin-bottom: 24px;">
-                <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">Action Required:</p>
-                <ul style="color: #525252; font-size: 13px; line-height: 1.8; margin: 0; padding-left: 20px;">
-                  <li>Prepare items for shipment</li>
-                  <li>Update order status in your dashboard</li>
-                  <li>Add tracking information once shipped</li>
-                </ul>
-              </div>
-
-              <!-- CTA -->
-              <div style="text-align: center; margin: 32px 0;">
-                <a href="${data.orderUrl}"
-                   style="display: inline-block; background-color: #000000; color: #FFFFFF; padding: 14px 40px; text-decoration: none; font-weight: 600; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;">
-                  View Order Details
-                </a>
-              </div>
-
-              <div style="text-align: center;">
-                <a href="${data.dashboardUrl}" style="color: #737373; text-decoration: none; font-size: 13px;">
-                  Go to Dashboard
-                </a>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #fafafa; padding: 24px 32px; text-align: center; border-top: 1px solid #e5e5e5;">
-              <p style="color: #737373; font-size: 12px; margin: 0 0 8px 0;">
-                &copy; ${new Date().getFullYear()} NextPik. All rights reserved.
-              </p>
-              <p style="color: #A3A3A3; font-size: 11px; margin: 0;">
-                You're receiving this email because you're a seller on our platform.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
+    <p style="margin: 0;">
+      <a href="${data.dashboardUrl}" style="color: #6B7280; text-decoration: underline; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+        Go to seller dashboard
+      </a>
+    </p>
   `;
+
+  return baseEmailTemplate(content, {
+    preheader: `New order #${data.orderNumber} from ${data.customerName} — ${sym}${fmt(data.netPayout)} net payout.`,
+    frontendUrl: data.frontendUrl,
+    showUnsubscribe: false,
+    footerNote: 'You received this email because you are a NextPik seller.',
+  });
 }

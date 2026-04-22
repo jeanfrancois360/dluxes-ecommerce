@@ -7,83 +7,77 @@ export const creditsLowWarningTemplate = (data: {
   daysUntilDepletion: number;
   creditsUrl: string;
   dashboardUrl: string;
+  frontendUrl?: string;
 }) => {
+  const siteUrl = data.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const supportUrl = `${siteUrl}/contact`;
+
   const content = `
-    <div style="text-align: center;">
-      <div style="width: 56px; height: 56px; background-color: #000000; border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; border: 2px solid #F59E0B;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2">
-          <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-        </svg>
-      </div>
-    </div>
+    <h1 style="color: #0A0A0A; font-size: 24px; font-weight: 700; margin: 0 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.3px;">
+      Credits running low
+    </h1>
 
-    <h2 style="color: #000000; font-size: 22px; font-weight: 600; margin-bottom: 16px; text-align: center;">
-      Your Selling Credits Are Running Low
-    </h2>
-
-    <p style="color: #525252; font-size: 15px; line-height: 1.6; margin-bottom: 32px; text-align: center;">
-      Hello ${data.sellerName}, this is a reminder to top up your credits.
+    <p style="color: #4B5563; font-size: 15px; line-height: 1.65; margin: 0 0 28px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Hello ${data.sellerName}, your selling credits for <strong style="color: #0A0A0A;">${data.storeName}</strong> are running low. Top up to keep your products active.
     </p>
 
-    <div style="background-color: #000000; padding: 32px; margin: 32px 0; text-align: center;">
-      <p style="color: #F59E0B; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px 0;">
-        Current Balance
-      </p>
-      <p style="color: #FFFFFF; font-size: 48px; font-weight: 700; margin: 0 0 8px 0;">
-        ${data.currentBalance}
-      </p>
-      <p style="color: #A3A3A3; font-size: 14px; margin: 0 0 16px 0;">
-        month${data.currentBalance !== 1 ? 's' : ''} remaining
-      </p>
-      <p style="color: #737373; font-size: 13px; margin: 0;">
-        Store: ${data.storeName}
-      </p>
-    </div>
+    <!-- Balance banner -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
+      <tr>
+        <td align="center" style="background-color: #0A0A0A; padding: 28px 24px; border-bottom: 3px solid #F59E0B;">
+          <p style="color: #F59E0B; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin: 0 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Credit balance
+          </p>
+          <p style="color: #FFFFFF; font-size: 48px; font-weight: 700; margin: 0 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: -1px;">
+            ${data.currentBalance}
+          </p>
+          <p style="color: #9CA3AF; font-size: 13px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            month${data.currentBalance !== 1 ? 's' : ''} remaining
+          </p>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color: #FAFAFA; padding: 20px; margin: 32px 0; border-left: 3px solid #F59E0B;">
-      <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">What this means:</p>
-      <ul style="color: #525252; font-size: 13px; line-height: 1.8; margin: 0; padding-left: 20px;">
-        <li>You have approximately <strong>${data.daysUntilDepletion} days</strong> of credits left</li>
-        <li>Credits are deducted on the <strong>1st of each month</strong></li>
-        <li>If credits reach zero, your products will be suspended after a 3-day grace period</li>
-      </ul>
-    </div>
+    <!-- What this means -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
+      <tr>
+        <td style="background-color: #F9FAFB; border-left: 3px solid #F59E0B; padding: 14px 18px;">
+          <p style="color: #0A0A0A; font-size: 13px; font-weight: 600; margin: 0 0 10px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">What this means</p>
+          <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+            <tr><td style="padding: 3px 0; color: #4B5563; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&#x2014; Approximately <strong style="color: #0A0A0A;">${data.daysUntilDepletion} days</strong> of credits remaining</td></tr>
+            <tr><td style="padding: 3px 0; color: #4B5563; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&#x2014; Credits are deducted on the <strong style="color: #0A0A0A;">1st of each month</strong></td></tr>
+            <tr><td style="padding: 3px 0; color: #4B5563; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&#x2014; If balance reaches zero, products enter a 3-day grace period before suspension</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color: #FAFAFA; padding: 24px; margin: 32px 0; border: 1px solid #E5E5E5; text-align: center;">
-      <p style="color: #000000; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">
-        Purchase Credits Now
-      </p>
-      <p style="color: #10B981; font-size: 28px; font-weight: 700; margin: 0 0 8px 0;">
-        $29.99/month
-      </p>
-      <p style="color: #737373; font-size: 13px; margin: 0;">
-        Keep your store active and selling
-      </p>
-    </div>
+    <!-- CTA -->
+    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 14px 0;">
+      <tr>
+        <td style="background-color: #0A0A0A; padding: 13px 28px;">
+          <a href="${data.creditsUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
+            Purchase Credits
+          </a>
+        </td>
+      </tr>
+    </table>
 
-    <div style="text-align: center; margin: 40px 0;">
-      <a href="${data.creditsUrl}"
-         style="display: inline-block; background-color: #CBB57B; color: #000000; padding: 14px 40px; text-decoration: none; font-weight: 600; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;">
-        Purchase Credits
-      </a>
-    </div>
-
-    <div style="text-align: center; margin: 20px 0;">
-      <a href="${data.dashboardUrl}" style="color: #737373; text-decoration: none; font-size: 13px;">
+    <p style="margin: 0 0 24px 0;">
+      <a href="${data.dashboardUrl}" style="color: #6B7280; text-decoration: underline; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
         View Dashboard
       </a>
-    </div>
+    </p>
 
-    <div style="background-color: #FFFFFF; border-left: 3px solid #CBB57B; padding: 16px 20px; margin-top: 32px;">
-      <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0;">
-        <strong style="color: #000000;">Tip:</strong> Purchase credits in advance to ensure your products remain active without interruption.
-      </p>
-    </div>
-
-    <p style="color: #737373; font-size: 13px; text-align: center; margin-top: 32px; line-height: 1.6;">
-      Questions about billing? <a href="{{SUPPORT_URL}}" style="color: #000000; text-decoration: underline;">Contact support</a>
+    <p style="color: #9CA3AF; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Questions about billing? <a href="${supportUrl}" style="color: #4B5563; text-decoration: underline;">Contact support</a>
     </p>
   `;
 
-  return baseEmailTemplate(content);
+  return baseEmailTemplate(content, {
+    preheader: `${data.currentBalance} month${data.currentBalance !== 1 ? 's' : ''} of credits remaining for ${data.storeName}. Top up to avoid interruption.`,
+    frontendUrl: siteUrl,
+    showUnsubscribe: false,
+    footerNote: 'You received this email because you are a NextPik seller.',
+  });
 };
