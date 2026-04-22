@@ -2,6 +2,8 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../../database/prisma.service';
 import { EasyPostService } from './easypost.service';
 import { PurchaseLabelDto } from './dto/purchase-label.dto';
+import { AuthenticatedUser } from '../../common/authorization/order-access.helper';
+import { assertShipmentAccess } from './shipment-access.helper';
 
 @Injectable()
 export class EasyPostShipmentService {
@@ -125,7 +127,7 @@ export class EasyPostShipmentService {
   /**
    * Refund a shipping label
    */
-  async refundLabel(shipmentId: string) {
+  async refundLabel(shipmentId: string, user: AuthenticatedUser) {
     const shipment = await this.prisma.easyPostShipment.findUnique({
       where: { id: shipmentId },
     });
@@ -133,6 +135,9 @@ export class EasyPostShipmentService {
     if (!shipment) {
       throw new NotFoundException('Shipment not found');
     }
+
+    // Ownership check: only the seller who owns the shipment or an admin may refund.
+    assertShipmentAccess(shipment, user);
 
     if (shipment.refundStatus) {
       throw new BadRequestException('Refund already requested');
@@ -183,7 +188,11 @@ export class EasyPostShipmentService {
   /**
    * Convert label format
    */
-  async convertLabelFormat(shipmentId: string, format: 'PDF' | 'ZPL' | 'EPL2') {
+  async convertLabelFormat(
+    shipmentId: string,
+    format: 'PDF' | 'ZPL' | 'EPL2',
+    user: AuthenticatedUser
+  ) {
     const shipment = await this.prisma.easyPostShipment.findUnique({
       where: { id: shipmentId },
     });
@@ -191,6 +200,9 @@ export class EasyPostShipmentService {
     if (!shipment) {
       throw new NotFoundException('Shipment not found');
     }
+
+    // Ownership check: only the seller who owns the shipment or an admin may convert.
+    assertShipmentAccess(shipment, user);
 
     const client = this.easyPostService.getClient();
     const convertedShipment = await client.Shipment.convertLabelFormat(

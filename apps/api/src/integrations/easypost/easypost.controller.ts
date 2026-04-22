@@ -29,9 +29,10 @@ export class EasyPostController {
    * Health check endpoint for EasyPost integration
    * GET /easypost/health
    * Returns connection status, configuration state, and API key validity
-   * No authentication required - safe for admin UI
    */
   @Get('health')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
   async getHealthStatus() {
     try {
       // Check if EasyPost is enabled in settings
@@ -121,6 +122,8 @@ export class EasyPostController {
    * GET /easypost/test
    */
   @Get('test')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
   async testConnection() {
     const diagnostics: any = {
       timestamp: new Date().toISOString(),
@@ -352,9 +355,8 @@ export class EasyPostController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('refund/:shipmentId')
   @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
-  async refundLabel(@Param('shipmentId') shipmentId: string, @Req() req) {
-    // TODO: Add authorization check to ensure seller owns this shipment
-    return this.shipmentService.refundLabel(shipmentId);
+  async refundLabel(@Param('shipmentId') shipmentId: string, @Req() req: any) {
+    return this.shipmentService.refundLabel(shipmentId, req.user);
   }
 
   /**
@@ -366,9 +368,10 @@ export class EasyPostController {
   @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
   async convertLabelFormat(
     @Param('shipmentId') shipmentId: string,
-    @Body('format') format: 'PDF' | 'ZPL' | 'EPL2'
+    @Body('format') format: 'PDF' | 'ZPL' | 'EPL2',
+    @Req() req: any
   ) {
-    return this.shipmentService.convertLabelFormat(shipmentId, format);
+    return this.shipmentService.convertLabelFormat(shipmentId, format, req.user);
   }
 
   /**
