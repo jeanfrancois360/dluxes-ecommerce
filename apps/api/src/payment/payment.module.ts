@@ -9,6 +9,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { ReferralModule } from '../referral/referral.module';
+import { AuthorizationModule } from '../common/authorization/authorization.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ReferralModule } from '../referral/referral.module';
     CurrencyModule,
     SubscriptionModule,
     ReferralModule,
+    AuthorizationModule,
   ],
   controllers: [PaymentController],
   providers: [PaymentService, PayPalService, PaymentMonitorService],

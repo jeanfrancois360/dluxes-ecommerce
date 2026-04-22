@@ -15,6 +15,7 @@ import {
   OrderStatus,
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { assertOrderAccess, AuthenticatedUser } from '../common/authorization/order-access.helper';
 
 @Injectable()
 export class PaymentService {
@@ -430,16 +431,23 @@ export class PaymentService {
   /**
    * Create a Stripe Payment Intent with multi-currency support
    */
-  async createPaymentIntent(dto: CreatePaymentIntentDto, userId: string) {
+  async createPaymentIntent(dto: CreatePaymentIntentDto, user: AuthenticatedUser) {
     if (!dto.orderId) {
       throw new BadRequestException('Order ID is required');
     }
+
+    // Verify the caller owns this order before doing anything else.
+    // 'buyer' mode: only the order's buyer (or admin) may create a payment intent for it.
+    await assertOrderAccess(this.prisma, dto.orderId, user, 'buyer');
+
+    // Derive userId from the verified user object (id is primary; userId is backward-compat alias).
+    const userId = user.id ?? user.userId;
 
     try {
       // Get Stripe client (initializes if needed)
       const stripe = await this.getStripeClient();
 
-      // Verify order exists
+      // Verify order exists (also gives us currency and total as source of truth)
       const order = await this.prisma.order.findUnique({
         where: { id: dto.orderId },
       });
@@ -448,7 +456,9 @@ export class PaymentService {
         throw new BadRequestException('Order not found');
       }
 
-      // Verify amount matches order total
+      // Belt-and-suspenders: verify amount matches order total.
+      // dto.amount is still accepted for backward compatibility but the order record
+      // is authoritative. Any significant mismatch is rejected.
       const expectedAmount = Number(order.total);
       const sentAmount = Number(dto.amount);
       const tolerance = 0.01; // Allow 1 cent rounding difference
@@ -515,13 +525,10 @@ export class PaymentService {
       // Get Stripe config for capture method and default currency
       const config = this.stripeConfig || (await this.settingsService.getStripeConfig());
 
-      // Determine currency to use (priority: dto currency > default currency)
-      let paymentCurrency: string;
-      if (dto.currency) {
-        paymentCurrency = dto.currency.toUpperCase();
-      } else {
-        paymentCurrency = await this.getDefaultPaymentCurrency();
-      }
+      // Currency source of truth is the order record, not the client-supplied dto.currency.
+      // dto.currency is accepted in the DTO for backward compatibility but deliberately ignored here.
+      // Per platform rule: all price/currency calculations must originate from the backend.
+      const paymentCurrency = order.currency.toUpperCase();
 
       // Validate currency is supported
       await this.validateCurrency(paymentCurrency);
