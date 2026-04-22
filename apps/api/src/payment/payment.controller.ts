@@ -12,6 +12,9 @@ import {
   UseGuards,
   Request,
   Query,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { PaymentService } from './payment.service';
@@ -410,6 +413,16 @@ export class PaymentController {
       const data = await this.paypalService.captureOrder(paypalOrderId, req.user);
       return { success: true, data };
     } catch (error) {
+      // Preserve authorization semantics — let NestJS exception filters map
+      // these to correct HTTP status codes (403/404/400) instead of wrapping
+      // them in a 201 envelope that leaks information.
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to capture PayPal order',
@@ -450,6 +463,13 @@ export class PaymentController {
       const data = await this.paypalService.refundCapture(captureId, body.amount, body.currency);
       return { success: true, data };
     } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to refund PayPal capture',
