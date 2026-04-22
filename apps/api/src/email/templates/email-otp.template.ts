@@ -1,4 +1,5 @@
 import { EmailOTPType } from '@prisma/client';
+import { baseEmailTemplate } from './base.template';
 
 interface EmailOTPData {
   firstName: string;
@@ -11,229 +12,93 @@ interface EmailOTPData {
 }
 
 export function getEmailOTPTemplate(data: EmailOTPData): { subject: string; html: string } {
-  const siteUrl = data.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
-  const typeLabels = {
+  const typeConfig = {
     TWO_FACTOR_BACKUP: {
-      title: 'Two-Factor Authentication Code',
-      description: 'Use this code to complete your login',
+      subject: 'Your two-factor authentication code',
+      title: 'Two-factor authentication',
+      description: 'Enter this code to complete your sign-in.',
     },
     ACCOUNT_RECOVERY: {
-      title: 'Account Recovery Code',
-      description: 'Use this code to recover your account',
+      subject: 'Your account recovery code',
+      title: 'Account recovery',
+      description: 'Enter this code to recover your account.',
     },
     SENSITIVE_ACTION: {
-      title: 'Verification Code',
-      description: 'Use this code to verify your identity',
+      subject: 'Your verification code',
+      title: 'Verify your identity',
+      description: 'Enter this code to confirm the action.',
     },
   };
 
-  const { title, description } = typeLabels[data.type];
+  const { subject, title, description } = typeConfig[data.type];
 
-  const subject = `${title} - NextPik`;
+  const requestTime = data.timestamp.toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  });
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background-color: #FFFFFF;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: #FFFFFF;
-      border: 1px solid #E5E5E5;
-    }
-    .header {
-      background-color: #000000;
-      padding: 32px 20px;
-      text-align: center;
-      border-bottom: 2px solid #CBB57B;
-    }
-    .logo {
-      color: #FFFFFF;
-      font-size: 20px;
-      font-weight: 600;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
-    .content {
-      padding: 40px 30px;
-    }
-    .title {
-      font-size: 22px;
-      font-weight: 600;
-      color: #000000;
-      margin-bottom: 10px;
-      text-align: center;
-    }
-    .description {
-      font-size: 15px;
-      color: #525252;
-      margin-bottom: 30px;
-      text-align: center;
-      line-height: 1.5;
-    }
-    .otp-container {
-      background-color: #FAFAFA;
-      border: 1px solid #E5E5E5;
-      padding: 30px;
-      text-align: center;
-      margin: 30px 0;
-    }
-    .otp-code {
-      font-size: 40px;
-      font-weight: 700;
-      color: #000000;
-      letter-spacing: 8px;
-      font-family: 'Courier New', monospace;
-      margin: 10px 0;
-    }
-    .otp-label {
-      font-size: 12px;
-      color: #737373;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 10px;
-    }
-    .expiry-notice {
-      background-color: #FAFAFA;
-      border-left: 3px solid #CBB57B;
-      padding: 15px;
-      margin: 20px 0;
-    }
-    .expiry-notice p {
-      margin: 0;
-      color: #525252;
-      font-size: 14px;
-    }
-    .security-info {
-      background-color: #FAFAFA;
-      padding: 20px;
-      margin-top: 30px;
-      border: 1px solid #E5E5E5;
-    }
-    .security-info h3 {
-      font-size: 14px;
-      color: #000000;
-      margin: 0 0 15px 0;
-      font-weight: 600;
-    }
-    .security-item {
-      margin-bottom: 8px;
-      font-size: 13px;
-      color: #525252;
-      line-height: 1.5;
-    }
-    .metadata {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid #E5E5E5;
-      font-size: 12px;
-      color: #737373;
-    }
-    .warning {
-      background-color: #FEF2F2;
-      border-left: 3px solid #EF4444;
-      padding: 15px;
-      margin: 20px 0;
-    }
-    .warning p {
-      margin: 0;
-      color: #991B1B;
-      font-size: 13px;
-    }
-    .footer {
-      background-color: #FAFAFA;
-      padding: 24px 30px;
-      text-align: center;
-      font-size: 13px;
-      color: #737373;
-      border-top: 1px solid #E5E5E5;
-    }
-    .footer-links {
-      margin-top: 12px;
-    }
-    .footer-link {
-      color: #000000;
-      text-decoration: none;
-      margin: 0 10px;
-      font-size: 12px;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="logo">NextPik</div>
-    </div>
+  const content = `
+    <h1 style="color: #0A0A0A; font-size: 24px; font-weight: 700; margin: 0 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.3px;">
+      ${title}
+    </h1>
 
-    <div class="content">
-      <h1 class="title">${title}</h1>
-      <p class="description">
-        Hello ${data.firstName},<br><br>
-        ${description}
-      </p>
+    <p style="color: #4B5563; font-size: 15px; line-height: 1.65; margin: 0 0 28px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Hello ${data.firstName}, ${description}
+    </p>
 
-      <div class="otp-container">
-        <div class="otp-label">Your Verification Code</div>
-        <div class="otp-code">${data.code}</div>
-      </div>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 28px 0;">
+      <tr>
+        <td align="center" style="background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 28px 24px;">
+          <p style="color: #6B7280; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin: 0 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Verification Code
+          </p>
+          <p style="color: #0A0A0A; font-size: 38px; font-weight: 700; letter-spacing: 10px; margin: 0; font-family: 'Courier New', 'Lucida Console', monospace;">
+            ${data.code}
+          </p>
+          <p style="color: #9CA3AF; font-size: 12px; margin: 12px 0 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Expires in ${data.expiresInMinutes} minutes
+          </p>
+        </td>
+      </tr>
+    </table>
 
-      <div class="expiry-notice">
-        <p>
-          <strong>This code expires in ${data.expiresInMinutes} minutes.</strong>
-          Please enter it promptly to complete your verification.
-        </p>
-      </div>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 20px 0;">
+      <tr>
+        <td style="background-color: #F9FAFB; border-left: 3px solid #CBB57B; padding: 14px 18px;">
+          <p style="color: #374151; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Never share this code with anyone. NextPik staff will never ask for it.
+          </p>
+        </td>
+      </tr>
+    </table>
 
-      <div class="warning">
-        <p>
-          <strong>Security Alert:</strong> If you didn't request this code, someone may be trying to access your account.
-          Please secure your account immediately by changing your password.
-        </p>
-      </div>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+      <tr>
+        <td style="background-color: #FEF2F2; border-left: 3px solid #DC2626; padding: 14px 18px;">
+          <p style="color: #374151; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            <strong style="color: #DC2626;">Didn't request this?</strong> Someone may be attempting to access your account. Change your password immediately.
+          </p>
+        </td>
+      </tr>
+    </table>
 
-      <div class="security-info">
-        <h3>Security Tips</h3>
-        <div class="security-item">• Never share this code with anyone, including NextPik staff</div>
-        <div class="security-item">• NextPik will never call or email asking for this code</div>
-        <div class="security-item">• Only enter this code on the official NextPik website</div>
-        <div class="security-item">• This code can only be used once and expires automatically</div>
-      </div>
-
-      <div class="metadata">
-        <p>Request Time: ${data.timestamp.toLocaleString('en-US', {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-          timeZone: 'UTC'
-        })} UTC</p>
-        ${data.ipAddress ? `<p>IP Address: ${data.ipAddress}</p>` : ''}
-      </div>
-    </div>
-
-    <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} NextPik. All rights reserved.</p>
-      <div class="footer-links">
-        <a href="${siteUrl}/help" class="footer-link">Help</a>
-        <a href="${siteUrl}/security" class="footer-link">Security</a>
-        <a href="${siteUrl}/contact" class="footer-link">Contact</a>
-      </div>
-      <p style="margin-top: 16px; font-size: 11px; color: #A3A3A3;">
-        This is an automated security message. Please do not reply.
-      </p>
-    </div>
-  </div>
-</body>
-</html>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 24px 0 0 0; border-top: 1px solid #E5E7EB; padding-top: 20px;">
+      <tr>
+        <td>
+          <p style="color: #9CA3AF; font-size: 12px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Request time: ${requestTime} UTC${data.ipAddress ? `<br />IP address: ${data.ipAddress}` : ''}
+          </p>
+        </td>
+      </tr>
+    </table>
   `;
 
-  return { subject, html };
+  const html = baseEmailTemplate(content, {
+    preheader: `Your ${title.toLowerCase()} code: ${data.code} — expires in ${data.expiresInMinutes} minutes.`,
+    frontendUrl: data.frontendUrl,
+    showUnsubscribe: false,
+  });
+
+  return { subject: `${subject} — NextPik`, html };
 }
