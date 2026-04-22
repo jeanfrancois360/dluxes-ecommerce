@@ -2402,6 +2402,9 @@ export class PaymentService {
     }
 
     try {
+      // Ensure Stripe client is initialized before any Stripe API calls
+      const stripe = await this.getStripeClient();
+
       // Calculate refund amount (in cents for Stripe)
       const maxRefundable = Number(transaction.amount) - Number(transaction.refundedAmount || 0);
       const refundAmount = amount ? Math.min(amount, maxRefundable) : maxRefundable;
@@ -2414,13 +2417,11 @@ export class PaymentService {
       // Check if the PaymentIntent is in requires_capture state (uncaptured authorization).
       // Stripe does not allow refunding a charge that was never captured — instead, the
       // authorization must be cancelled via paymentIntents.cancel().
-      const paymentIntent = await this.stripe.paymentIntents.retrieve(
-        transaction.stripePaymentIntentId
-      );
+      const paymentIntent = await stripe.paymentIntents.retrieve(transaction.stripePaymentIntentId);
 
       if (paymentIntent.status === 'requires_capture') {
         // Cancel the uncaptured authorization — this reverses the hold on the customer's card
-        await this.stripe.paymentIntents.cancel(transaction.stripePaymentIntentId);
+        await stripe.paymentIntents.cancel(transaction.stripePaymentIntentId);
         this.logger.log(
           `PaymentIntent ${transaction.stripePaymentIntentId} cancelled (was requires_capture) for order ${orderId}`
         );
@@ -2486,7 +2487,7 @@ export class PaymentService {
       }
 
       // Create Stripe refund (for already-captured payments)
-      const refund = await this.stripe.refunds.create({
+      const refund = await stripe.refunds.create({
         payment_intent: transaction.stripePaymentIntentId,
         amount: amountInCents,
         reason:
