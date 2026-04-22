@@ -21,6 +21,11 @@ import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import {
+  OrderOwnershipGuard,
+  CheckOrderOwnership,
+} from '../common/authorization/order-ownership.guard';
+import { UserRole } from '@prisma/client';
 
 @Controller('payment')
 export class PaymentController {
@@ -228,12 +233,20 @@ export class PaymentController {
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   async createPaymentIntent(@Body() dto: CreatePaymentIntentDto, @Request() req: any) {
-    return this.paymentService.createPaymentIntent(dto, req.user.userId || req.user.id);
+    return this.paymentService.createPaymentIntent(dto, req.user);
   }
 
   /**
-   * Handle Stripe webhook
-   * POST /payment/webhook
+   * Stripe webhook callback endpoint.
+   *
+   * SECURITY: This endpoint is authenticated via Stripe HMAC signature
+   * verification (handled inside the service), NOT via JWT. Do NOT add
+   * @UseGuards(JwtAuthGuard) or any other auth guard to this endpoint —
+   * doing so will break Stripe webhook delivery and cascade into payment
+   * failures, orphaned orders, and missed escrow releases.
+   *
+   * Management endpoints (webhooks/*, note the plural) are separate and
+   * are admin-guarded.
    */
   @Post('webhook')
   async handleWebhook(
@@ -254,6 +267,8 @@ export class PaymentController {
    * GET /payment/status/:orderId
    */
   @Get('status/:orderId')
+  @UseGuards(JwtAuthGuard, OrderOwnershipGuard)
+  @CheckOrderOwnership('orderId', 'any')
   async getPaymentStatus(@Param('orderId') orderId: string) {
     return this.paymentService.getPaymentStatus(orderId);
   }
@@ -263,7 +278,8 @@ export class PaymentController {
    * POST /payment/refund/:orderId
    */
   @Post('refund/:orderId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async createRefund(
     @Param('orderId') orderId: string,
     @Body() body: { amount?: number; reason?: string }
@@ -276,7 +292,8 @@ export class PaymentController {
    * GET /payment/transactions/:orderId
    */
   @Get('transactions/:orderId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OrderOwnershipGuard)
+  @CheckOrderOwnership('orderId', 'any')
   async getTransactionHistory(@Param('orderId') orderId: string) {
     return this.paymentService.getTransactionHistory(orderId);
   }
@@ -286,7 +303,8 @@ export class PaymentController {
    * GET /payment/webhooks/statistics
    */
   @Get('webhooks/statistics')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getWebhookStatistics(@Query('days') days?: string) {
     const daysNum = days ? parseInt(days) : 7;
     return this.paymentService.getWebhookStatistics(daysNum);
@@ -297,7 +315,8 @@ export class PaymentController {
    * GET /payment/webhooks
    */
   @Get('webhooks')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getWebhookEvents(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -317,7 +336,8 @@ export class PaymentController {
    * GET /payment/webhooks/:id
    */
   @Get('webhooks/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getWebhookEvent(@Param('id') id: string) {
     return this.paymentService.getWebhookEvent(id);
   }
@@ -327,7 +347,8 @@ export class PaymentController {
    * POST /payment/webhooks/:id/retry
    */
   @Post('webhooks/:id/retry')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async retryWebhookEvent(@Param('id') id: string) {
     return this.paymentService.retryWebhookEvent(id);
   }
@@ -337,7 +358,8 @@ export class PaymentController {
    * GET /payment/health
    */
   @Get('health')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getPaymentHealthMetrics(@Query('days') days?: string) {
     const daysNum = days ? parseInt(days) : 30;
     return this.paymentService.getPaymentHealthMetrics(daysNum);
@@ -383,9 +405,9 @@ export class PaymentController {
    */
   @Post('paypal/capture/:paypalOrderId')
   @UseGuards(JwtAuthGuard)
-  async capturePayPalOrder(@Param('paypalOrderId') paypalOrderId: string) {
+  async capturePayPalOrder(@Param('paypalOrderId') paypalOrderId: string, @Request() req: any) {
     try {
-      const data = await this.paypalService.captureOrder(paypalOrderId);
+      const data = await this.paypalService.captureOrder(paypalOrderId, req.user);
       return { success: true, data };
     } catch (error) {
       return {
@@ -414,11 +436,12 @@ export class PaymentController {
   }
 
   /**
-   * Refund a PayPal capture
+   * Refund a PayPal capture (Admin only)
    * POST /payment/paypal/refund/:captureId
    */
   @Post('paypal/refund/:captureId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async refundPayPalCapture(
     @Param('captureId') captureId: string,
     @Body() body: { amount?: number; currency?: string }

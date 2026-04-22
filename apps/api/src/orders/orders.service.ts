@@ -686,13 +686,15 @@ export class OrdersService {
     try {
       this.logger.log(`💳 Creating Stripe PaymentIntent: ${total.toNumber()} ${orderCurrency}`);
 
+      // Internal call: the order was just created by this userId, so ownership is guaranteed.
+      // Construct a minimal AuthenticatedUser to satisfy the updated service signature.
       const paymentIntent = await this.paymentService.createPaymentIntent(
         {
           amount: total.toNumber(),
           currency: orderCurrency,
           orderId: order.id,
         },
-        userId
+        { id: userId, email: '', role: UserRole.BUYER }
       );
 
       clientSecret = paymentIntent.clientSecret;
