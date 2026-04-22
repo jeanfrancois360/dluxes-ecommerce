@@ -1528,7 +1528,8 @@ export class OrdersService {
   async cancel(id: string, userId: string, actor: { role: UserRole }) {
     const isPrivileged = actor.role === UserRole.ADMIN || actor.role === UserRole.SUPER_ADMIN;
 
-    const order = await this.findOne(id, userId);
+    // P3-03: admins can look up any order regardless of ownership
+    const order = await this.findOne(id, userId, isPrivileged);
 
     // --- Status gate (fail fast before any payment action) ---
     if (order.status === OrderStatus.DELIVERED) {
@@ -1550,15 +1551,48 @@ export class OrdersService {
     }
 
     // --- Payment action (must succeed before any state mutation) ---
-    if (
+    const wasRefundTriggered =
       order.paymentStatus === PaymentStatus.PAID ||
-      order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED
-    ) {
+      order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED;
+
+    if (wasRefundTriggered) {
       // createRefund handles both the requires_capture (PI cancel) and
-      // succeeded (Stripe refund) paths internally. If this throws, the
-      // cancellation is aborted — transactional semantics.
+      // succeeded (Stripe refund) paths internally, and restores inventory.
+      // If this throws the cancellation is aborted — transactional semantics.
       await this.paymentService.createRefund(id, undefined, 'order_cancelled');
-    } else if (order.paymentStatus === PaymentStatus.PENDING) {
+
+      // createRefund sets order.status = REFUNDED internally. Override to
+      // CANCELLED — REFUNDED is the correct paymentStatus but the order was
+      // stopped by user action, not a post-delivery complaint, so the order
+      // status must be CANCELLED for admin revenue metrics (which filter on
+      // status != CANCELLED). We bypass updateStatus here because REFUNDED
+      // is a terminal state in validateStatusTransition.
+      await this.prisma.order.update({
+        where: { id },
+        data: { status: OrderStatus.CANCELLED },
+      });
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId: id,
+          status: OrderStatus.CANCELLED,
+          title: 'Order Cancelled',
+          description: 'Order cancelled and payment refunded.',
+          icon: 'x-circle',
+        },
+      });
+
+      // Inventory was already restored inside createRefund — skip the loop.
+      return this.prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          shippingAddress: true,
+          timeline: { orderBy: { createdAt: 'asc' } },
+        },
+      });
+    }
+
+    if (order.paymentStatus === PaymentStatus.PENDING) {
       // No Stripe action needed; mark payment as cancelled so downstream
       // reporting does not show a dangling PENDING payment.
       await this.prisma.order.update({
@@ -1567,7 +1601,7 @@ export class OrdersService {
       });
     }
 
-    // --- Inventory restoration ---
+    // --- Inventory restoration (non-PAID paths only; createRefund handles PAID) ---
     for (const item of order.items) {
       try {
         await this.inventoryService.recordTransaction({
