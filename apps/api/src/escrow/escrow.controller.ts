@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Patch,
@@ -10,11 +12,16 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import { EscrowService } from './escrow.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import {
+  OrderOwnershipGuard,
+  CheckOrderOwnership,
+} from '../common/authorization/order-ownership.guard';
 import { UserRole, EscrowStatus } from '@prisma/client';
 import { ConfirmDeliveryDto, RefundEscrowDto } from './dto/confirm-delivery.dto';
 
@@ -88,7 +95,8 @@ export class EscrowController {
    * @route POST /escrow/confirm-delivery/:orderId
    */
   @Post('confirm-delivery/:orderId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OrderOwnershipGuard)
+  @CheckOrderOwnership('orderId', 'buyer')
   @HttpCode(HttpStatus.OK)
   async confirmDelivery(
     @Param('orderId') orderId: string,
@@ -107,6 +115,13 @@ export class EscrowController {
         message: 'Delivery confirmed. Seller payment will be released after hold period.',
       };
     } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
       return {
         success: false,
         message: error instanceof Error ? error.message : 'An error occurred',
@@ -119,7 +134,8 @@ export class EscrowController {
    * @route GET /escrow/order/:orderId
    */
   @Get('order/:orderId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OrderOwnershipGuard)
+  @CheckOrderOwnership('orderId', 'any')
   async getEscrowByOrder(@Param('orderId') orderId: string) {
     try {
       const data = await this.escrowService.getEscrowByOrderId(orderId);
@@ -128,6 +144,13 @@ export class EscrowController {
         data,
       };
     } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
       return {
         success: false,
         message: error instanceof Error ? error.message : 'An error occurred',
@@ -225,10 +248,7 @@ export class EscrowController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
-  async refundEscrow(
-    @Param('escrowId') escrowId: string,
-    @Body() dto: RefundEscrowDto
-  ) {
+  async refundEscrow(@Param('escrowId') escrowId: string, @Body() dto: RefundEscrowDto) {
     try {
       const data = await this.escrowService.refundEscrow(escrowId, dto.reason);
       return {
