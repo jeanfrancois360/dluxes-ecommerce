@@ -5867,6 +5867,129 @@ await prisma.$queryRaw`
 
 ---
 
+### 13.5 Version 2.12.1 - Critical Fix: Paid Order Cancellation Refund (P3-01)
+
+#### 13.5.1 Overview
+
+Version 2.12.1 closes a critical billing gap: cancelling a paid order previously left the Stripe charge outstanding with no refund issued. Three related issues were fixed in the same commit series.
+
+**Key Fixes:**
+
+- **P3-01:** Cancellation of PAID or PARTIALLY_REFUNDED orders now triggers a Stripe refund (or PI cancellation for `requires_capture` authorizations).
+- **P3-02:** Buyers are blocked from cancelling SHIPPED orders; error: "Cannot cancel shipped order. Please initiate a refund request instead."
+- **P3-03:** ADMIN / SUPER_ADMIN can force-cancel any order, including SHIPPED, and can cancel orders they do not own. Pre-existing `isAdmin` parameter in `findOne()` was never wired through the `cancel()` call site.
+- **P3-05:** Cancelling an order with `paymentStatus = PENDING` now correctly sets `paymentStatus = CANCELLED` instead of leaving a dangling PENDING record.
+
+**Commits:**
+
+- `d7748f5` — fix(orders): set status to CANCELLED after refund, allow admin cancel any order
+- `8a6171f` — fix(orders): correctly handle PAID cancellation side effects
+- `cac8fae` — fix(payment): use getStripeClient() in createRefund to avoid null dereference
+
+#### 13.5.2 Files Modified
+
+| File                                      | Change                                                                                                     |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `apps/api/src/orders/orders.service.ts`   | `cancel()` flow rewrite — status gate, refund trigger, state machine bypass, early return, inventory dedup |
+| `apps/api/src/payment/payment.service.ts` | `handleRefund()` webhook guard (CANCELLED status preservation); `createRefund()` Stripe null-init fix      |
+
+#### 13.5.3 Cancellation Flow (Post-Fix)
+
+```
+cancel(id, userId, actor)
+  │
+  ├─ findOne(id, userId, isPrivileged)   ← P3-03: admin bypasses userId filter
+  │
+  ├─ Status gates (fail fast):
+  │   DELIVERED → 400
+  │   CANCELLED  → 400
+  │   REFUNDED   → 400
+  │   SHIPPED + !privileged → 400       ← P3-02
+  │
+  ├─ paymentStatus = PAID | PARTIALLY_REFUNDED?
+  │   YES → createRefund()              ← P3-01
+  │         └─ requires_capture?  → stripe.paymentIntents.cancel()
+  │            succeeded?         → stripe.refunds.create()
+  │         Override status = CANCELLED (bypasses state machine,
+  │         see comment in code)
+  │         Add timeline entry
+  │         Return early (inventory already restored by createRefund)
+  │
+  ├─ paymentStatus = PENDING?
+  │   YES → set paymentStatus = CANCELLED   ← P3-05
+  │
+  └─ Restore inventory (non-PAID path only)
+     updateStatus(CANCELLED)
+```
+
+#### 13.5.4 State Machine Bypass — Documented Intent
+
+`OrdersService.cancel()` writes `status = CANCELLED` directly via `prisma.order.update()` instead of `updateStatus()` for the PAID cancel path. This is intentional:
+
+- `createRefund()` writes `status = REFUNDED` internally.
+- `validateStatusTransition` rejects `REFUNDED → CANCELLED` as a terminal-state transition.
+- `CANCELLED` is the semantically correct final state for a user-initiated cancellation (admin revenue metrics filter on `status != CANCELLED`).
+- A comment in the source code documents this as a known state-machine gap for post-launch cleanup.
+
+#### 13.5.5 API Contract Changes
+
+**`OrdersService.cancel()` signature:**
+
+```typescript
+// Before
+async cancel(id: string, userId: string)
+
+// After
+async cancel(id: string, userId: string, actor: { role: UserRole })
+```
+
+**New error responses from cancel endpoint:**
+
+| Condition                   | Message                                                                  |
+| --------------------------- | ------------------------------------------------------------------------ |
+| Buyer cancels SHIPPED order | "Cannot cancel shipped order. Please initiate a refund request instead." |
+| Order already REFUNDED      | "Order already refunded"                                                 |
+| Order already CANCELLED     | "Order already cancelled"                                                |
+
+**Note:** The cancel controller uses a try-catch that returns `{success: false, message}` as HTTP 201 (NestJS `@Post` default) instead of HTTP 400. Pre-existing controller behavior; scheduled for post-launch cleanup.
+
+#### 13.5.6 Final State for Cancel-with-Refund
+
+```
+order.status        = CANCELLED
+order.paymentStatus = REFUNDED
+PaymentTransaction.status = REFUNDED
+Stripe: refund issued (or PI cancelled for requires_capture)
+Inventory: restored (+quantity for each cancelled item)
+```
+
+#### 13.5.7 Known Gaps
+
+| Gap                                     | Severity | Description                                                                                                                                                                                                                      |
+| --------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P3-04**                               | Medium   | Escrow stays `HELD` on captured-refund path. `escrowTransaction.updateMany` runs only on `requires_capture` path in `createRefund()`. Not triggered for succeeded-PI refunds. Data integrity only — no customer-visible impact.  |
+| **PENDING + requires_capture window**   | Low      | ~2s window where PI is `requires_capture` but `paymentStatus = PENDING`. Cancel takes PENDING branch (no Stripe action). Unreachable via UI (no cancel button during payment processing). Stripe auto-expires auth after 7 days. |
+| **Cancel controller HTTP 201 on error** | Low      | Controller try-catch swallows exceptions, returns `{success: false}` as HTTP 201. Affects API consumers expecting 4xx on failure. Post-launch cleanup.                                                                           |
+
+#### 13.5.8 Testing
+
+**Test suite:** `test-p3-cancellation.sh` (8 scenarios)
+
+| Test | Scenario                           | Result                                                                                 |
+| ---- | ---------------------------------- | -------------------------------------------------------------------------------------- |
+| A    | Cancel PENDING order               | ✅ PASS — status=CANCELLED, paymentStatus=CANCELLED                                    |
+| B    | Cancel requires_capture order      | ✅ PASS — status=CANCELLED, paymentStatus=REFUNDED, Stripe PI=canceled                 |
+| C    | Cancel PAID (captured) order       | ✅ PASS — status=CANCELLED, paymentStatus=REFUNDED, Stripe refund issued, inventory +1 |
+| D    | Cancel PARTIALLY_REFUNDED order    | ✅ PASS — status=CANCELLED, paymentStatus=REFUNDED, remainder refunded                 |
+| E    | Buyer attempts SHIPPED cancel      | ✅ PASS — blocked, status unchanged                                                    |
+| F    | Admin force-cancels SHIPPED order  | ✅ PASS — status=CANCELLED                                                             |
+| G    | Admin cancels another user's order | ✅ PASS — ownership bypass works                                                       |
+| R    | Phase 2 happy-path regression      | ✅ PASS — new order status=PENDING, paymentStatus=PENDING                              |
+
+**All 8 tests passing.**
+
+---
+
 ## 14. Version 2.6.0 Changes & Enhancements
 
 ### 14.1 Overview - Authentication Enhancements
