@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Patch,
@@ -9,6 +11,7 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Query,
   Res,
   Header,
@@ -19,6 +22,10 @@ import { CartService } from '../cart/cart.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import {
+  OrderOwnershipGuard,
+  CheckOrderOwnership,
+} from '../common/authorization/order-ownership.guard';
 import { UserRole } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CalculateTotalsDto } from './dto/calculate-totals.dto';
@@ -263,6 +270,8 @@ export class OrdersController {
    * @route GET /orders/:id/track
    */
   @Get(':id/track')
+  @UseGuards(OrderOwnershipGuard)
+  @CheckOrderOwnership('id', 'any')
   @HttpCode(HttpStatus.OK)
   async track(@Param('id') id: string) {
     try {
@@ -272,6 +281,13 @@ export class OrdersController {
         data,
       };
     } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
       return {
         success: false,
         message: error instanceof Error ? error.message : 'An error occurred',
