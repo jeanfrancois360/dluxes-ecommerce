@@ -1561,12 +1561,14 @@ export class OrdersService {
       // If this throws the cancellation is aborted — transactional semantics.
       await this.paymentService.createRefund(id, undefined, 'order_cancelled');
 
-      // createRefund sets order.status = REFUNDED internally. Override to
-      // CANCELLED — REFUNDED is the correct paymentStatus but the order was
-      // stopped by user action, not a post-delivery complaint, so the order
-      // status must be CANCELLED for admin revenue metrics (which filter on
-      // status != CANCELLED). We bypass updateStatus here because REFUNDED
-      // is a terminal state in validateStatusTransition.
+      // Deliberately using prisma.order.update (not updateStatus) because
+      // validateStatusTransition rejects REFUNDED -> CANCELLED as an invalid
+      // terminal-state transition. For cancel-with-refund, REFUNDED is an
+      // intermediate state written by createRefund, and CANCELLED is the
+      // semantically correct final state (matches admin revenue metrics'
+      // "status != CANCELLED" filter). The state machine does not currently
+      // model cancel-with-refund as a first-class flow; this bypass is
+      // intentional and documented as known gap for post-launch cleanup.
       await this.prisma.order.update({
         where: { id },
         data: { status: OrderStatus.CANCELLED },
