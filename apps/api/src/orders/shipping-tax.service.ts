@@ -416,26 +416,35 @@ export class ShippingTaxService {
       }
     }
 
-    // TIER 4: DHL Express — Belgium (BE) shipments only
+    // TIER 4: DHL Express — worldwide via Express Worldwide Export (BE origin) or Third Country service (all other origins)
     const dhlEnabled = await getSetting('dhl_enabled');
     const dhlKey = process.env.DHL_EXPRESS_API_KEY;
-    if (isEnabled(dhlEnabled?.value) && dhlKey && sellerCountry === 'BE') {
-      this.logger.log('[DHL] Seller country is BE — attempting to fetch rates...');
+    if (isEnabled(dhlEnabled?.value) && dhlKey) {
+      this.logger.log(
+        `[DHL] Seller country is ${sellerCountry || 'unknown'} — attempting to fetch rates...`
+      );
       try {
-        // Get origin address for DHL
-        let originCountry = 'US';
-        let originPostalCode = '10001';
-        let originCity = 'New York';
+        // Use seller's actual origin address; fall back to platform settings if unavailable
+        let originCountry = sellerCountry || 'BE';
+        let originPostalCode = '';
+        let originCity = '';
 
-        try {
-          const countrySetting = await this.settingsService.getSetting('origin_country');
-          const postalSetting = await this.settingsService.getSetting('origin_postal_code');
-          const citySetting = await this.settingsService.getSetting('origin_city');
-          originCountry = String(countrySetting.value) || 'US';
-          originPostalCode = String(postalSetting.value) || '10001';
-          originCity = String(citySetting.value) || 'New York';
-        } catch (error) {
-          this.logger.warn('Failed to get origin address from settings, using defaults');
+        const sellerAddr = await this.getSellerOriginAddress(itemsForShipping);
+        if (sellerAddr) {
+          originCountry = sellerAddr.country || originCountry;
+          originPostalCode = sellerAddr.zip || '';
+          originCity = sellerAddr.city || '';
+        } else {
+          try {
+            const postalSetting = await this.settingsService.getSetting('origin_postal_code');
+            const citySetting = await this.settingsService.getSetting('origin_city');
+            originPostalCode = String(postalSetting.value) || '';
+            originCity = String(citySetting.value) || '';
+          } catch (error) {
+            this.logger.warn(
+              '[DHL] Failed to get origin address from settings, using empty defaults'
+            );
+          }
         }
 
         const dhlRates = await this.dhlRatesService.getSimplifiedRates({
@@ -473,17 +482,13 @@ export class ShippingTaxService {
     } else {
       if (!dhlKey) {
         this.logger.log('[DHL] Not configured (missing DHL_EXPRESS_API_KEY), skipping...');
-      } else if (sellerCountry !== 'BE') {
-        this.logger.log(
-          `[DHL] Skipping — only available for BE sellers (seller is ${sellerCountry || 'unknown'})`
-        );
       } else {
         this.logger.log('[DHL] Disabled, skipping to next provider...');
       }
     }
 
-    // TIER 3 (LEGACY): Try DHL API if mode is 'dhl_api' or 'hybrid' — Belgium (BE) only
-    if ((shippingMode === 'dhl_api' || shippingMode === 'hybrid') && sellerCountry === 'BE') {
+    // TIER 3 (LEGACY): Try DHL API if mode is 'dhl_api' or 'hybrid' — worldwide via Third Country service
+    if (shippingMode === 'dhl_api' || shippingMode === 'hybrid') {
       try {
         const dhlOptions = await this.calculateDhlShippingOptions(
           address,
