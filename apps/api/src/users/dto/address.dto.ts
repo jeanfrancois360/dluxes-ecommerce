@@ -25,6 +25,12 @@ export class CreateAddressDto {
   @Matches(/^[^\n\r]+$/, { message: 'Last name cannot contain line breaks' })
   lastName: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Transform(({ value }) => value?.toString().trim().replace(/\s+/g, ' '))
+  company?: string;
+
   @IsString()
   @MinLength(1)
   @MaxLength(35, {
@@ -98,6 +104,12 @@ export class UpdateAddressDto {
   @Transform(({ value }) => value?.toString().trim().replace(/\s+/g, ' '))
   @Matches(/^[^\n\r]+$/, { message: 'Last name cannot contain line breaks' })
   lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Transform(({ value }) => value?.toString().trim().replace(/\s+/g, ' '))
+  company?: string;
 
   @IsOptional()
   @IsString()

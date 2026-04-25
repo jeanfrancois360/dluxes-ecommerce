@@ -16,9 +16,7 @@ export const envValidationSchema = Joi.object({
     .default('development')
     .description('Application environment'),
 
-  PORT: Joi.number()
-    .default(4000)
-    .description('API server port'),
+  PORT: Joi.number().default(4000).description('API server port'),
 
   // ============================================================================
   // Frontend Configuration
@@ -31,9 +29,7 @@ export const envValidationSchema = Joi.object({
   // ============================================================================
   // Database Configuration
   // ============================================================================
-  DATABASE_URL: Joi.string()
-    .required()
-    .description('PostgreSQL connection string'),
+  DATABASE_URL: Joi.string().required().description('PostgreSQL connection string'),
 
   // ============================================================================
   // JWT Authentication
@@ -43,35 +39,25 @@ export const envValidationSchema = Joi.object({
     .required()
     .description('JWT signing secret (minimum 32 characters for security)'),
 
-  JWT_EXPIRES_IN: Joi.string()
-    .default('7d')
-    .description('JWT token expiration time'),
+  JWT_EXPIRES_IN: Joi.string().default('7d').description('JWT token expiration time'),
 
   // ============================================================================
   // Email Service (Resend)
   // ============================================================================
-  RESEND_API_KEY: Joi.string()
-    .required()
-    .description('Resend API key for sending emails'),
+  RESEND_API_KEY: Joi.string().required().description('Resend API key for sending emails'),
 
   EMAIL_FROM: Joi.string()
     .default('noreply@nextpik.com')
     .description('Email sender address (can include name: "Name <email@domain.com>")'),
 
-  EMAIL_FROM_NAME: Joi.string()
-    .default('NextPik')
-    .description('Email sender name'),
+  EMAIL_FROM_NAME: Joi.string().default('NextPik').description('Email sender name'),
 
   // ============================================================================
   // Google OAuth
   // ============================================================================
-  GOOGLE_CLIENT_ID: Joi.string()
-    .required()
-    .description('Google OAuth client ID'),
+  GOOGLE_CLIENT_ID: Joi.string().required().description('Google OAuth client ID'),
 
-  GOOGLE_CLIENT_SECRET: Joi.string()
-    .required()
-    .description('Google OAuth client secret'),
+  GOOGLE_CLIENT_SECRET: Joi.string().required().description('Google OAuth client secret'),
 
   GOOGLE_CALLBACK_URL: Joi.string()
     .uri()
@@ -81,33 +67,20 @@ export const envValidationSchema = Joi.object({
   // ============================================================================
   // Stripe Payment Integration
   // ============================================================================
-  STRIPE_SECRET_KEY: Joi.string()
-    .required()
-    .description('Stripe secret key'),
+  STRIPE_SECRET_KEY: Joi.string().required().description('Stripe secret key'),
 
-  STRIPE_PUBLISHABLE_KEY: Joi.string()
-    .required()
-    .description('Stripe publishable key'),
+  STRIPE_PUBLISHABLE_KEY: Joi.string().required().description('Stripe publishable key'),
 
-  STRIPE_WEBHOOK_SECRET: Joi.string()
-    .required()
-    .description('Stripe webhook signing secret'),
+  STRIPE_WEBHOOK_SECRET: Joi.string().required().description('Stripe webhook signing secret'),
 
   // ============================================================================
   // Redis (Caching & Sessions)
   // ============================================================================
-  REDIS_HOST: Joi.string()
-    .default('localhost')
-    .description('Redis server host'),
+  REDIS_HOST: Joi.string().default('localhost').description('Redis server host'),
 
-  REDIS_PORT: Joi.number()
-    .default(6379)
-    .description('Redis server port'),
+  REDIS_PORT: Joi.number().default(6379).description('Redis server port'),
 
-  REDIS_PASSWORD: Joi.string()
-    .allow('')
-    .optional()
-    .description('Redis password (optional)'),
+  REDIS_PASSWORD: Joi.string().allow('').optional().description('Redis password (optional)'),
 
   // ============================================================================
   // Meilisearch (Search Engine)
@@ -136,20 +109,14 @@ export const envValidationSchema = Joi.object({
     .optional()
     .description('Supabase anon/public key (optional if not using file storage)'),
 
-  SUPABASE_BUCKET_NAME: Joi.string()
-    .default('uploads')
-    .description('Supabase storage bucket name'),
+  SUPABASE_BUCKET_NAME: Joi.string().default('uploads').description('Supabase storage bucket name'),
 
   // ============================================================================
   // Security & Rate Limiting
   // ============================================================================
-  THROTTLE_TTL: Joi.number()
-    .default(60)
-    .description('Rate limit time window in seconds'),
+  THROTTLE_TTL: Joi.number().default(60).description('Rate limit time window in seconds'),
 
-  THROTTLE_LIMIT: Joi.number()
-    .default(10)
-    .description('Maximum requests per time window'),
+  THROTTLE_LIMIT: Joi.number().default(10).description('Maximum requests per time window'),
 
   // ============================================================================
   // Session Configuration
@@ -186,10 +153,7 @@ export const envValidationSchema = Joi.object({
   // ============================================================================
   // Optional: PayPal Configuration
   // ============================================================================
-  PAYPAL_CLIENT_ID: Joi.string()
-    .allow('')
-    .optional()
-    .description('PayPal client ID (optional)'),
+  PAYPAL_CLIENT_ID: Joi.string().allow('').optional().description('PayPal client ID (optional)'),
 
   PAYPAL_CLIENT_SECRET: Joi.string()
     .allow('')
@@ -200,6 +164,32 @@ export const envValidationSchema = Joi.object({
     .valid('sandbox', 'live')
     .default('sandbox')
     .description('PayPal environment mode'),
+
+  // ============================================================================
+  // Shipping Webhook Secrets
+  // Optional — but a startup warning is emitted if any are missing so that
+  // insecure webhook endpoints are never silently deployed to production.
+  // ============================================================================
+  EASYPOST_WEBHOOK_SECRET: Joi.string()
+    .allow('')
+    .optional()
+    .description(
+      'EasyPost webhook signing secret. If absent, HMAC verification is skipped and any caller can spoof tracking events.'
+    ),
+
+  SENDCLOUD_WEBHOOK_SECRET: Joi.string()
+    .allow('')
+    .optional()
+    .description(
+      'SendCloud webhook signing secret. If absent, HMAC verification is skipped and any caller can spoof tracking events.'
+    ),
+
+  EASYSHIP_WEBHOOK_SECRET: Joi.string()
+    .allow('')
+    .optional()
+    .description(
+      'EasyShip webhook signing secret. If absent, HMAC verification is skipped and any caller can spoof tracking events.'
+    ),
 });
 
 /**

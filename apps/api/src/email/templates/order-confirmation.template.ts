@@ -1,3 +1,5 @@
+import { baseEmailTemplate } from './base.template';
+
 interface OrderItem {
   name: string;
   quantity: number;
@@ -23,160 +25,134 @@ interface OrderConfirmationData {
   };
   orderUrl: string;
   trackingUrl?: string;
+  frontendUrl?: string;
 }
 
 export function orderConfirmationTemplate(data: OrderConfirmationData): string {
-  const currencySymbol = data.currency === 'USD' ? '$' : data.currency;
+  const fmt = (n: number) => n.toFixed(2);
+  const sym = data.currency === 'USD' ? '$' : data.currency + ' ';
+
   const itemsHtml = data.items
     .map(
       (item) => `
     <tr>
-      <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5;">
-        <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">${item.name}</p>
-        <p style="color: #737373; font-size: 13px; margin: 0;">Quantity: ${item.quantity}</p>
+      <td style="padding: 12px 0; border-bottom: 1px solid #E5E7EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+        <p style="color: #0A0A0A; font-size: 14px; font-weight: 600; margin: 0 0 3px 0;">${item.name}</p>
+        <p style="color: #6B7280; font-size: 13px; margin: 0;">Qty: ${item.quantity}</p>
       </td>
-      <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; text-align: right;">
-        <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0;">${currencySymbol}${(item.price * item.quantity).toFixed(2)}</p>
-        <p style="color: #737373; font-size: 12px; margin: 4px 0 0 0;">${currencySymbol}${item.price.toFixed(2)} each</p>
+      <td style="padding: 12px 0; border-bottom: 1px solid #E5E7EB; text-align: right; vertical-align: top; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+        <p style="color: #0A0A0A; font-size: 14px; font-weight: 600; margin: 0;">${sym}${fmt(item.price * item.quantity)}</p>
+        ${item.quantity > 1 ? `<p style="color: #9CA3AF; font-size: 12px; margin: 3px 0 0 0;">${sym}${fmt(item.price)} each</p>` : ''}
       </td>
-    </tr>
-  `
+    </tr>`
     )
     .join('');
 
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Order Confirmed - NextPik</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #ffffff;">
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #000000; padding: 28px 32px; text-align: center; border-bottom: 2px solid #CBB57B;">
-              <span style="color: #ffffff; font-size: 18px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;">NextPik</span>
-            </td>
-          </tr>
+  const content = `
+    <h1 style="color: #0A0A0A; font-size: 24px; font-weight: 700; margin: 0 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.3px;">
+      Order confirmed
+    </h1>
 
-          <!-- Content -->
-          <tr>
-            <td style="padding: 40px 32px; background-color: #ffffff;">
-              <div style="text-align: center;">
-                <div style="width: 56px; height: 56px; background-color: #000000; border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; border: 2px solid #CBB57B;">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                </div>
-              </div>
+    <p style="color: #4B5563; font-size: 15px; line-height: 1.65; margin: 0 0 28px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Hello ${data.customerName}, we've received your order and it's being prepared.
+    </p>
 
-              <h2 style="color: #000000; font-size: 22px; font-weight: 600; margin-bottom: 16px; text-align: center;">
-                Order Confirmed
-              </h2>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 28px 0;">
+      <tr>
+        <td style="background-color: #F9FAFB; border-left: 3px solid #CBB57B; padding: 14px 18px;">
+          <p style="color: #9CA3AF; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin: 0 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Order number</p>
+          <p style="color: #0A0A0A; font-size: 18px; font-weight: 700; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">#${data.orderNumber}</p>
+        </td>
+      </tr>
+    </table>
 
-              <p style="color: #525252; font-size: 15px; line-height: 1.6; margin-bottom: 32px; text-align: center;">
-                Hello ${data.customerName}, we've received your order and are getting it ready.
-              </p>
+    <!-- Items -->
+    <p style="color: #0A0A0A; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin: 0 0 2px 0; padding-bottom: 10px; border-bottom: 2px solid #0A0A0A; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Items
+    </p>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
+      ${itemsHtml}
+    </table>
 
-              <!-- Order Number -->
-              <div style="background-color: #FAFAFA; border-left: 3px solid #CBB57B; padding: 16px 20px; margin-bottom: 32px;">
-                <p style="color: #737373; font-size: 12px; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 1px;">Order Number</p>
-                <p style="color: #000000; font-size: 18px; font-weight: 600; margin: 0;">#${data.orderNumber}</p>
-              </div>
+    <!-- Totals -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 28px 0; background-color: #F9FAFB; border: 1px solid #E5E7EB;">
+      <tr>
+        <td style="padding: 20px 20px 0;">
+          <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+            <tr>
+              <td style="padding: 6px 0; color: #6B7280; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Subtotal</td>
+              <td style="padding: 6px 0; text-align: right; color: #0A0A0A; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${sym}${fmt(data.subtotal)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #6B7280; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Shipping</td>
+              <td style="padding: 6px 0; text-align: right; color: #0A0A0A; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${sym}${fmt(data.shipping)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0 14px 0; color: #6B7280; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Tax</td>
+              <td style="padding: 6px 0 14px 0; text-align: right; color: #0A0A0A; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${sym}${fmt(data.tax)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 14px 0; color: #0A0A0A; font-size: 15px; font-weight: 700; border-top: 1px solid #E5E7EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Total</td>
+              <td style="padding: 14px 0; text-align: right; color: #0A0A0A; font-size: 18px; font-weight: 700; border-top: 1px solid #E5E7EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${sym}${fmt(data.total)}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-              <!-- Order Items -->
-              <p style="color: #000000; font-size: 16px; font-weight: 600; margin: 0 0 12px 0; padding-bottom: 8px; border-bottom: 2px solid #E5E5E5;">
-                Order Items
-              </p>
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
-                ${itemsHtml}
-              </table>
+    <!-- Shipping address -->
+    <p style="color: #0A0A0A; font-size: 13px; font-weight: 600; margin: 0 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Shipping address
+    </p>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 28px 0; background-color: #F9FAFB; border: 1px solid #E5E7EB;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="color: #0A0A0A; font-size: 14px; font-weight: 600; margin: 0 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${data.customerName}</p>
+          <p style="color: #4B5563; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            ${data.shippingAddress.street}<br />
+            ${data.shippingAddress.city}, ${data.shippingAddress.state} ${data.shippingAddress.zipCode}<br />
+            ${data.shippingAddress.country}
+          </p>
+        </td>
+      </tr>
+    </table>
 
-              <!-- Order Summary -->
-              <div style="background-color: #FAFAFA; padding: 20px; margin-bottom: 24px; border: 1px solid #E5E5E5;">
-                <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 16px 0;">Order Summary</p>
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td style="padding: 6px 0; color: #737373; font-size: 14px;">Subtotal</td>
-                    <td style="padding: 6px 0; text-align: right; color: #000000; font-size: 14px;">${currencySymbol}${data.subtotal.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 6px 0; color: #737373; font-size: 14px;">Shipping</td>
-                    <td style="padding: 6px 0; text-align: right; color: #000000; font-size: 14px;">${currencySymbol}${data.shipping.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 6px 0; color: #737373; font-size: 14px;">Tax</td>
-                    <td style="padding: 6px 0; text-align: right; color: #000000; font-size: 14px;">${currencySymbol}${data.tax.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 12px 0 0 0; color: #000000; font-size: 16px; font-weight: 600; border-top: 1px solid #E5E5E5;">Total</td>
-                    <td style="padding: 12px 0 0 0; text-align: right; color: #CBB57B; font-size: 20px; font-weight: 700; border-top: 1px solid #E5E5E5;">${currencySymbol}${data.total.toFixed(2)}</td>
-                  </tr>
-                </table>
-              </div>
+    <!-- CTA -->
+    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 28px 0;">
+      <tr>
+        <td style="background-color: #0A0A0A; padding: 13px 28px;">
+          <a href="${data.orderUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
+            View Order
+          </a>
+        </td>
+      </tr>
+    </table>
 
-              <!-- Shipping Address -->
-              <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">Shipping Address</p>
-              <div style="background-color: #FAFAFA; padding: 16px; margin-bottom: 24px; border: 1px solid #E5E5E5;">
-                <p style="color: #000000; font-size: 14px; font-weight: 500; margin: 0 0 4px 0;">${data.customerName}</p>
-                <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0;">
-                  ${data.shippingAddress.street}<br/>
-                  ${data.shippingAddress.city}, ${data.shippingAddress.state} ${data.shippingAddress.zipCode}<br/>
-                  ${data.shippingAddress.country}
-                </p>
-              </div>
+    ${
+      data.trackingUrl
+        ? `
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 20px 0;">
+      <tr>
+        <td style="background-color: #F9FAFB; border-left: 3px solid #CBB57B; padding: 14px 18px;">
+          <p style="color: #374151; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            <strong style="color: #0A0A0A;">Track your shipment:</strong> <a href="${data.trackingUrl}" style="color: #0A0A0A; text-decoration: underline;">View tracking</a>
+          </p>
+        </td>
+      </tr>
+    </table>
+    `
+        : ''
+    }
 
-              <!-- CTA -->
-              <div style="text-align: center; margin: 32px 0;">
-                <a href="${data.orderUrl}"
-                   style="display: inline-block; background-color: #000000; color: #FFFFFF; padding: 14px 40px; text-decoration: none; font-weight: 600; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;">
-                  View Order Details
-                </a>
-              </div>
-
-              ${
-                data.trackingUrl
-                  ? `
-              <div style="background-color: #FFFFFF; border-left: 3px solid #CBB57B; padding: 16px 20px; margin-top: 24px;">
-                <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0;">
-                  <strong style="color: #000000;">Track Your Package:</strong><br/>
-                  <a href="${data.trackingUrl}" style="color: #000000; text-decoration: underline;">Click here to track your shipment</a>
-                </p>
-              </div>
-              `
-                  : ''
-              }
-
-              <!-- Support -->
-              <div style="background-color: #FAFAFA; border-left: 3px solid #E5E5E5; padding: 16px 20px; margin-top: 24px;">
-                <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0;">
-                  <strong style="color: #000000;">Need Help?</strong> If you have any questions about your order, please contact our support team.
-                </p>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #fafafa; padding: 24px 32px; text-align: center; border-top: 1px solid #e5e5e5;">
-              <p style="color: #737373; font-size: 12px; margin: 0 0 8px 0;">
-                &copy; ${new Date().getFullYear()} NextPik. All rights reserved.
-              </p>
-              <p style="color: #A3A3A3; font-size: 11px; margin: 0;">
-                You're receiving this email because you placed an order on our website.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
+    <p style="color: #9CA3AF; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Questions about your order? Visit our <a href="${data.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000'}/contact" style="color: #4B5563; text-decoration: underline;">Help Center</a>.
+    </p>
   `;
+
+  return baseEmailTemplate(content, {
+    preheader: `Order #${data.orderNumber} confirmed — ${sym}${fmt(data.total)}`,
+    frontendUrl: data.frontendUrl,
+    showUnsubscribe: false,
+    footerNote: 'You received this email because you placed an order on NextPik.',
+  });
 }

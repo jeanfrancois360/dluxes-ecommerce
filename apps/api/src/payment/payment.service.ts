@@ -5,14 +5,17 @@ import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { CurrencyService } from '../currency/currency.service';
 import { StripeSubscriptionService } from '../subscription/stripe-subscription.service';
+import { ReferralService } from '../referral/referral.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import {
   PaymentStatus,
   PaymentTransactionStatus,
   PaymentMethod,
   WebhookStatus,
+  OrderStatus,
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { assertOrderAccess, AuthenticatedUser } from '../common/authorization/order-access.helper';
 
 @Injectable()
 export class PaymentService {
@@ -77,7 +80,8 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
     private readonly currencyService: CurrencyService,
-    @Optional() private readonly stripeSubscriptionService?: StripeSubscriptionService
+    @Optional() private readonly stripeSubscriptionService?: StripeSubscriptionService,
+    @Optional() private readonly referralService?: ReferralService
   ) {
     // Initialize Stripe on first use (lazy loading)
     this.logger.log('PaymentService initialized - Stripe will be configured on first use');
@@ -427,22 +431,41 @@ export class PaymentService {
   /**
    * Create a Stripe Payment Intent with multi-currency support
    */
-  async createPaymentIntent(dto: CreatePaymentIntentDto, userId: string) {
+  async createPaymentIntent(dto: CreatePaymentIntentDto, user: AuthenticatedUser) {
     if (!dto.orderId) {
       throw new BadRequestException('Order ID is required');
     }
+
+    // Verify the caller owns this order before doing anything else.
+    // 'buyer' mode: only the order's buyer (or admin) may create a payment intent for it.
+    await assertOrderAccess(this.prisma, dto.orderId, user, 'buyer');
+
+    // Derive userId from the verified user object (id is primary; userId is backward-compat alias).
+    const userId = user.id ?? user.userId;
 
     try {
       // Get Stripe client (initializes if needed)
       const stripe = await this.getStripeClient();
 
-      // Verify order exists
+      // Verify order exists (also gives us currency and total as source of truth)
       const order = await this.prisma.order.findUnique({
         where: { id: dto.orderId },
       });
 
       if (!order) {
         throw new BadRequestException('Order not found');
+      }
+
+      // Belt-and-suspenders: verify amount matches order total.
+      // dto.amount is still accepted for backward compatibility but the order record
+      // is authoritative. Any significant mismatch is rejected.
+      const expectedAmount = Number(order.total);
+      const sentAmount = Number(dto.amount);
+      const tolerance = 0.01; // Allow 1 cent rounding difference
+      if (Math.abs(expectedAmount - sentAmount) > tolerance) {
+        throw new BadRequestException(
+          `Amount mismatch: expected ${expectedAmount}, received ${sentAmount}`
+        );
       }
 
       // Check if a payment intent already exists for this order
@@ -502,13 +525,10 @@ export class PaymentService {
       // Get Stripe config for capture method and default currency
       const config = this.stripeConfig || (await this.settingsService.getStripeConfig());
 
-      // Determine currency to use (priority: dto currency > default currency)
-      let paymentCurrency: string;
-      if (dto.currency) {
-        paymentCurrency = dto.currency.toUpperCase();
-      } else {
-        paymentCurrency = await this.getDefaultPaymentCurrency();
-      }
+      // Currency source of truth is the order record, not the client-supplied dto.currency.
+      // dto.currency is accepted in the DTO for backward compatibility but deliberately ignored here.
+      // Per platform rule: all price/currency calculations must originate from the backend.
+      const paymentCurrency = order.currency.toUpperCase();
 
       // Validate currency is supported
       await this.validateCurrency(paymentCurrency);
@@ -1218,22 +1238,39 @@ export class PaymentService {
 
       this.logger.log(`Order ${orderId} payment confirmed (transaction: ${transaction.id})`);
 
+      // Referral System (v2.11.0) - Check buyer qualification (NON-BLOCKING)
+      if (this.referralService) {
+        this.referralService.checkBuyerQualification(orderId).catch((err) => {
+          this.logger.warn(
+            `Referral buyer qualification check failed for order ${orderId}: ${err.message}`
+          );
+        });
+      }
+
       // Calculate and create commissions
-      // Note: This would typically be done in a queue/background job
-      // For now, we'll trigger it directly but wrapped in try-catch
-      try {
-        const { CommissionService } = await import('../commission/commission.service');
-        const { EnhancedCommissionService } =
-          await import('../commission/enhanced-commission.service');
-        const commissionService = new CommissionService(this.prisma, this.settingsService);
-        await commissionService.calculateCommissionForTransaction(transaction.id);
-        this.logger.log(`Commissions calculated for transaction ${transaction.id}`);
-      } catch (commissionError) {
-        this.logger.error(
-          `Error calculating commissions for transaction ${transaction.id}:`,
-          commissionError
+      // Idempotency guard: skip if commissions already exist for this transaction
+      // (prevents duplicates when both amount_capturable_updated and succeeded fire)
+      const existingCommissionCount = await this.prisma.commission.count({
+        where: { transactionId: transaction.id },
+      });
+
+      if (existingCommissionCount > 0) {
+        this.logger.log(
+          `Commissions already exist for transaction ${transaction.id} (count: ${existingCommissionCount}). Skipping.`
         );
-        // Don't fail the payment if commission calculation fails
+      } else {
+        try {
+          const { CommissionService } = await import('../commission/commission.service');
+          const commissionService = new CommissionService(this.prisma, this.settingsService);
+          await commissionService.calculateCommissionForTransaction(transaction.id);
+          this.logger.log(`Commissions calculated for transaction ${transaction.id}`);
+        } catch (commissionError) {
+          this.logger.error(
+            `Error calculating commissions for transaction ${transaction.id}:`,
+            commissionError
+          );
+          // Don't fail the payment if commission calculation fails
+        }
       }
 
       // Auto-submit Gelato POD items (per-seller basis)
@@ -1285,120 +1322,130 @@ export class PaymentService {
       }
 
       if (escrowEnabled && !immediatePayoutEnabled) {
-        try {
-          const order = await this.prisma.order.findUnique({
-            where: { id: orderId },
-            include: {
-              items: {
-                include: {
-                  product: {
-                    include: {
-                      store: true,
+        // Idempotency guard: skip if escrow already exists for this order
+        const existingEscrowCount = await this.prisma.escrowTransaction.count({
+          where: { orderId },
+        });
+
+        if (existingEscrowCount > 0) {
+          this.logger.log(
+            `Escrow already exists for order ${orderId} (count: ${existingEscrowCount}). Skipping.`
+          );
+        } else
+          try {
+            const order = await this.prisma.order.findUnique({
+              where: { id: orderId },
+              include: {
+                items: {
+                  include: {
+                    product: {
+                      include: {
+                        store: true,
+                      },
                     },
                   },
                 },
               },
-            },
-          });
-
-          if (order && order.items.length > 0) {
-            // For multi-vendor orders, create escrow per seller
-            const sellerOrders = new Map<string, any>();
-
-            for (const item of order.items) {
-              if (item.product.store) {
-                const sellerId = item.product.store.userId;
-                if (!sellerOrders.has(sellerId)) {
-                  sellerOrders.set(sellerId, {
-                    sellerId,
-                    storeId: item.product.storeId!,
-                    totalAmount: 0,
-                    platformFee: 0,
-                  });
-                }
-                const sellerOrder = sellerOrders.get(sellerId)!;
-                sellerOrder.totalAmount += Number(item.total);
-              }
-            }
-
-            // Calculate platform fee from commissions
-            const commissions = await this.prisma.commission.findMany({
-              where: { transactionId: transaction.id },
             });
 
-            const totalPlatformFee = commissions.reduce(
-              (sum, c) => sum + Number(c.commissionAmount),
-              0
-            );
-
-            // Create escrow transaction with hold period from settings
-            if (sellerOrders.size === 1) {
-              // Single seller order
-              const sellerOrder = Array.from(sellerOrders.values())[0];
-              const { EscrowService } = await import('../escrow/escrow.service');
-              const escrowService = new EscrowService(this.prisma, this.settingsService);
-
-              await escrowService.createEscrowTransaction({
-                orderId,
-                paymentTransactionId: transaction.id,
-                sellerId: sellerOrder.sellerId,
-                storeId: sellerOrder.storeId,
-                totalAmount: Number(transaction.amount),
-                platformFee: totalPlatformFee,
-                currency: transaction.currency,
-                holdPeriodDays, // Use hold period from system settings
-              });
-
-              this.logger.log(
-                `Escrow created for order ${orderId}: ${transaction.amount} ${transaction.currency} (platform fee: ${totalPlatformFee}, hold period: ${holdPeriodDays} days)`
-              );
-            } else {
-              // Multi-vendor order - create escrow with split allocations
-              const { EscrowService } = await import('../escrow/escrow.service');
-              const escrowService = new EscrowService(this.prisma, this.settingsService);
-
-              // Build split items with commission data
-              const splitItems = [];
+            if (order && order.items.length > 0) {
+              // For multi-vendor orders, create escrow per seller
+              const sellerOrders = new Map<string, any>();
 
               for (const item of order.items) {
                 if (item.product.store) {
-                  // Find commission for this specific item
-                  const itemCommission = commissions.find((c) => c.orderItemId === item.id);
-
-                  splitItems.push({
-                    orderItemId: item.id,
-                    sellerId: item.product.store.userId,
-                    storeId: item.product.storeId!,
-                    amount: Number(item.total),
-                    platformFee: itemCommission ? Number(itemCommission.commissionAmount) : 0,
-                  });
+                  const sellerId = item.product.store.userId;
+                  if (!sellerOrders.has(sellerId)) {
+                    sellerOrders.set(sellerId, {
+                      sellerId,
+                      storeId: item.product.storeId!,
+                      totalAmount: 0,
+                      platformFee: 0,
+                    });
+                  }
+                  const sellerOrder = sellerOrders.get(sellerId)!;
+                  sellerOrder.totalAmount += Number(item.total);
                 }
               }
 
-              if (splitItems.length > 0) {
-                await escrowService.createEscrowWithSplits({
+              // Calculate platform fee from commissions
+              const commissions = await this.prisma.commission.findMany({
+                where: { transactionId: transaction.id },
+              });
+
+              const totalPlatformFee = commissions.reduce(
+                (sum, c) => sum + Number(c.commissionAmount),
+                0
+              );
+
+              // Create escrow transaction with hold period from settings
+              if (sellerOrders.size === 1) {
+                // Single seller order
+                const sellerOrder = Array.from(sellerOrders.values())[0];
+                const { EscrowService } = await import('../escrow/escrow.service');
+                const escrowService = new EscrowService(this.prisma, this.settingsService);
+
+                await escrowService.createEscrowTransaction({
                   orderId,
                   paymentTransactionId: transaction.id,
+                  sellerId: sellerOrder.sellerId,
+                  storeId: sellerOrder.storeId,
+                  totalAmount: Number(transaction.amount),
+                  platformFee: totalPlatformFee,
                   currency: transaction.currency,
-                  holdPeriodDays,
-                  items: splitItems,
+                  holdPeriodDays, // Use hold period from system settings
                 });
 
                 this.logger.log(
-                  `Multi-vendor escrow created for order ${orderId}: ${splitItems.length} sellers, ${sellerOrders.size} stores (hold period: ${holdPeriodDays} days)`
+                  `Escrow created for order ${orderId}: ${transaction.amount} ${transaction.currency} (platform fee: ${totalPlatformFee}, hold period: ${holdPeriodDays} days)`
                 );
               } else {
-                this.logger.warn(`No split items found for multi-vendor order ${orderId}`);
+                // Multi-vendor order - create escrow with split allocations
+                const { EscrowService } = await import('../escrow/escrow.service');
+                const escrowService = new EscrowService(this.prisma, this.settingsService);
+
+                // Build split items with commission data
+                const splitItems = [];
+
+                for (const item of order.items) {
+                  if (item.product.store) {
+                    // Find commission for this specific item
+                    const itemCommission = commissions.find((c) => c.orderItemId === item.id);
+
+                    splitItems.push({
+                      orderItemId: item.id,
+                      sellerId: item.product.store.userId,
+                      storeId: item.product.storeId!,
+                      amount: Number(item.total),
+                      platformFee: itemCommission ? Number(itemCommission.commissionAmount) : 0,
+                    });
+                  }
+                }
+
+                if (splitItems.length > 0) {
+                  await escrowService.createEscrowWithSplits({
+                    orderId,
+                    paymentTransactionId: transaction.id,
+                    currency: transaction.currency,
+                    holdPeriodDays,
+                    items: splitItems,
+                  });
+
+                  this.logger.log(
+                    `Multi-vendor escrow created for order ${orderId}: ${splitItems.length} sellers, ${sellerOrders.size} stores (hold period: ${holdPeriodDays} days)`
+                  );
+                } else {
+                  this.logger.warn(`No split items found for multi-vendor order ${orderId}`);
+                }
               }
             }
+          } catch (escrowError) {
+            this.logger.error(
+              `Error creating escrow for transaction ${transaction.id}:`,
+              escrowError
+            );
+            // Don't fail the payment if escrow creation fails
           }
-        } catch (escrowError) {
-          this.logger.error(
-            `Error creating escrow for transaction ${transaction.id}:`,
-            escrowError
-          );
-          // Don't fail the payment if escrow creation fails
-        }
       } else if (immediatePayoutEnabled) {
         this.logger.warn(
           `IMMEDIATE PAYOUT MODE ENABLED: Funds will be paid to seller immediately for order ${orderId}. This should only be used for testing or trusted sellers!`
@@ -1459,6 +1506,105 @@ export class PaymentService {
           this.logger.log(
             `Invoice email sent for order ${order.orderNumber} to ${order.user.email}`
           );
+
+          // Send seller notifications
+          try {
+            // Group items by seller
+            const sellerItems = new Map<string, any[]>();
+            for (const item of order.items) {
+              if (item.product?.store) {
+                const sellerId = item.product.store.userId;
+                if (!sellerItems.has(sellerId)) {
+                  sellerItems.set(sellerId, []);
+                }
+                sellerItems.get(sellerId)!.push({
+                  ...item,
+                  store: item.product.store,
+                });
+              }
+            }
+
+            // Send notification to each seller
+            for (const [sellerId, items] of sellerItems) {
+              try {
+                const seller = await this.prisma.user.findUnique({
+                  where: { id: sellerId },
+                  select: { email: true, firstName: true, lastName: true },
+                });
+
+                if (!seller) continue;
+
+                const store = items[0].store;
+                const sellerSubtotal = items.reduce((sum, item) => sum + Number(item.total), 0);
+
+                // Calculate seller's commission (approximation - actual commission is per-item)
+                const commissions = await this.prisma.commission.findMany({
+                  where: {
+                    transactionId: transaction.id,
+                    sellerId,
+                  },
+                });
+
+                const totalCommission = commissions.reduce(
+                  (sum, c) => sum + Number(c.commissionAmount),
+                  0
+                );
+                const avgCommissionRate =
+                  commissions.length > 0
+                    ? commissions.reduce((sum, c) => sum + Number(c.ruleValue), 0) /
+                      commissions.length /
+                      100 // Convert percentage to decimal
+                    : 0;
+
+                await emailService.sendSellerOrderNotification(seller.email, {
+                  sellerName:
+                    `${seller.firstName || ''} ${seller.lastName || ''}`.trim() || 'Seller',
+                  storeName: store.name,
+                  orderNumber: order.orderNumber,
+                  customerName:
+                    `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() ||
+                    'Customer',
+                  items: items.map((item) => ({
+                    name: item.product.name,
+                    quantity: item.quantity,
+                    price: Number(item.price),
+                    image: item.product.heroImage,
+                    sku: item.product.sku,
+                  })),
+                  subtotal: sellerSubtotal,
+                  commission: totalCommission,
+                  commissionRate: avgCommissionRate,
+                  netPayout: sellerSubtotal - totalCommission,
+                  currency: order.currency,
+                  shippingAddress: {
+                    street: order.shippingAddress?.address1 || '',
+                    city: order.shippingAddress?.city || '',
+                    state: order.shippingAddress?.province || '',
+                    zipCode: order.shippingAddress?.postalCode || '',
+                    country: order.shippingAddress?.country || '',
+                  },
+                  orderId: order.id,
+                  sellerId,
+                });
+
+                this.logger.log(
+                  `Seller notification sent for order ${order.orderNumber} to ${seller.email}`
+                );
+              } catch (sellerEmailError) {
+                this.logger.error(
+                  `Failed to send seller notification to seller ${sellerId}:`,
+                  sellerEmailError
+                );
+                // Continue to next seller if one fails
+              }
+            }
+          } catch (sellerNotificationError) {
+            this.logger.error(
+              `Failed to process seller notifications for order ${orderId}:`,
+              sellerNotificationError
+            );
+            // Don't fail the payment if seller notification fails
+          }
         }
       } catch (emailError) {
         this.logger.error(`Failed to send invoice email for order ${orderId}:`, emailError);
@@ -1568,12 +1714,34 @@ export class PaymentService {
         },
       });
 
+      // Do not overwrite terminal CANCELLED status. When an order is cancelled
+      // via OrdersService.cancel() on a PAID order, createRefund() triggers a
+      // Stripe refund which fires charge.refunded ~0.5-2s later. Without this
+      // guard, the webhook would flip status=CANCELLED back to status=REFUNDED,
+      // incorrectly including the order in revenue metrics (admin dashboard
+      // filters on status != CANCELLED to count revenue).
+      //
+      // paymentStatus is still updated below — that transition (PAID -> REFUNDED)
+      // is correct regardless of whether the order was cancelled or not.
+      const isOrderCancelled = transaction.order.status === OrderStatus.CANCELLED;
+
+      if (isOrderCancelled) {
+        this.logger.log(
+          `handleRefund: preserving CANCELLED status for order ${transaction.orderId} (refund was triggered from cancel flow)`
+        );
+      }
+
       // Update order status
       await this.prisma.order.update({
         where: { id: transaction.orderId },
         data: {
           paymentStatus: isFullRefund ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED,
-          status: isFullRefund ? 'REFUNDED' : transaction.order.status,
+          // Preserve CANCELLED status; allow transition to REFUNDED for non-cancelled orders
+          status: isOrderCancelled
+            ? transaction.order.status // Keep CANCELLED
+            : isFullRefund
+              ? 'REFUNDED'
+              : transaction.order.status,
         },
       });
 
@@ -1587,6 +1755,20 @@ export class PaymentService {
         this.logger.error(
           `Error cancelling commissions for order ${transaction.orderId}:`,
           commissionError
+        );
+      }
+
+      // Update escrow status to REFUNDED
+      try {
+        await this.prisma.escrowTransaction.updateMany({
+          where: { orderId: transaction.orderId },
+          data: { status: 'REFUNDED' as any },
+        });
+        this.logger.log(`Escrow marked as REFUNDED for order ${transaction.orderId}`);
+      } catch (escrowError) {
+        this.logger.error(
+          `Error updating escrow status for order ${transaction.orderId}:`,
+          escrowError
         );
       }
 
@@ -2227,6 +2409,9 @@ export class PaymentService {
     }
 
     try {
+      // Ensure Stripe client is initialized before any Stripe API calls
+      const stripe = await this.getStripeClient();
+
       // Calculate refund amount (in cents for Stripe)
       const maxRefundable = Number(transaction.amount) - Number(transaction.refundedAmount || 0);
       const refundAmount = amount ? Math.min(amount, maxRefundable) : maxRefundable;
@@ -2236,8 +2421,80 @@ export class PaymentService {
         throw new BadRequestException('Invalid refund amount');
       }
 
-      // Create Stripe refund
-      const refund = await this.stripe.refunds.create({
+      // Check if the PaymentIntent is in requires_capture state (uncaptured authorization).
+      // Stripe does not allow refunding a charge that was never captured — instead, the
+      // authorization must be cancelled via paymentIntents.cancel().
+      const paymentIntent = await stripe.paymentIntents.retrieve(transaction.stripePaymentIntentId);
+
+      if (paymentIntent.status === 'requires_capture') {
+        // Cancel the uncaptured authorization — this reverses the hold on the customer's card
+        await stripe.paymentIntents.cancel(transaction.stripePaymentIntentId);
+        this.logger.log(
+          `PaymentIntent ${transaction.stripePaymentIntentId} cancelled (was requires_capture) for order ${orderId}`
+        );
+
+        const isFullRefund = true; // Cancellation always releases the full authorization
+
+        // Update payment transaction
+        await this.prisma.paymentTransaction.update({
+          where: { id: transaction.id },
+          data: {
+            status: PaymentTransactionStatus.REFUNDED,
+            refundedAmount: new Decimal(maxRefundable),
+            refundedAt: new Date(),
+          },
+        });
+
+        // Update order status
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: {
+            paymentStatus: PaymentStatus.REFUNDED,
+            status: 'REFUNDED' as any,
+          },
+        });
+
+        // Update escrow status
+        await this.prisma.escrowTransaction.updateMany({
+          where: { orderId },
+          data: { status: 'REFUNDED' as any },
+        });
+
+        // Cancel commissions
+        try {
+          const { CommissionService } = await import('../commission/commission.service');
+          const commissionService = new CommissionService(this.prisma, this.settingsService);
+          await commissionService.cancelCommissionsForOrder(orderId);
+        } catch (commissionError) {
+          this.logger.error(`Error cancelling commissions for order ${orderId}:`, commissionError);
+        }
+
+        // Create timeline entry
+        await this.prisma.orderTimeline.create({
+          data: {
+            orderId,
+            status: 'REFUNDED' as any,
+            title: 'Authorization Cancelled',
+            description: `Payment authorization of $${maxRefundable.toFixed(2)} has been cancelled.`,
+            icon: 'undo',
+          },
+        });
+
+        this.logger.log(
+          `Authorization cancelled for order ${orderId}: $${maxRefundable.toFixed(2)}`
+        );
+
+        return {
+          success: true,
+          refundId: `cancelled_${transaction.stripePaymentIntentId}`,
+          amount: maxRefundable,
+          status: 'cancelled',
+          message: 'Payment authorization cancelled successfully',
+        };
+      }
+
+      // Create Stripe refund (for already-captured payments)
+      const refund = await stripe.refunds.create({
         payment_intent: transaction.stripePaymentIntentId,
         amount: amountInCents,
         reason:
@@ -2686,6 +2943,11 @@ export class PaymentService {
       return { paymentMethods: [], defaultPaymentMethodId: null };
     }
 
+    // Sync and cleanup orphaned records (non-blocking)
+    this.syncPaymentMethods(userId).catch((err) =>
+      this.logger.warn('Background sync failed:', err)
+    );
+
     // Get customer to find default payment method
     let defaultPaymentMethodId: string | null = null;
     try {
@@ -2732,6 +2994,65 @@ export class PaymentService {
       }),
       defaultPaymentMethodId,
     };
+  }
+
+  /**
+   * Sync payment methods with Stripe and cleanup orphaned records
+   * Removes payment methods from database that no longer exist in Stripe
+   */
+  async syncPaymentMethods(userId: string): Promise<{ cleaned: number; synced: number }> {
+    try {
+      const stripe = await this.getStripeClient();
+
+      // Get user with stripe customer ID
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { stripeCustomerId: true },
+      });
+
+      if (!user?.stripeCustomerId) {
+        return { cleaned: 0, synced: 0 };
+      }
+
+      // List payment methods from Stripe
+      const stripePaymentMethods = await stripe.paymentMethods.list({
+        customer: user.stripeCustomerId,
+        type: 'card',
+      });
+
+      const stripePaymentMethodIds = new Set(stripePaymentMethods.data.map((pm) => pm.id));
+
+      // Get saved payment methods from database
+      const savedMethods = await this.prisma.savedPaymentMethod.findMany({
+        where: { userId },
+      });
+
+      // Find orphaned records (exist in DB but not in Stripe)
+      const orphanedMethods = savedMethods.filter(
+        (sm) => !stripePaymentMethodIds.has(sm.stripePaymentMethodId)
+      );
+
+      // Delete orphaned records
+      let cleanedCount = 0;
+      if (orphanedMethods.length > 0) {
+        const orphanedIds = orphanedMethods.map((m) => m.id);
+        const result = await this.prisma.savedPaymentMethod.deleteMany({
+          where: {
+            id: { in: orphanedIds },
+          },
+        });
+        cleanedCount = result.count;
+        this.logger.log(`Cleaned up ${cleanedCount} orphaned payment methods for user ${userId}`);
+      }
+
+      return {
+        cleaned: cleanedCount,
+        synced: stripePaymentMethods.data.length,
+      };
+    } catch (error) {
+      this.logger.error('Failed to sync payment methods:', error);
+      return { cleaned: 0, synced: 0 };
+    }
   }
 
   /**

@@ -17,7 +17,7 @@ export class SubscriptionService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsService
   ) {}
 
   /**
@@ -84,7 +84,7 @@ export class SubscriptionService {
    */
   async canListProductType(
     userId: string,
-    productType: string,
+    productType: string
   ): Promise<{
     canList: boolean;
     reasons: {
@@ -128,7 +128,9 @@ export class SubscriptionService {
     const plan = subscription.plan;
 
     // Log subscription details for debugging
-    this.logger.debug(`Checking subscription for user ${userId}: tier=${plan.tier}, planId=${plan.id}, status=${subscription.status}`);
+    this.logger.debug(
+      `Checking subscription for user ${userId}: tier=${plan.tier}, planId=${plan.id}, status=${subscription.status}`
+    );
 
     // Check if product type is allowed by plan's allowedProductTypes
     const allowedTypes = plan.allowedProductTypes as string[];
@@ -144,30 +146,49 @@ export class SubscriptionService {
       // Use default
     }
     const tierOrder = ['FREE', 'STARTER', 'PROFESSIONAL', 'BUSINESS'];
-    const meetsTierRequirement =
-      tierOrder.indexOf(plan.tier) >= tierOrder.indexOf(minTier);
+    const meetsTierRequirement = tierOrder.indexOf(plan.tier) >= tierOrder.indexOf(minTier);
 
     // Check listing capacity from subscription
     const hasListingCapacity =
-      plan.maxActiveListings === -1 ||
-      subscription.activeListingsCount < plan.maxActiveListings;
+      plan.maxActiveListings === -1 || subscription.activeListingsCount < plan.maxActiveListings;
 
     // For subscription-required types, check subscription credits (not store credits)
     // The subscription must be active and have credits remaining
     const subscriptionCreditsRemaining = subscription.creditsAllocated - subscription.creditsUsed;
+
+    // Check grace period for subscription (PAST_DUE status)
+    let inGracePeriod = false;
+    try {
+      const gracePeriodSetting = await this.settingsService.getSetting('subscription_grace_days');
+      const graceDays = Number(gracePeriodSetting.value) || 3;
+
+      if (subscription.status === 'PAST_DUE' && subscription.currentPeriodEnd) {
+        const graceEndDate = new Date(subscription.currentPeriodEnd);
+        graceEndDate.setDate(graceEndDate.getDate() + graceDays);
+        inGracePeriod = new Date() < graceEndDate;
+      }
+    } catch (error) {
+      // Grace period setting not found, use default of 3 days
+      const graceDays = 3;
+      if (subscription.status === 'PAST_DUE' && subscription.currentPeriodEnd) {
+        const graceEndDate = new Date(subscription.currentPeriodEnd);
+        graceEndDate.setDate(graceEndDate.getDate() + graceDays);
+        inGracePeriod = new Date() < graceEndDate;
+      }
+    }
+
     const hasSubscriptionCredits =
-      subscription.status === 'ACTIVE' &&
+      (subscription.status === 'ACTIVE' || inGracePeriod) &&
       (plan.tier !== 'FREE' || subscriptionCreditsRemaining > 0);
 
     // Log the check results
-    this.logger.debug(`Subscription check results: productTypeAllowed=${productTypeAllowed}, meetsTierRequirement=${meetsTierRequirement}, hasListingCapacity=${hasListingCapacity}, hasSubscriptionCredits=${hasSubscriptionCredits}, tier=${plan.tier}`);
+    this.logger.debug(
+      `Subscription check results: productTypeAllowed=${productTypeAllowed}, meetsTierRequirement=${meetsTierRequirement}, hasListingCapacity=${hasListingCapacity}, hasSubscriptionCredits=${hasSubscriptionCredits}, tier=${plan.tier}`
+    );
 
     return {
       canList:
-        productTypeAllowed &&
-        meetsTierRequirement &&
-        hasListingCapacity &&
-        hasSubscriptionCredits,
+        productTypeAllowed && meetsTierRequirement && hasListingCapacity && hasSubscriptionCredits,
       reasons: {
         productTypeAllowed,
         meetsTierRequirement,
@@ -186,8 +207,7 @@ export class SubscriptionService {
     return {
       subscription: {
         ...subscription,
-        creditsRemaining:
-          subscription.creditsAllocated - subscription.creditsUsed,
+        creditsRemaining: subscription.creditsAllocated - subscription.creditsUsed,
       },
       plan: subscription.plan,
       tier: subscription.plan.tier,
@@ -230,17 +250,11 @@ export class SubscriptionService {
           select: { billingCycle: true },
         });
 
-        const monthlyCount = subscriptions.filter(
-          (s) => s.billingCycle === 'MONTHLY',
-        ).length;
-        const yearlyCount = subscriptions.filter(
-          (s) => s.billingCycle === 'YEARLY',
-        ).length;
+        const monthlyCount = subscriptions.filter((s) => s.billingCycle === 'MONTHLY').length;
+        const yearlyCount = subscriptions.filter((s) => s.billingCycle === 'YEARLY').length;
 
-        const monthlyRevenue =
-          monthlyCount * Number(plan.monthlyPrice);
-        const yearlyRevenue =
-          (yearlyCount * Number(plan.yearlyPrice)) / 12;
+        const monthlyRevenue = monthlyCount * Number(plan.monthlyPrice);
+        const yearlyRevenue = (yearlyCount * Number(plan.yearlyPrice)) / 12;
 
         return {
           ...plan,
@@ -258,7 +272,7 @@ export class SubscriptionService {
             totalRevenue: monthlyRevenue + yearlyRevenue,
           },
         };
-      }),
+      })
     );
   }
 
@@ -316,17 +330,13 @@ export class SubscriptionService {
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.monthlyPrice !== undefined) data.monthlyPrice = dto.monthlyPrice;
     if (dto.yearlyPrice !== undefined) data.yearlyPrice = dto.yearlyPrice;
-    if (dto.maxActiveListings !== undefined)
-      data.maxActiveListings = dto.maxActiveListings;
-    if (dto.monthlyCredits !== undefined)
-      data.monthlyCredits = dto.monthlyCredits;
+    if (dto.maxActiveListings !== undefined) data.maxActiveListings = dto.maxActiveListings;
+    if (dto.monthlyCredits !== undefined) data.monthlyCredits = dto.monthlyCredits;
     if (dto.featuredSlotsPerMonth !== undefined)
       data.featuredSlotsPerMonth = dto.featuredSlotsPerMonth;
-    if (dto.listingDurationDays !== undefined)
-      data.listingDurationDays = dto.listingDurationDays;
+    if (dto.listingDurationDays !== undefined) data.listingDurationDays = dto.listingDurationDays;
     if (dto.features !== undefined) data.features = dto.features;
-    if (dto.allowedProductTypes !== undefined)
-      data.allowedProductTypes = dto.allowedProductTypes;
+    if (dto.allowedProductTypes !== undefined) data.allowedProductTypes = dto.allowedProductTypes;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.isPopular !== undefined) data.isPopular = dto.isPopular;
     if (dto.displayOrder !== undefined) data.displayOrder = dto.displayOrder;
@@ -336,10 +346,22 @@ export class SubscriptionService {
       data,
     });
 
+    // If prices changed, trigger Stripe price sync (admin must sync manually via /admin/sync-stripe endpoint)
+    const pricesChanged =
+      (dto.monthlyPrice !== undefined && Number(dto.monthlyPrice) !== Number(plan.monthlyPrice)) ||
+      (dto.yearlyPrice !== undefined && Number(dto.yearlyPrice) !== Number(plan.yearlyPrice));
+
+    if (pricesChanged) {
+      this.logger.warn(
+        `Plan ${plan.name} prices changed. Admin must sync Stripe prices via POST /subscription/admin/sync-stripe to update Stripe.`
+      );
+    }
+
     return {
       ...updated,
       monthlyPrice: Number(updated.monthlyPrice),
       yearlyPrice: Number(updated.yearlyPrice),
+      pricesChanged, // Return flag to inform frontend
     };
   }
 
@@ -401,9 +423,7 @@ export class SubscriptionService {
     });
 
     if (existing) {
-      throw new ConflictException(
-        `Plan with tier ${dto.tier} already exists`,
-      );
+      throw new ConflictException(`Plan with tier ${dto.tier} already exists`);
     }
 
     const plan = await this.prisma.subscriptionPlan.create({
@@ -451,7 +471,7 @@ export class SubscriptionService {
 
     if (plan._count.subscriptions > 0) {
       throw new BadRequestException(
-        `Cannot delete plan with ${plan._count.subscriptions} active subscriptions. Please cancel or migrate them first.`,
+        `Cannot delete plan with ${plan._count.subscriptions} active subscriptions. Please cancel or migrate them first.`
       );
     }
 
@@ -650,11 +670,7 @@ export class SubscriptionService {
    * Get comprehensive subscription statistics (admin)
    */
   async adminGetStatistics() {
-    const [
-      plans,
-      sellerSubscriptions,
-      subscriptionsByStatus,
-    ] = await Promise.all([
+    const [plans, sellerSubscriptions, subscriptionsByStatus] = await Promise.all([
       this.prisma.subscriptionPlan.findMany({
         where: { isActive: true },
         include: {
@@ -688,29 +704,194 @@ export class SubscriptionService {
         acc[item.status] = item._count;
         return acc;
       },
-      {} as Record<string, number>,
+      {} as Record<string, number>
     );
 
     return {
       totalPlans: plans.length,
       activePlans: plans.filter((p) => p.isActive).length,
-      totalSubscriptions: Object.values(statusCounts).reduce(
-        (a, b) => a + b,
-        0,
-      ),
-      activeSubscriptions:
-        (statusCounts['ACTIVE'] || 0) + (statusCounts['TRIAL'] || 0),
+      totalSubscriptions: Object.values(statusCounts).reduce((a, b) => a + b, 0),
+      activeSubscriptions: (statusCounts['ACTIVE'] || 0) + (statusCounts['TRIAL'] || 0),
       canceledSubscriptions: statusCounts['CANCELLED'] || 0,
       expiredSubscriptions: statusCounts['EXPIRED'] || 0,
       subscriptionsByStatus: statusCounts,
       monthlyRevenue,
       yearlyRevenue,
-      totalRevenue: monthlyRevenue + yearlyRevenue / 12,
+      totalRevenue: monthlyRevenue * 12 + yearlyRevenue,
       planBreakdown: plans.map((plan) => ({
         tier: plan.tier,
         name: plan.name,
         subscriberCount: plan._count.subscriptions,
       })),
     };
+  }
+
+  /**
+   * Check if seller can list a product (includes PAST_DUE restriction)
+   */
+  async canSellerListProduct(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const subscription = await this.getOrCreateSubscription(userId);
+
+    // Block PAST_DUE sellers from listing new products
+    if (subscription.status === 'PAST_DUE') {
+      return {
+        allowed: false,
+        reason:
+          'Your subscription payment is past due. Please update your payment method to continue listing products.',
+      };
+    }
+
+    // Block CANCELLED and EXPIRED sellers
+    if (subscription.status === 'CANCELLED' || subscription.status === 'EXPIRED') {
+      return {
+        allowed: false,
+        reason: 'Your subscription is inactive. Please subscribe to a plan to list products.',
+      };
+    }
+
+    return { allowed: true };
+  }
+
+  /**
+   * Get unified credit summary for seller (both store credits and subscription credits)
+   */
+  async getSellerCreditSummary(userId: string): Promise<{
+    storeCredits: {
+      balance: number;
+      expiresAt: Date | null;
+      graceEndsAt: Date | null;
+      inGracePeriod: boolean;
+      canListPhysical: boolean;
+    };
+    subscriptionCredits: {
+      allocated: number;
+      used: number;
+      remaining: number;
+      resetDate: Date;
+      planName: string;
+      planTier: string;
+      allowedTypes: string[];
+      canListService: boolean;
+      canListRealEstate: boolean;
+      canListVehicle: boolean;
+      canListRental: boolean;
+    };
+    subscription: {
+      status: string;
+      planName: string;
+      nextBillingDate: Date | null;
+      cancelAtPeriodEnd: boolean;
+    };
+  }> {
+    // Get store credits
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: {
+        creditsBalance: true,
+        creditsExpiresAt: true,
+        creditsGraceEndsAt: true,
+        status: true,
+      },
+    });
+
+    const now = new Date();
+    const storeInGracePeriod =
+      store?.creditsBalance === 0 &&
+      store?.creditsGraceEndsAt &&
+      new Date(store.creditsGraceEndsAt) > now;
+
+    const canListPhysical =
+      store?.status === 'ACTIVE' && ((store?.creditsBalance ?? 0) > 0 || storeInGracePeriod);
+
+    // Get subscription
+    const subscription = await this.getOrCreateSubscription(userId);
+    const plan = subscription.plan;
+
+    const allowedTypes = (plan.allowedProductTypes as string[]) || [];
+
+    // Calculate next reset date (1st of next month)
+    const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    return {
+      storeCredits: {
+        balance: store?.creditsBalance ?? 0,
+        expiresAt: store?.creditsExpiresAt ?? null,
+        graceEndsAt: store?.creditsGraceEndsAt ?? null,
+        inGracePeriod: storeInGracePeriod,
+        canListPhysical,
+      },
+      subscriptionCredits: {
+        allocated: subscription.creditsAllocated,
+        used: subscription.creditsUsed,
+        remaining: subscription.creditsAllocated - subscription.creditsUsed,
+        resetDate,
+        planName: plan.name,
+        planTier: plan.tier,
+        allowedTypes,
+        canListService: allowedTypes.includes('SERVICE'),
+        canListRealEstate: allowedTypes.includes('REAL_ESTATE'),
+        canListVehicle: allowedTypes.includes('VEHICLE'),
+        canListRental: allowedTypes.includes('RENTAL'),
+      },
+      subscription: {
+        status: subscription.status,
+        planName: plan.name,
+        nextBillingDate: subscription.currentPeriodEnd,
+        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      },
+    };
+  }
+
+  /**
+   * Reset monthly credits for active subscriptions (Cron job)
+   * Runs on the 1st of every month at 1:00 AM UTC
+   */
+  async resetMonthlyCredits(): Promise<{ reset: number; errors: string[] }> {
+    this.logger.log('Starting monthly credit reset for active subscriptions...');
+
+    let resetCount = 0;
+    const errors: string[] = [];
+
+    try {
+      // Get all ACTIVE subscriptions
+      const activeSubscriptions = await this.prisma.sellerSubscription.findMany({
+        where: { status: 'ACTIVE' },
+        include: { plan: true, user: { select: { email: true } } },
+      });
+
+      this.logger.log(`Found ${activeSubscriptions.length} active subscriptions to reset`);
+
+      for (const subscription of activeSubscriptions) {
+        try {
+          // Reset credits to plan's monthly allocation
+          await this.prisma.sellerSubscription.update({
+            where: { id: subscription.id },
+            data: {
+              creditsAllocated: subscription.plan.monthlyCredits,
+              creditsUsed: 0,
+            },
+          });
+
+          resetCount++;
+          this.logger.debug(
+            `Reset credits for user ${subscription.user.email}: ${subscription.plan.monthlyCredits} credits`
+          );
+        } catch (error) {
+          const errorMsg = `Failed to reset credits for user ${subscription.userId}: ${error instanceof Error ? error.message : String(error)}`;
+          this.logger.error(errorMsg);
+          errors.push(errorMsg);
+        }
+      }
+
+      this.logger.log(
+        `Monthly credit reset completed: ${resetCount} reset, ${errors.length} errors`
+      );
+
+      return { reset: resetCount, errors };
+    } catch (error) {
+      const errorMsg = `Monthly credit reset failed: ${error instanceof Error ? error.message : String(error)}`;
+      this.logger.error(errorMsg);
+      throw error;
+    }
   }
 }

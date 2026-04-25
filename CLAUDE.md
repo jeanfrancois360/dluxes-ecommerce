@@ -728,6 +728,227 @@ GET    /seller/gelato/webhook-url  # Get webhook URL
 
 ---
 
+## EasyPost Shipping Integration
+
+**Implementation Model:** Platform-Wide Multi-Carrier Shipping
+
+**v2.9.0 Architecture:**
+
+- **Primary shipping provider** in 4-tier cascade system
+- Multi-carrier rate comparison (USPS, UPS, FedEx, DHL, Canada Post, Australia Post)
+- Automated label generation (PDF, PNG, ZPL, EPL2)
+- Real-time tracking with webhook updates
+- Address verification for accurate delivery
+
+**Environment Variables Required:**
+
+```bash
+# EasyPost API (REQUIRED)
+EASYPOST_API_KEY=EZTK...  # Test: EZTK, Production: EZAK
+EASYPOST_TEST_MODE=true    # false in production
+EASYPOST_WEBHOOK_SECRET=whsec_...  # Optional, for webhook signature verification
+```
+
+**How It Works:**
+
+1. **Checkout Flow:**
+   - EasyPost is TIER 1 in shipping cascade
+   - Fetches rates from all configured carriers
+   - Returns top 3 cheapest options
+   - Falls back to DHL → Zones → Manual if disabled/error
+
+2. **Label Generation (Seller):**
+   - Seller navigates to order details page
+   - Clicks "Get Shipping Label"
+   - Chooses from multi-carrier rates
+   - Downloads PDF label immediately
+   - Tracking auto-updates via webhooks
+
+3. **Tracking Updates:**
+   - Webhooks: `POST /webhooks/easypost`
+   - Auto-updates order delivery status
+   - Tracking events stored in database
+   - Customers see real-time tracking info
+
+**Database Schema:**
+
+```prisma
+model EasyPostShipment {
+  easypostShipmentId  String  @unique
+  trackingNumber      String?
+  carrier             String?
+  labelPdfUrl         String?
+  status              EasyPostShipmentStatus
+  // ... tracking, costs, metadata
+}
+
+model EasyPostTrackingEvent {
+  shipmentId  String
+  status      String
+  message     String?
+  occurredAt  DateTime
+}
+
+model EasyPostWebhookLog {
+  eventId  String  @unique  // Idempotency
+  eventType String
+  payload   Json
+}
+```
+
+**API Endpoints:**
+
+```
+POST   /easypost/rates              # Get shipping rates
+POST   /easypost/rates/lowest       # Get cheapest rate
+POST   /easypost/purchase           # Purchase label (SELLER, ADMIN)
+POST   /easypost/return-label       # Create return label
+POST   /easypost/refund/:shipmentId # Refund unused label
+GET    /easypost/shipment/:id       # Get shipment details
+GET    /easypost/tracking/:shipmentId # Get tracking info
+POST   /easypost/verify-address     # Validate address
+GET    /easypost/test               # Test API connection (no auth)
+```
+
+**System Settings (7 settings):**
+
+- `easypost_enabled` (BOOLEAN) - Enable/disable integration
+- `easypost_api_key` (STRING) - API key
+- `easypost_test_mode` (BOOLEAN) - Test vs production
+- `easypost_webhook_secret` (STRING) - Webhook verification
+- `easypost_default_label_format` (STRING) - PDF/PNG/ZPL/EPL2
+- `easypost_address_verification` (BOOLEAN) - Enable address validation
+- `easypost_default_carriers` (ARRAY) - Preferred carriers
+
+**Origin Address Settings:**
+
+- `origin_street1`, `origin_city`, `origin_state` (new)
+- Uses existing: `origin_postal_code`, `origin_country`, `origin_company_name`
+
+**Security:**
+
+- API keys stored in environment (never in database)
+- Webhook signature verification (HMAC SHA256)
+- Idempotency via `eventId` prevents duplicate processing
+- Sellers can only purchase labels for their own orders
+
+**Frontend Components:**
+
+- `apps/web/src/components/seller/easypost-label-button.tsx` - Label generation modal
+- `apps/web/src/components/settings/easypost-settings.tsx` - Admin configuration
+- `apps/web/src/hooks/use-easypost-tracking.ts` - Tracking data hook
+
+**Important Notes:**
+
+- EasyPost is the PRIMARY/DEFAULT shipping provider (enabled by default, checked first in cascade)
+- Test mode is FREE (no charges for label purchases)
+- Production requires switching to production API key (`EZAK...`)
+- Address fields in DB: `street` (not `address1`), `state` (not `province`), `zipCode` (not `postalCode`)
+- Migration: `20260315000000_add_easypost_integration`
+
+**Documentation:** See `EASYPOST_INTEGRATION.md` for complete setup, testing, and API reference.
+
+---
+
+## SendCloud Shipping Integration
+
+**Implementation Model:** Platform-Wide European Shipping
+
+**v2.11.1 Architecture:**
+
+- European-focused multi-carrier shipping (13 countries)
+- HTTP Basic Auth (public key + secret key)
+- EUR currency for all transactions
+- Real-time rates from multiple European carriers
+
+**Environment Variables Required:**
+
+```bash
+# SendCloud API (REQUIRED)
+SENDCLOUD_PUBLIC_KEY=your_public_key
+SENDCLOUD_SECRET_KEY=your_secret_key
+```
+
+**Supported Ship-From Countries:**
+
+Austria (AT), Belgium (BE), Czech Republic (CZ), Denmark (DK), France (FR), Germany (DE), Italy (IT), Netherlands (NL), Poland (PL), Portugal (PT), Spain (ES), Sweden (SE), United Kingdom (GB)
+
+**API Endpoints:**
+
+```
+POST   /sendcloud/rates              # Get shipping rates
+GET    /sendcloud/health             # Health check (ADMIN)
+```
+
+**System Settings (1 setting):**
+
+- `sendcloud_enabled` (BOOLEAN) - Enable/disable integration
+
+**Frontend Components:**
+
+- `apps/web/src/components/settings/sendcloud-settings.tsx` - Admin configuration
+- Integration status card with connection health
+- Supported countries display
+- Enable/disable toggle
+
+**Important Notes:**
+
+- SendCloud specializes in European shipping
+- All rates returned in EUR
+- Requires both public and secret keys
+- API credentials configured via environment variables only
+
+---
+
+## EasyShip Shipping Integration
+
+**Implementation Model:** Platform-Wide Global Shipping
+
+**v2.11.1 Architecture:**
+
+- Global multi-carrier shipping (10 countries)
+- Bearer token authentication
+- USD default currency with multi-currency support
+- Real-time rates from international carriers
+
+**Environment Variables Required:**
+
+```bash
+# EasyShip API (REQUIRED)
+EASYSHIP_API_KEY=your_api_key
+```
+
+**Supported Ship-From Countries:**
+
+Australia (AU), Belgium (BE), Canada (CA), France (FR), Germany (DE), Hong Kong (HK), Netherlands (NL), Singapore (SG), United Kingdom (GB), United States (US)
+
+**API Endpoints:**
+
+```
+POST   /easyship/rates               # Get shipping rates
+GET    /easyship/health              # Health check (ADMIN)
+```
+
+**System Settings (1 setting):**
+
+- `easyship_enabled` (BOOLEAN) - Enable/disable integration
+
+**Frontend Components:**
+
+- `apps/web/src/components/settings/easyship-settings.tsx` - Admin configuration
+- Integration status card with connection health
+- Supported countries display
+- Enable/disable toggle
+
+**Important Notes:**
+
+- EasyShip provides global shipping with customs support
+- Supports multiple currencies (defaults to USD)
+- Single API key authentication
+- Ideal for international e-commerce
+
+---
+
 ## Version History
 
 ---

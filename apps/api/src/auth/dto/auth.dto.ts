@@ -76,6 +76,12 @@ export class RegisterDto {
   @Transform(({ value }) => sanitizeString(value))
   @IsString()
   storeDescription?: string;
+
+  // Referral System (v2.11.0)
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.toUpperCase().trim())
+  referralCode?: string;
 }
 
 export class LoginDto {

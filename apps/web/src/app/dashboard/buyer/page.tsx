@@ -5,11 +5,21 @@ import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api/client';
 import PageHeader from '@/components/buyer/page-header';
 import StatCard from '@/components/seller/stat-card';
 import QuickActionCard from '@/components/seller/quick-action-card';
+
+// Dynamic import for ReferralSection (code splitting)
+const ReferralSection = dynamic(
+  () =>
+    import('@/components/account/referral-section').then((mod) => ({
+      default: mod.ReferralSection,
+    })),
+  { ssr: false }
+);
 import {
   ShoppingBag,
   Package,
@@ -240,6 +250,11 @@ export default function BuyerDashboard() {
               <QuickActionCard key={action.title} {...action} index={index} />
             ))}
           </div>
+        </section>
+
+        {/* Referral Program (v2.11.0) */}
+        <section>
+          <ReferralSection />
         </section>
 
         {/* Recent Orders */}

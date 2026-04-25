@@ -35,7 +35,7 @@ import { CommissionSettingsSection } from '@/components/settings/commission-sett
 import { CurrencySettingsSection } from '@/components/settings/currency-settings';
 import { DeliverySettingsSection } from '@/components/settings/delivery-settings';
 import { TaxSettingsSection } from '@/components/settings/tax-settings';
-import { ShippingSettingsSection } from '@/components/settings/shipping-settings';
+import { UnifiedShippingSettingsSection } from '@/components/settings/unified-shipping-settings';
 import { FulfillmentSettingsSection } from '@/components/settings/fulfillment-settings';
 import { SecuritySettingsSection } from '@/components/settings/security-settings';
 import { NotificationSettingsSection } from '@/components/settings/notification-settings';
@@ -103,14 +103,14 @@ function SettingsPageContent() {
     },
     {
       value: 'shipping',
-      label: t('tabs.shipping.label'),
-      icon: Calculator,
-      description: t('tabs.shipping.description'),
+      label: 'Shipping',
+      icon: Truck,
+      description: 'Configure shipping rates, carriers, and delivery options',
     },
     {
       value: 'fulfillment',
       label: 'Fulfillment',
-      icon: Truck,
+      icon: Box,
       description: 'Configure POD and order fulfillment settings',
     },
     {
@@ -277,7 +277,7 @@ function SettingsPageContent() {
             </TabsContent>
 
             <TabsContent value="shipping" className="mt-0">
-              <ShippingSettingsSection />
+              <UnifiedShippingSettingsSection />
             </TabsContent>
 
             <TabsContent value="fulfillment" className="mt-0">

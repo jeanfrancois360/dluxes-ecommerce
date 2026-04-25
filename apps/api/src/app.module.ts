@@ -42,10 +42,14 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { CreditsModule } from './credits/credits.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { DhlModule } from './integrations/dhl/dhl.module';
+import { EasyPostModule } from './integrations/easypost/easypost.module';
+import { SendcloudModule } from './integrations/sendcloud/sendcloud.module';
+import { EasyshipModule } from './integrations/easyship/easyship.module';
 import { LoggerModule } from './logger/logger.module';
 import { HealthModule } from './health/health.module';
 import { HotDealsModule } from './hot-deals/hot-deals.module';
 import { GelatoModule } from './gelato/gelato.module';
+import { ReferralModule } from './referral/referral.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
 import { SellerCreditsCronService } from './cron/seller-credits.cron';
@@ -73,6 +77,9 @@ import { SellerCreditsCronService } from './cron/seller-credits.cron';
     LoggerModule,
     HealthModule,
     DhlModule,
+    EasyPostModule,
+    SendcloudModule,
+    EasyshipModule,
     AuthModule,
     UsersModule,
     ProductsModule,
@@ -110,6 +117,7 @@ import { SellerCreditsCronService } from './cron/seller-credits.cron';
     CreditsModule,
     HotDealsModule,
     GelatoModule,
+    ReferralModule,
   ],
   providers: [
     {

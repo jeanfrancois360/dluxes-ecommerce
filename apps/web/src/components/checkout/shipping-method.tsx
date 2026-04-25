@@ -33,6 +33,7 @@ interface ShippingMethodProps {
   shippingOptions?: ShippingMethod[]; // Dynamic shipping options from backend
   isLoadingOptions?: boolean;
   currency?: string; // Currency code (e.g., 'EUR', 'USD')
+  freeShippingThreshold?: number; // From admin settings (overrides hardcoded default)
 }
 
 const SHIPPING_METHODS: ShippingMethod[] = [
@@ -99,6 +100,7 @@ export function ShippingMethodSelector({
   shippingOptions, // Dynamic options from backend
   isLoadingOptions,
   currency = 'USD', // Default to USD if not provided
+  freeShippingThreshold = FREE_SHIPPING_THRESHOLD, // Fall back to hardcoded if not provided
 }: ShippingMethodProps) {
   const t = useTranslations('components.shippingMethod');
   const [selected, setSelected] = useState(selectedMethod);
@@ -174,10 +176,10 @@ export function ShippingMethodSelector({
     );
   }, [methods, subtotal, usingBackendOptions]);
 
-  // Check if qualifies for free shipping
+  // Check if qualifies for free shipping (uses dynamic threshold from settings)
   const amountNeededForFreeShipping = useMemo(() => {
-    return getAmountNeededForFreeShipping(subtotal);
-  }, [subtotal]);
+    return subtotal >= freeShippingThreshold ? 0 : freeShippingThreshold - subtotal;
+  }, [subtotal, freeShippingThreshold]);
 
   const handleSelect = (methodId: string) => {
     setSelected(methodId);
@@ -465,7 +467,7 @@ export function ShippingMethodSelector({
               </p>
               <p className="text-amber-700 mt-1">
                 {t('freeShippingAvailable', {
-                  amount: `${currencySymbol}${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}`,
+                  amount: `${currencySymbol}${formatCurrencyAmount(freeShippingThreshold, 2)}`,
                 })}
               </p>
             </>
@@ -474,7 +476,7 @@ export function ShippingMethodSelector({
               <p className="text-green-900 font-medium">{t('qualifyForFreeShipping')}</p>
               <p className="text-green-700 mt-1">
                 {t('orderMeetsMinimum', {
-                  amount: `${currencySymbol}${formatCurrencyAmount(FREE_SHIPPING_THRESHOLD, 2)}`,
+                  amount: `${currencySymbol}${formatCurrencyAmount(freeShippingThreshold, 2)}`,
                 })}
               </p>
             </>

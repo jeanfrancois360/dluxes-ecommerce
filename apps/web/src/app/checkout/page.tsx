@@ -19,6 +19,9 @@ import {
   PaymentMethodSelector,
   PaymentMethodType,
   PayPalPayment,
+  DeliveryTypeSelector,
+  DeliveryType,
+  PickupStoreSelector,
 } from '@/components/checkout';
 import { getCountryConfig, getAllCountries } from '@/lib/data/address-countries';
 import { useAddresses } from '@/hooks/use-addresses';
@@ -27,6 +30,7 @@ import {
   ordersAPI,
   ShippingOption as APIShippingOption,
   OrderCalculationResponse,
+  PickupStore as APIPickupStore,
 } from '@/lib/api/orders';
 
 // Legacy Address interface for backend compatibility (matches backend schema)
@@ -199,7 +203,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const t = useTranslations('checkout');
   const { user, isLoading: authLoading, isInitialized } = useAuth();
-  const { items, totals, clearCart, cartCurrency } = useCart();
+  const { items, totals, clearCart, cartCurrency, freeShippingThreshold } = useCart();
   const { convertPrice, selectedCurrency } = useCurrencyConverter();
   const {
     step,
@@ -232,8 +236,10 @@ export default function CheckoutPage() {
     Partial<AddressFormData> | undefined
   >(undefined);
 
-  // Dynamic shipping options from backend
-  const [availableShippingOptions, setAvailableShippingOptions] = useState<APIShippingOption[]>([]);
+  // Dynamic shipping options from backend (undefined = not yet loaded, show hardcoded fallback)
+  const [availableShippingOptions, setAvailableShippingOptions] = useState<
+    APIShippingOption[] | undefined
+  >(undefined);
   const [isLoadingShippingOptions, setIsLoadingShippingOptions] = useState(false);
   const [backendCalculation, setBackendCalculation] = useState<OrderCalculationResponse | null>(
     null
@@ -242,6 +248,14 @@ export default function CheckoutPage() {
   // Calculate shipping and tax on checkout (not in cart)
   const [calculatedShipping, setCalculatedShipping] = useState<number>(0);
   const [calculatedTax, setCalculatedTax] = useState<number>(0);
+
+  // Pickup state (v2.10.0)
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>('shipping');
+  const [availablePickupStores, setAvailablePickupStores] = useState<APIPickupStore[]>([]);
+  const [selectedPickupStoreId, setSelectedPickupStoreId] = useState<string | null>(null);
+  const [isLoadingPickupStores, setIsLoadingPickupStores] = useState(false);
+  const [deliveryTypeConfirmed, setDeliveryTypeConfirmed] = useState(false);
+  const [pickupStoreConfirmed, setPickupStoreConfirmed] = useState(false);
 
   // Fetch shipping options and tax from backend after address is entered
   const fetchShippingOptionsAndTax = useCallback(
@@ -265,13 +279,16 @@ export default function CheckoutPage() {
         // API client auto-unwraps { success, data } responses
         setBackendCalculation(calculation);
 
-        // ✅ Safe: Default to empty array if undefined
-        setAvailableShippingOptions(calculation.shippingOptions || []);
+        // Use backend options if available; fall back to undefined so hardcoded methods show
+        const backendOptions = calculation.shippingOptions?.length
+          ? calculation.shippingOptions
+          : undefined;
+        setAvailableShippingOptions(backendOptions);
 
-        // ✅ Safe: Default to 0 if tax is missing
+        // Default to 0 if tax is missing
         setCalculatedTax(calculation.tax?.amount || 0);
 
-        // ✅ Safe: Check shippingOptions exists before using .find()
+        // Update calculated shipping cost for the selected method
         if (selectedShippingMethod && calculation.shippingOptions) {
           const selectedOption = calculation.shippingOptions.find(
             (opt: APIShippingOption) => opt.id === selectedShippingMethod
@@ -281,28 +298,51 @@ export default function CheckoutPage() {
           }
         }
 
-        console.log('Backend shipping options:', calculation.shippingOptions);
-        console.log('Tax calculation:', calculation.tax);
-
-        // ⚠️ Warn user if tax or shipping missing
         if (!calculation.tax) {
           console.warn('[Checkout] Tax calculation missing from backend response');
-          toast.warning('Tax calculation unavailable. Proceeding with $0 tax.');
-        }
-        if (!calculation.shippingOptions || calculation.shippingOptions.length === 0) {
-          console.error('[Checkout] No shipping options available');
-          toast.error('No shipping options available for your address. Please contact support.');
         }
       } catch (error: any) {
         console.error('Failed to fetch shipping options:', error);
-        // Fallback to hardcoded options if backend fails
         toast.error(t('couldNotLoadShipping'));
+        // Reset to undefined so the hardcoded fallback methods are shown
+        setAvailableShippingOptions(undefined);
       } finally {
         setIsLoadingShippingOptions(false);
       }
     },
     [items, selectedShippingMethod, cartCurrency, t]
   );
+
+  // Fetch available pickup stores (v2.10.0)
+  const fetchAvailablePickupStores = useCallback(async () => {
+    if (items.length === 0) return;
+
+    setIsLoadingPickupStores(true);
+    try {
+      const productIds = items.map((item) => item.productId);
+      const stores = await ordersAPI.getAvailablePickupStores(productIds);
+      setAvailablePickupStores(stores || []);
+
+      console.log('[Checkout] Available pickup stores:', stores);
+
+      if (!stores || stores.length === 0) {
+        toast.info('No pickup locations available for the items in your cart.');
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch pickup stores:', error);
+      setAvailablePickupStores([]);
+      toast.error('Could not load pickup locations. Please try shipping instead.');
+    } finally {
+      setIsLoadingPickupStores(false);
+    }
+  }, [items]);
+
+  // Fetch pickup stores when delivery type is set to pickup
+  useEffect(() => {
+    if (deliveryType === 'pickup' && !deliveryTypeConfirmed) {
+      fetchAvailablePickupStores();
+    }
+  }, [deliveryType, deliveryTypeConfirmed, fetchAvailablePickupStores]);
 
   // Update shipping cost when shipping method changes
   // Only calculate if we've completed the shipping address step
@@ -449,7 +489,9 @@ export default function CheckoutPage() {
 
   const handleShippingMethodContinue = () => {
     // First check if this is a backend shipping option
-    const backendOption = availableShippingOptions.find((opt) => opt.id === selectedShippingMethod);
+    const backendOption = availableShippingOptions?.find(
+      (opt) => opt.id === selectedShippingMethod
+    );
 
     if (backendOption) {
       // Using backend/zone-based shipping option
@@ -465,10 +507,13 @@ export default function CheckoutPage() {
     // Fallback to hardcoded shipping method (for backward compatibility)
     const methodConfig = getShippingMethodById(selectedShippingMethod);
     if (methodConfig) {
+      // Apply free shipping threshold to hardcoded method price
+      const isFreeShipping = totals.subtotal >= freeShippingThreshold;
+      const hardcodedPrice = isFreeShipping ? 0 : methodConfig.basePrice;
       saveShippingMethod({
         id: methodConfig.id,
         name: methodConfig.name,
-        price: calculatedShipping, // Use checkout's calculated shipping
+        price: hardcodedPrice,
       });
       setShippingMethodConfirmed(true);
     } else {
@@ -509,11 +554,42 @@ export default function CheckoutPage() {
     }
   };
 
+  // Pickup handlers (v2.10.0)
+  const handleDeliveryTypeContinue = () => {
+    setDeliveryTypeConfirmed(true);
+    if (deliveryType === 'pickup') {
+      // For pickup, skip to store selection (stay on shipping step but show store selector)
+    } else {
+      // For shipping, show address form
+    }
+  };
+
+  const handlePickupStoreContinue = () => {
+    if (!selectedPickupStoreId) {
+      toast.error('Please select a pickup location');
+      return;
+    }
+    setPickupStoreConfirmed(true);
+    // Move to payment step
+    goToStep('payment');
+  };
+
   // Calculate checkout totals (shipping and tax calculated here, not in cart)
   const methodConfig = getShippingMethodById(selectedShippingMethod);
 
-  // Use calculated shipping and tax from checkout (not cart)
-  const shippingCost = calculatedShipping;
+  // Determine effective shipping cost:
+  // - Backend options available: use calculatedShipping (backend applied free shipping logic)
+  // - Hardcoded fallback (no backend options): compute from methodConfig with free shipping threshold
+  const isUsingHardcodedFallback = !availableShippingOptions;
+  const hardcodedShippingPrice = methodConfig
+    ? totals.subtotal >= freeShippingThreshold
+      ? 0
+      : methodConfig.basePrice
+    : 0;
+  const effectiveShipping = isUsingHardcodedFallback ? hardcodedShippingPrice : calculatedShipping;
+
+  // Pickup orders have $0 shipping cost (v2.10.0)
+  const shippingCost = deliveryType === 'pickup' ? 0 : effectiveShipping;
   const taxAmount = calculatedTax;
   const totalWithShipping = totals.subtotal + shippingCost + taxAmount;
 
@@ -563,74 +639,69 @@ export default function CheckoutPage() {
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    {/* Saved Address Selector */}
-                    {!addressesLoading && addresses.length > 0 && (
-                      <div className="mb-6">
-                        <div className="bg-gradient-to-br from-gold/5 to-neutral-50 rounded-lg border-2 border-gold/20 p-5">
-                          <div className="flex items-center gap-2 mb-4">
-                            <svg
-                              className="w-5 h-5 text-gold"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                              />
-                            </svg>
-                            <h3 className="text-base font-semibold text-black">
-                              {t('useSavedAddress')}
-                            </h3>
-                          </div>
+                    {/* Delivery Type Selector (v2.10.0) */}
+                    {!deliveryTypeConfirmed && (
+                      <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
+                        <DeliveryTypeSelector
+                          selectedType={deliveryType}
+                          onSelect={setDeliveryType}
+                          onContinue={handleDeliveryTypeContinue}
+                          pickupAvailable={true}
+                          pickupStoresCount={
+                            isLoadingPickupStores ? 0 : availablePickupStores.length
+                          }
+                          isLoading={isLoadingPickupStores}
+                        />
+                      </div>
+                    )}
 
-                          <div className="space-y-3">
-                            {/* New Address Option */}
-                            <label
-                              className={`flex items-start gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                                !selectedSavedAddressId
-                                  ? 'border-gold bg-gold/5 shadow-sm'
-                                  : 'border-neutral-200 hover:border-neutral-300 bg-white'
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name="saved-address"
-                                value="new"
-                                checked={!selectedSavedAddressId}
-                                onChange={() => handleSavedAddressSelect(null)}
-                                className="mt-1 w-4 h-4 text-gold focus:ring-gold"
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <svg
-                                    className="w-4 h-4 text-neutral-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M12 4v16m8-8H4"
-                                    />
-                                  </svg>
-                                  <span className="font-medium text-black">
-                                    {t('enterNewAddress')}
-                                  </span>
-                                </div>
-                              </div>
-                            </label>
+                    {/* Pickup Store Selector (v2.10.0) */}
+                    {deliveryTypeConfirmed &&
+                      deliveryType === 'pickup' &&
+                      !pickupStoreConfirmed && (
+                        <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
+                          <PickupStoreSelector
+                            stores={availablePickupStores}
+                            selectedStoreId={selectedPickupStoreId}
+                            onSelect={setSelectedPickupStoreId}
+                            onContinue={handlePickupStoreContinue}
+                            onBack={() => setDeliveryTypeConfirmed(false)}
+                            isLoading={isProcessing}
+                          />
+                        </div>
+                      )}
 
-                            {/* Saved Addresses */}
-                            {addresses.map((address) => (
+                    {/* Saved Address Selector (only for shipping) */}
+                    {deliveryTypeConfirmed &&
+                      deliveryType === 'shipping' &&
+                      !addressesLoading &&
+                      addresses.length > 0 && (
+                        <div className="mb-6">
+                          <div className="bg-gradient-to-br from-gold/5 to-neutral-50 rounded-lg border-2 border-gold/20 p-5">
+                            <div className="flex items-center gap-2 mb-4">
+                              <svg
+                                className="w-5 h-5 text-gold"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                                />
+                              </svg>
+                              <h3 className="text-base font-semibold text-black">
+                                {t('useSavedAddress')}
+                              </h3>
+                            </div>
+
+                            <div className="space-y-3">
+                              {/* New Address Option */}
                               <label
-                                key={address.id}
                                 className={`flex items-start gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                                  selectedSavedAddressId === address.id
+                                  !selectedSavedAddressId
                                     ? 'border-gold bg-gold/5 shadow-sm'
                                     : 'border-neutral-200 hover:border-neutral-300 bg-white'
                                 }`}
@@ -638,70 +709,114 @@ export default function CheckoutPage() {
                                 <input
                                   type="radio"
                                   name="saved-address"
-                                  value={address.id}
-                                  checked={selectedSavedAddressId === address.id}
-                                  onChange={() => handleSavedAddressSelect(address.id)}
+                                  value="new"
+                                  checked={!selectedSavedAddressId}
+                                  onChange={() => handleSavedAddressSelect(null)}
                                   className="mt-1 w-4 h-4 text-gold focus:ring-gold"
                                 />
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <svg
+                                      className="w-4 h-4 text-neutral-600"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 4v16m8-8H4"
+                                      />
+                                    </svg>
                                     <span className="font-medium text-black">
-                                      {address.firstName} {address.lastName}
+                                      {t('enterNewAddress')}
                                     </span>
-                                    {address.isDefault && (
-                                      <span className="px-2 py-0.5 bg-gold/20 text-gold text-xs font-semibold rounded-full">
-                                        {t('default')}
-                                      </span>
-                                    )}
                                   </div>
-                                  <p className="text-sm text-neutral-600 leading-relaxed">
-                                    {address.address1}
-                                    {address.address2 && `, ${address.address2}`}
-                                    <br />
-                                    {address.city}
-                                    {address.province && `, ${address.province}`}
-                                    {address.postalCode && ` ${address.postalCode}`}
-                                    <br />
-                                    {address.country}
-                                  </p>
-                                  {address.phone && (
-                                    <p className="text-sm text-neutral-500 mt-1">
-                                      <svg
-                                        className="w-4 h-4 inline mr-1"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                                        />
-                                      </svg>
-                                      {address.phone}
-                                    </p>
-                                  )}
                                 </div>
                               </label>
-                            ))}
+
+                              {/* Saved Addresses */}
+                              {addresses.map((address) => (
+                                <label
+                                  key={address.id}
+                                  className={`flex items-start gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                                    selectedSavedAddressId === address.id
+                                      ? 'border-gold bg-gold/5 shadow-sm'
+                                      : 'border-neutral-200 hover:border-neutral-300 bg-white'
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="saved-address"
+                                    value={address.id}
+                                    checked={selectedSavedAddressId === address.id}
+                                    onChange={() => handleSavedAddressSelect(address.id)}
+                                    className="mt-1 w-4 h-4 text-gold focus:ring-gold"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-medium text-black">
+                                        {address.firstName} {address.lastName}
+                                      </span>
+                                      {address.isDefault && (
+                                        <span className="px-2 py-0.5 bg-gold/20 text-gold text-xs font-semibold rounded-full">
+                                          {t('default')}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-neutral-600 leading-relaxed">
+                                      {address.address1}
+                                      {address.address2 && `, ${address.address2}`}
+                                      <br />
+                                      {address.city}
+                                      {address.province && `, ${address.province}`}
+                                      {address.postalCode && ` ${address.postalCode}`}
+                                      <br />
+                                      {address.country}
+                                    </p>
+                                    {address.phone && (
+                                      <p className="text-sm text-neutral-500 mt-1">
+                                        <svg
+                                          className="w-4 h-4 inline mr-1"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                                          />
+                                        </svg>
+                                        {address.phone}
+                                      </p>
+                                    )}
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
                           </div>
                         </div>
+                      )}
+
+                    {/* Address Form (only for shipping) */}
+                    {deliveryTypeConfirmed && deliveryType === 'shipping' && (
+                      <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
+                        <UniversalAddressForm
+                          initialData={
+                            savedAddressFormData ||
+                            (shippingAddress
+                              ? convertFromLegacyAddress(shippingAddress)
+                              : undefined)
+                          }
+                          onSubmit={handleAddressSubmit}
+                          submitLabel={t('continueToShipping')}
+                          key={selectedSavedAddressId || 'new'}
+                        />
                       </div>
                     )}
-
-                    {/* Address Form */}
-                    <div className="bg-white p-6 md:p-8 rounded-lg border-2 border-neutral-200 shadow-sm">
-                      <UniversalAddressForm
-                        initialData={
-                          savedAddressFormData ||
-                          (shippingAddress ? convertFromLegacyAddress(shippingAddress) : undefined)
-                        }
-                        onSubmit={handleAddressSubmit}
-                        submitLabel={t('continueToShipping')}
-                        key={selectedSavedAddressId || 'new'}
-                      />
-                    </div>
                   </motion.div>
                 )}
 
@@ -716,8 +831,8 @@ export default function CheckoutPage() {
                     className="space-y-6"
                   >
                     <AnimatePresence mode="wait">
-                      {/* Shipping Method - Only show if not confirmed */}
-                      {!shippingMethodConfirmed && (
+                      {/* Shipping Method - Only show if not confirmed and delivery type is shipping */}
+                      {!shippingMethodConfirmed && deliveryType === 'shipping' && (
                         <motion.div
                           key="shipping-method"
                           initial={{ opacity: 0, y: 20 }}
@@ -736,7 +851,67 @@ export default function CheckoutPage() {
                             shippingOptions={availableShippingOptions}
                             isLoadingOptions={isLoadingShippingOptions}
                             currency={cartCurrency}
+                            freeShippingThreshold={freeShippingThreshold}
                           />
+                        </motion.div>
+                      )}
+
+                      {/* Pickup Info Banner - Show for pickup orders */}
+                      {deliveryType === 'pickup' && !shippingMethodConfirmed && (
+                        <motion.div
+                          key="pickup-info"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.3 }}
+                          className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm p-6"
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                              <svg
+                                className="w-6 h-6 text-green-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                              </svg>
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold text-green-900 mb-2">
+                                Self-Pickup Selected
+                              </h3>
+                              <p className="text-sm text-green-700 mb-3">
+                                You've chosen to pick up your order. No shipping charges will be
+                                applied!
+                              </p>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() => goToStep('shipping')}
+                                  className="px-4 py-2 border-2 border-green-300 rounded-lg text-sm font-medium text-green-800 hover:bg-green-100 transition-colors"
+                                >
+                                  Change Pickup Location
+                                </button>
+                                <button
+                                  onClick={handleShippingMethodContinue}
+                                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                                >
+                                  Continue to Payment
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </motion.div>
                       )}
 

@@ -9,87 +9,108 @@ export const creditsPurchasedTemplate = (data: {
   expiryDate: string;
   dashboardUrl: string;
   invoiceUrl?: string;
+  frontendUrl?: string;
 }) => {
+  const siteUrl = data.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const supportUrl = `${siteUrl}/contact`;
+
   const content = `
-    <div style="text-align: center;">
-      <div style="width: 56px; height: 56px; background-color: #000000; border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; border: 2px solid #CBB57B;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2">
-          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </div>
-    </div>
+    <h1 style="color: #0A0A0A; font-size: 24px; font-weight: 700; margin: 0 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.3px;">
+      Payment confirmed
+    </h1>
 
-    <h2 style="color: #000000; font-size: 22px; font-weight: 600; margin-bottom: 16px; text-align: center;">
-      Payment Successful
-    </h2>
-
-    <p style="color: #525252; font-size: 15px; line-height: 1.6; margin-bottom: 32px; text-align: center;">
-      Hello ${data.sellerName}, your selling credits have been added to your account.
+    <p style="color: #4B5563; font-size: 15px; line-height: 1.65; margin: 0 0 28px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Hello ${data.sellerName}, your selling credits for <strong style="color: #0A0A0A;">${data.storeName}</strong> have been added.
     </p>
 
-    <div style="background-color: #000000; padding: 32px; margin: 32px 0; text-align: center;">
-      <p style="color: #CBB57B; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px 0;">
-        New Credit Balance
-      </p>
-      <p style="color: #FFFFFF; font-size: 48px; font-weight: 700; margin: 0 0 8px 0;">
-        ${data.newBalance}
-      </p>
-      <p style="color: #A3A3A3; font-size: 14px; margin: 0;">
-        month${data.newBalance !== 1 ? 's' : ''} of selling credits
-      </p>
-    </div>
+    <!-- Balance banner -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
+      <tr>
+        <td align="center" style="background-color: #0A0A0A; padding: 28px 24px; border-bottom: 3px solid #CBB57B;">
+          <p style="color: #CBB57B; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin: 0 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Credit balance
+          </p>
+          <p style="color: #FFFFFF; font-size: 48px; font-weight: 700; margin: 0 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: -1px;">
+            ${data.newBalance}
+          </p>
+          <p style="color: #9CA3AF; font-size: 13px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            month${data.newBalance !== 1 ? 's' : ''} remaining
+          </p>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color: #FAFAFA; padding: 24px; margin: 32px 0; border: 1px solid #E5E5E5;">
-      <h3 style="color: #000000; font-size: 16px; font-weight: 600; margin: 0 0 20px 0; text-align: center;">
-        Purchase Details
-      </h3>
+    <!-- Purchase details -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0; background-color: #F9FAFB; border: 1px solid #E5E7EB;">
+      <tr>
+        <td style="padding: 20px 20px 14px;">
+          <p style="color: #0A0A0A; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin: 0 0 14px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Purchase details
+          </p>
+          <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+            <tr>
+              <td style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; color: #6B7280; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Store</td>
+              <td style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; text-align: right; color: #0A0A0A; font-size: 13px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${data.storeName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; color: #6B7280; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Credits purchased</td>
+              <td style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; text-align: right; color: #0A0A0A; font-size: 13px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${data.monthsPurchased} month${data.monthsPurchased !== 1 ? 's' : ''}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; color: #6B7280; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Amount charged</td>
+              <td style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; text-align: right; color: #0A0A0A; font-size: 13px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">$${data.amountPaid}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #6B7280; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Valid until</td>
+              <td style="padding: 6px 0; text-align: right; color: #0A0A0A; font-size: 13px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${data.expiryDate}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
-        <tr>
-          <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; color: #737373; font-size: 14px;">Store</td>
-          <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; text-align: right; color: #000000; font-size: 14px; font-weight: 500;">${data.storeName}</td>
-        </tr>
-        <tr>
-          <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; color: #737373; font-size: 14px;">Credits Purchased</td>
-          <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; text-align: right; color: #000000; font-size: 14px; font-weight: 500;">${data.monthsPurchased} month${data.monthsPurchased !== 1 ? 's' : ''}</td>
-        </tr>
-        <tr>
-          <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; color: #737373; font-size: 14px;">Amount Paid</td>
-          <td style="padding: 12px 0; border-bottom: 1px solid #E5E5E5; text-align: right; color: #10B981; font-size: 14px; font-weight: 600;">$${data.amountPaid}</td>
-        </tr>
-        <tr>
-          <td style="padding: 12px 0; color: #737373; font-size: 14px;">Valid Until</td>
-          <td style="padding: 12px 0; text-align: right; color: #000000; font-size: 14px; font-weight: 500;">${data.expiryDate}</td>
-        </tr>
-      </table>
-    </div>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 28px 0;">
+      <tr>
+        <td style="background-color: #F9FAFB; border-left: 3px solid #CBB57B; padding: 14px 18px;">
+          <p style="color: #374151; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Your products are now active. Credits are deducted on the 1st of each month. You'll receive a notification before your balance runs low.
+          </p>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color: #FFFFFF; border-left: 3px solid #CBB57B; padding: 16px 20px; margin: 32px 0;">
-      <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">
-        What happens next?
-      </p>
-      <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0;">
-        Your products are now active. Credits are deducted on the 1st of each month. You'll receive a notification when your balance is low.
-      </p>
-    </div>
+    <!-- CTAs -->
+    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 14px 0;">
+      <tr>
+        <td style="background-color: #0A0A0A; padding: 13px 28px;">
+          <a href="${data.dashboardUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
+            Go to Dashboard
+          </a>
+        </td>
+      </tr>
+    </table>
 
-    <div style="text-align: center; margin: 40px 0;">
-      <a href="${data.dashboardUrl}"
-         style="display: inline-block; background-color: #000000; color: #FFFFFF; padding: 14px 40px; text-decoration: none; font-weight: 600; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;">
-        Go to Dashboard
+    ${
+      data.invoiceUrl
+        ? `
+    <p style="margin: 0 0 24px 0;">
+      <a href="${data.invoiceUrl}" style="color: #6B7280; text-decoration: underline; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+        Download invoice
       </a>
-      ${data.invoiceUrl ? `
-      <a href="${data.invoiceUrl}"
-         style="display: inline-block; background-color: #FFFFFF; color: #000000; padding: 14px 32px; text-decoration: none; font-weight: 600; font-size: 14px; border: 1px solid #E5E5E5; margin-left: 12px;">
-        Download Invoice
-      </a>
-      ` : ''}
-    </div>
+    </p>
+    `
+        : ''
+    }
 
-    <p style="color: #737373; font-size: 13px; text-align: center; margin-top: 32px; line-height: 1.6;">
-      Questions about billing? <a href="{{SUPPORT_URL}}" style="color: #000000; text-decoration: underline;">Contact support</a>
+    <p style="color: #9CA3AF; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Questions about billing? <a href="${supportUrl}" style="color: #4B5563; text-decoration: underline;">Contact support</a>
     </p>
   `;
 
-  return baseEmailTemplate(content);
+  return baseEmailTemplate(content, {
+    preheader: `${data.monthsPurchased} month${data.monthsPurchased !== 1 ? 's' : ''} of credits added to ${data.storeName}.`,
+    frontendUrl: siteUrl,
+    showUnsubscribe: false,
+    footerNote: 'You received this email because you are a NextPik seller.',
+  });
 };

@@ -8,93 +8,101 @@ export const gracePeriodEndingTemplate = (data: {
   productsCount: number;
   creditsUrl: string;
   dashboardUrl: string;
+  frontendUrl?: string;
 }) => {
+  const siteUrl = data.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const supportUrl = `${siteUrl}/contact`;
+
   const content = `
-    <div style="text-align: center;">
-      <div style="width: 56px; height: 56px; background-color: #DC2626; border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <polyline points="12 6 12 12 16 14"/>
-        </svg>
-      </div>
-    </div>
+    <h1 style="color: #0A0A0A; font-size: 24px; font-weight: 700; margin: 0 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.3px;">
+      Grace period ending soon
+    </h1>
 
-    <h2 style="color: #DC2626; font-size: 22px; font-weight: 600; margin-bottom: 16px; text-align: center;">
-      Final Warning: Grace Period Ending Soon
-    </h2>
-
-    <p style="color: #525252; font-size: 15px; line-height: 1.6; margin-bottom: 32px; text-align: center;">
-      ${data.sellerName}, your store will be suspended in less than 24 hours.
+    <p style="color: #4B5563; font-size: 15px; line-height: 1.65; margin: 0 0 28px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Hello ${data.sellerName}, the grace period for <strong style="color: #0A0A0A;">${data.storeName}</strong> ends in <strong style="color: #0A0A0A;">${data.hoursRemaining} hour${data.hoursRemaining !== 1 ? 's' : ''}</strong>. Purchase credits to keep your products active.
     </p>
 
-    <div style="background-color: #000000; padding: 32px; margin: 32px 0; text-align: center;">
-      <p style="color: #DC2626; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px 0;">
-        Time Remaining
-      </p>
-      <p style="color: #FFFFFF; font-size: 56px; font-weight: 700; margin: 0 0 8px 0;">
-        ${data.hoursRemaining}
-      </p>
-      <p style="color: #A3A3A3; font-size: 14px; margin: 0 0 16px 0;">
-        hours until suspension
-      </p>
-      <p style="color: #737373; font-size: 13px; margin: 0;">
-        Store: ${data.storeName} | ${data.productsCount} product${data.productsCount !== 1 ? 's' : ''}
-      </p>
-    </div>
+    <!-- Timer banner -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
+      <tr>
+        <td align="center" style="background-color: #0A0A0A; padding: 28px 24px; border-bottom: 3px solid #DC2626;">
+          <p style="color: #DC2626; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin: 0 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Time remaining
+          </p>
+          <p style="color: #FFFFFF; font-size: 48px; font-weight: 700; margin: 0 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: -1px;">
+            ${data.hoursRemaining}h
+          </p>
+          <p style="color: #9CA3AF; font-size: 13px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Suspension at ${data.graceEndsAt}
+          </p>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color: #FAFAFA; border-left: 3px solid #DC2626; padding: 20px; margin: 32px 0;">
-      <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
-        What happens at ${data.graceEndsAt}:
-      </p>
-      <ul style="color: #525252; font-size: 13px; line-height: 1.8; margin: 0; padding-left: 20px;">
-        <li>All ${data.productsCount} product${data.productsCount !== 1 ? 's' : ''} will be suspended</li>
-        <li>You will stop receiving orders</li>
-        <li>Store ranking may be affected</li>
-        <li>Customer trust may be impacted</li>
-      </ul>
-    </div>
+    <!-- What happens at suspension -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0; background-color: #FEF2F2; border-left: 3px solid #DC2626;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="color: #0A0A0A; font-size: 13px; font-weight: 600; margin: 0 0 10px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            What happens at ${data.graceEndsAt}
+          </p>
+          <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+            <tr><td style="padding: 3px 0; color: #374151; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&#x2014; All ${data.productsCount} product${data.productsCount !== 1 ? 's' : ''} will be suspended</td></tr>
+            <tr><td style="padding: 3px 0; color: #374151; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&#x2014; New orders will not be accepted</td></tr>
+            <tr><td style="padding: 3px 0; color: #374151; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">&#x2014; Products reactivate immediately once credits are purchased</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color: #FAFAFA; padding: 24px; margin: 32px 0; border: 1px solid #E5E5E5; text-align: center;">
-      <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">
-        Instant Reactivation Available
-      </p>
-      <p style="color: #10B981; font-size: 28px; font-weight: 700; margin: 0 0 8px 0;">
-        $29.99/month
-      </p>
-      <p style="color: #737373; font-size: 13px; margin: 0;">
-        No downtime, no lost sales
-      </p>
-    </div>
+    <!-- Details -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0; background-color: #F9FAFB; border: 1px solid #E5E7EB;">
+      <tr>
+        <td style="padding: 20px 20px 14px;">
+          <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+            <tr>
+              <td style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; color: #6B7280; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Store</td>
+              <td style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; text-align: right; color: #0A0A0A; font-size: 13px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${data.storeName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; color: #6B7280; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Products at risk</td>
+              <td style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; text-align: right; color: #0A0A0A; font-size: 13px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${data.productsCount} listing${data.productsCount !== 1 ? 's' : ''}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #DC2626; font-size: 13px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Suspends at</td>
+              <td style="padding: 6px 0; text-align: right; color: #DC2626; font-size: 13px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${data.graceEndsAt}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-    <div style="text-align: center; margin: 40px 0;">
-      <a href="${data.creditsUrl}"
-         style="display: inline-block; background-color: #CBB57B; color: #000000; padding: 16px 48px; text-decoration: none; font-weight: 600; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;">
-        Save My Store Now
-      </a>
-    </div>
+    <!-- CTA -->
+    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 14px 0;">
+      <tr>
+        <td style="background-color: #0A0A0A; padding: 13px 28px;">
+          <a href="${data.creditsUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
+            Purchase Credits
+          </a>
+        </td>
+      </tr>
+    </table>
 
-    <div style="text-align: center; margin: 20px 0;">
-      <a href="${data.dashboardUrl}" style="color: #737373; text-decoration: none; font-size: 13px;">
+    <p style="margin: 0 0 24px 0;">
+      <a href="${data.dashboardUrl}" style="color: #6B7280; text-decoration: underline; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
         View Dashboard
       </a>
-    </div>
+    </p>
 
-    <div style="background-color: #FFFFFF; border-left: 3px solid #DC2626; padding: 16px 20px; margin-top: 32px;">
-      <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0;">
-        <strong style="color: #DC2626;">Final Warning:</strong> This is your last notification before automatic suspension. After ${data.graceEndsAt}, your store will be inactive until credits are purchased.
-      </p>
-    </div>
-
-    <div style="background-color: #FAFAFA; border-left: 3px solid #E5E5E5; padding: 16px 20px; margin-top: 16px;">
-      <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0;">
-        <strong style="color: #000000;">Need Help?</strong> If you're experiencing difficulties or have questions about your account, please contact our support team.
-      </p>
-    </div>
-
-    <p style="color: #737373; font-size: 13px; text-align: center; margin-top: 32px; line-height: 1.6;">
-      Urgent assistance? <a href="{{SUPPORT_URL}}" style="color: #DC2626; text-decoration: underline; font-weight: 500;">Contact emergency support</a>
+    <p style="color: #9CA3AF; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Questions? <a href="${supportUrl}" style="color: #4B5563; text-decoration: underline;">Contact support</a>
     </p>
   `;
 
-  return baseEmailTemplate(content);
+  return baseEmailTemplate(content, {
+    preheader: `Grace period for ${data.storeName} ends in ${data.hoursRemaining} hour${data.hoursRemaining !== 1 ? 's' : ''}. Purchase credits to prevent suspension.`,
+    frontendUrl: siteUrl,
+    showUnsubscribe: false,
+    footerNote: 'You received this email because you are a NextPik seller.',
+  });
 };

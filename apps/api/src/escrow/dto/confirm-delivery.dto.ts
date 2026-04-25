@@ -1,8 +1,9 @@
 import { IsString, IsOptional, IsNumber, IsArray } from 'class-validator';
 
 export class ConfirmDeliveryDto {
+  @IsOptional()
   @IsString()
-  orderId: string;
+  orderId?: string;
 
   @IsString()
   @IsOptional()
