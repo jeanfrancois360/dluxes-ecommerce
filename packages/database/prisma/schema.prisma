@@ -1,3 +1,57 @@
+// ============================================================================
+// ⚠️  SCHEMA OUT OF SYNC WITH DATABASE — READ BEFORE EDITING  ⚠️
+// ============================================================================
+//
+// This schema.prisma does NOT reflect the dev database's actual state.
+//
+// The dev database contains additional models, enums, and enum values not
+// declared here:
+//
+//   Models in DB but missing from this file:
+//     - EasyPostShipment
+//     - EasyPostTrackingEvent
+//     - EasyPostWebhookLog
+//     - DhlShipment
+//     - referral_codes
+//     - referrals
+//
+//   Enums in DB but missing from this file:
+//     - EasyPostRefundStatus
+//     - EasyPostShipmentStatus
+//     - ReferralStatus
+//
+//   OrderStatus enum values in DB but missing from this file:
+//     - READY_FOR_PICKUP
+//     - PICKED_UP
+//     - PICKUP_EXPIRED
+//
+// The generated Prisma client at node_modules/.prisma/client/ is currently
+// the only correct source of truth (built from the real DB schema).
+//
+// 🚨 DO NOT RUN `pnpm prisma:generate` 🚨
+// Doing so would regenerate the client from this incomplete schema and
+// destroy the working type definitions for EasyPost, DHL, referral, and
+// pickup-related code.
+//
+// 🚨 DO NOT RUN `pnpm prisma db push` 🚨
+// This command is forbidden for this project — it bypasses migrations
+// entirely and is what created this drift in the first place.
+//
+// To safely modify the schema:
+//   1. Run `pnpm prisma migrate dev --create-only --name <description>`
+//      (the --create-only flag generates SQL without applying or regenerating)
+//   2. Review the SQL
+//   3. Coordinate the application with a planned deploy
+//
+// Resolution plan: Schema baseline recovery scheduled for next prod deploy.
+// See COMPREHENSIVE_TECHNICAL_DOCUMENTATION.md → "Schema State" section.
+//
+// Status as of 2026-04-25: drift documented and guardrailed. Both dev and
+// prod databases function correctly with their respective code versions.
+// No active production breakage.
+//
+// ============================================================================
+
 // Luxury E-commerce Platform - Database Schema
 generator client {
   provider = "prisma-client-js"
