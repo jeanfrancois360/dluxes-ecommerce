@@ -37,6 +37,13 @@
 - `packages/database/prisma/migrations/` - Do not delete or modify existing migrations
 - `packages/database/prisma/seed.ts` - Contains 38+ system settings
 
+### Schema Operations (TEMPORARY — until baseline recovery)
+
+- 🚨 **NEVER run `pnpm prisma:generate`** until schema baseline recovery is complete. The committed schema.prisma is out of sync with the database. Regenerating would destroy working type definitions. See guardrail comment at top of schema.prisma.
+- 🚨 **NEVER run `pnpm prisma db push`** in any environment, ever. This command bypasses migrations and is what created the current drift. Use `prisma migrate dev` instead.
+- For schema changes: use `pnpm prisma migrate dev --create-only --name <description>` to generate SQL without applying. Review and coordinate with deploy.
+- Schema baseline recovery is planned for the next prod deploy. See COMPREHENSIVE_TECHNICAL_DOCUMENTATION.md → "Schema State" section for details.
+
 ### Database Name (CRITICAL)
 
 - ✅ **Correct database name:** `nextpik_ecommerce`
