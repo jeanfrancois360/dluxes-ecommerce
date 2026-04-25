@@ -60,7 +60,7 @@ export function CategoryBar() {
 
           {/* Dynamic Categories */}
           {categories.map((category) => {
-            const isActive = pathname === `/products?category=${category.slug}`;
+            const isActive = pathname === `/products` && pathname?.includes(category.slug);
 
             return (
               <Link key={category.id} href={`/products?category=${category.slug}`}>
@@ -75,21 +75,19 @@ export function CategoryBar() {
                         ? 'bg-gradient-to-r from-gold to-accent-700 text-white shadow-md'
                         : 'bg-black text-white shadow-md'
                       : category.isFeatured
-                      ? 'bg-gold/10 text-gold hover:bg-gold/20'
-                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                        ? 'bg-gold/10 text-gold hover:bg-gold/20'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                   )}
                 >
-                  {category.icon && (
-                    <span className="text-base">{category.icon}</span>
-                  )}
+                  {category.icon && <span className="text-base">{category.icon}</span>}
                   {category.name}
                   {category._count && category._count.products > 0 && (
-                    <span className={cn(
-                      'text-xs px-2 py-0.5 rounded-full',
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : 'bg-neutral-200 text-neutral-600'
-                    )}>
+                    <span
+                      className={cn(
+                        'text-xs px-2 py-0.5 rounded-full',
+                        isActive ? 'bg-white/20 text-white' : 'bg-neutral-200 text-neutral-600'
+                      )}
+                    >
                       {category._count.products}
                     </span>
                   )}

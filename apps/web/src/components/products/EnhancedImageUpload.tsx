@@ -47,6 +47,29 @@ export default function EnhancedImageUpload({
   );
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevInitialImagesRef = useRef<string[]>([]);
+
+  // Sync internal state when initialImages prop changes (e.g., from Gelato auto-fill)
+  useEffect(() => {
+    // Deep compare URLs to prevent infinite loop
+    const currentUrls = prevInitialImagesRef.current;
+    const newUrls = initialImages;
+
+    const hasChanged =
+      currentUrls.length !== newUrls.length ||
+      currentUrls.some((url, index) => url !== newUrls[index]);
+
+    if (hasChanged) {
+      const newImages = initialImages.map((url, index) => ({
+        url,
+        id: `initial-${index}-${Date.now()}`, // Unique ID to avoid conflicts
+        uploading: false,
+        isPrimary: index === 0,
+      }));
+      setImages(newImages);
+      prevInitialImagesRef.current = initialImages;
+    }
+  }, [initialImages]);
 
   // Check if Supabase is configured
   const isSupabaseConfigured =

@@ -450,4 +450,41 @@ export class EnhancedAuthController {
       revokedCount: revokePromises.length,
     };
   }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Logout current user and invalidate session' })
+  @ApiResponse({ status: 200, description: 'Logout successful' })
+  async logout(@Req() req: any) {
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+
+    // Get current session fingerprint to identify and revoke the session
+    const currentFingerprint = await this.sessionService.getCurrentSessionFingerprint(
+      ipAddress,
+      userAgent
+    );
+
+    const allSessions = await this.sessionService.getUserSessions(req.user.id);
+
+    // Find the most recent session with matching fingerprint as "current"
+    const sessionsWithFingerprint = allSessions.filter((s) => s.fingerprint === currentFingerprint);
+    const currentSession =
+      sessionsWithFingerprint.length > 0
+        ? sessionsWithFingerprint.sort(
+            (a, b) => new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime()
+          )[0]
+        : null;
+
+    // Revoke the current session
+    if (currentSession) {
+      await this.sessionService.revokeSession(req.user.id, currentSession.id);
+    }
+
+    return {
+      message: 'Logout successful',
+    };
+  }
 }

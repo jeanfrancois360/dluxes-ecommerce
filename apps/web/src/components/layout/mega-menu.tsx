@@ -214,33 +214,33 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                     className="group/ad block relative overflow-hidden rounded-2xl flex-1"
                     style={{ minHeight: '220px' }}
                   >
-                    {/* Background gradient — instant, no network request */}
+                    {/* Background — black with subtle gold depth */}
                     <div
                       className="absolute inset-0"
                       style={{
                         background:
-                          'linear-gradient(145deg, #0f172a 0%, #1e293b 45%, #0f2744 70%, #0f172a 100%)',
+                          'linear-gradient(145deg, #0a0a0a 0%, #111111 45%, #1a1400 70%, #0a0a0a 100%)',
                       }}
                     />
 
                     {/* Decorative rings */}
-                    <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full border border-blue-400/10" />
-                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full border border-blue-400/15" />
-                    <div className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full border border-blue-400/8" />
+                    <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full border border-[#CBB57B]/10" />
+                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full border border-[#CBB57B]/15" />
+                    <div className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full border border-[#CBB57B]/8" />
 
                     {/* Shimmer line */}
                     <div
                       className="absolute top-0 left-0 right-0 h-px"
                       style={{
                         background:
-                          'linear-gradient(90deg, transparent, #60a5fa 40%, #93c5fd 60%, transparent)',
+                          'linear-gradient(90deg, transparent, #CBB57B 40%, #e8d49a 60%, transparent)',
                       }}
                     />
 
                     {/* Content */}
                     <div className="relative p-5 h-full flex flex-col justify-between">
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-blue-400/70 mb-2">
+                        <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#CBB57B]/70 mb-2">
                           Multi-Vendor Marketplace
                         </p>
                         <h3 className="text-base font-bold text-white leading-snug mb-1">
@@ -249,7 +249,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                           <span
                             className="text-transparent bg-clip-text"
                             style={{
-                              backgroundImage: 'linear-gradient(90deg, #60a5fa, #93c5fd, #60a5fa)',
+                              backgroundImage: 'linear-gradient(90deg, #CBB57B, #e8d49a, #CBB57B)',
                             }}
                           >
                             One Platform
@@ -262,10 +262,10 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
 
                       <div className="mt-4">
                         <span
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-white group-hover/ad:gap-2.5 transition-all duration-200"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-black group-hover/ad:gap-2.5 transition-all duration-200"
                           style={{
                             background:
-                              'linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #2563eb 100%)',
+                              'linear-gradient(135deg, #CBB57B 0%, #e8d49a 50%, #CBB57B 100%)',
                           }}
                         >
                           Browse All
@@ -287,7 +287,7 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
                     </div>
 
                     {/* Hover glow */}
-                    <div className="absolute inset-0 opacity-0 group-hover/ad:opacity-100 transition-opacity duration-300 rounded-2xl ring-1 ring-inset ring-blue-400/30" />
+                    <div className="absolute inset-0 opacity-0 group-hover/ad:opacity-100 transition-opacity duration-300 rounded-2xl ring-1 ring-inset ring-[#CBB57B]/30" />
                   </Link>
 
                   {/* Small promo strip */}

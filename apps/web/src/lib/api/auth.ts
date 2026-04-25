@@ -6,12 +6,7 @@ export const authAPI = {
 
   register: (data: RegisterData) => api.post<AuthResponse>('/auth/register', data),
 
-  logout: () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-    }
-  },
+  logout: () => api.post('/auth/logout'),
 
   getProfile: () => api.get('/auth/me'),
 
@@ -27,13 +22,21 @@ export const authAPI = {
 
   verifyEmail: (token: string) => api.post('/auth/verify-email', { token }),
 
-  resendVerification: (email: string) => api.post('/auth/resend-verification', { email }),
+  resendVerification: (email: string) => api.post('/auth/email/resend-verification', { email }),
 };
 
 // Export individual functions for convenience
 export const login = (credentials: LoginCredentials) => authAPI.login(credentials);
 export const register = (data: RegisterData) => authAPI.register(data);
-export const logout = () => authAPI.logout();
+export const logout = async () => {
+  try {
+    // Call backend logout endpoint to invalidate session
+    await authAPI.logout();
+  } catch (error) {
+    // Continue with logout even if API call fails
+    console.error('Logout API error:', error);
+  }
+};
 export const getCurrentUser = () => authAPI.getProfile();
 export const updateProfile = (data: ProfileUpdateData) => authAPI.updateProfile(data);
 export const changePassword = (
@@ -48,7 +51,7 @@ export const confirmPasswordReset = (data: {
   confirmPassword: string;
 }) => authAPI.resetPassword({ token: data.token, newPassword: data.password });
 export const verifyEmail = (token: string) => authAPI.verifyEmail(token);
-export const resendEmailVerification = () => api.post('/auth/resend-verification');
+export const resendEmailVerification = () => api.post('/auth/email/resend-verification');
 export const refreshToken = () => api.post('/auth/refresh');
 
 // Magic link functions

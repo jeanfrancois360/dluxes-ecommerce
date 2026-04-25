@@ -2,9 +2,18 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nextpik/ui';
 import { Button } from '@nextpik/ui';
 import { Badge } from '@nextpik/ui';
-import { CheckCircle, XCircle, AlertTriangle, Loader2, Key, RefreshCw, LucideIcon } from 'lucide-react';
+import {
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  Key,
+  RefreshCw,
+  LucideIcon,
+} from 'lucide-react';
 import { EnvSettingsDisplay } from '../env-settings-display';
 import { getSettingsByCategory, type SettingDefinition } from '@/lib/settings-config';
+import { sanitizePaymentInstructions } from '@/lib/sanitize';
 
 interface GatewayStatus {
   configured: boolean;
@@ -46,8 +55,8 @@ export function PaymentGatewayCard({
   const [showEnvSettings, setShowEnvSettings] = useState(false);
 
   // Get environment settings for this gateway
-  const envSettings = getSettingsByCategory('payment', 'env').filter(
-    s => s.key.startsWith(envKeyPrefix.toLowerCase())
+  const envSettings = getSettingsByCategory('payment', 'env').filter((s) =>
+    s.key.startsWith(envKeyPrefix.toLowerCase())
   );
 
   // Prepare env values from status
@@ -179,11 +188,7 @@ export function PaymentGatewayCard({
         {/* Environment Settings Display */}
         {showEnvSettings && (
           <div className="space-y-4">
-            <EnvSettingsDisplay
-              settings={envSettings}
-              values={envValues}
-              showValues={false}
-            />
+            <EnvSettingsDisplay settings={envSettings} values={envValues} showValues={false} />
 
             {/* Setup Instructions */}
             {setupInstructions && (
@@ -194,7 +199,10 @@ export function PaymentGatewayCard({
                 </h4>
                 <ol className="text-sm text-gray-700 space-y-2 ml-4 list-decimal">
                   {setupInstructions.steps.map((step, index) => (
-                    <li key={index} dangerouslySetInnerHTML={{ __html: step }} />
+                    <li
+                      key={index}
+                      dangerouslySetInnerHTML={{ __html: sanitizePaymentInstructions(step) }}
+                    />
                   ))}
                 </ol>
               </div>
@@ -203,11 +211,7 @@ export function PaymentGatewayCard({
         )}
 
         {/* Business Configuration (passed as children) */}
-        {children && (
-          <div className="space-y-4 pt-4 border-t">
-            {children}
-          </div>
-        )}
+        {children && <div className="space-y-4 pt-4 border-t">{children}</div>}
       </CardContent>
     </Card>
   );
@@ -216,7 +220,7 @@ export function PaymentGatewayCard({
 function formatKeyName(key: string): string {
   return key
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
     .replace('Key', 'Key (.env)')
     .replace('Secret', 'Secret (.env)');

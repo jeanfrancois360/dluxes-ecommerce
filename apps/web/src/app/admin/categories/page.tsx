@@ -494,7 +494,14 @@ const CategoryTreeRow: React.FC<CategoryTreeRowProps> = ({
   t,
   allCategories,
 }) => {
-  const children = allCategories.filter((c) => c.parentId === category.id);
+  const children = allCategories
+    .filter((c) => c.parentId === category.id)
+    .sort((a, b) => {
+      if ((b.priority ?? 0) !== (a.priority ?? 0)) return (b.priority ?? 0) - (a.priority ?? 0);
+      if ((a.displayOrder ?? 0) !== (b.displayOrder ?? 0))
+        return (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+      return a.name.localeCompare(b.name);
+    });
   const hasChildren = children.length > 0;
   const isExpanded = expandedCategories.has(category.id);
   const isTopLevel = depth === 0;
@@ -609,6 +616,13 @@ const CategoryTreeRow: React.FC<CategoryTreeRowProps> = ({
               </button>
             </div>
           </div>
+        </td>
+
+        {/* Display Order */}
+        <td className="px-6 py-3 text-center">
+          <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 text-xs font-bold rounded-full bg-neutral-100 text-neutral-600">
+            {category.displayOrder ?? 0}
+          </span>
         </td>
 
         {/* Visibility badges */}
@@ -1428,6 +1442,9 @@ function CategoriesContent() {
                         Priority
                       </div>
                     </th>
+                    <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider">
+                      <div className="flex items-center justify-center gap-2 text-black">Order</div>
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 text-black">
                         {t('table.visibility')}
@@ -1442,8 +1459,16 @@ function CategoriesContent() {
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
                   {(() => {
-                    // Get root categories (those without parents)
-                    const rootCategories = filteredCategories.filter((c) => !c.parentId);
+                    // Get root categories (those without parents), sorted by priority desc, displayOrder asc, name asc
+                    const rootCategories = filteredCategories
+                      .filter((c) => !c.parentId)
+                      .sort((a, b) => {
+                        if ((b.priority ?? 0) !== (a.priority ?? 0))
+                          return (b.priority ?? 0) - (a.priority ?? 0);
+                        if ((a.displayOrder ?? 0) !== (b.displayOrder ?? 0))
+                          return (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+                        return a.name.localeCompare(b.name);
+                      });
 
                     return rootCategories.map((rootCategory) => {
                       return (

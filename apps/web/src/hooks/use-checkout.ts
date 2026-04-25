@@ -131,7 +131,8 @@ export function useCheckout() {
         return savedAddress;
       } catch (err: any) {
         console.error('Error saving shipping address:', err);
-        const errorMessage = err.response?.data?.message || err.message || 'Failed to save shipping address';
+        const errorMessage =
+          err.response?.data?.message || err.message || 'Failed to save shipping address';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -170,21 +171,19 @@ export function useCheckout() {
         const stockErrors: string[] = [];
         for (const item of cartItems) {
           try {
-            const stockResponse = await axios.get(
-              `${API_URL}/inventory/status/${item.productId}`,
-              {
-                params: item.variantId ? { variantId: item.variantId } : undefined,
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            );
+            const stockResponse = await axios.get(`${API_URL}/inventory/status/${item.productId}`, {
+              params: item.variantId ? { variantId: item.variantId } : undefined,
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
 
             const stockData = stockResponse.data;
             if (stockData.quantity < item.quantity) {
-              const available = stockData.quantity > 0
-                ? `Only ${stockData.quantity} ${stockData.quantity === 1 ? 'item' : 'items'} available`
-                : 'Out of stock';
+              const available =
+                stockData.quantity > 0
+                  ? `Only ${stockData.quantity} ${stockData.quantity === 1 ? 'item' : 'items'} available`
+                  : 'Out of stock';
               stockErrors.push(`${item.name}: ${available}`);
             }
           } catch (err: any) {
@@ -195,15 +194,16 @@ export function useCheckout() {
 
         // If there are stock errors, throw a detailed error
         if (stockErrors.length > 0) {
-          const errorMessage = stockErrors.length === 1
-            ? `Insufficient stock: ${stockErrors[0]}`
-            : `Insufficient stock for ${stockErrors.length} item(s):\n${stockErrors.map(e => `• ${e}`).join('\n')}`;
+          const errorMessage =
+            stockErrors.length === 1
+              ? `Insufficient stock: ${stockErrors[0]}`
+              : `Insufficient stock for ${stockErrors.length} item(s):\n${stockErrors.map((e) => `• ${e}`).join('\n')}`;
           throw new Error(errorMessage);
         }
 
         // Step 2: Create order from cart items
         // 🔒 Use locked prices (priceAtAdd) from cart
-        const orderItems = cartItems.map(item => ({
+        const orderItems = cartItems.map((item) => ({
           productId: item.productId,
           variantId: item.variantId,
           quantity: item.quantity,
@@ -218,6 +218,7 @@ export function useCheckout() {
           {
             items: orderItems,
             shippingAddressId: state.shippingAddressId,
+            shippingMethodId: state.shippingMethod?.id, // ✅ Send selected shipping method
             paymentMethod: 'STRIPE',
             notes: '',
             idempotencyKey, // Prevents duplicate orders if called twice
@@ -233,9 +234,10 @@ export function useCheckout() {
 
         // Step 3: Create payment intent with orderId
         // Convert Decimal to number and ensure it's valid
-        const orderTotal = typeof order.total === 'object' && order.total !== null
-          ? parseFloat(order.total.toString())
-          : parseFloat(order.total);
+        const orderTotal =
+          typeof order.total === 'object' && order.total !== null
+            ? parseFloat(order.total.toString())
+            : parseFloat(order.total);
 
         if (isNaN(orderTotal) || orderTotal < 0.5) {
           throw new Error(`Invalid order total: ${orderTotal}. Must be at least $0.50`);
@@ -271,7 +273,8 @@ export function useCheckout() {
         return { order, clientSecret, paymentIntentId, transactionId };
       } catch (err: any) {
         console.error('Error creating order and payment intent:', err);
-        const errorMessage = err.response?.data?.message || err.message || 'Failed to initialize checkout';
+        const errorMessage =
+          err.response?.data?.message || err.message || 'Failed to initialize checkout';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -295,7 +298,8 @@ export function useCheckout() {
         return { orderId: state.orderId };
       } catch (err: any) {
         console.error('Error handling payment success:', err);
-        const errorMessage = err.response?.data?.message || err.message || 'Failed to complete order';
+        const errorMessage =
+          err.response?.data?.message || err.message || 'Failed to complete order';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {

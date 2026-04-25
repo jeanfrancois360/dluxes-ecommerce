@@ -881,6 +881,21 @@ export class ProductsService {
 
     const updateData: any = { ...productData };
 
+    // Validate POD product pricing (prevent selling below Gelato cost)
+    if (
+      updateProductDto.price !== undefined &&
+      existingProduct.fulfillmentType === 'GELATO_POD' &&
+      existingProduct.baseCost
+    ) {
+      if (updateProductDto.price < existingProduct.baseCost) {
+        const suggestedPrice = (existingProduct.baseCost * 1.3).toFixed(2);
+        throw new BadRequestException(
+          `Price ($${updateProductDto.price}) cannot be lower than Gelato production cost ($${existingProduct.baseCost.toFixed(2)}). ` +
+            `Minimum recommended: $${suggestedPrice} (30% markup).`
+        );
+      }
+    }
+
     if (badges !== undefined) updateData.badges = badges;
     if (seoKeywords !== undefined) updateData.seoKeywords = seoKeywords;
     if (colors !== undefined) updateData.colors = colors;
@@ -1579,5 +1594,51 @@ export class ProductsService {
     this.searchService.deleteProduct(productId).catch((error) => {
       this.logger.error(`Failed to delete product ${productId} from Meilisearch: ${error.message}`);
     });
+  }
+
+  // ==================== POD VALIDATION ====================
+
+  /**
+   * Validate if a POD product can be fulfilled
+   * Checks if seller has configured Gelato credentials
+   */
+  async validatePodFulfillment(productId: string): Promise<{
+    canFulfill: boolean;
+    reason?: string;
+  }> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: { store: true },
+    });
+
+    if (!product) {
+      return {
+        canFulfill: false,
+        reason: 'Product not found',
+      };
+    }
+
+    // Not a POD product - can always fulfill
+    if (product.fulfillmentType !== 'GELATO_POD') {
+      return { canFulfill: true };
+    }
+
+    // Check if seller has Gelato configured
+    const gelatoSettings = await this.prisma.sellerGelatoSettings.findUnique({
+      where: { storeId: product.storeId },
+    });
+
+    if (!gelatoSettings?.isEnabled || !gelatoSettings?.isVerified) {
+      this.logger.warn(
+        `POD product ${productId} from store ${product.storeId} cannot be fulfilled - seller has not configured Gelato`
+      );
+      return {
+        canFulfill: false,
+        reason:
+          'This print-on-demand product is temporarily unavailable. The seller is setting up their production service.',
+      };
+    }
+
+    return { canFulfill: true };
   }
 }

@@ -147,6 +147,22 @@ export class CartService {
       );
     }
 
+    // ✅ Block POD products if seller hasn't configured Gelato
+    if (product.fulfillmentType === 'GELATO_POD') {
+      const gelatoSettings = await this.prisma.sellerGelatoSettings.findUnique({
+        where: { storeId: product.storeId },
+      });
+
+      if (!gelatoSettings?.isEnabled || !gelatoSettings?.isVerified) {
+        this.logger.warn(
+          `Blocked POD product ${product.id} from cart - seller ${product.storeId} has not configured Gelato`
+        );
+        throw new BadRequestException(
+          'This print-on-demand product is temporarily unavailable. The seller is setting up their production service. Please check back later.'
+        );
+      }
+    }
+
     // Get current cart to check currency lock
     const currentCart = await this.prisma.cart.findUnique({
       where: { id: cartId },

@@ -83,9 +83,65 @@ export function getProductMetadata(product: {
     title,
     description,
     keywords,
-    image: product.heroImage || undefined,
+    image: product.heroImage || '/og-image.jpg',
     url: product.slug ? `/products/${product.slug}` : '/products',
     type: 'product',
+  });
+}
+
+// Store Metadata
+export function getStoreMetadata(store: {
+  name?: string | null;
+  description?: string | null;
+  logo?: string | null;
+  banner?: string | null;
+  slug?: string | null;
+  rating?: number | null;
+  reviewCount?: number | null;
+}): Metadata {
+  const storeName = store.name || 'Store';
+  const title = `${storeName} - Verified Store`;
+  const description = store.description
+    ? store.description.substring(0, 160)
+    : `Shop ${storeName} on NextPik - verified seller offering premium products with secure checkout and worldwide shipping.`;
+  const image = store.banner || store.logo;
+
+  return generateSeoMetadata({
+    title,
+    description,
+    image: image || undefined,
+    url: store.slug ? `/store/${store.slug}` : '/stores',
+    keywords: [storeName, 'verified seller', 'premium store', 'nextpik seller'],
+    type: 'website',
+  });
+}
+
+// Category Metadata
+export function getCategoryMetadata(category: {
+  name?: string | null;
+  description?: string | null;
+  image?: string | null;
+  slug?: string | null;
+}): Metadata {
+  const categoryName = category.name || 'Category';
+  const title = `${categoryName} - Shop ${categoryName} Online`;
+  const description = category.description
+    ? category.description.substring(0, 160)
+    : `Browse premium ${categoryName.toLowerCase()} from verified sellers on NextPik. Discover curated collections with secure payments and worldwide shipping.`;
+
+  return generateSeoMetadata({
+    title,
+    description,
+    image: category.image || undefined,
+    url: category.slug ? `/categories/${category.slug}` : '/categories',
+    keywords: [
+      categoryName,
+      `${categoryName.toLowerCase()} online`,
+      `buy ${categoryName.toLowerCase()}`,
+      `premium ${categoryName.toLowerCase()}`,
+      'nextpik',
+    ],
+    type: 'website',
   });
 }
 
@@ -236,14 +292,12 @@ export const termsMetadata: Metadata = generateSeoMetadata({
   title: 'Terms of Service',
   description: 'Read our terms of service and conditions for using NextPik.',
   url: '/terms',
-  noIndex: true,
 });
 
 export const privacyMetadata: Metadata = generateSeoMetadata({
   title: 'Privacy Policy',
   description: 'Learn how we collect, use, and protect your personal information.',
   url: '/privacy',
-  noIndex: true,
 });
 
 // Additional Pages Metadata
@@ -259,7 +313,6 @@ export const becomeSellerMetadata: Metadata = generateSeoMetadata({
   title: 'Become a Seller',
   description: 'Join our marketplace and start selling your products.',
   url: '/become-seller',
-  noIndex: true,
 });
 
 export const dashboardMetadata: Metadata = generateSeoMetadata({

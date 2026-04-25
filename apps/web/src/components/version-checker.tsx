@@ -11,6 +11,21 @@ const DISMISS_DURATION = 24 * 60 * 60 * 1000; // Don't show again for 24 hours a
 const STORAGE_KEY = 'nextpik_version_dismissed';
 const LAST_SEEN_VERSION_KEY = 'nextpik_last_version';
 
+/**
+ * Normalize version string for comparison
+ * Strips git commit hash and 'v' prefix
+ * Examples:
+ *   v1.0.0-5e6551f -> 1.0.0
+ *   1.0.0 -> 1.0.0
+ *   v2.3.1-abc123 -> 2.3.1
+ */
+function normalizeVersion(version: string): string {
+  return version
+    .replace(/^v/, '') // Remove 'v' prefix
+    .replace(/-[a-f0-9]+$/i, '') // Remove git commit hash
+    .trim();
+}
+
 export function VersionChecker() {
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
   const [newVersion, setNewVersion] = useState<string | null>(null);
@@ -38,14 +53,19 @@ export function VersionChecker() {
         const serverVersion = data.version;
         const lastSeenVersion = localStorage.getItem(LAST_SEEN_VERSION_KEY);
 
+        // Normalize versions for comparison (strip git hash and 'v' prefix)
+        const normalizedServerVersion = normalizeVersion(serverVersion || '');
+        const normalizedCurrentVersion = normalizeVersion(CURRENT_VERSION);
+        const normalizedLastSeenVersion = normalizeVersion(lastSeenVersion || '');
+
         // Only show if:
         // 1. Server version exists
-        // 2. Server version is different from current
+        // 2. Normalized server version is different from current (actual version change)
         // 3. User hasn't seen this version before
         if (
           serverVersion &&
-          serverVersion !== CURRENT_VERSION &&
-          serverVersion !== lastSeenVersion
+          normalizedServerVersion !== normalizedCurrentVersion &&
+          normalizedServerVersion !== normalizedLastSeenVersion
         ) {
           setNewVersion(serverVersion);
           setShowUpdatePrompt(true);

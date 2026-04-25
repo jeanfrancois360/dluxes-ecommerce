@@ -14,9 +14,6 @@ import { Toaster } from 'sonner';
 import { siteConfig } from '@/lib/seo';
 import './globals.css';
 
-// Force dynamic rendering to avoid static generation issues with client contexts
-export const dynamic = 'force-dynamic';
-
 const poppins = Poppins({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
@@ -67,8 +64,8 @@ export const metadata: Metadata = {
     title: siteConfig.name,
     description: siteConfig.description,
     images: [siteConfig.ogImage],
-    creator: '@luxurymarketplace',
-    site: '@luxurymarketplace',
+    creator: '@nextpik',
+    site: '@nextpik',
   },
   robots: {
     index: true,
@@ -88,10 +85,10 @@ export const metadata: Metadata = {
     ],
     apple: '/icons/icon-192x192.png',
   },
-  verification: {
-    google: 'your-google-verification-code',
-    // Add other verification codes as needed
-  },
+  // Google Search Console: go to https://search.google.com/search-console
+  // Add property → select URL prefix → copy the "google-site-verification" meta tag content
+  // Then uncomment and paste your code below:
+  // verification: { google: 'YOUR_GOOGLE_SEARCH_CONSOLE_CODE_HERE' },
 };
 
 export const viewport: Viewport = {

@@ -811,6 +811,12 @@ export class AdminController {
             products: true,
           },
         },
+        gelatoSettings: {
+          select: {
+            isEnabled: true,
+            isVerified: true,
+          },
+        },
       },
       orderBy: {
         name: 'asc',

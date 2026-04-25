@@ -1,0 +1,89 @@
+name: Security Check
+
+on:
+  push:
+    branches: [main, develop, gelato-integration]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for better analysis
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.0.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run TypeScript type check
+        run: pnpm type-check
+
+      - name: Run dependency audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true # Don't fail build, just warn
+
+      - name: Scan for secrets
+        run: |
+          echo "Scanning for exposed secrets..."
+          if grep -r "sk_live_\|sk_test_\|-----BEGIN PRIVATE KEY" apps/ --exclude-dir=node_modules --exclude-dir=.next; then
+            echo "❌ ERROR: Secrets detected in code!"
+            exit 1
+          fi
+          echo "✅ No secrets found"
+
+      - name: Check for dangerous code patterns
+        run: |
+          echo "Scanning for dangerous code patterns..."
+          FOUND=0
+
+          if grep -r "eval(" apps/web/src apps/api/src --exclude-dir=node_modules --exclude-dir=.next; then
+            echo "⚠️ Found eval() usage"
+            FOUND=1
+          fi
+
+          if grep -r "new Function(" apps/web/src apps/api/src --exclude-dir=node_modules --exclude-dir=.next; then
+            echo "⚠️ Found Function constructor usage"
+            FOUND=1
+          fi
+
+          if [ $FOUND -eq 1 ]; then
+            echo "⚠️ Dangerous patterns detected - review required"
+          else
+            echo "✅ No dangerous patterns found"
+          fi
+
+      - name: Build test
+        run: pnpm build
+
+      - name: Generate security report
+        if: always()
+        run: |
+          echo "## Security Scan Report" > security-report.md
+          echo "- **Timestamp:** $(date)" >> security-report.md
+          echo "- **Branch:** ${{ github.ref_name }}" >> security-report.md
+          echo "- **Commit:** ${{ github.sha }}" >> security-report.md
+          echo "" >> security-report.md
+          echo "### Status" >> security-report.md
+          echo "✅ Security scan completed" >> security-report.md
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+          retention-days: 30

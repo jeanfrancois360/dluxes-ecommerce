@@ -1,38 +1,43 @@
 #!/usr/bin/env node
 
-/**
- * Generate version.json file for deployment
- * This script runs before each build to update the version info
- */
-
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
-// Get version from package.json
-const packageJson = require('../package.json');
-const version = packageJson.version;
+// Get git information
+let gitCommit = 'unknown';
+let gitBranch = 'unknown';
 
-// Get git commit hash (short)
-let gitHash = 'unknown';
 try {
-  gitHash = execSync('git rev-parse --short HEAD').toString().trim();
+  gitCommit = execSync('git rev-parse --short HEAD').toString().trim();
+  gitBranch = execSync('git rev-parse --abbrev-ref HEAD').toString().trim();
 } catch (error) {
-  console.warn('Warning: Could not get git hash');
+  console.warn('Warning: Could not get git information:', error.message);
 }
 
-// Get build timestamp
-const buildTime = new Date().toISOString();
+// Get package version
+const packageJson = require('../package.json');
+const version = packageJson.version || '1.0.0';
 
 // Create version object
 const versionInfo = {
-  version,
-  buildTime,
-  gitHash,
+  version: `v${version}-${gitCommit}`,
+  commit: gitCommit,
+  branch: gitBranch,
+  buildTime: new Date().toISOString(),
+  nodeVersion: process.version,
 };
 
 // Write to public/version.json
-const outputPath = path.join(__dirname, '../public/version.json');
-fs.writeFileSync(outputPath, JSON.stringify(versionInfo, null, 2));
+const publicDir = path.join(__dirname, '..', 'public');
+const versionFile = path.join(publicDir, 'version.json');
 
-console.log('✓ Generated version.json:', versionInfo);
+// Ensure public directory exists
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir, { recursive: true });
+}
+
+fs.writeFileSync(versionFile, JSON.stringify(versionInfo, null, 2));
+
+console.log('✅ Version file generated:');
+console.log(JSON.stringify(versionInfo, null, 2));

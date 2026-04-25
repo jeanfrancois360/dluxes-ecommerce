@@ -1,5 +1,7 @@
 {
-  "version": "1.0.0",
-  "buildTime": "2026-02-16T19:17:10.380Z",
-  "gitHash": "5cc088f"
+  "version": "v1.0.0-3dbd6d3",
+  "commit": "3dbd6d3",
+  "branch": "main",
+  "buildTime": "2026-03-02T23:32:30.334Z",
+  "nodeVersion": "v20.19.5"
 }
