@@ -47,6 +47,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@easypost/api':
+        specifier: ^8.8.0
+        version: 8.8.0
       '@nestjs/axios':
         specifier: ^4.0.1
         version: 4.0.1(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(axios@1.13.5)(rxjs@7.8.2)
@@ -119,9 +122,6 @@ importers:
       '@types/speakeasy':
         specifier: ^2.0.10
         version: 2.0.10
-      axios:
-        specifier: ^1.13.5
-        version: 1.13.5
       bcrypt:
         specifier: ^5.1.1
         version: 5.1.1
@@ -213,6 +213,9 @@ importers:
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
+      '@types/form-data':
+        specifier: ^2.5.2
+        version: 2.5.2
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
@@ -237,9 +240,15 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.56.1
         version: 8.56.1(eslint@8.57.1)(typescript@5.9.3)
+      axios:
+        specifier: ^1.13.5
+        version: 1.13.5
       eslint:
         specifier: ^8.57.1
         version: 8.57.1
+      form-data:
+        specifier: ^4.0.5
+        version: 4.0.5
       jest:
         specifier: ^30.2.0
         version: 30.2.0(@types/node@22.19.11)(esbuild-register@3.6.0(esbuild@0.27.3))(ts-node@10.9.2(@swc/core@1.15.13(@swc/helpers@0.5.19))(@types/node@22.19.11)(typescript@5.9.3))
@@ -1013,6 +1022,13 @@ packages:
       {
         integrity: sha512-R4MSXTVnuMzGD7bzHdW2ZhhdPC/igELENcq5IjEverBvq5hn1SXCWcsi6eSsdWP0/Ur+SItRRjAktmdoX/8R/Q==,
       }
+
+  '@easypost/api@8.8.0':
+    resolution:
+      {
+        integrity: sha512-ecer46U7UFu1CvuYtGcACxCwXuP+qk6HPIbytieY44KX0KKYXx3Rzefn6453qkXvdxbTvNxM3IByKbtRHm937Q==,
+      }
+    engines: { node: '>= 16.0' }
 
   '@emnapi/core@1.8.1':
     resolution:
@@ -4797,6 +4813,13 @@ packages:
       {
         integrity: sha512-sKYVuV7Sv9fbPIt/442koC7+IIwK5olP1KWeD88e/idgoJqDm3JV/YUiPwkoKK92ylff2MGxSz1CSjsXelx0YA==,
       }
+
+  '@types/form-data@2.5.2':
+    resolution:
+      {
+        integrity: sha512-tfmcyHn1Pp9YHAO5r40+UuZUPAZbUEgqTel3EuEKpmF9hPkXgR4l41853raliXnb4gwyPNoQOfvgGGlHN5WSog==,
+      }
+    deprecated: This is a stub types definition. form-data provides its own type definitions, so you do not need this installed.
 
   '@types/glob@7.2.0':
     resolution:
@@ -13249,6 +13272,13 @@ packages:
       }
     hasBin: true
 
+  uuid@11.1.0:
+    resolution:
+      {
+        integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==,
+      }
+    hasBin: true
+
   uuid@13.0.0:
     resolution:
       {
@@ -14068,6 +14098,15 @@ snapshots:
       '@so-ric/colorspace': 1.1.6
       enabled: 2.0.0
       kuler: 2.0.0
+
+  '@easypost/api@8.8.0':
+    dependencies:
+      superagent: 10.3.0
+      uuid: 11.1.0
+      yargs: 17.7.2
+      yargs-parser: 21.1.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@emnapi/core@1.8.1':
     dependencies:
@@ -16546,6 +16585,10 @@ snapshots:
       '@types/body-parser': 1.19.6
       '@types/express-serve-static-core': 5.1.1
       '@types/serve-static': 2.2.0
+
+  '@types/form-data@2.5.2':
+    dependencies:
+      form-data: 4.0.5
 
   '@types/glob@7.2.0':
     dependencies:
@@ -22408,6 +22451,8 @@ snapshots:
   utils-merge@1.0.1: {}
 
   uuid@10.0.0: {}
+
+  uuid@11.1.0: {}
 
   uuid@13.0.0: {}
 

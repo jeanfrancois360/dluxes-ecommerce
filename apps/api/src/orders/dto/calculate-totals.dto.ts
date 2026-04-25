@@ -1,4 +1,12 @@
-import { IsString, IsOptional, IsArray, ValidateNested, IsNumber, Min, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsNumber,
+  Min,
+  IsEnum,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -35,8 +43,8 @@ export class CalculateTotalsDto {
   shippingAddressId: string;
 
   @IsOptional()
-  @IsEnum(['standard', 'express', 'overnight'])
-  shippingMethod?: string;
+  @IsString()
+  shippingMethod?: string; // Can be 'standard', 'express', 'overnight', or 'pickup-{storeId}'
 
   @IsOptional()
   @IsString()

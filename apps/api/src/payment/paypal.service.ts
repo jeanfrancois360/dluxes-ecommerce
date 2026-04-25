@@ -1,9 +1,16 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as paypal from '@paypal/checkout-server-sdk';
 import { PrismaService } from '../database/prisma.service';
 import { PaymentMethod, PaymentStatus, PaymentTransactionStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { assertOrderAccess, AuthenticatedUser } from '../common/authorization/order-access.helper';
 
 @Injectable()
 export class PayPalService {
@@ -196,12 +203,16 @@ export class PayPalService {
    * Capture PayPal order after user approval
    */
   async captureOrder(
-    paypalOrderId: string
+    paypalOrderId: string,
+    user: AuthenticatedUser
   ): Promise<{ success: boolean; orderId: string; transactionId: string }> {
     const client = this.getClient();
 
     try {
-      // Find our order by PayPal order ID (stored in metadata)
+      // Find our order by PayPal order ID (stored in metadata).
+      // NOTE: This is an O(n) full-table scan filtered in application memory because
+      // paypalOrderId is stored in the metadata JSON field, not a dedicated indexed column.
+      // Logged for follow-up: normalize PaymentTransaction to add a first-class paypalOrderId column.
       const transactions = await this.prisma.paymentTransaction.findMany({
         where: {
           paymentMethod: PaymentMethod.PAYPAL,
@@ -215,8 +226,11 @@ export class PayPalService {
       });
 
       if (!transaction) {
-        throw new BadRequestException('Order not found');
+        throw new NotFoundException('Payment order not found');
       }
+
+      // Verify the calling user owns this order before capturing funds.
+      await assertOrderAccess(this.prisma, transaction.orderId, user, 'buyer');
 
       if (transaction.status === PaymentTransactionStatus.SUCCEEDED) {
         throw new BadRequestException('Order already captured');
@@ -269,7 +283,11 @@ export class PayPalService {
       }
     } catch (error) {
       this.logger.error('PayPal capture failed:', error);
-      if (error instanceof BadRequestException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
       throw new BadRequestException(`PayPal capture failed: ${error.message}`);
@@ -299,6 +317,14 @@ export class PayPalService {
     const client = this.getClient();
 
     try {
+      // TODO: PayPal refund audit trail — no local DB write currently records
+      // the refund. Ideally we would: (1) look up the PaymentTransaction via
+      // metadata.captureId using a JSON path query (slow, non-indexed), (2)
+      // update its status to REFUNDED and store the refundId in metadata, (3)
+      // update the linked Order's paymentStatus. For now, admin-only access
+      // via RolesGuard prevents unauthorized use; audit trail will be added
+      // in a follow-up once the PaymentTransaction schema is normalized to
+      // include a first-class paypalCaptureId column.
       const request = new paypal.payments.CapturesRefundRequest(captureId);
       request.requestBody(
         amount && currency

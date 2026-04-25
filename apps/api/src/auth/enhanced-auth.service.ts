@@ -21,6 +21,7 @@ import * as QRCode from 'qrcode';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
 import { EmailOTPService } from './email-otp.service';
+import { ReferralService } from '../referral/referral.service';
 import { EmailOTPType } from '@prisma/client';
 import {
   RegisterDto,
@@ -32,7 +33,7 @@ import {
 
 @Injectable()
 export class EnhancedAuthService {
-  private readonly MAX_LOGIN_ATTEMPTS = 5;
+  private readonly MAX_LOGIN_ATTEMPTS_DEFAULT = 5; // fallback when setting unavailable
   private readonly LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
   private readonly MAGIC_LINK_EXPIRY = 15 * 60 * 1000; // 15 minutes
   private readonly PASSWORD_RESET_EXPIRY = 60 * 60 * 1000; // 1 hour
@@ -44,7 +45,8 @@ export class EnhancedAuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private emailService: EmailService,
-    private emailOTPService: EmailOTPService
+    private emailOTPService: EmailOTPService,
+    private referralService: ReferralService
   ) {}
 
   // ============================================================================
@@ -79,6 +81,19 @@ export class EnhancedAuthService {
         lastLoginIp: ipAddress,
       },
     });
+
+    // Referral System (v2.11.0) - NON-BLOCKING
+    // Auto-generate referral code for new user
+    this.referralService.generateReferralCode(user.id).catch((err) => {
+      console.error(`Failed to generate referral code for user ${user.id}:`, err);
+    });
+
+    // Apply referral code if provided
+    if (data.referralCode) {
+      this.referralService.applyReferralCode(data.referralCode, user.id).catch((err) => {
+        console.error(`Failed to apply referral code ${data.referralCode}:`, err);
+      });
+    }
 
     // Auto-create store for all sellers (v2.6.0 feature)
     let store = null;
@@ -881,6 +896,21 @@ export class EnhancedAuthService {
   // ============================================================================
 
   private async checkRateLimit(email: string, ipAddress: string) {
+    let maxLoginAttempts = this.MAX_LOGIN_ATTEMPTS_DEFAULT;
+    try {
+      const setting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'max_login_attempts' },
+      });
+      if (setting?.value !== null && setting?.value !== undefined) {
+        const parsed = Number(setting.value);
+        if (!isNaN(parsed) && parsed > 0) {
+          maxLoginAttempts = parsed;
+        }
+      }
+    } catch {
+      // Use fallback silently
+    }
+
     const recentAttempts = await this.prisma.loginAttempt.findMany({
       where: {
         OR: [{ email }, { ipAddress }],
@@ -892,7 +922,7 @@ export class EnhancedAuthService {
 
     const failedAttempts = recentAttempts.filter((attempt) => !attempt.success);
 
-    if (failedAttempts.length >= this.MAX_LOGIN_ATTEMPTS) {
+    if (failedAttempts.length >= maxLoginAttempts) {
       const oldestAttempt = failedAttempts[0];
       const timeRemaining = Math.ceil(
         (oldestAttempt.createdAt.getTime() + this.LOCKOUT_DURATION - Date.now()) / 1000 / 60

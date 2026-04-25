@@ -25,7 +25,7 @@ export class InventoryService {
     type: InventoryTransactionType,
     userId?: string,
     reason?: string,
-    notes?: string,
+    notes?: string
   ) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
@@ -77,7 +77,7 @@ export class InventoryService {
     type: InventoryTransactionType,
     userId?: string,
     reason?: string,
-    notes?: string,
+    notes?: string
   ) {
     const variant = await this.prisma.productVariant.findUnique({
       where: { id: variantId },
@@ -124,11 +124,7 @@ export class InventoryService {
   /**
    * Get inventory transactions for a product
    */
-  async getProductTransactions(
-    productId: string,
-    limit: number = 50,
-    offset: number = 0,
-  ) {
+  async getProductTransactions(productId: string, limit: number = 50, offset: number = 0) {
     const transactions = await this.prisma.inventoryTransaction.findMany({
       where: { productId },
       include: {
@@ -168,11 +164,31 @@ export class InventoryService {
   /**
    * Get low stock products
    */
-  async getLowStockProducts(threshold: number = INVENTORY_DEFAULTS.LOW_STOCK_THRESHOLD) {
+  async getLowStockProducts(threshold?: number) {
+    // Read threshold from system settings when not explicitly provided
+    let effectiveThreshold: number = INVENTORY_DEFAULTS.LOW_STOCK_THRESHOLD;
+    if (threshold !== undefined) {
+      effectiveThreshold = threshold;
+    } else {
+      try {
+        const setting = await this.prisma.systemSetting.findUnique({
+          where: { key: 'inventory.low_stock_threshold' },
+        });
+        if (
+          setting?.value !== null &&
+          setting?.value !== undefined &&
+          typeof setting.value === 'number'
+        ) {
+          effectiveThreshold = setting.value as number;
+        }
+      } catch {
+        // Use fallback silently
+      }
+    }
     const products = await this.prisma.product.findMany({
       where: {
         inventory: {
-          lte: threshold,
+          lte: effectiveThreshold,
           gt: 0,
         },
         status: 'ACTIVE',
@@ -227,7 +243,7 @@ export class InventoryService {
       type: InventoryTransactionType;
       reason?: string;
     }>,
-    userId?: string,
+    userId?: string
   ) {
     const results = [];
 
@@ -239,7 +255,7 @@ export class InventoryService {
             update.quantity,
             update.type,
             userId,
-            update.reason,
+            update.reason
           );
           results.push({ success: true, variantId: update.variantId, result });
         } else if (update.productId) {
@@ -248,7 +264,7 @@ export class InventoryService {
             update.quantity,
             update.type,
             userId,
-            update.reason,
+            update.reason
           );
           results.push({ success: true, productId: update.productId, result });
         }
@@ -269,58 +285,53 @@ export class InventoryService {
    * Get inventory summary/statistics
    */
   async getInventorySummary() {
-    const [
-      totalProducts,
-      lowStockCount,
-      outOfStockCount,
-      totalInventoryValue,
-      recentTransactions,
-    ] = await Promise.all([
-      this.prisma.product.count({
-        where: { status: 'ACTIVE' },
-      }),
-      this.prisma.product.count({
-        where: {
-          status: 'ACTIVE',
-          inventory: {
-            lte: INVENTORY_DEFAULTS.LOW_STOCK_THRESHOLD,
-            gt: 0,
-          },
-        },
-      }),
-      this.prisma.product.count({
-        where: {
-          status: 'ACTIVE',
-          inventory: 0,
-        },
-      }),
-      this.prisma.product.aggregate({
-        where: { status: 'ACTIVE' },
-        _sum: {
-          inventory: true,
-        },
-      }),
-      this.prisma.inventoryTransaction.findMany({
-        take: 10,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              sku: true,
+    const [totalProducts, lowStockCount, outOfStockCount, totalInventoryValue, recentTransactions] =
+      await Promise.all([
+        this.prisma.product.count({
+          where: { status: 'ACTIVE' },
+        }),
+        this.prisma.product.count({
+          where: {
+            status: 'ACTIVE',
+            inventory: {
+              lte: INVENTORY_DEFAULTS.LOW_STOCK_THRESHOLD,
+              gt: 0,
             },
           },
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
+        }),
+        this.prisma.product.count({
+          where: {
+            status: 'ACTIVE',
+            inventory: 0,
+          },
+        }),
+        this.prisma.product.aggregate({
+          where: { status: 'ACTIVE' },
+          _sum: {
+            inventory: true,
+          },
+        }),
+        this.prisma.inventoryTransaction.findMany({
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
             },
           },
-        },
-      }),
-    ]);
+        }),
+      ]);
 
     return {
       totalProducts,

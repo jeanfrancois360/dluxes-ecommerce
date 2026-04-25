@@ -13,9 +13,11 @@ import { StripeConnectService } from './integrations/stripe-connect.service';
 import { StripeConnectController } from './stripe-connect.controller';
 import { DatabaseModule } from '../database/database.module';
 import { SettingsModule } from '../settings/settings.module';
+import { EncryptionService } from '../common/services/encryption.service';
+import { EmailModule } from '../email/email.module';
 
 @Module({
-  imports: [DatabaseModule, SettingsModule, ConfigModule, ScheduleModule.forRoot()],
+  imports: [DatabaseModule, SettingsModule, ConfigModule, EmailModule, ScheduleModule.forRoot()],
   controllers: [
     PayoutController,
     SellerPayoutSettingsController,
@@ -27,6 +29,7 @@ import { SettingsModule } from '../settings/settings.module';
     PayoutCronService,
     SellerPayoutSettingsService,
     StripeConnectService,
+    EncryptionService, // v2.11.1: Banking data encryption
   ],
   exports: [PayoutSchedulerService, SellerPayoutSettingsService, StripeConnectService],
 })

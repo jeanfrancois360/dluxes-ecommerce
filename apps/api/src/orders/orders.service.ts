@@ -9,7 +9,7 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CalculateTotalsDto, OrderCalculationResponse } from './dto/calculate-totals.dto';
-import { OrderStatus, PaymentStatus, InventoryTransactionType } from '@prisma/client';
+import { OrderStatus, PaymentStatus, InventoryTransactionType, UserRole } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { InventoryService } from '../inventory/inventory.service';
 import { ShippingTaxService } from './shipping-tax.service';
@@ -353,7 +353,8 @@ export class OrdersService {
     shippingAddressId: string,
     billingAddressId?: string,
     notes?: string,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    shippingMethodId?: string
   ) {
     // 1. Check for duplicate order (idempotency)
     if (idempotencyKey) {
@@ -439,6 +440,10 @@ export class OrdersService {
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
+        weight: item.product?.weight || undefined,
+        fulfillmentType: item.product?.fulfillmentType || undefined,
+        gelatoProductUid: item.product?.gelatoProductUid || undefined,
+        storeId: item.product?.storeId || undefined,
       })),
       Number(subtotal)
     );
@@ -450,6 +455,34 @@ export class OrdersService {
 
     // 6. Generate order number
     const orderNumber = `ORD-${Date.now()}`;
+
+    // 6.5 Detect if this is a pickup order and generate pickup data
+    let isPickup = false;
+    let pickupStoreId: string | null = null;
+    let pickupCode: string | null = null;
+    let pickupInstructions: string | null = null;
+
+    if (shippingMethodId && shippingMethodId.startsWith('pickup-')) {
+      isPickup = true;
+      // Extract storeId from shippingMethodId (format: "pickup-{storeId}")
+      pickupStoreId = shippingMethodId.replace('pickup-', '');
+
+      // Generate 6-digit pickup code
+      pickupCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Get store pickup instructions
+      const store = await this.prisma.store.findUnique({
+        where: { id: pickupStoreId },
+        select: { pickupInstructions: true, pickupAddress: true, name: true },
+      });
+
+      if (store) {
+        pickupInstructions =
+          store.pickupInstructions ||
+          `Pick up your order at ${store.name}. Show your pickup code: ${pickupCode}`;
+        this.logger.log(`✅ Pickup order for store ${store.name} - Code: ${pickupCode}`);
+      }
+    }
 
     this.logger.log(
       `💰 Order totals: subtotal=${subtotal} ${orderCurrency}, ` +
@@ -494,11 +527,18 @@ export class OrdersService {
           billingAddressId: billingAddressId || shippingAddressId,
           notes,
 
+          // Pickup fields
+          isPickup,
+          pickupStoreId,
+          pickupCode,
+          pickupInstructions,
+          shippingProvider: isPickup ? 'SELF_PICKUP' : undefined,
+
           // Store idempotency key to prevent duplicate orders
           metadata: idempotencyKey ? { idempotencyKey } : null,
 
           items: {
-            create: orderItems,
+            create: orderItems.map(({ currency: _c, ...item }) => item),
           },
         },
         include: {
@@ -517,9 +557,11 @@ export class OrdersService {
         data: {
           orderId: newOrder.id,
           status: OrderStatus.PENDING,
-          title: 'Order Placed',
-          description: 'Your order has been received and is being processed.',
-          icon: 'shopping-bag',
+          title: isPickup ? 'Pickup Order Placed' : 'Order Placed',
+          description: isPickup
+            ? `Your order is being prepared for pickup. Pickup code: ${pickupCode}`
+            : 'Your order has been received and is being processed.',
+          icon: isPickup ? 'map-pin' : 'shopping-bag',
         },
       });
 
@@ -563,29 +605,76 @@ export class OrdersService {
         const customerName =
           `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
 
-        await this.emailService.sendOrderConfirmation(user.email, {
-          orderNumber: order.orderNumber,
-          customerName,
-          items: order.items.map((item) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: Number(item.price),
-            total: Number(item.total),
-          })),
-          subtotal: Number(subtotal),
-          shipping: Number(shipping),
-          tax: Number(tax),
-          total: Number(total),
-          currency: orderCurrency,
-          shippingAddress: {
-            street: order.shippingAddress.address1 || '',
-            city: order.shippingAddress.city || '',
-            state: order.shippingAddress.province || '',
-            zipCode: order.shippingAddress.postalCode || '',
-            country: order.shippingAddress.country || '',
-          },
-          orderId: order.id,
-        });
+        if (isPickup && pickupStoreId) {
+          // Send pickup order placed email
+          const pickupStore = await this.prisma.store.findUnique({
+            where: { id: pickupStoreId },
+            select: {
+              name: true,
+              pickupAddress: true,
+              pickupInstructions: true,
+              address1: true,
+              address2: true,
+              city: true,
+              province: true,
+              postalCode: true,
+            },
+          });
+
+          if (pickupStore) {
+            const storeAddress =
+              pickupStore.pickupAddress ||
+              `${pickupStore.address1 || ''}, ${pickupStore.city || ''}, ${pickupStore.province || ''} ${pickupStore.postalCode || ''}`.trim();
+
+            await this.emailService.sendPickupOrderPlacedNotification(user.email, {
+              orderNumber: order.orderNumber,
+              customerName,
+              pickupCode: pickupCode || '',
+              storeName: pickupStore.name,
+              storeAddress,
+              pickupInstructions: pickupInstructions || undefined,
+              items: order.items.map((item) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: Number(item.price),
+                image: item.image,
+              })),
+              subtotal: Number(subtotal),
+              tax: Number(tax),
+              pickupFee: Number(shipping), // Pickup fee stored as shipping
+              total: Number(total),
+              currency: orderCurrency,
+              orderId: order.id,
+            });
+
+            this.logger.log(`Pickup order placed email queued for ${user.email}`);
+          }
+        } else {
+          // Send regular order confirmation email
+          await this.emailService.sendOrderConfirmation(user.email, {
+            orderNumber: order.orderNumber,
+            customerName,
+            items: order.items.map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: Number(item.price),
+              total: Number(item.total),
+            })),
+            subtotal: Number(subtotal),
+            shipping: Number(shipping),
+            tax: Number(tax),
+            total: Number(total),
+            currency: orderCurrency,
+            shippingAddress: {
+              street: order.shippingAddress.address1 || '',
+              city: order.shippingAddress.city || '',
+              state: order.shippingAddress.province || '',
+              zipCode: order.shippingAddress.postalCode || '',
+              country: order.shippingAddress.country || '',
+            },
+            orderId: order.id,
+          });
+        }
       }
     } catch (emailError) {
       this.logger.error('Error sending order confirmation email:', emailError);
@@ -597,13 +686,15 @@ export class OrdersService {
     try {
       this.logger.log(`💳 Creating Stripe PaymentIntent: ${total.toNumber()} ${orderCurrency}`);
 
+      // Internal call: the order was just created by this userId, so ownership is guaranteed.
+      // Construct a minimal AuthenticatedUser to satisfy the updated service signature.
       const paymentIntent = await this.paymentService.createPaymentIntent(
         {
           amount: total.toNumber(),
           currency: orderCurrency,
           orderId: order.id,
         },
-        userId
+        { id: userId, email: '', role: UserRole.BUYER }
       );
 
       clientSecret = paymentIntent.clientSecret;
@@ -672,9 +763,22 @@ export class OrdersService {
         );
         this.logger.log(`Returning existing order ${existingOrder.id}`);
 
+        // Convert Decimal fields to numbers for frontend compatibility
         return {
           success: true,
-          data: existingOrder,
+          data: {
+            ...existingOrder,
+            subtotal: Number(existingOrder.subtotal),
+            shipping: Number(existingOrder.shipping),
+            tax: Number(existingOrder.tax),
+            total: Number(existingOrder.total),
+            exchangeRate: existingOrder.exchangeRate ? Number(existingOrder.exchangeRate) : null,
+            items: existingOrder.items?.map((item) => ({
+              ...item,
+              price: Number(item.price),
+              total: Number(item.total),
+            })),
+          },
           message: 'Order already exists (duplicate prevented)',
           isDuplicate: true,
         };
@@ -736,6 +840,10 @@ export class OrdersService {
         price: item.price,
         total: itemTotal,
         image: product.heroImage,
+        weight: product.weight || undefined,
+        fulfillmentType: product.fulfillmentType || undefined,
+        gelatoProductUid: product.gelatoProductUid || undefined,
+        storeId: product.storeId || undefined,
       });
 
       // Track POD items for Gelato shipping calculation
@@ -769,6 +877,10 @@ export class OrdersService {
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
+        weight: item.weight || undefined,
+        fulfillmentType: item.fulfillmentType || undefined,
+        gelatoProductUid: item.gelatoProductUid || undefined,
+        storeId: item.storeId || undefined,
       })),
       Number(subtotal)
     );
@@ -864,6 +976,34 @@ export class OrdersService {
     // Generate order number
     const orderNumber = `ORD-${Date.now()}`;
 
+    // Detect if this is a pickup order and generate pickup data
+    let isPickup = false;
+    let pickupStoreId: string | null = null;
+    let pickupCode: string | null = null;
+    let pickupInstructions: string | null = null;
+
+    if (shippingMethodId && shippingMethodId.startsWith('pickup-')) {
+      isPickup = true;
+      // Extract storeId from shippingMethodId (format: "pickup-{storeId}")
+      pickupStoreId = shippingMethodId.replace('pickup-', '');
+
+      // Generate 6-digit pickup code
+      pickupCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Get store pickup instructions
+      const store = await this.prisma.store.findUnique({
+        where: { id: pickupStoreId },
+        select: { pickupInstructions: true, pickupAddress: true, name: true },
+      });
+
+      if (store) {
+        pickupInstructions =
+          store.pickupInstructions ||
+          `Pick up your order at ${store.name}. Show your pickup code: ${pickupCode}`;
+        this.logger.log(`✅ Pickup order for store ${store.name} - Code: ${pickupCode}`);
+      }
+    }
+
     // Get currency and exchange rate for order
     const currency = orderCurrency || 'USD';
     const baseCurrency = 'USD';
@@ -900,10 +1040,24 @@ export class OrdersService {
           shippingAddressId,
           billingAddressId: billingAddressId || shippingAddressId,
           notes,
+          // Pickup fields
+          isPickup,
+          pickupStoreId,
+          pickupCode,
+          pickupInstructions,
+          shippingProvider: isPickup ? 'SELF_PICKUP' : undefined,
           // Store idempotency key to prevent duplicate orders
           metadata: idempotencyKey ? { idempotencyKey } : null,
           items: {
-            create: orderItems,
+            create: orderItems.map(
+              ({
+                weight: _w,
+                fulfillmentType: _ft,
+                gelatoProductUid: _gp,
+                storeId: _si,
+                ...item
+              }) => item
+            ),
           },
         },
         include: {
@@ -922,9 +1076,11 @@ export class OrdersService {
         data: {
           orderId: newOrder.id,
           status: OrderStatus.PENDING,
-          title: 'Order Placed',
-          description: 'Your order has been received and is being processed.',
-          icon: 'shopping-bag',
+          title: isPickup ? 'Pickup Order Placed' : 'Order Placed',
+          description: isPickup
+            ? `Your order is being prepared for pickup. Pickup code: ${pickupCode}`
+            : 'Your order has been received and is being processed.',
+          icon: isPickup ? 'map-pin' : 'shopping-bag',
         },
       });
 
@@ -965,31 +1121,78 @@ export class OrdersService {
         const customerName =
           `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
 
-        await this.emailService.sendOrderConfirmation(user.email, {
-          orderNumber: order.orderNumber,
-          customerName,
-          items: orderItems.map((item) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: Number(item.price),
-            image: item.image,
-          })),
-          subtotal: Number(subtotal),
-          tax: Number(tax),
-          shipping: Number(shipping),
-          total: Number(total),
-          currency,
-          shippingAddress: {
-            street: order.shippingAddress.address1,
-            city: order.shippingAddress.city,
-            state: order.shippingAddress.province || '',
-            zipCode: order.shippingAddress.postalCode,
-            country: order.shippingAddress.country,
-          },
-          orderId: order.id,
-        });
+        if (isPickup && pickupStoreId) {
+          // Send pickup order placed email
+          const pickupStore = await this.prisma.store.findUnique({
+            where: { id: pickupStoreId },
+            select: {
+              name: true,
+              pickupAddress: true,
+              pickupInstructions: true,
+              address1: true,
+              address2: true,
+              city: true,
+              province: true,
+              postalCode: true,
+            },
+          });
 
-        this.logger.log(`Order confirmation email queued for ${user.email}`);
+          if (pickupStore) {
+            const storeAddress =
+              pickupStore.pickupAddress ||
+              `${pickupStore.address1 || ''}, ${pickupStore.city || ''}, ${pickupStore.province || ''} ${pickupStore.postalCode || ''}`.trim();
+
+            await this.emailService.sendPickupOrderPlacedNotification(user.email, {
+              orderNumber: order.orderNumber,
+              customerName,
+              pickupCode: pickupCode || '',
+              storeName: pickupStore.name,
+              storeAddress,
+              pickupInstructions: pickupInstructions || undefined,
+              items: orderItems.map((item) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: Number(item.price),
+                image: item.image,
+              })),
+              subtotal: Number(subtotal),
+              tax: Number(tax),
+              pickupFee: Number(shipping), // Pickup fee stored as shipping
+              total: Number(total),
+              currency,
+              orderId: order.id,
+            });
+
+            this.logger.log(`Pickup order placed email queued for ${user.email}`);
+          }
+        } else {
+          // Send regular order confirmation email
+          await this.emailService.sendOrderConfirmation(user.email, {
+            orderNumber: order.orderNumber,
+            customerName,
+            items: orderItems.map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: Number(item.price),
+              image: item.image,
+            })),
+            subtotal: Number(subtotal),
+            tax: Number(tax),
+            shipping: Number(shipping),
+            total: Number(total),
+            currency,
+            shippingAddress: {
+              street: order.shippingAddress.address1,
+              city: order.shippingAddress.city,
+              state: order.shippingAddress.province || '',
+              zipCode: order.shippingAddress.postalCode,
+              country: order.shippingAddress.country,
+            },
+            orderId: order.id,
+          });
+
+          this.logger.log(`Order confirmation email queued for ${user.email}`);
+        }
       }
     } catch (emailError) {
       // Don't fail the order if email fails
@@ -1123,7 +1326,20 @@ export class OrdersService {
       this.logger.error('Failed to send seller notification emails:', sellerEmailError);
     }
 
-    return order;
+    // Convert Decimal fields to numbers for frontend compatibility
+    return {
+      ...order,
+      subtotal: Number(order.subtotal),
+      shipping: Number(order.shipping),
+      tax: Number(order.tax),
+      total: Number(order.total),
+      exchangeRate: order.exchangeRate ? Number(order.exchangeRate) : null,
+      items: order.items?.map((item) => ({
+        ...item,
+        price: Number(item.price),
+        total: Number(item.total),
+      })),
+    };
   }
 
   /**
@@ -1268,6 +1484,7 @@ export class OrdersService {
       [OrderStatus.PROCESSING]: [
         OrderStatus.PARTIALLY_SHIPPED,
         OrderStatus.SHIPPED,
+        OrderStatus.READY_FOR_PICKUP, // For pickup orders
         OrderStatus.CANCELLED,
       ],
       [OrderStatus.PARTIALLY_SHIPPED]: [
@@ -1279,6 +1496,14 @@ export class OrdersService {
       [OrderStatus.DELIVERED]: [OrderStatus.REFUNDED], // Can't cancel delivered orders
       [OrderStatus.CANCELLED]: [], // Terminal state - no transitions allowed
       [OrderStatus.REFUNDED]: [], // Terminal state - no transitions allowed
+      // Pickup-specific statuses
+      [OrderStatus.READY_FOR_PICKUP]: [
+        OrderStatus.PICKED_UP,
+        OrderStatus.PICKUP_EXPIRED,
+        OrderStatus.CANCELLED,
+      ],
+      [OrderStatus.PICKED_UP]: [], // Terminal state - successful pickup
+      [OrderStatus.PICKUP_EXPIRED]: [OrderStatus.CANCELLED, OrderStatus.REFUNDED],
     };
 
     const allowedStatuses = validTransitions[currentStatus] || [];
@@ -1295,10 +1520,20 @@ export class OrdersService {
 
   /**
    * Cancel order
+   *
+   * P3-01 fix: cancelling a PAID/PARTIALLY_REFUNDED order now triggers a full
+   * Stripe refund (or PI cancellation if not yet captured) before updating state.
+   * P3-02 fix: buyers are blocked from cancelling SHIPPED orders.
+   * P3-03 fix: ADMIN/SUPER_ADMIN can cancel SHIPPED orders (force-cancel).
+   * P3-05 fix: PENDING-payment cancellations now set paymentStatus=CANCELLED.
    */
-  async cancel(id: string, userId: string) {
-    const order = await this.findOne(id, userId);
+  async cancel(id: string, userId: string, actor: { role: UserRole }) {
+    const isPrivileged = actor.role === UserRole.ADMIN || actor.role === UserRole.SUPER_ADMIN;
 
+    // P3-03: admins can look up any order regardless of ownership
+    const order = await this.findOne(id, userId, isPrivileged);
+
+    // --- Status gate (fail fast before any payment action) ---
     if (order.status === OrderStatus.DELIVERED) {
       throw new BadRequestException('Cannot cancel delivered order');
     }
@@ -1307,7 +1542,70 @@ export class OrdersService {
       throw new BadRequestException('Order already cancelled');
     }
 
-    // Restore inventory with proper transaction tracking
+    if (order.status === OrderStatus.REFUNDED) {
+      throw new BadRequestException('Order already refunded');
+    }
+
+    if (order.status === OrderStatus.SHIPPED && !isPrivileged) {
+      throw new BadRequestException(
+        'Cannot cancel shipped order. Please initiate a refund request instead.'
+      );
+    }
+
+    // --- Payment action (must succeed before any state mutation) ---
+    const wasRefundTriggered =
+      order.paymentStatus === PaymentStatus.PAID ||
+      order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED;
+
+    if (wasRefundTriggered) {
+      // createRefund handles both the requires_capture (PI cancel) and
+      // succeeded (Stripe refund) paths internally, and restores inventory.
+      // If this throws the cancellation is aborted — transactional semantics.
+      await this.paymentService.createRefund(id, undefined, 'order_cancelled');
+
+      // Deliberately using prisma.order.update (not updateStatus) because
+      // validateStatusTransition rejects REFUNDED -> CANCELLED as an invalid
+      // terminal-state transition. For cancel-with-refund, REFUNDED is an
+      // intermediate state written by createRefund, and CANCELLED is the
+      // semantically correct final state (matches admin revenue metrics'
+      // "status != CANCELLED" filter). The state machine does not currently
+      // model cancel-with-refund as a first-class flow; this bypass is
+      // intentional and documented as known gap for post-launch cleanup.
+      await this.prisma.order.update({
+        where: { id },
+        data: { status: OrderStatus.CANCELLED },
+      });
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId: id,
+          status: OrderStatus.CANCELLED,
+          title: 'Order Cancelled',
+          description: 'Order cancelled and payment refunded.',
+          icon: 'x-circle',
+        },
+      });
+
+      // Inventory was already restored inside createRefund — skip the loop.
+      return this.prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          shippingAddress: true,
+          timeline: { orderBy: { createdAt: 'asc' } },
+        },
+      });
+    }
+
+    if (order.paymentStatus === PaymentStatus.PENDING) {
+      // No Stripe action needed; mark payment as cancelled so downstream
+      // reporting does not show a dangling PENDING payment.
+      await this.prisma.order.update({
+        where: { id },
+        data: { paymentStatus: PaymentStatus.CANCELLED as any },
+      });
+    }
+
+    // --- Inventory restoration (non-PAID paths only; createRefund handles PAID) ---
     for (const item of order.items) {
       try {
         await this.inventoryService.recordTransaction({
@@ -1761,11 +2059,15 @@ export class OrdersService {
           quantity: item.quantity,
           price: verifiedPrice,
           total: itemTotal,
+          weight: product.weight || undefined,
+          fulfillmentType: product.fulfillmentType || undefined,
+          gelatoProductUid: product.gelatoProductUid || undefined,
+          storeId: product.storeId || undefined,
         });
       }
 
       // 3. Calculate shipping options
-      const shippingOptions = await this.shippingTaxService.calculateShippingOptions(
+      let shippingOptions = await this.shippingTaxService.calculateShippingOptions(
         {
           country: address.country,
           state: address.province || undefined,
@@ -1777,7 +2079,27 @@ export class OrdersService {
       );
 
       if (!shippingOptions || shippingOptions.length === 0) {
-        throw new BadRequestException('No shipping options available for this address');
+        this.logger.warn(
+          '[calculateTotals] All shipping providers failed — using hardcoded manual rates as final fallback'
+        );
+        shippingOptions = [
+          {
+            id: 'standard',
+            name: 'Standard Shipping',
+            description: '5-7 business days',
+            price: 9.99,
+            estimatedDays: 7,
+            carrier: 'USPS',
+          },
+          {
+            id: 'express',
+            name: 'Express Shipping',
+            description: '2-3 business days',
+            price: 19.99,
+            estimatedDays: 3,
+            carrier: 'FedEx',
+          },
+        ];
       }
 
       // 4. Select shipping method
@@ -2151,5 +2473,76 @@ export class OrdersService {
       REFUNDED: '#FF9800',
     };
     return colors[status] || '#666';
+  }
+
+  /**
+   * Get available pickup stores for given products
+   * Returns stores that have pickup enabled and carry the specified products
+   * v2.10.0 - Self-Pickup Feature
+   */
+  async getAvailablePickupStores(productIds: string[]) {
+    if (!productIds || productIds.length === 0) {
+      return [];
+    }
+
+    try {
+      // Find all stores that have at least one of the specified products
+      // AND have pickup enabled
+      const stores = await this.prisma.store.findMany({
+        where: {
+          pickupEnabled: true,
+          status: 'ACTIVE', // Only active stores
+          products: {
+            some: {
+              id: {
+                in: productIds,
+              },
+              status: 'ACTIVE', // Only active products
+            },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          // Store address fields
+          address1: true,
+          address2: true,
+          city: true,
+          province: true,
+          postalCode: true,
+          country: true,
+          phone: true,
+          // Pickup-specific fields
+          pickupAddress: true,
+          pickupInstructions: true,
+          pickupHours: true,
+          pickupEstimatedMinutes: true,
+          pickupFee: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      });
+
+      // Transform to match frontend PickupStore interface
+      return stores.map((store) => ({
+        id: store.id,
+        name: store.name,
+        // Use pickup address if set, otherwise use store address
+        address: store.pickupAddress || store.address1 || null,
+        city: store.city,
+        state: store.province,
+        zipCode: store.postalCode,
+        phone: store.phone,
+        pickupAddress: store.pickupAddress,
+        pickupInstructions: store.pickupInstructions,
+        pickupHours: store.pickupHours as Record<string, string> | null,
+        pickupEstimatedMinutes: store.pickupEstimatedMinutes,
+      }));
+    } catch (error) {
+      this.logger.error('Failed to fetch available pickup stores', error);
+      throw new Error('Failed to fetch available pickup stores');
+    }
   }
 }

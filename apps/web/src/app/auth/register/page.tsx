@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
@@ -11,7 +11,10 @@ import { FloatingInput, Button } from '@nextpik/ui';
 import type { UserRole } from '@/lib/api/types';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { showAuthError } from '@/lib/utils/auth-errors';
-import { PasswordStrengthIndicator, validatePassword } from '@/components/auth/password-strength-indicator';
+import {
+  PasswordStrengthIndicator,
+  validatePassword,
+} from '@/components/auth/password-strength-indicator';
 import { SuccessAnimation } from '@/components/auth/success-animation';
 
 type AccountType = 'BUYER' | 'SELLER';
@@ -26,10 +29,14 @@ interface AccountTypeOption {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { register, isLoading: authLoading, error: authError, clearError } = useAuth();
   const t = useTranslations('auth.register');
   const tc = useTranslations('common');
   const tLogin = useTranslations('auth.login');
+
+  // Referral System (v2.11.0) - Extract referral code from URL
+  const [referralCode, setReferralCode] = useState<string | null>(null);
 
   const accountTypes: AccountTypeOption[] = [
     {
@@ -37,12 +44,7 @@ export default function RegisterPage() {
       title: t('buyerAccount'),
       description: t('buyerDescription'),
       icon: '🛍️',
-      benefits: [
-        t('buyerBenefit1'),
-        t('buyerBenefit2'),
-        t('buyerBenefit3'),
-        t('buyerBenefit4'),
-      ],
+      benefits: [t('buyerBenefit1'), t('buyerBenefit2'), t('buyerBenefit3'), t('buyerBenefit4')],
     },
     {
       type: 'SELLER',
@@ -76,6 +78,14 @@ export default function RegisterPage() {
   const [countdown, setCountdown] = useState(3);
 
   const isLoading = authLoading;
+
+  // Extract referral code from URL on mount
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setReferralCode(ref.toUpperCase().trim());
+    }
+  }, [searchParams]);
 
   // Countdown timer for redirect after success
   useEffect(() => {
@@ -144,6 +154,8 @@ export default function RegisterPage() {
           storeName: formData.storeName,
           storeDescription: formData.storeDescription,
         }),
+        // Referral System (v2.11.0) - Pass referral code if present
+        ...(referralCode && { referralCode }),
       });
 
       // Show success animation
@@ -160,17 +172,10 @@ export default function RegisterPage() {
   // Show success screen
   if (isSuccess) {
     return (
-      <AuthLayout
-        title={t('welcomeToNextPik')}
-        subtitle={t('accountCreatedSuccess')}
-      >
+      <AuthLayout title={t('welcomeToNextPik')} subtitle={t('accountCreatedSuccess')}>
         <SuccessAnimation
           title={accountType === 'SELLER' ? t('storeCreated') : t('accountCreated')}
-          message={
-            accountType === 'SELLER'
-              ? t('storeReadyMessage')
-              : t('welcomeExploreMessage')
-          }
+          message={accountType === 'SELLER' ? t('storeReadyMessage') : t('welcomeExploreMessage')}
           countdown={countdown}
         />
       </AuthLayout>
@@ -182,6 +187,30 @@ export default function RegisterPage() {
       title={step === 'type' ? t('chooseAccountType') : t('createAccount')}
       subtitle={step === 'type' ? t('selectHowToJoin') : t('joinExclusive')}
     >
+      {/* Referral Banner (v2.11.0) */}
+      {referralCode && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-xl">🎁</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-900">
+                Referral code applied:{' '}
+                <code className="text-blue-600 font-mono">{referralCode}</code>
+              </p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Complete your registration to claim your reward
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       <AnimatePresence mode="wait">
         {step === 'type' ? (
           /* Step 1: Account Type Selection */
@@ -215,8 +244,18 @@ export default function RegisterPage() {
                         animate={{ scale: 1 }}
                         className="w-6 h-6 rounded-full bg-gold flex items-center justify-center"
                       >
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg
+                          className="w-4 h-4 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
                         </svg>
                       </motion.div>
                     )}
@@ -232,9 +271,22 @@ export default function RegisterPage() {
                       {/* Benefits List */}
                       <ul className="space-y-2">
                         {option.benefits.map((benefit, index) => (
-                          <li key={index} className="flex items-center gap-2 text-sm text-neutral-700">
-                            <svg className="w-4 h-4 text-gold flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          <li
+                            key={index}
+                            className="flex items-center gap-2 text-sm text-neutral-700"
+                          >
+                            <svg
+                              className="w-4 h-4 text-gold flex-shrink-0"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
                             </svg>
                             {benefit}
                           </li>
@@ -282,14 +334,14 @@ export default function RegisterPage() {
             <div className="flex items-center justify-between p-4 bg-gold/5 rounded-lg border border-gold/20">
               <div className="flex items-center gap-3">
                 <div className="text-2xl">
-                  {accountTypes.find(at => at.type === accountType)?.icon}
+                  {accountTypes.find((at) => at.type === accountType)?.icon}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-black">
-                    {accountTypes.find(at => at.type === accountType)?.title}
+                    {accountTypes.find((at) => at.type === accountType)?.title}
                   </p>
                   <p className="text-xs text-neutral-600">
-                    {accountTypes.find(at => at.type === accountType)?.description}
+                    {accountTypes.find((at) => at.type === accountType)?.description}
                   </p>
                 </div>
               </div>
@@ -376,10 +428,7 @@ export default function RegisterPage() {
             </div>
 
             {/* Password Strength Indicator */}
-            <PasswordStrengthIndicator
-              password={formData.password}
-              showRequirements={true}
-            />
+            <PasswordStrengthIndicator password={formData.password} showRequirements={true} />
 
             {/* Confirm Password */}
             <FloatingInput
@@ -411,8 +460,18 @@ export default function RegisterPage() {
                 className="space-y-4 pt-4 border-t border-neutral-200"
               >
                 <div className="flex items-center gap-2 mb-4">
-                  <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  <svg
+                    className="w-5 h-5 text-gold"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
                   </svg>
                   <h3 className="font-semibold text-black">{t('storeInfoOptional')}</h3>
                 </div>
@@ -420,14 +479,24 @@ export default function RegisterPage() {
                 {/* Instant Store Activation Notice */}
                 <div className="p-4 bg-success-light border border-success-DEFAULT/30 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-success-dark flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      className="w-5 h-5 text-success-dark flex-shrink-0 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                     <div>
-                      <p className="font-semibold text-success-dark text-sm mb-1">{t('instantStoreActivation')}</p>
-                      <p className="text-xs text-success-dark/80">
-                        {t('storeActivationMessage')}
+                      <p className="font-semibold text-success-dark text-sm mb-1">
+                        {t('instantStoreActivation')}
                       </p>
+                      <p className="text-xs text-success-dark/80">{t('storeActivationMessage')}</p>
                     </div>
                   </div>
                 </div>
@@ -439,7 +508,12 @@ export default function RegisterPage() {
                   disabled={isLoading}
                   icon={
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                      />
                     </svg>
                   }
                   placeholder={t('storeNamePlaceholder')}
@@ -458,7 +532,8 @@ export default function RegisterPage() {
                     placeholder={t('storeDescriptionPlaceholder')}
                   />
                   <p className="text-xs text-neutral-500 mt-1">
-                    {formData.storeDescription.length}{t('characters')}
+                    {formData.storeDescription.length}
+                    {t('characters')}
                   </p>
                 </div>
               </motion.div>
@@ -485,16 +560,17 @@ export default function RegisterPage() {
                 {accountType === 'SELLER' && (
                   <>
                     {t('asWellAs')}{' '}
-                    <Link href="/seller-agreement" className="text-gold hover:text-accent-700 font-medium">
+                    <Link
+                      href="/seller-agreement"
+                      className="text-gold hover:text-accent-700 font-medium"
+                    >
                       {tc('footer.sellerAgreement')}
                     </Link>
                   </>
                 )}
               </span>
             </label>
-            {errors.terms && (
-              <p className="text-sm text-error-DEFAULT -mt-2">{errors.terms}</p>
-            )}
+            {errors.terms && <p className="text-sm text-error-DEFAULT -mt-2">{errors.terms}</p>}
 
             {/* Register Button */}
             <Button

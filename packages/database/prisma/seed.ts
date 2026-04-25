@@ -1905,6 +1905,116 @@ async function main() {
       },
     }),
 
+    prisma.systemSetting.upsert({
+      where: { key: 'payout_processing_days' },
+      update: {},
+      create: {
+        key: 'payout_processing_days',
+        category: 'payout',
+        value: 3,
+        valueType: 'NUMBER',
+        label: 'Payout Processing Days',
+        description: 'Business days for bank transfer to arrive after payout is processed',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 3,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'payout_hold_days' },
+      update: {},
+      create: {
+        key: 'payout_hold_days',
+        category: 'payout',
+        value: 7,
+        valueType: 'NUMBER',
+        label: 'Payout Hold Days',
+        description: 'Days to hold funds after delivery before payout eligibility',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 7,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'payout_methods_enabled' },
+      update: {},
+      create: {
+        key: 'payout_methods_enabled',
+        category: 'payout',
+        value: ['bank_transfer', 'stripe_connect'],
+        valueType: 'ARRAY',
+        label: 'Enabled Payout Methods',
+        description:
+          'List of active payout methods available for sellers. Options: bank_transfer, stripe_connect, paypal, wise',
+        isPublic: true,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: ['bank_transfer', 'stripe_connect'],
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'paypal_enabled' },
+      update: {},
+      create: {
+        key: 'paypal_enabled',
+        category: 'payment',
+        value: false,
+        valueType: 'BOOLEAN',
+        label: 'Enable PayPal Payouts',
+        description: 'Enable PayPal as a payout method (requires PayPal API keys)',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: false,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'wise_enabled' },
+      update: {},
+      create: {
+        key: 'wise_enabled',
+        category: 'payment',
+        value: false,
+        valueType: 'BOOLEAN',
+        label: 'Enable Wise Payouts',
+        description: 'Enable Wise (TransferWise) as a payout method (requires Wise API keys)',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: false,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'payout_manual_request_enabled' },
+      update: {},
+      create: {
+        key: 'payout_manual_request_enabled',
+        category: 'payout',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Allow Manual Payout Requests',
+        description:
+          'Allow sellers to manually request payouts before the scheduled date (still subject to minimum amount)',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
     // Audit & Logging
     prisma.systemSetting.upsert({
       where: { key: 'audit_log_all_escrow_actions' },
@@ -2068,6 +2178,414 @@ async function main() {
         isEditable: true,
         requiresRestart: false,
         defaultValue: 0.3,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    // EasyPost Shipping Settings
+    prisma.systemSetting.upsert({
+      where: { key: 'easypost_enabled' },
+      update: {},
+      create: {
+        key: 'easypost_enabled',
+        category: 'shipping',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable EasyPost Multi-Carrier Shipping',
+        description:
+          'Enable EasyPost as the primary shipping provider. When enabled, EasyPost will be the first provider checked in the shipping cascade (EasyPost → DHL → Zones → Manual). Configure API key in .env: EASYPOST_API_KEY',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'easypost_test_mode' },
+      update: {},
+      create: {
+        key: 'easypost_test_mode',
+        category: 'shipping',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'EasyPost Test Mode',
+        description:
+          'Use EasyPost in test mode. Test mode is FREE and does not charge for label purchases. Set to false in production (requires production API key starting with EZAK).',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'easypost_default_label_format' },
+      update: {},
+      create: {
+        key: 'easypost_default_label_format',
+        category: 'shipping',
+        value: 'PDF',
+        valueType: 'STRING',
+        label: 'Default Label Format',
+        description:
+          'Default format for shipping labels. Options: PDF (recommended for desktop printing), PNG (image format), ZPL (Zebra thermal printers), EPL2 (older thermal printers).',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 'PDF',
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'easypost_default_carriers' },
+      update: {},
+      create: {
+        key: 'easypost_default_carriers',
+        category: 'shipping',
+        value: ['USPS', 'UPS', 'FedEx'],
+        valueType: 'ARRAY',
+        label: 'Default Carriers',
+        description:
+          'Preferred carriers for rate comparison. EasyPost will prioritize these carriers when fetching shipping rates. Available: USPS, UPS, FedEx, DHL, Canada Post, Australia Post, and 100+ more.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: ['USPS', 'UPS', 'FedEx'],
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'easypost_address_verification' },
+      update: {},
+      create: {
+        key: 'easypost_address_verification',
+        category: 'shipping',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable Address Verification',
+        description:
+          'Automatically verify and correct shipping addresses using EasyPost address validation API. Helps prevent delivery failures due to incorrect addresses.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    // Sendcloud Shipping Settings (EU sellers)
+    prisma.systemSetting.upsert({
+      where: { key: 'sendcloud_enabled' },
+      update: {},
+      create: {
+        key: 'sendcloud_enabled',
+        category: 'shipping',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable Sendcloud Shipping',
+        description:
+          'Sendcloud shipping for EU sellers (Tier 1). Supported ship-from countries: AT, BE, FR, DE, IT, NL, ES, GB, CZ, DK, PL, PT, SE. Requires credentials in .env: SENDCLOUD_PUBLIC_KEY, SENDCLOUD_SECRET_KEY.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    // Easyship Shipping Settings
+    prisma.systemSetting.upsert({
+      where: { key: 'easyship_enabled' },
+      update: {},
+      create: {
+        key: 'easyship_enabled',
+        category: 'shipping',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable Easyship Shipping',
+        description:
+          'Easyship shipping for select countries (Tier 2). Supported ship-from countries: AU, BE, CA, FR, DE, HK, NL, SG, US, GB. Requires API key in .env: EASYSHIP_API_KEY.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    // DHL Express Shipping Settings
+    prisma.systemSetting.upsert({
+      where: { key: 'dhl_enabled' },
+      update: {},
+      create: {
+        key: 'dhl_enabled',
+        category: 'shipping',
+        value: false,
+        valueType: 'BOOLEAN',
+        label: 'Enable DHL Express Shipping',
+        description:
+          'Use DHL Express as Tier 2 shipping provider in the cascade (after EasyPost). When enabled, DHL will be checked if EasyPost fails or returns no rates. Requires DHL credentials in .env: DHL_EXPRESS_API_KEY, DHL_EXPRESS_API_SECRET, DHL_ACCOUNT_NUMBER.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: false,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    // ============================================================================
+    // REFERRAL SYSTEM SETTINGS (v2.11.0)
+    // Dynamic Referral Management Module
+    // ============================================================================
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_enabled' },
+      update: {},
+      create: {
+        key: 'referral_enabled',
+        category: 'referral',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Enable Referral System',
+        description:
+          'Enable or disable the entire referral system. When disabled, users cannot generate referral codes, and no rewards will be granted.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_buyer_reward' },
+      update: {},
+      create: {
+        key: 'referral_buyer_reward',
+        category: 'referral',
+        value: 10.0,
+        valueType: 'NUMBER',
+        label: 'Buyer Referral Reward (USD)',
+        description:
+          "Store credit amount given to referrer when a referred BUYER makes their first qualifying purchase. This amount is added to the referrer's storeCredit balance.",
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 10.0,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_seller_reward' },
+      update: {},
+      create: {
+        key: 'referral_seller_reward',
+        category: 'referral',
+        value: 50.0,
+        valueType: 'NUMBER',
+        label: 'Seller Referral Reward (USD)',
+        description:
+          "Store credit amount given to referrer when a referred SELLER creates their first product. This amount is added to the referrer's storeCredit balance.",
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 50.0,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_min_order_value' },
+      update: {},
+      create: {
+        key: 'referral_min_order_value',
+        category: 'referral',
+        value: 25.0,
+        valueType: 'NUMBER',
+        label: 'Minimum Order Value for Buyer Qualification (USD)',
+        description:
+          'Minimum order value required for a buyer referral to qualify. Orders below this amount will not trigger referral rewards. Set to 0 to allow any order value.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 25.0,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_buyer_expiration_days' },
+      update: {},
+      create: {
+        key: 'referral_buyer_expiration_days',
+        category: 'referral',
+        value: 90,
+        valueType: 'NUMBER',
+        label: 'Buyer Referral Expiration (Days)',
+        description:
+          'Number of days a referred BUYER has to make their first qualifying purchase. If no purchase is made within this period, the referral expires and no reward is granted. Set to 0 for no expiration.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 90,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_seller_expiration_days' },
+      update: {},
+      create: {
+        key: 'referral_seller_expiration_days',
+        category: 'referral',
+        value: 180,
+        valueType: 'NUMBER',
+        label: 'Seller Referral Expiration (Days)',
+        description:
+          'Number of days a referred SELLER has to create their first product. If no product is created within this period, the referral expires and no reward is granted. Set to 0 for no expiration.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 180,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_code_length' },
+      update: {},
+      create: {
+        key: 'referral_code_length',
+        category: 'referral',
+        value: 8,
+        valueType: 'NUMBER',
+        label: 'Referral Code Length',
+        description:
+          'Length of auto-generated referral codes (excluding prefix). Minimum 6, maximum 12. Example: For length 8 with prefix "REF", code will be "REF12345678".',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 8,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_code_prefix' },
+      update: {},
+      create: {
+        key: 'referral_code_prefix',
+        category: 'referral',
+        value: '',
+        valueType: 'STRING',
+        label: 'Referral Code Prefix',
+        description:
+          'Optional prefix for all referral codes. Leave empty for no prefix. Example: "REF" will generate codes like "REF12345678". Maximum 4 characters.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: '',
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_max_usage_per_code' },
+      update: {},
+      create: {
+        key: 'referral_max_usage_per_code',
+        category: 'referral',
+        value: 0,
+        valueType: 'NUMBER',
+        label: 'Maximum Uses Per Referral Code',
+        description:
+          "Maximum number of times a single referral code can be used. Set to 0 for unlimited uses. This allows you to limit how many people can use one person's referral code.",
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 0,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_reward_currency' },
+      update: {},
+      create: {
+        key: 'referral_reward_currency',
+        category: 'referral',
+        value: 'USD',
+        valueType: 'STRING',
+        label: 'Referral Reward Currency',
+        description:
+          "Currency for all referral rewards. This should match your platform's primary currency. Currently, all rewards are in USD.",
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 'USD',
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_auto_generate_code' },
+      update: {},
+      create: {
+        key: 'referral_auto_generate_code',
+        category: 'referral',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Auto-Generate Referral Codes on Registration',
+        description:
+          'Automatically generate a unique referral code for every new user upon registration. If disabled, users must manually generate their referral code from their account settings.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_min_payout_amount' },
+      update: {},
+      create: {
+        key: 'referral_min_payout_amount',
+        category: 'referral',
+        value: 5.0,
+        valueType: 'NUMBER',
+        label: 'Minimum Store Credit Balance for Use (USD)',
+        description:
+          'Minimum store credit balance required before users can use their referral rewards for purchases. This prevents micro-transactions. Set to 0 to allow any amount.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 5.0,
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
+      where: { key: 'referral_show_leaderboard' },
+      update: {},
+      create: {
+        key: 'referral_show_leaderboard',
+        category: 'referral',
+        value: true,
+        valueType: 'BOOLEAN',
+        label: 'Show Public Referral Leaderboard',
+        description:
+          'Display a public leaderboard showing top referrers. This can encourage competition and increase referral activity. Users can opt-out individually from their privacy settings.',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: true,
         lastUpdatedBy: superAdmin.id,
       },
     }),

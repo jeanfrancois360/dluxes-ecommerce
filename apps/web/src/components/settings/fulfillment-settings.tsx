@@ -59,8 +59,14 @@ export function FulfillmentSettingsSection() {
       for (const config of settingsConfig) {
         try {
           const response = await api.get(`/settings/${config.key}`);
-          if (response.data) {
-            settingsData[config.key] = response.data;
+          if (response) {
+            settingsData[config.key] = {
+              key: config.key,
+              value: response.value,
+              label: config.label,
+              description: config.description,
+              valueType: config.type,
+            };
           }
         } catch (error) {
           console.warn(`Setting ${config.key} not found, using default`);
@@ -286,17 +292,15 @@ export function FulfillmentSettingsSection() {
                 credentials serve as fallback.
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="gap-2 text-blue-700 border-blue-300 hover:bg-blue-100"
+            <a
+              href="/seller/gelato-settings"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 text-blue-700 border-blue-300 hover:bg-blue-100"
             >
-              <a href="/seller/gelato-settings" target="_blank" rel="noopener noreferrer">
-                View Guide
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </Button>
+              View Guide
+              <ExternalLink className="h-4 w-4" />
+            </a>
           </div>
         </CardContent>
       </Card>

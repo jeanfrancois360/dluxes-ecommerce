@@ -19,6 +19,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { CreateProductDto } from '../products/dto/create-product.dto';
 import { UpdateProductDto } from '../products/dto/update-product.dto';
+import { UpdatePickupSettingsDto } from './dto/update-pickup-settings.dto';
 
 @Controller('seller')
 export class SellerController {
@@ -282,6 +283,34 @@ export class SellerController {
     return this.sellerService.confirmShipment(req.user.userId, id, data);
   }
 
+  /**
+   * Mark pickup order as ready for customer collection
+   * Self-Pickup Feature (v2.10.0)
+   */
+  @Post('orders/:id/mark-ready-pickup')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  markReadyForPickup(@Req() req: any, @Param('id') id: string, @Body() data?: { notes?: string }) {
+    return this.sellerService.markReadyForPickup(req.user.userId, id, data?.notes);
+  }
+
+  /**
+   * Confirm customer picked up their order
+   * Self-Pickup Feature (v2.10.0)
+   */
+  @Post('orders/:id/confirm-pickup')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  confirmPickup(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() data: { pickupCode: string; notes?: string }
+  ) {
+    return this.sellerService.confirmPickup(req.user.userId, id, data.pickupCode, data.notes);
+  }
+
   // ============================================================================
   // Analytics
   // ============================================================================
@@ -359,5 +388,29 @@ export class SellerController {
   @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getReviewStats(@Req() req: any) {
     return this.sellerService.getReviewStats(req.user.userId);
+  }
+
+  // ============================================================================
+  // Self-Pickup Settings (v2.10.0)
+  // ============================================================================
+
+  /**
+   * Get seller's pickup configuration
+   */
+  @Get('pickup-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async getPickupSettings(@Req() req: any) {
+    return this.sellerService.getPickupSettings(req.user.userId || req.user.id);
+  }
+
+  /**
+   * Update seller's pickup configuration
+   */
+  @Patch('pickup-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async updatePickupSettings(@Req() req: any, @Body() dto: UpdatePickupSettingsDto) {
+    return this.sellerService.updatePickupSettings(req.user.userId || req.user.id, dto);
   }
 }

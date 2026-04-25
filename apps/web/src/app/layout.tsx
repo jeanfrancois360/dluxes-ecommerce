@@ -7,7 +7,6 @@ import { CartProvider } from '@/contexts/cart-context';
 import { WishlistProvider } from '@/contexts/wishlist-context';
 import { LocaleProvider } from '@/contexts/locale-context';
 import { RouteLoadingProvider } from '@/components/providers/route-loading-provider';
-import { ToastListener } from '@/components/toast-listener';
 import { WhatsAppChat } from '@/components/whatsapp-chat';
 import { VersionChecker } from '@/components/version-checker';
 import { Toaster } from 'sonner';

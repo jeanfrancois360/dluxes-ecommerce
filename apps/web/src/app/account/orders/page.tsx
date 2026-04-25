@@ -78,6 +78,8 @@ export default function OrdersPage() {
               <option value="processing">{t('processing')}</option>
               <option value="shipped">{t('shipped')}</option>
               <option value="delivered">{t('delivered')}</option>
+              <option value="ready_for_pickup">Ready for Pickup</option>
+              <option value="picked_up">Picked Up</option>
               <option value="cancelled">{t('cancelled')}</option>
               <option value="refunded">{t('refunded')}</option>
             </select>

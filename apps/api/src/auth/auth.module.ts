@@ -25,6 +25,7 @@ import { EmailModule } from '../email/email.module';
 import { DatabaseModule } from '../database/database.module';
 import { CartModule } from '../cart/cart.module';
 import { SettingsModule } from '../settings/settings.module';
+import { ReferralModule } from '../referral/referral.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { SettingsModule } from '../settings/settings.module';
     DatabaseModule,
     CartModule,
     SettingsModule,
+    ReferralModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -76,6 +78,7 @@ import { SettingsModule } from '../settings/settings.module';
     AuthCoreService,
     EmailOTPService,
     GoogleOAuthService,
+    JwtModule,
   ],
 })
 export class AuthModule {}
