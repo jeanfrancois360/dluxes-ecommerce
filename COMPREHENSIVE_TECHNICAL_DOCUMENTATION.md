@@ -35,6 +35,76 @@
 
 ---
 
+## Schema State (April 25, 2026)
+
+This section documents a known divergence between the committed `schema.prisma` and the actual database state, the reasoning for not addressing it immediately, and the plan for resolution.
+
+### Current State
+
+**Dev database:** Contains the most current schema, including EasyPost, DHL, referral, and self-pickup features. The generated Prisma client in `node_modules/.prisma/client/` reflects this state correctly. However, the committed `packages/database/prisma/schema.prisma` does NOT declare 5 of the models, 3 of the enums, or 3 of the OrderStatus enum values that exist in the DB.
+
+**Prod database:** Running an older code version that has not been deployed in several weeks. Prod's schema is internally consistent with the older deployed code — it does not yet have the EasyPost, DHL, referral, or pickup features. No active breakage; the running code never queries tables that don't exist for it.
+
+### What This Is And Isn't
+
+This is **not** drift in the dangerous sense. Both databases are internally coherent:
+
+- Dev: code uses the new models, DB has the new models, generated client knows about them
+- Prod: code uses the older models, DB has the older models
+
+The committed `schema.prisma` is the only file out of sync. It reflects an older state than dev's reality.
+
+### How This Happened (Best Reconstruction)
+
+Seven migrations were applied to the dev database but their migration files are missing from `packages/database/prisma/migrations/`:
+
+- `20260101000000_add_referral_system`
+- `20260312084142_add_seller_gelato_settings`
+- `20260315000000_add_easypost_integration`
+- `20260315_add_shipping_provider_to_orders`
+- `20260320000000_add_self_pickup_support`
+- `20260329000000_add_dhl_shipment_model`
+- `20260329100500_add_product_image_original_url`
+
+The most likely explanation is that `prisma db push` was used at some point (possibly during rapid development), which writes to the database without producing a migration file. After-the-fact regeneration via `prisma migrate dev` may have then partially captured what was on the database, but lost some declarations along the way.
+
+### Risk Profile
+
+- **Production: no immediate risk.** Prod's running container has its own bundled types that match its DB.
+- **Development: bounded risk.** Anyone running `pnpm prisma:generate` against the current `schema.prisma` would regenerate the Prisma client without the EasyPost, DHL, referral, or pickup models. This would break local TypeScript compilation and any code that uses those models.
+- **Future deploys: requires planning.** When prod is next deployed, the 7 missing migrations need to be applied to prod simultaneously with the new code. This is a substantial migration event that should be scheduled with backup verification and a maintenance window.
+
+### Guardrails In Place (April 25, 2026)
+
+1. Warning comment block at top of `schema.prisma` documenting the drift and forbidding `prisma:generate` and `prisma db push`.
+2. CLAUDE.md rules forbidding the same commands until baseline recovery.
+3. Daily automated production database backups (cron at 03:00 UTC, retained 7 days locally on the Droplet at `/root/backups/`).
+4. Verified production backup snapshot taken April 25, 2026, copied off-server.
+
+### Resolution Plan
+
+Schema baseline recovery to be performed as part of the next prod deploy:
+
+1. Run `prisma db pull` against dev to regenerate `schema.prisma` from reality
+2. Verify the regenerated Prisma client is equivalent to the current `node_modules/.prisma/client/` (no models lost)
+3. Consolidate all migration history into a single new `0_baseline` migration capturing the current state
+4. Verify on a throwaway empty Postgres that the baseline produces the expected schema
+5. Mark the baseline as applied on dev via `prisma migrate resolve --applied 0_baseline`
+6. Deploy code + schema + migrations to prod, applying the 7 currently-missing migrations
+7. Mark baseline as applied on prod via `prisma migrate resolve --applied 0_baseline`
+8. Verify both environments report `prisma migrate status` as clean
+
+Estimated execution time: 3-4 hours when scheduled. Detailed plan exists in the work session notes from April 25, 2026.
+
+### Lesson For Future Schema Operations
+
+- `prisma db push` is forbidden. All schema changes go through `prisma migrate dev`.
+- Migration files are never deleted from `packages/database/prisma/migrations/` once committed.
+- Schema changes must be applied to dev and prod in the same release cycle.
+- Add a CI check that runs `prisma migrate status` against the dev database and fails on drift. (Future work.)
+
+---
+
 ## 1. Project Overview
 
 ### 1.1 Purpose
