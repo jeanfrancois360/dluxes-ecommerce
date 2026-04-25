@@ -191,7 +191,9 @@ export function Footer() {
 
           {/* My Account */}
           <div>
-            <h4 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4">{t('footer.myAccount')}</h4>
+            <h4 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4">
+              {t('footer.myAccount')}
+            </h4>
             <ul className="space-y-2 sm:space-y-3">
               {footerLinks.account.map((link) => (
                 <li key={link.label}>
@@ -208,7 +210,9 @@ export function Footer() {
 
           {/* Customer Service */}
           <div>
-            <h4 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4">{t('footer.customerService')}</h4>
+            <h4 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4">
+              {t('footer.customerService')}
+            </h4>
             <ul className="space-y-2 sm:space-y-3">
               {footerLinks.customerService.map((link) => (
                 <li key={link.label}>
@@ -225,7 +229,9 @@ export function Footer() {
 
           {/* Company */}
           <div>
-            <h4 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4">{t('footer.company')}</h4>
+            <h4 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4">
+              {t('footer.company')}
+            </h4>
             <ul className="space-y-2 sm:space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
@@ -262,8 +268,18 @@ export function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-6 py-8 sm:py-10 lg:py-12 border-y border-neutral-700">
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gold/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-5 h-5 sm:w-6 sm:h-6 text-gold"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
             <div className="min-w-0">
@@ -274,8 +290,18 @@ export function Footer() {
 
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gold/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              <svg
+                className="w-5 h-5 sm:w-6 sm:h-6 text-gold"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                />
               </svg>
             </div>
             <div className="min-w-0">
@@ -286,20 +312,42 @@ export function Footer() {
 
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gold/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <svg
+                className="w-5 h-5 sm:w-6 sm:h-6 text-gold"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-sm sm:text-base">{t('footer.easyReturns')}</p>
-              <p className="text-xs sm:text-sm text-neutral-400">{t('footer.thirtyDayGuarantee')}</p>
+              <p className="text-xs sm:text-sm text-neutral-400">
+                {t('footer.thirtyDayGuarantee')}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gold/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+              <svg
+                className="w-5 h-5 sm:w-6 sm:h-6 text-gold"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
+                />
               </svg>
             </div>
             <div className="min-w-0">
@@ -332,7 +380,9 @@ export function Footer() {
 
           {/* Social Links */}
           <div className="w-full md:w-auto">
-            <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 text-center">{t('footer.followUs')}</p>
+            <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 text-center">
+              {t('footer.followUs')}
+            </p>
             <div className="flex items-center justify-center gap-3 sm:gap-4">
               {socialLinks.map((social) => (
                 <motion.a
@@ -352,40 +402,50 @@ export function Footer() {
 
           {/* Payment Methods */}
           <div className="w-full md:w-auto">
-            <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 text-center">{t('footer.weAccept')}</p>
+            <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 text-center">
+              {t('footer.weAccept')}
+            </p>
             <div className="flex items-center justify-center gap-2 flex-wrap">
               {/* Visa */}
               <div className="bg-white rounded-md px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-sm">
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg"
+                <Image
+                  src="/payment-logos/visa.svg"
                   alt="Visa"
+                  width={40}
+                  height={20}
                   className="h-4 sm:h-5 w-auto"
                 />
               </div>
 
               {/* Mastercard */}
               <div className="bg-white rounded-md px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-sm">
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg"
+                <Image
+                  src="/payment-logos/mastercard.svg"
                   alt="Mastercard"
+                  width={40}
+                  height={20}
                   className="h-4 sm:h-5 w-auto"
                 />
               </div>
 
               {/* PayPal */}
               <div className="bg-white rounded-md px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-sm">
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg"
+                <Image
+                  src="/payment-logos/paypal.svg"
                   alt="PayPal"
+                  width={60}
+                  height={20}
                   className="h-4 sm:h-5 w-auto"
                 />
               </div>
 
               {/* Stripe */}
               <div className="bg-white rounded-md px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-sm">
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg"
+                <Image
+                  src="/payment-logos/stripe.svg"
                   alt="Stripe"
+                  width={50}
+                  height={20}
                   className="h-4 sm:h-5 w-auto"
                 />
               </div>

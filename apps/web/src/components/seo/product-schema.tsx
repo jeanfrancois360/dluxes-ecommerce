@@ -23,7 +23,7 @@ interface ProductSchemaProps {
 }
 
 export function ProductSchema({ product }: ProductSchemaProps) {
-  const image = product.images?.[0]?.url || product.heroImage;
+  const image = product.images?.[0]?.url || product.heroImage || '/placeholder-product.jpg';
   const availability = product.inventory > 0 ? 'InStock' : 'OutOfStock';
   const brand = product.brand || product.store?.name || 'NextPik';
 

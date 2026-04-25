@@ -1,14 +1,10 @@
 import { Metadata } from 'next';
-import { getSearchMetadata } from '@/lib/metadata';
 
-// Note: This is a static metadata. For dynamic search queries,
-// you would need to use generateMetadata in the page component
-export const metadata: Metadata = getSearchMetadata();
+export const metadata: Metadata = {
+  title: 'Search',
+  description: 'Search products, stores, and more on NextPik',
+};
 
-export default function SearchLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SearchLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

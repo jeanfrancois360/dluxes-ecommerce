@@ -12,6 +12,7 @@ import { CreditsService } from '../credits/credits.service';
 import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
 import { SettingsService } from '../settings/settings.service';
 import { CurrencyService } from '../currency/currency.service';
+import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import { ProductStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -26,7 +27,8 @@ export class SellerService {
     private creditsService: CreditsService,
     private dhlTrackingService: DhlTrackingService,
     private settingsService: SettingsService,
-    private currencyService: CurrencyService
+    private currencyService: CurrencyService,
+    private gelatoOrdersService: GelatoOrdersService
   ) {}
 
   /**
@@ -870,6 +872,42 @@ export class SellerService {
       throw new ForbiddenException('Order must be SHIPPED before marking as DELIVERED');
     }
 
+    // CRITICAL FIX: Validate POD readiness BEFORE changing to PROCESSING status
+    if (status === 'PROCESSING') {
+      try {
+        const validation = await this.gelatoOrdersService.validatePodReadiness(orderId);
+
+        if (!validation.ready) {
+          const unreadyProducts = validation.unreadyItems
+            .map((item) => `"${item.productName}" (${item.reason})`)
+            .join(', ');
+
+          this.logger.error(
+            `❌ Seller ${userId} cannot move order ${orderId} to PROCESSING: ` +
+              `${validation.unreadyItems.length}/${validation.totalPodItems} POD items not ready: ${unreadyProducts}`
+          );
+
+          throw new BadRequestException(
+            `Cannot process order: ${validation.unreadyItems.length} POD item(s) cannot be fulfilled. ` +
+              `The following items require Gelato configuration: ${unreadyProducts}. ` +
+              `Please configure your Gelato credentials in Seller Settings.`
+          );
+        }
+
+        this.logger.log(
+          `✅ POD validation passed for order ${orderId} - all ${validation.totalPodItems} items ready`
+        );
+      } catch (validationError) {
+        if (validationError instanceof BadRequestException) {
+          throw validationError; // Re-throw validation errors
+        }
+        this.logger.error(`POD validation error for order ${orderId}:`, validationError.message);
+        throw new BadRequestException(
+          `Cannot process order: POD validation failed. ${validationError.message}`
+        );
+      }
+    }
+
     // Update order status
     const updatedOrder = await this.prisma.order.update({
       where: { id: orderId },
@@ -898,6 +936,33 @@ export class SellerService {
         },
       },
     });
+
+    // Auto-submit Gelato POD items when order moves to PROCESSING
+    // This triggers after payment authorization (uncaptured) is confirmed
+    if (status === 'PROCESSING') {
+      try {
+        // Submit POD items - validation already passed above
+        const result = await this.gelatoOrdersService.submitAllPodItems(orderId);
+        if (result.submitted > 0) {
+          this.logger.log(
+            `✅ Gelato POD items submitted for order ${orderId}: ${result.submitted}/${result.results.length} items`
+          );
+        } else if (result.results.length > 0) {
+          this.logger.warn(
+            `⚠️ No Gelato POD items submitted for order ${orderId} despite having POD items in the order`
+          );
+        }
+      } catch (gelatoError) {
+        this.logger.error(
+          `❌ Gelato POD submission failed for order ${orderId}:`,
+          gelatoError.message
+        );
+        // CRITICAL: Re-throw to prevent status change if submission fails
+        throw new BadRequestException(
+          `Cannot process order: Gelato submission failed. ${gelatoError.message}`
+        );
+      }
+    }
 
     return {
       message: `Order status updated to ${status}`,

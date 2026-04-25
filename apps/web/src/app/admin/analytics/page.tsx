@@ -144,7 +144,11 @@ function AnalyticsContent() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                <Tooltip
+                  formatter={(value: number | undefined) =>
+                    value !== undefined ? `$${value.toLocaleString()}` : ''
+                  }
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>

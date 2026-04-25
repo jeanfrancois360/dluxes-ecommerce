@@ -1,5 +1,8 @@
 import type { Config } from 'tailwindcss';
-import { colors, spacing, fontSize, fontWeight, fontFamily, shadows } from '@nextpik/design-system';
+import { colors } from '@nextpik/design-system/colors';
+import { spacing } from '@nextpik/design-system/spacing';
+import { fontSize, fontWeight, fontFamily } from '@nextpik/design-system/typography';
+import { shadows } from '@nextpik/design-system/shadows';
 
 const config: Config = {
   content: [
@@ -43,9 +46,9 @@ const config: Config = {
         'slide-in-right': 'slideInRight 0.3s ease-out',
         'scale-in': 'scaleIn 0.3s ease-out',
         'scale-out': 'scaleOut 0.3s ease-in',
-        'spin': 'spin 1s linear infinite',
-        'pulse': 'pulse 0.7s ease-in-out infinite',
-        'shimmer': 'shimmer 2s linear infinite',
+        spin: 'spin 1s linear infinite',
+        pulse: 'pulse 0.7s ease-in-out infinite',
+        shimmer: 'shimmer 2s linear infinite',
       },
       keyframes: {
         fadeIn: {
