@@ -17,6 +17,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductInquiryDto } from './dto/product-inquiry.dto';
 import { ProductStatus, Prisma, PurchaseType } from '@prisma/client';
+import { toGrams } from '../common/utils/weight';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -839,6 +840,13 @@ export class ProductsService {
       }
     }
 
+    // weightGrams is canonical — recompute weight to match; if only weight provided, derive weightGrams
+    if (productData.weightGrams !== undefined) {
+      (productData as any).weight = productData.weightGrams / 1000;
+    } else if (productData.weight !== undefined) {
+      productData.weightGrams = toGrams(Number(productData.weight), 'kg');
+    }
+
     const product = await this.prisma.product.create({
       data: {
         ...productData,
@@ -973,6 +981,13 @@ export class ProductsService {
           disconnect: true,
         };
       }
+    }
+
+    // weightGrams is canonical — recompute weight to match; if only weight provided, derive weightGrams
+    if (updateData.weightGrams !== undefined) {
+      updateData.weight = updateData.weightGrams / 1000;
+    } else if (updateData.weight !== undefined) {
+      updateData.weightGrams = toGrams(Number(updateData.weight), 'kg');
     }
 
     const product = await this.prisma.product.update({
@@ -1294,6 +1309,7 @@ export class ProductsService {
         isAvailable: dto.isAvailable ?? true,
         lowStockThreshold: dto.lowStockThreshold ?? 5,
         displayOrder,
+        ...(dto.weightGrams !== undefined && { weightGrams: dto.weightGrams }),
       },
     });
 
