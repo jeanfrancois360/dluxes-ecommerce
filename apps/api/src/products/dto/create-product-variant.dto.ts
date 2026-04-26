@@ -5,11 +5,13 @@ import {
   IsObject,
   IsBoolean,
   Min,
+  Max,
   IsNotEmpty,
   MaxLength,
   IsInt,
   ValidateIf,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateProductVariantDto {
   @IsString()
@@ -32,6 +34,13 @@ export class CreateProductVariantDto {
   @IsInt()
   @Min(0)
   inventory: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1_000_000_000)
+  @Type(() => Number)
+  weightGrams?: number;
 
   @IsObject()
   @IsNotEmpty()

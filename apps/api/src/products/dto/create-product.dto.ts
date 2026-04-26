@@ -5,7 +5,9 @@ import {
   IsBoolean,
   IsArray,
   IsEnum,
+  IsInt,
   Min,
+  Max,
   IsObject,
   ValidateNested,
   Validate,
@@ -75,6 +77,13 @@ export class CreateProductDto {
   @IsNumber()
   @Type(() => Number)
   weight?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1_000_000_000)
+  @Type(() => Number)
+  weightGrams?: number;
 
   // Product Type & Purchase Model
   @IsOptional()
