@@ -5421,6 +5421,90 @@ async getPayoutDetails(@Param('payoutId') payoutId: string) {
 
 ---
 
+### 13.5 Weight Standardization — 1000× Bug Fix + Carrier Adapter Wiring (Phase 5, April 25, 2026)
+
+**Fixed:** 1000× weight aggregation bug in shipping rate calculation. Product weight is now correctly read from `weightGrams` (integer grams) and passed through dedicated per-carrier adapters that handle unit conversion and minimums.
+
+**Files Modified:**
+
+- `apps/api/src/orders/shipping-tax.service.ts` — 4 adapter imports added; adapters wired at each carrier call site; intermediate `totalWeightKg`/`totalWeightOz` variables removed to prevent one carrier's minimum from leaking into another carrier's rate calculation
+- `apps/api/src/orders/orders.service.ts` — CartItem.weight populated from `product.weightGrams ?? Math.round(product.weight * 1000)` (variant-aware) with backward-compatible fallback to legacy `product.weight * 1000` for unmigrated rows
+
+**Before:** A 1 kg product was sent to all carriers as ~1 gram (product.weight stored as Decimal kg, e.g. `1.00`, was passed as-is into the aggregation that treated the value as grams). Carrier minimums masked the bug for very light packages, but all heavier packages received wildly incorrect rates.
+
+**After:**
+
+- 1 kg product → 1000 g aggregated → 35.27 oz to EasyPost / 1000 g to Sendcloud / 1.0 kg to EasyShip and DHL
+- Each carrier receives the correct weight in its expected unit with its minimum enforced by the adapter
+
+**Architecture decision (Outcome B):** Per-call-site conversion chosen. Each carrier converts from `totalWeightGrams` at its call site with its own adapter function. Shared intermediate variables (`totalWeightKg`, `totalWeightOz`) were removed because baking one carrier's minimum into a shared variable would leak that minimum into other carriers.
+
+**Carrier adapter minimums enforced:**
+
+- EasyPost: 1 oz minimum (`gramsToEasypostOunces`)
+- Sendcloud: 100 g minimum, integer required (`gramsToSendcloud`)
+- EasyShip: 0.1 kg minimum (`gramsToEasyshipKg`)
+- DHL: 0.5 kg minimum (`gramsToDhlKg`)
+- Zones/manual: raw `totalWeightGrams / 1000` (no carrier minimum; fallback applies its own thresholds)
+
+**Deferred to follow-up PR:**
+
+- Multi-seller shipment split — currently all items aggregate as one shipment from `items[0].storeId`'s origin (TODO comment added at aggregation site)
+- Sendcloud's internal `Math.max(100, weightGrams)` — now redundant with adapter wiring, kept as defense-in-depth
+
+**Tests:** All pass — 29/29 weight + adapter unit tests, type-check 6/6 packages (0 errors), lint 0 errors, API health 200.
+
+**Note:** The observable end-to-end test (weight-based shipping surcharges) does not exercise this path in the default configuration because `ShippingService.getDefaultShippingOptions` returns weight-ignorant hardcoded rates ($15/$40/$75) when no shipping zones are configured. Fix is verified by compiled output inspection.
+
+---
+
+### 13.5.1 Weight Handling — OrderItem Snapshot (Phase 6, April 25, 2026)
+
+**Added:** `OrderItem.weightGramsSnapshot` is now populated at order creation time, capturing the product's (or variant's) weight at the moment of purchase. Historical orders retain accurate weight data even after subsequent product/variant weight changes.
+
+**Files modified:**
+
+- `apps/api/src/cart/cart.service.ts` — `getCart` now selects `weightGrams` on both product and variant relations so the value is available at order creation
+- `apps/api/src/orders/orders.service.ts` — both `createOrderFromCart` (Site 1) and the legacy `create` path (Site 2) now write `weightGramsSnapshot` on each `OrderItem`
+
+**Snapshot precedence (variant-aware):**
+
+1. `variant.weightGrams` — when a variant is selected; query filters variants by ID so `variants[0]` is always the buyer's actual variant, not a random one
+2. `product.weightGrams` — canonical gram field (migrated rows)
+3. `product.weight × 1000` — backward-compat for unmigrated rows (legacy Decimal kg field)
+4. `null` — when no weight is available; recorded as truth, not guessed
+
+**Design note:** Snapshot is intentionally `null` when weight is unknown, unlike shipping aggregation which applies a 500g fallback. The snapshot records reality at creation time; aggregation can apply its own fallbacks at calculation time without polluting historical data.
+
+**Reading the snapshot:** Not yet wired anywhere. Future Phase 5b (multi-seller split) and shipping recalculation features will read from this field for historical orders.
+
+**Tests:** 19 new snapshot tests in `order-item-snapshot.spec.ts` covering both site patterns and the variant-precedence chain. All passing. Type-check 6/6 (0 errors), lint 0 errors.
+
+---
+
+### 13.5.2 Weight Handling — Frontend Forms (Phase 7, April 25, 2026)
+
+**Added:** Reusable `WeightInput` component with unit selector (g/kg/lb/oz). Sellers see and edit weight in their preferred unit; the component converts to canonical grams before submission. User unit preference persists across sessions via localStorage.
+
+**Files modified:**
+
+- `apps/web/src/lib/utils/weight.ts` — frontend conversion utilities (`toGrams`, `fromGrams`, `formatWeight`, `defaultUnitForLocale`); mirrors backend `weight.ts`
+- `apps/web/src/components/weight-input.tsx` — reusable `<WeightInput valueGrams onChange />` component
+- `apps/web/src/components/seller/ProductForm.tsx` — replaces unlabeled kg input with `<WeightInput>`; submits `weightGrams`
+- `apps/web/src/components/products/UnifiedProductForm.tsx` — same replacement for the admin/unified flow
+- `apps/web/src/components/admin/product-form.tsx` — state and submission updated to carry `weightGrams` (no visible input was present)
+- `apps/web/src/components/seller/mark-as-shipped-modal.tsx` — both weight inputs (DHL auto-generate and manual) replaced with `<WeightInput>`; sends `weight: weightGrams / 1000` (kg) to existing backend endpoint (Option B — no backend DTO change required)
+- `apps/web/src/app/seller/orders/[id]/page.tsx` — EasyPost parcel weight fixed: was `quantity * 16` oz hardcoded; now reads `item.weightGramsSnapshot ?? item.variant?.weightGrams ?? item.product?.weightGrams ?? 500g` and converts to oz
+- `apps/web/src/components/seller/shipment-card.tsx` — weight display updated: prefers `weightGrams` via `formatWeight(weightGrams, 'kg')`, falls back to legacy `weight` field for old rows
+
+**Default unit per locale:** oz for en-US, kg for en-GB/fr, g otherwise. Sellers can override via the unit selector; choice persists in localStorage (`nextpik:weight-unit-preference`).
+
+**Submission:** Frontend sends `weightGrams: <integer>` to backend. Backend Phase 3 syncing keeps the legacy `weight` field populated automatically.
+
+**Verification:** type-check 6/6 (0 errors), lint 0 errors, Next.js build compiled successfully.
+
+---
+
 ### 13.4 Version 2.12.0 - Shipping System, Referral Module & Subscription Fixes
 
 **Release Date:** March 29, 2026

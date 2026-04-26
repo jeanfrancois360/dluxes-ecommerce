@@ -287,6 +287,21 @@ pnpm security:audit
 
 ---
 
+## Known Test Failures (Pre-Existing, Unrelated to Weight Work)
+
+The following spec files have failures that predate the weight standardization project (Phases 1–8).
+**Do not attempt to fix these as part of weight-related PRs** — they require separate investigation:
+
+| File                                           | Issue                                                                      |
+| ---------------------------------------------- | -------------------------------------------------------------------------- |
+| `apps/api/src/payment/payment.service.spec.ts` | Stripe mock `paymentIntents.retrieve` returns undefined — mock setup issue |
+| `apps/api/src/auth/auth-core.service.spec.ts`  | Auth dependency injection issue                                            |
+| `apps/api/src/auth/two-factor.service.spec.ts` | Auth dependency injection issue                                            |
+
+These 18 failures existed before any weight changes and are isolated to payment/auth mocking.
+
+---
+
 ## Known Issues to Avoid
 
 1. **Nested forms in React** - Never put `<form>` inside another `<form>`
