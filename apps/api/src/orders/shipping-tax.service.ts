@@ -8,6 +8,10 @@ import { EasyshipService } from '../integrations/easyship/easyship.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import { PrismaService } from '../database/prisma.service';
+import { gramsToEasypostOunces } from '../integrations/easypost/weight-conversion';
+import { gramsToSendcloud } from '../integrations/sendcloud/weight-conversion';
+import { gramsToEasyshipKg } from '../integrations/easyship/weight-conversion';
+import { gramsToDhlKg } from '../integrations/dhl/weight-conversion';
 
 // Map full country names → ISO 2-letter codes (for stores that store full names)
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
@@ -264,12 +268,17 @@ export class ShippingTaxService {
     // For mixed carts, calculate weight of non-POD items only
     // For non-POD carts, use all items
     const itemsForShipping = gelatoCost > 0 ? nonPodItems : items;
+    // TODO(weight-phase-5b): Multi-seller shipment split deferred to follow-up PR.
+    // Currently aggregates weight from all sellers as one shipment, using items[0].storeId
+    // as origin address (see getSellerOriginAddress). Real fix requires per-seller
+    // shipment groups with independent rate calculations and frontend support for
+    // displaying multiple shipping costs.
     const totalWeightGrams = itemsForShipping.reduce(
       (sum, item) => sum + (item.weight || 500) * item.quantity,
       0
     );
-    const totalWeightKg = totalWeightGrams / 1000;
-    const totalWeightOz = totalWeightGrams / 28.35; // Convert to ounces for EasyPost
+    // Carrier-specific conversions applied at each call site below — no shared intermediate
+    // variables, which prevents one carrier's minimum from leaking into another carrier's call.
 
     // Get shipping mode from settings
     const shippingMode = await this.settingsService.getShippingMode();
@@ -330,7 +339,7 @@ export class ShippingTaxService {
         const sendcloudOptions = await this.calculateSendcloudShippingOptions(
           address,
           itemsForShipping,
-          totalWeightGrams
+          gramsToSendcloud(totalWeightGrams) // SendCloud: integer grams, 100g min enforced
         );
 
         if (sendcloudOptions.length > 0) {
@@ -362,7 +371,7 @@ export class ShippingTaxService {
         const easypostOptions = await this.calculateEasyPostShippingOptions(
           address,
           itemsForShipping,
-          totalWeightOz
+          gramsToEasypostOunces(totalWeightGrams) // EasyPost: oz, 1oz min enforced
         );
 
         if (easypostOptions.length > 0) {
@@ -392,7 +401,7 @@ export class ShippingTaxService {
         const easyshipOptions = await this.calculateEasyshipShippingOptions(
           address,
           itemsForShipping,
-          totalWeightKg
+          gramsToEasyshipKg(totalWeightGrams) // EasyShip: kg, 0.1kg min enforced
         );
 
         if (easyshipOptions.length > 0) {
@@ -454,7 +463,7 @@ export class ShippingTaxService {
           destinationCountryCode: address.country,
           destinationPostalCode: address.postalCode || '',
           destinationCityName: address.city,
-          weight: Math.max(0.5, totalWeightKg), // Minimum 0.5kg
+          weight: gramsToDhlKg(totalWeightGrams), // DHL: kg, 0.5kg min enforced
         });
 
         if (dhlRates && dhlRates.length > 0) {
@@ -504,10 +513,12 @@ export class ShippingTaxService {
             return addGelatoCost(dhlOptions);
           } else {
             // Hybrid mode: combine DHL with zones/manual fallback
+            // zones/manual: pass raw kg without carrier minimum — getZonesOrManualRates
+            // converts to grams internally and applies its own weight thresholds.
             const fallbackOptions = await this.getZonesOrManualRates(
               address,
               subtotal,
-              totalWeightKg
+              totalWeightGrams / 1000
             );
             this.logger.log(
               `[Hybrid] ${dhlOptions.length} DHL + ${fallbackOptions.length} fallback options`
@@ -537,7 +548,11 @@ export class ShippingTaxService {
 
     // STEP 2: Try Shipping Zones or Manual Rates (fallback chain)
     // Only reaches here if: mode is 'manual', OR mode is 'hybrid' and DHL failed
-    const fallbackOptions = await this.getZonesOrManualRates(address, subtotal, totalWeightKg);
+    const fallbackOptions = await this.getZonesOrManualRates(
+      address,
+      subtotal,
+      totalWeightGrams / 1000
+    );
     return addGelatoCost(fallbackOptions);
   }
 
@@ -833,7 +848,6 @@ export class ShippingTaxService {
       (sum, item) => sum + (item.weight || 500) * item.quantity,
       0
     );
-    const totalWeightKg = totalWeightGrams / 1000;
 
     // Request DHL rates
     const dhlRates = await this.dhlRatesService.getSimplifiedRates({
@@ -842,7 +856,7 @@ export class ShippingTaxService {
       destinationCountryCode: address.country,
       destinationPostalCode: address.postalCode || '',
       destinationCityName: address.city,
-      weight: Math.max(0.5, totalWeightKg), // Minimum 0.5kg
+      weight: gramsToDhlKg(totalWeightGrams), // DHL: kg, 0.5kg min enforced
     });
 
     // Convert DHL rates to our ShippingOption format
