@@ -2,18 +2,10 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  X,
-  Package,
-  Truck,
-  Calendar,
-  DollarSign,
-  Weight,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
+import { X, Package, Truck, Calendar, DollarSign, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
+import { WeightInput } from '@/components/weight-input';
 
 interface OrderItem {
   id: string;
@@ -55,7 +47,7 @@ export function MarkAsShippedModal({
   const [trackingUrl, setTrackingUrl] = useState('');
   const [estimatedDelivery, setEstimatedDelivery] = useState('');
   const [shippingCost, setShippingCost] = useState('');
-  const [weight, setWeight] = useState('');
+  const [weightGrams, setWeightGrams] = useState<number | null>(null);
   const [length, setLength] = useState('');
   const [width, setWidth] = useState('');
   const [height, setHeight] = useState('');
@@ -88,7 +80,7 @@ export function MarkAsShippedModal({
         toast.error(t('carrierError'));
         return;
       }
-      if (!weight) {
+      if (!weightGrams) {
         toast.error(t('weightError'));
         return;
       }
@@ -117,7 +109,8 @@ export function MarkAsShippedModal({
       if (useAutoGenerate) {
         // DHL API fields
         payload.serviceType = serviceType;
-        payload.weight = parseFloat(weight);
+        // Backend DHL endpoint expects weight in kg; convert from canonical grams
+        payload.weight = weightGrams ? weightGrams / 1000 : undefined;
         payload.dimensions = {
           length: parseFloat(length),
           width: parseFloat(width),
@@ -130,7 +123,8 @@ export function MarkAsShippedModal({
         payload.trackingUrl = trackingUrl.trim() || undefined;
         payload.estimatedDelivery = estimatedDelivery || undefined;
         payload.shippingCost = shippingCost ? parseFloat(shippingCost) : undefined;
-        payload.weight = weight ? parseFloat(weight) : undefined;
+        // Backend stores weight in kg; convert from canonical grams
+        payload.weight = weightGrams ? weightGrams / 1000 : undefined;
       }
 
       console.log('Shipment Request Payload:', payload);
@@ -361,22 +355,13 @@ export function MarkAsShippedModal({
                       </div>
 
                       {/* Weight (Required for DHL) */}
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          <Weight className="w-4 h-4 inline mr-1" />
-                          {t('packageWeight')} <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={weight}
-                          onChange={(e) => setWeight(e.target.value)}
-                          placeholder="0.0"
-                          step="0.1"
-                          min="0"
-                          required
-                          className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
-                        />
-                      </div>
+                      <WeightInput
+                        label={t('packageWeight')}
+                        required
+                        valueGrams={weightGrams}
+                        onChange={setWeightGrams}
+                        defaultUnit="kg"
+                      />
                     </>
                   ) : (
                     <>
@@ -410,21 +395,12 @@ export function MarkAsShippedModal({
                       </div>
 
                       {/* Weight (Optional for manual) */}
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          <Weight className="w-4 h-4 inline mr-1" />
-                          {t('packageWeight')}
-                        </label>
-                        <input
-                          type="number"
-                          value={weight}
-                          onChange={(e) => setWeight(e.target.value)}
-                          placeholder="0.0"
-                          step="0.1"
-                          min="0"
-                          className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
-                        />
-                      </div>
+                      <WeightInput
+                        label={t('packageWeight')}
+                        valueGrams={weightGrams}
+                        onChange={setWeightGrams}
+                        defaultUnit="kg"
+                      />
                     </>
                   )}
 
@@ -514,7 +490,7 @@ export function MarkAsShippedModal({
                       creating ||
                       selectedItemIds.length === 0 ||
                       (useAutoGenerate
-                        ? !weight || !length || !width || !height
+                        ? !weightGrams || !length || !width || !height
                         : !trackingNumber.trim())
                     }
                     className="px-6 py-2 bg-gold text-black font-medium rounded-lg hover:bg-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"

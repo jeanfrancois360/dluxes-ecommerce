@@ -18,6 +18,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { AlertTriangle, Lock, ArrowRight, Crown } from 'lucide-react';
 import { toast } from '@/lib/utils/toast';
+import { WeightInput } from '@/components/weight-input';
 import { categoriesAPI, type Category } from '@/lib/api/categories';
 import { gelatoApi } from '@/lib/api/gelato';
 import { VariantManager } from '../admin/variant-manager';
@@ -77,6 +78,7 @@ interface ProductData {
   sizes?: string[];
   materials?: string[];
   weight?: number;
+  weightGrams?: number;
   [key: string]: any;
 }
 
@@ -290,6 +292,7 @@ export default function ProductForm({
         ? (product as any).materials.filter(Boolean)
         : [],
       weight: (product as any)?.weight || undefined,
+      weightGrams: (product as any)?.weightGrams ?? null,
       // Real Estate Fields
       propertyType: (product as any)?.propertyType || '',
       bedrooms: (product as any)?.bedrooms || undefined,
@@ -469,6 +472,7 @@ export default function ProductForm({
         sizes: (product as any)?.sizes || [],
         materials: (product as any)?.materials || [],
         weight: (product as any)?.weight || undefined,
+        weightGrams: (product as any)?.weightGrams ?? null,
         // Product-type specific fields...
         propertyType: (product as any)?.propertyType || '',
         bedrooms: (product as any)?.bedrooms || undefined,
@@ -1264,22 +1268,13 @@ export default function ProductForm({
 
           {/* Weight */}
           {formData.productType === 'PHYSICAL' && (
-            <div>
-              <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-2">
-                Weight (kg)
-              </label>
-              <input
-                id="weight"
-                type="number"
-                step="0.01"
-                value={formData.weight || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, weight: parseFloat(e.target.value) || undefined })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                placeholder="0.00"
-              />
-            </div>
+            <WeightInput
+              label="Weight"
+              helperText="Accurate weight is required for correct shipping rates."
+              valueGrams={formData.weightGrams ?? null}
+              onChange={(grams) => setFormData({ ...formData, weightGrams: grams ?? undefined })}
+              defaultUnit="kg"
+            />
           )}
         </div>
       </div>

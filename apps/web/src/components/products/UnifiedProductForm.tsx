@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { WeightInput } from '@/components/weight-input';
 import { api } from '@/lib/api/client';
 import {
   Package,
@@ -25,19 +26,14 @@ import { Button } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 import { Label } from '@nextpik/ui';
 import { Textarea } from '@nextpik/ui';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@nextpik/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nextpik/ui';
 
 export type ProductType = 'PHYSICAL' | 'REAL_ESTATE' | 'VEHICLE' | 'SERVICE' | 'RENTAL' | 'DIGITAL';
 export type PurchaseType = 'INSTANT' | 'INQUIRY';
 export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
 
 interface ProductFormData {
+  weightGrams?: number | null;
   name: string;
   slug: string;
   description: string;
@@ -75,8 +71,18 @@ interface Category {
 }
 
 const PRODUCT_TYPES = [
-  { value: 'PHYSICAL', label: 'Physical Product', icon: Package, description: 'Standard physical goods' },
-  { value: 'REAL_ESTATE', label: 'Real Estate', icon: Building, description: 'Houses, apartments, land' },
+  {
+    value: 'PHYSICAL',
+    label: 'Physical Product',
+    icon: Package,
+    description: 'Standard physical goods',
+  },
+  {
+    value: 'REAL_ESTATE',
+    label: 'Real Estate',
+    icon: Building,
+    description: 'Houses, apartments, land',
+  },
   { value: 'VEHICLE', label: 'Vehicle', icon: Car, description: 'Cars, motorcycles, boats' },
   { value: 'SERVICE', label: 'Service', icon: Briefcase, description: 'Service offerings' },
   { value: 'RENTAL', label: 'Rental', icon: Calendar, description: 'Rental/booking items' },
@@ -84,8 +90,18 @@ const PRODUCT_TYPES = [
 ] as const;
 
 const PURCHASE_TYPES = [
-  { value: 'INSTANT', label: 'Instant Purchase', icon: ShoppingCart, description: 'Customers can buy immediately' },
-  { value: 'INQUIRY', label: 'Contact Seller', icon: MessageSquare, description: 'Requires seller contact' },
+  {
+    value: 'INSTANT',
+    label: 'Instant Purchase',
+    icon: ShoppingCart,
+    description: 'Customers can buy immediately',
+  },
+  {
+    value: 'INQUIRY',
+    label: 'Contact Seller',
+    icon: MessageSquare,
+    description: 'Requires seller contact',
+  },
 ] as const;
 
 export default function UnifiedProductForm({
@@ -108,6 +124,7 @@ export default function UnifiedProductForm({
     compareAtPrice: 0,
     inventory: 0,
     weight: 0,
+    weightGrams: initialData?.weightGrams ?? null,
     productType: 'PHYSICAL',
     purchaseType: 'INSTANT',
     isPreOrder: false,
@@ -217,6 +234,7 @@ export default function UnifiedProductForm({
         compareAtPrice: formData.compareAtPrice ? Number(formData.compareAtPrice) : undefined,
         inventory: Number(formData.inventory) || 0,
         weight: formData.weight ? Number(formData.weight) : undefined,
+        weightGrams: formData.weightGrams ?? undefined,
         productType: formData.productType as ProductType,
         purchaseType: formData.purchaseType as PurchaseType,
         isPreOrder: formData.isPreOrder || false,
@@ -226,10 +244,30 @@ export default function UnifiedProductForm({
         heroImage: formData.heroImage || undefined,
         metaTitle: formData.metaTitle || undefined,
         metaDescription: formData.metaDescription || undefined,
-        seoKeywords: keywordsInput ? keywordsInput.split(',').map((k) => k.trim()).filter(Boolean) : undefined,
-        colors: colorsInput ? colorsInput.split(',').map((c) => c.trim()).filter(Boolean) : undefined,
-        sizes: sizesInput ? sizesInput.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
-        materials: materialsInput ? materialsInput.split(',').map((m) => m.trim()).filter(Boolean) : undefined,
+        seoKeywords: keywordsInput
+          ? keywordsInput
+              .split(',')
+              .map((k) => k.trim())
+              .filter(Boolean)
+          : undefined,
+        colors: colorsInput
+          ? colorsInput
+              .split(',')
+              .map((c) => c.trim())
+              .filter(Boolean)
+          : undefined,
+        sizes: sizesInput
+          ? sizesInput
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : undefined,
+        materials: materialsInput
+          ? materialsInput
+              .split(',')
+              .map((m) => m.trim())
+              .filter(Boolean)
+          : undefined,
       };
 
       await onSubmit(submitData);
@@ -248,7 +286,8 @@ export default function UnifiedProductForm({
     return PURCHASE_TYPES.find((t) => t.value === type);
   };
 
-  const shouldShowInventory = formData.productType === 'PHYSICAL' && formData.purchaseType === 'INSTANT';
+  const shouldShowInventory =
+    formData.productType === 'PHYSICAL' && formData.purchaseType === 'INSTANT';
   const shouldShowWeight = formData.productType === 'PHYSICAL';
   const shouldShowColors = formData.productType === 'PHYSICAL';
   const shouldShowSizes = formData.productType === 'PHYSICAL';
@@ -371,7 +410,8 @@ export default function UnifiedProductForm({
                 <div>
                   <p className="font-bold text-sm text-black">Inquiry-Based Product</p>
                   <p className="text-xs text-black/70 mt-1">
-                    This product will show a "Contact Seller" button instead of "Add to Cart". Price is optional and can be used for display purposes only.
+                    This product will show a "Contact Seller" button instead of "Add to Cart". Price
+                    is optional and can be used for display purposes only.
                   </p>
                 </div>
               </div>
@@ -538,17 +578,12 @@ export default function UnifiedProductForm({
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-2"
                 >
-                  <Label htmlFor="weight" className="text-black font-bold">
-                    Weight (kg)
-                  </Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.weight}
-                    onChange={(e) => updateField('weight', parseFloat(e.target.value))}
-                    placeholder="0.00"
+                  <WeightInput
+                    label="Weight"
+                    helperText="Accurate weight is required for correct shipping rates."
+                    valueGrams={formData.weightGrams ?? null}
+                    onChange={(grams) => updateField('weightGrams', grams)}
+                    defaultUnit="kg"
                   />
                 </motion.div>
               )}
@@ -583,7 +618,10 @@ export default function UnifiedProductForm({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Colors */}
                   <div className="space-y-2">
-                    <Label htmlFor="colors" className="text-black font-bold flex items-center gap-2">
+                    <Label
+                      htmlFor="colors"
+                      className="text-black font-bold flex items-center gap-2"
+                    >
                       <Palette className="h-4 w-4" />
                       Colors
                     </Label>
@@ -598,7 +636,10 @@ export default function UnifiedProductForm({
                   {/* Sizes */}
                   {shouldShowSizes && (
                     <div className="space-y-2">
-                      <Label htmlFor="sizes" className="text-black font-bold flex items-center gap-2">
+                      <Label
+                        htmlFor="sizes"
+                        className="text-black font-bold flex items-center gap-2"
+                      >
                         <Ruler className="h-4 w-4" />
                         Sizes
                       </Label>
@@ -613,7 +654,10 @@ export default function UnifiedProductForm({
 
                   {/* Materials */}
                   <div className="space-y-2">
-                    <Label htmlFor="materials" className="text-black font-bold flex items-center gap-2">
+                    <Label
+                      htmlFor="materials"
+                      className="text-black font-bold flex items-center gap-2"
+                    >
                       <Tag className="h-4 w-4" />
                       Materials
                     </Label>
@@ -643,7 +687,10 @@ export default function UnifiedProductForm({
               <Label htmlFor="category" className="text-black font-bold">
                 Category
               </Label>
-              <Select value={formData.categoryId} onValueChange={(value) => updateField('categoryId', value)}>
+              <Select
+                value={formData.categoryId}
+                onValueChange={(value) => updateField('categoryId', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
@@ -662,7 +709,10 @@ export default function UnifiedProductForm({
               <Label htmlFor="status" className="text-black font-bold">
                 Status
               </Label>
-              <Select value={formData.status} onValueChange={(value) => updateField('status', value)}>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => updateField('status', value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>

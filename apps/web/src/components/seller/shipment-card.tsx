@@ -15,6 +15,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { formatWeight } from '@/lib/utils/weight';
 import { useTranslations } from 'next-intl';
 
 interface ShipmentEvent {
@@ -49,6 +50,7 @@ interface Shipment {
   deliveredAt?: string;
   shippingCost?: string | number;
   weight?: string | number;
+  weightGrams?: number | null;
   notes?: string;
   items: ShipmentItem[];
   events: ShipmentEvent[];
@@ -116,14 +118,14 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
       <div className="p-4 bg-neutral-50 border-b border-neutral-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg bg-white flex items-center justify-center border border-neutral-200`}>
+            <div
+              className={`w-10 h-10 rounded-lg bg-white flex items-center justify-center border border-neutral-200`}
+            >
               <StatusIcon className={`w-5 h-5 ${iconColor}`} />
             </div>
             <div>
               <p className="font-semibold text-black">{shipment.shipmentNumber}</p>
-              <p className="text-sm text-neutral-500">
-                {formatDate(shipment.createdAt)}
-              </p>
+              <p className="text-sm text-neutral-500">{formatDate(shipment.createdAt)}</p>
             </div>
           </div>
           <span
@@ -183,9 +185,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
           <div className="space-y-1">
             {shipment.items.map((item) => (
               <div key={item.id} className="flex items-center justify-between text-sm">
-                <span className="text-neutral-700">
-                  {item.orderItem.product.name}
-                </span>
+                <span className="text-neutral-700">{item.orderItem.product.name}</span>
                 <span className="text-neutral-500">×{item.quantity}</span>
               </div>
             ))}
@@ -199,9 +199,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
               <Calendar className="w-4 h-4 text-neutral-400" />
               <div>
                 <p className="text-xs text-neutral-500">{t('estDelivery')}</p>
-                <p className="font-medium text-black">
-                  {formatDate(shipment.estimatedDelivery)}
-                </p>
+                <p className="font-medium text-black">{formatDate(shipment.estimatedDelivery)}</p>
               </div>
             </div>
           )}
@@ -210,9 +208,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
               <Truck className="w-4 h-4 text-neutral-400" />
               <div>
                 <p className="text-xs text-neutral-500">{t('shipped')}</p>
-                <p className="font-medium text-black">
-                  {formatDate(shipment.shippedAt)}
-                </p>
+                <p className="font-medium text-black">{formatDate(shipment.shippedAt)}</p>
               </div>
             </div>
           )}
@@ -221,16 +217,14 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
               <CheckCircle2 className="w-4 h-4 text-green-600" />
               <div>
                 <p className="text-xs text-neutral-500">{t('delivered')}</p>
-                <p className="font-medium text-green-600">
-                  {formatDate(shipment.deliveredAt)}
-                </p>
+                <p className="font-medium text-green-600">{formatDate(shipment.deliveredAt)}</p>
               </div>
             </div>
           )}
         </div>
 
         {/* Shipping Details */}
-        {(shipment.shippingCost || shipment.weight) && (
+        {(shipment.shippingCost || shipment.weightGrams != null || shipment.weight) && (
           <div className="flex items-center gap-4 text-sm">
             {shipment.shippingCost && (
               <div>
@@ -240,10 +234,14 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
                 </p>
               </div>
             )}
-            {shipment.weight && (
+            {(shipment.weightGrams != null || shipment.weight) && (
               <div>
                 <p className="text-xs text-neutral-500">{t('weight')}</p>
-                <p className="font-medium text-black">{Number(shipment.weight)} kg</p>
+                <p className="font-medium text-black">
+                  {shipment.weightGrams != null
+                    ? formatWeight(shipment.weightGrams, 'kg')
+                    : `${Number(shipment.weight).toFixed(2)} kg`}
+                </p>
               </div>
             )}
           </div>
@@ -288,9 +286,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
                     {/* Timeline dot */}
                     <div
                       className={`absolute left-0 top-1 w-3 h-3 rounded-full border-2 ${
-                        isFirst
-                          ? 'bg-gold border-gold'
-                          : 'bg-white border-neutral-300'
+                        isFirst ? 'bg-gold border-gold' : 'bg-white border-neutral-300'
                       }`}
                     />
                     {/* Timeline line */}
@@ -309,9 +305,7 @@ export function ShipmentCard({ shipment, currency, onUpdate }: ShipmentCardProps
                             {event.title}
                           </p>
                           {event.description && (
-                            <p className="text-sm text-neutral-600 mt-0.5">
-                              {event.description}
-                            </p>
+                            <p className="text-sm text-neutral-600 mt-0.5">{event.description}</p>
                           )}
                           {event.location && (
                             <p className="text-xs text-neutral-500 flex items-center gap-1 mt-1">

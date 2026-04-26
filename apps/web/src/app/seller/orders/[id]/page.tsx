@@ -713,10 +713,16 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                                 length: 12,
                                 width: 8,
                                 height: 6,
-                                weight: order.items.reduce(
-                                  (sum, item) => sum + item.quantity * 16,
-                                  0
-                                ), // 16 oz per item default
+                                weight: order.items.reduce((sum, item) => {
+                                  // Use snapshot when available (historical accuracy), fall back to product weight
+                                  const grams =
+                                    (item as any).weightGramsSnapshot ??
+                                    (item as any).variant?.weightGrams ??
+                                    (item as any).product?.weightGrams ??
+                                    500; // 500g default — never hardcode carrier-specific units
+                                  // EasyPost API expects ounces
+                                  return sum + (grams / 28.349523125) * item.quantity;
+                                }, 0),
                               }}
                             />
                           </div>

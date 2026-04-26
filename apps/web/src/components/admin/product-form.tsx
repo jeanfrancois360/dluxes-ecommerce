@@ -94,6 +94,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     // Additional fields
     featured: (product as any)?.featured || false,
     weight: (product as any)?.weight || undefined,
+    weightGrams: (product as any)?.weightGrams ?? null,
     // Real Estate Fields
     propertyType: (product as any)?.propertyType || '',
     bedrooms: (product as any)?.bedrooms || undefined,
@@ -503,6 +504,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           formData.weight === '' || formData.weight === undefined
             ? undefined
             : Number(formData.weight),
+        weightGrams: formData.weightGrams ?? undefined,
         status: formData.status,
         productType: formData.productType,
         purchaseType: formData.purchaseType,
