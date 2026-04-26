@@ -68,6 +68,7 @@ export class OrdersService {
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
+        // TODO(Phase 6): pass weightGrams from cart product data; currently uses 500g fallback
       })),
       subtotal
     );
@@ -440,7 +441,11 @@ export class OrdersService {
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
-        weight: item.product?.weight || undefined,
+        weight:
+          item.product?.weightGrams ??
+          (item.product?.weight != null
+            ? Math.round(Number(item.product.weight) * 1000)
+            : undefined),
         fulfillmentType: item.product?.fulfillmentType || undefined,
         gelatoProductUid: item.product?.gelatoProductUid || undefined,
         storeId: item.product?.storeId || undefined,
@@ -502,6 +507,10 @@ export class OrdersService {
         currency: item.currencyAtAdd || cart.currency, // 🔒 Use locked currency
         total: new Decimal(item.priceAtAdd || item.price).mul(item.quantity),
         image: item.image,
+        weightGramsSnapshot:
+          item.variant?.weightGrams ??
+          item.product?.weightGrams ??
+          (item.product?.weight != null ? Math.round(Number(item.product.weight) * 1000) : null),
       }));
 
       // Create order with locked currency
@@ -840,7 +849,14 @@ export class OrdersService {
         price: item.price,
         total: itemTotal,
         image: product.heroImage,
-        weight: product.weight || undefined,
+        weight:
+          product.variants?.[0]?.weightGrams ??
+          product.weightGrams ??
+          (product.weight != null ? Math.round(Number(product.weight) * 1000) : undefined),
+        weightGramsSnapshot:
+          product.variants?.[0]?.weightGrams ??
+          product.weightGrams ??
+          (product.weight != null ? Math.round(Number(product.weight) * 1000) : null),
         fulfillmentType: product.fulfillmentType || undefined,
         gelatoProductUid: product.gelatoProductUid || undefined,
         storeId: product.storeId || undefined,
@@ -2059,7 +2075,9 @@ export class OrdersService {
           quantity: item.quantity,
           price: verifiedPrice,
           total: itemTotal,
-          weight: product.weight || undefined,
+          weight:
+            product.weightGrams ??
+            (product.weight != null ? Math.round(Number(product.weight) * 1000) : undefined),
           fulfillmentType: product.fulfillmentType || undefined,
           gelatoProductUid: product.gelatoProductUid || undefined,
           storeId: product.storeId || undefined,
