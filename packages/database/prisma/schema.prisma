@@ -498,6 +498,7 @@ model Product {
   inventory        Int           @default(0)
   previousStock    Int? // For smooth inventory transition animations
   weight           Decimal?      @db.Decimal(10, 2)
+  weightGrams      Int? // Weight in grams (standardized unit)
 
   // Product Type & Purchase Model
   productType     ProductType  @default(PHYSICAL)
@@ -1084,6 +1085,7 @@ model ProductVariant {
   inventory      Int      @default(0)
   previousStock  Int? // For smooth inventory animations
   options        Json // {size: 'M', color: 'Black', material: 'Silk'}
+  weightGrams    Int? // Weight in grams (standardized unit)
 
   // Elegant UI data
   image        String? // Variant-specific image
@@ -1388,16 +1390,17 @@ model CurrencyRate {
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
-  productId String
-  variantId String?
-  name      String
-  sku       String
-  quantity  Int
-  price     Decimal @db.Decimal(10, 2)
-  total     Decimal @db.Decimal(10, 2)
-  image     String?
+  id                  String  @id @default(cuid())
+  orderId             String
+  productId           String
+  variantId           String?
+  name                String
+  sku                 String
+  quantity            Int
+  price               Decimal @db.Decimal(10, 2)
+  total               Decimal @db.Decimal(10, 2)
+  image               String?
+  weightGramsSnapshot Int? // Weight in grams at time of order creation
 
   order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product         @relation(fields: [productId], references: [id])
@@ -1459,6 +1462,7 @@ model SellerShipment {
   // Shipment Costs (seller-specific portion)
   shippingCost Decimal? @db.Decimal(10, 2)
   weight       Decimal? @db.Decimal(10, 2)
+  weightGrams  Int? // Weight in grams (standardized unit)
 
   // Notes & Metadata
   notes    String? @db.Text
@@ -3342,9 +3346,10 @@ model Delivery {
   dhlEstimatedDelivery DateTime? // From DHL API
 
   // Package Details
-  packageWeight     String? // e.g., "2.5 kg"
-  packageDimensions String? // e.g., "30x20x10 cm"
-  shippedAt         DateTime?
+  packageWeight      String? // e.g., "2.5 kg"
+  packageWeightGrams Int? // Package weight in grams (standardized unit)
+  packageDimensions  String? // e.g., "30x20x10 cm"
+  shippedAt          DateTime?
 
   // Current Location (from DHL API)
   currentLocation Json? // { city, country, facility }
