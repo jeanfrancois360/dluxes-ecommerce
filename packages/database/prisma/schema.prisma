@@ -133,8 +133,9 @@ model User {
   escrowAllocations   EscrowSplitAllocation[]    @relation("SellerEscrowAllocations")
   commissionOverrides SellerCommissionOverride[] @relation("SellerCommissionOverrides")
   planSubscriptions   SellerPlanSubscription[]   @relation("SellerPlanSubscriptions")
-  sellerSubscription  SellerSubscription?        @relation("UserSubscription") // Inquiry-based product subscription
-  creditBalance       CreditBalance?             @relation("UserCreditBalance") // Credit balance for inquiry responses
+  sellerSubscription       SellerSubscription?        @relation("UserSubscription") // Inquiry-based product subscription
+  creditBalance            CreditBalance?             @relation("UserCreditBalance") // Credit balance for inquiry responses
+  subscriptionCreditEvents SubscriptionCreditEvent[]
 
   // Delivery Provider Extensions
   deliveryProviderId  String?
@@ -3135,8 +3136,9 @@ model SellerSubscription {
   updatedAt DateTime @updatedAt
 
   // Relations
-  user User             @relation("UserSubscription", fields: [userId], references: [id], onDelete: Cascade)
-  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+  user         User             @relation("UserSubscription", fields: [userId], references: [id], onDelete: Cascade)
+  plan         SubscriptionPlan @relation(fields: [planId], references: [id])
+  creditEvents SubscriptionCreditEvent[]
 
   @@index([userId])
   @@index([planId])
@@ -4001,4 +4003,46 @@ enum ReferralStatus {
   PAID // Reward granted to referrer (store credit added)
   EXPIRED // Referral expired before qualifying (based on expiration settings)
   CANCELLED // Referral cancelled (user deleted, fraud detected, etc.)
+}
+
+// ============================================================================
+// Subscription Credit Audit Trail (Pre-Launch Fix, April 27, 2026)
+// ============================================================================
+
+enum SubscriptionCreditEventType {
+  RENEWAL_RESET // invoice.paid webhook — subscription renewed, credits reset
+  CANCELLATION  // customer.subscription.deleted webhook — downgraded to FREE
+  CRON_RESET    // monthly cron job — 1st of each month credit refresh
+}
+
+model SubscriptionCreditEvent {
+  id             String @id @default(cuid())
+  subscriptionId String
+  userId         String
+
+  // Event classification
+  eventType SubscriptionCreditEventType
+
+  // Before/after snapshot (creditsAllocated)
+  creditsBefore Int
+  creditsAfter  Int
+
+  // Before/after snapshot (creditsUsed)
+  creditsUsedBefore Int
+  creditsUsedAfter  Int // Always 0 for resets; explicit > implicit
+
+  // Audit context
+  reason   String? // e.g. "Subscription renewed via invoice inv_xxx"
+  metadata Json?   // Stripe invoice ID, period boundaries, plan transitions, etc.
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  subscription SellerSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("subscription_credit_events")
 }

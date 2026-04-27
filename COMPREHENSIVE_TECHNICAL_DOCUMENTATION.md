@@ -9984,6 +9984,66 @@ All changes compile clean (`tsc --noEmit` exit 0) after each phase. Manual verif
 
 ---
 
+## 20. Pre-Launch Hardening (April 27, 2026)
+
+### 20.1 Admin Subscription Cancel/Reactivate UI Disabled
+
+**Fixed:** Admin UI buttons for cancelling and reactivating seller subscriptions are now disabled, with a tooltip and page-level banner directing admins to use the Stripe Dashboard until backend Stripe sync is implemented.
+
+**Why:** The backend endpoints for cancel and reactivate write directly to the database without calling the Stripe API. If admins used these buttons, sellers would either:
+
+- Continue being billed by Stripe after a "cancellation" (revenue + trust risk)
+- Have reactivations silently overwritten by subsequent Stripe webhooks
+
+**Files modified:**
+
+- `apps/web/src/app/admin/subscriptions/sellers/page.tsx` — Cancel and Reactivate buttons disabled with explanatory tooltip; warning banner added at the top of the page
+
+**Backend endpoints:** Left intact for future proper-fix PR. The endpoints will be wired to call Stripe directly in a follow-up. Until then, the disabled UI prevents accidental use.
+
+---
+
+### 20.2 Subscription Credit Audit Trail
+
+**Fixed:** Subscription credit allocations and resets now write `SubscriptionCreditEvent` audit records. Previously, `SellerSubscription.creditsAllocated/creditsUsed` were updated without any DB-level audit trail, making credit disputes impossible to investigate without server logs. Particularly important for EU consumer protection where sellers disputing credit allocations have rights to documented evidence.
+
+**New schema:**
+
+- `SubscriptionCreditEvent` model (table `subscription_credit_events`) with `subscriptionId`, `userId`, `eventType`, `creditsBefore`, `creditsAfter`, `creditsUsedBefore`, `creditsUsedAfter`, `reason`, and `metadata` JSON field
+- `SubscriptionCreditEventType` enum: `RENEWAL_RESET`, `CANCELLATION`, `CRON_RESET`
+- Migration is purely additive — no changes to existing tables, no data migration
+
+**Sites updated (all transactional now):**
+
+- `StripeSubscriptionService.handleInvoicePaid()` — writes `RENEWAL_RESET` on subscription renewal (Stripe `invoice.paid` webhook)
+- `StripeSubscriptionService.handleSubscriptionDeleted()` — writes `CANCELLATION` on subscription cancellation/expiry (Stripe `customer.subscription.deleted` webhook). Also gracefully handles deletion events for subscriptions we don't have (logs warn, no-throw).
+- `SubscriptionService.resetMonthlyCredits()` — writes `CRON_RESET` per subscription on the 1st of each month at 01:00 UTC
+
+**Transactionality:** Each reset is wrapped in a Prisma `$transaction`. If the audit write fails, the credit update is also rolled back. The `findUnique` read is performed inside the transaction (snapshot isolation) for Sites 1 and 2.
+
+**Cron error isolation preserved:** The monthly cron's per-subscription transactions are independent. A failure on one subscription doesn't prevent others from processing — the existing per-sub error catch-and-log behavior is intact.
+
+**Reading the events:** Not yet wired into any admin UI. Future enhancement could expose this audit trail in the admin subscription detail page for dispute resolution. For now, queryable directly via Prisma Studio or SQL:
+
+```sql
+SELECT * FROM subscription_credit_events
+WHERE "userId" = '<user_id>'
+ORDER BY "createdAt" DESC;
+```
+
+**Tests:** 6 tests in `apps/api/src/subscription/subscription-credit-audit.spec.ts` covering:
+
+- Each of the three reset paths writes the correct audit event
+- Graceful handling of deletion events for missing subscriptions
+- Transactional rollback when audit write fails (error propagates, not swallowed)
+- Cron error isolation (one failed subscription doesn't break the loop)
+
+All 6 passing. Type-check 6/6 clean, lint 0 errors.
+
+**Migration:** `packages/database/prisma/migrations/20260427000000_add_subscription_credit_event/`
+
+---
+
 ## Conclusion
 
 This comprehensive technical documentation provides a complete overview of the NextPik E-commerce Platform as it exists today. The platform is production-ready with robust features for multi-vendor commerce, but has clear opportunities for enhancement in testing, monitoring, and advanced features.
