@@ -217,6 +217,24 @@ function SellerSubscriptionsContent() {
       />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Stripe sync warning — remove once admin cancel/reactivate is wired to Stripe */}
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+          <p className="text-sm text-yellow-800">
+            <strong>Important:</strong> Subscription cancellations and reactivations must be
+            performed in the{' '}
+            <a
+              href="https://dashboard.stripe.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-yellow-900"
+            >
+              Stripe Dashboard
+            </a>{' '}
+            to keep billing in sync. In-app buttons are temporarily disabled to prevent billing
+            mismatches.
+          </p>
+        </div>
+
         {/* Statistics Section */}
         <section>
           <h2 className="text-lg font-semibold text-neutral-900 mb-4">Overview Statistics</h2>
@@ -521,8 +539,9 @@ function SellerSubscriptionsContent() {
                       <div className="p-6 pt-0 flex gap-2">
                         {sub.status === 'ACTIVE' ? (
                           <button
-                            onClick={() => handleCancelSubscription(sub.id)}
-                            className="flex-1 px-4 py-2.5 border-2 border-red-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors font-semibold flex items-center justify-center gap-2"
+                            disabled
+                            title="Use the Stripe Dashboard to cancel subscriptions. In-app cancel is disabled to prevent billing mismatches."
+                            className="flex-1 px-4 py-2.5 border-2 border-neutral-200 text-neutral-400 rounded-lg cursor-not-allowed font-semibold flex items-center justify-center gap-2"
                           >
                             <svg
                               className="w-4 h-4"
@@ -541,8 +560,9 @@ function SellerSubscriptionsContent() {
                           </button>
                         ) : sub.status === 'CANCELLED' ? (
                           <button
-                            onClick={() => handleReactivateSubscription(sub.id)}
-                            className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center justify-center gap-2"
+                            disabled
+                            title="Use the Stripe Dashboard to reactivate subscriptions. In-app reactivate is disabled to prevent billing mismatches."
+                            className="flex-1 px-4 py-2.5 border-2 border-neutral-200 text-neutral-400 rounded-lg cursor-not-allowed font-semibold flex items-center justify-center gap-2"
                           >
                             <svg
                               className="w-4 h-4"
