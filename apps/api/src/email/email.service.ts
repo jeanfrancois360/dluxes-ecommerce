@@ -59,7 +59,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '🔐 Your Magic Link - Sign In Instantly',
+        subject: 'Your Magic Link - NextPik',
         html,
       });
 
@@ -101,7 +101,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '🔑 Reset Your Password - NextPik E-commerce',
+        subject: 'Reset Your Password - NextPik',
         html,
       });
 
@@ -133,7 +133,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✨ Welcome to NextPik E-commerce, ${name}!`,
+        subject: `Welcome to NextPik, ${name}`,
         html,
       });
 
@@ -175,7 +175,7 @@ export class EmailService {
             <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
               <div style="background: linear-gradient(135deg, #000000 0%, #1A1A1A 100%); padding: 40px; text-align: center; border-radius: 16px 16px 0 0;">
                 <h1 style="color: #FFFFFF; font-size: 28px; margin: 0; font-weight: 700;">Verify Your Email</h1>
-                <p style="color: #A3A3A3; font-size: 16px; margin: 12px 0 0;">Welcome to NextPik E-commerce</p>
+                <p style="color: #A3A3A3; font-size: 16px; margin: 12px 0 0;">Welcome to NextPik</p>
               </div>
 
               <div style="background-color: #FFFFFF; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);">
@@ -213,7 +213,7 @@ export class EmailService {
 
               <div style="text-align: center; padding-top: 24px;">
                 <p style="color: #A3A3A3; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} NextPik E-commerce. All rights reserved.
+                  © ${new Date().getFullYear()} NextPik. All rights reserved.
                 </p>
               </div>
             </div>
@@ -224,7 +224,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '✉️ Verify Your Email - NextPik E-commerce',
+        subject: 'Verify Your Email - NextPik',
         html,
       });
 
@@ -290,7 +290,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '🔒 Two-Factor Authentication Enabled',
+        subject: 'Two-Factor Authentication Enabled - NextPik',
         html,
       });
 
@@ -416,7 +416,7 @@ export class EmailService {
 
               <div style="text-align: center; padding-top: 24px;">
                 <p style="color: #A3A3A3; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} NextPik E-commerce. All rights reserved.
+                  © ${new Date().getFullYear()} NextPik. All rights reserved.
                 </p>
               </div>
             </div>
@@ -428,7 +428,7 @@ export class EmailService {
         from: this.fromEmail,
         to: adminEmail,
         replyTo: inquiryData.customerEmail,
-        subject: `🛍️ New Product Inquiry - ${inquiryData.productName}`,
+        subject: `New Product Inquiry - ${inquiryData.productName}`,
         html,
       });
 
@@ -545,7 +545,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✅ Order Confirmation - #${orderData.orderNumber}`,
+        subject: `Order Confirmation - #${orderData.orderNumber}`,
         html,
       });
 
@@ -637,7 +637,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `🎉 New Order #${notificationData.orderNumber} - ${notificationData.storeName}`,
+        subject: `New Order #${notificationData.orderNumber} - ${notificationData.storeName}`,
         html,
       });
 
@@ -861,7 +861,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '📝 Seller Application Received - NextPik',
+        subject: 'Seller Application Received - NextPik',
         html,
       });
 
@@ -912,7 +912,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '🎉 Seller Application Approved - Welcome to NextPik!',
+        subject: 'Seller Application Approved - NextPik',
         html,
       });
 
@@ -1016,7 +1016,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '⚠️ Important: Your Seller Account Has Been Suspended',
+        subject: 'Important: Your Seller Account Has Been Suspended - NextPik',
         html,
       });
 
@@ -1077,7 +1077,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `💸 Payout Scheduled - ${data.currency} ${data.amount.toFixed(2)}`,
+        subject: `Payout Scheduled - ${data.currency} ${data.amount.toFixed(2)}`,
         html,
       });
 
@@ -1141,7 +1141,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✅ Payout Completed - ${data.currency} ${data.amount.toFixed(2)}`,
+        subject: `Payout Completed - ${data.currency} ${data.amount.toFixed(2)}`,
         html,
       });
 
@@ -1203,7 +1203,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `⚠️ Payout Failed - Action Required`,
+        subject: 'Payout Failed - Action Required - NextPik',
         html,
       });
 
@@ -1375,7 +1375,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `📍 Pickup Order Confirmed - #${pickupData.orderNumber}`,
+        subject: `Pickup Order Confirmed - #${pickupData.orderNumber}`,
         html,
       });
 
@@ -1497,7 +1497,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✅ Order Ready for Pickup - #${pickupData.orderNumber}`,
+        subject: `Order Ready for Pickup - #${pickupData.orderNumber}`,
         html,
       });
 
@@ -1595,7 +1595,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `📦 Your Order #${data.orderNumber} Is Being Prepared`,
+        subject: `Your Order #${data.orderNumber} Is Being Prepared`,
         html,
       });
 
@@ -1681,7 +1681,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `🚚 Your Order #${data.orderNumber} Is Out for Delivery`,
+        subject: `Your Order #${data.orderNumber} Is Out for Delivery`,
         html,
       });
 
@@ -1767,7 +1767,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✅ Your Order #${data.orderNumber} Has Arrived — Leave a Review`,
+        subject: `Your Order #${data.orderNumber} Has Arrived - Leave a Review`,
         html,
       });
 
@@ -1852,7 +1852,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `⚡ Reminder: Order #${data.orderNumber} Still Needs to Ship`,
+        subject: `Reminder: Order #${data.orderNumber} Still Needs to Ship`,
         html,
       });
 
@@ -1955,7 +1955,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `🎉 Pickup Complete - #${pickupData.orderNumber}`,
+        subject: `Pickup Complete - #${pickupData.orderNumber}`,
         html,
       });
 
