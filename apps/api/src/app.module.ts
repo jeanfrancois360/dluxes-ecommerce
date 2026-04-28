@@ -53,6 +53,7 @@ import { ReferralModule } from './referral/referral.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
 import { SellerCreditsCronService } from './cron/seller-credits.cron';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -118,6 +119,7 @@ import { SellerCreditsCronService } from './cron/seller-credits.cron';
     HotDealsModule,
     GelatoModule,
     ReferralModule,
+    EmailModule,
   ],
   providers: [
     {

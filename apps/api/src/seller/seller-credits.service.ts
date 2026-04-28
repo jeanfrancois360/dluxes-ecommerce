@@ -20,9 +20,8 @@ export class SellerCreditsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly paymentService: PaymentService,
+    private readonly paymentService: PaymentService
   ) {}
-
 
   /**
    * Get credit balance and status for a seller
@@ -51,8 +50,7 @@ export class SellerCreditsService {
       new Date() < store.creditsGraceEndsAt;
 
     const canPublish =
-      store.status === StoreStatus.ACTIVE &&
-      (store.creditsBalance > 0 || inGracePeriod);
+      store.status === StoreStatus.ACTIVE && (store.creditsBalance > 0 || inGracePeriod);
 
     // Can purchase if store is ACTIVE (approved)
     const canPurchase = store.status === StoreStatus.ACTIVE;
@@ -180,9 +178,7 @@ export class SellerCreditsService {
     const maxMonths = await this.getSettingNumber('seller_max_credit_purchase', 12);
 
     if (months < minMonths || months > maxMonths) {
-      throw new BadRequestException(
-        `Months must be between ${minMonths} and ${maxMonths}`,
-      );
+      throw new BadRequestException(`Months must be between ${minMonths} and ${maxMonths}`);
     }
 
     // Get store
@@ -198,7 +194,7 @@ export class SellerCreditsService {
     // Check if approved
     if (store.status !== StoreStatus.ACTIVE) {
       throw new ForbiddenException(
-        'Your store must be approved before purchasing credits. Please wait for admin approval.',
+        'Your store must be approved before purchasing credits. Please wait for admin approval.'
       );
     }
 
@@ -210,8 +206,7 @@ export class SellerCreditsService {
     const amountInCents = Math.round(totalAmount * 100);
 
     // Get frontend URL for redirects
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
 
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -287,16 +282,13 @@ export class SellerCreditsService {
       }
 
       // Check if already processed
-      const existingTransaction =
-        await this.prisma.sellerCreditTransaction.findUnique({
-          where: { stripeSessionId },
-        });
+      const existingTransaction = await this.prisma.sellerCreditTransaction.findUnique({
+        where: { stripeSessionId },
+      });
 
       if (!existingTransaction) {
         // Not processed yet, process it now
-        this.logger.log(
-          `Manually processing credit purchase: ${stripeSessionId}`,
-        );
+        this.logger.log(`Manually processing credit purchase: ${stripeSessionId}`);
         await this.processSuccessfulPurchase(stripeSessionId);
       }
 
@@ -320,10 +312,7 @@ export class SellerCreditsService {
         },
       };
     } catch (error) {
-      this.logger.error(
-        `Failed to verify session ${stripeSessionId}:`,
-        error.stack,
-      );
+      this.logger.error(`Failed to verify session ${stripeSessionId}:`, error.stack);
       throw new BadRequestException('Failed to verify purchase session');
     }
   }
@@ -357,15 +346,12 @@ export class SellerCreditsService {
     const totalAmountPaid = pricePerMonthNum * monthsNum;
 
     // Check if already processed
-    const existingTransaction =
-      await this.prisma.sellerCreditTransaction.findUnique({
-        where: { stripeSessionId },
-      });
+    const existingTransaction = await this.prisma.sellerCreditTransaction.findUnique({
+      where: { stripeSessionId },
+    });
 
     if (existingTransaction) {
-      this.logger.warn(
-        `Credit purchase already processed: ${stripeSessionId}`,
-      );
+      this.logger.warn(`Credit purchase already processed: ${stripeSessionId}`);
       return {
         success: true,
         message: 'Credit purchase already processed',
@@ -445,7 +431,7 @@ export class SellerCreditsService {
     ]);
 
     this.logger.log(
-      `✅ Credit purchase processed: Store ${storeId}, ${monthsNum} months, $${totalAmountPaid}`,
+      `✅ Credit purchase processed: Store ${storeId}, ${monthsNum} months, $${totalAmountPaid}`
     );
 
     return {
@@ -482,17 +468,13 @@ export class SellerCreditsService {
         lastDeduction.getMonth() === now.getMonth() &&
         lastDeduction.getFullYear() === now.getFullYear()
       ) {
-        this.logger.warn(
-          `Store ${storeId} already deducted this month, skipping`,
-        );
+        this.logger.warn(`Store ${storeId} already deducted this month, skipping`);
         return { success: true, message: 'Already deducted this month' };
       }
     }
 
     if (store.creditsBalance <= 0) {
-      this.logger.warn(
-        `Store ${storeId} has no credits to deduct, skipping`,
-      );
+      this.logger.warn(`Store ${storeId} has no credits to deduct, skipping`);
       return { success: true, message: 'No credits to deduct' };
     }
 
@@ -534,7 +516,7 @@ export class SellerCreditsService {
     ]);
 
     this.logger.log(
-      `✅ Credit deducted: Store ${storeId}, Balance: ${balanceBefore} → ${balanceAfter}${graceEndsAt ? `, Grace period until ${graceEndsAt.toISOString()}` : ''}`,
+      `✅ Credit deducted: Store ${storeId}, Balance: ${balanceBefore} → ${balanceAfter}${graceEndsAt ? `, Grace period until ${graceEndsAt.toISOString()}` : ''}`
     );
 
     return {
@@ -597,13 +579,10 @@ export class SellerCreditsService {
 
         suspendedCount++;
         this.logger.log(
-          `⚠️  Grace period expired: Store ${store.id} (${store.name}) - Products suspended`,
+          `⚠️  Grace period expired: Store ${store.id} (${store.name}) - Products suspended`
         );
       } catch (error) {
-        this.logger.error(
-          `Failed to suspend products for store ${store.id}:`,
-          error,
-        );
+        this.logger.error(`Failed to suspend products for store ${store.id}:`, error);
       }
     }
 
@@ -625,7 +604,7 @@ export class SellerCreditsService {
     amount: number,
     adminId: string,
     notes: string,
-    type: SellerCreditTransactionType = SellerCreditTransactionType.ADJUSTMENT,
+    type: SellerCreditTransactionType = SellerCreditTransactionType.ADJUSTMENT
   ) {
     if (amount === 0) {
       throw new BadRequestException('Amount cannot be zero');
@@ -685,7 +664,7 @@ export class SellerCreditsService {
     ]);
 
     this.logger.log(
-      `✅ Credits adjusted: Store ${storeId}, ${amount > 0 ? '+' : ''}${amount}, Balance: ${balanceBefore} → ${balanceAfter}, Admin: ${adminId}`,
+      `✅ Credits adjusted: Store ${storeId}, ${amount > 0 ? '+' : ''}${amount}, Balance: ${balanceBefore} → ${balanceAfter}, Admin: ${adminId}`
     );
 
     return {
@@ -706,10 +685,7 @@ export class SellerCreditsService {
    * Get stores needing attention (low credits, in grace period, etc.)
    */
   async getStoresNeedingAttention() {
-    const threshold = await this.getSettingNumber(
-      'seller_low_credit_warning_threshold',
-      2,
-    );
+    const threshold = await this.getSettingNumber('seller_low_credit_warning_threshold', 2);
     const now = new Date();
 
     const [lowCredits, inGracePeriod] = await Promise.all([
@@ -744,6 +720,7 @@ export class SellerCreditsService {
               lastName: true,
             },
           },
+          _count: { select: { products: true } },
         },
         orderBy: { creditsGraceEndsAt: 'asc' },
         take: 50,
@@ -767,6 +744,7 @@ export class SellerCreditsService {
           ownerEmail: store.user.email,
           ownerName: `${store.user.firstName} ${store.user.lastName}`,
           graceEndsAt: store.creditsGraceEndsAt,
+          productsCount: store._count.products,
         })),
       },
     };

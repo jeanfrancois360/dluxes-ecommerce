@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../database/prisma.service';
 import { StoreStatus } from '@prisma/client';
 import { SellerCreditsService } from '../seller/seller-credits.service';
+import { EmailService } from '../email/email.service';
 
 /**
  * Cron service for automated seller credit management
@@ -14,6 +15,7 @@ export class SellerCreditsCronService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sellerCreditsService: SellerCreditsService,
+    private readonly emailService: EmailService
   ) {}
 
   /**
@@ -61,9 +63,7 @@ export class SellerCreditsCronService {
       // Process each store
       for (const store of stores) {
         try {
-          const result = await this.sellerCreditsService.deductMonthlyCredit(
-            store.id,
-          );
+          const result = await this.sellerCreditsService.deductMonthlyCredit(store.id);
 
           if (result.success) {
             const balanceAfter = store.creditsBalance - 1;
@@ -71,21 +71,18 @@ export class SellerCreditsCronService {
 
             if (isDepletedNow) {
               this.logger.warn(
-                `⚠️  Store #${store.id.substring(0, 8)}... (${store.name}) - Balance depleted (${store.creditsBalance} → 0) - Grace period started`,
+                `⚠️  Store #${store.id.substring(0, 8)}... (${store.name}) - Balance depleted (${store.creditsBalance} → 0) - Grace period started`
               );
               depletedCount++;
             } else {
               this.logger.log(
-                `✅ Store #${store.id.substring(0, 8)}... (${store.name}) - Deducted 1 credit (${store.creditsBalance} → ${balanceAfter})`,
+                `✅ Store #${store.id.substring(0, 8)}... (${store.name}) - Deducted 1 credit (${store.creditsBalance} → ${balanceAfter})`
               );
             }
             successCount++;
           }
         } catch (error) {
-          this.logger.error(
-            `❌ Failed to deduct credit from store ${store.id}:`,
-            error.message,
-          );
+          this.logger.error(`❌ Failed to deduct credit from store ${store.id}:`, error.message);
           errorCount++;
         }
       }
@@ -122,12 +119,11 @@ export class SellerCreditsCronService {
     this.logger.log('🚨 Enforcing grace period for depleted stores...');
 
     try {
-      const result =
-        await this.sellerCreditsService.suspendExpiredGracePeriodStores();
+      const result = await this.sellerCreditsService.suspendExpiredGracePeriodStores();
 
       if (result.success && result.data.suspendedCount > 0) {
         this.logger.warn(
-          `⚠️  Suspended products for ${result.data.suspendedCount} stores with expired grace period`,
+          `⚠️  Suspended products for ${result.data.suspendedCount} stores with expired grace period`
         );
         this.logger.log(`Store IDs: ${result.data.storeIds.join(', ')}`);
       } else {
@@ -150,8 +146,7 @@ export class SellerCreditsCronService {
     this.logger.log('📧 Checking for sellers with low credits...');
 
     try {
-      const result =
-        await this.sellerCreditsService.getStoresNeedingAttention();
+      const result = await this.sellerCreditsService.getStoresNeedingAttention();
 
       if (!result.success) {
         this.logger.warn('Failed to get stores needing attention');
@@ -162,38 +157,31 @@ export class SellerCreditsCronService {
 
       // Log low credit stores
       if (lowCredits.length > 0) {
-        this.logger.warn(
-          `⚠️  ${lowCredits.length} stores with low credits (≤2 months):`,
-        );
+        this.logger.warn(`⚠️  ${lowCredits.length} stores with low credits (≤2 months):`);
         lowCredits.forEach((store) => {
           this.logger.warn(
-            `   - ${store.storeName} (${store.ownerEmail}): ${store.creditsBalance} month${store.creditsBalance > 1 ? 's' : ''} remaining`,
+            `   - ${store.storeName} (${store.ownerEmail}): ${store.creditsBalance} month${store.creditsBalance > 1 ? 's' : ''} remaining`
           );
         });
 
-        // TODO: Send email notifications
-        // await this.emailService.sendLowCreditWarning(lowCredits);
+        await this.emailService.sendLowCreditWarning(lowCredits);
       } else {
         this.logger.log('✅ No stores with low credits');
       }
 
       // Log grace period stores
       if (inGracePeriod.length > 0) {
-        this.logger.warn(
-          `🚨 ${inGracePeriod.length} stores in grace period:`,
-        );
+        this.logger.warn(`🚨 ${inGracePeriod.length} stores in grace period:`);
         inGracePeriod.forEach((store) => {
           const daysRemaining = Math.ceil(
-            (new Date(store.graceEndsAt).getTime() - Date.now()) /
-              (1000 * 60 * 60 * 24),
+            (new Date(store.graceEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
           );
           this.logger.warn(
-            `   - ${store.storeName} (${store.ownerEmail}): ${daysRemaining} day${daysRemaining > 1 ? 's' : ''} until suspension`,
+            `   - ${store.storeName} (${store.ownerEmail}): ${daysRemaining} day${daysRemaining > 1 ? 's' : ''} until suspension`
           );
         });
 
-        // TODO: Send email notifications
-        // await this.emailService.sendGracePeriodWarning(inGracePeriod);
+        await this.emailService.sendGracePeriodWarning(inGracePeriod);
       } else {
         this.logger.log('✅ No stores in grace period');
       }

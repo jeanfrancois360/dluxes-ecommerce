@@ -14,6 +14,8 @@ import { sellerSuspendedTemplate } from './templates/seller-suspended.template';
 import { payoutScheduledTemplate } from './templates/payout-scheduled.template';
 import { payoutCompletedTemplate } from './templates/payout-completed.template';
 import { payoutFailedTemplate } from './templates/payout-failed.template';
+import { creditsLowWarningTemplate } from './templates/credits-low-warning.template';
+import { gracePeriodEndingTemplate } from './templates/grace-period-ending.template';
 
 @Injectable()
 export class EmailService {
@@ -1969,6 +1971,134 @@ export class EmailService {
     } catch (error) {
       this.logger.error('Error sending pickup confirmed email', error);
       return false;
+    }
+  }
+
+  // ============================================================================
+  // SELLER CREDIT NOTIFICATIONS
+  // ============================================================================
+
+  /**
+   * Send low credit warning emails to sellers (≤2 months remaining)
+   */
+  async sendLowCreditWarning(
+    stores: Array<{
+      ownerEmail: string;
+      ownerName: string;
+      storeName: string;
+      creditsBalance: number;
+    }>
+  ): Promise<void> {
+    const creditsUrl = `${this.frontendUrl}/seller/credits`;
+    const dashboardUrl = `${this.frontendUrl}/seller`;
+
+    for (const store of stores) {
+      try {
+        const daysUntilDepletion = store.creditsBalance * 30;
+
+        if (!process.env.RESEND_API_KEY) {
+          this.logger.warn(
+            `[DEV] Low credit warning skipped for ${store.ownerEmail} (${store.storeName}, ${store.creditsBalance} months left)`
+          );
+          continue;
+        }
+
+        const html = creditsLowWarningTemplate({
+          sellerName: store.ownerName,
+          storeName: store.storeName,
+          currentBalance: store.creditsBalance,
+          daysUntilDepletion,
+          creditsUrl,
+          dashboardUrl,
+          frontendUrl: this.frontendUrl,
+        });
+
+        const { error } = await this.resend.emails.send({
+          from: this.fromEmail,
+          to: store.ownerEmail,
+          subject: `Credits running low - ${store.storeName}`,
+          html,
+        });
+
+        if (error) {
+          this.logger.error(`Failed to send low credit warning to ${store.ownerEmail}`, error);
+        } else {
+          this.logger.log(`Low credit warning sent to ${store.ownerEmail} (${store.storeName})`);
+        }
+      } catch (err) {
+        this.logger.error(`Error sending low credit warning to ${store.ownerEmail}`, err);
+      }
+    }
+  }
+
+  /**
+   * Send grace period ending warning emails to sellers
+   */
+  async sendGracePeriodWarning(
+    stores: Array<{
+      ownerEmail: string;
+      ownerName: string;
+      storeName: string;
+      graceEndsAt: Date | null;
+      productsCount: number;
+    }>
+  ): Promise<void> {
+    const creditsUrl = `${this.frontendUrl}/seller/credits`;
+    const dashboardUrl = `${this.frontendUrl}/seller`;
+
+    for (const store of stores) {
+      try {
+        if (!store.graceEndsAt) continue;
+
+        const hoursRemaining = Math.max(
+          1,
+          Math.ceil((new Date(store.graceEndsAt).getTime() - Date.now()) / (1000 * 60 * 60))
+        );
+        const graceEndsAtStr = new Date(store.graceEndsAt).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'UTC',
+          timeZoneName: 'short',
+        });
+
+        if (!process.env.RESEND_API_KEY) {
+          this.logger.warn(
+            `[DEV] Grace period warning skipped for ${store.ownerEmail} (${store.storeName}, ${hoursRemaining}h left)`
+          );
+          continue;
+        }
+
+        const html = gracePeriodEndingTemplate({
+          sellerName: store.ownerName,
+          storeName: store.storeName,
+          hoursRemaining,
+          graceEndsAt: graceEndsAtStr,
+          productsCount: store.productsCount,
+          creditsUrl,
+          dashboardUrl,
+          frontendUrl: this.frontendUrl,
+        });
+
+        const { error } = await this.resend.emails.send({
+          from: this.fromEmail,
+          to: store.ownerEmail,
+          subject: `Grace period ending soon - ${store.storeName}`,
+          html,
+        });
+
+        if (error) {
+          this.logger.error(`Failed to send grace period warning to ${store.ownerEmail}`, error);
+        } else {
+          this.logger.log(
+            `Grace period warning sent to ${store.ownerEmail} (${store.storeName}, ${hoursRemaining}h remaining)`
+          );
+        }
+      } catch (err) {
+        this.logger.error(`Error sending grace period warning to ${store.ownerEmail}`, err);
+      }
     }
   }
 }
