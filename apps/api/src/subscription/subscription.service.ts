@@ -863,13 +863,31 @@ export class SubscriptionService {
 
       for (const subscription of activeSubscriptions) {
         try {
-          // Reset credits to plan's monthly allocation
-          await this.prisma.sellerSubscription.update({
-            where: { id: subscription.id },
-            data: {
-              creditsAllocated: subscription.plan.monthlyCredits,
-              creditsUsed: 0,
-            },
+          await this.prisma.$transaction(async (tx) => {
+            await tx.sellerSubscription.update({
+              where: { id: subscription.id },
+              data: {
+                creditsAllocated: subscription.plan.monthlyCredits,
+                creditsUsed: 0,
+              },
+            });
+
+            await tx.subscriptionCreditEvent.create({
+              data: {
+                subscriptionId: subscription.id,
+                userId: subscription.userId,
+                eventType: 'CRON_RESET',
+                creditsBefore: subscription.creditsAllocated,
+                creditsAfter: subscription.plan.monthlyCredits,
+                creditsUsedBefore: subscription.creditsUsed,
+                creditsUsedAfter: 0,
+                reason: 'Monthly credit reset — 1st of month cron job',
+                metadata: {
+                  planName: subscription.plan.name,
+                  planTier: subscription.plan.tier,
+                },
+              },
+            });
           });
 
           resetCount++;
