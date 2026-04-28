@@ -14,6 +14,8 @@ import { sellerSuspendedTemplate } from './templates/seller-suspended.template';
 import { payoutScheduledTemplate } from './templates/payout-scheduled.template';
 import { payoutCompletedTemplate } from './templates/payout-completed.template';
 import { payoutFailedTemplate } from './templates/payout-failed.template';
+import { creditsLowWarningTemplate } from './templates/credits-low-warning.template';
+import { gracePeriodEndingTemplate } from './templates/grace-period-ending.template';
 
 @Injectable()
 export class EmailService {
@@ -59,7 +61,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '🔐 Your Magic Link - Sign In Instantly',
+        subject: 'Your Magic Link - NextPik',
         html,
       });
 
@@ -101,7 +103,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '🔑 Reset Your Password - NextPik E-commerce',
+        subject: 'Reset Your Password - NextPik',
         html,
       });
 
@@ -133,7 +135,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✨ Welcome to NextPik E-commerce, ${name}!`,
+        subject: `Welcome to NextPik, ${name}`,
         html,
       });
 
@@ -175,7 +177,7 @@ export class EmailService {
             <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
               <div style="background: linear-gradient(135deg, #000000 0%, #1A1A1A 100%); padding: 40px; text-align: center; border-radius: 16px 16px 0 0;">
                 <h1 style="color: #FFFFFF; font-size: 28px; margin: 0; font-weight: 700;">Verify Your Email</h1>
-                <p style="color: #A3A3A3; font-size: 16px; margin: 12px 0 0;">Welcome to NextPik E-commerce</p>
+                <p style="color: #A3A3A3; font-size: 16px; margin: 12px 0 0;">Welcome to NextPik</p>
               </div>
 
               <div style="background-color: #FFFFFF; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);">
@@ -213,7 +215,7 @@ export class EmailService {
 
               <div style="text-align: center; padding-top: 24px;">
                 <p style="color: #A3A3A3; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} NextPik E-commerce. All rights reserved.
+                  © ${new Date().getFullYear()} NextPik. All rights reserved.
                 </p>
               </div>
             </div>
@@ -224,7 +226,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '✉️ Verify Your Email - NextPik E-commerce',
+        subject: 'Verify Your Email - NextPik',
         html,
       });
 
@@ -290,7 +292,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '🔒 Two-Factor Authentication Enabled',
+        subject: 'Two-Factor Authentication Enabled - NextPik',
         html,
       });
 
@@ -416,7 +418,7 @@ export class EmailService {
 
               <div style="text-align: center; padding-top: 24px;">
                 <p style="color: #A3A3A3; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} NextPik E-commerce. All rights reserved.
+                  © ${new Date().getFullYear()} NextPik. All rights reserved.
                 </p>
               </div>
             </div>
@@ -428,7 +430,7 @@ export class EmailService {
         from: this.fromEmail,
         to: adminEmail,
         replyTo: inquiryData.customerEmail,
-        subject: `🛍️ New Product Inquiry - ${inquiryData.productName}`,
+        subject: `New Product Inquiry - ${inquiryData.productName}`,
         html,
       });
 
@@ -545,7 +547,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✅ Order Confirmation - #${orderData.orderNumber}`,
+        subject: `Order Confirmation - #${orderData.orderNumber}`,
         html,
       });
 
@@ -637,7 +639,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `🎉 New Order #${notificationData.orderNumber} - ${notificationData.storeName}`,
+        subject: `New Order #${notificationData.orderNumber} - ${notificationData.storeName}`,
         html,
       });
 
@@ -861,7 +863,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '📝 Seller Application Received - NextPik',
+        subject: 'Seller Application Received - NextPik',
         html,
       });
 
@@ -912,7 +914,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '🎉 Seller Application Approved - Welcome to NextPik!',
+        subject: 'Seller Application Approved - NextPik',
         html,
       });
 
@@ -1016,7 +1018,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: '⚠️ Important: Your Seller Account Has Been Suspended',
+        subject: 'Important: Your Seller Account Has Been Suspended - NextPik',
         html,
       });
 
@@ -1077,7 +1079,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `💸 Payout Scheduled - ${data.currency} ${data.amount.toFixed(2)}`,
+        subject: `Payout Scheduled - ${data.currency} ${data.amount.toFixed(2)}`,
         html,
       });
 
@@ -1141,7 +1143,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✅ Payout Completed - ${data.currency} ${data.amount.toFixed(2)}`,
+        subject: `Payout Completed - ${data.currency} ${data.amount.toFixed(2)}`,
         html,
       });
 
@@ -1203,7 +1205,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `⚠️ Payout Failed - Action Required`,
+        subject: 'Payout Failed - Action Required - NextPik',
         html,
       });
 
@@ -1375,7 +1377,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `📍 Pickup Order Confirmed - #${pickupData.orderNumber}`,
+        subject: `Pickup Order Confirmed - #${pickupData.orderNumber}`,
         html,
       });
 
@@ -1497,7 +1499,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✅ Order Ready for Pickup - #${pickupData.orderNumber}`,
+        subject: `Order Ready for Pickup - #${pickupData.orderNumber}`,
         html,
       });
 
@@ -1595,7 +1597,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `📦 Your Order #${data.orderNumber} Is Being Prepared`,
+        subject: `Your Order #${data.orderNumber} Is Being Prepared`,
         html,
       });
 
@@ -1681,7 +1683,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `🚚 Your Order #${data.orderNumber} Is Out for Delivery`,
+        subject: `Your Order #${data.orderNumber} Is Out for Delivery`,
         html,
       });
 
@@ -1767,7 +1769,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `✅ Your Order #${data.orderNumber} Has Arrived — Leave a Review`,
+        subject: `Your Order #${data.orderNumber} Has Arrived - Leave a Review`,
         html,
       });
 
@@ -1852,7 +1854,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `⚡ Reminder: Order #${data.orderNumber} Still Needs to Ship`,
+        subject: `Reminder: Order #${data.orderNumber} Still Needs to Ship`,
         html,
       });
 
@@ -1955,7 +1957,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `🎉 Pickup Complete - #${pickupData.orderNumber}`,
+        subject: `Pickup Complete - #${pickupData.orderNumber}`,
         html,
       });
 
@@ -1969,6 +1971,134 @@ export class EmailService {
     } catch (error) {
       this.logger.error('Error sending pickup confirmed email', error);
       return false;
+    }
+  }
+
+  // ============================================================================
+  // SELLER CREDIT NOTIFICATIONS
+  // ============================================================================
+
+  /**
+   * Send low credit warning emails to sellers (≤2 months remaining)
+   */
+  async sendLowCreditWarning(
+    stores: Array<{
+      ownerEmail: string;
+      ownerName: string;
+      storeName: string;
+      creditsBalance: number;
+    }>
+  ): Promise<void> {
+    const creditsUrl = `${this.frontendUrl}/seller/credits`;
+    const dashboardUrl = `${this.frontendUrl}/seller`;
+
+    for (const store of stores) {
+      try {
+        const daysUntilDepletion = store.creditsBalance * 30;
+
+        if (!process.env.RESEND_API_KEY) {
+          this.logger.warn(
+            `[DEV] Low credit warning skipped for ${store.ownerEmail} (${store.storeName}, ${store.creditsBalance} months left)`
+          );
+          continue;
+        }
+
+        const html = creditsLowWarningTemplate({
+          sellerName: store.ownerName,
+          storeName: store.storeName,
+          currentBalance: store.creditsBalance,
+          daysUntilDepletion,
+          creditsUrl,
+          dashboardUrl,
+          frontendUrl: this.frontendUrl,
+        });
+
+        const { error } = await this.resend.emails.send({
+          from: this.fromEmail,
+          to: store.ownerEmail,
+          subject: `Credits running low - ${store.storeName}`,
+          html,
+        });
+
+        if (error) {
+          this.logger.error(`Failed to send low credit warning to ${store.ownerEmail}`, error);
+        } else {
+          this.logger.log(`Low credit warning sent to ${store.ownerEmail} (${store.storeName})`);
+        }
+      } catch (err) {
+        this.logger.error(`Error sending low credit warning to ${store.ownerEmail}`, err);
+      }
+    }
+  }
+
+  /**
+   * Send grace period ending warning emails to sellers
+   */
+  async sendGracePeriodWarning(
+    stores: Array<{
+      ownerEmail: string;
+      ownerName: string;
+      storeName: string;
+      graceEndsAt: Date | null;
+      productsCount: number;
+    }>
+  ): Promise<void> {
+    const creditsUrl = `${this.frontendUrl}/seller/credits`;
+    const dashboardUrl = `${this.frontendUrl}/seller`;
+
+    for (const store of stores) {
+      try {
+        if (!store.graceEndsAt) continue;
+
+        const hoursRemaining = Math.max(
+          1,
+          Math.ceil((new Date(store.graceEndsAt).getTime() - Date.now()) / (1000 * 60 * 60))
+        );
+        const graceEndsAtStr = new Date(store.graceEndsAt).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'UTC',
+          timeZoneName: 'short',
+        });
+
+        if (!process.env.RESEND_API_KEY) {
+          this.logger.warn(
+            `[DEV] Grace period warning skipped for ${store.ownerEmail} (${store.storeName}, ${hoursRemaining}h left)`
+          );
+          continue;
+        }
+
+        const html = gracePeriodEndingTemplate({
+          sellerName: store.ownerName,
+          storeName: store.storeName,
+          hoursRemaining,
+          graceEndsAt: graceEndsAtStr,
+          productsCount: store.productsCount,
+          creditsUrl,
+          dashboardUrl,
+          frontendUrl: this.frontendUrl,
+        });
+
+        const { error } = await this.resend.emails.send({
+          from: this.fromEmail,
+          to: store.ownerEmail,
+          subject: `Grace period ending soon - ${store.storeName}`,
+          html,
+        });
+
+        if (error) {
+          this.logger.error(`Failed to send grace period warning to ${store.ownerEmail}`, error);
+        } else {
+          this.logger.log(
+            `Grace period warning sent to ${store.ownerEmail} (${store.storeName}, ${hoursRemaining}h remaining)`
+          );
+        }
+      } catch (err) {
+        this.logger.error(`Error sending grace period warning to ${store.ownerEmail}`, err);
+      }
     }
   }
 }

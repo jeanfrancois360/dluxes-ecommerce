@@ -569,15 +569,45 @@ export class StripeSubscriptionService {
     const periodEnd = new Date((subscription as any).current_period_end * 1000);
     const isExpired = now >= periodEnd;
 
-    await this.prisma.sellerSubscription.update({
-      where: { userId },
-      data: {
-        status: isExpired ? SubscriptionStatus.EXPIRED : SubscriptionStatus.CANCELLED,
-        canceledAt: new Date(),
-        planId: freePlan.id, // Downgrade to FREE plan
-        creditsAllocated: freePlan.monthlyCredits, // Reset to FREE plan credits
-        creditsUsed: 0,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const existingSub = await tx.sellerSubscription.findUnique({
+        where: { userId },
+        select: { id: true, creditsAllocated: true, creditsUsed: true },
+      });
+
+      if (!existingSub) {
+        this.logger.warn(`No subscription found for user ${userId} on deletion event`);
+        return;
+      }
+
+      await tx.sellerSubscription.update({
+        where: { userId },
+        data: {
+          status: isExpired ? SubscriptionStatus.EXPIRED : SubscriptionStatus.CANCELLED,
+          canceledAt: new Date(),
+          planId: freePlan.id,
+          creditsAllocated: freePlan.monthlyCredits,
+          creditsUsed: 0,
+        },
+      });
+
+      await tx.subscriptionCreditEvent.create({
+        data: {
+          subscriptionId: existingSub.id,
+          userId,
+          eventType: 'CANCELLATION',
+          creditsBefore: existingSub.creditsAllocated,
+          creditsAfter: freePlan.monthlyCredits,
+          creditsUsedBefore: existingSub.creditsUsed,
+          creditsUsedAfter: 0,
+          reason: `Subscription ${isExpired ? 'expired' : 'cancelled'} — downgraded to FREE`,
+          metadata: {
+            stripeSubscriptionId: subscription.id,
+            isExpired,
+            periodEnd: periodEnd.toISOString(),
+          },
+        },
+      });
     });
 
     this.logger.log(
@@ -590,36 +620,49 @@ export class StripeSubscriptionService {
    */
   private async handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     if (!(invoice as any).subscription) return;
-
     const stripe = await this.getStripeClient();
-
     const subscription = await stripe.subscriptions.retrieve(
       (invoice as any).subscription as string
     );
-
     const { userId } = subscription.metadata || {};
-
     if (!userId) return;
 
-    // Find subscription and plan
-    const sellerSubscription = await this.prisma.sellerSubscription.findUnique({
-      where: { userId },
-      include: { plan: true },
+    await this.prisma.$transaction(async (tx) => {
+      // Read inside transaction — snapshot isolation
+      const sellerSubscription = await tx.sellerSubscription.findUnique({
+        where: { userId },
+        include: { plan: true },
+      });
+      if (!sellerSubscription) return;
+
+      await tx.sellerSubscription.update({
+        where: { userId },
+        data: {
+          status: SubscriptionStatus.ACTIVE,
+          creditsAllocated: sellerSubscription.plan.monthlyCredits,
+          creditsUsed: 0,
+        },
+      });
+
+      await tx.subscriptionCreditEvent.create({
+        data: {
+          subscriptionId: sellerSubscription.id,
+          userId,
+          eventType: 'RENEWAL_RESET',
+          creditsBefore: sellerSubscription.creditsAllocated,
+          creditsAfter: sellerSubscription.plan.monthlyCredits,
+          creditsUsedBefore: sellerSubscription.creditsUsed,
+          creditsUsedAfter: 0,
+          reason: `Subscription renewed via invoice ${(invoice as any).id}`,
+          metadata: {
+            invoiceId: (invoice as any).id,
+            stripeSubscriptionId: (invoice as any).subscription,
+          },
+        },
+      });
     });
 
-    if (!sellerSubscription) return;
-
-    // Reset credits for the new billing period
-    await this.prisma.sellerSubscription.update({
-      where: { userId },
-      data: {
-        status: SubscriptionStatus.ACTIVE,
-        creditsAllocated: sellerSubscription.plan.monthlyCredits,
-        creditsUsed: 0,
-      },
-    });
-
-    this.logger.log(`Invoice paid for user ${userId}, credits reset`);
+    this.logger.log(`Invoice paid for user ${userId}, credits reset and audit event written`);
   }
 
   /**

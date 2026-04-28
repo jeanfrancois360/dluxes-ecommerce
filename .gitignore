@@ -99,3 +99,9 @@ check-pricing.js
 apps/api/logs/
 apps/api/backend-results.txt
 apps/web/frontend-results.txt
+
+# Auto-generated build artifacts
+apps/web/public/version.json
+
+# Personal/client-facing notes (not for repo)
+CLIENT_PROGRESS_REPORT.md
