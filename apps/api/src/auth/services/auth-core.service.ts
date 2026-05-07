@@ -97,6 +97,16 @@ export class AuthCoreService {
           .replace(/-+/g, '-')
           .trim() + `-${Date.now()}`;
 
+      // Respect the seller_auto_approve setting; default to PENDING (fail closed)
+      let autoApprove = false;
+      try {
+        const autoApproveSetting = await this.settingsService.getSetting('seller_auto_approve');
+        autoApprove = Boolean(autoApproveSetting.value);
+      } catch {
+        // Setting unavailable — default to PENDING for safety
+      }
+      const storeStatus = autoApprove ? 'ACTIVE' : 'PENDING';
+
       store = await this.prisma.store.create({
         data: {
           userId: user.id,
@@ -104,7 +114,9 @@ export class AuthCoreService {
           slug,
           email: user.email,
           description: data.storeDescription || '',
-          status: 'ACTIVE', // Auto-approved for immediate selling
+          status: storeStatus,
+          isActive: autoApprove,
+          verified: autoApprove,
         },
       });
 
