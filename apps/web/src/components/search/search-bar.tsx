@@ -8,6 +8,24 @@ import { SearchAutocompleteItem } from './search-autocomplete-item';
 import { SearchSuggestions } from './search-suggestions';
 import { useTranslations } from 'next-intl';
 
+const RECENT_SEARCHES_KEY = 'luxury_recent_searches';
+const MAX_RECENT = 5;
+
+function saveRecentSearch(query: string) {
+  if (typeof window === 'undefined' || !query.trim()) return;
+  try {
+    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+    const current: string[] = stored ? JSON.parse(stored) : [];
+    const filtered = current.filter((s) => s.toLowerCase() !== query.toLowerCase());
+    localStorage.setItem(
+      RECENT_SEARCHES_KEY,
+      JSON.stringify([query, ...filtered].slice(0, MAX_RECENT))
+    );
+  } catch {
+    /* noop */
+  }
+}
+
 interface SearchBarProps {
   className?: string;
   placeholder?: string;
@@ -91,6 +109,7 @@ export function SearchBar({
     if (!searchQuery.trim()) return;
 
     const query = searchQuery.trim();
+    saveRecentSearch(query);
     router.push(`/search?q=${encodeURIComponent(query)}`);
     setIsFocused(false);
     setSelectedIndex(-1);
@@ -112,6 +131,7 @@ export function SearchBar({
 
   const handleSuggestionSelect = (query: string) => {
     setSearchQuery(query);
+    saveRecentSearch(query);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('navigation:start'));
     }

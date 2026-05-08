@@ -61,17 +61,26 @@ export function SearchAutocompleteItem({
             {highlightText(product.name, searchQuery)}
           </h4>
 
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {product.category && (
-              <span className="text-xs text-gray-500 truncate">
-                {product.category.name}
-              </span>
+              <span className="text-xs text-gray-500 truncate">{product.category.name}</span>
             )}
-            {product.brand && (
+            {product.storeName && (
               <>
                 <span className="text-xs text-gray-300">•</span>
-                <span className="text-xs text-gray-500 truncate">{product.brand}</span>
+                <span className="text-xs text-gray-500 truncate">{product.storeName}</span>
               </>
+            )}
+            {product.rating && product.rating >= 4 && (
+              <>
+                <span className="text-xs text-gray-300">•</span>
+                <span className="text-xs text-amber-500">★ {product.rating.toFixed(1)}</span>
+              </>
+            )}
+            {product.badges?.includes('Sale') && (
+              <span className="text-xs font-medium text-red-500 bg-red-50 px-1.5 py-0.5 rounded">
+                Sale
+              </span>
             )}
           </div>
         </div>

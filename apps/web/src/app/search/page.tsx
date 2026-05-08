@@ -4,15 +4,28 @@ import { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { SearchResults } from '@/components/search/search-results';
 
-export const metadata: Metadata = {
-  title: 'Search - Luxury E-Commerce',
-  description: 'Search for luxury products, brands, and collections',
-};
+export async function generateMetadata(props: SearchPageProps): Promise<Metadata> {
+  const searchParams = await props.searchParams;
+  const q = searchParams.q;
+  return {
+    title: q ? `"${q}" — Search NextPik` : 'Search — NextPik',
+    description: q
+      ? `Find luxury products matching "${q}" on NextPik`
+      : 'Search luxury items, brands, and collections on NextPik',
+  };
+}
 
 interface SearchPageProps {
   searchParams: Promise<{
     q?: string;
     category?: string;
+    sortBy?: string;
+    page?: string;
+    minPrice?: string;
+    maxPrice?: string;
+    tags?: string;
+    inStock?: string;
+    onSale?: string;
   }>;
 }
 
