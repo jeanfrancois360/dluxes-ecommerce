@@ -16,6 +16,8 @@ import { payoutCompletedTemplate } from './templates/payout-completed.template';
 import { payoutFailedTemplate } from './templates/payout-failed.template';
 import { creditsLowWarningTemplate } from './templates/credits-low-warning.template';
 import { gracePeriodEndingTemplate } from './templates/grace-period-ending.template';
+import { emailVerificationTemplate } from './templates/email-verification.template';
+import { twoFactorEnabledTemplate } from './templates/two-factor-enabled.template';
 
 @Injectable()
 export class EmailService {
@@ -166,62 +168,7 @@ export class EmailService {
 
       const verificationLink = `${this.frontendUrl}/auth/verify-email?token=${token}`;
 
-      const html = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F9FAFB;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-              <div style="background: linear-gradient(135deg, #000000 0%, #1A1A1A 100%); padding: 40px; text-align: center; border-radius: 16px 16px 0 0;">
-                <h1 style="color: #FFFFFF; font-size: 28px; margin: 0; font-weight: 700;">Verify Your Email</h1>
-                <p style="color: #A3A3A3; font-size: 16px; margin: 12px 0 0;">Welcome to NextPik</p>
-              </div>
-
-              <div style="background-color: #FFFFFF; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);">
-                <p style="color: #525252; font-size: 16px; line-height: 1.6;">
-                  Hello ${name},
-                </p>
-
-                <p style="color: #525252; font-size: 16px; line-height: 1.6;">
-                  Thank you for signing up! Please verify your email address to complete your registration and access your account.
-                </p>
-
-                <div style="text-align: center; margin: 32px 0;">
-                  <a href="${verificationLink}"
-                     style="display: inline-block; background: linear-gradient(135deg, #000000 0%, #262626 100%); color: #FFFFFF; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                    Verify Email Address
-                  </a>
-                </div>
-
-                <div style="background-color: #FAFAFA; border-left: 4px solid #3B82F6; padding: 20px; border-radius: 8px; margin: 24px 0;">
-                  <p style="color: #525252; font-size: 14px; line-height: 1.6; margin: 0;">
-                    <strong style="color: #000000;">Security Note:</strong><br/>
-                    This verification link will expire in 24 hours. If you didn't create an account, please ignore this email.
-                  </p>
-                </div>
-
-                <div style="border-top: 1px solid #E5E5E5; margin-top: 32px; padding-top: 24px;">
-                  <p style="color: #737373; font-size: 14px; line-height: 1.6;">
-                    If the button doesn't work, copy and paste this link into your browser:
-                  </p>
-                  <p style="color: #3B82F6; font-size: 12px; word-break: break-all; margin: 8px 0;">
-                    ${verificationLink}
-                  </p>
-                </div>
-              </div>
-
-              <div style="text-align: center; padding-top: 24px;">
-                <p style="color: #A3A3A3; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} NextPik. All rights reserved.
-                </p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `;
+      const html = emailVerificationTemplate(name, verificationLink, this.frontendUrl);
 
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
@@ -253,41 +200,7 @@ export class EmailService {
         return false;
       }
 
-      const html = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-              <div style="text-align: center; margin-bottom: 32px;">
-                <h1 style="color: #000000; font-size: 24px; margin: 0;">Two-Factor Authentication Enabled</h1>
-              </div>
-
-              <p style="color: #525252; font-size: 16px; line-height: 1.6;">
-                Hello ${name},
-              </p>
-
-              <p style="color: #525252; font-size: 16px; line-height: 1.6;">
-                Two-factor authentication has been successfully enabled on your account.
-              </p>
-
-              <div style="background-color: #FAFAFA; border-left: 4px solid #10B981; padding: 20px; border-radius: 8px; margin: 24px 0;">
-                <p style="color: #525252; font-size: 14px; line-height: 1.6; margin: 0;">
-                  <strong style="color: #000000;">🔒 Your account is now more secure</strong><br/>
-                  You'll need to enter a 6-digit code from your authenticator app each time you sign in.
-                </p>
-              </div>
-
-              <p style="color: #737373; font-size: 14px; line-height: 1.6;">
-                If you didn't enable 2FA, please contact our support team immediately.
-              </p>
-            </div>
-          </body>
-        </html>
-      `;
+      const html = twoFactorEnabledTemplate(name, this.frontendUrl);
 
       const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
