@@ -8,7 +8,8 @@ import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, OTPInput, Button } from '@nextpik/ui';
 import { initiateGoogleAuth } from '@/lib/api/auth';
-import { api } from '@/lib/api/client';
+import { TokenManager, api } from '@/lib/api/client';
+import { storeUser, setTokenExpiry, getAuthRedirectUrl } from '@/lib/auth-utils';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { showAuthError } from '@/lib/utils/auth-errors';
 import { useTranslations } from 'next-intl';
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const [otpValue, setOtpValue] = useState('');
   const [trustDevice, setTrustDevice] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [googlePendingToken, setGooglePendingToken] = useState('');
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
   const [resending, setResending] = useState(false);
@@ -79,6 +81,15 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
+  // Detect Google OAuth 2FA pending token — show inline TOTP step
+  useEffect(() => {
+    const pendingToken = searchParams.get('pendingToken');
+    if (pendingToken) {
+      setGooglePendingToken(pendingToken);
+      setShow2FA(true);
+    }
+  }, [searchParams]);
+
   const error = authError || localError;
   const isLoading = authLoading;
 
@@ -86,6 +97,32 @@ export default function LoginPage() {
     e.preventDefault();
     setLocalError('');
     clearError();
+
+    // Google OAuth 2FA step — verify TOTP against the pending token from the URL
+    if (googlePendingToken && show2FA) {
+      if (!otpValue || otpValue.length < 6) {
+        toast.error(t('enter2FACode'));
+        return;
+      }
+      try {
+        const result: any = await api.post('/auth/google/verify-2fa', {
+          pendingToken: googlePendingToken,
+          code: otpValue,
+        });
+        TokenManager.setAccessToken(result.accessToken);
+        if (result.sessionToken) {
+          localStorage.setItem('nextpik_session_token', result.sessionToken);
+        }
+        storeUser(result.user);
+        setTokenExpiry(7 * 24 * 60 * 60); // 7 days
+        router.replace(getAuthRedirectUrl(result.user));
+      } catch (err: any) {
+        setLocalError(
+          err?.response?.data?.message || err?.message || 'Verification failed. Try again.'
+        );
+      }
+      return;
+    }
 
     // Validate fields
     if (!email || !password) {
@@ -381,6 +418,23 @@ export default function LoginPage() {
 
             <OTPInput length={6} value={otpValue} onChange={setOtpValue} />
 
+            {error && (
+              <div className="flex items-start gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                <svg
+                  className="w-4 h-4 flex-shrink-0 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
+
             {/* Trust this device — skips 2FA for N days on this browser */}
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
@@ -400,13 +454,24 @@ export default function LoginPage() {
             </Button>
 
             <div className="text-center space-y-2">
-              <button
-                type="button"
-                onClick={() => setShow2FA(false)}
-                className="w-full text-center text-sm text-neutral-600 hover:text-gold transition-colors"
-              >
-                {t('useDifferentMethod')}
-              </button>
+              {!googlePendingToken && (
+                <button
+                  type="button"
+                  onClick={() => setShow2FA(false)}
+                  className="w-full text-center text-sm text-neutral-600 hover:text-gold transition-colors"
+                >
+                  {t('useDifferentMethod')}
+                </button>
+              )}
+              {googlePendingToken && (
+                <button
+                  type="button"
+                  onClick={() => router.push('/auth/login')}
+                  className="w-full text-center text-sm text-neutral-600 hover:text-gold transition-colors"
+                >
+                  Use a different account
+                </button>
+              )}
 
               <Link
                 href="/auth/2fa-email"
