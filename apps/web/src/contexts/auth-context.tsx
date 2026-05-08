@@ -361,8 +361,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         standardToasts.auth.registerSuccess();
 
-        // Redirect to account page
-        router.push('/account');
+        // Redirect unverified users directly to the email prompt — skip the /account bounce
+        if (!userData.emailVerified && userData.authProvider !== 'GOOGLE') {
+          router.push('/auth/verify-email-prompt');
+        } else {
+          router.push('/account');
+        }
       } catch (error: any) {
         const errorMessage =
           error.response?.data?.message ||
