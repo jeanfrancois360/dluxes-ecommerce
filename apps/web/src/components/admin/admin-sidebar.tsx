@@ -103,6 +103,7 @@ const navigationGroups: NavGroup[] = [
     titleKey: 'system',
     items: [
       { nameKey: 'settings', href: '/admin/settings', icon: Settings },
+      { nameKey: 'profile', href: '/admin/profile', icon: User },
       { nameKey: 'security', href: '/admin/account/security', icon: ShieldCheck },
     ],
   },
