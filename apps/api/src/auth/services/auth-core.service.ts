@@ -164,7 +164,7 @@ export class AuthCoreService {
   /**
    * Login with email and password
    */
-  async login(dto: LoginDto, ipAddress: string, userAgent: string) {
+  async login(dto: LoginDto, ipAddress: string, userAgent: string, cookieHeader?: string) {
     // Check rate limiting
     await this.checkRateLimit(dto.email, ipAddress);
 
@@ -261,30 +261,47 @@ export class AuthCoreService {
     }
 
     // Check 2FA
+    let deviceAlreadyTrusted = false;
     if (user.twoFactorEnabled) {
       if (!dto.twoFactorCode && !dto.backupCode) {
-        return {
-          requires2FA: true,
-          userId: user.id,
-        };
+        // Before asking for 2FA, check if this device is already trusted
+        const rawTrustToken = this.trustedDeviceService.parseTrustTokenFromCookie(cookieHeader);
+        if (rawTrustToken) {
+          const trusted = await this.trustedDeviceService.validateTrustedDevice(
+            user.id,
+            rawTrustToken
+          );
+          if (trusted) {
+            deviceAlreadyTrusted = true; // skip 2FA verification below
+          }
+        }
+
+        if (!deviceAlreadyTrusted) {
+          return {
+            requires2FA: true,
+            userId: user.id,
+          };
+        }
       }
 
-      let is2FAValid = false;
+      if (!deviceAlreadyTrusted) {
+        let is2FAValid = false;
 
-      if (dto.backupCode) {
-        // Attempt backup code login
-        is2FAValid = await this.twoFactorService.verifyBackupCode(user.id, dto.backupCode);
-        if (!is2FAValid) {
-          throw new UnauthorizedException(
-            'Invalid backup code. Please try another backup code or use your authenticator app.'
-          );
-        }
-      } else {
-        is2FAValid = await this.twoFactorService.verify2FA(user.id, dto.twoFactorCode!);
-        if (!is2FAValid) {
-          throw new UnauthorizedException(
-            'Invalid 2FA code. Please check your authenticator app and try again.'
-          );
+        if (dto.backupCode) {
+          // Attempt backup code login
+          is2FAValid = await this.twoFactorService.verifyBackupCode(user.id, dto.backupCode);
+          if (!is2FAValid) {
+            throw new UnauthorizedException(
+              'Invalid backup code. Please try another backup code or use your authenticator app.'
+            );
+          }
+        } else {
+          is2FAValid = await this.twoFactorService.verify2FA(user.id, dto.twoFactorCode!);
+          if (!is2FAValid) {
+            throw new UnauthorizedException(
+              'Invalid 2FA code. Please check your authenticator app and try again.'
+            );
+          }
         }
       }
     }
@@ -339,7 +356,12 @@ export class AuthCoreService {
     // Only issue a trust token when the user explicitly used 2FA (TOTP or backup code)
     // so that the device token is tied to a 2FA-verified session.
     let deviceTrustToken: string | undefined;
-    if (dto.trustDevice && user.twoFactorEnabled && (dto.twoFactorCode || dto.backupCode)) {
+    if (
+      dto.trustDevice &&
+      user.twoFactorEnabled &&
+      !deviceAlreadyTrusted &&
+      (dto.twoFactorCode || dto.backupCode)
+    ) {
       try {
         const durationDays = await this.getDeviceTrustDurationDays();
         deviceTrustToken = this.trustedDeviceService.generateRawToken();

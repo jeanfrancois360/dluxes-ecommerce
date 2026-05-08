@@ -103,7 +103,13 @@ export class EnhancedAuthController {
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
 
-    const result = (await this.authCoreService.login(dto, ipAddress, userAgent)) as any;
+    const cookieHeader = (req.headers as any)['cookie'] as string | undefined;
+    const result = (await this.authCoreService.login(
+      dto,
+      ipAddress,
+      userAgent,
+      cookieHeader
+    )) as any;
 
     // If the service issued a device trust token, set it as an httpOnly cookie
     // and strip it from the JSON response (never expose raw token to client JS).
