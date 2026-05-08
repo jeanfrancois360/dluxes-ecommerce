@@ -42,7 +42,6 @@ export default function AdminReferralsPage() {
     {
       title: 'Total Referrals',
       value: statistics?.total?.count || 0,
-      change: '+12.5%',
       icon: Users,
       color: 'blue',
     },
@@ -133,9 +132,6 @@ export default function AdminReferralsPage() {
                   <div className={`p-3 rounded-lg bg-${stat.color}-50`}>
                     <Icon className={`w-6 h-6 text-${stat.color}-600`} />
                   </div>
-                  {stat.change && (
-                    <span className="text-sm font-medium text-green-600">{stat.change}</span>
-                  )}
                 </div>
                 <h3 className="text-sm font-medium text-gray-600 mb-1">{stat.title}</h3>
                 <p className="text-2xl font-bold text-gray-900">{stat.value}</p>

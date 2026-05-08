@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { SettingValueType, AuditAction } from '@prisma/client';
+import { SETTING_DEFAULTS } from './settings.defaults';
 
 @Injectable()
 export class SettingsService {
@@ -380,34 +381,29 @@ export class SettingsService {
   async getSiteInfo() {
     try {
       const [siteName, siteTagline, contactEmail, timezone] = await Promise.all([
-        this.getSetting('site_name').catch(() => ({
-          key: 'site_name',
-          value: 'NextPik E-commerce',
-        })),
-        this.getSetting('site_tagline').catch(() => ({
-          key: 'site_tagline',
-          value: 'Where Elegance Meets Excellence',
-        })),
-        this.getSetting('contact_email').catch(() => ({
-          key: 'contact_email',
-          value: 'support@luxury.com',
-        })),
-        this.getSetting('timezone').catch(() => ({ key: 'timezone', value: 'UTC' })),
+        this.getSetting('site_name').catch(() => ({ value: null })),
+        this.getSetting('site_tagline').catch(() => ({ value: null })),
+        this.getSetting('contact_email').catch(() => ({ value: null })),
+        this.getSetting('timezone').catch(() => ({ value: null })),
       ]);
 
       return {
-        siteName: String(siteName.value),
-        siteTagline: String(siteTagline.value),
-        contactEmail: String(contactEmail.value),
-        timezone: String(timezone.value),
+        siteName: siteName.value != null ? String(siteName.value) : SETTING_DEFAULTS.site.name,
+        siteTagline:
+          siteTagline.value != null ? String(siteTagline.value) : SETTING_DEFAULTS.site.tagline,
+        contactEmail:
+          contactEmail.value != null
+            ? String(contactEmail.value)
+            : SETTING_DEFAULTS.site.contact_email,
+        timezone: timezone.value != null ? String(timezone.value) : SETTING_DEFAULTS.site.timezone,
       };
     } catch (error) {
       this.logger.error('Failed to get site info:', error);
       return {
-        siteName: 'NextPik E-commerce',
-        siteTagline: 'Where Elegance Meets Excellence',
-        contactEmail: 'support@luxury.com',
-        timezone: 'UTC',
+        siteName: SETTING_DEFAULTS.site.name,
+        siteTagline: SETTING_DEFAULTS.site.tagline,
+        contactEmail: SETTING_DEFAULTS.site.contact_email,
+        timezone: SETTING_DEFAULTS.site.timezone,
       };
     }
   }
@@ -418,10 +414,12 @@ export class SettingsService {
   async getSiteName(): Promise<string> {
     try {
       const setting = await this.getSetting('site_name');
-      return String(setting.value) || 'NextPik E-commerce';
-    } catch (error) {
-      return 'NextPik E-commerce';
+      if (setting?.value != null) return String(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "site_name" missing from database, using fallback default');
+    return SETTING_DEFAULTS.site.name;
   }
 
   /**
@@ -430,10 +428,12 @@ export class SettingsService {
   async getSiteTagline(): Promise<string> {
     try {
       const setting = await this.getSetting('site_tagline');
-      return String(setting.value) || 'Where Elegance Meets Excellence';
-    } catch (error) {
-      return 'Where Elegance Meets Excellence';
+      if (setting?.value != null) return String(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "site_tagline" missing from database, using fallback default');
+    return SETTING_DEFAULTS.site.tagline;
   }
 
   /**
@@ -442,10 +442,12 @@ export class SettingsService {
   async getContactEmail(): Promise<string> {
     try {
       const setting = await this.getSetting('contact_email');
-      return String(setting.value) || 'support@luxury.com';
-    } catch (error) {
-      return 'support@luxury.com';
+      if (setting?.value != null) return String(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "contact_email" missing from database, using fallback default');
+    return SETTING_DEFAULTS.site.contact_email;
   }
 
   /**
@@ -454,22 +456,31 @@ export class SettingsService {
   async getTimezone(): Promise<string> {
     try {
       const setting = await this.getSetting('timezone');
-      return String(setting.value) || 'UTC';
-    } catch (error) {
-      return 'UTC';
+      if (setting?.value != null) return String(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "timezone" missing from database, using fallback default');
+    return SETTING_DEFAULTS.site.timezone;
   }
 
   /**
    * Get audit log retention days
+   * NOTE: Key corrected from 'audit.log_retention_days' (dot) to 'audit_log_retention_days'
+   * (underscore) to match the actual DB column. The old key never matched, so this fallback
+   * was silently firing on every call in production.
    */
   async getAuditLogRetentionDays(): Promise<number> {
     try {
-      const setting = await this.getSetting('audit.log_retention_days');
-      return Number(setting.value) || 2555; // Default 7 years
-    } catch (error) {
-      return 2555; // 7 years
+      const setting = await this.getSetting('audit_log_retention_days');
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "audit_log_retention_days" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.audit.log_retention_days;
   }
 
   /**
@@ -478,10 +489,14 @@ export class SettingsService {
   async getLowStockThreshold(): Promise<number> {
     try {
       const setting = await this.getSetting('inventory.low_stock_threshold');
-      return Number(setting.value) || 10;
-    } catch (error) {
-      return 10;
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "inventory.low_stock_threshold" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.inventory.low_stock_threshold;
   }
 
   /**
@@ -490,10 +505,14 @@ export class SettingsService {
   async getAutoSkuGeneration(): Promise<boolean> {
     try {
       const setting = await this.getSetting('inventory.auto_sku_generation');
-      return Boolean(setting.value);
-    } catch (error) {
-      return true;
+      if (setting?.value != null) return Boolean(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "inventory.auto_sku_generation" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.inventory.auto_sku_generation;
   }
 
   /**
@@ -502,10 +521,14 @@ export class SettingsService {
   async getSkuPrefix(): Promise<string> {
     try {
       const setting = await this.getSetting('inventory.sku_prefix');
-      return String(setting.value) || 'PROD';
-    } catch (error) {
-      return 'PROD';
+      if (setting?.value != null) return String(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "inventory.sku_prefix" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.inventory.sku_prefix;
   }
 
   /**
@@ -514,10 +537,14 @@ export class SettingsService {
   async getStockNotificationsEnabled(): Promise<boolean> {
     try {
       const setting = await this.getSetting('inventory.enable_stock_notifications');
-      return Boolean(setting.value);
-    } catch (error) {
-      return true;
+      if (setting?.value != null) return Boolean(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "inventory.enable_stock_notifications" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.inventory.enable_stock_notifications;
   }
 
   /**
@@ -526,10 +553,14 @@ export class SettingsService {
   async getStockNotificationRecipients(): Promise<string[]> {
     try {
       const setting = await this.getSetting('inventory.notification_recipients');
-      return Array.isArray(setting.value) ? (setting.value as string[]) : ['inventory@luxury.com'];
-    } catch (error) {
-      return ['inventory@luxury.com'];
+      if (setting?.value != null && Array.isArray(setting.value)) return setting.value as string[];
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "inventory.notification_recipients" missing from database, using fallback default'
+    );
+    return [...SETTING_DEFAULTS.inventory.notification_recipients];
   }
 
   /**
@@ -538,10 +569,14 @@ export class SettingsService {
   async getAllowNegativeStock(): Promise<boolean> {
     try {
       const setting = await this.getSetting('inventory.allow_negative_stock');
-      return Boolean(setting.value);
-    } catch (error) {
-      return false;
+      if (setting?.value != null) return Boolean(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "inventory.allow_negative_stock" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.inventory.allow_negative_stock;
   }
 
   /**
@@ -550,10 +585,14 @@ export class SettingsService {
   async getTransactionHistoryPageSize(): Promise<number> {
     try {
       const setting = await this.getSetting('inventory.transaction_history_page_size');
-      return Number(setting.value) || 20;
-    } catch (error) {
-      return 20;
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "inventory.transaction_history_page_size" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.inventory.transaction_history_page_size;
   }
 
   /**
@@ -563,7 +602,7 @@ export class SettingsService {
     try {
       const settings = await this.getSettingsByCategory('inventory');
 
-      const settingsMap = settings.reduce(
+      const map = settings.reduce(
         (acc, setting) => {
           acc[setting.key] = setting.value;
           return acc;
@@ -572,29 +611,44 @@ export class SettingsService {
       );
 
       return {
-        lowStockThreshold: Number(settingsMap['inventory.low_stock_threshold']) || 10,
-        autoSkuGeneration: Boolean(settingsMap['inventory.auto_sku_generation'] ?? true),
-        skuPrefix: String(settingsMap['inventory.sku_prefix']) || 'PROD',
-        enableStockNotifications: Boolean(
-          settingsMap['inventory.enable_stock_notifications'] ?? true
-        ),
-        notificationRecipients: Array.isArray(settingsMap['inventory.notification_recipients'])
-          ? settingsMap['inventory.notification_recipients']
-          : ['inventory@luxury.com'],
-        allowNegativeStock: Boolean(settingsMap['inventory.allow_negative_stock'] ?? false),
+        lowStockThreshold:
+          map['inventory.low_stock_threshold'] != null
+            ? Number(map['inventory.low_stock_threshold'])
+            : SETTING_DEFAULTS.inventory.low_stock_threshold,
+        autoSkuGeneration:
+          map['inventory.auto_sku_generation'] != null
+            ? Boolean(map['inventory.auto_sku_generation'])
+            : SETTING_DEFAULTS.inventory.auto_sku_generation,
+        skuPrefix:
+          map['inventory.sku_prefix'] != null
+            ? String(map['inventory.sku_prefix'])
+            : SETTING_DEFAULTS.inventory.sku_prefix,
+        enableStockNotifications:
+          map['inventory.enable_stock_notifications'] != null
+            ? Boolean(map['inventory.enable_stock_notifications'])
+            : SETTING_DEFAULTS.inventory.enable_stock_notifications,
+        notificationRecipients: Array.isArray(map['inventory.notification_recipients'])
+          ? map['inventory.notification_recipients']
+          : [...SETTING_DEFAULTS.inventory.notification_recipients],
+        allowNegativeStock:
+          map['inventory.allow_negative_stock'] != null
+            ? Boolean(map['inventory.allow_negative_stock'])
+            : SETTING_DEFAULTS.inventory.allow_negative_stock,
         transactionHistoryPageSize:
-          Number(settingsMap['inventory.transaction_history_page_size']) || 20,
+          map['inventory.transaction_history_page_size'] != null
+            ? Number(map['inventory.transaction_history_page_size'])
+            : SETTING_DEFAULTS.inventory.transaction_history_page_size,
       };
     } catch (error) {
-      // Return defaults if settings don't exist
+      this.logger.warn('Failed to fetch inventory settings, using fallback defaults');
       return {
-        lowStockThreshold: 10,
-        autoSkuGeneration: true,
-        skuPrefix: 'PROD',
-        enableStockNotifications: true,
-        notificationRecipients: ['inventory@luxury.com'],
-        allowNegativeStock: false,
-        transactionHistoryPageSize: 20,
+        lowStockThreshold: SETTING_DEFAULTS.inventory.low_stock_threshold,
+        autoSkuGeneration: SETTING_DEFAULTS.inventory.auto_sku_generation,
+        skuPrefix: SETTING_DEFAULTS.inventory.sku_prefix,
+        enableStockNotifications: SETTING_DEFAULTS.inventory.enable_stock_notifications,
+        notificationRecipients: [...SETTING_DEFAULTS.inventory.notification_recipients],
+        allowNegativeStock: SETTING_DEFAULTS.inventory.allow_negative_stock,
+        transactionHistoryPageSize: SETTING_DEFAULTS.inventory.transaction_history_page_size,
       };
     }
   }
@@ -608,43 +662,52 @@ export class SettingsService {
     try {
       const [enabled, testMode, currency, captureMethod, statementDescriptor, autoPayoutEnabled] =
         await Promise.all([
-          this.getSetting('stripe_enabled').catch(() => ({ value: false })),
-          this.getSetting('stripe_test_mode').catch(() => ({ value: true })),
-          this.getSetting('stripe_currency').catch(() => ({ value: 'USD' })),
-          this.getSetting('stripe_capture_method').catch(() => ({ value: 'manual' })),
-          this.getSetting('stripe_statement_descriptor').catch(() => ({ value: 'LUXURY ECOM' })),
-          this.getSetting('stripe_auto_payout_enabled').catch(() => ({ value: false })),
+          this.getSetting('stripe_enabled').catch(() => ({ value: null })),
+          this.getSetting('stripe_test_mode').catch(() => ({ value: null })),
+          this.getSetting('stripe_currency').catch(() => ({ value: null })),
+          this.getSetting('stripe_capture_method').catch(() => ({ value: null })),
+          this.getSetting('stripe_statement_descriptor').catch(() => ({ value: null })),
+          this.getSetting('stripe_auto_payout_enabled').catch(() => ({ value: null })),
         ]);
 
-      // Read API keys from environment variables
+      // Read API keys from environment variables (never stored in DB)
       const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || '';
       const secretKey = process.env.STRIPE_SECRET_KEY || '';
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
       return {
-        enabled: Boolean(enabled.value),
-        testMode: Boolean(testMode.value),
+        enabled: enabled.value != null ? Boolean(enabled.value) : SETTING_DEFAULTS.stripe.enabled,
+        testMode:
+          testMode.value != null ? Boolean(testMode.value) : SETTING_DEFAULTS.stripe.test_mode,
         publishableKey,
         secretKey,
         webhookSecret,
-        currency: String(currency.value || 'USD'),
-        captureMethod: String(captureMethod.value || 'manual') as 'automatic' | 'manual',
-        statementDescriptor: String(statementDescriptor.value || 'LUXURY ECOM'),
-        autoPayoutEnabled: Boolean(autoPayoutEnabled.value),
+        currency:
+          currency.value != null ? String(currency.value) : SETTING_DEFAULTS.stripe.currency,
+        captureMethod: (captureMethod.value != null
+          ? String(captureMethod.value)
+          : SETTING_DEFAULTS.stripe.capture_method) as 'automatic' | 'manual',
+        statementDescriptor:
+          statementDescriptor.value != null
+            ? String(statementDescriptor.value)
+            : SETTING_DEFAULTS.stripe.statement_descriptor,
+        autoPayoutEnabled:
+          autoPayoutEnabled.value != null
+            ? Boolean(autoPayoutEnabled.value)
+            : SETTING_DEFAULTS.stripe.auto_payout_enabled,
       };
     } catch (error) {
       this.logger.error('Failed to get Stripe config:', error);
-      // Fallback to environment variables even on error
       return {
-        enabled: false,
-        testMode: true,
+        enabled: SETTING_DEFAULTS.stripe.enabled,
+        testMode: SETTING_DEFAULTS.stripe.test_mode,
         publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
         secretKey: process.env.STRIPE_SECRET_KEY || '',
         webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
-        currency: 'USD',
-        captureMethod: 'manual' as 'automatic' | 'manual',
-        statementDescriptor: 'LUXURY ECOM',
-        autoPayoutEnabled: false,
+        currency: SETTING_DEFAULTS.stripe.currency,
+        captureMethod: SETTING_DEFAULTS.stripe.capture_method,
+        statementDescriptor: SETTING_DEFAULTS.stripe.statement_descriptor,
+        autoPayoutEnabled: SETTING_DEFAULTS.stripe.auto_payout_enabled,
       };
     }
   }
@@ -693,10 +756,12 @@ export class SettingsService {
   async isStripeTestMode(): Promise<boolean> {
     try {
       const setting = await this.getSetting('stripe_test_mode');
-      return Boolean(setting.value ?? true);
-    } catch (error) {
-      return true; // Default to test mode for safety
+      if (setting?.value != null) return Boolean(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "stripe_test_mode" missing from database, using fallback default');
+    return SETTING_DEFAULTS.stripe.test_mode;
   }
 
   // ============================================================================
@@ -709,14 +774,22 @@ export class SettingsService {
   async getTaxCalculationMode(): Promise<'disabled' | 'simple' | 'by_state'> {
     try {
       const setting = await this.getSetting('tax_calculation_mode');
-      const mode = String(setting.value);
-      if (mode === 'disabled' || mode === 'simple' || mode === 'by_state') {
-        return mode as 'disabled' | 'simple' | 'by_state';
+      if (setting?.value != null) {
+        const mode = String(setting.value);
+        if (mode === 'disabled' || mode === 'simple' || mode === 'by_state') {
+          return mode;
+        }
+        this.logger.warn(
+          `Setting "tax_calculation_mode" has invalid value "${mode}", using fallback default`
+        );
       }
-      return 'disabled';
-    } catch (error) {
-      return 'disabled'; // Default to no tax
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "tax_calculation_mode" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.tax.calculation_mode;
   }
 
   /**
@@ -725,11 +798,15 @@ export class SettingsService {
   async getTaxDefaultRate(): Promise<number> {
     try {
       const setting = await this.getSetting('tax_default_rate');
-      const rate = Number(setting.value);
-      return isNaN(rate) ? 0.1 : rate;
-    } catch (error) {
-      return 0.1; // Default 10%
+      if (setting?.value != null) {
+        const rate = Number(setting.value);
+        if (!isNaN(rate)) return rate;
+      }
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "tax_default_rate" missing from database, using fallback default');
+    return SETTING_DEFAULTS.tax.default_rate;
   }
 
   /**
@@ -739,10 +816,11 @@ export class SettingsService {
   async isTaxCalculationEnabled(): Promise<boolean> {
     try {
       const setting = await this.getSetting('tax_calculation_mode');
-      return setting.value !== 'disabled';
-    } catch (error) {
-      return false;
+      if (setting?.value != null) return setting.value !== 'disabled';
+    } catch {
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.tax.calculation_mode !== 'disabled';
   }
 
   // ============================================================================
@@ -755,14 +833,20 @@ export class SettingsService {
   async getShippingMode(): Promise<'manual' | 'dhl_api' | 'hybrid'> {
     try {
       const setting = await this.getSetting('shipping_mode');
-      const mode = String(setting.value);
-      if (mode === 'manual' || mode === 'dhl_api' || mode === 'hybrid') {
-        return mode as 'manual' | 'dhl_api' | 'hybrid';
+      if (setting?.value != null) {
+        const mode = String(setting.value);
+        if (mode === 'manual' || mode === 'dhl_api' || mode === 'hybrid') {
+          return mode;
+        }
+        this.logger.warn(
+          `Setting "shipping_mode" has invalid value "${mode}", using fallback default`
+        );
       }
-      return 'manual';
-    } catch (error) {
-      return 'manual'; // Default to manual mode
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "shipping_mode" missing from database, using fallback default');
+    return SETTING_DEFAULTS.shipping.mode;
   }
 
   /**
@@ -776,25 +860,33 @@ export class SettingsService {
   }> {
     try {
       const [standard, express, overnight, intlSurcharge] = await Promise.all([
-        this.getSetting('shipping_standard_rate').catch(() => ({ value: 9.99 })),
-        this.getSetting('shipping_express_rate').catch(() => ({ value: 19.99 })),
-        this.getSetting('shipping_overnight_rate').catch(() => ({ value: 29.99 })),
-        this.getSetting('shipping_international_surcharge').catch(() => ({ value: 15.0 })),
+        this.getSetting('shipping_standard_rate').catch(() => ({ value: null })),
+        this.getSetting('shipping_express_rate').catch(() => ({ value: null })),
+        this.getSetting('shipping_overnight_rate').catch(() => ({ value: null })),
+        this.getSetting('shipping_international_surcharge').catch(() => ({ value: null })),
       ]);
 
       return {
-        standard: Number(standard.value) || 9.99,
-        express: Number(express.value) || 19.99,
-        overnight: Number(overnight.value) || 29.99,
-        internationalSurcharge: Number(intlSurcharge.value) || 15.0,
+        standard:
+          standard.value != null ? Number(standard.value) : SETTING_DEFAULTS.shipping.standard_rate,
+        express:
+          express.value != null ? Number(express.value) : SETTING_DEFAULTS.shipping.express_rate,
+        overnight:
+          overnight.value != null
+            ? Number(overnight.value)
+            : SETTING_DEFAULTS.shipping.overnight_rate,
+        internationalSurcharge:
+          intlSurcharge.value != null
+            ? Number(intlSurcharge.value)
+            : SETTING_DEFAULTS.shipping.international_surcharge,
       };
     } catch (error) {
-      // Fallback to hardcoded defaults
+      this.logger.warn('Failed to fetch shipping rates, using fallback defaults');
       return {
-        standard: 9.99,
-        express: 19.99,
-        overnight: 29.99,
-        internationalSurcharge: 15.0,
+        standard: SETTING_DEFAULTS.shipping.standard_rate,
+        express: SETTING_DEFAULTS.shipping.express_rate,
+        overnight: SETTING_DEFAULTS.shipping.overnight_rate,
+        internationalSurcharge: SETTING_DEFAULTS.shipping.international_surcharge,
       };
     }
   }
@@ -809,10 +901,12 @@ export class SettingsService {
   async isPickupEnabled(): Promise<boolean> {
     try {
       const setting = await this.getSetting('pickup_enabled');
-      return Boolean(setting.value);
-    } catch (error) {
-      return true; // Default to enabled
+      if (setting?.value != null) return Boolean(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "pickup_enabled" missing from database, using fallback default');
+    return SETTING_DEFAULTS.pickup.enabled;
   }
 
   /**
@@ -821,10 +915,14 @@ export class SettingsService {
   async getPickupDefaultRadius(): Promise<number> {
     try {
       const setting = await this.getSetting('pickup_default_radius_km');
-      return Number(setting.value) || 50;
-    } catch (error) {
-      return 50; // Default to 50km
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "pickup_default_radius_km" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.pickup.default_radius_km;
   }
 
   /**
@@ -833,10 +931,14 @@ export class SettingsService {
   async isPickupCodeVerificationRequired(): Promise<boolean> {
     try {
       const setting = await this.getSetting('pickup_require_code_verification');
-      return Boolean(setting.value);
-    } catch (error) {
-      return true; // Default to required
+      if (setting?.value != null) return Boolean(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "pickup_require_code_verification" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.pickup.require_code_verification;
   }
 
   /**
@@ -845,10 +947,14 @@ export class SettingsService {
   async getPickupExpirationDays(): Promise<number> {
     try {
       const setting = await this.getSetting('pickup_expiration_days');
-      return Number(setting.value) || 7;
-    } catch (error) {
-      return 7; // Default to 7 days
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "pickup_expiration_days" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.pickup.expiration_days;
   }
 
   /**
@@ -857,10 +963,14 @@ export class SettingsService {
   async isPickupSchedulingAllowed(): Promise<boolean> {
     try {
       const setting = await this.getSetting('pickup_allow_scheduling');
-      return Boolean(setting.value);
-    } catch (error) {
-      return false; // Default to not allowed (future feature)
+      if (setting?.value != null) return Boolean(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "pickup_allow_scheduling" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.pickup.allow_scheduling;
   }
 
   /**
@@ -869,10 +979,12 @@ export class SettingsService {
   async getPickupDefaultFee(): Promise<number> {
     try {
       const setting = await this.getSetting('pickup_default_fee');
-      return Number(setting.value) || 0;
-    } catch (error) {
-      return 0; // Default to free
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "pickup_default_fee" missing from database, using fallback default');
+    return SETTING_DEFAULTS.pickup.default_fee;
   }
 
   /**

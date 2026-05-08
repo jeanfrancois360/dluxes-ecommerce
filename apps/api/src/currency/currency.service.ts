@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import { UpdateCurrencyRateDto, CreateCurrencyRateDto } from './dto/currency.dto';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -10,7 +11,7 @@ export class CurrencyService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsService
   ) {}
 
   /**
@@ -50,11 +51,7 @@ export class CurrencyService {
   /**
    * Convert amount from one currency to another
    */
-  async convertAmount(
-    amount: number,
-    fromCurrency: string,
-    toCurrency: string
-  ): Promise<number> {
+  async convertAmount(amount: number, fromCurrency: string, toCurrency: string): Promise<number> {
     // If same currency, return same amount
     if (fromCurrency === toCurrency) {
       return amount;
@@ -89,11 +86,7 @@ export class CurrencyService {
   /**
    * Update a currency rate (Admin only)
    */
-  async updateRate(
-    currencyCode: string,
-    dto: UpdateCurrencyRateDto,
-    adminId?: string
-  ) {
+  async updateRate(currencyCode: string, dto: UpdateCurrencyRateDto, adminId?: string) {
     const existing = await this.getRateByCode(currencyCode);
 
     return this.prisma.currencyRate.update({
@@ -158,7 +151,7 @@ export class CurrencyService {
         }
       } else {
         // Remove from supported currencies
-        supportedCurrencies = supportedCurrencies.filter(code => code !== currencyCode);
+        supportedCurrencies = supportedCurrencies.filter((code) => code !== currencyCode);
       }
 
       // Update the setting
@@ -210,10 +203,7 @@ export class CurrencyService {
    * @param toCurrency Target currency (what cart is locked to)
    * @returns Decimal exchange rate (1 fromCurrency = X toCurrency)
    */
-  async getExchangeRate(
-    fromCurrency: string,
-    toCurrency: string,
-  ): Promise<Decimal> {
+  async getExchangeRate(fromCurrency: string, toCurrency: string): Promise<Decimal> {
     const fromCode = fromCurrency.toUpperCase();
     const toCode = toCurrency.toUpperCase();
 
@@ -239,7 +229,7 @@ export class CurrencyService {
       if (!isRateFresh) {
         this.logger.warn(
           `Exchange rate for ${toCode} is stale (${toRate.lastUpdated}). ` +
-          `Consider running currency sync.`
+            `Consider running currency sync.`
         );
       }
 
@@ -270,15 +260,13 @@ export class CurrencyService {
     if (!this.isRateFresh(fromRate.lastUpdated) || !this.isRateFresh(toRate.lastUpdated)) {
       this.logger.warn(
         `Exchange rates for ${fromCode}/${toCode} may be stale. ` +
-        `Consider running currency sync.`
+          `Consider running currency sync.`
       );
     }
 
     // Calculate cross rate: (1 / fromRate) * toRate
     // Example: EUR to GBP = (1 / EUR_to_USD) * GBP_to_USD
-    const crossRate = new Decimal(1)
-      .div(new Decimal(fromRate.rate))
-      .mul(new Decimal(toRate.rate));
+    const crossRate = new Decimal(1).div(new Decimal(fromRate.rate)).mul(new Decimal(toRate.rate));
 
     return crossRate;
   }
@@ -287,8 +275,7 @@ export class CurrencyService {
    * Check if exchange rate is fresh (< 24 hours old)
    */
   private isRateFresh(lastUpdated: Date): boolean {
-    const hoursSinceUpdate =
-      (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60);
+    const hoursSinceUpdate = (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60);
 
     return hoursSinceUpdate < 24; // Fresh if < 24 hours old
   }
@@ -334,11 +321,12 @@ export class CurrencyService {
   async getDefaultCurrency(): Promise<string> {
     try {
       const setting = await this.settingsService.getSetting('default_currency');
-      return String(setting.value) || 'USD';
-    } catch (error) {
-      this.logger.warn('Default currency setting not found, using USD');
-      return 'USD';
+      if (setting?.value != null) return String(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "default_currency" missing from database, using fallback default');
+    return SETTING_DEFAULTS.currency.default;
   }
 
   /**
@@ -348,7 +336,7 @@ export class CurrencyService {
     try {
       const setting = await this.settingsService.getSetting('supported_currencies');
       const currencies = String(setting.value);
-      return currencies.split(',').map(c => c.trim());
+      return currencies.split(',').map((c) => c.trim());
     } catch (error) {
       this.logger.warn('Supported currencies setting not found, using defaults');
       return ['USD', 'EUR', 'GBP', 'RWF'];
@@ -361,10 +349,12 @@ export class CurrencyService {
   async isAutoSyncEnabled(): Promise<boolean> {
     try {
       const setting = await this.settingsService.getSetting('currency_auto_sync');
-      return setting.value === 'true' || setting.value === true;
-    } catch (error) {
-      return true; // Default to enabled
+      if (setting?.value != null) return setting.value === 'true' || setting.value === true;
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn('Setting "currency_auto_sync" missing from database, using fallback default');
+    return SETTING_DEFAULTS.currency.auto_sync;
   }
 
   /**

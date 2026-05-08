@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../database/prisma.service';
 import { GelatoService } from './gelato.service';
 import { SettingsService } from '../settings/settings.service';
+import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import {
   GelatoPodStatus,
   FulfillmentType,
@@ -158,8 +159,14 @@ export class GelatoOrdersService {
       throw new BadRequestException('Order item already submitted to Gelato');
     }
 
-    const defaultShipping = await this.settingsService.getSetting('gelato_default_shipping_method');
-    const selectedShipping = shippingMethod || defaultShipping?.value || 'standard';
+    const defaultShipping = await this.settingsService
+      .getSetting('gelato_default_shipping_method')
+      .catch(() => ({ value: null }));
+    const selectedShipping =
+      shippingMethod ||
+      (defaultShipping?.value != null
+        ? String(defaultShipping.value)
+        : SETTING_DEFAULTS.gelato.default_shipping_method);
 
     const order = orderItem.order;
     const addr = order.shippingAddress;
@@ -794,8 +801,13 @@ export class GelatoOrdersService {
 
       // Trigger escrow release for POD-fulfilled orders
       try {
-        const holdDaysSetting = await this.settingsService.getSetting('escrow_default_hold_days');
-        const holdDays = Number(holdDaysSetting?.value) || 7;
+        const holdDaysSetting = await this.settingsService
+          .getSetting('escrow_default_hold_days')
+          .catch(() => ({ value: null }));
+        const holdDays =
+          holdDaysSetting?.value != null
+            ? Number(holdDaysSetting.value)
+            : SETTING_DEFAULTS.escrow.default_hold_days;
         const autoReleaseAt = new Date();
         autoReleaseAt.setDate(autoReleaseAt.getDate() + holdDays);
 

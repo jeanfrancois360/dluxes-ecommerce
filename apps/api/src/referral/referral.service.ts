@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import { Prisma, ReferralStatus, UserRole } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -29,6 +30,13 @@ export class ReferralService {
    */
   async generateReferralCode(userId: string): Promise<string> {
     this.logger.log(`Generating referral code for user: ${userId}`);
+
+    // Check if referral system is enabled
+    const enabled = await this.isReferralEnabled();
+    if (!enabled) {
+      this.logger.warn(`Referral system is disabled. Skipping code generation for user ${userId}`);
+      throw new BadRequestException('Referral system is currently disabled');
+    }
 
     // Check if user already has a code
     const existingCode = await this.prisma.referralCode.findUnique({
@@ -147,6 +155,15 @@ export class ReferralService {
   async applyReferralCode(code: string, newUserId: string): Promise<void> {
     try {
       this.logger.log(`Applying referral code ${code} to user ${newUserId}`);
+
+      // Check if referral system is enabled
+      const enabled = await this.isReferralEnabled();
+      if (!enabled) {
+        this.logger.warn(
+          `Referral system is disabled. Skipping code application for user ${newUserId}`
+        );
+        return;
+      }
 
       // Validate code
       const isValid = await this.validateReferralCode(code);
@@ -824,10 +841,11 @@ export class ReferralService {
    * Get all referral settings at once (optimized)
    */
   async getReferralSettings() {
+    const D = SETTING_DEFAULTS.referral;
     try {
       const settings = await this.settingsService.getSettingsByCategory('referral');
 
-      const settingsMap = settings.reduce(
+      const map = settings.reduce(
         (acc, setting) => {
           acc[setting.key] = setting.value;
           return acc;
@@ -836,37 +854,68 @@ export class ReferralService {
       );
 
       return {
-        enabled: Boolean(settingsMap['referral_enabled'] ?? true),
-        buyerReward: Number(settingsMap['referral_buyer_reward']) || 10.0,
-        sellerReward: Number(settingsMap['referral_seller_reward']) || 50.0,
-        minOrderValue: Number(settingsMap['referral_min_order_value']) || 25.0,
-        buyerExpirationDays: Number(settingsMap['referral_buyer_expiration_days']) || 90,
-        sellerExpirationDays: Number(settingsMap['referral_seller_expiration_days']) || 180,
-        codeLength: Number(settingsMap['referral_code_length']) || 8,
-        codePrefix: String(settingsMap['referral_code_prefix']) || '',
-        maxUsagePerCode: Number(settingsMap['referral_max_usage_per_code']) || 0,
-        rewardCurrency: String(settingsMap['referral_reward_currency']) || 'USD',
-        autoGenerateCode: Boolean(settingsMap['referral_auto_generate_code'] ?? true),
-        minPayoutAmount: Number(settingsMap['referral_min_payout_amount']) || 5.0,
-        showLeaderboard: Boolean(settingsMap['referral_show_leaderboard'] ?? true),
+        enabled: map['referral_enabled'] != null ? Boolean(map['referral_enabled']) : D.enabled,
+        buyerReward:
+          map['referral_buyer_reward'] != null
+            ? Number(map['referral_buyer_reward'])
+            : D.buyer_reward,
+        sellerReward:
+          map['referral_seller_reward'] != null
+            ? Number(map['referral_seller_reward'])
+            : D.seller_reward,
+        minOrderValue:
+          map['referral_min_order_value'] != null
+            ? Number(map['referral_min_order_value'])
+            : D.min_order_value,
+        buyerExpirationDays:
+          map['referral_buyer_expiration_days'] != null
+            ? Number(map['referral_buyer_expiration_days'])
+            : D.buyer_expiration_days,
+        sellerExpirationDays:
+          map['referral_seller_expiration_days'] != null
+            ? Number(map['referral_seller_expiration_days'])
+            : D.seller_expiration_days,
+        codeLength:
+          map['referral_code_length'] != null ? Number(map['referral_code_length']) : D.code_length,
+        codePrefix:
+          map['referral_code_prefix'] != null ? String(map['referral_code_prefix']) : D.code_prefix,
+        maxUsagePerCode:
+          map['referral_max_usage_per_code'] != null
+            ? Number(map['referral_max_usage_per_code'])
+            : D.max_usage_per_code,
+        rewardCurrency:
+          map['referral_reward_currency'] != null
+            ? String(map['referral_reward_currency'])
+            : D.reward_currency,
+        autoGenerateCode:
+          map['referral_auto_generate_code'] != null
+            ? Boolean(map['referral_auto_generate_code'])
+            : D.auto_generate_code,
+        minPayoutAmount:
+          map['referral_min_payout_amount'] != null
+            ? Number(map['referral_min_payout_amount'])
+            : D.min_payout_amount,
+        showLeaderboard:
+          map['referral_show_leaderboard'] != null
+            ? Boolean(map['referral_show_leaderboard'])
+            : D.show_leaderboard,
       };
     } catch (error) {
-      // Return defaults if settings don't exist
-      this.logger.warn('Failed to get referral settings, using defaults');
+      this.logger.warn('Failed to get referral settings, using fallback defaults');
       return {
-        enabled: true,
-        buyerReward: 10.0,
-        sellerReward: 50.0,
-        minOrderValue: 25.0,
-        buyerExpirationDays: 90,
-        sellerExpirationDays: 180,
-        codeLength: 8,
-        codePrefix: '',
-        maxUsagePerCode: 0,
-        rewardCurrency: 'USD',
-        autoGenerateCode: true,
-        minPayoutAmount: 5.0,
-        showLeaderboard: true,
+        enabled: D.enabled,
+        buyerReward: D.buyer_reward,
+        sellerReward: D.seller_reward,
+        minOrderValue: D.min_order_value,
+        buyerExpirationDays: D.buyer_expiration_days,
+        sellerExpirationDays: D.seller_expiration_days,
+        codeLength: D.code_length,
+        codePrefix: D.code_prefix,
+        maxUsagePerCode: D.max_usage_per_code,
+        rewardCurrency: D.reward_currency,
+        autoGenerateCode: D.auto_generate_code,
+        minPayoutAmount: D.min_payout_amount,
+        showLeaderboard: D.show_leaderboard,
       };
     }
   }
@@ -875,85 +924,96 @@ export class ReferralService {
   private async isReferralEnabled(): Promise<boolean> {
     try {
       const setting = await this.settingsService.getSetting('referral_enabled');
-      return Boolean(setting.value ?? true);
-    } catch (error) {
-      return true;
+      if (setting?.value != null) return Boolean(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.referral.enabled;
   }
 
   private async getReferralBuyerReward(): Promise<number> {
     try {
       const setting = await this.settingsService.getSetting('referral_buyer_reward');
-      return Number(setting.value) || 10.0;
-    } catch (error) {
-      return 10.0;
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.referral.buyer_reward;
   }
 
   private async getReferralSellerReward(): Promise<number> {
     try {
       const setting = await this.settingsService.getSetting('referral_seller_reward');
-      return Number(setting.value) || 50.0;
-    } catch (error) {
-      return 50.0;
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.referral.seller_reward;
   }
 
   private async getReferralMinOrderValue(): Promise<number> {
     try {
       const setting = await this.settingsService.getSetting('referral_min_order_value');
-      return Number(setting.value) || 25.0;
-    } catch (error) {
-      return 25.0;
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.referral.min_order_value;
   }
 
   private async getReferralBuyerExpirationDays(): Promise<number> {
     try {
       const setting = await this.settingsService.getSetting('referral_buyer_expiration_days');
-      return Number(setting.value) || 90;
-    } catch (error) {
-      return 90;
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.referral.buyer_expiration_days;
   }
 
   private async getReferralSellerExpirationDays(): Promise<number> {
     try {
       const setting = await this.settingsService.getSetting('referral_seller_expiration_days');
-      return Number(setting.value) || 180;
-    } catch (error) {
-      return 180;
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.referral.seller_expiration_days;
   }
 
   private async getReferralCodeLength(): Promise<number> {
     try {
       const setting = await this.settingsService.getSetting('referral_code_length');
-      const length = Number(setting.value) || 8;
-      // Enforce min/max
-      return Math.max(6, Math.min(12, length));
-    } catch (error) {
-      return 8;
+      if (setting?.value != null) {
+        const length = Number(setting.value);
+        // Enforce min/max
+        return Math.max(6, Math.min(12, length));
+      }
+    } catch {
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.referral.code_length;
   }
 
   private async getReferralCodePrefix(): Promise<string> {
     try {
       const setting = await this.settingsService.getSetting('referral_code_prefix');
-      const prefix = String(setting.value) || '';
+      const prefix = setting.value != null ? String(setting.value) : '';
       // Enforce max length
       return prefix.slice(0, 4);
-    } catch (error) {
-      return '';
+    } catch {
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.referral.code_prefix;
   }
 
   private async getReferralRewardCurrency(): Promise<string> {
     try {
       const setting = await this.settingsService.getSetting('referral_reward_currency');
-      return String(setting.value) || 'USD';
-    } catch (error) {
-      return 'USD';
+      if (setting?.value != null) return String(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.referral.reward_currency;
   }
 }

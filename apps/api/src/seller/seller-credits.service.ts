@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { PaymentService } from '../payment/payment.service';
 import { StoreStatus, SellerCreditTransactionType } from '@prisma/client';
+import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 
 /**
  * Service for managing seller credits (monthly subscription)
@@ -134,16 +135,14 @@ export class SellerCreditsService {
         where: { key: 'seller_monthly_credit_price' },
       });
 
-      if (!setting) {
-        // Default fallback
-        return 29.99;
+      if (setting?.value != null) {
+        const parsed = parseFloat(setting.value as string);
+        if (!isNaN(parsed)) return parsed;
       }
-
-      return parseFloat(setting.value as string) || 29.99;
     } catch (error) {
-      this.logger.warn('Failed to fetch credit price from settings, using default');
-      return 29.99;
+      this.logger.warn('Failed to fetch credit price from settings, using fallback default');
     }
+    return SETTING_DEFAULTS.seller.monthly_credit_price;
   }
 
   /**
@@ -155,15 +154,14 @@ export class SellerCreditsService {
         where: { key: 'seller_credit_grace_period_days' },
       });
 
-      if (!setting) {
-        return 3; // Default
+      if (setting?.value != null) {
+        const parsed = parseInt(setting.value as string, 10);
+        if (!isNaN(parsed)) return parsed;
       }
-
-      return parseInt(setting.value as string, 10) || 3;
     } catch (error) {
-      this.logger.warn('Failed to fetch grace period, using default');
-      return 3;
+      this.logger.warn('Failed to fetch grace period, using fallback default');
     }
+    return SETTING_DEFAULTS.seller.credit_grace_period_days;
   }
 
   /**
@@ -174,8 +172,14 @@ export class SellerCreditsService {
     const stripe = await this.paymentService.getStripe();
 
     // Validate months range
-    const minMonths = await this.getSettingNumber('seller_min_credit_purchase', 1);
-    const maxMonths = await this.getSettingNumber('seller_max_credit_purchase', 12);
+    const minMonths = await this.getSettingNumber(
+      'seller_min_credit_purchase',
+      SETTING_DEFAULTS.seller.min_credit_purchase
+    );
+    const maxMonths = await this.getSettingNumber(
+      'seller_max_credit_purchase',
+      SETTING_DEFAULTS.seller.max_credit_purchase
+    );
 
     if (months < minMonths || months > maxMonths) {
       throw new BadRequestException(`Months must be between ${minMonths} and ${maxMonths}`);
@@ -685,7 +689,10 @@ export class SellerCreditsService {
    * Get stores needing attention (low credits, in grace period, etc.)
    */
   async getStoresNeedingAttention() {
-    const threshold = await this.getSettingNumber('seller_low_credit_warning_threshold', 2);
+    const threshold = await this.getSettingNumber(
+      'seller_low_credit_warning_threshold',
+      SETTING_DEFAULTS.seller.low_credit_warning_threshold
+    );
     const now = new Date();
 
     const [lowCredits, inGracePeriod] = await Promise.all([

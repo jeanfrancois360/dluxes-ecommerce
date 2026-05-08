@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import { SubscriptionTier, Prisma } from '@prisma/client';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
@@ -160,7 +161,10 @@ export class SubscriptionService {
     let inGracePeriod = false;
     try {
       const gracePeriodSetting = await this.settingsService.getSetting('subscription_grace_days');
-      const graceDays = Number(gracePeriodSetting.value) || 3;
+      const graceDays =
+        gracePeriodSetting?.value != null
+          ? Number(gracePeriodSetting.value)
+          : SETTING_DEFAULTS.subscription.grace_days;
 
       if (subscription.status === 'PAST_DUE' && subscription.currentPeriodEnd) {
         const graceEndDate = new Date(subscription.currentPeriodEnd);
