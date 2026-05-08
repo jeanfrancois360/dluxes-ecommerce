@@ -6,6 +6,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../../settings/settings.service';
 import { PrismaService } from '../../database/prisma.service';
 import { TrustedDeviceService } from '../services/trusted-device.service';
@@ -41,15 +43,31 @@ export class TwoFactorEnforcementGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly settingsService: SettingsService,
     private readonly prisma: PrismaService,
-    private readonly trustedDeviceService: TrustedDeviceService
+    private readonly trustedDeviceService: TrustedDeviceService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
 
-    // Unauthenticated — handled by JwtAuthGuard
-    if (!user) return true;
+    // APP_GUARDs run before route-level @UseGuards(JwtAuthGuard), so request.user
+    // is not yet populated. Extract and verify the JWT ourselves.
+    const authHeader = request.headers['authorization'] as string | undefined;
+    if (!authHeader?.startsWith('Bearer ')) return true; // no token — not authenticated
+
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(authHeader.substring(7), {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+    } catch {
+      return true; // invalid/expired token — let JwtAuthGuard reject it
+    }
+
+    const userId: string = payload.sub;
+    const role: string = payload.role;
+    const setupOnly: boolean = payload.setup_only ?? false;
 
     // Route explicitly opted out
     const skip = this.reflector.getAllAndOverride<boolean>(SKIP_TWO_FACTOR_CHECK_KEY, [
@@ -59,7 +77,7 @@ export class TwoFactorEnforcementGuard implements CanActivate {
     if (skip) return true;
 
     // Setup-only JWT: only /auth/2fa/* allowed
-    if (user.setupOnly) {
+    if (setupOnly) {
       const path: string = request.path || '';
       if (!path.includes('/auth/2fa')) {
         throw new ForbiddenException({
@@ -73,10 +91,10 @@ export class TwoFactorEnforcementGuard implements CanActivate {
     }
 
     // Only enforce for designated roles
-    if (!ENFORCED_ROLES.has(user.role)) return true;
+    if (!ENFORCED_ROLES.has(role)) return true;
 
     // Check if enforcement is enabled for this role
-    const required = await this.isRequiredForRole(user.role);
+    const required = await this.isRequiredForRole(role);
     if (!required) return true;
 
     // Fetch current 2FA state and grace period from DB
@@ -90,7 +108,7 @@ export class TwoFactorEnforcementGuard implements CanActivate {
       }[]
     >`
       SELECT "twoFactorEnabled", "twoFactorGracePeriodStartsAt", "createdAt"
-      FROM users WHERE id = ${user.id} LIMIT 1
+      FROM users WHERE id = ${userId} LIMIT 1
     `;
 
     const dbUser = rows[0];
@@ -103,17 +121,17 @@ export class TwoFactorEnforcementGuard implements CanActivate {
     const cookieHeader = request.headers['cookie'] as string | undefined;
     const rawToken = this.trustedDeviceService.parseTrustTokenFromCookie(cookieHeader);
     if (rawToken) {
-      const trusted = await this.trustedDeviceService.validateTrustedDevice(user.id, rawToken);
+      const trusted = await this.trustedDeviceService.validateTrustedDevice(userId, rawToken);
       if (trusted) return true;
     }
 
     // Grace period logic
-    const graceDays = await this.getGraceDays(user.role, dbUser.createdAt);
+    const graceDays = await this.getGraceDays(role, dbUser.createdAt);
 
     if (!dbUser.twoFactorGracePeriodStartsAt) {
       // First time hitting enforcement — start the grace period clock
       await this.prisma.$executeRaw`
-        UPDATE users SET "twoFactorGracePeriodStartsAt" = NOW() WHERE id = ${user.id}
+        UPDATE users SET "twoFactorGracePeriodStartsAt" = NOW() WHERE id = ${userId}
       `;
       request.twoFactorGraceWarning = { daysRemaining: graceDays };
       return true;
@@ -131,8 +149,8 @@ export class TwoFactorEnforcementGuard implements CanActivate {
     }
 
     // Grace period expired — hard block
-    this.logger.warn(`2FA grace expired for user ${user.id} (role: ${user.role})`);
-    const setupUrl = user.role === 'SELLER' ? '/seller/security' : '/admin/account/security';
+    this.logger.warn(`2FA grace expired for user ${userId} (role: ${role})`);
+    const setupUrl = role === 'SELLER' ? '/seller/security' : '/admin/account/security';
     throw new ForbiddenException({
       statusCode: 403,
       message:
@@ -167,7 +185,7 @@ export class TwoFactorEnforcementGuard implements CanActivate {
     }
   }
 
-  private async getGraceDays(role: string, createdAt: Date): Promise<number> {
+  private async getGraceDays(_role: string, createdAt: Date): Promise<number> {
     // Accounts created after the v2.12.0 rollout use the "new user" grace period
     const featureRolloutDate = new Date('2026-05-08');
     const isNew = createdAt > featureRolloutDate;
