@@ -4,6 +4,7 @@ import { ReactNode, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SellerSidebar from './sidebar';
 import SellerTopbar from './seller-topbar';
+import TwoFactorBanner from './two-factor-banner';
 
 interface SellerLayoutProps {
   children: ReactNode;
@@ -55,6 +56,8 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
 
       {/* Main Content */}
       <div className="lg:pl-64 pt-16">
+        {/* 2FA enforcement banner — visible only when 2FA is not yet enabled (v2.12.0) */}
+        <TwoFactorBanner setupUrl="/seller/security" />
         <main className="min-h-screen">{children}</main>
       </div>
     </div>

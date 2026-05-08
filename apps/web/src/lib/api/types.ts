@@ -35,6 +35,8 @@ export interface LoginCredentials {
   email: string;
   password: string;
   rememberMe?: boolean;
+  twoFactorCode?: string; // TOTP code from authenticator app
+  trustDevice?: boolean; // Trust this device for N days (skips 2FA on future logins)
 }
 
 export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN';

@@ -111,6 +111,10 @@ export class LoginDto {
   @IsOptional()
   @IsString()
   sessionId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  trustDevice?: boolean; // Trust this device for N days (skips 2FA on future logins)
 }
 
 export class MagicLinkDto {

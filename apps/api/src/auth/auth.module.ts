@@ -14,7 +14,9 @@ import { PasswordService } from './services/password.service';
 import { EmailVerificationService } from './services/email-verification.service';
 import { MagicLinkService } from './services/magic-link.service';
 import { TwoFactorService } from './services/two-factor.service';
+import { TrustedDeviceService } from './services/trusted-device.service';
 import { AuthCoreService } from './services/auth-core.service';
+import { TwoFactorEnforcementGuard } from './guards/two-factor-enforcement.guard';
 // Strategies
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
@@ -56,7 +58,9 @@ import { ReferralModule } from '../referral/referral.module';
     EmailVerificationService,
     MagicLinkService,
     TwoFactorService,
+    TrustedDeviceService,
     AuthCoreService,
+    TwoFactorEnforcementGuard,
     // Existing specialized services
     EmailOTPService,
     GoogleOAuthService,
@@ -75,6 +79,7 @@ import { ReferralModule } from '../referral/referral.module';
     EmailVerificationService,
     MagicLinkService,
     TwoFactorService,
+    TrustedDeviceService,
     AuthCoreService,
     EmailOTPService,
     GoogleOAuthService,

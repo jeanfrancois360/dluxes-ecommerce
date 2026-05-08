@@ -12,9 +12,11 @@ import { PrismaService } from '../../database/prisma.service';
 import { SessionService } from './session.service';
 import { EmailVerificationService } from './email-verification.service';
 import { TwoFactorService } from './two-factor.service';
+import { TrustedDeviceService } from './trusted-device.service';
 import { LoggerService } from '../../logger/logger.service';
 import { SettingsService } from '../../settings/settings.service';
 import { RegisterDto, LoginDto } from '../dto/auth.dto';
+import { SETTING_DEFAULTS } from '../../settings/settings.defaults';
 
 // Custom TooManyRequestsException for compatibility
 class TooManyRequestsException extends HttpException {
@@ -22,6 +24,8 @@ class TooManyRequestsException extends HttpException {
     super(message || 'Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
   }
 }
+
+const ENFORCED_ROLES = new Set(['SELLER', 'ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER']);
 
 @Injectable()
 export class AuthCoreService {
@@ -34,6 +38,7 @@ export class AuthCoreService {
     private sessionService: SessionService,
     private emailVerificationService: EmailVerificationService,
     private twoFactorService: TwoFactorService,
+    private trustedDeviceService: TrustedDeviceService,
     private logger: LoggerService,
     private settingsService: SettingsService
   ) {}
@@ -284,6 +289,29 @@ export class AuthCoreService {
       }
     }
 
+    // --- 2FA enforcement check (v2.12.0) ---
+    // After credentials are verified, check if 2FA is required and the grace period has expired.
+    const enforcement = await this.check2FAEnforcement(user);
+    if (enforcement.hardBlock) {
+      // Issue a short-lived setup-only JWT so the user can set up 2FA
+      const setupToken = this.jwtService.sign(
+        { sub: user.id, email: user.email, role: user.role, setup_only: true },
+        { expiresIn: '15m' }
+      );
+      const setupUrl = user.role === 'SELLER' ? '/seller/security' : '/admin/account/security';
+      throw new HttpException(
+        {
+          statusCode: 403,
+          message:
+            'Two-factor authentication is required. Your grace period has expired. Please set up 2FA to continue.',
+          code: '2FA_GRACE_EXPIRED',
+          setupToken,
+          setupUrl,
+        },
+        HttpStatus.FORBIDDEN
+      );
+    }
+
     // Success - record attempt
     await this.recordLoginAttempt(user.id, dto.email, ipAddress, userAgent, true);
 
@@ -307,20 +335,155 @@ export class AuthCoreService {
     // Generate JWT
     const accessToken = this.generateJWT(user);
 
+    // --- Device trust (v2.12.0) ---
+    // Only issue a trust token when the user explicitly used 2FA (TOTP or backup code)
+    // so that the device token is tied to a 2FA-verified session.
+    let deviceTrustToken: string | undefined;
+    if (dto.trustDevice && user.twoFactorEnabled && (dto.twoFactorCode || dto.backupCode)) {
+      try {
+        const durationDays = await this.getDeviceTrustDurationDays();
+        deviceTrustToken = this.trustedDeviceService.generateRawToken();
+        await this.trustedDeviceService.createTrustedDevice(
+          user.id,
+          deviceTrustToken,
+          userAgent,
+          ipAddress,
+          durationDays
+        );
+      } catch (err) {
+        // Non-fatal — device trust failure must not block login
+        this.logger.error('Failed to create trusted device record', err);
+        deviceTrustToken = undefined;
+      }
+    }
+
     // Log successful login
     this.logger.logAuthEvent('login', user.id, {
       email: user.email,
       ipAddress,
       has2FA: user.twoFactorEnabled,
       rememberMe: dto.rememberMe || false,
+      deviceTrusted: !!deviceTrustToken,
     });
 
-    return {
+    const response: Record<string, unknown> = {
       accessToken,
       sessionToken,
       user: this.sanitizeUser(user),
       message: 'Login successful',
     };
+
+    if (enforcement.graceDaysRemaining !== undefined) {
+      response.twoFactorGraceWarning = {
+        daysRemaining: enforcement.graceDaysRemaining,
+        setupUrl: user.role === 'SELLER' ? '/seller/security' : '/admin/account/security',
+      };
+    }
+
+    // deviceTrustToken is passed to the controller which sets it as httpOnly cookie.
+    // Keep it in the service response temporarily; the controller will strip it before
+    // sending the JSON to the client.
+    if (deviceTrustToken) {
+      response.deviceTrustToken = deviceTrustToken;
+    }
+
+    return response;
+  }
+
+  /**
+   * Check if 2FA enforcement is required for the given user.
+   * Returns hardBlock=true when the grace period has expired.
+   */
+  private async check2FAEnforcement(user: any): Promise<{
+    hardBlock: boolean;
+    graceDaysRemaining?: number;
+  }> {
+    if (!ENFORCED_ROLES.has(user.role)) return { hardBlock: false };
+    if (user.twoFactorEnabled) return { hardBlock: false };
+
+    const required = await this.isRequiredForRole(user.role);
+    if (!required) return { hardBlock: false };
+
+    // $queryRaw because twoFactorGracePeriodStartsAt is not yet in Prisma client types
+    const rows = await this.prisma.$queryRaw<
+      {
+        twoFactorGracePeriodStartsAt: Date | null;
+        createdAt: Date;
+      }[]
+    >`
+      SELECT "twoFactorGracePeriodStartsAt", "createdAt" FROM users WHERE id = ${user.id} LIMIT 1
+    `;
+
+    const dbUser = rows[0];
+    const graceDays = await this.getGraceDays(dbUser?.createdAt);
+
+    if (!dbUser?.twoFactorGracePeriodStartsAt) {
+      await this.prisma.$executeRaw`
+        UPDATE users SET "twoFactorGracePeriodStartsAt" = NOW() WHERE id = ${user.id}
+      `;
+      return { hardBlock: false, graceDaysRemaining: graceDays };
+    }
+
+    const graceExpiry = new Date(
+      dbUser.twoFactorGracePeriodStartsAt.getTime() + graceDays * 24 * 60 * 60 * 1000
+    );
+
+    if (new Date() < graceExpiry) {
+      const msRemaining = graceExpiry.getTime() - Date.now();
+      const daysRemaining = Math.ceil(msRemaining / (24 * 60 * 60 * 1000));
+      return { hardBlock: false, graceDaysRemaining: daysRemaining };
+    }
+
+    return { hardBlock: true };
+  }
+
+  private async isRequiredForRole(role: string): Promise<boolean> {
+    const keyMap: Record<string, string> = {
+      SELLER: '2fa_required_for_seller',
+      ADMIN: '2fa_required_for_admin_v2',
+      SUPER_ADMIN: '2fa_required_for_admin_v2',
+      DELIVERY_PARTNER: '2fa_required_for_delivery_partner',
+    };
+    const defaultMap: Record<string, boolean> = {
+      SELLER: SETTING_DEFAULTS.twoFactor.required_for_seller,
+      ADMIN: SETTING_DEFAULTS.twoFactor.required_for_admin_v2,
+      SUPER_ADMIN: SETTING_DEFAULTS.twoFactor.required_for_admin_v2,
+      DELIVERY_PARTNER: SETTING_DEFAULTS.twoFactor.required_for_delivery_partner,
+    };
+    try {
+      const key = keyMap[role];
+      if (!key) return false;
+      const setting = await this.settingsService.getSetting(key);
+      return setting.value === true || setting.value === 'true';
+    } catch {
+      return defaultMap[role] ?? false;
+    }
+  }
+
+  private async getGraceDays(createdAt?: Date): Promise<number> {
+    const featureRolloutDate = new Date('2026-05-08');
+    const isNew = createdAt ? createdAt > featureRolloutDate : false;
+    const key = isNew ? '2fa_grace_period_days_new' : '2fa_grace_period_days_existing';
+    const fallback = isNew
+      ? SETTING_DEFAULTS.twoFactor.grace_period_days_new
+      : SETTING_DEFAULTS.twoFactor.grace_period_days_existing;
+    try {
+      const setting = await this.settingsService.getSetting(key);
+      const days = Number(setting.value);
+      return isNaN(days) ? fallback : days;
+    } catch {
+      return fallback;
+    }
+  }
+
+  private async getDeviceTrustDurationDays(): Promise<number> {
+    try {
+      const setting = await this.settingsService.getSetting('2fa_device_trust_duration_days');
+      const days = Number(setting.value);
+      return isNaN(days) ? SETTING_DEFAULTS.twoFactor.device_trust_duration_days : days;
+    } catch {
+      return SETTING_DEFAULTS.twoFactor.device_trust_duration_days;
+    }
   }
 
   /**

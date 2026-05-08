@@ -76,9 +76,11 @@ model User {
   phoneVerified Boolean  @default(false)
 
   // 2FA
-  twoFactorEnabled Boolean @default(false)
-  twoFactorSecret  String?
-  backupCodes      Json? // Hashed 2FA backup codes (array of strings)
+  twoFactorEnabled              Boolean   @default(false)
+  twoFactorSecret               String?
+  backupCodes                   Json?     // Hashed 2FA backup codes (array of strings)
+  twoFactorGracePeriodStartsAt  DateTime? // Set on first login when role requires 2FA but user hasn't enabled it
+  twoFactorEnforcedAt           DateTime? // Set when user enables 2FA (audit trail)
 
   // OAuth & Email OTP
   googleId        String?      @unique
@@ -181,6 +183,9 @@ model User {
   totalReferrals    Int           @default(0) // Cached count of successful referrals (for performance)
   referrerReferrals Referral[]    @relation("ReferrerReferrals") // Referrals where this user is the referrer
   referredReferrals Referral[]    @relation("ReferredReferrals") // Referrals where this user was referred
+
+  // Trusted Devices (v2.12.0 - 2FA enforcement)
+  trustedDevices    TrustedDevice[]
 
   @@index([email])
   @@index([lastLoginAt])
@@ -4045,4 +4050,26 @@ model SubscriptionCreditEvent {
   @@index([userId])
   @@index([createdAt])
   @@map("subscription_credit_events")
+}
+
+// ---------------------------------------------------------------------------
+// Trusted Devices (v2.12.0 - 2FA enforcement)
+// ---------------------------------------------------------------------------
+model TrustedDevice {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fingerprint String    // Browser/device fingerprint (UA + screen + timezone hash)
+  tokenHash   String    // SHA-256 hash of the raw cookie token
+  userAgent   String?
+  ipAddress   String?
+  lastUsedAt  DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+  @@map("trusted_devices")
 }
