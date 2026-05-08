@@ -1,8 +1,15 @@
-import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SessionService } from './services/session.service';
+import { TwoFactorService } from './services/two-factor.service';
 import { AuthProvider } from '@prisma/client';
 
 @Injectable()
@@ -10,8 +17,10 @@ export class GoogleOAuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private configService: ConfigService,
     private emailService: EmailService,
     private sessionService: SessionService,
+    private twoFactorService: TwoFactorService
   ) {}
 
   /**
@@ -35,12 +44,28 @@ export class GoogleOAuthService {
         },
       });
 
+      // If 2FA is enabled, do not issue a full JWT yet.
+      // Return a short-lived pending token so the frontend can prompt for TOTP.
+      if (user.twoFactorEnabled) {
+        const pendingToken = this.jwtService.sign(
+          { sub: user.id, email: user.email, role: user.role, google_2fa_pending: true },
+          { secret: this.configService.get<string>('JWT_SECRET'), expiresIn: '10m' }
+        );
+        return { requires2FA: true, pendingToken };
+      }
+
       // Ensure SELLER users have a store (handles users created before auto-store or via OAuth)
       if (user.role === 'SELLER') {
         const existingStore = await this.prisma.store.findUnique({ where: { userId: user.id } });
         if (!existingStore) {
           const storeName = `${user.firstName || 'Seller'}'s Store`;
-          const slug = storeName.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim() + `-${Date.now()}`;
+          const slug =
+            storeName
+              .toLowerCase()
+              .replace(/[^\w\s-]/g, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-')
+              .trim() + `-${Date.now()}`;
           await this.prisma.store.create({
             data: {
               userId: user.id,
@@ -54,7 +79,12 @@ export class GoogleOAuthService {
       }
 
       // Create session
-      const sessionToken = await this.sessionService.createSession(user.id, ipAddress, userAgent, false);
+      const sessionToken = await this.sessionService.createSession(
+        user.id,
+        ipAddress,
+        userAgent,
+        false
+      );
 
       // Generate JWT
       const accessToken = this.generateJWT(user);
@@ -77,14 +107,14 @@ export class GoogleOAuthService {
       // Guard: do not auto-link if account is suspended
       if (existingEmailUser.isSuspended) {
         throw new BadRequestException(
-          'This account has been suspended. Please contact support for assistance.',
+          'This account has been suspended. Please contact support for assistance.'
         );
       }
 
       // Guard: do not auto-link if 2FA is enabled — user must explicitly link via settings
       if (existingEmailUser.twoFactorEnabled) {
         throw new BadRequestException(
-          'An account with this email already exists and has 2FA enabled. Please log in with your password and link Google from your account settings.',
+          'An account with this email already exists and has 2FA enabled. Please log in with your password and link Google from your account settings.'
         );
       }
 
@@ -101,18 +131,25 @@ export class GoogleOAuthService {
       });
 
       // Send notification email
-      await this.emailService.sendEmailOTP(
-        user.email,
-        user.firstName || 'User',
-        '', // No code needed for this notification
-        'ACCOUNT_RECOVERY' as any, // Using a generic type
-        ipAddress,
-      ).catch((err) => {
-        console.error('Failed to send Google linked notification:', err);
-      });
+      await this.emailService
+        .sendEmailOTP(
+          user.email,
+          user.firstName || 'User',
+          '', // No code needed for this notification
+          'ACCOUNT_RECOVERY' as any, // Using a generic type
+          ipAddress
+        )
+        .catch((err) => {
+          console.error('Failed to send Google linked notification:', err);
+        });
 
       // Create session
-      const sessionToken = await this.sessionService.createSession(user.id, ipAddress, userAgent, false);
+      const sessionToken = await this.sessionService.createSession(
+        user.id,
+        ipAddress,
+        userAgent,
+        false
+      );
 
       // Generate JWT
       const accessToken = this.generateJWT(user);
@@ -148,7 +185,12 @@ export class GoogleOAuthService {
     });
 
     // Create session
-    const sessionToken = await this.sessionService.createSession(user.id, ipAddress, userAgent, false);
+    const sessionToken = await this.sessionService.createSession(
+      user.id,
+      ipAddress,
+      userAgent,
+      false
+    );
 
     // Generate JWT
     const accessToken = this.generateJWT(user);
@@ -159,6 +201,54 @@ export class GoogleOAuthService {
       user: this.sanitizeUser(user),
       message: 'Google signup successful',
       isNewUser: true,
+    };
+  }
+
+  /**
+   * Verify TOTP code after Google OAuth when the user has 2FA enabled.
+   * Accepts the short-lived pending token issued in googleAuth() and the TOTP code.
+   * Returns a full accessToken + session on success.
+   */
+  async verifyGoogle2FA(pendingToken: string, code: string, ipAddress: string, userAgent: string) {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(pendingToken, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException(
+        'Invalid or expired verification token. Please sign in again.'
+      );
+    }
+
+    if (!payload.google_2fa_pending) {
+      throw new UnauthorizedException('Invalid token type.');
+    }
+
+    const userId: string = payload.sub;
+
+    const isValid = await this.twoFactorService.verify2FA(userId, code);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid 2FA code. Please check your authenticator app.');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('User not found.');
+
+    const sessionToken = await this.sessionService.createSession(
+      userId,
+      ipAddress,
+      userAgent,
+      false
+    );
+    const accessToken = this.generateJWT(user);
+
+    return {
+      accessToken,
+      sessionToken,
+      user: this.sanitizeUser(user),
+      message: 'Google login successful',
+      isNewUser: false,
     };
   }
 
@@ -220,9 +310,7 @@ export class GoogleOAuthService {
 
     // Ensure user has password set before unlinking
     if (!user.password) {
-      throw new BadRequestException(
-        'Please set a password before unlinking your Google account',
-      );
+      throw new BadRequestException('Please set a password before unlinking your Google account');
     }
 
     // Remove Google ID
@@ -275,5 +363,4 @@ export class GoogleOAuthService {
       updatedAt: user.updatedAt,
     };
   }
-
 }
