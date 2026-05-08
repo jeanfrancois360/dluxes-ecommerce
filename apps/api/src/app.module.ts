@@ -51,7 +51,7 @@ import { HotDealsModule } from './hot-deals/hot-deals.module';
 import { GelatoModule } from './gelato/gelato.module';
 import { ReferralModule } from './referral/referral.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
-import { Admin2FAGuard } from './auth/guards/admin-2fa.guard';
+import { TwoFactorEnforcementGuard } from './auth/guards/two-factor-enforcement.guard';
 import { SellerCreditsCronService } from './cron/seller-credits.cron';
 import { EmailModule } from './email/email.module';
 
@@ -128,7 +128,7 @@ import { EmailModule } from './email/email.module';
     },
     {
       provide: APP_GUARD,
-      useClass: Admin2FAGuard,
+      useClass: TwoFactorEnforcementGuard,
     },
     SellerCreditsCronService,
   ],

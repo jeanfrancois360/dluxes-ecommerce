@@ -43,6 +43,7 @@ import {
   ResendVerificationDto,
   ChangePasswordDto,
 } from './dto/auth.dto';
+import { SkipTwoFactorCheck } from './decorators/skip-two-factor-check.decorator';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -92,12 +93,33 @@ export class EnhancedAuthController {
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'Login successful or 2FA required' })
   @ApiResponse({ status: 401, description: 'Invalid credentials or account locked' })
+  @ApiResponse({ status: 403, description: '2FA grace period expired — setupToken returned' })
   @ApiResponse({ status: 423, description: 'Account locked due to failed attempts' })
-  async login(@Body() dto: LoginDto, @Req() req: Request) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
 
-    return this.authCoreService.login(dto, ipAddress, userAgent);
+    const result = (await this.authCoreService.login(dto, ipAddress, userAgent)) as any;
+
+    // If the service issued a device trust token, set it as an httpOnly cookie
+    // and strip it from the JSON response (never expose raw token to client JS).
+    if (result.deviceTrustToken) {
+      const durationDays = 30; // mirrors the DB record duration
+      res.cookie('device_trust_token', result.deviceTrustToken, {
+        httpOnly: true,
+        secure: this.configService.get('NODE_ENV') === 'production',
+        sameSite: 'lax',
+        maxAge: durationDays * 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+      delete result.deviceTrustToken;
+    }
+
+    return result;
   }
 
   @Post('magic-link/request')
@@ -193,6 +215,7 @@ export class EnhancedAuthController {
   }
 
   @Post('2fa/setup')
+  @SkipTwoFactorCheck()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Setup TOTP 2FA — generates secret and QR code' })
@@ -202,6 +225,7 @@ export class EnhancedAuthController {
   }
 
   @Post('2fa/enable')
+  @SkipTwoFactorCheck()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Enable 2FA after verifying a TOTP code' })

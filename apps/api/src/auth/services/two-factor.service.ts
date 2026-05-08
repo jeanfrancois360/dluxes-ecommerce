@@ -13,7 +13,7 @@ export class TwoFactorService {
     private prisma: PrismaService,
     private emailService: EmailService,
     private sessionService: SessionService,
-    private logger: LoggerService,
+    private logger: LoggerService
   ) {}
 
   /**
@@ -66,6 +66,12 @@ export class TwoFactorService {
       where: { id: userId },
       data: { twoFactorEnabled: true },
     });
+
+    // Record enforcement timestamp (v2.12.0 audit trail)
+    // $executeRaw because twoFactorEnforcedAt is a new column not yet in Prisma client types
+    await this.prisma.$executeRaw`
+      UPDATE users SET "twoFactorEnforcedAt" = NOW() WHERE id = ${userId}
+    `;
 
     // Send notification email
     this.emailService.send2FAEnabledNotification(user.email, user.firstName).catch((err) => {

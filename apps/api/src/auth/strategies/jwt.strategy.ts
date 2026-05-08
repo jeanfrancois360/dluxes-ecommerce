@@ -16,10 +16,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: any) {
     // Return user object with 'id' for consistency across the app
     return {
-      id: payload.sub,           // Primary user ID
-      userId: payload.sub,       // Alias for backward compatibility
+      id: payload.sub, // Primary user ID
+      userId: payload.sub, // Alias for backward compatibility
       email: payload.email,
-      role: payload.role
+      role: payload.role,
+      setupOnly: payload.setup_only ?? false, // true for 15-min setup-only tokens (v2.12.0)
     };
   }
 }

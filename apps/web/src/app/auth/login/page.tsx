@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [show2FA, setShow2FA] = useState(false);
   const [otpValue, setOtpValue] = useState('');
+  const [trustDevice, setTrustDevice] = useState(false);
   const [localError, setLocalError] = useState('');
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
@@ -98,7 +99,13 @@ export default function LoginPage() {
     }
 
     try {
-      const result = await login({ email, password });
+      const credentials: Parameters<typeof login>[0] = { email, password };
+      if (show2FA && otpValue) {
+        credentials.twoFactorCode = otpValue;
+        credentials.trustDevice = trustDevice;
+      }
+
+      const result = await login(credentials);
 
       // Check if 2FA is required
       if (result && (result as any).requires2FA) {
@@ -356,6 +363,17 @@ export default function LoginPage() {
             </div>
 
             <OTPInput length={6} value={otpValue} onChange={setOtpValue} />
+
+            {/* Trust this device — skips 2FA for N days on this browser */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={trustDevice}
+                onChange={(e) => setTrustDevice(e.target.checked)}
+                className="w-4 h-4 rounded border-neutral-300 text-gold accent-gold"
+              />
+              <span className="text-sm text-neutral-600">Trust this device for 30 days</span>
+            </label>
 
             <Button
               type="submit"
