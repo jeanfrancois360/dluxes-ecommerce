@@ -136,7 +136,7 @@ export default function LoginPage() {
     }
 
     try {
-      const credentials: Parameters<typeof login>[0] = { email, password };
+      const credentials: Parameters<typeof login>[0] = { email, password, rememberMe };
       if (show2FA && otpValue) {
         credentials.twoFactorCode = otpValue;
         credentials.trustDevice = trustDevice;
