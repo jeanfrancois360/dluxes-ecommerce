@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { useAuth } from '@/hooks/use-auth';
-import { TokenManager } from '@/lib/api/client';
+import { api } from '@/lib/api/client';
 import { toast, standardToasts } from '@/lib/utils/toast';
 
 interface UserSession {
@@ -79,15 +79,7 @@ export default function AdminSecurityPage() {
 
   const { data: sessionsData, mutate: mutateSessions } = useSWR<UserSession[]>(
     isAuthenticated ? '/auth/sessions' : null,
-    async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/sessions`, {
-        headers: {
-          Authorization: `Bearer ${TokenManager.getAccessToken()}`,
-        },
-      });
-      if (!response.ok) throw new Error('Failed to fetch sessions');
-      return response.json();
-    },
+    () => api.get<UserSession[]>('/auth/sessions'),
     { revalidateOnFocus: false }
   );
 
@@ -181,22 +173,11 @@ export default function AdminSecurityPage() {
   const handleRevokeSession = async (sessionId: string) => {
     setRevokingSessionId(sessionId);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/sessions/${sessionId}`,
-        {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
-        }
-      );
-      const data = await response.json();
-      if (response.ok) {
-        toast.success('Device logged out.');
-        mutateSessions();
-      } else {
-        toast.error(data.message || 'Failed to revoke session.');
-      }
-    } catch {
-      toast.error('Failed to revoke session.');
+      await api.delete(`/auth/sessions/${sessionId}`);
+      toast.success('Device logged out.');
+      mutateSessions();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to revoke session.');
     } finally {
       setRevokingSessionId(null);
     }
@@ -205,26 +186,11 @@ export default function AdminSecurityPage() {
   const handleRevokeAllSessions = async () => {
     setIsRevokingAll(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/sessions/revoke-all-other`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${TokenManager.getAccessToken()}`,
-          },
-          body: JSON.stringify({}),
-        }
-      );
-      const data = await response.json();
-      if (response.ok) {
-        toast.success('All other sessions logged out.');
-        mutateSessions();
-      } else {
-        toast.error(data.message || 'Failed to revoke sessions.');
-      }
-    } catch {
-      toast.error('Failed to revoke sessions.');
+      await api.post('/auth/sessions/revoke-all-other');
+      toast.success('All other sessions logged out.');
+      mutateSessions();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to revoke sessions.');
     } finally {
       setIsRevokingAll(false);
     }
@@ -234,16 +200,11 @@ export default function AdminSecurityPage() {
     setIsTwoFaLoading(true);
     setTwoFaError('');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/setup`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to start 2FA setup');
+      const data = await api.post<{ secret: string; qrCode: string }>('/auth/2fa/setup');
       setTwoFaSetupData({ secret: data.secret, qrCode: data.qrCode });
       setTwoFaStep('setup');
     } catch (err: any) {
-      setTwoFaError(err.message);
+      setTwoFaError(err.message || 'Failed to start 2FA setup.');
     } finally {
       setIsTwoFaLoading(false);
     }
@@ -257,21 +218,14 @@ export default function AdminSecurityPage() {
     setIsTwoFaLoading(true);
     setTwoFaError('');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/enable`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${TokenManager.getAccessToken()}`,
-        },
-        body: JSON.stringify({ code: twoFaCode }),
+      const data = await api.post<{ backupCodes: string[] }>('/auth/2fa/enable', {
+        code: twoFaCode,
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Verification failed');
       setTwoFaBackupCodes(data.backupCodes || []);
       setTwoFaStep('done');
       await refreshUser();
     } catch (err: any) {
-      setTwoFaError(err.message);
+      setTwoFaError(err.message || 'Verification failed.');
     } finally {
       setIsTwoFaLoading(false);
     }
@@ -285,22 +239,13 @@ export default function AdminSecurityPage() {
     setIsTwoFaLoading(true);
     setTwoFaError('');
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/disable`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${TokenManager.getAccessToken()}`,
-        },
-        body: JSON.stringify({ code: disable2FACode }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to disable 2FA');
+      await api.post('/auth/2fa/disable', { code: disable2FACode });
       toast.success('Two-factor authentication disabled.');
       setShowDisable2FA(false);
       setDisable2FACode('');
       await refreshUser();
     } catch (err: any) {
-      setTwoFaError(err.message);
+      setTwoFaError(err.message || 'Failed to disable 2FA.');
     } finally {
       setIsTwoFaLoading(false);
     }
