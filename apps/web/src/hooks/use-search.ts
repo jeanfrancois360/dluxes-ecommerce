@@ -28,39 +28,42 @@ export function useSearch(initialParams?: any, options: UseSearchOptions = {}): 
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const search = useCallback(async (params: any) => {
-    if (!enabled || !params.q || params.q.length < 2) {
-      setData(null);
-      return;
-    }
-
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await searchAPI.search(params);
-      setData(result);
-
-      // Track search analytics
-      if (result.products.length > 0) {
-        searchAPI.trackSearch(params.q, result.total);
+  const search = useCallback(
+    async (params: any) => {
+      if (!enabled || !params.q || params.q.length < 2) {
+        setData(null);
+        return;
       }
 
-      // Save to recent searches
-      saveRecentSearch(params.q);
-    } catch (err) {
-      if (err instanceof Error && err.name !== 'AbortError') {
-        setError(err);
+      // Cancel previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [enabled]);
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const result = await searchAPI.search(params);
+        setData(result);
+
+        // Track search analytics
+        if (result.products.length > 0) {
+          searchAPI.trackSearch(params.q, result.total);
+        }
+
+        // Save to recent searches
+        saveRecentSearch(params.q);
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          setError(err);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [enabled]
+  );
 
   return { data, isLoading, error, search };
 }
@@ -133,8 +136,10 @@ export function useTrendingSearches() {
   useEffect(() => {
     const fetchTrending = async () => {
       try {
-        const { data } = await searchAPI.getTrending(10);
-        setTrending(data);
+        const result = await searchAPI.getTrending(10);
+        // API client unwraps { success, data } → returns the array directly
+        const items = Array.isArray(result) ? result : ((result as any)?.data ?? []);
+        setTrending(items);
       } catch (err) {
         setError(err as Error);
       } finally {
