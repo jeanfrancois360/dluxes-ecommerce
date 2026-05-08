@@ -130,10 +130,15 @@ export class EnhancedAuthService {
     });
 
     // Create session
-    const sessionToken = await this.createSession(user.id, ipAddress, userAgent, false);
+    const { token: sessionToken, id: sessionId } = await this.createSession(
+      user.id,
+      ipAddress,
+      userAgent,
+      false
+    );
 
     // Generate JWT
-    const accessToken = this.generateJWT(user);
+    const accessToken = this.generateJWT(user, sessionId);
 
     return {
       accessToken,
@@ -265,7 +270,7 @@ export class EnhancedAuthService {
     });
 
     // Create session
-    const sessionToken = await this.createSession(
+    const { token: sessionToken, id: sessionId } = await this.createSession(
       user.id,
       ipAddress,
       userAgent,
@@ -273,7 +278,7 @@ export class EnhancedAuthService {
     );
 
     // Generate JWT
-    const accessToken = this.generateJWT(user);
+    const accessToken = this.generateJWT(user, sessionId);
 
     return {
       accessToken,
@@ -365,10 +370,15 @@ export class EnhancedAuthService {
     });
 
     // Create session
-    const sessionToken = await this.createSession(magicLink.userId, ipAddress, userAgent, true);
+    const { token: sessionToken, id: sessionId } = await this.createSession(
+      magicLink.userId,
+      ipAddress,
+      userAgent,
+      true
+    );
 
     // Generate JWT
-    const accessToken = this.generateJWT(magicLink.user);
+    const accessToken = this.generateJWT(magicLink.user, sessionId);
 
     return {
       accessToken,
@@ -759,7 +769,7 @@ export class EnhancedAuthService {
     ipAddress: string,
     userAgent: string,
     rememberMe: boolean
-  ): Promise<string> {
+  ): Promise<{ token: string; id: string }> {
     const token = randomBytes(32).toString('hex');
     const expiryDuration = rememberMe ? this.SESSION_EXPIRY_REMEMBER : this.SESSION_EXPIRY_DEFAULT;
 
@@ -779,7 +789,7 @@ export class EnhancedAuthService {
       // - Temporarily lock account
     }
 
-    await this.prisma.userSession.create({
+    const session = await this.prisma.userSession.create({
       data: {
         userId,
         token,
@@ -791,7 +801,7 @@ export class EnhancedAuthService {
       },
     });
 
-    return token;
+    return { token, id: session.id };
   }
 
   /**
@@ -886,7 +896,12 @@ export class EnhancedAuthService {
     await this.revokeAllSessions(userId);
 
     // Create new session
-    const newSessionToken = await this.createSession(userId, ipAddress, userAgent, false);
+    const { token: newSessionToken } = await this.createSession(
+      userId,
+      ipAddress,
+      userAgent,
+      false
+    );
 
     return newSessionToken;
   }
@@ -958,12 +973,13 @@ export class EnhancedAuthService {
   // Utility Functions
   // ============================================================================
 
-  private generateJWT(user: any) {
-    const payload = {
+  private generateJWT(user: any, sessionId?: string) {
+    const payload: Record<string, unknown> = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
+    if (sessionId) payload.session_id = sessionId;
 
     return this.jwtService.sign(payload, {
       expiresIn: '7d', // JWT expires in 7 days, session controls actual auth
@@ -1128,10 +1144,15 @@ export class EnhancedAuthService {
     await this.emailOTPService.verifyEmailOTP(user.id, otpCode, EmailOTPType.TWO_FACTOR_BACKUP);
 
     // Create session
-    const sessionToken = await this.createSession(user.id, ipAddress, userAgent, false);
+    const { token: sessionToken, id: sessionId } = await this.createSession(
+      user.id,
+      ipAddress,
+      userAgent,
+      false
+    );
 
     // Generate JWT
-    const accessToken = this.generateJWT(user);
+    const accessToken = this.generateJWT(user, sessionId);
 
     return {
       accessToken,

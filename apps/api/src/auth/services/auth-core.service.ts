@@ -132,7 +132,7 @@ export class AuthCoreService {
       });
 
     // Create session
-    const sessionToken = await this.sessionService.createSession(
+    const { token: sessionToken, id: sessionId } = await this.sessionService.createSession(
       user.id,
       ipAddress,
       userAgent,
@@ -140,7 +140,7 @@ export class AuthCoreService {
     );
 
     // Generate JWT
-    const accessToken = this.generateJWT(user);
+    const accessToken = this.generateJWT(user, sessionId);
 
     // Log successful registration
     this.logger.logAuthEvent('register', user.id, {
@@ -342,7 +342,7 @@ export class AuthCoreService {
     });
 
     // Create session
-    const sessionToken = await this.sessionService.createSession(
+    const { token: sessionToken, id: sessionId } = await this.sessionService.createSession(
       user.id,
       ipAddress,
       userAgent,
@@ -350,7 +350,7 @@ export class AuthCoreService {
     );
 
     // Generate JWT
-    const accessToken = this.generateJWT(user);
+    const accessToken = this.generateJWT(user, sessionId);
 
     // --- Device trust (v2.12.0) ---
     // Only issue a trust token when the user explicitly used 2FA (TOTP or backup code)
@@ -574,12 +574,13 @@ export class AuthCoreService {
   /**
    * Generate JWT token
    */
-  private generateJWT(user: any) {
-    const payload = {
+  private generateJWT(user: any, sessionId?: string) {
+    const payload: Record<string, unknown> = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
+    if (sessionId) payload.session_id = sessionId;
 
     return this.jwtService.sign(payload, {
       expiresIn: '7d', // JWT expires in 7 days, session controls actual auth

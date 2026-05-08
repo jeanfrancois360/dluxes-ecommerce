@@ -79,7 +79,7 @@ export class GoogleOAuthService {
       }
 
       // Create session
-      const sessionToken = await this.sessionService.createSession(
+      const { token: sessionToken, id: sessionId } = await this.sessionService.createSession(
         user.id,
         ipAddress,
         userAgent,
@@ -87,7 +87,7 @@ export class GoogleOAuthService {
       );
 
       // Generate JWT
-      const accessToken = this.generateJWT(user);
+      const accessToken = this.generateJWT(user, sessionId);
 
       return {
         accessToken,
@@ -144,7 +144,7 @@ export class GoogleOAuthService {
         });
 
       // Create session
-      const sessionToken = await this.sessionService.createSession(
+      const { token: sessionToken, id: sessionId } = await this.sessionService.createSession(
         user.id,
         ipAddress,
         userAgent,
@@ -152,7 +152,7 @@ export class GoogleOAuthService {
       );
 
       // Generate JWT
-      const accessToken = this.generateJWT(user);
+      const accessToken = this.generateJWT(user, sessionId);
 
       return {
         accessToken,
@@ -185,7 +185,7 @@ export class GoogleOAuthService {
     });
 
     // Create session
-    const sessionToken = await this.sessionService.createSession(
+    const { token: sessionToken, id: sessionId } = await this.sessionService.createSession(
       user.id,
       ipAddress,
       userAgent,
@@ -193,7 +193,7 @@ export class GoogleOAuthService {
     );
 
     // Generate JWT
-    const accessToken = this.generateJWT(user);
+    const accessToken = this.generateJWT(user, sessionId);
 
     return {
       accessToken,
@@ -235,13 +235,13 @@ export class GoogleOAuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('User not found.');
 
-    const sessionToken = await this.sessionService.createSession(
+    const { token: sessionToken, id: sessionId } = await this.sessionService.createSession(
       userId,
       ipAddress,
       userAgent,
       false
     );
-    const accessToken = this.generateJWT(user);
+    const accessToken = this.generateJWT(user, sessionId);
 
     return {
       accessToken,
@@ -331,12 +331,13 @@ export class GoogleOAuthService {
   /**
    * Generate JWT token
    */
-  private generateJWT(user: any) {
-    const payload = {
+  private generateJWT(user: any, sessionId?: string) {
+    const payload: Record<string, unknown> = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
+    if (sessionId) payload.session_id = sessionId;
 
     return this.jwtService.sign(payload, {
       expiresIn: '7d',
