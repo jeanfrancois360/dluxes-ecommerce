@@ -302,6 +302,18 @@ export class SearchService implements OnModuleInit, OnModuleDestroy {
       );
 
       console.log('[Meilisearch] Index settings applied successfully');
+
+      // Auto-index all products if the index is empty (first boot / fresh install)
+      const stats = await this.client.index(this.PRODUCTS_INDEX).getStats();
+      if (stats.numberOfDocuments === 0) {
+        console.log('[Meilisearch] Index is empty — triggering initial product indexing…');
+        this.indexAllProducts().catch((err) =>
+          console.error(
+            '[Meilisearch] Auto-indexing failed:',
+            err instanceof Error ? err.message : String(err)
+          )
+        );
+      }
     } catch (error) {
       console.error(
         '[Meilisearch] Init failed:',
@@ -396,7 +408,7 @@ export class SearchService implements OnModuleInit, OnModuleDestroy {
         searchCutoffMs: 100,
       });
 
-      return (results.hits as any[]).map((hit) => ({
+      const mapped = (results.hits as any[]).map((hit) => ({
         id: hit.id,
         name: hit.name,
         slug: hit.slug,
@@ -413,11 +425,50 @@ export class SearchService implements OnModuleInit, OnModuleDestroy {
         // _formatted contains <mark>-wrapped matches — use in frontend
         _formatted: hit._formatted,
       }));
+
+      // Fall back to Prisma when index is empty (not yet indexed)
+      if (mapped.length === 0) return this.autocompleteFromPrisma(query, limit);
+      return mapped;
     } catch (error) {
       console.error(
         '[Meilisearch] Autocomplete error:',
         error instanceof Error ? error.message : String(error)
       );
+      return this.autocompleteFromPrisma(query, limit);
+    }
+  }
+
+  private async autocompleteFromPrisma(query: string, limit: number) {
+    try {
+      const products = await this.prisma.product.findMany({
+        where: {
+          status: 'ACTIVE',
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { shortDescription: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        take: limit,
+        include: {
+          category: { select: { id: true, name: true } },
+          store: { select: { name: true } },
+        },
+        orderBy: { viewCount: 'desc' },
+      });
+      return products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        price: Number(p.price),
+        compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : undefined,
+        heroImage: p.heroImage || '',
+        category: p.category ? { id: p.categoryId!, name: p.category.name, slug: '' } : undefined,
+        storeName: (p as any).store?.name,
+        rating: p.rating ? Number(p.rating) : undefined,
+        badges: (p as any).badges,
+        _formatted: undefined,
+      }));
+    } catch {
       return [];
     }
   }
