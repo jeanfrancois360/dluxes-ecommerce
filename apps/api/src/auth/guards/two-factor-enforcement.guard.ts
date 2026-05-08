@@ -34,6 +34,23 @@ const ENFORCED_ROLES = new Set(['SELLER', 'ADMIN', 'SUPER_ADMIN', 'DELIVERY_PART
  * Setup-only JWT:
  *  - If JWT payload contains setup_only=true (issued by login when grace expired)
  *  - Only allows paths containing /auth/2fa/
+ *
+ * ── Why this guard verifies the JWT itself ──────────────────────────────────
+ * NestJS executes APP_GUARDs before route-level @UseGuards() guards. Since
+ * JwtAuthGuard is applied per-route (not globally), request.user is always
+ * null when this guard runs. We therefore call jwtService.verify() directly.
+ *
+ * Reordering was considered: promoting JwtAuthGuard to an APP_GUARD would
+ * fix the ordering but would change auth behaviour across all 30+ modules —
+ * public routes rely on the @Public() bypass being evaluated inside
+ * JwtAuthGuard, and that guard throws UnauthorizedException on missing tokens
+ * by default. Migrating that safely is a larger change than warranted here.
+ *
+ * Duplication note: JWT verification logic now exists in two places —
+ * JwtStrategy (passport) and here. This guard only reads {sub, role,
+ * setup_only} from the payload and immediately defers all rejection to
+ * JwtAuthGuard. It does not re-implement session or user-lookup logic.
+ * ────────────────────────────────────────────────────────────────────────────
  */
 @Injectable()
 export class TwoFactorEnforcementGuard implements CanActivate {
