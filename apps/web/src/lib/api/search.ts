@@ -13,7 +13,9 @@ export interface AutocompleteResult {
     name: string;
     slug: string;
   };
-  brand?: string;
+  storeName?: string;
+  rating?: number;
+  badges?: string[];
 }
 
 export interface TrendingSearch {
@@ -47,8 +49,8 @@ export const searchAPI = {
     if (params.category) queryParams.append('category', params.category);
     if (params.minPrice) queryParams.append('minPrice', params.minPrice.toString());
     if (params.maxPrice) queryParams.append('maxPrice', params.maxPrice.toString());
-    if (params.brands) params.brands.forEach(b => queryParams.append('brands', b));
-    if (params.tags) params.tags.forEach(t => queryParams.append('tags', t));
+    if (params.brands) params.brands.forEach((b) => queryParams.append('brands', b));
+    if (params.tags) params.tags.forEach((t) => queryParams.append('tags', t));
     if (params.inStock !== undefined) queryParams.append('inStock', params.inStock.toString());
     if (params.onSale !== undefined) queryParams.append('onSale', params.onSale.toString());
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
@@ -71,7 +73,7 @@ export const searchAPI = {
       // Return in expected format with both data and total
       return {
         data: Array.isArray(result) ? result : [],
-        total: Array.isArray(result) ? result.length : 0
+        total: Array.isArray(result) ? result.length : 0,
       };
     } catch (error) {
       // Fallback to empty results if endpoint not available
