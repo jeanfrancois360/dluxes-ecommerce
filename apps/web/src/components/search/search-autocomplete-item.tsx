@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AutocompleteResult } from '@/lib/api/search';
@@ -9,28 +8,63 @@ import { formatCurrencyAmount } from '@/lib/utils/number-format';
 interface SearchAutocompleteItemProps {
   product: AutocompleteResult;
   searchQuery: string;
+  isSelected?: boolean;
   onClick?: () => void;
+}
+
+/** Filled star row — shows up to 5 stars, half-star precision */
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <span className="flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
+      {Array.from({ length: 5 }).map((_, i) => {
+        const filled = i < Math.floor(rating);
+        const half = !filled && i < rating;
+        return (
+          <svg key={i} className="w-2.5 h-2.5" viewBox="0 0 20 20">
+            {half ? (
+              <>
+                <defs>
+                  <linearGradient id={`half-${i}`}>
+                    <stop offset="50%" stopColor="#F59E0B" />
+                    <stop offset="50%" stopColor="#D1D5DB" />
+                  </linearGradient>
+                </defs>
+                <path
+                  fill={`url(#half-${i})`}
+                  d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+                />
+              </>
+            ) : (
+              <path
+                fill={filled ? '#F59E0B' : '#D1D5DB'}
+                d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+              />
+            )}
+          </svg>
+        );
+      })}
+      <span className="ml-0.5 text-[10px] text-amber-600 font-medium">{rating.toFixed(1)}</span>
+    </span>
+  );
 }
 
 /**
  * Renders a single autocomplete result row.
  *
  * Highlighting strategy (preferred → fallback):
- *   1. Server-side: Meilisearch returns `_formatted.name` with <mark> tags
- *      already injected. We render it with dangerouslySetInnerHTML.
- *      Content is from our own DB; only `<mark>` tags are added by Meilisearch.
- *   2. Client-side: if `_formatted` is not present, split the name by regex.
+ *   1. Server-side: Meilisearch returns `_formatted.name` with <mark> tags.
+ *   2. Client-side regex split when `_formatted` is absent.
  */
 export function SearchAutocompleteItem({
   product,
   searchQuery,
+  isSelected = false,
   onClick,
 }: SearchAutocompleteItemProps) {
   const discount = product.compareAtPrice
     ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
     : 0;
 
-  // Client-side highlight fallback (used when _formatted is unavailable)
   const highlightText = (text: string, query: string) => {
     if (!query.trim()) return <>{text}</>;
     const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
@@ -38,7 +72,10 @@ export function SearchAutocompleteItem({
       <>
         {parts.map((part, i) =>
           part.toLowerCase() === query.toLowerCase() ? (
-            <mark key={i} className="bg-[#CBB57B]/20 text-[#CBB57B] font-semibold not-italic">
+            <mark
+              key={i}
+              className="bg-[#CBB57B]/20 text-[#CBB57B] font-semibold not-italic rounded-sm"
+            >
               {part}
             </mark>
           ) : (
@@ -51,100 +88,118 @@ export function SearchAutocompleteItem({
 
   const formattedName = product._formatted?.name;
   const formattedSnippet = product._formatted?.shortDescription;
+  const isSale = discount > 0 || product.badges?.includes('Sale');
+  const isBestseller = product.badges?.includes('Bestseller');
 
   return (
     <Link href={`/products/${product.slug}`} onClick={onClick}>
-      <motion.div
-        whileHover={{ x: 4 }}
-        className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors group cursor-pointer"
+      <div
+        className={`relative flex items-center gap-3 px-4 py-2.5 transition-all duration-150 group cursor-pointer border-l-2 ${
+          isSelected
+            ? 'bg-[#CBB57B]/5 border-[#CBB57B]'
+            : 'border-transparent hover:bg-gray-50 hover:border-[#CBB57B]/40'
+        }`}
       >
         {/* Product Image */}
-        <div className="relative flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
+        <div className="relative flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-gray-100 border border-gray-100 group-hover:border-[#CBB57B]/30 transition-colors">
           <Image
             src={product.heroImage}
             alt={product.name}
             fill
-            className="object-cover group-hover:scale-110 transition-transform duration-300"
-            sizes="48px"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            sizes="56px"
           />
+          {isSale && (
+            <span className="absolute bottom-0 left-0 right-0 text-center text-[8px] font-bold text-white bg-red-500 py-0.5 leading-none">
+              SALE
+            </span>
+          )}
         </div>
 
         {/* Product Info */}
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-medium text-gray-900 truncate group-hover:text-[#CBB57B] transition-colors">
+          {/* Name */}
+          <h4 className="text-sm font-medium text-gray-900 truncate leading-snug group-hover:text-[#CBB57B] transition-colors">
             {formattedName ? (
-              // Server-side highlighted name from Meilisearch _formatted
               <span
                 dangerouslySetInnerHTML={{ __html: formattedName }}
-                className="[&_mark]:bg-[#CBB57B]/20 [&_mark]:text-[#CBB57B] [&_mark]:font-semibold [&_mark]:not-italic"
+                className="[&_mark]:bg-[#CBB57B]/20 [&_mark]:text-[#CBB57B] [&_mark]:font-semibold [&_mark]:not-italic [&_mark]:rounded-sm"
               />
             ) : (
-              // Client-side fallback
               highlightText(product.name, searchQuery)
             )}
           </h4>
 
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            {product.category && (
-              <span className="text-xs text-gray-500 truncate">{product.category.name}</span>
-            )}
-            {product.storeName && (
-              <>
-                <span className="text-xs text-gray-300">•</span>
-                <span className="text-xs text-gray-500 truncate">{product.storeName}</span>
-              </>
-            )}
-            {product.rating && product.rating >= 4 && (
-              <>
-                <span className="text-xs text-gray-300">•</span>
-                <span className="text-xs text-amber-500">★ {product.rating.toFixed(1)}</span>
-              </>
-            )}
-            {product.badges?.includes('Sale') && (
-              <span className="text-xs font-medium text-red-500 bg-red-50 px-1.5 py-0.5 rounded">
-                Sale
-              </span>
-            )}
-          </div>
-
-          {/* Cropped description snippet (from Meilisearch _formatted) */}
+          {/* Snippet */}
           {formattedSnippet && (
             <p
-              className="text-xs text-gray-400 mt-0.5 truncate [&_mark]:bg-[#CBB57B]/15 [&_mark]:text-[#CBB57B] [&_mark]:font-medium [&_mark]:not-italic"
+              className="text-[11px] text-gray-400 mt-0.5 truncate [&_mark]:bg-[#CBB57B]/15 [&_mark]:text-[#CBB57B] [&_mark]:font-medium [&_mark]:not-italic"
               dangerouslySetInnerHTML={{ __html: formattedSnippet }}
             />
           )}
-        </div>
 
-        {/* Price */}
-        <div className="flex-shrink-0 text-right">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-[#CBB57B]">
-              ${formatCurrencyAmount(product.price || 0, 2)}
-            </span>
-            {product.compareAtPrice && (
-              <span className="text-xs text-gray-400 line-through">
-                ${formatCurrencyAmount(product.compareAtPrice, 2)}
+          {/* Meta row — category pill + store + rating */}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            {product.category && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-gray-100 text-[10px] font-medium text-gray-600 group-hover:bg-[#CBB57B]/10 group-hover:text-[#CBB57B] transition-colors">
+                {product.category.name}
               </span>
             )}
+            {isBestseller && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-50 text-[10px] font-medium text-amber-600">
+                Bestseller
+              </span>
+            )}
+            {product.storeName && (
+              <span className="flex items-center gap-0.5 text-[10px] text-gray-400 truncate">
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                {product.storeName}
+              </span>
+            )}
+            {product.rating !== undefined && product.rating > 0 && (
+              <StarRating rating={product.rating} />
+            )}
           </div>
-          {discount > 0 && (
-            <span className="inline-block mt-0.5 text-xs font-medium text-red-500">
-              -{discount}%
-            </span>
+        </div>
+
+        {/* Price column */}
+        <div className="flex-shrink-0 text-right min-w-[60px]">
+          <div className="text-sm font-bold text-[#CBB57B]">
+            ${formatCurrencyAmount(product.price || 0, 2)}
+          </div>
+          {product.compareAtPrice && discount > 0 && (
+            <>
+              <div className="text-[10px] text-gray-400 line-through leading-none">
+                ${formatCurrencyAmount(product.compareAtPrice, 2)}
+              </div>
+              <div className="mt-0.5 inline-block text-[10px] font-semibold text-white bg-red-500 px-1 py-0.5 rounded leading-none">
+                -{discount}%
+              </div>
+            </>
           )}
         </div>
 
-        {/* Arrow */}
+        {/* Arrow indicator */}
         <svg
-          className="w-4 h-4 text-gray-400 group-hover:text-[#CBB57B] group-hover:translate-x-0.5 transition-all flex-shrink-0"
+          className={`w-3.5 h-3.5 flex-shrink-0 transition-all ${
+            isSelected
+              ? 'text-[#CBB57B] translate-x-0.5'
+              : 'text-gray-300 group-hover:text-[#CBB57B] group-hover:translate-x-0.5'
+          }`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
-      </motion.div>
+      </div>
     </Link>
   );
 }
