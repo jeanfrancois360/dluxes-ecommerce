@@ -3,7 +3,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
 import { EnhancedAuthService } from './enhanced-auth.service';
 import { EnhancedAuthController } from './enhanced-auth.controller';
 import { EmailOTPService } from './email-otp.service';

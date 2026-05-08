@@ -47,10 +47,10 @@ test.describe('TF1 — Seller 2FA grace period banner', () => {
 test.describe('TF2 — Admin 2FA grace period banner', () => {
   test('should show 2FA banner in admin layout for admins without 2FA', async ({ page }) => {
     // Admin layout includes the banner for ADMIN/SUPER_ADMIN roles
-    // Verify the admin login page loads
+    // Verify the admin login page loads (use placeholder to target login input specifically)
     await page.goto(`${BASE_URL}/auth/login`);
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Email Address', exact: true })).toBeVisible();
   });
 });
 
