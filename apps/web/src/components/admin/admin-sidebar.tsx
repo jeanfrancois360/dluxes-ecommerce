@@ -101,7 +101,10 @@ const navigationGroups: NavGroup[] = [
   },
   {
     titleKey: 'system',
-    items: [{ nameKey: 'settings', href: '/admin/settings', icon: Settings }],
+    items: [
+      { nameKey: 'settings', href: '/admin/settings', icon: Settings },
+      { nameKey: 'security', href: '/admin/account/security', icon: ShieldCheck },
+    ],
   },
 ];
 

@@ -35,7 +35,8 @@
       "deliveryProviders": "Proveedores de Entrega",
       "deliveryPayouts": "Pagos de Entrega",
       "advertisements": "Anuncios",
-      "settings": "Configuración"
+      "settings": "Configuración",
+      "security": "Seguridad"
     },
     "viewWebsite": "Ver Sitio Web",
     "logout": "Cerrar Sesión"
