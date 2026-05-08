@@ -1152,7 +1152,14 @@ export default function AdminSecurityPage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-medium text-black text-sm">
                               {session.deviceInfo?.description ||
-                                `${session.browser || 'Unknown Browser'}${session.os ? ` on ${session.os}` : ''}`}
+                                (() => {
+                                  const browser = session.browser || 'Unknown Browser';
+                                  const os =
+                                    session.os && !/unknown/i.test(session.os)
+                                      ? ` on ${session.os}`
+                                      : '';
+                                  return `${browser}${os}`;
+                                })()}
                             </p>
                             {session.isCurrent && (
                               <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
