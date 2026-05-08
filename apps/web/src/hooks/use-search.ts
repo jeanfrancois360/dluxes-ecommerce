@@ -1,29 +1,37 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { searchAPI, AutocompleteResult, TrendingSearch } from '@/lib/api/search';
-import { Product, SearchResult } from '@/lib/api/types';
+import {
+  searchAPI,
+  AutocompleteResult,
+  TrendingSearch,
+  FacetDistribution,
+  FacetStats,
+  FacetHit,
+  SearchResultWithFacets,
+} from '@/lib/api/search';
+import { Product } from '@/lib/api/types';
 
 // Local storage key for recent searches
 const RECENT_SEARCHES_KEY = 'luxury_recent_searches';
 const MAX_RECENT_SEARCHES = 5;
 
+// ─── Main search hook ─────────────────────────────────────────────────────────
+
 interface UseSearchOptions {
   enabled?: boolean;
-  debounceMs?: number;
 }
 
 interface UseSearchResult {
-  data: SearchResult<Product> | null;
+  data: SearchResultWithFacets<Product> | null;
   isLoading: boolean;
   error: Error | null;
   search: (params: any) => Promise<void>;
 }
 
-// Main search hook with filters and pagination
 export function useSearch(initialParams?: any, options: UseSearchOptions = {}): UseSearchResult {
-  const { enabled = true, debounceMs = 0 } = options;
-  const [data, setData] = useState<SearchResult<Product> | null>(null);
+  const { enabled = true } = options;
+  const [data, setData] = useState<SearchResultWithFacets<Product> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -35,10 +43,7 @@ export function useSearch(initialParams?: any, options: UseSearchOptions = {}): 
         return;
       }
 
-      // Cancel previous request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      if (abortControllerRef.current) abortControllerRef.current.abort();
 
       setIsLoading(true);
       setError(null);
@@ -46,13 +51,9 @@ export function useSearch(initialParams?: any, options: UseSearchOptions = {}): 
       try {
         const result = await searchAPI.search(params);
         setData(result);
-
-        // Track search analytics
         if (result.products.length > 0) {
           searchAPI.trackSearch(params.q, result.total);
         }
-
-        // Save to recent searches
         saveRecentSearch(params.q);
       } catch (err) {
         if (err instanceof Error && err.name !== 'AbortError') {
@@ -68,39 +69,27 @@ export function useSearch(initialParams?: any, options: UseSearchOptions = {}): 
   return { data, isLoading, error, search };
 }
 
-// Autocomplete hook with debouncing
-export function useAutocomplete(query: string, debounceMs: number = 300) {
+// ─── Autocomplete hook ────────────────────────────────────────────────────────
+
+export function useAutocomplete(query: string, debounceMs = 300) {
   const [results, setResults] = useState<AutocompleteResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    // Clear previous timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    // Reset if query is too short
     if (!query || query.length < 2) {
       setResults([]);
       setIsLoading(false);
       return;
     }
 
-    // Set loading state immediately for better UX
     setIsLoading(true);
 
-    // Debounce the API call
     timeoutRef.current = setTimeout(async () => {
       try {
-        abortControllerRef.current = new AbortController();
         const response = await searchAPI.autocomplete(query, 8);
         setResults(response?.data || []);
         setError(null);
@@ -115,19 +104,15 @@ export function useAutocomplete(query: string, debounceMs: number = 300) {
     }, debounceMs);
 
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [query, debounceMs]);
 
   return { results, isLoading, error };
 }
 
-// Trending searches hook
+// ─── Trending searches hook ───────────────────────────────────────────────────
+
 export function useTrendingSearches() {
   const [trending, setTrending] = useState<TrendingSearch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,7 +122,7 @@ export function useTrendingSearches() {
     const fetchTrending = async () => {
       try {
         const result = await searchAPI.getTrending(10);
-        // API client unwraps { success, data } → returns the array directly
+        // API client may unwrap { success, data } → direct array
         const items = Array.isArray(result) ? result : ((result as any)?.data ?? []);
         setTrending(items);
       } catch (err) {
@@ -146,19 +131,121 @@ export function useTrendingSearches() {
         setIsLoading(false);
       }
     };
-
     fetchTrending();
   }, []);
 
   return { trending, isLoading, error };
 }
 
-// Recent searches hook (localStorage-based)
+// ─── Facet distribution hook ──────────────────────────────────────────────────
+
+/**
+ * Fetches facet distribution for a given search query + filters.
+ * Use this to show dynamic "(count)" labels next to each filter option in the sidebar.
+ *
+ * @example
+ * const { facetDistribution, facetStats } = useFacets('watch', { minPrice: 100 });
+ * // facetDistribution.category → { "Watches": 12, "Accessories": 3 }
+ * // facetStats.price → { min: 150, max: 12000 }
+ */
+export function useFacets(
+  query: string,
+  filters?: {
+    category?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    inStock?: boolean;
+    onSale?: boolean;
+    tags?: string[];
+    colors?: string[];
+    sizes?: string[];
+  },
+  facets = 'category,tags,colors,sizes,materials,storeName,isOnSale,featured'
+) {
+  const [facetDistribution, setFacetDistribution] = useState<FacetDistribution>({});
+  const [facetStats, setFacetStats] = useState<FacetStats>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    // Debounce to avoid firing on every keystroke
+    timeoutRef.current = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const result = await searchAPI.search({
+          q: query || '',
+          ...filters,
+          facets,
+          limit: 1, // we only need facets, not the full hit list
+        });
+        setFacetDistribution(result.facetDistribution ?? {});
+        setFacetStats(result.facetStats ?? {});
+      } catch {
+        // Non-critical — facet counts are a UX enhancement, not a requirement
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [query, JSON.stringify(filters), facets]);
+
+  return { facetDistribution, facetStats, isLoading };
+}
+
+// ─── Facet value search hook ──────────────────────────────────────────────────
+
+/**
+ * Search for values within a single facet attribute.
+ * Powers "type to narrow" UX inside filter panels.
+ *
+ * @example
+ * const { hits } = useFacetValueSearch('category', 'elec');
+ * // hits → [{ value: 'Electronics', count: 42 }, ...]
+ */
+export function useFacetValueSearch(facetName: string, facetQuery: string) {
+  const [hits, setHits] = useState<FacetHit[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    if (!facetName) {
+      setHits([]);
+      return;
+    }
+
+    timeoutRef.current = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const data = await searchAPI.searchFacetValues(facetName, facetQuery);
+        setHits(data);
+      } catch {
+        setHits([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 200);
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [facetName, facetQuery]);
+
+  return { hits, isLoading };
+}
+
+// ─── Recent searches hook ─────────────────────────────────────────────────────
+
 export function useRecentSearches() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   useEffect(() => {
-    // Load from localStorage on mount
     const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
     if (stored) {
       try {
@@ -174,16 +261,9 @@ export function useRecentSearches() {
     setRecentSearches((prev) => {
       const trimmed = query.trim();
       if (!trimmed) return prev;
-
-      // Remove if already exists
       const filtered = prev.filter((s) => s.toLowerCase() !== trimmed.toLowerCase());
-
-      // Add to beginning and limit to MAX_RECENT_SEARCHES
       const updated = [trimmed, ...filtered].slice(0, MAX_RECENT_SEARCHES);
-
-      // Save to localStorage
       localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
-
       return updated;
     });
   }, []);
@@ -201,28 +281,22 @@ export function useRecentSearches() {
     });
   }, []);
 
-  return {
-    recentSearches,
-    addRecentSearch,
-    clearRecentSearches,
-    removeRecentSearch,
-  };
+  return { recentSearches, addRecentSearch, clearRecentSearches, removeRecentSearch };
 }
 
-// Helper function to save recent search
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function saveRecentSearch(query: string) {
   if (typeof window === 'undefined') return;
-
   const trimmed = query.trim();
   if (!trimmed) return;
-
   try {
     const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
     const current = stored ? JSON.parse(stored) : [];
     const filtered = current.filter((s: string) => s.toLowerCase() !== trimmed.toLowerCase());
     const updated = [trimmed, ...filtered].slice(0, MAX_RECENT_SEARCHES);
     localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
-  } catch (error) {
-    console.error('Failed to save recent search:', error);
+  } catch {
+    // noop
   }
 }
