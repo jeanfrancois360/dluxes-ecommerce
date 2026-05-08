@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import AuthLayout from '@/components/auth/auth-layout';
 import { OTPInput, Button } from '@nextpik/ui';
 import { TokenManager, api } from '@/lib/api/client';
-import { storeUser, getAuthRedirectUrl } from '@/lib/auth-utils';
+import { storeUser, setTokenExpiry, getAuthRedirectUrl } from '@/lib/auth-utils';
 
 export default function GoogleTwoFactorPage() {
   return (
@@ -61,8 +61,9 @@ function GoogleTwoFactorInner() {
         localStorage.setItem('nextpik_session_token', result.sessionToken);
       }
       storeUser(result.user);
+      setTokenExpiry(7 * 24 * 60 * 60); // 7 days — matches JWT expiresIn
 
-      router.push(getAuthRedirectUrl(result.user));
+      router.replace(getAuthRedirectUrl(result.user));
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Verification failed. Try again.');
     } finally {
