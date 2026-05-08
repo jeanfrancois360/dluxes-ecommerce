@@ -384,7 +384,7 @@ export class EnhancedAuthController {
       // User has 2FA enabled — redirect to TOTP step with a pending token
       if ((result as any).requires2FA) {
         const params = new URLSearchParams({ pendingToken: (result as any).pendingToken });
-        return res.redirect(`${frontendUrl}/auth/google-2fa?${params.toString()}`);
+        return res.redirect(`${frontendUrl}/auth/login?${params.toString()}`);
       }
 
       const params = new URLSearchParams({

@@ -434,17 +434,17 @@ export function TopBar() {
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-all duration-300 border border-white/10 hover:border-[#CBB57B]/50 shadow-lg shadow-black/20"
+                className="group relative flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/5 hover:bg-white/10 transition-all duration-300 border border-white/10 hover:border-[#CBB57B]/50 shadow-lg shadow-black/20"
               >
                 {/* Avatar Circle with Initials or Icon */}
-                <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-[#CBB57B] via-[#D4AF37] to-[#8B7355] flex items-center justify-center ring-2 ring-white/10 group-hover:ring-[#CBB57B]/50 transition-all duration-300 overflow-hidden">
+                <div className="relative w-6 h-6 rounded-full bg-gradient-to-br from-[#CBB57B] via-[#D4AF37] to-[#8B7355] flex items-center justify-center ring-1 ring-white/10 group-hover:ring-[#CBB57B]/50 transition-all duration-300 overflow-hidden">
                   {isAuthenticated && getUserInitials() ? (
-                    <span className="text-sm font-bold text-white tracking-tight">
+                    <span className="text-[10px] font-bold text-white tracking-tight">
                       {getUserInitials()}
                     </span>
                   ) : (
                     <svg
-                      className="w-4 h-4 text-white"
+                      className="w-3 h-3 text-white"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -463,11 +463,11 @@ export function TopBar() {
 
                 {/* User Name or Account Text */}
                 <div className="hidden sm:flex flex-col items-start -space-y-0.5">
-                  <span className="text-xs font-semibold text-white/90 tracking-wide leading-tight">
+                  <span className="text-[11px] font-semibold text-white/90 tracking-wide leading-tight">
                     {getDisplayName()}
                   </span>
                   {isAuthenticated && user?.role && (
-                    <span className="text-[10px] text-[#CBB57B]/80 font-medium leading-tight">
+                    <span className="text-[9px] text-[#CBB57B]/80 font-medium leading-tight">
                       {user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'
                         ? 'Admin'
                         : user.role === 'SELLER'
