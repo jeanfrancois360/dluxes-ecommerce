@@ -202,7 +202,7 @@ export default function LoginPage() {
 
   return (
     <AuthLayout title={t('title')} subtitle={t('subtitle')}>
-      <form onSubmit={handleLogin} className="space-y-6">
+      <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
         {!show2FA ? (
           <>
             {/* Email & Password Fields */}
