@@ -57,7 +57,7 @@ export default function UnifiedAdminLayout({ children }: UnifiedAdminLayoutProps
       {/* Main Content */}
       <div className="lg:pl-64 pt-16">
         {/* 2FA enforcement banner — visible only when 2FA is not yet enabled (v2.12.0) */}
-        <TwoFactorBanner setupUrl="/account/security" />
+        <TwoFactorBanner setupUrl="/admin/account/security" />
         <main className="min-h-screen bg-neutral-50">{children}</main>
       </div>
     </div>
