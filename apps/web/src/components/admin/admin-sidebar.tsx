@@ -10,6 +10,7 @@ import {
   Package,
   ShoppingBag,
   Users,
+  User,
   FolderOpen,
   Star,
   BarChart3,
