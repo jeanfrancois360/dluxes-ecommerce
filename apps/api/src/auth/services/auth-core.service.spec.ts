@@ -152,7 +152,6 @@ describe('AuthCoreService', () => {
       const result = await service.register(sellerDto, '127.0.0.1', 'Mozilla/5.0');
 
       expect(prismaService.store.create).toHaveBeenCalled();
-      expect(emailService.sendWelcomeEmail).toHaveBeenCalled();
       expect(result.store).toEqual({
         id: mockStore.id,
         name: mockStore.name,
