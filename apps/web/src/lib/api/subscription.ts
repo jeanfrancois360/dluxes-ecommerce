@@ -64,6 +64,7 @@ export interface SubscriptionInfo {
 export interface CanListProductTypeResponse {
   canList: boolean;
   reasons: {
+    storeApproved: boolean;
     productTypeAllowed: boolean;
     meetsTierRequirement: boolean;
     hasListingCapacity: boolean;
