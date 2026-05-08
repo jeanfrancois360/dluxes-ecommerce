@@ -9,10 +9,10 @@ interface SearchSuggestionsProps {
 }
 
 const popularCategories = [
-  { name: 'Designer Bags', slug: 'bags', icon: '👜' },
-  { name: 'Watches', slug: 'watches', icon: '⌚' },
-  { name: 'Jewelry', slug: 'jewelry', icon: '💎' },
-  { name: 'Shoes', slug: 'shoes', icon: '👞' },
+  { name: 'Designer Bags', slug: 'bags' },
+  { name: 'Watches', slug: 'watches' },
+  { name: 'Jewelry', slug: 'jewelry' },
+  { name: 'Shoes', slug: 'shoes' },
 ];
 
 export function SearchSuggestions({ onSelectSearch }: SearchSuggestionsProps) {
@@ -161,10 +161,9 @@ export function SearchSuggestions({ onSelectSearch }: SearchSuggestionsProps) {
                   index * 0.05,
               }}
               onClick={() => handleCategoryClick(category.slug)}
-              className="flex items-center gap-2 xs:gap-2.5 sm:gap-3 p-2 xs:p-2.5 sm:p-3 rounded-lg xs:rounded-xl bg-gradient-to-br from-white to-gray-50 hover:from-[#CBB57B]/5 hover:to-[#CBB57B]/10 border border-gray-100 hover:border-[#CBB57B]/30 transition-all group"
+              className="flex items-center justify-center p-2 xs:p-2.5 sm:p-3 rounded-lg xs:rounded-xl bg-gradient-to-br from-white to-gray-50 hover:from-[#CBB57B]/5 hover:to-[#CBB57B]/10 border border-gray-100 hover:border-[#CBB57B]/30 transition-all group"
             >
-              <span className="text-lg xs:text-xl sm:text-2xl flex-shrink-0">{category.icon}</span>
-              <span className="text-xs xs:text-sm font-medium text-gray-700 group-hover:text-[#CBB57B] text-left leading-tight">
+              <span className="text-xs xs:text-sm font-medium text-gray-700 group-hover:text-[#CBB57B] text-center leading-tight">
                 {category.name}
               </span>
             </motion.button>
