@@ -62,7 +62,7 @@ export default function ProductsPage() {
       page: parseInt(searchParams.get('page') || '1'),
       limit: parseInt(searchParams.get('limit') || '12'),
       category: searchParams.get('category') || undefined,
-      query: searchParams.get('q') || undefined,
+      search: searchParams.get('q') || undefined,
       sortBy: (searchParams.get('sortBy') as any) || 'relevance',
       minPrice: searchParams.get('minPrice')
         ? parseFloat(searchParams.get('minPrice')!)
@@ -317,8 +317,8 @@ export default function ProductsPage() {
               currency: currency?.currencyCode || 'USD',
             })),
             name: filters.category ? `${filters.category} Products` : 'All Products',
-            description: filters.query
-              ? `Search results for "${filters.query}"`
+            description: filters.search
+              ? `Search results for "${filters.search}"`
               : 'Browse our curated collection of luxury products',
           })}
         />

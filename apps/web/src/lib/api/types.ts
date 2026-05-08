@@ -493,7 +493,7 @@ export interface WishlistItem {
 
 // Search Types
 export interface SearchFilters {
-  query?: string;
+  search?: string;
   category?: string;
   minPrice?: number;
   maxPrice?: number;
