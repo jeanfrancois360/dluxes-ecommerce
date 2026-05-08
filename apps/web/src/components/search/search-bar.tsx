@@ -110,7 +110,7 @@ export function SearchBar({
 
     const query = searchQuery.trim();
     saveRecentSearch(query);
-    router.push(`/search?q=${encodeURIComponent(query)}`);
+    router.push(`/products?q=${encodeURIComponent(query)}`);
     setIsFocused(false);
     setSelectedIndex(-1);
 
@@ -135,7 +135,7 @@ export function SearchBar({
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('navigation:start'));
     }
-    router.push(`/search?q=${encodeURIComponent(query)}`);
+    router.push(`/products?q=${encodeURIComponent(query)}`);
     setIsFocused(false);
   };
 
