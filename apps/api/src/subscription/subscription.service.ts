@@ -89,33 +89,45 @@ export class SubscriptionService {
   ): Promise<{
     canList: boolean;
     reasons: {
+      storeApproved: boolean;
       productTypeAllowed: boolean;
       meetsTierRequirement: boolean;
       hasListingCapacity: boolean;
       hasMonthlyCredits: boolean;
     };
   }> {
+    // Always check store approval status first — no listing allowed unless ACTIVE
+    const store = await this.prisma.store.findUnique({ where: { userId } });
+    if (!store || store.status !== 'ACTIVE') {
+      return {
+        canList: false,
+        reasons: {
+          storeApproved: false,
+          productTypeAllowed: false,
+          meetsTierRequirement: false,
+          hasListingCapacity: false,
+          hasMonthlyCredits: false,
+        },
+      };
+    }
+
     // Product types that require a subscription (inquiry-based)
     const subscriptionRequiredTypes = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
     const requiresSubscription = subscriptionRequiredTypes.includes(productType);
 
     // For PHYSICAL products, check store credits (selling credits)
     if (productType === 'PHYSICAL') {
-      const store = await this.prisma.store.findUnique({
-        where: { userId },
-      });
-
       const now = new Date();
-      const hasMonthlyCredits = store
-        ? store.creditsBalance > 0 ||
-          (store.creditsBalance === 0 &&
-            store.creditsGraceEndsAt &&
-            new Date(store.creditsGraceEndsAt) > now)
-        : false;
+      const hasMonthlyCredits =
+        store.creditsBalance > 0 ||
+        (store.creditsBalance === 0 &&
+          store.creditsGraceEndsAt &&
+          new Date(store.creditsGraceEndsAt) > now);
 
       return {
         canList: hasMonthlyCredits,
         reasons: {
+          storeApproved: true,
           productTypeAllowed: true,
           meetsTierRequirement: true,
           hasListingCapacity: true,
@@ -194,6 +206,7 @@ export class SubscriptionService {
       canList:
         productTypeAllowed && meetsTierRequirement && hasListingCapacity && hasSubscriptionCredits,
       reasons: {
+        storeApproved: true,
         productTypeAllowed,
         meetsTierRequirement,
         hasListingCapacity,

@@ -193,6 +193,75 @@ export default function NewProductPage() {
   // Show upgrade message if can't create
   if (canCreate && !canCreate.allowed) {
     const { reasons } = canCreate;
+
+    // Store not yet approved — show a dedicated pending-approval screen
+    if (!reasons.storeApproved) {
+      return (
+        <div className="min-h-screen bg-neutral-50 py-12">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border-2 border-amber-200 p-8 shadow-lg text-center"
+            >
+              {/* Icon */}
+              <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-amber-200">
+                <svg
+                  className="w-8 h-8 text-amber-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Account Pending Approval</h1>
+              <p className="text-gray-600 mb-6">
+                Your seller account is currently under review. You&apos;ll be able to create
+                listings once an admin approves your store.
+              </p>
+
+              {/* Status indicator */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800 mb-1">What happens next?</p>
+                    <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
+                      <li>Our team reviews your seller application</li>
+                      <li>You receive an email once approved (usually 1–2 business days)</li>
+                      <li>After approval you can immediately start listing products</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-center">
+                <Link
+                  href="/seller/products"
+                  className="px-6 py-3 border-2 border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Back to Products
+                </Link>
+                <Link
+                  href="/seller/onboarding"
+                  className="px-6 py-3 bg-[#CBB57B] text-black rounded-xl font-semibold hover:bg-[#b9a369] transition-colors shadow-md"
+                >
+                  View Application Status
+                </Link>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      );
+    }
+
     const reason = !reasons.hasMonthlyCredits
       ? t('reasons.noSubscription')
       : !reasons.hasListingCapacity
