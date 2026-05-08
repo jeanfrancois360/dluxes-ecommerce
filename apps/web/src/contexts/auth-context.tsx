@@ -179,10 +179,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Failed to fetch user, use stored user or clear auth
           // Don't log 401 errors - they're expected for expired tokens
           const is401 = error?.status === 401 || error?.response?.status === 401;
+          const errorMessage: string = error?.message || error?.response?.data?.message || '';
+          const isRevokedSession =
+            is401 &&
+            (errorMessage.includes('Session has been revoked') ||
+              errorMessage.includes('session') ||
+              errorMessage.includes('revoked'));
 
-          if (!storedUser) {
+          // Always clear auth for revoked sessions — stored user data is no longer valid
+          if (isRevokedSession || !storedUser) {
             clearAllAuthData();
             setUser(null);
+
+            // For explicitly revoked sessions, dispatch logout event to trigger redirect
+            if (isRevokedSession && typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('api:logout'));
+            }
           }
 
           // Only log unexpected errors (not authentication failures)

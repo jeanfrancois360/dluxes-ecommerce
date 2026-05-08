@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { CartService } from '../cart/cart.service';
 import { SettingsService } from '../settings/settings.service';
@@ -223,19 +224,17 @@ export class AuthService {
       userAgent?: string;
     }
   ) {
-    const payload = { email: user.email, sub: user.id, role: user.role };
-    const accessToken = this.jwtService.sign(payload);
-
-    // Create user session
+    // Create user session first to get session ID for JWT
     let userSession = null;
     try {
       const parsedDevice = this.parseUserAgent(deviceInfo?.userAgent || '');
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      const sessionToken = randomBytes(32).toString('hex');
 
       userSession = await this.prisma.userSession.create({
         data: {
           userId: user.id,
-          token: accessToken,
+          token: sessionToken,
           deviceName: parsedDevice.deviceName,
           deviceType: parsedDevice.deviceType,
           browser: parsedDevice.browser,
@@ -250,6 +249,10 @@ export class AuthService {
     } catch (sessionError) {
       this.logger.error(`Error creating session for user ${user.id}:`, sessionError);
     }
+
+    const payload: Record<string, unknown> = { email: user.email, sub: user.id, role: user.role };
+    if (userSession?.id) payload.session_id = userSession.id;
+    const accessToken = this.jwtService.sign(payload);
 
     // Merge guest cart with user cart if sessionId provided
     let cart = null;

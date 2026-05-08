@@ -446,11 +446,11 @@ export class EnhancedAuthController {
   async getUserSessions(@Req() req: any) {
     const sessions = await this.sessionService.getUserSessions(req.user.id);
 
-    // Mark current session
-    const currentToken = req.headers.authorization?.replace('Bearer ', '');
+    // Mark the current session using the session_id embedded in the JWT payload
+    const currentSessionId = req.user.sessionId;
     return sessions.map((session) => ({
       ...session,
-      isCurrent: session.token === currentToken,
+      isCurrent: !!currentSessionId && session.id === currentSessionId,
     }));
   }
 
@@ -461,6 +461,10 @@ export class EnhancedAuthController {
   @ApiOperation({ summary: 'Revoke (sign out) a specific session by ID' })
   @ApiResponse({ status: 200, description: 'Session revoked' })
   async revokeSession(@Req() req: any, @Param('sessionId') sessionId: string) {
+    // Prevent revoking the current session (would immediately lock the user out)
+    if (req.user.sessionId && sessionId === req.user.sessionId) {
+      return { message: 'Cannot revoke the current session. Use logout instead.' };
+    }
     return this.sessionService.revokeSession(req.user.id, sessionId);
   }
 

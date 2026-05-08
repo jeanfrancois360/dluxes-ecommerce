@@ -308,6 +308,47 @@ export default function AdminSecurityPage() {
     }
   };
 
+  const normalizeIp = (ip: string | null): string | null => {
+    if (!ip) return null;
+    const unwrapped = ip.replace(/^::ffff:/i, '');
+    if (unwrapped === '127.0.0.1' || unwrapped === '::1') return 'localhost';
+    return unwrapped;
+  };
+
+  const getOsIcon = (os: string | null) => {
+    if (!os) return null;
+    const lower = os.toLowerCase();
+    if (lower.includes('macos') || lower.includes('ios') || lower.includes('ipados')) {
+      return (
+        <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+        </svg>
+      );
+    }
+    if (lower.includes('windows')) {
+      return (
+        <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 12V6.75l6-1.32v6.57H3zm17 0V3.5l-8 1.4V12h8zM3 13h6v6.43l-6-1.33V13zm17 0h-8v6.83L20 21.5V13z" />
+        </svg>
+      );
+    }
+    if (lower.includes('android')) {
+      return (
+        <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0012 1.5c-.71 0-1.39.13-2.04.37L8.48.39c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.3 1.3C7.45 3.35 6.5 5 6.5 7h11c0-2-.95-3.65-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z" />
+        </svg>
+      );
+    }
+    if (lower.includes('linux') || lower.includes('chromeos')) {
+      return (
+        <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489.217 1.348.859 2.498 2.047 3.31.618.422 1.276.634 1.989.635.606.001 1.225-.145 1.849-.42.583-.265 1.145-.674 1.586-1.188.465-.54.845-1.17 1.23-1.667.422-.54 1.067-.878 1.741-.748.72.137 1.269.696 1.662 1.42.444.82.73 1.783.872 2.63.08.49.101.943.08 1.26-.02.316-.017.434.168.434h.008c.026 0 .058-.002.094-.007.468-.036.911-.217 1.28-.493 1.08-.815 1.575-2.197 1.71-3.637.056-.58.058-1.154.01-1.695-.097-1.142-.354-2.224-.681-3.127-.32-.888-.727-1.614-1.108-2.147-.373-.52-.804-.95-1.205-1.35-.368-.37-.728-.721-.97-1.109-.475-.758-.756-1.628-.806-2.571-.036-.703.015-1.398.057-1.967.091-1.172.178-2.065-.348-2.979C14.3.445 13.456 0 12.504 0zM9.37 8.24c.133 0 .261.019.381.059.6.2.911.907.693 1.573-.22.667-.876 1.044-1.476.844-.6-.2-.911-.908-.691-1.574.176-.534.645-.902 1.093-.902zm5.264 0c.448 0 .917.368 1.092.902.219.666-.092 1.374-.692 1.574-.6.2-1.256-.177-1.476-.844-.217-.666.094-1.373.693-1.573.12-.04.248-.059.383-.059zM9 13c.553 0 1 .447 1 1s-.447 1-1 1-1-.447-1-1 .447-1 1-1zm6 0c.553 0 1 .447 1 1s-.447 1-1 1-1-.447-1-1 .447-1 1-1z" />
+        </svg>
+      );
+    }
+    return null;
+  };
+
   const PasswordToggle = ({ show, onToggle }: { show: boolean; onToggle: () => void }) => (
     <button
       type="button"
@@ -1095,17 +1136,18 @@ export default function AdminSecurityPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-black text-sm">
-                              {session.deviceInfo?.description ||
-                                (() => {
-                                  const browser = session.browser || 'Unknown Browser';
-                                  const os =
-                                    session.os && !/unknown/i.test(session.os)
-                                      ? ` on ${session.os}`
-                                      : '';
-                                  return `${browser}${os}`;
-                                })()}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                              {getOsIcon(session.deviceInfo?.os || session.os) && (
+                                <span className="text-neutral-500">
+                                  {getOsIcon(session.deviceInfo?.os || session.os)}
+                                </span>
+                              )}
+                              <p className="font-medium text-black text-sm">
+                                {session.deviceInfo?.description ||
+                                  session.browser ||
+                                  'Unknown device'}
+                              </p>
+                            </div>
                             {session.isCurrent && (
                               <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
                                 This device
@@ -1137,8 +1179,10 @@ export default function AdminSecurityPage() {
                                 {session.location}
                               </span>
                             )}
-                            {session.ipAddress && (
-                              <span className="text-neutral-400">IP: {session.ipAddress}</span>
+                            {normalizeIp(session.ipAddress) && (
+                              <span className="font-mono text-neutral-400">
+                                {normalizeIp(session.ipAddress)}
+                              </span>
                             )}
                             <span>Active {formatSessionDate(session.lastActiveAt)}</span>
                           </div>

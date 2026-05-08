@@ -14,7 +14,7 @@ export class MagicLinkService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private emailService: EmailService,
-    private sessionService: SessionService,
+    private sessionService: SessionService
   ) {}
 
   /**
@@ -70,20 +70,18 @@ export class MagicLinkService {
     });
 
     if (!magicLink) {
-      throw new UnauthorizedException(
-        'Invalid magic link. Please request a new one to log in.',
-      );
+      throw new UnauthorizedException('Invalid magic link. Please request a new one to log in.');
     }
 
     if (magicLink.used) {
       throw new UnauthorizedException(
-        'This magic link has already been used. Please request a new one if you need to log in again.',
+        'This magic link has already been used. Please request a new one if you need to log in again.'
       );
     }
 
     if (new Date() > magicLink.expiresAt) {
       throw new UnauthorizedException(
-        'This magic link has expired (valid for 15 minutes). Please request a new one.',
+        'This magic link has expired (valid for 15 minutes). Please request a new one.'
       );
     }
 
@@ -107,15 +105,15 @@ export class MagicLinkService {
     });
 
     // Create session
-    const sessionToken = await this.sessionService.createSession(
+    const { token: sessionToken, id: sessionId } = await this.sessionService.createSession(
       magicLink.userId,
       ipAddress,
       userAgent,
-      true, // Remember me for magic link logins
+      true // Remember me for magic link logins
     );
 
     // Generate JWT
-    const accessToken = this.generateJWT(magicLink.user);
+    const accessToken = this.generateJWT(magicLink.user, sessionId);
 
     // Sanitize user — whitelist only safe fields
     const u = magicLink.user;
@@ -146,12 +144,13 @@ export class MagicLinkService {
   /**
    * Generate JWT token for user
    */
-  private generateJWT(user: any) {
-    const payload = {
+  private generateJWT(user: any, sessionId?: string) {
+    const payload: Record<string, unknown> = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
+    if (sessionId) payload.session_id = sessionId;
 
     return this.jwtService.sign(payload, {
       expiresIn: '7d', // JWT expires in 7 days, session controls actual auth
