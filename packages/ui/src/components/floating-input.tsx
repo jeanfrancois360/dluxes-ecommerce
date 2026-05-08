@@ -46,17 +46,21 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
               // Base styles
               'peer w-full px-4 py-4 bg-white',
               'border-2 border-neutral-200 rounded-lg',
-              'text-base text-black transition-all duration-300',
+              'text-base text-black transition-all duration-200',
               'placeholder-transparent',
 
-              // Focus styles
-              'focus:outline-none focus:border-gold focus:ring-0',
+              // Focus styles — gold ring for visibility
+              'focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/20',
 
               // Hover styles
               'hover:border-neutral-300',
 
               // Error styles
-              error && 'border-error-DEFAULT focus:border-error-DEFAULT',
+              error &&
+                'border-error-DEFAULT focus:border-error-DEFAULT focus:ring-error-DEFAULT/20',
+
+              // Disabled styles
+              'disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-neutral-50',
 
               // Icon spacing
               icon && 'pl-12',
