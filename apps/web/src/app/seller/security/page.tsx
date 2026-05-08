@@ -17,6 +17,7 @@ import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/seller/page-header';
 import { useAuth } from '@/hooks/use-auth';
+import { TokenManager } from '@/lib/api/client';
 import { toast, standardToasts } from '@/lib/utils/toast';
 
 interface UserSession {
@@ -319,7 +320,7 @@ export default function SellerSecurityPage() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/setup`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to start 2FA setup');
@@ -344,7 +345,7 @@ export default function SellerSecurityPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${TokenManager.getAccessToken()}`,
         },
         body: JSON.stringify({ code: twoFaCode }),
       });
@@ -372,7 +373,7 @@ export default function SellerSecurityPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${TokenManager.getAccessToken()}`,
         },
         body: JSON.stringify({ code: disable2FACode }),
       });
