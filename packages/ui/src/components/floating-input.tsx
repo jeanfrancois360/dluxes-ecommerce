@@ -61,6 +61,9 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
               // Icon spacing
               icon && 'pl-12',
 
+              // Neutralize browser autofill yellow background
+              '[&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#000]',
+
               className
             )}
             placeholder={label}
@@ -75,7 +78,7 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
               'absolute left-4 transition-all duration-300 pointer-events-none',
               'text-neutral-500',
               icon && isLabelFloating && 'left-4',
-              icon && !isLabelFloating && 'left-12',
+              icon && !isLabelFloating && 'left-12'
             )}
             animate={{
               top: isLabelFloating ? '8px' : '50%',
