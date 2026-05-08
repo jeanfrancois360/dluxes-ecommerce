@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductCard } from '@nextpik/ui';
 import { useSearch } from '@/hooks/use-search';
-import { FiltersSidebar } from '@/components/filters-sidebar';
+import { FiltersSidebar, FilterState } from '@/components/filters-sidebar';
 import { Product } from '@/lib/api/types';
 import { SearchResultsAd } from '@/components/ads';
 import { useTranslations } from 'next-intl';
@@ -46,6 +46,16 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
   });
 
   const { data, isLoading, error, search } = useSearch();
+
+  // Sidebar uses its own FilterState shape; we bridge it to the search filter format
+  const defaultSidebarFilters: FilterState = {
+    categories: [],
+    priceRange: [0, 5000],
+    brands: [],
+    ratings: [],
+    availability: 'all',
+  };
+  const [sidebarFilters, setSidebarFilters] = useState<FilterState>(defaultSidebarFilters);
 
   // Push URL params so search is bookmarkable / shareable
   const syncUrl = useCallback(
@@ -91,12 +101,22 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
     setPage(1);
   }, [initialCategory]);
 
-  const handleFilterChange = (newFilters: any) => {
-    setFilters(newFilters);
+  const handleFilterChange = (newSidebarFilters: FilterState) => {
+    setSidebarFilters(newSidebarFilters);
+    // Translate FilterState → search filter format
+    setFilters((prev) => ({
+      ...prev,
+      minPrice: newSidebarFilters.priceRange[0] > 0 ? newSidebarFilters.priceRange[0] : undefined,
+      maxPrice:
+        newSidebarFilters.priceRange[1] < 5000 ? newSidebarFilters.priceRange[1] : undefined,
+      brands: newSidebarFilters.brands,
+      inStock: newSidebarFilters.availability === 'in-stock' ? true : undefined,
+    }));
     setPage(1);
   };
 
   const handleClearAll = () => {
+    setSidebarFilters(defaultSidebarFilters);
     setFilters({
       minPrice: undefined,
       maxPrice: undefined,
@@ -175,7 +195,7 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
         <aside className="lg:w-64 flex-shrink-0">
           <div className="sticky top-32">
             <FiltersSidebar
-              filters={filters as any}
+              filters={sidebarFilters}
               onFiltersChange={handleFilterChange}
               onClearAll={handleClearAll}
             />
