@@ -33,7 +33,12 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
       <div className="relative w-full">
         <div className="relative">
           {icon && (
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors">
+            <div
+              className="absolute left-4 text-neutral-400 pointer-events-none transition-[top] duration-200 -translate-y-1/2"
+              // When label is floating, align icon with the text zone (below the label).
+              // When not floating, center it in the full field.
+              style={{ top: isLabelFloating ? '68%' : '50%' }}
+            >
               {icon}
             </div>
           )}
@@ -43,8 +48,9 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
             type={type}
             value={value}
             className={cn(
-              // Base styles
-              'peer w-full px-4 py-4 bg-white',
+              // Base styles — pt-6 pb-2 keeps same total height as py-4 but pushes
+              // text cursor to 24px from top, cleanly below the floating label.
+              'peer w-full px-4 pt-6 pb-2 bg-white',
               'border-2 border-neutral-200 rounded-lg',
               'text-base text-black transition-all duration-200',
               'placeholder-transparent',
@@ -78,17 +84,17 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
           />
 
           <motion.label
-            className={cn(
-              'absolute left-4 transition-all duration-300 pointer-events-none',
-              'text-neutral-500',
-              icon && isLabelFloating && 'left-4',
-              icon && !isLabelFloating && 'left-12'
-            )}
+            // Always anchored at left-4; horizontal offset handled by `x` animation
+            // so the slide from icon-position → top-left is smooth (not a class snap).
+            className="absolute left-4 pointer-events-none leading-none"
             animate={{
-              top: isLabelFloating ? '8px' : '50%',
-              fontSize: isLabelFloating ? '12px' : '16px',
+              top: isLabelFloating ? '6px' : '50%',
+              fontSize: isLabelFloating ? '11px' : '16px',
               y: isLabelFloating ? 0 : '-50%',
+              // Shift right by 32px (left-4→left-12 difference) when beside the icon
+              x: icon && !isLabelFloating ? 32 : 0,
             }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             style={{
               color: error ? '#EF4444' : isFocused ? '#CBB57B' : '#737373',
             }}
