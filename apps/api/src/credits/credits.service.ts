@@ -1,12 +1,8 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import { PaymentService } from '../payment/payment.service';
 import { CreditTransactionType } from '@prisma/client';
 
@@ -18,7 +14,7 @@ export class CreditsService {
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
     private readonly paymentService: PaymentService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService
   ) {}
 
   /**
@@ -33,10 +29,9 @@ export class CreditsService {
       // Check for new seller bonus
       let bonusCredits = 0;
       try {
-        const setting = await this.settingsService.getSetting(
-          'new_seller_bonus_credits',
-        );
-        bonusCredits = Number(setting.value) || 0;
+        const setting = await this.settingsService.getSetting('new_seller_bonus_credits');
+        bonusCredits =
+          setting?.value != null ? Number(setting.value) : SETTING_DEFAULTS.credits.bonus_amount;
       } catch {
         // No bonus
       }
@@ -59,9 +54,7 @@ export class CreditsService {
           action: 'new_seller_bonus',
           description: 'Welcome bonus for new sellers',
         });
-        this.logger.log(
-          `Granted ${bonusCredits} bonus credits to user ${userId}`,
-        );
+        this.logger.log(`Granted ${bonusCredits} bonus credits to user ${userId}`);
       }
     }
 
@@ -75,10 +68,11 @@ export class CreditsService {
     const key = `credit_cost_${action}`;
     try {
       const setting = await this.settingsService.getSetting(key);
-      return Number(setting.value) || 1;
+      if (setting?.value != null) return Number(setting.value);
     } catch {
-      return 1; // Default cost
+      // DB unavailable or setting missing
     }
+    return SETTING_DEFAULTS.credits.cost_per_unit;
   }
 
   /**
@@ -86,7 +80,7 @@ export class CreditsService {
    */
   async hasCredits(
     userId: string,
-    action: string,
+    action: string
   ): Promise<{
     hasCredits: boolean;
     required: number;
@@ -104,18 +98,13 @@ export class CreditsService {
   /**
    * Debit credits from user
    */
-  async debitCredits(
-    userId: string,
-    action: string,
-    description?: string,
-    productId?: string,
-  ) {
+  async debitCredits(userId: string, action: string, description?: string, productId?: string) {
     const balance = await this.getOrCreateBalance(userId);
     const cost = await this.getCreditCost(action);
 
     if (balance.availableCredits < cost) {
       throw new BadRequestException(
-        `Insufficient credits. Required: ${cost}, Available: ${balance.availableCredits}`,
+        `Insufficient credits. Required: ${cost}, Available: ${balance.availableCredits}`
       );
     }
 
@@ -159,7 +148,7 @@ export class CreditsService {
     action: string,
     description?: string,
     packageId?: string,
-    performedBy?: string,
+    performedBy?: string
   ) {
     const balance = await this.getOrCreateBalance(userId);
     const newBalance = balance.availableCredits + amount;
@@ -218,7 +207,7 @@ export class CreditsService {
       productId?: string;
       packageId?: string;
       performedBy?: string;
-    },
+    }
   ) {
     return this.prisma.creditTransaction.create({
       data: {
@@ -247,7 +236,7 @@ export class CreditsService {
       page?: number;
       limit?: number;
       type?: CreditTransactionType;
-    },
+    }
   ) {
     const balance = await this.getOrCreateBalance(userId);
     const page = options?.page || 1;
@@ -300,9 +289,7 @@ export class CreditsService {
     const stripe = await this.paymentService.getStripe();
 
     // Get frontend URL
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') ||
-      'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
 
     // Get user for customer info
     const user = await this.prisma.user.findUnique({
@@ -344,9 +331,7 @@ export class CreditsService {
       cancel_url: `${frontendUrl}/seller/credits?canceled=true`,
     });
 
-    this.logger.log(
-      `Created Stripe Checkout session for user ${userId}, package ${packageId}`,
-    );
+    this.logger.log(`Created Stripe Checkout session for user ${userId}, package ${packageId}`);
 
     return {
       sessionId: session.id,
@@ -368,9 +353,7 @@ export class CreditsService {
 
     // Verify metadata
     if (session.metadata?.type !== 'credit_package') {
-      this.logger.warn(
-        `Skipping non-credit-package session: ${stripeSessionId}`,
-      );
+      this.logger.warn(`Skipping non-credit-package session: ${stripeSessionId}`);
       return;
     }
 
@@ -390,9 +373,7 @@ export class CreditsService {
     });
 
     if (existingTransaction) {
-      this.logger.warn(
-        `Credit package purchase already processed: ${stripeSessionId}`,
-      );
+      this.logger.warn(`Credit package purchase already processed: ${stripeSessionId}`);
       return;
     }
 
@@ -413,11 +394,11 @@ export class CreditsService {
       'PURCHASE',
       'purchase_package',
       `Purchased ${packageName} (${creditsAmount} credits) - Stripe Session: ${stripeSessionId}`,
-      packageId,
+      packageId
     );
 
     this.logger.log(
-      `Successfully processed credit package purchase for user ${userId}: ${creditsAmount} credits`,
+      `Successfully processed credit package purchase for user ${userId}: ${creditsAmount} credits`
     );
 
     return {

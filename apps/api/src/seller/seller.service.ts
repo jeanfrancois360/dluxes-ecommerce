@@ -11,6 +11,7 @@ import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
 import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
 import { SettingsService } from '../settings/settings.service';
+import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import { CurrencyService } from '../currency/currency.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import { ProductStatus } from '@prisma/client';
@@ -472,6 +473,9 @@ export class SellerService {
     // Calculate seller's gross total (before commission)
     const sellerTotal = sellerSubtotal.plus(sellerShipping).plus(sellerTax).minus(sellerDiscount);
 
+    // TODO(settings-refactor): commission and payment fee reads below are owned by the
+    // commission/payment domain and were intentionally excluded from the SETTING_DEFAULTS
+    // refactor pass. Refactor these when the commission module is reviewed.
     // Get commission rate from settings (default 10%)
     let commissionRate = new Decimal(10); // Default 10%
     try {
@@ -2695,7 +2699,11 @@ export class SellerService {
     try {
       // Get SKU prefix from settings
       const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
-      const prefix = String(prefixSetting.value || 'NEXTPIK').toUpperCase();
+      const prefix = (
+        prefixSetting?.value != null
+          ? String(prefixSetting.value)
+          : SETTING_DEFAULTS.inventory.sku_prefix
+      ).toUpperCase();
 
       // Get current date components
       const now = new Date();

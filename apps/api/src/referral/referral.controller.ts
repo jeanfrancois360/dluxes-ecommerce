@@ -21,7 +21,6 @@ import { GetReferralHistoryDto, GetAllReferralsDto } from './dto/referral.dto';
  * Handles referral code generation, tracking, and reward distribution
  */
 @Controller('referral')
-@UseGuards(JwtAuthGuard)
 export class ReferralController {
   constructor(private readonly referralService: ReferralService) {}
 
@@ -34,6 +33,7 @@ export class ReferralController {
    * POST /api/v1/referral/generate
    */
   @Post('generate')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async generateReferralCode(@Request() req: any) {
     const userId = req.user.id;
@@ -66,6 +66,7 @@ export class ReferralController {
    * GET /api/v1/referral/summary
    */
   @Get('summary')
+  @UseGuards(JwtAuthGuard)
   async getReferralSummary(@Request() req: any) {
     const userId = req.user.id;
     const summary = await this.referralService.getReferralSummary(userId);
@@ -81,6 +82,7 @@ export class ReferralController {
    * GET /api/v1/referral/history?page=1&limit=20&status=PAID
    */
   @Get('history')
+  @UseGuards(JwtAuthGuard)
   async getReferralHistory(@Request() req: any, @Query() query: GetReferralHistoryDto) {
     const userId = req.user.id;
 
@@ -162,7 +164,7 @@ export class ReferralController {
    * GET /api/v1/referral/admin/all?page=1&limit=20&status=PAID
    */
   @Get('admin/all')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   async getAllReferrals(@Query() query: GetAllReferralsDto) {
     const result = await this.referralService.getAllReferrals({
@@ -185,7 +187,7 @@ export class ReferralController {
    * GET /api/v1/referral/admin/statistics?startDate=2024-01-01&endDate=2024-12-31
    */
   @Get('admin/statistics')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   async getReferralStatistics(
     @Query('startDate') startDate?: string,
@@ -207,7 +209,7 @@ export class ReferralController {
    * GET /api/v1/referral/admin/top-referrers?limit=50
    */
   @Get('admin/top-referrers')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   async getTopReferrersAdmin(@Query('limit') limit?: number) {
     const topReferrers = await this.referralService.getTopReferrers(limit ? Number(limit) : 50);
@@ -223,7 +225,7 @@ export class ReferralController {
    * GET /api/v1/referral/admin/settings
    */
   @Get('admin/settings')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   async getReferralSettingsAdmin() {
     const settings = await this.referralService.getReferralSettings();
@@ -239,7 +241,7 @@ export class ReferralController {
    * POST /api/v1/referral/admin/grant-reward/:referralId
    */
   @Post('admin/grant-reward/:referralId')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   @HttpCode(HttpStatus.OK)
   async grantRewardAdmin(@Param('referralId') referralId: string) {
