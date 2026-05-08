@@ -9,7 +9,6 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
-import { EmailService } from '../../email/email.service';
 import { SessionService } from './session.service';
 import { EmailVerificationService } from './email-verification.service';
 import { TwoFactorService } from './two-factor.service';
@@ -32,7 +31,6 @@ export class AuthCoreService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-    private emailService: EmailService,
     private sessionService: SessionService,
     private emailVerificationService: EmailVerificationService,
     private twoFactorService: TwoFactorService,
@@ -118,11 +116,6 @@ export class AuthCoreService {
           isActive: autoApprove,
           verified: autoApprove,
         },
-      });
-
-      // Send welcome seller email (non-blocking)
-      this.emailService.sendWelcomeEmail(user.email, user.firstName).catch((err) => {
-        console.error('Failed to send welcome seller email:', err);
       });
     }
 
