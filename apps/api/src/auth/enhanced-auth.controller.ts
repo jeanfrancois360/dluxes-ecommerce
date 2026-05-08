@@ -381,6 +381,12 @@ export class EnhancedAuthController {
 
       const result = await this.googleOAuthService.googleAuth(req.user, ipAddress, userAgent);
 
+      // User has 2FA enabled — redirect to TOTP step with a pending token
+      if ((result as any).requires2FA) {
+        const params = new URLSearchParams({ pendingToken: (result as any).pendingToken });
+        return res.redirect(`${frontendUrl}/auth/google-2fa?${params.toString()}`);
+      }
+
       const params = new URLSearchParams({
         accessToken: result.accessToken,
         sessionToken: result.sessionToken,
@@ -394,6 +400,23 @@ export class EnhancedAuthController {
       const params = new URLSearchParams({ error: message });
       return res.redirect(`${frontendUrl}/auth/login?${params.toString()}`);
     }
+  }
+
+  @Post('google/verify-2fa')
+  @HttpCode(HttpStatus.OK)
+  @SkipTwoFactorCheck()
+  @ApiOperation({ summary: 'Verify TOTP after Google OAuth when user has 2FA enabled' })
+  @ApiResponse({ status: 200, description: 'TOTP verified — full tokens returned' })
+  @ApiResponse({ status: 401, description: 'Invalid pending token or wrong TOTP code' })
+  async verifyGoogle2FA(@Body() dto: { pendingToken: string; code: string }, @Req() req: Request) {
+    const ipAddress = (req as any).ip || (req as any).socket?.remoteAddress || 'unknown';
+    const userAgent = (req.headers as any)['user-agent'] || 'unknown';
+    return this.googleOAuthService.verifyGoogle2FA(
+      dto.pendingToken,
+      dto.code,
+      ipAddress,
+      userAgent
+    );
   }
 
   @Post('google/unlink')
