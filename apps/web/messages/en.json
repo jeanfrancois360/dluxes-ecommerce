@@ -39,7 +39,8 @@
       "announcements": "Announcements",
       "referrals": "Referrals",
       "settings": "Settings",
-      "security": "Security"
+      "security": "Security",
+      "profile": "My Profile"
     },
     "viewWebsite": "View Website",
     "logout": "Logout"
@@ -4375,7 +4376,7 @@
   },
   "adminCategories": {
     "pageTitle": "Categories",
-    "pageDescription": "Manage product categories and hierarchies",
+    "pageDescription": "Organize your products into categories",
     "pageSubtitle": "Manage product categories and hierarchies",
     "addCategory": "Add Category",
     "stats": {
@@ -4473,8 +4474,7 @@
       "alreadyExists": "A category with these details already exists.",
       "fieldExists": "A category with this {field} already exists.",
       "databaseConstraint": "Failed to save category due to a database constraint."
-    },
-    "pageDescription": "Organize your products into categories"
+    }
   },
   "adminReviews": {
     "pageTitle": "Reviews Management",
@@ -4872,8 +4872,8 @@
     }
   },
   "adminSubscriptions": {
-    "pageTitle": "Subscriptions",
-    "pageDescription": "Manage seller feature plans and subscriptions",
+    "pageTitle": "Feature Plans Dashboard",
+    "pageDescription": "Manage seller feature plans that unlock premium product types (SERVICE, INQUIRY, REAL_ESTATE)",
     "heroTitle": "Feature Plans Dashboard",
     "heroDescription": "Manage seller feature plans that unlock premium product types (SERVICE, INQUIRY, REAL_ESTATE)",
     "stats": {
@@ -4910,13 +4910,11 @@
     },
     "errors": {
       "loadStatistics": "Failed to load subscription statistics"
-    },
-    "pageTitle": "Feature Plans Dashboard",
-    "pageDescription": "Manage seller feature plans that unlock premium product types (SERVICE, INQUIRY, REAL_ESTATE)"
+    }
   },
   "adminPayouts": {
-    "pageTitle": "Seller Payouts",
-    "pageDescription": "Manage and process seller payouts",
+    "pageTitle": "Payout Management",
+    "pageDescription": "Manage seller payouts and schedule automated payments",
     "buttons": {
       "processAll": "Process All Payouts",
       "processing": "Processing..."
@@ -5031,9 +5029,7 @@
       "completed": "COMPLETED",
       "failed": "FAILED",
       "cancelled": "CANCELLED"
-    },
-    "pageDescription": "Manage seller payouts and schedule automated payments",
-    "pageTitle": "Payout Management"
+    }
   },
   "adminDeliveries": {
     "pageTitle": "Deliveries",
@@ -5190,9 +5186,7 @@
       "planDeleted": "Plan deleted successfully",
       "saveFailed": "Failed to save plan",
       "deleteFailed": "Failed to delete plan"
-    },
-    "pageTitle": "Advertisement Plans",
-    "pageDescription": "Manage subscription plans for seller advertising"
+    }
   },
   "adminShipping": {
     "pageTitle": "Shipping Zones",
