@@ -1,24 +1,35 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useRecentSearches, useTrendingSearches } from '@/hooks/use-search';
+import { useCategories } from '@/hooks/use-categories';
 
 interface SearchSuggestionsProps {
   onSelectSearch: (query: string) => void;
 }
 
-const popularCategories = [
-  { name: 'Designer Bags', slug: 'bags' },
-  { name: 'Watches', slug: 'watches' },
-  { name: 'Jewelry', slug: 'jewelry' },
-  { name: 'Shoes', slug: 'shoes' },
+/** Pastel background colours cycled when a category has no image */
+const FALLBACK_COLORS = [
+  'bg-amber-50 text-amber-700',
+  'bg-rose-50 text-rose-700',
+  'bg-sky-50 text-sky-700',
+  'bg-emerald-50 text-emerald-700',
+  'bg-violet-50 text-violet-700',
+  'bg-orange-50 text-orange-700',
 ];
 
 export function SearchSuggestions({ onSelectSearch }: SearchSuggestionsProps) {
   const router = useRouter();
   const { recentSearches, removeRecentSearch, clearRecentSearches } = useRecentSearches();
   const { trending } = useTrendingSearches();
+  const { categories, isLoading: categoriesLoading } = useCategories();
+
+  // Top 6 categories sorted by priority desc → displayOrder asc
+  const topCategories = [...categories]
+    .sort((a, b) => b.priority - a.priority || a.displayOrder - b.displayOrder)
+    .slice(0, 6);
 
   const handleCategoryClick = (slug: string) => {
     if (typeof window !== 'undefined') {
@@ -143,32 +154,91 @@ export function SearchSuggestions({ onSelectSearch }: SearchSuggestionsProps) {
         </div>
       )}
 
-      {/* Popular Categories */}
+      {/* Browse by Category */}
       <div>
-        <h3 className="text-[10px] xs:text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 xs:mb-2.5 sm:mb-3">
-          Browse by Category
-        </h3>
-        <div className="grid grid-cols-2 gap-2 xs:gap-2.5 sm:gap-3">
-          {popularCategories.map((category, index) => (
-            <motion.button
-              key={category.slug}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{
-                delay:
-                  (recentSearches.length > 0 ? 0.25 : 0) +
-                  (trending.length > 0 ? 0.25 : 0) +
-                  index * 0.05,
-              }}
-              onClick={() => handleCategoryClick(category.slug)}
-              className="flex items-center justify-center p-2 xs:p-2.5 sm:p-3 rounded-lg xs:rounded-xl bg-gradient-to-br from-white to-gray-50 hover:from-[#CBB57B]/5 hover:to-[#CBB57B]/10 border border-gray-100 hover:border-[#CBB57B]/30 transition-all group"
-            >
-              <span className="text-xs xs:text-sm font-medium text-gray-700 group-hover:text-[#CBB57B] text-center leading-tight">
-                {category.name}
-              </span>
-            </motion.button>
-          ))}
+        <div className="flex items-center justify-between mb-2 xs:mb-2.5 sm:mb-3">
+          <h3 className="text-[10px] xs:text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Browse by Category
+          </h3>
+          <button
+            onClick={() => router.push('/products')}
+            className="text-[10px] xs:text-xs text-[#CBB57B] hover:text-[#b89f60] transition-colors font-medium"
+          >
+            View all
+          </button>
         </div>
+
+        {/* Skeleton */}
+        {categoriesLoading && (
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-xl bg-gray-100 h-16" />
+            ))}
+          </div>
+        )}
+
+        {/* Category cards */}
+        {!categoriesLoading && topCategories.length > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            {topCategories.map((category, index) => {
+              const fallback = FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+              const baseDelay =
+                (recentSearches.length > 0 ? 0.2 : 0) + (trending.length > 0 ? 0.2 : 0);
+
+              return (
+                <motion.button
+                  key={category.slug}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: baseDelay + index * 0.04 }}
+                  onClick={() => handleCategoryClick(category.slug)}
+                  className="group relative flex flex-col items-center gap-1.5 p-2 rounded-xl border border-gray-100 hover:border-[#CBB57B]/40 bg-white hover:bg-[#CBB57B]/5 transition-all overflow-hidden"
+                >
+                  {/* Image or coloured initial */}
+                  <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    {category.image ? (
+                      <Image
+                        src={category.image}
+                        alt={category.name}
+                        width={36}
+                        height={36}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div
+                        className={`w-full h-full flex items-center justify-center rounded-lg text-sm font-bold ${fallback}`}
+                      >
+                        {category.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Name */}
+                  <span className="text-[10px] xs:text-xs font-medium text-gray-700 group-hover:text-[#CBB57B] text-center leading-tight line-clamp-2 transition-colors">
+                    {category.name}
+                  </span>
+
+                  {/* Product count badge */}
+                  {category._count && category._count.products > 0 && (
+                    <span className="text-[9px] text-gray-400 group-hover:text-[#CBB57B]/70 transition-colors">
+                      {category._count.products} items
+                    </span>
+                  )}
+
+                  {/* Featured indicator */}
+                  {category.isFeatured && (
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#CBB57B]" />
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Empty state (categories loaded but none returned) */}
+        {!categoriesLoading && topCategories.length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-2">No categories available</p>
+        )}
       </div>
     </div>
   );
