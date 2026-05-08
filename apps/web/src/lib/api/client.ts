@@ -209,6 +209,7 @@ export async function apiClient<T = any>(endpoint: string, options: RequestInit 
 
   const config: RequestInit = {
     ...restOptions,
+    credentials: 'include', // required so httpOnly cookies (device_trust_token, etc.) are sent
     body,
     headers: {
       // Don't set Content-Type for FormData - browser will set it with boundary
