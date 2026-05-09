@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useSellerDashboard } from '@/hooks/use-seller-dashboard';
 import { useLocale, languages, type LanguageOption } from '@/contexts/locale-context';
 import Breadcrumbs from '@/components/shared/breadcrumbs';
+import useSWR from 'swr';
 import {
   User,
   Settings,
@@ -22,7 +23,20 @@ import {
   X,
   Globe,
   Check,
+  Clock,
+  AlertTriangle,
 } from 'lucide-react';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const fetcher = (url: string) =>
+  fetch(url, {
+    credentials: 'include',
+    headers: {
+      Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('auth_token') : ''}`,
+    },
+  })
+    .then((r) => r.json())
+    .then((d) => d.data || d);
 
 interface SellerTopbarProps {
   onMobileMenuToggle?: () => void;
@@ -37,6 +51,13 @@ export default function SellerTopbar({
   const { user, logout } = useAuth();
   const { summary } = useSellerDashboard();
   const t = useTranslations('sellerNav');
+
+  const { data: appStatus } = useSWR(`${API_URL}/seller/application-status`, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
+  });
+  const storeStatus = appStatus?.store?.status;
+  const isStoreActive = storeStatus === 'ACTIVE';
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -139,21 +160,38 @@ export default function SellerTopbar({
 
         {/* Center Section: Quick Links (hidden on mobile) */}
         <div className="hidden md:flex items-center gap-6">
-          <Link
-            href={summary?.store?.slug ? `/store/${summary.store.slug}` : '/'}
-            target="_blank"
-            className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-[#CBB57B] transition-colors"
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span>{t('topbar.visitStore')}</span>
-          </Link>
-          <Link
-            href="/seller/store/settings"
-            className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-[#CBB57B] transition-colors"
-          >
-            <Store className="w-4 h-4" />
-            <span>{t('topbar.storeSettings')}</span>
-          </Link>
+          {isStoreActive ? (
+            <>
+              <Link
+                href={summary?.store?.slug ? `/store/${summary.store.slug}` : '/'}
+                target="_blank"
+                className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-[#CBB57B] transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>{t('topbar.visitStore')}</span>
+              </Link>
+              <Link
+                href="/seller/store/settings"
+                className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-[#CBB57B] transition-colors"
+              >
+                <Store className="w-4 h-4" />
+                <span>{t('topbar.storeSettings')}</span>
+              </Link>
+            </>
+          ) : storeStatus === 'REJECTED' ? (
+            <Link
+              href="/become-seller"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-50 border border-red-200 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span>Application Rejected — Resubmit</span>
+            </Link>
+          ) : appStatus?.hasApplication ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200">
+              <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+              <span className="text-sm font-medium text-amber-700">Application Under Review</span>
+            </div>
+          ) : null}
         </div>
 
         {/* Right Section: Actions & User Menu */}
@@ -321,14 +359,16 @@ export default function SellerTopbar({
                       <User className="w-4 h-4" />
                       <span>{t('topbar.myProfile')}</span>
                     </Link>
-                    <Link
-                      href="/seller/store/settings"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-[#CBB57B] transition-colors"
-                      onClick={() => setAccountOpen(false)}
-                    >
-                      <Settings className="w-4 h-4" />
-                      <span>{t('topbar.storeSettings')}</span>
-                    </Link>
+                    {isStoreActive && (
+                      <Link
+                        href="/seller/store/settings"
+                        className="flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-[#CBB57B] transition-colors"
+                        onClick={() => setAccountOpen(false)}
+                      >
+                        <Settings className="w-4 h-4" />
+                        <span>{t('topbar.storeSettings')}</span>
+                      </Link>
+                    )}
                     <Link
                       href="/"
                       target="_blank"
