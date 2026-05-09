@@ -54,6 +54,9 @@ export class SellerController {
       country?: string;
       productCategories?: string[];
       monthlyVolume?: string;
+      applicationDocumentUrl?: string;
+      applicationDocumentType?: string;
+      applicationNotes?: string;
     }
   ) {
     return this.sellerService.applyToBecomeSeller(req.user.userId || req.user.id, data);
