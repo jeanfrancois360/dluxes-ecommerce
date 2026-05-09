@@ -63,7 +63,7 @@ const STEPS = [
   {
     id: 3,
     title: 'Account Approved',
-    description: 'Admin has approved your seller account',
+    description: 'Our team reviews your application and approves your store',
     icon: CheckCircle,
   },
   {
@@ -364,6 +364,19 @@ export default function SellerOnboardingPage() {
                         >
                           Set Up Payout Details <ArrowRight className="w-4 h-4" />
                         </button>
+                      </div>
+                    )}
+
+                    {step.id === 3 && store.status === 'PENDING' && (
+                      <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <Clock className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-blue-900">Awaiting Approval</p>
+                          <p className="text-sm text-blue-700">
+                            Our team typically reviews applications within 24–48 hours. You'll
+                            receive an email once a decision is made.
+                          </p>
+                        </div>
                       </div>
                     )}
 
