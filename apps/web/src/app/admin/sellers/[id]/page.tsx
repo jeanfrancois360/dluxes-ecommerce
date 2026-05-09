@@ -30,6 +30,9 @@ import {
   Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { adminPayoutAPI } from '@/lib/api/admin-payout-settings';
+import { SellerPayoutSettings } from '@/lib/api/seller-payout';
 import {
   Dialog,
   DialogContent,
@@ -159,6 +162,8 @@ function SellerDetailContent() {
   const [seller, setSeller] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [creditHistory, setCreditHistory] = useState<any[]>([]);
+  const [payoutSettings, setPayoutSettings] = useState<SellerPayoutSettings | null>(null);
+  const [payoutVerifying, setPayoutVerifying] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Modal state
@@ -205,12 +210,28 @@ function SellerDetailContent() {
     }
   }
 
+  async function fetchPayoutSettings(ownerId?: string) {
+    const id = ownerId || seller?.owner?.id;
+    if (!id) return;
+    try {
+      const data = await adminPayoutAPI.getSeller(id);
+      setPayoutSettings(data);
+    } catch {
+      /* non-critical */
+    }
+  }
+
   useEffect(() => {
     if (storeId) {
       fetchSeller();
       fetchCreditHistory();
     }
   }, [storeId]);
+
+  // Fetch payout settings once we have the seller's owner id
+  useEffect(() => {
+    if (seller?.owner?.id) fetchPayoutSettings(seller.owner.id);
+  }, [seller?.owner?.id]);
 
   async function callAction(path: string, body?: object) {
     setActionLoading(true);
@@ -623,6 +644,240 @@ function SellerDetailContent() {
                 }
               />
             </div>
+          </div>
+          {/* Payout Settings */}
+          <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-black flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-[#CBB57B]" /> Payout Settings
+              </h2>
+              <Link
+                href="/admin/payout-settings"
+                className="text-xs text-neutral-500 hover:text-black transition-colors flex items-center gap-1"
+              >
+                Manage all <Globe className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {!payoutSettings || payoutSettings.id === null ? (
+              <div className="flex items-center gap-3 p-4 bg-neutral-50 border border-neutral-200 rounded-xl">
+                <CreditCard className="w-5 h-5 text-neutral-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-neutral-600">Not configured</p>
+                  <p className="text-xs text-neutral-400">
+                    Seller has not set up payout settings yet
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Method + Verification */}
+                <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100">
+                  <div className="flex items-center gap-2.5">
+                    {payoutSettings.paymentMethod === 'STRIPE_CONNECT' && (
+                      <div className="w-8 h-8 rounded-lg bg-white border border-neutral-100 shadow-sm flex items-center justify-center">
+                        <Image
+                          src="/logos/stripe-4.svg"
+                          alt="Stripe"
+                          width={20}
+                          height={20}
+                          className="object-contain"
+                        />
+                      </div>
+                    )}
+                    {payoutSettings.paymentMethod === 'PAYPAL' && (
+                      <div className="w-8 h-8 rounded-lg bg-white border border-neutral-100 shadow-sm flex items-center justify-center">
+                        <Image
+                          src="/logos/paypal-4.svg"
+                          alt="PayPal"
+                          width={14}
+                          height={14}
+                          className="object-contain"
+                        />
+                      </div>
+                    )}
+                    {payoutSettings.paymentMethod === 'WISE' && (
+                      <div className="w-8 h-8 rounded-lg bg-white border border-neutral-100 shadow-sm flex items-center justify-center">
+                        <Image
+                          src="/logos/wise-1.svg"
+                          alt="Wise"
+                          width={20}
+                          height={20}
+                          className="object-contain"
+                        />
+                      </div>
+                    )}
+                    {payoutSettings.paymentMethod === 'bank_transfer' && (
+                      <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center">
+                        <Building className="w-4 h-4 text-neutral-500" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">
+                        {payoutSettings.paymentMethod === 'STRIPE_CONNECT'
+                          ? 'Stripe Connect'
+                          : payoutSettings.paymentMethod === 'PAYPAL'
+                            ? 'PayPal'
+                            : payoutSettings.paymentMethod === 'WISE'
+                              ? 'Wise'
+                              : 'Bank Transfer'}
+                      </p>
+                      <p className="text-xs text-neutral-400">{payoutSettings.payoutCurrency}</p>
+                    </div>
+                  </div>
+                  {payoutSettings.verified ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                      <CheckCircle className="w-3.5 h-3.5" /> Verified
+                    </span>
+                  ) : payoutSettings.rejectionNotes ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                      <XCircle className="w-3.5 h-3.5" /> Rejected
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+                      <Clock className="w-3.5 h-3.5" /> Pending
+                    </span>
+                  )}
+                </div>
+
+                {/* Method-specific details */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {payoutSettings.paymentMethod === 'bank_transfer' && (
+                    <>
+                      <InfoRow label="Bank" value={payoutSettings.bankName} />
+                      <InfoRow label="Account" value={payoutSettings.accountNumber} />
+                      <InfoRow label="Routing" value={payoutSettings.routingNumber} />
+                      <InfoRow label="Country" value={payoutSettings.bankCountry} />
+                    </>
+                  )}
+                  {payoutSettings.paymentMethod === 'STRIPE_CONNECT' && (
+                    <>
+                      <InfoRow label="Account ID" value={payoutSettings.stripeAccountId} />
+                      <div>
+                        <p className="text-xs text-neutral-500 mb-0.5">Stripe Status</p>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            payoutSettings.stripeAccountStatus === 'active'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : payoutSettings.stripeAccountStatus === 'pending'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-neutral-100 text-neutral-600'
+                          }`}
+                        >
+                          {payoutSettings.stripeAccountStatus || 'unknown'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  {payoutSettings.paymentMethod === 'PAYPAL' && (
+                    <>
+                      <InfoRow label="PayPal Email" value={payoutSettings.paypalEmail} />
+                      <div>
+                        <p className="text-xs text-neutral-500 mb-0.5">PayPal Verified</p>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${payoutSettings.paypalVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-500'}`}
+                        >
+                          {payoutSettings.paypalVerified ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  {payoutSettings.paymentMethod === 'WISE' && (
+                    <>
+                      <InfoRow label="Wise Email" value={payoutSettings.wiseEmail} />
+                      <InfoRow label="Recipient ID" value={payoutSettings.wiseRecipientId} />
+                    </>
+                  )}
+                  {payoutSettings.taxId && <InfoRow label="Tax ID" value={payoutSettings.taxId} />}
+                  {payoutSettings.taxFormType && (
+                    <InfoRow label="Tax Form" value={payoutSettings.taxFormType} />
+                  )}
+                </div>
+
+                {payoutSettings.rejectionNotes && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                    <span className="font-semibold">Rejection reason:</span>{' '}
+                    {payoutSettings.rejectionNotes}
+                  </div>
+                )}
+
+                {/* Actions */}
+                {payoutSettings.id && !payoutSettings.verified && (
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={async () => {
+                        setPayoutVerifying(true);
+                        try {
+                          await adminPayoutAPI.verify(payoutSettings.id!, { verified: true });
+                          toast.success('Payout settings verified');
+                          fetchPayoutSettings(seller.owner.id);
+                        } catch {
+                          toast.error('Failed to verify');
+                        } finally {
+                          setPayoutVerifying(false);
+                        }
+                      }}
+                      disabled={payoutVerifying}
+                      className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                    >
+                      {payoutVerifying ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" />
+                      ) : (
+                        '✓ Verify Settings'
+                      )}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const note = window.prompt('Rejection reason:');
+                        if (!note) return;
+                        setPayoutVerifying(true);
+                        try {
+                          await adminPayoutAPI.verify(payoutSettings.id!, {
+                            verified: false,
+                            rejectionNotes: note,
+                          });
+                          toast.success('Settings rejected');
+                          fetchPayoutSettings(seller.owner.id);
+                        } catch {
+                          toast.error('Failed');
+                        } finally {
+                          setPayoutVerifying(false);
+                        }
+                      }}
+                      disabled={payoutVerifying}
+                      className="flex-1 py-2 bg-neutral-100 text-neutral-700 rounded-xl text-xs font-semibold hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-50"
+                    >
+                      ✕ Reject
+                    </button>
+                  </div>
+                )}
+                {payoutSettings.paymentMethod === 'STRIPE_CONNECT' &&
+                  payoutSettings.stripeAccountId && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { url } = await adminPayoutAPI.stripeDashboard(
+                            payoutSettings.stripeAccountId!
+                          );
+                          window.open(url, '_blank');
+                        } catch {
+                          toast.error('Could not get Stripe dashboard link');
+                        }
+                      }}
+                      className="w-full py-2 border border-neutral-200 text-neutral-600 rounded-xl text-xs font-semibold hover:bg-neutral-50 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Image
+                        src="/logos/stripe-4.svg"
+                        alt="Stripe"
+                        width={14}
+                        height={14}
+                        className="object-contain"
+                      />
+                      Open Stripe Dashboard
+                    </button>
+                  )}
+              </div>
+            )}
           </div>
         </div>
 
