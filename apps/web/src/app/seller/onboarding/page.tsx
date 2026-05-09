@@ -144,7 +144,7 @@ export default function SellerOnboardingPage() {
         ]}
       />
 
-      <div className="max-w-2xl mx-auto py-10 px-4 sm:px-6">
+      <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6">
         {/* Progress summary */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
