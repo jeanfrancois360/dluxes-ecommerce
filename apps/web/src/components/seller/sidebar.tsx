@@ -116,7 +116,6 @@ const navigationGroups: NavGroup[] = [
         nameKey: 'payoutSettings',
         href: '/seller/payout-settings',
         icon: CreditCard,
-        requiresActiveStore: true,
       },
     ],
   },

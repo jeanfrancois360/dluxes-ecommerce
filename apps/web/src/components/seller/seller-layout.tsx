@@ -28,7 +28,6 @@ const ACTIVE_STORE_ROUTES = [
   '/seller/advertisements',
   '/seller/advertisement-plans',
   '/seller/earnings',
-  '/seller/payout-settings',
   '/seller/store',
   '/seller/gelato-settings',
   '/seller/vacation-mode',

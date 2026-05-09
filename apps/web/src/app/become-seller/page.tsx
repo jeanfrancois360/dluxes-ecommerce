@@ -322,10 +322,16 @@ export default function BecomeSellerPage() {
       const fd = new FormData();
       fd.append('file', file);
 
+      if (!user) {
+        toast.error('You must be logged in to upload documents.');
+        return;
+      }
+
       const res = await fetch(`${API_URL}/upload/document?folder=kyc-documents`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token') ?? ''}`,
         },
         body: fd,
       });
