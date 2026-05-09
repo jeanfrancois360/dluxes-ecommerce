@@ -71,6 +71,7 @@ const PAYMENT_METHODS: {
   label: string;
   icon: React.ElementType | null;
   logo: string | null;
+  logoSize: number;
   description: string;
   badge: string;
   badgeColor: string;
@@ -81,6 +82,7 @@ const PAYMENT_METHODS: {
     label: 'Bank Transfer',
     icon: Building2,
     logo: null,
+    logoSize: 32,
     description: 'Direct deposit to your bank account',
     badge: 'Most Common',
     badgeColor: 'bg-neutral-100 text-neutral-600',
@@ -91,6 +93,7 @@ const PAYMENT_METHODS: {
     label: 'Stripe Connect',
     icon: null,
     logo: '/logos/stripe-4.svg',
+    logoSize: 32,
     description: 'Fast, secure payouts via Stripe',
     badge: 'Recommended',
     badgeColor: 'bg-emerald-100 text-emerald-700',
@@ -101,6 +104,7 @@ const PAYMENT_METHODS: {
     label: 'PayPal',
     icon: null,
     logo: '/logos/paypal-4.svg',
+    logoSize: 22,
     description: 'Send directly to your PayPal account',
     badge: 'Instant',
     badgeColor: 'bg-blue-100 text-blue-700',
@@ -111,6 +115,7 @@ const PAYMENT_METHODS: {
     label: 'Wise',
     icon: null,
     logo: '/logos/wise-1.svg',
+    logoSize: 32,
     description: 'Low-fee international transfers',
     badge: 'Low Fees',
     badgeColor: 'bg-teal-100 text-teal-700',
@@ -397,8 +402,8 @@ export default function PayoutSettingsPage() {
                             <Image
                               src={method.logo}
                               alt={method.label}
-                              width={32}
-                              height={32}
+                              width={method.logoSize}
+                              height={method.logoSize}
                               className="object-contain"
                             />
                           </div>
