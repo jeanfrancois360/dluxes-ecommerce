@@ -2062,18 +2062,28 @@ export class SellerService {
             province: data.state,
             postalCode: data.zipCode,
             country: data.country,
-            // KYC fields — cast needed until prisma:generate runs after schema baseline recovery
-            ...({
-              businessType: data.businessType,
-              intendedCategories: data.productCategories || [],
-              monthlyVolume: data.monthlyVolume,
-              applicationDocumentUrl: data.applicationDocumentUrl,
-              applicationDocumentType: data.applicationDocumentType,
-              applicationNotes: data.applicationNotes,
-            } as any),
             status: 'PENDING',
           },
         });
+
+        // KYC fields are not yet in the generated Prisma client types — update via raw SQL
+        const categories = data.productCategories || [];
+        const arrayLiteral =
+          '{' +
+          categories
+            .map((c) => '"' + String(c).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')
+            .join(',') +
+          '}';
+        await this.prisma.$executeRaw`
+          UPDATE stores
+          SET "businessType" = ${data.businessType || null},
+              "intendedCategories" = ${arrayLiteral}::text[],
+              "monthlyVolume" = ${data.monthlyVolume || null},
+              "applicationDocumentUrl" = ${data.applicationDocumentUrl || null},
+              "applicationDocumentType" = ${data.applicationDocumentType || null},
+              "applicationNotes" = ${data.applicationNotes || null}
+          WHERE "userId" = ${userId}
+        `;
 
         // Get user info for email
         const user = await this.prisma.user.findUnique({
@@ -2137,18 +2147,28 @@ export class SellerService {
         province: data.state,
         postalCode: data.zipCode,
         country: data.country,
-        // KYC fields — cast needed until prisma:generate runs after schema baseline recovery
-        ...({
-          businessType: data.businessType,
-          intendedCategories: data.productCategories || [],
-          monthlyVolume: data.monthlyVolume,
-          applicationDocumentUrl: data.applicationDocumentUrl,
-          applicationDocumentType: data.applicationDocumentType,
-          applicationNotes: data.applicationNotes,
-        } as any),
         status: 'PENDING',
       },
     });
+
+    // KYC fields are not yet in the generated Prisma client types — set via raw SQL
+    const newCategories = data.productCategories || [];
+    const newArrayLiteral =
+      '{' +
+      newCategories
+        .map((c) => '"' + String(c).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')
+        .join(',') +
+      '}';
+    await this.prisma.$executeRaw`
+      UPDATE stores
+      SET "businessType" = ${data.businessType || null},
+          "intendedCategories" = ${newArrayLiteral}::text[],
+          "monthlyVolume" = ${data.monthlyVolume || null},
+          "applicationDocumentUrl" = ${data.applicationDocumentUrl || null},
+          "applicationDocumentType" = ${data.applicationDocumentType || null},
+          "applicationNotes" = ${data.applicationNotes || null}
+      WHERE id = ${store.id}
+    `;
 
     // Send application submitted email
     await this.emailService.sendSellerApplicationSubmitted(user.email, {
