@@ -2031,6 +2031,9 @@ export class SellerService {
       country?: string;
       productCategories?: string[];
       monthlyVolume?: string;
+      applicationDocumentUrl?: string;
+      applicationDocumentType?: string;
+      applicationNotes?: string;
     }
   ) {
     // Check if user already has a store
@@ -2061,6 +2064,15 @@ export class SellerService {
             province: data.state,
             postalCode: data.zipCode,
             country: data.country,
+            // KYC fields — cast needed until prisma:generate runs after schema baseline recovery
+            ...({
+              businessType: data.businessType,
+              intendedCategories: data.productCategories || [],
+              monthlyVolume: data.monthlyVolume,
+              applicationDocumentUrl: data.applicationDocumentUrl,
+              applicationDocumentType: data.applicationDocumentType,
+              applicationNotes: data.applicationNotes,
+            } as any),
             status: 'PENDING',
           },
         });
@@ -2121,6 +2133,15 @@ export class SellerService {
         province: data.state,
         postalCode: data.zipCode,
         country: data.country,
+        // KYC fields — cast needed until prisma:generate runs after schema baseline recovery
+        ...({
+          businessType: data.businessType,
+          intendedCategories: data.productCategories || [],
+          monthlyVolume: data.monthlyVolume,
+          applicationDocumentUrl: data.applicationDocumentUrl,
+          applicationDocumentType: data.applicationDocumentType,
+          applicationNotes: data.applicationNotes,
+        } as any),
         status: 'PENDING',
       },
     });

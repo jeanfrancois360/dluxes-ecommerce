@@ -305,6 +305,14 @@ model Store {
   country    String?
   postalCode String?
 
+  // KYC / Seller Application
+  businessType            String?  // individual | sole_proprietor | llc | corporation | registered_business
+  intendedCategories      String[] // Product categories seller intends to list
+  monthlyVolume           String?  // Expected monthly revenue range
+  applicationDocumentUrl  String?  // URL to uploaded verification document
+  applicationDocumentType String?  // government_id | business_registration | tax_certificate | other
+  applicationNotes        String?  @db.Text // Free-text notes from seller during application
+
   // Store Status
   status     StoreStatus @default(PENDING)
   isActive   Boolean     @default(true)

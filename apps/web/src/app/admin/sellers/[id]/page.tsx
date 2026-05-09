@@ -110,38 +110,44 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 function mapSellerData(apiData: any) {
+  const s = apiData.store || apiData;
   return {
-    id: apiData.store?.id || apiData.id,
-    name: apiData.store?.name || apiData.name,
-    slug: apiData.store?.slug || apiData.slug,
-    email: apiData.store?.email || apiData.email,
-    phone: apiData.store?.phone || apiData.phone,
-    description: apiData.store?.description || apiData.description,
-    status: apiData.store?.status || apiData.status,
-    verified: apiData.store?.verified || apiData.verified,
-    verifiedAt: apiData.store?.verifiedAt || apiData.verifiedAt,
-    creditsBalance: apiData.store?.creditsBalance ?? apiData.creditsBalance ?? 0,
-    creditsExpiresAt: apiData.store?.creditsExpiresAt || apiData.creditsExpiresAt,
-    creditsGraceEndsAt: apiData.store?.creditsGraceEndsAt || apiData.creditsGraceEndsAt,
-    website: apiData.store?.website || apiData.website,
-    address: apiData.store?.address || apiData.address,
-    city: apiData.store?.city || apiData.city,
-    state: apiData.store?.state || apiData.state,
-    zipCode: apiData.store?.zipCode || apiData.zipCode,
-    country: apiData.store?.country || apiData.country,
-    businessType: apiData.store?.businessType || apiData.businessType,
-    businessName: apiData.store?.businessName || apiData.businessName,
-    productCategories: apiData.store?.productCategories || apiData.productCategories,
-    appliedAt: apiData.store?.createdAt || apiData.createdAt,
-    createdAt: apiData.store?.createdAt || apiData.createdAt,
+    id: s.id,
+    name: s.name,
+    slug: s.slug,
+    email: s.email,
+    phone: s.phone,
+    description: s.description,
+    status: s.status,
+    verified: s.verified,
+    verifiedAt: s.verifiedAt,
+    creditsBalance: s.creditsBalance ?? 0,
+    creditsExpiresAt: s.creditsExpiresAt,
+    creditsGraceEndsAt: s.creditsGraceEndsAt,
+    website: s.website,
+    address1: s.address1,
+    city: s.city,
+    province: s.province,
+    country: s.country,
+    postalCode: s.postalCode,
+    taxId: s.taxId,
+    // KYC
+    businessType: s.businessType,
+    intendedCategories: s.intendedCategories || [],
+    monthlyVolume: s.monthlyVolume,
+    applicationDocumentUrl: s.applicationDocumentUrl,
+    applicationDocumentType: s.applicationDocumentType,
+    applicationNotes: s.applicationNotes,
+    appliedAt: s.createdAt,
+    createdAt: s.createdAt,
     owner: apiData.owner || apiData.user,
-    approvedAt: apiData.owner?.sellerApprovedAt || apiData.approvedAt,
-    approvedBy: apiData.owner?.sellerApprovedBy || apiData.approvedBy,
-    rejectedAt: apiData.owner?.sellerRejectedAt || apiData.rejectedAt,
-    rejectionNote: apiData.owner?.sellerRejectionNote || apiData.rejectionNote,
-    suspendedAt: apiData.owner?.sellerSuspendedAt || apiData.suspendedAt,
-    suspensionNote: apiData.owner?.sellerSuspensionNote || apiData.suspensionNote,
-    _count: { products: apiData.store?.totalProducts || apiData._count?.products || 0 },
+    approvedAt: apiData.owner?.sellerApprovedAt,
+    approvedBy: apiData.owner?.sellerApprovedBy,
+    rejectedAt: apiData.owner?.sellerRejectedAt,
+    rejectionNote: apiData.owner?.sellerRejectionNote,
+    suspendedAt: apiData.owner?.sellerSuspendedAt,
+    suspensionNote: apiData.owner?.sellerSuspensionNote,
+    _count: { products: s.totalProducts || apiData._count?.products || 0 },
   };
 }
 
@@ -476,37 +482,72 @@ function SellerDetailContent() {
               <InfoRow label="Store Email" value={seller.email} />
               <InfoRow label="Phone" value={seller.phone} />
               <InfoRow label="Website" value={seller.website} />
-              <InfoRow label="Business Type" value={seller.businessType} />
-              <InfoRow label="Business Name" value={seller.businessName} />
+              <InfoRow label="Tax ID / VAT" value={seller.taxId} />
             </div>
             {seller.description && (
               <div className="mt-4 pt-4 border-t border-neutral-100">
-                <p className="text-xs text-neutral-500 mb-1">Description</p>
+                <p className="text-xs text-neutral-500 mb-1">Store Description</p>
                 <p className="text-sm text-black">{seller.description}</p>
               </div>
             )}
-            {(seller.address || seller.city) && (
+            {(seller.address1 || seller.city) && (
               <div className="mt-4 pt-4 border-t border-neutral-100">
                 <p className="text-xs text-neutral-500 mb-1 flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5" /> Address
                 </p>
                 <p className="text-sm text-black">
-                  {[seller.address, seller.city, seller.state, seller.zipCode, seller.country]
+                  {[
+                    seller.address1,
+                    seller.city,
+                    seller.province,
+                    seller.postalCode,
+                    seller.country,
+                  ]
                     .filter(Boolean)
                     .join(', ')}
                 </p>
               </div>
             )}
-            {seller.productCategories?.length > 0 && (
+          </div>
+
+          {/* KYC / Application Details */}
+          <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+            <h2 className="text-base font-bold text-black mb-4 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#CBB57B]" /> KYC &amp; Application Details
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-neutral-500 mb-0.5">Business Type</p>
+                {seller.businessType ? (
+                  <span className="inline-block px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-xs font-semibold capitalize">
+                    {seller.businessType.replace(/_/g, ' ')}
+                  </span>
+                ) : (
+                  <p className="text-sm text-neutral-400">Not provided</p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-neutral-500 mb-0.5">Expected Monthly Volume</p>
+                {seller.monthlyVolume ? (
+                  <span className="inline-block px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-xs font-semibold">
+                    {seller.monthlyVolume.replace(/-/g, ' ')}
+                  </span>
+                ) : (
+                  <p className="text-sm text-neutral-400">Not provided</p>
+                )}
+              </div>
+            </div>
+
+            {seller.intendedCategories?.length > 0 && (
               <div className="mt-4 pt-4 border-t border-neutral-100">
                 <p className="text-xs text-neutral-500 mb-2 flex items-center gap-1">
-                  <Tag className="w-3.5 h-3.5" /> Product Categories
+                  <Tag className="w-3.5 h-3.5" /> Intended Product Categories
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {seller.productCategories.map((cat: string) => (
+                  {seller.intendedCategories.map((cat: string) => (
                     <span
                       key={cat}
-                      className="px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-xs font-medium"
+                      className="px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-xs font-medium capitalize"
                     >
                       {cat}
                     </span>
@@ -514,6 +555,45 @@ function SellerDetailContent() {
                 </div>
               </div>
             )}
+
+            {seller.applicationNotes && (
+              <div className="mt-4 pt-4 border-t border-neutral-100">
+                <p className="text-xs text-neutral-500 mb-1">Seller Notes</p>
+                <p className="text-sm text-black bg-neutral-50 rounded-lg p-3">
+                  {seller.applicationNotes}
+                </p>
+              </div>
+            )}
+
+            {/* Verification Document */}
+            <div className="mt-4 pt-4 border-t border-neutral-100">
+              <p className="text-xs text-neutral-500 mb-2 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" /> Verification Document
+              </p>
+              {seller.applicationDocumentUrl ? (
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-green-800">Document submitted</p>
+                    <p className="text-xs text-green-600 capitalize">
+                      {seller.applicationDocumentType?.replace(/_/g, ' ') || 'Unspecified type'}
+                    </p>
+                  </div>
+                  <a
+                    href={seller.applicationDocumentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-green-300 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-50 transition-colors"
+                  >
+                    View Document
+                  </a>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <ShieldX className="w-4 h-4 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-700">No verification document submitted</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Owner Info */}
