@@ -255,7 +255,7 @@ export default function BecomeSellerPage() {
     if (s === 2) {
       if (!form.businessType) e.businessType = 'Select a business type';
       if (!form.country.trim()) e.country = 'Country is required';
-      const taxIdRequired = ['LLC', 'Corporation', 'Registered Business'].includes(
+      const taxIdRequired = ['llc', 'corporation', 'registered_business'].includes(
         form.businessType
       );
       if (taxIdRequired && !form.taxId.trim())
@@ -537,7 +537,7 @@ export default function BecomeSellerPage() {
                     <div>
                       <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                         Tax ID / EIN / VAT
-                        {['LLC', 'Corporation', 'Registered Business'].includes(
+                        {['llc', 'corporation', 'registered_business'].includes(
                           form.businessType
                         ) ? (
                           <span className="text-red-500 ml-0.5">*</span>
@@ -556,7 +556,7 @@ export default function BecomeSellerPage() {
                       />
                       {errors.taxId ? (
                         <p className="text-red-500 text-xs mt-1">{errors.taxId}</p>
-                      ) : !['LLC', 'Corporation', 'Registered Business'].includes(
+                      ) : !['llc', 'corporation', 'registered_business'].includes(
                           form.businessType
                         ) ? (
                         <p className="text-neutral-400 text-xs mt-1">
