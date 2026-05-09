@@ -194,8 +194,10 @@ export default function BecomeSellerPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      if (user.role === 'SELLER') router.push('/seller');
+      // Admins don't need this page
       if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') router.push('/admin/dashboard');
+      // SELLERS are allowed here to complete missing KYC (registered-as-seller path)
+      // BUYERS who already have an active store are redirected
     }
   }, [authLoading, user]);
 

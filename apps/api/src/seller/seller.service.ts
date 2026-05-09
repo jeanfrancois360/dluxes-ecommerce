@@ -2113,9 +2113,13 @@ export class SellerService {
       throw new NotFoundException('User not found');
     }
 
-    if (user.role !== 'BUYER' && user.role !== 'CUSTOMER') {
+    // Allow SELLER role users who registered directly (store auto-created, KYC still needed)
+    if (user.role !== 'BUYER' && user.role !== 'CUSTOMER' && user.role !== 'SELLER') {
       throw new ForbiddenException('Only buyers can apply to become sellers');
     }
+
+    // If they are SELLER with no store yet, fall through to create one below
+    // (Edge case: SELLER role but store creation failed at registration)
 
     // Create the store with PENDING status
     const store = await this.prisma.store.create({
@@ -2177,6 +2181,9 @@ export class SellerService {
         status: true,
         createdAt: true,
         verifiedAt: true,
+        taxId: true,
+        phone: true,
+        country: true,
       },
     });
 
@@ -2190,10 +2197,14 @@ export class SellerService {
       };
     }
 
+    // KYC is considered complete if the store has at minimum a phone and country
+    const kycComplete = !!(store.phone && store.country);
+
     return {
       success: true,
       data: {
         hasApplication: true,
+        kycComplete,
         store: {
           id: store.id,
           name: store.name,

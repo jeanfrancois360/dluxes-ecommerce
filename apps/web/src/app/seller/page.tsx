@@ -12,18 +12,39 @@ import {
   Settings,
   Megaphone,
   TrendingUp,
+  ShieldAlert,
+  ArrowRight,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 import StatCard from '@/components/seller/stat-card';
 import QuickActionCard from '@/components/seller/quick-action-card';
 import PageHeader from '@/components/seller/page-header';
 import CreditSummary from '@/components/seller/credit-summary';
 import { useSellerDashboard } from '@/hooks/use-seller-dashboard';
+import useSWR from 'swr';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const fetcher = (url: string) =>
+  fetch(url, {
+    credentials: 'include',
+    headers: {
+      Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('auth_token') : ''}`,
+    },
+  })
+    .then((r) => r.json())
+    .then((d) => d.data || d);
 
 export default function SellerDashboardPage() {
   const { summary, isLoading } = useSellerDashboard();
   const t = useTranslations('sellerDashboard');
   const [activeTab, setActiveTab] = useState<'orders' | 'reviews' | 'inquiries'>('orders');
+
+  const { data: appStatus } = useSWR(`${API_URL}/seller/application-status`, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
+  });
+  const kycIncomplete = appStatus?.hasApplication && appStatus?.kycComplete === false;
 
   const quickActions = [
     {
@@ -68,6 +89,30 @@ export default function SellerDashboardPage() {
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
       <PageHeader title={t('pageTitle')} description={t('pageSubtitle')} />
+
+      {/* KYC Incomplete Banner */}
+      {kycIncomplete && (
+        <div className="mx-4 sm:mx-6 lg:mx-8 mt-6">
+          <div className="flex items-start gap-4 p-5 bg-amber-50 border border-amber-300 rounded-xl">
+            <ShieldAlert className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                Complete your seller application
+              </p>
+              <p className="text-sm text-amber-700 mt-0.5">
+                Your account was registered as a seller but your application is missing business
+                details and verification documents. Admins review complete applications first.
+              </p>
+            </div>
+            <Link
+              href="/become-seller"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors whitespace-nowrap flex-shrink-0"
+            >
+              Complete Application <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-8">
