@@ -297,13 +297,23 @@ export default function SellerTopbar({
           </div>
 
           {/* Messages */}
-          <Link
-            href="/seller/inquiries"
-            className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
-            aria-label="Messages"
-          >
-            <MessageSquare className="w-5 h-5 text-neutral-700" />
-          </Link>
+          {isStoreActive ? (
+            <Link
+              href="/seller/inquiries"
+              className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+              aria-label="Messages"
+            >
+              <MessageSquare className="w-5 h-5 text-neutral-700" />
+            </Link>
+          ) : (
+            <div
+              className="p-2 rounded-lg opacity-40 cursor-not-allowed"
+              title="Available after your store is approved"
+              aria-label="Messages (locked)"
+            >
+              <MessageSquare className="w-5 h-5 text-neutral-700" />
+            </div>
+          )}
 
           {/* User Account Menu */}
           <div className="relative" ref={accountRef}>
