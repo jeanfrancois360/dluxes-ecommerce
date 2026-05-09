@@ -53,18 +53,27 @@ const STEPS = [
   },
   {
     id: 2,
+    title: 'Set Up Payout Details',
+    description: 'Add your bank account so you can receive payouts when approved',
+    icon: CreditCard,
+    href: '/seller/payout-settings',
+    cta: 'Set Up Payouts',
+    alwaysAvailable: true,
+  },
+  {
+    id: 3,
     title: 'Account Approved',
     description: 'Admin has approved your seller account',
     icon: CheckCircle,
   },
   {
-    id: 3,
+    id: 4,
     title: 'Purchase Credits',
     description: 'Get credits to activate your products',
     icon: CreditCard,
   },
   {
-    id: 4,
+    id: 5,
     title: 'Create Products',
     description: 'Add your first product to start selling',
     icon: Package,
@@ -343,7 +352,22 @@ export default function SellerOnboardingPage() {
                       </div>
                     )}
 
-                    {step.id === 2 && store.status === 'ACTIVE' && (
+                    {step.id === 2 && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          You can set this up now while you wait for approval — no payout will be
+                          triggered until your store is active and orders are fulfilled.
+                        </p>
+                        <button
+                          onClick={() => router.push('/seller/payout-settings')}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-lg text-sm font-semibold hover:bg-neutral-800 transition-colors"
+                        >
+                          Set Up Payout Details <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+
+                    {step.id === 3 && store.status === 'ACTIVE' && (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 text-green-600">
                           <CheckCircle className="w-5 h-5" />
@@ -358,7 +382,7 @@ export default function SellerOnboardingPage() {
                       </div>
                     )}
 
-                    {step.id === 3 && (
+                    {step.id === 4 && (
                       <div className="space-y-3">
                         {credits?.creditsBalance > 0 ? (
                           <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -396,7 +420,7 @@ export default function SellerOnboardingPage() {
                       </div>
                     )}
 
-                    {step.id === 4 && (
+                    {step.id === 5 && (
                       <div className="space-y-3">
                         {products?.total > 0 ? (
                           <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -446,7 +470,7 @@ export default function SellerOnboardingPage() {
         </div>
 
         {/* Completion Message */}
-        {currentStep >= 4 && products?.total > 0 && (
+        {currentStep >= 5 && products?.total > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

@@ -7,6 +7,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import compression from 'compression';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
@@ -60,6 +61,9 @@ async function bootstrap() {
     })
   );
   console.log('[BOOTSTRAP] Step 3.6: Security headers configured with Helmet');
+
+  // Parse cookies (needed for JWT cookie fallback)
+  app.use(cookieParser());
 
   // Enable compression for responses
   app.use(compression());
