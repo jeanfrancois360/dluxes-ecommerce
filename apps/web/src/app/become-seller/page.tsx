@@ -136,7 +136,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
                   done
                     ? 'bg-green-500 border-green-500 text-white'
                     : active
-                      ? 'bg-[#CBB57B] border-[#CBB57B] text-white'
+                      ? 'bg-black border-black text-white'
                       : 'bg-white border-neutral-200 text-neutral-400'
                 }`}
               >
@@ -144,7 +144,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
               </div>
               <p
                 className={`text-xs mt-1.5 font-medium ${
-                  active ? 'text-[#CBB57B]' : done ? 'text-green-600' : 'text-neutral-400'
+                  active ? 'text-black' : done ? 'text-green-600' : 'text-neutral-400'
                 }`}
               >
                 {step.label}
@@ -629,8 +629,8 @@ export default function BecomeSellerPage() {
                           onClick={() => toggleCategory(cat)}
                           className={`px-3.5 py-2.5 border rounded-xl text-sm font-medium text-left transition-all ${
                             form.productCategories.includes(cat)
-                              ? 'bg-[#CBB57B] border-[#CBB57B] text-white'
-                              : 'border-neutral-200 text-neutral-700 hover:border-[#CBB57B]'
+                              ? 'bg-black border-black text-white'
+                              : 'border-neutral-200 text-neutral-700 hover:border-black'
                           }`}
                         >
                           {cat}
@@ -853,7 +853,7 @@ export default function BecomeSellerPage() {
               <button
                 type="button"
                 onClick={next}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#CBB57B] text-white rounded-lg text-sm font-semibold hover:bg-[#A89968] transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-black text-white rounded-lg text-sm font-semibold hover:bg-neutral-800 transition-colors"
               >
                 Continue <ChevronRight className="w-4 h-4" />
               </button>
@@ -862,7 +862,7 @@ export default function BecomeSellerPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-2 px-7 py-2.5 bg-[#CBB57B] text-white rounded-lg text-sm font-semibold hover:bg-[#A89968] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-7 py-2.5 bg-black text-white rounded-lg text-sm font-semibold hover:bg-neutral-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
