@@ -23,6 +23,7 @@ import {
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
+  ArrowRight,
   Calendar,
   Package,
   CreditCard,
@@ -59,10 +60,14 @@ interface Commission {
 interface Payout {
   id: string;
   amount: number;
+  currency: string;
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
-  method: string;
-  transactionId: string | null;
+  paymentMethod: string;
+  paymentReference: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
   processedAt: string | null;
+  scheduledAt: string | null;
   createdAt: string;
   store?: {
     name: string;
@@ -70,6 +75,19 @@ interface Payout {
   _count?: {
     commissions: number;
   };
+}
+
+interface PayoutStats {
+  totalPaidAllTime: number;
+  totalPayoutsCount: number;
+  pendingAmount: number;
+  nextPayoutAmount: number;
+  lastPayoutDate: string | null;
+  lastPayoutAmount: number;
+  lastPayoutCurrency: string;
+  payoutSchedule: string;
+  nextPayoutDate: string;
+  currency: string;
 }
 
 type TabType = 'overview' | 'commissions' | 'payouts';
@@ -138,9 +156,11 @@ export default function SellerEarningsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [requestingPayout, setRequestingPayout] = useState(false);
 
   // Data states
   const [summary, setSummary] = useState<CommissionSummary | null>(null);
+  const [payoutStats, setPayoutStats] = useState<PayoutStats | null>(null);
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
 
@@ -169,6 +189,16 @@ export default function SellerEarningsPage() {
     } catch (err: any) {
       console.error('Failed to fetch summary:', err);
       setError(err.message || 'Failed to fetch earnings summary');
+    }
+  };
+
+  // Fetch payout stats
+  const fetchPayoutStats = async () => {
+    try {
+      const response = await api.get('/payouts/seller/stats');
+      setPayoutStats(response);
+    } catch (err: any) {
+      console.error('Failed to fetch payout stats:', err);
     }
   };
 
@@ -209,8 +239,8 @@ export default function SellerEarningsPage() {
   useEffect(() => {
     if (user && user.role === 'SELLER') {
       setIsLoading(true);
-      Promise.all([fetchSummary(), fetchCommissions(), fetchPayouts()]).finally(() =>
-        setIsLoading(false)
+      Promise.all([fetchSummary(), fetchPayoutStats(), fetchCommissions(), fetchPayouts()]).finally(
+        () => setIsLoading(false)
       );
     }
   }, [user]);
@@ -231,8 +261,22 @@ export default function SellerEarningsPage() {
 
   const handleRefresh = async () => {
     setIsLoading(true);
-    await Promise.all([fetchSummary(), fetchCommissions(), fetchPayouts()]);
+    await Promise.all([fetchSummary(), fetchPayoutStats(), fetchCommissions(), fetchPayouts()]);
     setIsLoading(false);
+  };
+
+  const handleRequestPayout = async () => {
+    if (!window.confirm(t('requestPayout.confirm'))) return;
+    setRequestingPayout(true);
+    try {
+      await api.post('/payouts/seller/request', {});
+      await Promise.all([fetchPayoutStats(), fetchPayouts()]);
+      window.alert(t('requestPayout.success'));
+    } catch (err: any) {
+      window.alert(err.message || t('requestPayout.error'));
+    } finally {
+      setRequestingPayout(false);
+    }
   };
 
   if (authLoading || isLoading) {
@@ -261,14 +305,30 @@ export default function SellerEarningsPage() {
           { label: t('breadcrumbs.earnings') },
         ]}
         actions={
-          <button
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-[#CBB57B] rounded-lg hover:bg-neutral-900 hover:text-[#D4C794] transition-all border border-[#CBB57B]"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {t('refresh')}
-          </button>
+          <div className="flex items-center gap-3">
+            {payoutStats && payoutStats.nextPayoutAmount > 0 && (
+              <button
+                onClick={handleRequestPayout}
+                disabled={requestingPayout}
+                className="flex items-center gap-2 px-4 py-2 bg-[#CBB57B] text-black rounded-lg hover:bg-[#D4C794] transition-all font-medium disabled:opacity-60"
+              >
+                {requestingPayout ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ArrowUpRight className="w-4 h-4" />
+                )}
+                {t('requestPayout.button')}
+              </button>
+            )}
+            <button
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-black text-[#CBB57B] rounded-lg hover:bg-neutral-900 hover:text-[#D4C794] transition-all border border-[#CBB57B]"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              {t('refresh')}
+            </button>
+          </div>
         }
       />
 
@@ -366,6 +426,71 @@ export default function SellerEarningsPage() {
           </motion.div>
         </div>
 
+        {/* Payout Schedule Banner */}
+        {payoutStats && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5 mb-8 flex flex-wrap items-center gap-6"
+          >
+            <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#CBB57B]/20 to-[#CBB57B]/10 rounded-xl flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-[#CBB57B]" />
+              </div>
+              <div>
+                <p className="text-xs text-neutral-500">{t('payoutBanner.schedule')}</p>
+                <p className="font-semibold text-black capitalize">
+                  {payoutStats.payoutSchedule.toLowerCase()}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center">
+                <Clock className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-neutral-500">{t('payoutBanner.nextPayout')}</p>
+                <p className="font-semibold text-black">{formatDate(payoutStats.nextPayoutDate)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-green-50 rounded-xl flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-neutral-500">{t('payoutBanner.totalPaid')}</p>
+                <p className="font-semibold text-black">
+                  {formatCurrencyAmount(payoutStats.totalPaidAllTime)} {payoutStats.currency}
+                </p>
+              </div>
+            </div>
+            {payoutStats.lastPayoutDate && (
+              <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+                <div className="w-10 h-10 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-xl flex items-center justify-center">
+                  <ArrowDownRight className="w-5 h-5 text-neutral-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-500">{t('payoutBanner.lastPayout')}</p>
+                  <p className="font-semibold text-black">
+                    {formatCurrencyAmount(payoutStats.lastPayoutAmount)}{' '}
+                    {payoutStats.lastPayoutCurrency}
+                  </p>
+                  <p className="text-xs text-neutral-400">
+                    {formatDate(payoutStats.lastPayoutDate)}
+                  </p>
+                </div>
+              </div>
+            )}
+            <Link
+              href="/seller/payout-settings"
+              className="flex items-center gap-1 text-sm text-[#CBB57B] hover:text-[#D4C794] font-medium ml-auto"
+            >
+              {t('payoutBanner.manageSettings')}
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </motion.div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-neutral-200">
           {[
@@ -456,7 +581,7 @@ export default function SellerEarningsPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-black">
-                        {formatCurrencyAmount(payout.amount)}
+                        {formatCurrencyAmount(payout.amount)} {payout.currency || ''}
                       </p>
                       <StatusBadge status={payout.status} type="payout" t={t} />
                     </div>
@@ -637,7 +762,8 @@ export default function SellerEarningsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className="capitalize">
-                          {payout.method || t('payoutHistory.bankTransfer')}
+                          {(payout.paymentMethod || '').replace(/_/g, ' ').toLowerCase() ||
+                            t('payoutHistory.bankTransfer')}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
@@ -645,14 +771,14 @@ export default function SellerEarningsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <span className="font-semibold text-black">
-                          {formatCurrencyAmount(payout.amount)}
+                          {formatCurrencyAmount(payout.amount)} {payout.currency || ''}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <StatusBadge status={payout.status} type="payout" t={t} />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500 font-mono">
-                        {payout.transactionId || '-'}
+                        {payout.paymentReference || '-'}
                       </td>
                     </tr>
                   ))}
