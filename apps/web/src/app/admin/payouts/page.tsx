@@ -808,12 +808,15 @@ function PayoutsContent() {
                           />
                         </TableCell>
                         <TableCell>
-                          <div>
+                          <Link
+                            href={`/admin/sellers/${payout.sellerId}`}
+                            className="hover:underline"
+                          >
                             <div className="font-medium">{payout.store.name}</div>
                             <div className="text-sm text-muted-foreground">
                               {payout.seller.email}
                             </div>
-                          </div>
+                          </Link>
                         </TableCell>
                         <TableCell className="font-medium">
                           ${formatCurrencyAmount(payout.amount, 2)} {payout.currency}
@@ -826,7 +829,17 @@ function PayoutsContent() {
                         <TableCell>
                           <Badge variant="outline">{payout.paymentMethod || 'N/A'}</Badge>
                         </TableCell>
-                        <TableCell>{getStatusBadge(payout.status)}</TableCell>
+                        <TableCell>
+                          <div>{getStatusBadge(payout.status)}</div>
+                          {payout.paymentReference && (
+                            <div
+                              className="text-xs text-muted-foreground mt-1 font-mono truncate max-w-[120px]"
+                              title={payout.paymentReference}
+                            >
+                              {payout.paymentReference}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{new Date(payout.scheduledAt).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
