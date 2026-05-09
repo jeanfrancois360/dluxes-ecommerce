@@ -457,7 +457,7 @@ export default function BecomeSellerPage() {
                         type="tel"
                         value={form.phone}
                         onChange={(e) => set('phone', e.target.value)}
-                        placeholder="+1 555 000 0000"
+                        placeholder="+XX XXX XXX XXXX"
                         className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B] ${
                           errors.phone ? 'border-red-400' : 'border-neutral-300'
                         }`}
@@ -566,7 +566,7 @@ export default function BecomeSellerPage() {
                         type="text"
                         value={form.address}
                         onChange={(e) => set('address', e.target.value)}
-                        placeholder="123 Main Street"
+                        placeholder="Street address, building, floor..."
                         className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
                       />
                     </div>
@@ -578,7 +578,7 @@ export default function BecomeSellerPage() {
                         type="text"
                         value={form.city}
                         onChange={(e) => set('city', e.target.value)}
-                        placeholder="New York"
+                        placeholder="City"
                         className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
                       />
                     </div>
@@ -590,7 +590,7 @@ export default function BecomeSellerPage() {
                         type="text"
                         value={form.state}
                         onChange={(e) => set('state', e.target.value)}
-                        placeholder="NY"
+                        placeholder="State / Province / Region"
                         className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
                       />
                     </div>
