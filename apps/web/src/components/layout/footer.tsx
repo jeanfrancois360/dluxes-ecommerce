@@ -411,7 +411,6 @@ export function Footer() {
                 { src: '/logos/mastercard-modern-design-.svg', alt: 'Mastercard', width: 36 },
                 { src: '/logos/paypal-3.svg', alt: 'PayPal', width: 64 },
                 { src: '/logos/stripe-4.svg', alt: 'Stripe', width: 50 },
-                { src: '/logos/wise-1.svg', alt: 'Wise', width: 44 },
               ].map((pm) => (
                 <div
                   key={pm.alt}
