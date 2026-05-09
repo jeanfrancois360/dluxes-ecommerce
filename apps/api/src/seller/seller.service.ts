@@ -2043,13 +2043,11 @@ export class SellerService {
 
     if (existingStore) {
       if (existingStore.status === 'ACTIVE') {
-        throw new ForbiddenException('You are already a seller');
+        throw new ForbiddenException('You are already an active seller');
       }
-      if (existingStore.status === 'PENDING') {
-        throw new ForbiddenException('Your seller application is already pending review');
-      }
-      if (existingStore.status === 'REJECTED') {
-        // Allow re-application by updating the existing store
+
+      // Allow update for PENDING (KYC completion) and REJECTED (re-application)
+      if (existingStore.status === 'PENDING' || existingStore.status === 'REJECTED') {
         const updatedStore = await this.prisma.store.update({
           where: { userId },
           data: {
@@ -2091,10 +2089,12 @@ export class SellerService {
           });
         }
 
+        const isPending = existingStore.status === 'PENDING';
         return {
           success: true,
-          message:
-            'Seller application resubmitted successfully. We will review your application and get back to you soon.',
+          message: isPending
+            ? 'Application details updated successfully. Our team will review your complete application.'
+            : 'Seller application resubmitted successfully. We will review your application and get back to you soon.',
           store: {
             id: updatedStore.id,
             name: updatedStore.name,

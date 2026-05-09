@@ -95,11 +95,11 @@ export default function RegisterPage() {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (isSuccess && countdown === 0) {
-      // Redirect handled by auth context, but we can add a fallback
-      router.push('/');
+      // Sellers go to onboarding to complete their KYC application
+      router.push(accountType === 'SELLER' ? '/seller/onboarding' : '/dashboard/buyer');
     }
     return undefined;
-  }, [isSuccess, countdown, router]);
+  }, [isSuccess, countdown, router, accountType]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -172,10 +172,21 @@ export default function RegisterPage() {
   // Show success screen
   if (isSuccess) {
     return (
-      <AuthLayout title={t('welcomeToNextPik')} subtitle={t('accountCreatedSuccess')}>
+      <AuthLayout
+        title={accountType === 'SELLER' ? 'Account Created' : t('welcomeToNextPik')}
+        subtitle={
+          accountType === 'SELLER'
+            ? 'Complete your seller application to start selling'
+            : t('accountCreatedSuccess')
+        }
+      >
         <SuccessAnimation
-          title={accountType === 'SELLER' ? t('storeCreated') : t('accountCreated')}
-          message={accountType === 'SELLER' ? t('storeReadyMessage') : t('welcomeExploreMessage')}
+          title={accountType === 'SELLER' ? 'Seller Account Created' : t('accountCreated')}
+          message={
+            accountType === 'SELLER'
+              ? `Redirecting you to complete your seller application in ${countdown}s...`
+              : t('welcomeExploreMessage')
+          }
           countdown={countdown}
         />
       </AuthLayout>
