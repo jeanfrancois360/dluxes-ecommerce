@@ -349,6 +349,8 @@ export class AuthService {
     firstName: string;
     lastName: string;
     role?: any;
+    storeName?: string;
+    storeDescription?: string;
     sessionId?: string;
     referralCode?: string;
     deviceInfo?: {
@@ -368,6 +370,26 @@ export class AuthService {
       lastName: data.lastName,
       role: data.role || ('BUYER' as any),
     });
+
+    // Auto-create a PENDING store for users who register directly as SELLER
+    if (data.role === 'SELLER' && data.storeName) {
+      const slug = data.storeName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .slice(0, 50);
+      await this.prisma.store.create({
+        data: {
+          userId: user.id,
+          name: data.storeName,
+          slug: `${slug}-${Date.now()}`,
+          description: data.storeDescription,
+          email: data.email,
+          status: 'PENDING',
+        },
+      });
+    }
 
     // Referral System (v2.11.0) - NON-BLOCKING
     // Auto-generate referral code for new user
