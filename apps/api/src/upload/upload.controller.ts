@@ -51,6 +51,33 @@ export class UploadController {
   }
 
   /**
+   * Upload a document (image or PDF) — used for KYC verification
+   * @route POST /upload/document
+   */
+  @Post('document')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadDocument(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('folder') folder?: string
+  ) {
+    try {
+      const data = await this.uploadService.uploadFile(file, folder || 'documents', {
+        allowPdf: true,
+      });
+      return {
+        success: true,
+        data,
+        message: 'Document uploaded successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
    * Upload multiple images
    * @route POST /upload/images
    */

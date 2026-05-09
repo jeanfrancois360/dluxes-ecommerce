@@ -320,9 +320,9 @@ export default function BecomeSellerPage() {
     try {
       setIsUploadingDoc(true);
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('file', file);
 
-      const res = await fetch(`${API_URL}/upload/image?folder=kyc-documents`, {
+      const res = await fetch(`${API_URL}/upload/document?folder=kyc-documents`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
