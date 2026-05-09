@@ -100,7 +100,7 @@ const PAYMENT_METHODS: {
     value: 'PAYPAL',
     label: 'PayPal',
     icon: null,
-    logo: '/logos/paypal-3.svg',
+    logo: '/logos/paypal-4.svg',
     description: 'Send directly to your PayPal account',
     badge: 'Instant',
     badgeColor: 'bg-blue-100 text-blue-700',
@@ -651,7 +651,7 @@ export default function PayoutSettingsPage() {
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-11 h-11 rounded-xl bg-[#003087]/10 flex items-center justify-center flex-shrink-0">
                         <Image
-                          src="/logos/paypal-3.svg"
+                          src="/logos/paypal-4.svg"
                           alt="PayPal"
                           width={28}
                           height={28}
