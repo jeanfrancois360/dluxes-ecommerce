@@ -658,8 +658,8 @@ export default function PayoutSettingsPage() {
                         <Image
                           src="/logos/paypal-4.svg"
                           alt="PayPal"
-                          width={28}
-                          height={28}
+                          width={18}
+                          height={18}
                           className="object-contain"
                         />
                       </div>
