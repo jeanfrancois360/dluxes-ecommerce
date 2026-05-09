@@ -13,6 +13,7 @@ import {
   Loader2,
   Store,
   Calendar,
+  ShieldAlert,
 } from 'lucide-react';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
@@ -91,9 +92,16 @@ export default function SellerOnboardingPage() {
     shouldRetryOnError: false,
   });
 
+  // Fetch KYC completion status
+  const { data: appStatus } = useSWR(`${API_URL}/seller/application-status`, fetcher, {
+    refreshInterval: 15000,
+    shouldRetryOnError: false,
+  });
+
   const store = dashboardData?.store;
   const credits = creditsData;
   const products = dashboardData?.products;
+  const kycComplete = appStatus?.kycComplete !== false;
 
   // Calculate current step based on status
   useEffect(() => {
@@ -268,13 +276,33 @@ export default function SellerOnboardingPage() {
                     {/* Step-specific content */}
                     {step.id === 1 && (
                       <div className="space-y-3">
-                        {store.status === 'PENDING' && (
+                        {/* KYC incomplete — highest priority */}
+                        {store.status === 'PENDING' && !kycComplete && (
+                          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-lg">
+                            <ShieldAlert className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="font-semibold text-amber-900">Application incomplete</p>
+                              <p className="text-sm text-amber-700 mt-0.5">
+                                Your seller account was created but your application is missing
+                                business details and verification documents. Complete it to be
+                                reviewed by our team.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => router.push('/become-seller')}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors whitespace-nowrap flex-shrink-0"
+                            >
+                              Complete Now <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                        {store.status === 'PENDING' && kycComplete && (
                           <div className="flex items-start gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                             <Clock className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                             <div>
                               <p className="font-semibold text-yellow-900">Under Review</p>
                               <p className="text-sm text-yellow-700">
-                                Your application is being reviewed by our team. Expected time: 24-48
+                                Your application is being reviewed by our team. Expected time: 24–48
                                 hours.
                               </p>
                               <p className="text-xs text-yellow-600 mt-2 flex items-center gap-2">
@@ -285,15 +313,23 @@ export default function SellerOnboardingPage() {
                           </div>
                         )}
                         {store.status === 'REJECTED' && (
-                          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="font-semibold text-red-900">Application Rejected</p>
-                              <p className="text-sm text-red-700">
-                                Unfortunately, your seller application was not approved. Please
-                                contact support for more information.
-                              </p>
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-semibold text-red-900">Application Rejected</p>
+                                <p className="text-sm text-red-700">
+                                  Your application was not approved. You can update your details and
+                                  resubmit.
+                                </p>
+                              </div>
                             </div>
+                            <button
+                              onClick={() => router.push('/become-seller')}
+                              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#CBB57B] text-white rounded-lg text-sm font-semibold hover:bg-[#A89968] transition-colors"
+                            >
+                              Resubmit Application <ArrowRight className="w-4 h-4" />
+                            </button>
                           </div>
                         )}
                         {store.status === 'ACTIVE' && (

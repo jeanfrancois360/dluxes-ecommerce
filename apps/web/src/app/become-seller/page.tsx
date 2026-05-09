@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
+import useSWR from 'swr';
 import {
   Store,
   Building2,
@@ -18,6 +19,7 @@ import {
   FileText,
   X,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -192,14 +194,41 @@ export default function BecomeSellerPage() {
   const [docFileName, setDocFileName] = useState('');
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
+  // Detect existing application (registered-as-seller path or re-application)
+  const { data: appStatus } = useSWR(
+    user ? `${API_URL}/seller/application-status` : null,
+    (url: string) =>
+      fetch(url, {
+        credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      })
+        .then((r) => r.json())
+        .then((d) => d.data || d),
+    { revalidateOnFocus: false }
+  );
+
+  const isUpdateMode =
+    appStatus?.hasApplication &&
+    (appStatus?.store?.status === 'PENDING' || appStatus?.store?.status === 'REJECTED');
+
+  // Pre-fill store name from existing store
+  useEffect(() => {
+    if (appStatus?.store?.name && !form.storeName) {
+      setForm((prev) => ({ ...prev, storeName: appStatus.store.name }));
+    }
+  }, [appStatus]);
+
   useEffect(() => {
     if (!authLoading && user) {
-      // Admins don't need this page
       if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') router.push('/admin/dashboard');
-      // SELLERS are allowed here to complete missing KYC (registered-as-seller path)
-      // BUYERS who already have an active store are redirected
+      // Active sellers go to their dashboard
+      if (user.role === 'SELLER' && appStatus?.store?.status === 'ACTIVE') {
+        router.push('/seller');
+      }
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, appStatus]);
 
   const set = (field: keyof FormData, value: string | string[]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -314,8 +343,12 @@ export default function BecomeSellerPage() {
 
       const data = await res.json();
       if (data.success) {
-        toast.success("Application submitted! We'll review it within 24-48 hours.");
-        router.push('/become-seller/status');
+        toast.success(
+          isUpdateMode
+            ? 'Application updated! Our team will review your complete details.'
+            : "Application submitted! We'll review it within 24-48 hours."
+        );
+        router.push('/seller/onboarding');
       } else {
         toast.error(data.message || 'Submission failed. Please try again.');
       }
@@ -339,10 +372,26 @@ export default function BecomeSellerPage() {
       {/* Header */}
       <div className="bg-gradient-to-r from-black to-neutral-800 text-white">
         <div className="max-w-3xl mx-auto px-4 py-12 text-center">
-          <h1 className="text-4xl font-bold mb-3">Become a Seller</h1>
-          <p className="text-neutral-300 text-lg">
-            Join NextPik's curated luxury marketplace. Applications are reviewed within 24–48 hours.
-          </p>
+          {isUpdateMode ? (
+            <>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 border border-amber-400/30 rounded-full text-amber-300 text-sm font-medium mb-4">
+                <RefreshCw className="w-3.5 h-3.5" /> Completing your application
+              </div>
+              <h1 className="text-4xl font-bold mb-3">Complete Your Application</h1>
+              <p className="text-neutral-300 text-lg">
+                Your account is created. Add your business details and verification document to
+                speed up approval.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl font-bold mb-3">Become a Seller</h1>
+              <p className="text-neutral-300 text-lg">
+                Join NextPik's curated luxury marketplace. Applications are reviewed within 24–48
+                hours.
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -817,11 +866,13 @@ export default function BecomeSellerPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Submitting...
+                    <Loader2 className="w-4 h-4 animate-spin" />{' '}
+                    {isUpdateMode ? 'Updating...' : 'Submitting...'}
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="w-4 h-4" /> Submit Application
+                    <CheckCircle className="w-4 h-4" />{' '}
+                    {isUpdateMode ? 'Update Application' : 'Submit Application'}
                   </>
                 )}
               </button>
