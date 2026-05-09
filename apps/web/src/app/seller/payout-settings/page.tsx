@@ -108,7 +108,8 @@ export default function PayoutSettingsPage() {
       setSettings(settingsData);
       setCanReceive(canReceiveData);
 
-      // Populate form with current settings
+      // Populate form with current settings (settingsData is null when no settings saved yet)
+      if (!settingsData) return;
       setFormData({
         paymentMethod: settingsData.paymentMethod || 'bank_transfer',
         payoutCurrency: settingsData.payoutCurrency || 'USD',
@@ -144,7 +145,7 @@ export default function PayoutSettingsPage() {
   };
 
   useEffect(() => {
-    if (user && user.role === 'SELLER') {
+    if (user) {
       fetchSettings();
     }
   }, [user]);
