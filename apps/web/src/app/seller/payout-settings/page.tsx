@@ -12,8 +12,6 @@ import {
 } from '@/lib/api/seller-payout';
 import {
   Building2,
-  CreditCard,
-  Wallet,
   Globe2,
   CheckCircle,
   AlertTriangle,
@@ -27,6 +25,7 @@ import {
   BadgeCheck,
   Clock,
 } from 'lucide-react';
+import Image from 'next/image';
 import PageHeader from '@/components/seller/page-header';
 import StripeConnectButton from '@/components/seller/stripe-connect-button';
 
@@ -67,11 +66,21 @@ const COUNTRIES = [
   { code: 'AE', name: 'UAE' },
 ];
 
-const PAYMENT_METHODS = [
+const PAYMENT_METHODS: {
+  value: string;
+  label: string;
+  icon: React.ElementType | null;
+  logo: string | null;
+  description: string;
+  badge: string;
+  badgeColor: string;
+  processingTime: string;
+}[] = [
   {
     value: 'bank_transfer',
     label: 'Bank Transfer',
     icon: Building2,
+    logo: null,
     description: 'Direct deposit to your bank account',
     badge: 'Most Common',
     badgeColor: 'bg-neutral-100 text-neutral-600',
@@ -80,7 +89,8 @@ const PAYMENT_METHODS = [
   {
     value: 'STRIPE_CONNECT',
     label: 'Stripe Connect',
-    icon: CreditCard,
+    icon: null,
+    logo: '/logos/stripe-4.svg',
     description: 'Fast, secure payouts via Stripe',
     badge: 'Recommended',
     badgeColor: 'bg-emerald-100 text-emerald-700',
@@ -89,7 +99,8 @@ const PAYMENT_METHODS = [
   {
     value: 'PAYPAL',
     label: 'PayPal',
-    icon: Wallet,
+    icon: null,
+    logo: '/logos/paypal-3.svg',
     description: 'Send directly to your PayPal account',
     badge: 'Instant',
     badgeColor: 'bg-blue-100 text-blue-700',
@@ -98,7 +109,8 @@ const PAYMENT_METHODS = [
   {
     value: 'WISE',
     label: 'Wise',
-    icon: Globe2,
+    icon: null,
+    logo: '/logos/wise-1.svg',
     description: 'Low-fee international transfers',
     badge: 'Low Fees',
     badgeColor: 'bg-teal-100 text-teal-700',
@@ -380,9 +392,23 @@ export default function PayoutSettingsPage() {
                           onChange={handleInputChange}
                           className="sr-only"
                         />
-                        <Icon
-                          className={`w-5 h-5 flex-shrink-0 ${selected ? 'text-white' : 'text-neutral-400'}`}
-                        />
+                        {method.logo ? (
+                          <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-neutral-100">
+                            <Image
+                              src={method.logo}
+                              alt={method.label}
+                              width={32}
+                              height={32}
+                              className="object-contain"
+                            />
+                          </div>
+                        ) : Icon ? (
+                          <div className="w-11 h-11 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                            <Icon
+                              className={`w-5 h-5 flex-shrink-0 ${selected ? 'text-neutral-600' : 'text-neutral-400'}`}
+                            />
+                          </div>
+                        ) : null}
                         <div className="flex-1 min-w-0">
                           <p
                             className={`text-sm font-semibold leading-tight ${selected ? 'text-white' : 'text-neutral-900'}`}
@@ -446,9 +472,27 @@ export default function PayoutSettingsPage() {
                     exit={{ opacity: 0 }}
                     className="bg-white rounded-2xl border border-neutral-200 p-6"
                   >
-                    <div className="flex items-center gap-2 mb-6">
-                      <Building2 className="w-5 h-5 text-neutral-500" />
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-11 h-11 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                        <Building2 className="w-5 h-5 text-neutral-500" />
+                      </div>
                       <h2 className="text-base font-bold text-neutral-900">Bank Account Details</h2>
+                      <div className="ml-auto flex items-center gap-2">
+                        <Image
+                          src="/logos/visa-10.svg"
+                          alt="Visa"
+                          width={38}
+                          height={24}
+                          className="object-contain opacity-80"
+                        />
+                        <Image
+                          src="/logos/mastercard-modern-design-.svg"
+                          alt="Mastercard"
+                          width={32}
+                          height={24}
+                          className="object-contain opacity-80"
+                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -574,8 +618,16 @@ export default function PayoutSettingsPage() {
                     exit={{ opacity: 0 }}
                     className="bg-white rounded-2xl border border-neutral-200 p-6"
                   >
-                    <div className="flex items-center gap-2 mb-6">
-                      <CreditCard className="w-5 h-5 text-neutral-500" />
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-11 h-11 rounded-xl bg-[#635BFF]/10 flex items-center justify-center flex-shrink-0">
+                        <Image
+                          src="/logos/stripe-4.svg"
+                          alt="Stripe"
+                          width={28}
+                          height={28}
+                          className="object-contain"
+                        />
+                      </div>
                       <h2 className="text-base font-bold text-neutral-900">Stripe Connect</h2>
                     </div>
                     <StripeConnectButton
@@ -596,8 +648,16 @@ export default function PayoutSettingsPage() {
                     exit={{ opacity: 0 }}
                     className="bg-white rounded-2xl border border-neutral-200 p-6"
                   >
-                    <div className="flex items-center gap-2 mb-6">
-                      <Wallet className="w-5 h-5 text-neutral-500" />
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-11 h-11 rounded-xl bg-[#003087]/10 flex items-center justify-center flex-shrink-0">
+                        <Image
+                          src="/logos/paypal-3.svg"
+                          alt="PayPal"
+                          width={28}
+                          height={28}
+                          className="object-contain"
+                        />
+                      </div>
                       <h2 className="text-base font-bold text-neutral-900">PayPal Account</h2>
                     </div>
                     <div>
@@ -626,8 +686,16 @@ export default function PayoutSettingsPage() {
                     exit={{ opacity: 0 }}
                     className="bg-white rounded-2xl border border-neutral-200 p-6"
                   >
-                    <div className="flex items-center gap-2 mb-6">
-                      <Globe2 className="w-5 h-5 text-neutral-500" />
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-11 h-11 rounded-xl bg-[#9FE870]/20 flex items-center justify-center flex-shrink-0">
+                        <Image
+                          src="/logos/wise-1.svg"
+                          alt="Wise"
+                          width={28}
+                          height={28}
+                          className="object-contain"
+                        />
+                      </div>
                       <h2 className="text-base font-bold text-neutral-900">Wise Account</h2>
                     </div>
                     <div className="space-y-5">
