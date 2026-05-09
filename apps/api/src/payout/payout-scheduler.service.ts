@@ -163,6 +163,7 @@ export class PayoutSchedulerService {
     const minPayoutAmount = config.minPayoutAmount.toNumber();
 
     // Find sellers with released escrow funds or confirmed commissions
+    // Exclude sellers who already have a pending/processing payout (prevent duplicates)
     const eligibleFromEscrow = await this.prisma.user.findMany({
       where: {
         role: 'SELLER',
@@ -172,6 +173,11 @@ export class PayoutSchedulerService {
             releasedAt: {
               not: null,
             },
+          },
+        },
+        payouts: {
+          none: {
+            status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] },
           },
         },
       },
@@ -335,7 +341,7 @@ export class PayoutSchedulerService {
         periodEnd: periodEnd.toISOString(),
         scheduledDate: now.toISOString(),
         estimatedArrival: await this.getEstimatedArrival(),
-        paymentMethod: 'Bank Transfer',
+        paymentMethod: paymentMethod.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
         sellerId,
       });
     } catch (emailErr) {
@@ -1157,14 +1163,23 @@ export class PayoutSchedulerService {
       throw new BadRequestException('Manual payout requests are currently disabled');
     }
 
-    // Get seller's store
+    // Get seller's store and payout settings
     const user = await this.prisma.user.findUnique({
       where: { id: sellerId },
-      include: { store: true },
+      include: {
+        store: true,
+        payoutSettings: { select: { paymentMethod: true, verified: true } },
+      },
     });
 
     if (!user?.store) {
       throw new NotFoundException('Store not found for seller');
+    }
+
+    if (!user.payoutSettings?.verified) {
+      throw new BadRequestException(
+        'Your payout settings must be configured and verified before requesting a payout'
+      );
     }
 
     const storeId = user.store.id;
@@ -1197,7 +1212,7 @@ export class PayoutSchedulerService {
           currency,
           status: PayoutStatus.PENDING,
           commissionCount: eligible.count,
-          paymentMethod: 'manual_request',
+          paymentMethod: user.payoutSettings?.paymentMethod || 'bank_transfer',
           periodStart: new Date(),
           periodEnd: new Date(),
           scheduledAt: new Date(),
