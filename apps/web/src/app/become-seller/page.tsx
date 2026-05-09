@@ -195,6 +195,33 @@ export default function BecomeSellerPage() {
   const [docFileName, setDocFileName] = useState('');
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
+  // Auto-select recommended document type when business type changes
+  const RECOMMENDED_DOC: Record<string, string> = {
+    individual: 'government_id',
+    sole_proprietor: 'government_id',
+    llc: 'business_registration',
+    corporation: 'business_registration',
+    registered_business: 'business_registration',
+  };
+
+  const DOC_HINTS: Record<string, string> = {
+    individual:
+      'A government-issued ID (passport or national ID) is sufficient for individual sellers.',
+    sole_proprietor:
+      'A government-issued ID is sufficient. You may optionally provide a business license.',
+    llc: 'Your certificate of incorporation or LLC registration document is required.',
+    corporation: 'Your certificate of incorporation or company registration document is required.',
+    registered_business:
+      'Provide your official business registration or incorporation certificate.',
+  };
+
+  useEffect(() => {
+    if (form.businessType && RECOMMENDED_DOC[form.businessType]) {
+      set('applicationDocumentType', RECOMMENDED_DOC[form.businessType]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.businessType]);
+
   // Detect existing application (registered-as-seller path or re-application)
   const { data: appStatus } = useSWR(
     user ? `${API_URL}/seller/application-status` : null,
@@ -716,30 +743,62 @@ export default function BecomeSellerPage() {
                     <label className="block text-sm font-medium text-neutral-700 mb-2">
                       Document Type
                     </label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {DOCUMENT_TYPES.map((dt) => (
-                        <label
-                          key={dt.value}
-                          className={`flex items-start gap-3 p-3.5 border rounded-xl cursor-pointer transition-all ${
-                            form.applicationDocumentType === dt.value
-                              ? 'border-[#CBB57B] bg-[#CBB57B]/5'
-                              : 'border-neutral-200 hover:border-neutral-300'
-                          }`}
+
+                    {/* Contextual hint based on business type */}
+                    {form.businessType && DOC_HINTS[form.businessType] && (
+                      <div className="flex items-start gap-2 p-3 mb-3 bg-neutral-50 border border-neutral-200 rounded-lg">
+                        <svg
+                          className="w-4 h-4 text-neutral-500 flex-shrink-0 mt-0.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          <input
-                            type="radio"
-                            name="documentType"
-                            value={dt.value}
-                            checked={form.applicationDocumentType === dt.value}
-                            onChange={() => set('applicationDocumentType', dt.value)}
-                            className="mt-0.5 accent-[#CBB57B]"
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
-                          <div>
-                            <p className="text-sm font-medium text-black">{dt.label}</p>
-                            <p className="text-xs text-neutral-500">{dt.description}</p>
-                          </div>
-                        </label>
-                      ))}
+                        </svg>
+                        <p className="text-xs text-neutral-600">{DOC_HINTS[form.businessType]}</p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-2">
+                      {DOCUMENT_TYPES.map((dt) => {
+                        const isRecommended =
+                          form.businessType && RECOMMENDED_DOC[form.businessType] === dt.value;
+                        return (
+                          <label
+                            key={dt.value}
+                            className={`flex items-start gap-3 p-3.5 border rounded-xl cursor-pointer transition-all ${
+                              form.applicationDocumentType === dt.value
+                                ? 'border-black bg-neutral-50'
+                                : 'border-neutral-200 hover:border-neutral-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="documentType"
+                              value={dt.value}
+                              checked={form.applicationDocumentType === dt.value}
+                              onChange={() => set('applicationDocumentType', dt.value)}
+                              className="mt-0.5 accent-black"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium text-black">{dt.label}</p>
+                                {isRecommended && (
+                                  <span className="px-1.5 py-0.5 bg-black text-white text-xs font-semibold rounded">
+                                    Recommended
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-neutral-500">{dt.description}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
 
