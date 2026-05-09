@@ -2170,6 +2170,15 @@ export class SellerService {
       WHERE id = ${store.id}
     `;
 
+    // Promote user role to SELLER so they can access seller-only features
+    // (store remains PENDING — role controls portal access, status controls selling)
+    if (user.role === 'BUYER' || user.role === 'CUSTOMER') {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: 'SELLER' },
+      });
+    }
+
     // Send application submitted email
     await this.emailService.sendSellerApplicationSubmitted(user.email, {
       sellerName: `${user.firstName} ${user.lastName}`,

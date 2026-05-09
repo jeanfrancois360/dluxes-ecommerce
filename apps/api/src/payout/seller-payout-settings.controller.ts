@@ -31,7 +31,7 @@ export class SellerPayoutSettingsController {
    */
   @Get()
   @UseGuards(RolesGuard)
-  @Roles(UserRole.BUYER, UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getSettings(@Request() req) {
     try {
       const userId = req.user.userId || req.user.id;
@@ -55,7 +55,7 @@ export class SellerPayoutSettingsController {
    */
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(UserRole.BUYER, UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async upsertSettings(
     @Request() req,
     @Body()
@@ -109,7 +109,7 @@ export class SellerPayoutSettingsController {
    */
   @Get('can-receive')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.BUYER, UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async canReceivePayouts(@Request() req) {
     try {
       const userId = req.user.userId || req.user.id;
@@ -133,7 +133,7 @@ export class SellerPayoutSettingsController {
    */
   @Delete()
   @UseGuards(RolesGuard)
-  @Roles(UserRole.BUYER, UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async deleteSettings(@Request() req) {
     try {
       const userId = req.user.userId || req.user.id;
