@@ -107,8 +107,7 @@ export interface CanReceivePayoutsResponse {
  * Get current seller's payout settings
  */
 export async function getPayoutSettings(): Promise<SellerPayoutSettings> {
-  const response = await api.get('/seller/payout-settings');
-  return response.data;
+  return api.get('/seller/payout-settings');
 }
 
 /**
@@ -117,16 +116,14 @@ export async function getPayoutSettings(): Promise<SellerPayoutSettings> {
 export async function updatePayoutSettings(
   data: UpdatePayoutSettingsDto
 ): Promise<SellerPayoutSettings> {
-  const response = await api.post('/seller/payout-settings', data);
-  return response.data;
+  return api.post('/seller/payout-settings', data);
 }
 
 /**
  * Check if seller can receive payouts
  */
 export async function canReceivePayouts(): Promise<CanReceivePayoutsResponse> {
-  const response = await api.get('/seller/payout-settings/can-receive');
-  return response.data;
+  return api.get('/seller/payout-settings/can-receive');
 }
 
 /**
