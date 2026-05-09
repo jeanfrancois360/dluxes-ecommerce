@@ -2450,6 +2450,57 @@
     "empty": {
       "noCommissions": "No commission records found",
       "noPayouts": "No payout records found"
+    },
+    "requestPayout": {
+      "button": "Request Payout",
+      "confirm": "Are you sure you want to request a payout? This will process all your available earnings.",
+      "success": "Payout request submitted successfully. You will be notified when it is processed.",
+      "error": "Failed to request payout. Please try again or contact support."
+    },
+    "payoutBanner": {
+      "schedule": "Payout Schedule",
+      "nextPayout": "Next Payout Date",
+      "totalPaid": "Total Paid Out",
+      "lastPayout": "Last Payout",
+      "manageSettings": "Manage Payout Settings"
+    },
+    "overview": {
+      "recentCommissions": "Recent Commissions",
+      "recentPayouts": "Recent Payouts",
+      "viewAll": "View all",
+      "noCommissionsYet": "No commissions yet. Start selling to earn!",
+      "noPayoutsYet": "No payouts yet."
+    },
+    "commissionHistory": {
+      "filter": "Filter by status",
+      "allStatus": "All Statuses",
+      "order": "Order",
+      "date": "Date",
+      "grossAmount": "Gross Amount",
+      "commissionRate": "Your Rate",
+      "yourEarnings": "Your Earnings",
+      "noCommissionsFound": "No commissions found."
+    },
+    "payoutHistory": {
+      "payoutId": "Payout ID",
+      "date": "Date",
+      "method": "Method",
+      "orders": "Orders",
+      "amount": "Amount",
+      "transactionId": "Reference",
+      "bankTransfer": "Bank Transfer",
+      "noPayoutsYet": "No payouts yet."
+    },
+    "pagination": {
+      "showing": "Showing {start}–{end} of {total}",
+      "page": "Page {current} of {total}"
+    },
+    "info": {
+      "title": "How Payouts Work",
+      "pendingDescription": "Orders awaiting buyer confirmation or delivery.",
+      "confirmedDescription": "Earnings cleared and available for your next payout.",
+      "paidDescription": "Successfully transferred to your payout account.",
+      "payoutSchedule": "Payouts are processed automatically based on the platform schedule. Configure your payout method in Payout Settings."
     }
   },
   "sellerAds": {
@@ -4918,7 +4969,8 @@
     "pageDescription": "Manage seller payouts and schedule automated payments",
     "buttons": {
       "processAll": "Process All Payouts",
-      "processing": "Processing..."
+      "processing": "Processing...",
+      "payoutSettings": "Payout Settings"
     },
     "stats": {
       "totalPayouts": "Total Payouts",

@@ -45,12 +45,13 @@ import {
   Download,
   Printer,
   AlertTriangle,
+  Settings,
 } from 'lucide-react';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useTranslations } from 'next-intl';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+import Link from 'next/link';
+import { api } from '@/lib/api/client';
 
 type PayoutStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
@@ -93,10 +94,21 @@ interface PayoutScheduleConfig {
   nextProcessAt: string | null;
 }
 
+interface BackendStats {
+  pending: { amount: number | Decimal; count: number };
+  processing: { amount: number | Decimal; count: number };
+  completed: { amount: number | Decimal; count: number };
+  failed: { amount: number | Decimal; count: number };
+  total: { amount: number | Decimal; count: number };
+}
+
+type Decimal = { toNumber?: () => number };
+
 function PayoutsContent() {
   const t = useTranslations('adminPayouts');
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [schedule, setSchedule] = useState<PayoutScheduleConfig | null>(null);
+  const [backendStats, setBackendStats] = useState<BackendStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
@@ -120,20 +132,13 @@ function PayoutsContent() {
   useEffect(() => {
     fetchPayouts();
     fetchSchedule();
+    fetchBackendStats();
   }, []);
 
   const fetchPayouts = async () => {
     try {
-      const response = await fetch(`${API_URL}/payouts/admin/all?limit=50`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPayouts(data.data || []);
-      }
+      const data = await api.get('/payouts/admin/all?limit=100');
+      setPayouts(data.data || []);
     } catch (error) {
       console.error('Error fetching payouts:', error);
       toast.error(t('toast.loadFailed'));
@@ -144,23 +149,43 @@ function PayoutsContent() {
 
   const fetchSchedule = async () => {
     try {
-      const response = await fetch(`${API_URL}/payouts/schedule`);
-      if (response.ok) {
-        const data = await response.json();
-        setSchedule(data);
-      }
+      const data = await api.get('/payouts/schedule');
+      setSchedule(data);
     } catch (error) {
       console.error('Error fetching schedule:', error);
     }
   };
 
-  // Calculate stats
+  const fetchBackendStats = async () => {
+    try {
+      const data = await api.get('/payouts/admin/statistics');
+      setBackendStats(data);
+    } catch (error) {
+      console.error('Error fetching payout statistics:', error);
+    }
+  };
+
+  // Calculate stats — prefer backend aggregate over local (which only covers loaded page)
   const stats = useMemo(() => {
+    if (backendStats) {
+      const toNum = (v: any) =>
+        typeof v === 'object' && v?.toNumber ? v.toNumber() : Number(v || 0);
+      return {
+        total: toNum(backendStats.total.amount),
+        pending: toNum(backendStats.pending.amount),
+        pendingCount: backendStats.pending.count,
+        processing: toNum(backendStats.processing.amount),
+        processingCount: backendStats.processing.count,
+        completed: toNum(backendStats.completed.amount),
+        completedCount: backendStats.completed.count,
+        failed: backendStats.failed.count,
+      };
+    }
+    // Fallback: compute from loaded payouts
     const pending = payouts.filter((p) => p.status === 'PENDING');
     const processing = payouts.filter((p) => p.status === 'PROCESSING');
     const completed = payouts.filter((p) => p.status === 'COMPLETED');
     const failed = payouts.filter((p) => p.status === 'FAILED');
-
     return {
       total: payouts.reduce((sum, p) => sum + Number(p.amount), 0),
       pending: pending.reduce((sum, p) => sum + Number(p.amount), 0),
@@ -171,7 +196,7 @@ function PayoutsContent() {
       completedCount: completed.length,
       failed: failed.length,
     };
-  }, [payouts]);
+  }, [payouts, backendStats]);
 
   // Get unique payment methods
   const paymentMethods = useMemo(() => {
@@ -265,22 +290,12 @@ function PayoutsContent() {
 
     setProcessing(true);
     try {
-      const response = await fetch(`${API_URL}/payouts/admin/process`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        toast.success(
-          t('toast.processSuccess', { successful: result.successful, failed: result.failed })
-        );
-        fetchPayouts();
-      } else {
-        toast.error(t('toast.processFailed'));
-      }
+      const result = await api.post('/payouts/admin/process', {});
+      toast.success(
+        t('toast.processSuccess', { successful: result.successful, failed: result.failed })
+      );
+      fetchPayouts();
+      fetchBackendStats();
     } catch (error) {
       console.error('Error processing payouts:', error);
       toast.error(t('toast.processFailed'));
@@ -291,19 +306,10 @@ function PayoutsContent() {
 
   const handleTriggerSeller = async (sellerId: string) => {
     try {
-      const response = await fetch(`${API_URL}/payouts/admin/seller/${sellerId}/trigger`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (response.ok) {
-        toast.success(t('toast.triggerSuccess'));
-        fetchPayouts();
-      } else {
-        toast.error(t('toast.triggerFailed'));
-      }
+      await api.post(`/payouts/admin/seller/${sellerId}/trigger`, {});
+      toast.success(t('toast.triggerSuccess'));
+      fetchPayouts();
+      fetchBackendStats();
     } catch (error) {
       console.error('Error triggering payout:', error);
       toast.error(t('toast.triggerFailed'));
@@ -314,28 +320,14 @@ function PayoutsContent() {
     if (!completeDialog.payout) return;
 
     try {
-      const response = await fetch(
-        `${API_URL}/payouts/admin/${completeDialog.payout.id}/complete`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify({
-            paymentReference: completeDialog.reference,
-            paymentProof: completeDialog.proof || undefined,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        toast.success(t('toast.completeSuccess'));
-        setCompleteDialog({ open: false, payout: null, reference: '', proof: '' });
-        fetchPayouts();
-      } else {
-        toast.error(t('toast.completeFailed'));
-      }
+      await api.put(`/payouts/admin/${completeDialog.payout.id}/complete`, {
+        paymentReference: completeDialog.reference,
+        paymentProof: completeDialog.proof || undefined,
+      });
+      toast.success(t('toast.completeSuccess'));
+      setCompleteDialog({ open: false, payout: null, reference: '', proof: '' });
+      fetchPayouts();
+      fetchBackendStats();
     } catch (error) {
       console.error('Error completing payout:', error);
       toast.error(t('toast.completeFailed'));
@@ -347,21 +339,10 @@ function PayoutsContent() {
     if (!reason) return;
 
     try {
-      const response = await fetch(`${API_URL}/payouts/admin/${payoutId}/fail`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ reason }),
-      });
-
-      if (response.ok) {
-        toast.success(t('toast.failSuccess'));
-        fetchPayouts();
-      } else {
-        toast.error(t('toast.failFailed'));
-      }
+      await api.put(`/payouts/admin/${payoutId}/fail`, { reason });
+      toast.success(t('toast.failSuccess'));
+      fetchPayouts();
+      fetchBackendStats();
     } catch (error) {
       console.error('Error failing payout:', error);
       toast.error(t('toast.failFailed'));
@@ -370,24 +351,60 @@ function PayoutsContent() {
 
   // Bulk actions
   const handleBulkExport = () => {
+    // Build CSV from selected payouts
+    const selected = filteredPayouts.filter((p) => selectedIds.has(p.id));
+    const rows = [
+      ['ID', 'Seller', 'Store', 'Amount', 'Currency', 'Method', 'Status', 'Scheduled', 'Reference'],
+      ...selected.map((p) => [
+        p.id,
+        p.seller.email,
+        p.store.name,
+        String(p.amount),
+        p.currency,
+        p.paymentMethod || '',
+        p.status,
+        new Date(p.scheduledAt).toISOString(),
+        p.paymentReference || '',
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payouts-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
     toast.success(t('bulk.exportSuccess', { count: selectedIds.size }));
     setSelectedIds(new Set());
   };
 
   const handleBulkComplete = async () => {
-    if (!confirm(t('bulk.completeConfirm', { count: selectedIds.size }))) return;
+    const eligible = filteredPayouts.filter((p) => selectedIds.has(p.id) && p.status === 'PENDING');
 
-    const eligiblePayouts = filteredPayouts.filter(
-      (p) => selectedIds.has(p.id) && p.status === 'PENDING'
-    );
-
-    if (eligiblePayouts.length === 0) {
+    if (eligible.length === 0) {
       toast.error(t('bulk.notPendingError'));
       return;
     }
 
-    toast.success(t('bulk.completeIndividually'));
+    if (!confirm(t('bulk.completeConfirm', { count: eligible.length }))) return;
+
+    let success = 0;
+    let failed = 0;
+
+    for (const p of eligible) {
+      try {
+        await api.put(`/payouts/admin/${p.id}/complete`, { paymentReference: 'bulk-complete' });
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+
+    toast.success(t('bulk.failSuccess', { success, failed }));
     setSelectedIds(new Set());
+    fetchPayouts();
+    fetchBackendStats();
   };
 
   const handleBulkFail = async () => {
@@ -401,19 +418,8 @@ function PayoutsContent() {
       const payout = filteredPayouts.find((p) => p.id === id);
       if (payout && (payout.status === 'PENDING' || payout.status === 'PROCESSING')) {
         try {
-          const response = await fetch(`${API_URL}/payouts/admin/${id}/fail`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('token')}`,
-            },
-            body: JSON.stringify({ reason }),
-          });
-          if (response.ok) {
-            success++;
-          } else {
-            failed++;
-          }
+          await api.put(`/payouts/admin/${id}/fail`, { reason });
+          success++;
         } catch {
           failed++;
         }
@@ -423,6 +429,7 @@ function PayoutsContent() {
     toast.success(t('bulk.failSuccess', { success, failed }));
     setSelectedIds(new Set());
     fetchPayouts();
+    fetchBackendStats();
   };
 
   const getStatusBadge = (status: PayoutStatus) => {
@@ -450,7 +457,13 @@ function PayoutsContent() {
       <PageHeader title={t('pageTitle')} description={t('pageDescription')} />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <div className="flex justify-end items-center">
+        <div className="flex justify-end items-center gap-3">
+          <Link href="/admin/payout-settings">
+            <Button variant="outline" className="gap-2">
+              <Settings className="h-4 w-4" />
+              {t('buttons.payoutSettings')}
+            </Button>
+          </Link>
           <Button onClick={handleProcessAll} disabled={processing}>
             <DollarSign className="h-4 w-4 mr-2" />
             {processing ? t('buttons.processing') : t('buttons.processAll')}
