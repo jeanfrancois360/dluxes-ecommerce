@@ -26,6 +26,7 @@ import {
   Store,
   Bell,
   Gift,
+  Wallet,
 } from 'lucide-react';
 
 interface NavItem {
@@ -79,6 +80,7 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'escrow', href: '/admin/escrow', icon: ShieldCheck },
       { nameKey: 'commissions', href: '/admin/commissions', icon: Percent },
       { nameKey: 'payouts', href: '/admin/payouts', icon: Banknote },
+      { nameKey: 'payoutSettings', href: '/admin/payout-settings', icon: Wallet },
       { nameKey: 'currencies', href: '/admin/currencies', icon: DollarSign },
     ],
   },
