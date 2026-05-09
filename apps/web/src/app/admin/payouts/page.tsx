@@ -129,6 +129,20 @@ function PayoutsContent() {
     proof: string;
   }>({ open: false, payout: null, reference: '', proof: '' });
 
+  const [scheduleDialog, setScheduleDialog] = useState<{
+    open: boolean;
+    frequency: string;
+    minPayoutAmount: string;
+    holdPeriodDays: string;
+    isAutomatic: boolean;
+  }>({
+    open: false,
+    frequency: 'WEEKLY',
+    minPayoutAmount: '50',
+    holdPeriodDays: '7',
+    isAutomatic: true,
+  });
+
   useEffect(() => {
     fetchPayouts();
     fetchSchedule();
@@ -162,6 +176,33 @@ function PayoutsContent() {
       setBackendStats(data);
     } catch (error) {
       console.error('Error fetching payout statistics:', error);
+    }
+  };
+
+  const openScheduleDialog = () => {
+    setScheduleDialog({
+      open: true,
+      frequency: schedule?.frequency || 'WEEKLY',
+      minPayoutAmount: String(schedule?.minPayoutAmount || 50),
+      holdPeriodDays: String(schedule?.holdPeriodDays || 7),
+      isAutomatic: schedule?.isAutomatic ?? true,
+    });
+  };
+
+  const handleUpdateSchedule = async () => {
+    try {
+      await api.put('/payouts/admin/schedule', {
+        frequency: scheduleDialog.frequency,
+        minPayoutAmount: Number(scheduleDialog.minPayoutAmount),
+        holdPeriodDays: Number(scheduleDialog.holdPeriodDays),
+        isAutomatic: scheduleDialog.isAutomatic,
+      });
+      toast.success(t('schedule.updateSuccess'));
+      setScheduleDialog((s) => ({ ...s, open: false }));
+      fetchSchedule();
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+      toast.error(t('schedule.updateFailed'));
     }
   };
 
@@ -567,9 +608,15 @@ function PayoutsContent() {
         {/* Schedule Configuration */}
         {schedule && (
           <Card>
-            <CardHeader>
-              <CardTitle>{t('schedule.title')}</CardTitle>
-              <CardDescription>{t('schedule.description')}</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div>
+                <CardTitle>{t('schedule.title')}</CardTitle>
+                <CardDescription>{t('schedule.description')}</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={openScheduleDialog} className="gap-2">
+                <Calendar className="h-4 w-4" />
+                {t('schedule.edit')}
+              </Button>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
@@ -938,6 +985,89 @@ function PayoutsContent() {
               <Button onClick={handleCompletePayout} disabled={!completeDialog.reference}>
                 {t('dialog.complete.confirm')}
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Schedule Edit Dialog */}
+        <Dialog
+          open={scheduleDialog.open}
+          onOpenChange={(open) => setScheduleDialog((s) => ({ ...s, open }))}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('schedule.editTitle')}</DialogTitle>
+              <DialogDescription>{t('schedule.editDescription')}</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="frequency">{t('schedule.frequency')}</Label>
+                <Select
+                  value={scheduleDialog.frequency}
+                  onValueChange={(v) => setScheduleDialog((s) => ({ ...s, frequency: v }))}
+                >
+                  <SelectTrigger id="frequency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DAILY">{t('schedule.frequencies.daily')}</SelectItem>
+                    <SelectItem value="WEEKLY">{t('schedule.frequencies.weekly')}</SelectItem>
+                    <SelectItem value="BIWEEKLY">{t('schedule.frequencies.biweekly')}</SelectItem>
+                    <SelectItem value="MONTHLY">{t('schedule.frequencies.monthly')}</SelectItem>
+                    <SelectItem value="ON_DEMAND">{t('schedule.frequencies.onDemand')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="minAmount">{t('schedule.minAmount')}</Label>
+                <Input
+                  id="minAmount"
+                  type="number"
+                  min="1"
+                  value={scheduleDialog.minPayoutAmount}
+                  onChange={(e) =>
+                    setScheduleDialog((s) => ({ ...s, minPayoutAmount: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="holdDays">{t('schedule.holdPeriod')}</Label>
+                <Input
+                  id="holdDays"
+                  type="number"
+                  min="0"
+                  value={scheduleDialog.holdPeriodDays}
+                  onChange={(e) =>
+                    setScheduleDialog((s) => ({ ...s, holdPeriodDays: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="isAutomatic"
+                  checked={scheduleDialog.isAutomatic}
+                  onChange={(e) =>
+                    setScheduleDialog((s) => ({ ...s, isAutomatic: e.target.checked }))
+                  }
+                  className="w-4 h-4 rounded border-neutral-300"
+                />
+                <Label htmlFor="isAutomatic">{t('schedule.automatic')}</Label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setScheduleDialog((s) => ({ ...s, open: false }))}
+              >
+                {t('dialog.complete.cancel')}
+              </Button>
+              <Button onClick={handleUpdateSchedule}>{t('schedule.save')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -4988,11 +4988,25 @@
       "title": "Payout Schedule",
       "description": "Current automated payout configuration",
       "frequency": "Frequency",
-      "minAmount": "Min Amount",
+      "minAmount": "Min Amount ($)",
       "holdPeriod": "Hold Period",
       "nextRun": "Next Run",
       "days": "{count} days",
-      "notScheduled": "Not scheduled"
+      "notScheduled": "Not scheduled",
+      "edit": "Edit Schedule",
+      "editTitle": "Edit Payout Schedule",
+      "editDescription": "Configure the automated payout frequency and thresholds.",
+      "automatic": "Enable automated payouts",
+      "save": "Save Schedule",
+      "updateSuccess": "Payout schedule updated successfully",
+      "updateFailed": "Failed to update payout schedule",
+      "frequencies": {
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "biweekly": "Bi-weekly",
+        "monthly": "Monthly",
+        "onDemand": "On Demand (manual only)"
+      }
     },
     "filters": {
       "searchPlaceholder": "Search by seller, store, or reference...",
