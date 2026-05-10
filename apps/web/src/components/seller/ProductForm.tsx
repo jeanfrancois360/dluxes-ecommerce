@@ -40,9 +40,11 @@ import {
   X as XIcon,
   MessageSquare,
 } from 'lucide-react';
+import useSWR from 'swr';
 import { toast } from '@/lib/utils/toast';
 import { categoriesAPI, type Category } from '@/lib/api/categories';
 import { gelatoApi } from '@/lib/api/gelato';
+import { sellerGelatoAPI } from '@/lib/api/seller-gelato';
 import { VariantManager } from '../admin/variant-manager';
 import { StockLevelIndicator } from '../admin/stock-status-badge';
 import {
@@ -576,6 +578,15 @@ export default function ProductForm({
   onCancel,
 }: ProductFormProps) {
   const product = initialData;
+
+  // Gelato settings — check if seller has configured their account
+  const { data: gelatoSettings } = useSWR('seller-gelato-settings', sellerGelatoAPI.getSettings, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
+  const isGelatoConfigured = gelatoSettings
+    ? gelatoSettings.isEnabled && gelatoSettings.isVerified
+    : undefined;
 
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1232,6 +1243,8 @@ export default function ProductForm({
               onChange={(field, value) => setFormData({ ...formData, [field]: value })}
               onGelatoProductSelect={handleGelatoProductSelect}
               disabled={loading}
+              isGelatoConfigured={isGelatoConfigured}
+              gelatoAccountName={gelatoSettings?.gelatoAccountName ?? null}
             />
           </div>
 
