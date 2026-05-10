@@ -173,7 +173,7 @@ export default function SellerInquiriesPage() {
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full"
+          className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full"
         />
       </div>
     );
@@ -307,7 +307,7 @@ export default function SellerInquiriesPage() {
                         <div>
                           <Link
                             href={`/products/${inquiry.product?.slug}`}
-                            className="font-semibold text-black hover:text-blue-600 transition-colors"
+                            className="font-semibold text-black hover:text-accent-800 transition-colors"
                           >
                             {inquiry.product?.name || 'Unknown Product'}
                           </Link>
@@ -358,7 +358,7 @@ export default function SellerInquiriesPage() {
                       <div className="mt-3 flex items-center gap-3">
                         <button
                           onClick={() => handleViewDetails(inquiry)}
-                          className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1"
+                          className="px-3 py-1.5 text-sm font-medium text-accent-800 hover:text-accent-900 hover:bg-gold/10 rounded-lg transition-colors flex items-center gap-1"
                         >
                           <Eye className="w-4 h-4" />
                           {t('actions.viewDetails')}
@@ -441,7 +441,7 @@ export default function SellerInquiriesPage() {
                     <p className="text-neutral-500">{t('detailModal.email')}</p>
                     <a
                       href={`mailto:${selectedInquiry.buyerEmail}`}
-                      className="font-medium text-blue-600 hover:underline"
+                      className="font-medium text-accent-800 hover:underline"
                     >
                       {selectedInquiry.buyerEmail}
                     </a>
@@ -451,7 +451,7 @@ export default function SellerInquiriesPage() {
                       <p className="text-neutral-500">{t('detailModal.phone')}</p>
                       <a
                         href={`tel:${selectedInquiry.buyerPhone}`}
-                        className="font-medium text-blue-600 hover:underline"
+                        className="font-medium text-accent-800 hover:underline"
                       >
                         {selectedInquiry.buyerPhone}
                       </a>
@@ -531,7 +531,7 @@ export default function SellerInquiriesPage() {
                   setSellerNotes(selectedInquiry.sellerNotes || '');
                   setShowUpdateModal(true);
                 }}
-                className="flex-1 px-4 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-accent-800 to-accent-900 text-white font-semibold rounded-xl hover:from-gold hover:to-accent-600 hover:text-black transition-all"
               >
                 {t('actions.updateStatus')}
               </button>
@@ -564,7 +564,7 @@ export default function SellerInquiriesPage() {
                 <select
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value as InquiryStatus)}
-                  className="w-full px-4 py-2.5 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold outline-none"
                 >
                   <option value="NEW">{t('status.NEW')}</option>
                   <option value="CONTACTED">{t('status.CONTACTED')}</option>
@@ -586,7 +586,7 @@ export default function SellerInquiriesPage() {
                   onChange={(e) => setSellerNotes(e.target.value)}
                   rows={3}
                   placeholder={t('updateModal.notesPlaceholder')}
-                  className="w-full px-4 py-2.5 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                  className="w-full px-4 py-2.5 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-gold/20 focus:border-gold outline-none resize-none"
                 />
               </div>
             </div>
@@ -602,7 +602,7 @@ export default function SellerInquiriesPage() {
               <button
                 onClick={handleUpdateStatus}
                 disabled={updating}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-accent-800 to-accent-900 text-white font-semibold rounded-lg hover:from-gold hover:to-accent-600 hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {updating ? t('updateModal.updating') : t('updateModal.update')}
               </button>
