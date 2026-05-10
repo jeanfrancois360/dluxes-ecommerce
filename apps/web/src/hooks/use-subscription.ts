@@ -33,7 +33,7 @@ export function useMySubscription() {
   return {
     subscription: data?.subscription || null,
     plan: data?.plan || null,
-    tier: data?.tier || 'FREE',
+    tier: data?.tier || null,
     isActive: data?.isActive ?? false,
     isLoading,
     error,
