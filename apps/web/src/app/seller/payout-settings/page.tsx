@@ -610,7 +610,7 @@ export default function PayoutSettingsPage() {
                       accountId={settings?.stripeAccountId}
                       accountStatus={settings?.stripeAccountStatus}
                       onConnected={fetchSettings}
-                      country={formData.bankCountry}
+                      country={countries.find((c) => c.name === formData.bankCountry)?.code || 'US'}
                     />
                   </motion.div>
                 )}
