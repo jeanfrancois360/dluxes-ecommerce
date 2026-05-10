@@ -535,7 +535,7 @@ export default function NewProductPage() {
       <div className="min-h-screen bg-neutral-50">
         {/* Header */}
         <div className="bg-white border-b border-neutral-200">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               <div className="flex items-center gap-4 mb-2">
                 <button
@@ -581,7 +581,7 @@ export default function NewProductPage() {
           plan &&
           plan.maxActiveListings !== -1 &&
           subscription.activeListingsCount >= plan.maxActiveListings * 0.7 && (
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
               <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -609,7 +609,7 @@ export default function NewProductPage() {
           )}
 
         {/* Form */}
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
