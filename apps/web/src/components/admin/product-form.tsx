@@ -1040,7 +1040,17 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <select
                 required
                 value={formData.productType}
-                onChange={(e) => handleChange('productType', e.target.value)}
+                onChange={(e) => {
+                  const type = e.target.value;
+                  const forcedPurchaseType =
+                    type === 'DIGITAL'
+                      ? 'INSTANT'
+                      : ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(type)
+                        ? 'INQUIRY'
+                        : formData.purchaseType;
+                  handleChange('productType', type);
+                  handleChange('purchaseType', forcedPurchaseType);
+                }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
               >
                 <option value="PHYSICAL">Physical Product</option>
@@ -1059,16 +1069,50 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <select
                 required
                 value={formData.purchaseType}
+                disabled={
+                  formData.productType === 'DIGITAL' ||
+                  ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(formData.productType)
+                }
                 onChange={(e) => handleChange('purchaseType', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
-                <option value="INSTANT">Instant Purchase (Add to Cart)</option>
-                <option value="INQUIRY">Inquiry Required (Contact Seller)</option>
+                <option
+                  value="INSTANT"
+                  disabled={['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(
+                    formData.productType
+                  )}
+                >
+                  Instant Purchase (Add to Cart)
+                </option>
+                <option value="INQUIRY" disabled={formData.productType === 'DIGITAL'}>
+                  Inquiry Required (Contact Seller)
+                </option>
               </select>
-              <p className="text-xs text-gray-500 mt-1">
-                {formData.purchaseType === 'INQUIRY'
-                  ? 'Customers will contact you for pricing and details'
-                  : 'Customers can purchase directly'}
+              <p className="text-xs mt-1">
+                {formData.productType === 'DIGITAL' ? (
+                  <span className="text-amber-600">
+                    Digital products are purchased directly — Instant Purchase is required
+                  </span>
+                ) : ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(
+                    formData.productType
+                  ) ? (
+                  <span className="text-amber-600">
+                    {
+                      {
+                        SERVICE: 'Services require contact to arrange',
+                        RENTAL: 'Rentals require contact to arrange',
+                        VEHICLE: 'Vehicles require a test-drive inquiry',
+                        REAL_ESTATE: 'Properties require a viewing inquiry',
+                      }[formData.productType as 'SERVICE' | 'RENTAL' | 'VEHICLE' | 'REAL_ESTATE']
+                    }
+                  </span>
+                ) : (
+                  <span className="text-gray-500">
+                    {formData.purchaseType === 'INQUIRY'
+                      ? 'Customers will contact you for pricing and details'
+                      : 'Customers can purchase directly'}
+                  </span>
+                )}
               </p>
             </div>
           </div>
