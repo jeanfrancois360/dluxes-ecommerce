@@ -459,7 +459,12 @@
     "review": "avis",
     "reviewsPlural": "avis",
     "reviewSubmittedSuccess": "Avis soumis avec succès ! Il sera visible après approbation.",
-    "reviewSubmitFailed": "Échec de l'envoi de l'avis. Veuillez réessayer."
+    "reviewSubmitFailed": "Échec de l'envoi de l'avis. Veuillez réessayer.",
+    "unavailable": "Indisponible",
+    "available": "Disponible",
+    "instantDownload": "Téléchargement immédiat",
+    "madeToOrder": "Fabriqué sur commande",
+    "onlyLeft": "Plus que {quantity} en stock"
   },
   "cart": {
     "shoppingCart": "Panier",
