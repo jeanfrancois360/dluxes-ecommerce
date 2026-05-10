@@ -48,9 +48,9 @@ const PREFERRED_TIME_OPTIONS = [
 ] as const;
 
 const INPUT =
-  'w-full px-4 py-3 border-2 border-neutral-200 rounded-xl text-sm text-neutral-900 placeholder:text-neutral-400 bg-white focus:outline-none focus:border-[#CBB57B] focus:ring-2 focus:ring-[#CBB57B]/15 transition-all duration-200';
+  'w-full px-4 py-3 border-2 border-neutral-200 rounded-xl text-sm text-neutral-900 placeholder:text-neutral-400 bg-white focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/15 transition-all duration-200';
 const LABEL = 'block text-xs font-semibold text-neutral-700 mb-1.5 uppercase tracking-wide';
-const ERROR_MSG = 'text-xs text-red-500 mt-1 flex items-center gap-1';
+const ERROR_MSG = 'text-xs text-error mt-1 flex items-center gap-1';
 
 type FormData = {
   name: string;
@@ -160,12 +160,12 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white border-2 border-[#CBB57B]/30 rounded-2xl p-8 text-center shadow-lg"
+        className="bg-white border-2 border-gold/30 rounded-2xl p-8 text-center shadow-lg"
       >
         {/* Animated checkmark ring */}
         <div className="relative inline-flex items-center justify-center mb-6">
-          <div className="absolute inset-0 rounded-full bg-[#CBB57B]/10 animate-ping" />
-          <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[#CBB57B] to-[#6B5840] flex items-center justify-center shadow-lg shadow-[#CBB57B]/30">
+          <div className="absolute inset-0 rounded-full bg-gold/10 animate-ping" />
+          <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-gold to-accent-800 flex items-center justify-center shadow-lg shadow-gold/30">
             <CheckCircle className="w-10 h-10 text-white" />
           </div>
         </div>
@@ -182,11 +182,11 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
         {/* Response time indicators */}
         <div className="flex items-center justify-center gap-6 mb-8 text-sm text-neutral-500">
           <div className="flex items-center gap-1.5">
-            <Clock className="w-4 h-4 text-[#CBB57B]" />
+            <Clock className="w-4 h-4 text-gold" />
             <span>~24h response</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Shield className="w-4 h-4 text-[#CBB57B]" />
+            <Shield className="w-4 h-4 text-gold" />
             <span>Secure & private</span>
           </div>
         </div>
@@ -205,7 +205,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
             setErrors({});
             setTouched({});
           }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 border-2 border-neutral-200 text-neutral-600 text-sm font-semibold rounded-xl hover:border-[#CBB57B] hover:text-[#6B5840] transition-all"
+          className="inline-flex items-center gap-2 px-5 py-2.5 border-2 border-neutral-200 text-neutral-600 text-sm font-semibold rounded-xl hover:border-gold hover:text-accent-800 transition-all"
         >
           <RotateCcw className="w-4 h-4" />
           Send another inquiry
@@ -219,7 +219,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
     <form onSubmit={handleSubmit} noValidate>
       <div className="bg-white border-2 border-neutral-100 rounded-2xl shadow-lg overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#6B5840] to-[#4a3d2b] px-6 py-5">
+        <div className="bg-gradient-to-r from-accent-800 to-accent-900 px-6 py-5">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
               <MessageSquare className="w-5 h-5 text-white" />
@@ -230,7 +230,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
               </h3>
               <p className="text-white/75 text-sm mt-0.5">
                 Contact{' '}
-                <span className="text-[#CBB57B] font-semibold">{sellerName || 'the seller'}</span>{' '}
+                <span className="text-gold font-semibold">{sellerName || 'the seller'}</span>{' '}
                 directly
               </p>
             </div>
@@ -239,15 +239,15 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
           {/* Trust badges */}
           <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/10">
             <div className="flex items-center gap-1.5 text-white/70 text-xs">
-              <Shield className="w-3.5 h-3.5 text-[#CBB57B]" />
+              <Shield className="w-3.5 h-3.5 text-gold" />
               <span>Private & secure</span>
             </div>
             <div className="flex items-center gap-1.5 text-white/70 text-xs">
-              <Clock className="w-3.5 h-3.5 text-[#CBB57B]" />
+              <Clock className="w-3.5 h-3.5 text-gold" />
               <span>Usually responds in 24h</span>
             </div>
             <div className="flex items-center gap-1.5 text-white/70 text-xs">
-              <Sparkles className="w-3.5 h-3.5 text-[#CBB57B]" />
+              <Sparkles className="w-3.5 h-3.5 text-gold" />
               <span>No commitment</span>
             </div>
           </div>
@@ -268,8 +268,8 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
                   className={cn(
                     'px-3 py-1.5 text-xs font-medium rounded-full border-2 transition-all duration-150',
                     formData.message === msg
-                      ? 'border-[#CBB57B] bg-[#CBB57B]/10 text-[#6B5840]'
-                      : 'border-neutral-200 text-neutral-600 hover:border-[#CBB57B]/50 hover:text-[#6B5840]'
+                      ? 'border-gold bg-gold/10 text-accent-800'
+                      : 'border-neutral-200 text-neutral-600 hover:border-gold/50 hover:text-accent-800'
                   )}
                 >
                   {msg}
@@ -284,7 +284,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
               <label className={LABEL}>
                 <span className="flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5" />
-                  Name <span className="text-red-400 normal-case tracking-normal">*</span>
+                  Name <span className="text-error normal-case tracking-normal">*</span>
                 </span>
               </label>
               <input
@@ -297,7 +297,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
                   INPUT,
                   touched.name &&
                     errors.name &&
-                    'border-red-400 focus:border-red-400 focus:ring-red-400/15'
+                    'border-error focus:border-error focus:ring-error/15'
                 )}
                 autoComplete="name"
               />
@@ -311,7 +311,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
               <label className={LABEL}>
                 <span className="flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5" />
-                  Email <span className="text-red-400 normal-case tracking-normal">*</span>
+                  Email <span className="text-error normal-case tracking-normal">*</span>
                 </span>
               </label>
               <input
@@ -324,7 +324,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
                   INPUT,
                   touched.email &&
                     errors.email &&
-                    'border-red-400 focus:border-red-400 focus:ring-red-400/15'
+                    'border-error focus:border-error focus:ring-error/15'
                 )}
                 autoComplete="email"
               />
@@ -357,7 +357,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
                 INPUT,
                 touched.phone &&
                   errors.phone &&
-                  'border-red-400 focus:border-red-400 focus:ring-red-400/15'
+                  'border-error focus:border-error focus:ring-error/15'
               )}
               autoComplete="tel"
             />
@@ -373,7 +373,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
             <label className={LABEL}>
               <span className="flex items-center gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5" />
-                Message <span className="text-red-400 normal-case tracking-normal">*</span>
+                Message <span className="text-error normal-case tracking-normal">*</span>
               </span>
             </label>
             <div className="relative">
@@ -388,14 +388,14 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
                   'resize-none pb-6',
                   touched.message &&
                     errors.message &&
-                    'border-red-400 focus:border-red-400 focus:ring-red-400/15'
+                    'border-error focus:border-error focus:ring-error/15'
                 )}
               />
               {/* Character counter */}
               <span
                 className={cn(
                   'absolute bottom-2 right-3 text-[10px] font-medium',
-                  formData.message.length > 500 ? 'text-red-400' : 'text-neutral-400'
+                  formData.message.length > 500 ? 'text-error' : 'text-neutral-400'
                 )}
               >
                 {formData.message.length}/500
@@ -413,7 +413,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-2 text-sm text-neutral-500 hover:text-[#6B5840] font-medium transition-colors"
+              className="flex items-center gap-2 text-sm text-neutral-500 hover:text-accent-800 font-medium transition-colors"
             >
               <motion.span
                 animate={{ rotate: showAdvanced ? 180 : 0 }}
@@ -447,7 +447,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
                             className={cn(
                               'flex-1 py-2.5 px-3 border-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1.5',
                               formData.preferredContact === opt.value
-                                ? 'border-[#CBB57B] bg-[#CBB57B]/10 text-[#6B5840]'
+                                ? 'border-gold bg-gold/10 text-accent-800'
                                 : 'border-neutral-200 text-neutral-600 hover:border-neutral-300'
                             )}
                           >
@@ -470,7 +470,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
                             className={cn(
                               'py-2.5 px-3 border-2 rounded-xl transition-all text-left',
                               formData.preferredTime === opt.value
-                                ? 'border-[#CBB57B] bg-[#CBB57B]/10'
+                                ? 'border-gold bg-gold/10'
                                 : 'border-neutral-200 hover:border-neutral-300'
                             )}
                           >
@@ -478,7 +478,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
                               className={cn(
                                 'text-sm font-semibold',
                                 formData.preferredTime === opt.value
-                                  ? 'text-[#6B5840]'
+                                  ? 'text-accent-800'
                                   : 'text-neutral-700'
                               )}
                             >
@@ -505,7 +505,7 @@ export function InquiryForm({ productId, productName, sellerName }: InquiryFormP
               'w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2.5 transition-all duration-200 shadow-lg',
               isSubmitting
                 ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed shadow-none'
-                : 'bg-gradient-to-r from-[#6B5840] to-[#4a3d2b] text-white hover:from-[#CBB57B] hover:to-[#b89e5e] hover:text-black shadow-[#6B5840]/25'
+                : 'bg-gradient-to-r from-accent-800 to-accent-900 text-white hover:from-gold hover:to-accent-600 hover:text-black shadow-accent-800/25'
             )}
           >
             {isSubmitting ? (
