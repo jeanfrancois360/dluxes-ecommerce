@@ -541,7 +541,12 @@
     "new": "Nouveau",
     "sale": "Solde",
     "featured": "En Vedette",
-    "bestseller": "Meilleure Vente"
+    "bestseller": "Meilleure Vente",
+    "sendInquiry": "Envoyer une demande",
+    "alwaysAvailable": "Téléchargement instantané",
+    "serviceAvailable": "Disponible",
+    "unavailable": "Indisponible",
+    "instantDownload": "Téléchargement instantané"
   },
   "productCard": {
     "addToWishlist": "Ajouter à la liste de souhaits",

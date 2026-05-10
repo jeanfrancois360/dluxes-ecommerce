@@ -557,7 +557,12 @@
     "new": "New",
     "sale": "Sale",
     "featured": "Featured",
-    "bestseller": "Bestseller"
+    "bestseller": "Bestseller",
+    "sendInquiry": "Send Inquiry",
+    "alwaysAvailable": "Instant Download",
+    "serviceAvailable": "Available",
+    "unavailable": "Unavailable",
+    "instantDownload": "Instant Download"
   },
   "productCard": {
     "addToWishlist": "Add to wishlist",
