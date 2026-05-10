@@ -802,7 +802,31 @@ function SellerDetailContent() {
                   {payoutSettings.taxCountry && (
                     <InfoRow label="Tax Country" value={payoutSettings.taxCountry} />
                   )}
+                  {payoutSettings.payoutCurrency && (
+                    <InfoRow label="Payout Currency" value={payoutSettings.payoutCurrency} />
+                  )}
                 </div>
+
+                {/* Tax document link */}
+                {payoutSettings.taxFormUrl && (
+                  <a
+                    href={payoutSettings.taxFormUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 bg-neutral-50 border border-neutral-200 rounded-xl text-xs hover:bg-neutral-100 transition-colors"
+                  >
+                    <span className="font-medium text-neutral-700">Tax Document</span>
+                    <span className="text-[#CBB57B] font-semibold">View →</span>
+                  </a>
+                )}
+
+                {/* Verified by info */}
+                {payoutSettings.verified && payoutSettings.verifiedAt && (
+                  <p className="text-xs text-neutral-400">
+                    Verified {format(new Date(payoutSettings.verifiedAt), 'MMM d, yyyy · h:mm a')}
+                    {payoutSettings.verifiedBy && ` by ${payoutSettings.verifiedBy}`}
+                  </p>
+                )}
 
                 {payoutSettings.rejectionNotes && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
