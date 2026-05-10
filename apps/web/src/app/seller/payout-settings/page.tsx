@@ -28,6 +28,8 @@ import {
 import Image from 'next/image';
 import PageHeader from '@/components/seller/page-header';
 import StripeConnectButton from '@/components/seller/stripe-connect-button';
+import { CountrySelector } from '@/components/forms/country-selector';
+import { countries } from '@/lib/data/countries';
 
 const CURRENCIES = [
   { code: 'USD', name: 'US Dollar', symbol: '$' },
@@ -41,30 +43,15 @@ const CURRENCIES = [
   { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
 ];
 
-const COUNTRIES = [
-  { code: 'US', name: 'United States' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'FR', name: 'France' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'CH', name: 'Switzerland' },
-  { code: 'SG', name: 'Singapore' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'BE', name: 'Belgium' },
-  { code: 'AT', name: 'Austria' },
-  { code: 'IT', name: 'Italy' },
-  { code: 'ES', name: 'Spain' },
-  { code: 'RW', name: 'Rwanda' },
-  { code: 'NG', name: 'Nigeria' },
-  { code: 'ZA', name: 'South Africa' },
-  { code: 'KE', name: 'Kenya' },
-  { code: 'IN', name: 'India' },
-  { code: 'BR', name: 'Brazil' },
-  { code: 'MX', name: 'Mexico' },
-  { code: 'AE', name: 'UAE' },
-];
+// Helper: convert stored country code (e.g. 'US') to full name ('United States')
+// Falls back to the value itself if it's already a name or unknown
+function codeToCountryName(value: string | undefined): string {
+  if (!value) return 'United States';
+  const byCode = countries.find((c) => c.code === value);
+  if (byCode) return byCode.name;
+  // Already a name or custom string
+  return value;
+}
 
 const PAYMENT_METHODS: {
   value: string;
@@ -168,7 +155,7 @@ export default function PayoutSettingsPage() {
   const [formData, setFormData] = useState<UpdatePayoutSettingsDto>({
     paymentMethod: 'bank_transfer',
     payoutCurrency: 'USD',
-    bankCountry: 'US',
+    bankCountry: 'United States',
   });
 
   useEffect(() => {
@@ -198,7 +185,7 @@ export default function PayoutSettingsPage() {
         iban: '',
         swiftCode: settingsData.swiftCode || '',
         bankAddress: settingsData.bankAddress || '',
-        bankCountry: settingsData.bankCountry || 'US',
+        bankCountry: codeToCountryName(settingsData.bankCountry),
         paypalEmail: settingsData.paypalEmail || '',
         wiseEmail: settingsData.wiseEmail || '',
         wiseRecipientId: settingsData.wiseRecipientId || '',
@@ -385,7 +372,7 @@ export default function PayoutSettingsPage() {
                         key={method.value}
                         className={`flex items-center gap-3 p-3.5 rounded-xl cursor-pointer border transition-all ${
                           selected
-                            ? 'bg-black border-black text-white'
+                            ? 'bg-[#CBB57B] border-[#CBB57B] text-white'
                             : 'border-neutral-200 hover:border-neutral-300 bg-white'
                         }`}
                       >
@@ -408,9 +395,11 @@ export default function PayoutSettingsPage() {
                             />
                           </div>
                         ) : Icon ? (
-                          <div className="w-11 h-11 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                          <div
+                            className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${selected ? 'bg-[#CBB57B]/20' : 'bg-neutral-100'}`}
+                          >
                             <Icon
-                              className={`w-5 h-5 flex-shrink-0 ${selected ? 'text-neutral-600' : 'text-neutral-400'}`}
+                              className={`w-5 h-5 flex-shrink-0 ${selected ? 'text-white' : 'text-neutral-400'}`}
                             />
                           </div>
                         ) : null}
@@ -421,7 +410,7 @@ export default function PayoutSettingsPage() {
                             {method.label}
                           </p>
                           <p
-                            className={`text-xs mt-0.5 ${selected ? 'text-neutral-300' : 'text-neutral-400'}`}
+                            className={`text-xs mt-0.5 ${selected ? 'text-white/70' : 'text-neutral-400'}`}
                           >
                             {method.processingTime}
                           </p>
@@ -516,18 +505,13 @@ export default function PayoutSettingsPage() {
 
                       <div>
                         <Label required>Bank Country</Label>
-                        <select
-                          name="bankCountry"
-                          value={formData.bankCountry || 'US'}
-                          onChange={handleInputChange}
-                          className={SELECT}
-                        >
-                          {COUNTRIES.map((c) => (
-                            <option key={c.code} value={c.code}>
-                              {c.name}
-                            </option>
-                          ))}
-                        </select>
+                        <CountrySelector
+                          value={formData.bankCountry || 'United States'}
+                          onChange={(name) =>
+                            setFormData((prev) => ({ ...prev, bankCountry: name }))
+                          }
+                          className="!border !rounded-xl"
+                        />
                       </div>
 
                       <div>
@@ -756,19 +740,12 @@ export default function PayoutSettingsPage() {
 
                   <div>
                     <Label>Tax Country</Label>
-                    <select
-                      name="taxCountry"
+                    <CountrySelector
                       value={formData.taxCountry || ''}
-                      onChange={handleInputChange}
-                      className={SELECT}
-                    >
-                      <option value="">Select country</option>
-                      {COUNTRIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(name) => setFormData((prev) => ({ ...prev, taxCountry: name }))}
+                      placeholder="Select country"
+                      className="!border !rounded-xl"
+                    />
                   </div>
 
                   <div>
