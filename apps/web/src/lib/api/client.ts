@@ -176,14 +176,13 @@ async function handleResponse(response: Response) {
   }
 
   // Unwrap response if it's wrapped in { success, data } format
-  if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
-    if (data.success) {
+  if (data && typeof data === 'object' && 'success' in data) {
+    if (data.success && 'data' in data) {
       return data.data;
-    } else {
-      // Handle error response from backend
+    } else if (!data.success) {
+      // Covers both { success: false, data: null } and { success: false, message: '...' }
       const errorMessage = data.message || 'An error occurred';
 
-      // Only log errors for critical endpoints
       if (!isSilentFailEndpoint) {
         console.error('[API Error] Failed response:', {
           url: response.url,
