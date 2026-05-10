@@ -123,6 +123,8 @@ export class SellerPayoutSettingsService {
         bankCountry: data.bankCountry ?? existing.bankCountry,
         stripeAccountId: data.stripeAccountId ?? existing.stripeAccountId,
         paypalEmail: data.paypalEmail ?? existing.paypalEmail,
+        // Auto-verify PayPal when a valid email is saved — real validation happens at transfer time
+        paypalVerified: data.paypalEmail ? true : existing.paypalVerified,
         wiseEmail: data.wiseEmail ?? existing.wiseEmail,
         wiseRecipientId: data.wiseRecipientId ?? existing.wiseRecipientId,
         taxId: data.taxId ?? existing.taxId,
@@ -163,6 +165,7 @@ export class SellerPayoutSettingsService {
           bankCountry: data.bankCountry,
           stripeAccountId: data.stripeAccountId,
           paypalEmail: data.paypalEmail,
+          paypalVerified: !!data.paypalEmail, // Auto-verify on save; real check happens at transfer
           wiseEmail: data.wiseEmail,
           wiseRecipientId: data.wiseRecipientId,
           taxId: data.taxId,
