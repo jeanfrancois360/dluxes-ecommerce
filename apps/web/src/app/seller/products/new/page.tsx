@@ -166,7 +166,13 @@ export default function NewProductPage() {
     try {
       // Backend will handle images automatically
       const response = await api.post('/seller/products', formData);
-      toast.success('Product created successfully! 🎉');
+      if (response?._imagesSaveFailed) {
+        toast.success(
+          'Product created, but images failed to save. Please re-upload them from the edit page.'
+        );
+      } else {
+        toast.success('Product created successfully!');
+      }
       router.push('/seller/products');
     } catch (error: any) {
       console.error('Failed to create product:', error);

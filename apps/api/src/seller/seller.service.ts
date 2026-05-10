@@ -1391,7 +1391,9 @@ export class SellerService {
         this.logger.log(`Saved ${images.length} images for product ${product.id}`);
       } catch (error) {
         this.logger.error(`Failed to save images for product ${product.id}:`, error);
-        // Don't fail the entire operation if images fail
+        // Images failed — product was created but without images.
+        // Return the product with a warning flag so the frontend can notify the user.
+        return { ...product, _imagesSaveFailed: true };
       }
     }
 
