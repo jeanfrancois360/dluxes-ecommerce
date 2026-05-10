@@ -170,7 +170,7 @@ export default function PayoutSettingsPage() {
         accountNumber: '',
         routingNumber: '',
         iban: '',
-        swiftCode: settingsData.swiftCode || '',
+        swiftCode: '',
         bankAddress: settingsData.bankAddress || '',
         bankCountry: codeToCountryName(settingsData.bankCountry),
         paypalEmail: settingsData.paypalEmail || '',
@@ -548,10 +548,13 @@ export default function PayoutSettingsPage() {
                           name="swiftCode"
                           value={formData.swiftCode || ''}
                           onChange={handleInputChange}
-                          placeholder="e.g. CHASUS33"
+                          placeholder="Enter to update"
                           className={INPUT}
                         />
-                        <FieldHint>Required for international wire transfers</FieldHint>
+                        <div className="flex items-center justify-between">
+                          <FieldHint>Required for international wire transfers</FieldHint>
+                          <MaskedValue value={settings?.swiftCode} />
+                        </div>
                       </div>
 
                       <div className="sm:col-span-2">
