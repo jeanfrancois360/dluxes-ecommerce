@@ -802,9 +802,6 @@ function SellerDetailContent() {
                   {payoutSettings.taxCountry && (
                     <InfoRow label="Tax Country" value={payoutSettings.taxCountry} />
                   )}
-                  {payoutSettings.payoutCurrency && (
-                    <InfoRow label="Payout Currency" value={payoutSettings.payoutCurrency} />
-                  )}
                 </div>
 
                 {/* Tax document link */}
