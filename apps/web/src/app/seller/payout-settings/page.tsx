@@ -12,7 +12,6 @@ import {
 } from '@/lib/api/seller-payout';
 import {
   Building2,
-  Globe2,
   CheckCircle,
   AlertTriangle,
   Info,
@@ -30,18 +29,6 @@ import PageHeader from '@/components/seller/page-header';
 import StripeConnectButton from '@/components/seller/stripe-connect-button';
 import { CountrySelector } from '@/components/forms/country-selector';
 import { countries } from '@/lib/data/countries';
-
-const CURRENCIES = [
-  { code: 'USD', name: 'US Dollar', symbol: '$' },
-  { code: 'EUR', name: 'Euro', symbol: '€' },
-  { code: 'GBP', name: 'British Pound', symbol: '£' },
-  { code: 'CAD', name: 'Canadian Dollar', symbol: 'CA$' },
-  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
-  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-  { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
-  { code: 'NZD', name: 'New Zealand Dollar', symbol: 'NZ$' },
-  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
-];
 
 // Helper: convert stored country code (e.g. 'US') to full name ('United States')
 // Falls back to the value itself if it's already a name or unknown
@@ -773,33 +760,6 @@ export default function PayoutSettingsPage() {
                     Tax details may be required for compliance in your country. Providing them
                     upfront avoids delays at payout time.
                   </p>
-                </div>
-              </div>
-
-              {/* Payout Preferences */}
-              <div className="bg-white rounded-2xl border border-neutral-200 p-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <Globe2 className="w-5 h-5 text-neutral-500" />
-                  <h2 className="text-base font-bold text-neutral-900">Payout Preferences</h2>
-                </div>
-
-                <div>
-                  <Label>Preferred Currency</Label>
-                  <select
-                    name="payoutCurrency"
-                    value={formData.payoutCurrency || 'USD'}
-                    onChange={handleInputChange}
-                    className={SELECT}
-                  >
-                    {CURRENCIES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.symbol} {c.code} — {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  <FieldHint>
-                    Conversion rates apply when order currency differs from your payout currency.
-                  </FieldHint>
                 </div>
               </div>
 
