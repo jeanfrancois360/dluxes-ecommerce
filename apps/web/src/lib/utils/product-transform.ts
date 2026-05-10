@@ -1,6 +1,7 @@
 import { Product } from '@/lib/api/types';
 import { QuickViewProduct } from '@nextpik/ui';
 import { getColorHex } from './color-mapping';
+import { getProductAvailability } from './product-availability';
 
 /**
  * Transform API Product to QuickViewProduct format for UI components
@@ -105,6 +106,16 @@ export function transformToQuickViewProduct(
   const rating = product.rating ? parseFloat(product.rating) : 0;
   const reviewCount = product.reviewCount ?? 0;
 
+  // Canonical availability for all product types
+  const availability = getProductAvailability({
+    productType: product.productType,
+    fulfillmentType: product.fulfillmentType,
+    inventory: product.inventory ?? stock,
+    isAvailable: product.isAvailable,
+    trackInventory: product.trackInventory ?? trackInventory,
+    lowStockThreshold: product.lowStockThreshold ?? lowStockThreshold,
+  });
+
   // Handle price - for INQUIRY products, price can be null/undefined
   let price: number | undefined = undefined;
   const purchaseType = product.purchaseType || 'INSTANT';
@@ -156,9 +167,8 @@ export function transformToQuickViewProduct(
     slug: product.slug,
     purchaseType,
     description: product.description ?? product.shortDescription,
-    inStock: product.productType === 'DIGITAL' ? true : trackInventory ? stock > 0 : true,
-    stockQuantity:
-      product.productType === 'DIGITAL' ? undefined : trackInventory ? stock : undefined,
+    inStock: availability.inStock,
+    stockQuantity: availability.showQuantity ? (availability.quantity ?? undefined) : undefined,
     lowStockThreshold,
     variants: Object.keys(variants || {}).length > 0 ? variants : undefined,
   };
