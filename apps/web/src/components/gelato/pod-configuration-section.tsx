@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { GelatoProductSelector } from './gelato-product-selector';
 import { DesignUploader } from './design-uploader';
 import { GelatoProduct } from '@/lib/api/gelato';
@@ -9,12 +10,14 @@ interface PodConfigurationSectionProps {
   gelatoProductUid: string;
   designFileUrl: string;
   gelatoMarkupPercent?: number;
-  productImages?: string[]; // Add product images to enable "Use Product Image" feature
+  productImages?: string[];
   onChange: (field: string, value: any) => void;
   onGelatoProductSelect?: (productDetails: GelatoProduct) => void;
   disabled?: boolean;
-  isGelatoAvailable?: boolean; // Whether Gelato POD is available for selected store
-  storeSelected?: boolean; // Whether a store has been selected
+  isGelatoAvailable?: boolean;
+  storeSelected?: boolean;
+  isGelatoConfigured?: boolean; // Whether the seller has set up Gelato credentials
+  gelatoAccountName?: string | null; // Gelato account name if connected
 }
 
 export function PodConfigurationSection({
@@ -26,11 +29,15 @@ export function PodConfigurationSection({
   onChange,
   onGelatoProductSelect,
   disabled,
-  isGelatoAvailable = true, // Default to true for seller forms (they configure their own)
-  storeSelected = true, // Default to true for seller forms
+  isGelatoAvailable = true,
+  storeSelected = true,
+  isGelatoConfigured,
+  gelatoAccountName,
 }: PodConfigurationSectionProps) {
   const isPod = fulfillmentType === 'GELATO_POD';
   const hasProductImages = productImages.length > 0;
+  // If isGelatoConfigured is explicitly passed, use it; otherwise fall back to isGelatoAvailable
+  const gelatoReady = isGelatoConfigured !== undefined ? isGelatoConfigured : isGelatoAvailable;
 
   return (
     <div className="bg-white rounded-lg shadow p-6 space-y-6">
@@ -39,26 +46,79 @@ export function PodConfigurationSection({
         <p className="text-sm text-gray-500 mt-1">
           Configure Gelato fulfillment for print-on-demand products
         </p>
-        <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <svg
-            className="w-4 h-4 text-blue-600 shrink-0 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <p className="text-xs text-blue-700">
-            <strong>Seller-managed fulfillment:</strong> POD products use your own Gelato account
-            for order processing and global shipping. Configure your Gelato credentials in Seller
-            Settings.
-          </p>
-        </div>
+
+        {/* Dynamic status banner */}
+        {isGelatoConfigured === true ? (
+          <div className="mt-3 flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <svg
+              className="w-4 h-4 text-green-600 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p className="text-xs text-green-700">
+              <strong>Gelato connected</strong>
+              {gelatoAccountName ? ` · ${gelatoAccountName}` : ''} — POD products will be printed &
+              shipped by Gelato automatically.
+            </p>
+          </div>
+        ) : isGelatoConfigured === false ? (
+          <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <svg
+              className="w-4 h-4 text-amber-600 shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p className="text-xs text-amber-800">
+              <strong>Gelato not set up.</strong> Connect your Gelato account to enable
+              Print-on-Demand.{' '}
+              <Link
+                href="/seller/gelato-settings"
+                className="underline font-semibold hover:text-amber-900"
+              >
+                Set up now →
+              </Link>
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <svg
+              className="w-4 h-4 text-blue-600 shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p className="text-xs text-blue-700">
+              <strong>Seller-managed fulfillment:</strong> POD products use your own Gelato account
+              for order processing and global shipping.{' '}
+              <Link href="/seller/gelato-settings" className="underline font-semibold">
+                Configure in Seller Settings →
+              </Link>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Fulfillment Type Toggle */}
@@ -91,19 +151,12 @@ export function PodConfigurationSection({
 
           <button
             type="button"
-            onClick={() => isGelatoAvailable && onChange('fulfillmentType', 'GELATO_POD')}
-            disabled={disabled || !isGelatoAvailable}
-            title={
-              !storeSelected
-                ? 'Please select a store first'
-                : !isGelatoAvailable
-                  ? 'This store does not have Gelato POD configured'
-                  : 'Use Gelato Print-on-Demand'
-            }
+            onClick={() => gelatoReady && onChange('fulfillmentType', 'GELATO_POD')}
+            disabled={disabled || !gelatoReady}
             className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
               isPod
                 ? 'border-[#CBB57B] bg-amber-50 text-gray-900'
-                : !isGelatoAvailable
+                : !gelatoReady
                   ? 'border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
                   : 'border-gray-200 text-gray-500 hover:border-gray-300'
             }`}
@@ -118,33 +171,24 @@ export function PodConfigurationSection({
                 />
               </svg>
               Gelato POD
-              {!isGelatoAvailable && (
-                <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+              {isGelatoConfigured === true && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
+                  ● Connected
+                </span>
+              )}
+              {isGelatoConfigured === false && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">
+                  ⚠ Setup Required
+                </span>
               )}
             </div>
             <p className="text-xs text-gray-400 mt-1 font-normal">
-              {!isGelatoAvailable ? 'Not configured for this store' : 'Printed & shipped by Gelato'}
+              {isGelatoConfigured === false
+                ? 'Not configured — set up first'
+                : 'Printed & shipped by Gelato'}
             </p>
           </button>
         </div>
-        {!storeSelected && (
-          <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2">
-            <strong>Note:</strong> Please select a seller store first to see available fulfillment
-            options.
-          </p>
-        )}
-        {storeSelected && !isGelatoAvailable && (
-          <p className="mt-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-2">
-            <strong>Note:</strong> The selected store has not configured Gelato Print-on-Demand.
-            Sellers can enable POD in their settings.
-          </p>
-        )}
       </div>
 
       {/* POD Configuration Fields — only shown when POD is selected */}

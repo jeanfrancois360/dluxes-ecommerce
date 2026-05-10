@@ -128,6 +128,8 @@ const SILENT_FAIL_ENDPOINTS = [
   '/advertisements/active',
   '/advertisements/pending',
   '/advertisement-plans',
+  '/gelato/catalog',
+  '/seller/gelato',
 ];
 
 async function handleResponse(response: Response) {
