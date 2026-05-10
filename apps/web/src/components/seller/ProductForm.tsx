@@ -13,7 +13,7 @@
  * - Professional UX/UI matching admin design
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
@@ -36,6 +36,8 @@ import {
   FileText,
   Tag,
   Info,
+  ChevronDown,
+  X as XIcon,
 } from 'lucide-react';
 import { toast } from '@/lib/utils/toast';
 import { categoriesAPI, type Category } from '@/lib/api/categories';
@@ -379,6 +381,187 @@ function ChipField({
           {items.map((item) => (
             <Chip key={item} label={item} onRemove={() => onRemove(item)} color={chipColor} />
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Searchable category combobox
+function CategoryCombobox({
+  categories,
+  value,
+  onChange,
+  hasError,
+  isLoading,
+}: {
+  categories: Category[];
+  value: string;
+  onChange: (slug: string) => void;
+  hasError?: boolean;
+  isLoading?: boolean;
+}) {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [highlighted, setHighlighted] = useState(0);
+
+  const selected = categories.find((c) => c.slug === value);
+
+  const filtered = query.trim()
+    ? categories.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
+    : categories;
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Reset highlighted when filtered list changes
+  useEffect(() => {
+    setHighlighted(0);
+  }, [query]);
+
+  const handleSelect = (slug: string) => {
+    onChange(slug);
+    setIsOpen(false);
+    setQuery('');
+  };
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange('');
+    setQuery('');
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) {
+      if (e.key === 'Enter' || e.key === 'ArrowDown') {
+        setIsOpen(true);
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlighted((h) => Math.min(h + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlighted((h) => Math.max(h - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filtered[highlighted]) handleSelect(filtered[highlighted].slug);
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      setQuery('');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="px-4 py-2.5 text-gray-400 text-sm border border-gray-200 rounded-lg animate-pulse">
+        Loading categories...
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Trigger input */}
+      <div
+        className={`flex items-center gap-2 w-full px-4 py-2.5 border rounded-lg cursor-text transition-colors ${
+          isOpen
+            ? 'border-[#CBB57B] ring-2 ring-[#CBB57B]/20'
+            : hasError
+              ? 'border-red-400 bg-red-50'
+              : 'border-gray-300'
+        } bg-white`}
+        onClick={() => {
+          setIsOpen(true);
+          inputRef.current?.focus();
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={isOpen ? query : (selected?.name ?? '')}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={handleKeyDown}
+          placeholder={selected ? '' : 'Search or select a category…'}
+          className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400 min-w-0"
+          autoComplete="off"
+        />
+        {selected && !isOpen && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="flex-none text-gray-400 hover:text-gray-600 transition-colors"
+            tabIndex={-1}
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        )}
+        <ChevronDown
+          className={`flex-none w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          {/* Count */}
+          <div className="px-3 py-2 border-b border-gray-100 text-xs text-gray-400">
+            {filtered.length === 0
+              ? 'No categories found'
+              : `${filtered.length} categor${filtered.length === 1 ? 'y' : 'ies'}`}
+          </div>
+          <ul ref={listRef} className="max-h-56 overflow-y-auto py-1" role="listbox">
+            {filtered.length === 0 ? (
+              <li className="px-4 py-3 text-sm text-gray-400 text-center">
+                No results for &ldquo;{query}&rdquo;
+              </li>
+            ) : (
+              filtered.map((cat, idx) => (
+                <li
+                  key={cat.id}
+                  role="option"
+                  aria-selected={cat.slug === value}
+                  onMouseDown={() => handleSelect(cat.slug)}
+                  onMouseEnter={() => setHighlighted(idx)}
+                  className={`flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors ${
+                    idx === highlighted ? 'bg-[#fdf9f0]' : 'hover:bg-gray-50'
+                  } ${cat.slug === value ? 'font-semibold text-gray-900' : 'text-gray-700'}`}
+                >
+                  <span>{cat.name}</span>
+                  {cat.slug === value && (
+                    <span className="w-4 h-4 rounded-full bg-[#CBB57B] flex items-center justify-center flex-shrink-0">
+                      <svg
+                        className="w-2.5 h-2.5 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </span>
+                  )}
+                </li>
+              ))
+            )}
+          </ul>
         </div>
       )}
     </div>
@@ -1154,33 +1337,16 @@ export default function ProductForm({
 
               {/* Category */}
               <div>
-                <label
-                  htmlFor="categoryId"
-                  className="block text-sm font-medium text-gray-700 mb-1.5"
-                >
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Category <span className="text-red-500">*</span>
                 </label>
-                {loadingCategories ? (
-                  <div className="px-4 py-2.5 text-gray-500 text-sm animate-pulse">
-                    Loading categories...
-                  </div>
-                ) : (
-                  <select
-                    id="categoryId"
-                    value={formData.categoryId}
-                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
-                      errors.categoryId ? 'border-red-400 bg-red-50' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.slug}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <CategoryCombobox
+                  categories={categories}
+                  value={formData.categoryId}
+                  onChange={(slug) => setFormData({ ...formData, categoryId: slug })}
+                  hasError={!!errors.categoryId}
+                  isLoading={loadingCategories}
+                />
                 {errors.categoryId && (
                   <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5" />
