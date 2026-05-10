@@ -18,6 +18,7 @@ import { creditsLowWarningTemplate } from './templates/credits-low-warning.templ
 import { gracePeriodEndingTemplate } from './templates/grace-period-ending.template';
 import { emailVerificationTemplate } from './templates/email-verification.template';
 import { twoFactorEnabledTemplate } from './templates/two-factor-enabled.template';
+import { digitalDownloadReadyTemplate } from './templates/digital-download-ready.template';
 
 @Injectable()
 export class EmailService {
@@ -1131,6 +1132,62 @@ export class EmailService {
       return true;
     } catch (error) {
       this.logger.error('Error sending payout failed email', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send digital download ready email — triggered after payment confirmation
+   * when the order contains at least one DIGITAL product.
+   */
+  async sendDigitalDownloadReady(
+    email: string,
+    data: {
+      customerName: string;
+      orderNumber: string;
+      items: Array<{ name: string; format: string | null; fileName: string | null }>;
+      orderId: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const downloadsUrl = `${this.frontendUrl}/account/downloads`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 DIGITAL DOWNLOAD READY FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Order: #${data.orderNumber}`);
+        this.logger.log(`Files: ${data.items.map((i) => i.name).join(', ')}`);
+        this.logger.log(`Downloads URL: ${downloadsUrl}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = digitalDownloadReadyTemplate({
+        customerName: data.customerName,
+        orderNumber: data.orderNumber,
+        items: data.items,
+        downloadsUrl,
+        frontendUrl: this.frontendUrl,
+      });
+
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `Your download is ready — Order #${data.orderNumber}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send digital download ready email', error);
+        return false;
+      }
+
+      this.logger.log(`Digital download ready email sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending digital download ready email', error);
       return false;
     }
   }
