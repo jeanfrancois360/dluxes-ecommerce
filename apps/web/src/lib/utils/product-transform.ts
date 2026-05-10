@@ -166,6 +166,8 @@ export function transformToQuickViewProduct(
     reviewCount,
     slug: product.slug,
     purchaseType,
+    productType: product.productType ?? null,
+    fulfillmentType: product.fulfillmentType ?? null,
     description: product.description ?? product.shortDescription,
     inStock: availability.inStock,
     stockQuantity: availability.showQuantity ? (availability.quantity ?? undefined) : undefined,

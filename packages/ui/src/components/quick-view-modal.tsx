@@ -21,6 +21,8 @@ export interface QuickViewProduct {
   reviewCount?: number;
   slug: string;
   purchaseType?: 'INSTANT' | 'INQUIRY';
+  productType?: string | null;
+  fulfillmentType?: string | null;
   variants?: {
     colors?: Array<{ name: string; value: string; hex: string }>;
     sizes?: Array<{ name: string; value: string; inStock: boolean }>;
@@ -48,6 +50,10 @@ export interface QuickViewModalProps {
     outOfStock: string;
     onlyLeftInStock: string;
     addToCart: string;
+    sendInquiry: string;
+    alwaysAvailable: string;
+    serviceAvailable: string;
+    unavailable: string;
     viewFullDetails: string;
     reviews: string;
     review: string;
@@ -79,6 +85,10 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
     outOfStock: 'Out of Stock',
     onlyLeftInStock: 'Only {count} left in stock!',
     addToCart: 'Add to Cart',
+    sendInquiry: 'Send Inquiry',
+    alwaysAvailable: 'Instant Download',
+    serviceAvailable: 'Available',
+    unavailable: 'Unavailable',
     viewFullDetails: 'View Full Details',
     reviews: 'reviews',
     review: 'review',
@@ -141,6 +151,15 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!product || !mounted) return null;
+
+  // Derived flags
+  const isInquiry = product.purchaseType === 'INQUIRY';
+  const isGelatoPod = product.fulfillmentType === 'GELATO_POD';
+  const NON_INVENTORY_TYPES = new Set(['DIGITAL', 'SERVICE', 'RENTAL', 'REAL_ESTATE', 'VEHICLE']);
+  const isNonInventory = product.productType ? NON_INVENTORY_TYPES.has(product.productType) : false;
+  const isDigital = product.productType === 'DIGITAL';
+  // Hide quantity selector for inquiry, digital, print-on-demand, and service-type products
+  const showQuantity = !isInquiry && !isNonInventory && !isGelatoPod;
 
   // Note: Since this is in the UI package, we can't use product.variants with backend variant structure
   // The product already has transformed variants in the QuickViewProduct format
@@ -458,62 +477,85 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                       </div>
                     )}
 
-                    {/* Quantity Selector */}
-                    <div className="mb-4 sm:mb-6">
-                      <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
-                        {t.quantity}
-                      </label>
-                      <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
-                        <button
-                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          disabled={quantity <= 1}
-                          className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-neutral-300 rounded-md sm:rounded-lg hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <svg
-                            className="w-4 h-4 sm:w-5 sm:h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                    {/* Quantity Selector — hidden for inquiry / digital / service-type products */}
+                    {showQuantity && (
+                      <div className="mb-4 sm:mb-6">
+                        <label className="block text-xs sm:text-sm font-semibold text-black mb-2 sm:mb-3">
+                          {t.quantity}
+                        </label>
+                        <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
+                          <button
+                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                            disabled={quantity <= 1}
+                            className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-neutral-300 rounded-md sm:rounded-lg hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M20 12H4"
-                            />
-                          </svg>
-                        </button>
-                        <span className="text-lg xs:text-xl sm:text-xl font-semibold w-10 xs:w-12 text-center">
-                          {quantity}
-                        </span>
-                        <button
-                          onClick={() => setQuantity(quantity + 1)}
-                          disabled={
-                            product.stockQuantity ? quantity >= product.stockQuantity : false
-                          }
-                          className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-neutral-300 rounded-md sm:rounded-lg hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <svg
-                            className="w-4 h-4 sm:w-5 sm:h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                            <svg
+                              className="w-4 h-4 sm:w-5 sm:h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M20 12H4"
+                              />
+                            </svg>
+                          </button>
+                          <span className="text-lg xs:text-xl sm:text-xl font-semibold w-10 xs:w-12 text-center">
+                            {quantity}
+                          </span>
+                          <button
+                            onClick={() => setQuantity(quantity + 1)}
+                            disabled={
+                              product.stockQuantity ? quantity >= product.stockQuantity : false
+                            }
+                            className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-neutral-300 rounded-md sm:rounded-lg hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 4v16m8-8H4"
-                            />
-                          </svg>
-                        </button>
+                            <svg
+                              className="w-4 h-4 sm:w-5 sm:h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 4v16m8-8H4"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Stock Status */}
+                    {/* Stock Status — context-aware per product type */}
                     <div className="mb-6 sm:mb-8">
                       <div className="flex items-center gap-1.5 sm:gap-2">
-                        {product.inStock ? (
+                        {!product.inStock ? (
+                          <>
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full" />
+                            <span className="text-xs sm:text-sm text-red-600 font-medium">
+                              {isInquiry ? t.unavailable : t.outOfStock}
+                            </span>
+                          </>
+                        ) : isGelatoPod || isDigital ? (
+                          <>
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full" />
+                            <span className="text-xs sm:text-sm text-blue-600 font-medium">
+                              {t.alwaysAvailable}
+                            </span>
+                          </>
+                        ) : isNonInventory ? (
+                          <>
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full" />
+                            <span className="text-xs sm:text-sm text-green-600 font-medium">
+                              {t.serviceAvailable}
+                            </span>
+                          </>
+                        ) : (
                           <>
                             <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full" />
                             <span className="text-xs sm:text-sm text-green-600 font-medium">
@@ -522,16 +564,11 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                                 : t.inStock}
                             </span>
                           </>
-                        ) : (
-                          <>
-                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full" />
-                            <span className="text-xs sm:text-sm text-red-600 font-medium">
-                              {t.outOfStock}
-                            </span>
-                          </>
                         )}
                       </div>
                       {product.inStock &&
+                        !isNonInventory &&
+                        !isGelatoPod &&
                         product.stockQuantity &&
                         product.lowStockThreshold &&
                         product.stockQuantity <= product.lowStockThreshold && (
@@ -543,33 +580,66 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row gap-2.5 xs:gap-3 sm:gap-4 mt-auto">
-                      <motion.button
-                        onClick={handleAddToCart}
-                        whileHover={framerMotion.interactions.buttonHover}
-                        whileTap={framerMotion.interactions.buttonTap}
-                        disabled={!product.inStock}
-                        className={cn(
-                          'flex-1 py-2.5 xs:py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm xs:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200',
-                          product.inStock
-                            ? 'bg-gradient-to-r from-black to-neutral-800 text-white hover:from-gold hover:to-accent-700 hover:text-black shadow-lg'
-                            : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
-                        )}
-                      >
-                        <svg
-                          className="w-4 h-4 xs:w-5 xs:h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                      {isInquiry ? (
+                        /* Inquiry CTA — navigates to product detail page for contact form */
+                        <motion.button
+                          onClick={handleViewDetails}
+                          whileHover={framerMotion.interactions.buttonHover}
+                          whileTap={framerMotion.interactions.buttonTap}
+                          disabled={!product.inStock}
+                          className={cn(
+                            'flex-1 py-2.5 xs:py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm xs:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200',
+                            product.inStock
+                              ? 'bg-gradient-to-r from-[#6B5840] to-[#4a3d2b] text-white hover:from-[#CBB57B] hover:to-[#b89e5e] hover:text-black shadow-lg'
+                              : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                          )}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                          />
-                        </svg>
-                        {product.inStock ? t.addToCart : t.outOfStock}
-                      </motion.button>
+                          {/* Mail icon */}
+                          <svg
+                            className="w-4 h-4 xs:w-5 xs:h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                            />
+                          </svg>
+                          {t.sendInquiry}
+                        </motion.button>
+                      ) : (
+                        /* Add to Cart CTA */
+                        <motion.button
+                          onClick={handleAddToCart}
+                          whileHover={framerMotion.interactions.buttonHover}
+                          whileTap={framerMotion.interactions.buttonTap}
+                          disabled={!product.inStock}
+                          className={cn(
+                            'flex-1 py-2.5 xs:py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm xs:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200',
+                            product.inStock
+                              ? 'bg-gradient-to-r from-black to-neutral-800 text-white hover:from-gold hover:to-accent-700 hover:text-black shadow-lg'
+                              : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                          )}
+                        >
+                          <svg
+                            className="w-4 h-4 xs:w-5 xs:h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                            />
+                          </svg>
+                          {product.inStock ? t.addToCart : t.outOfStock}
+                        </motion.button>
+                      )}
 
                       <motion.button
                         onClick={handleViewDetails}
