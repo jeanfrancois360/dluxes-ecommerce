@@ -47,6 +47,15 @@ import { Textarea } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const API_BASE = API_URL.replace(/\/api\/v\d+$/, '');
+
+/** Local-storage uploads are stored as relative paths (e.g. /uploads/kyc-documents/file.pdf).
+ *  They must be resolved against the backend origin, not the Next.js origin. */
+function resolveFileUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('/uploads/')) return `${API_BASE}${url}`;
+  return url;
+}
 
 const REJECTION_REASONS = [
   'Insufficient store information provided',
@@ -600,7 +609,7 @@ function SellerDetailContent() {
                     </p>
                   </div>
                   <a
-                    href={seller.applicationDocumentUrl}
+                    href={resolveFileUrl(seller.applicationDocumentUrl)!}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-green-300 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-50 transition-colors"
@@ -807,7 +816,7 @@ function SellerDetailContent() {
                 {/* Tax document link */}
                 {payoutSettings.taxFormUrl && (
                   <a
-                    href={payoutSettings.taxFormUrl}
+                    href={resolveFileUrl(payoutSettings.taxFormUrl)!}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between p-3 bg-neutral-50 border border-neutral-200 rounded-xl text-xs hover:bg-neutral-100 transition-colors"
