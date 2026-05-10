@@ -181,9 +181,13 @@ export default function ProductDetailPage() {
     return Array.from(new Map(sizes.map((s) => [s.value, s])).values());
   }, [product]);
 
-  // Calculate stock status
+  // Calculate stock status — digital products are always in stock (unlimited copies)
   const stockStatus = useMemo(() => {
     if (!product) return { inStock: false, quantity: 0, showQuantity: false };
+
+    if (product.productType === 'DIGITAL') {
+      return { inStock: true, quantity: 0, showQuantity: false };
+    }
 
     // If variants exist and one is selected, check variant stock
     const selectedVar = product.variants?.find(
