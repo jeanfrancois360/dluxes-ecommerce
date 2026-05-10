@@ -137,7 +137,22 @@ export class SubscriptionService {
     }
 
     // For subscription-required product types, check subscription
-    const subscription = await this.getOrCreateSubscription(userId);
+    const subscription = await this.findSubscription(userId);
+
+    // No subscription at all — seller must purchase a plan first
+    if (!subscription) {
+      return {
+        canList: false,
+        reasons: {
+          storeApproved: true,
+          productTypeAllowed: false,
+          meetsTierRequirement: false,
+          hasListingCapacity: false,
+          hasMonthlyCredits: false,
+        },
+      };
+    }
+
     const plan = subscription.plan;
 
     // Log subscription details for debugging
@@ -216,10 +231,31 @@ export class SubscriptionService {
   }
 
   /**
-   * Get subscription info formatted for API response
+   * Find existing subscription without auto-creating
+   */
+  async findSubscription(userId: string) {
+    return this.prisma.sellerSubscription.findUnique({
+      where: { userId },
+      include: { plan: true },
+    });
+  }
+
+  /**
+   * Get subscription info formatted for API response.
+   * Returns null fields when the seller has no subscription (avoids
+   * auto-creating a misleading FREE subscription for new accounts).
    */
   async getSubscriptionInfo(userId: string) {
-    const subscription = await this.getOrCreateSubscription(userId);
+    const subscription = await this.findSubscription(userId);
+
+    if (!subscription) {
+      return {
+        subscription: null,
+        plan: null,
+        tier: null,
+        isActive: false,
+      };
+    }
 
     return {
       subscription: {

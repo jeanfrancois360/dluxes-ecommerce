@@ -55,9 +55,9 @@ export interface SellerSubscription {
 }
 
 export interface SubscriptionInfo {
-  subscription: SellerSubscription;
-  plan: SubscriptionPlan;
-  tier: string;
+  subscription: SellerSubscription | null;
+  plan: SubscriptionPlan | null;
+  tier: string | null;
   isActive: boolean;
 }
 
