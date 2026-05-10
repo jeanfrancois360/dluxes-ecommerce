@@ -209,13 +209,13 @@ export default function NewProductPage() {
     // ── Store pending approval ───────────────────────────────────────────
     if (!reasons.storeApproved) {
       return (
-        <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-md"
           >
-            <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-white rounded-2xl overflow-hidden shadow-lg border border-neutral-200">
               {/* Dark hero */}
               <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 px-8 py-10 text-center">
                 <div className="w-16 h-16 bg-amber-500/20 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
@@ -284,13 +284,13 @@ export default function NewProductPage() {
     // ── No store credits (PHYSICAL products — primary gate) ──────────────
     if (!reasons.hasMonthlyCredits && reasons.productTypeAllowed && reasons.meetsTierRequirement) {
       return (
-        <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-md"
           >
-            <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-white rounded-2xl overflow-hidden shadow-lg border border-neutral-200">
               {/* Dark hero */}
               <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 px-8 py-10 text-center">
                 <div className="w-16 h-16 bg-[#CBB57B]/20 border border-[#CBB57B]/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
@@ -363,13 +363,13 @@ export default function NewProductPage() {
     if (!reasons.productTypeAllowed || !reasons.meetsTierRequirement) {
       const productTypeLabel = selectedProductType.replace(/_/g, ' ');
       return (
-        <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-md"
           >
-            <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-white rounded-2xl overflow-hidden shadow-lg border border-neutral-200">
               {/* Dark hero */}
               <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 px-8 py-10 text-center">
                 <div className="w-16 h-16 bg-[#CBB57B]/20 border border-[#CBB57B]/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
@@ -438,13 +438,13 @@ export default function NewProductPage() {
     // ── Listing capacity reached (has credits, hit plan limit) ───────────
     if (!reasons.hasListingCapacity) {
       return (
-        <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-md"
           >
-            <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-white rounded-2xl overflow-hidden shadow-lg border border-neutral-200">
               <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 px-8 py-10 text-center">
                 <div className="w-16 h-16 bg-orange-500/20 border border-orange-500/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
                   <ShoppingBag className="w-8 h-8 text-orange-400" />
