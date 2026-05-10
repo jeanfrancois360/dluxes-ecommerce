@@ -1743,8 +1743,8 @@ export default function ProductForm({
         </div>
 
         {/* ─── RIGHT SIDEBAR ─── */}
-        <div className="space-y-4">
-          <div className="sticky top-6 space-y-4">
+        <div className="h-full">
+          <div className="sticky top-20 space-y-4">
             {/* Publish Card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
