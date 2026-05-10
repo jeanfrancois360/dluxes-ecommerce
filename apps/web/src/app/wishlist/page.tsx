@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
+import { isProductAvailableForCart } from '@/lib/utils/product-availability';
 
 export default function WishlistPage() {
   const router = useRouter();
@@ -71,12 +72,14 @@ export default function WishlistPage() {
     }
   };
 
-  // Digital products are always available — inventory doesn't apply
+  // Use canonical availability logic for all product types
   const isAvailableForCart = (item: (typeof items)[number]) =>
-    item.product.isAvailable !== false &&
-    (item.product.productType === 'DIGITAL' ||
-      item.product.inventory === undefined ||
-      item.product.inventory > 0);
+    isProductAvailableForCart({
+      productType: item.product.productType,
+      fulfillmentType: item.product.fulfillmentType,
+      inventory: item.product.inventory,
+      isAvailable: item.product.isAvailable,
+    });
 
   const handleMoveAllToCart = async () => {
     const inStockItems = (items || []).filter(isAvailableForCart);

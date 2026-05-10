@@ -15,6 +15,7 @@ import { Button } from '@nextpik/ui';
 import { Badge } from '@nextpik/ui';
 import ProductInquiryForm from './ProductInquiryForm';
 import { useTranslations } from 'next-intl';
+import { getProductAvailability } from '@/lib/utils/product-availability';
 
 export type ProductType = 'PHYSICAL' | 'REAL_ESTATE' | 'VEHICLE' | 'SERVICE' | 'RENTAL' | 'DIGITAL';
 export type PurchaseType = 'INSTANT' | 'INQUIRY';
@@ -28,7 +29,9 @@ interface ProductActionButtonProps {
     productType?: ProductType;
     purchaseType?: PurchaseType;
     contactRequired?: boolean;
-    inventory?: number;
+    inventory?: number | null;
+    fulfillmentType?: string | null;
+    isAvailable?: boolean | null;
   };
   sellerId?: string;
   onAddToCart?: () => void;
@@ -60,8 +63,15 @@ export default function ProductActionButton({
   const purchaseType = product.purchaseType || 'INSTANT';
   const productType = product.productType || 'PHYSICAL';
   const isInquiryBased = purchaseType === 'INQUIRY' || product.contactRequired;
-  const isOutOfStock =
-    productType !== 'DIGITAL' && product.inventory !== undefined && product.inventory <= 0;
+
+  const availability = getProductAvailability({
+    productType,
+    fulfillmentType: product.fulfillmentType,
+    inventory: product.inventory,
+    isAvailable: product.isAvailable,
+  });
+  const isOutOfStock = !isInquiryBased && !availability.inStock;
+
   const typeConfig = PRODUCT_TYPE_CONFIG[productType];
   const TypeIcon = typeConfig?.icon || Package;
 

@@ -287,12 +287,20 @@ export class ProductsService {
       where.featured = featured;
     }
 
-    // In Stock filter — digital products are always "in stock" (null inventory = unlimited)
+    // In Stock filter — non-inventory product types are always "in stock"
     if (inStock !== undefined && inStock === true) {
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),
         {
-          OR: [{ inventory: { gt: 0 } }, { productType: 'DIGITAL' }],
+          OR: [
+            { inventory: { gt: 0 } }, // PHYSICAL with stock
+            {
+              productType: {
+                in: ['DIGITAL', 'SERVICE', 'RENTAL', 'REAL_ESTATE', 'VEHICLE'],
+              },
+            }, // Non-inventory types
+            { fulfillmentType: 'GELATO_POD' }, // Print-on-demand
+          ],
         },
       ];
     }
@@ -400,6 +408,8 @@ export class ProductsService {
           materials: true,
           inventory: true,
           productType: true,
+          purchaseType: true,
+          fulfillmentType: true,
           status: true,
           storeId: true,
           store: {
@@ -480,6 +490,8 @@ export class ProductsService {
         reviewCount: true,
         inventory: true,
         productType: true,
+        purchaseType: true,
+        fulfillmentType: true,
         category: {
           select: {
             id: true,
@@ -529,6 +541,8 @@ export class ProductsService {
         reviewCount: true,
         inventory: true,
         productType: true,
+        purchaseType: true,
+        fulfillmentType: true,
         badges: true,
         category: {
           select: {
@@ -576,6 +590,8 @@ export class ProductsService {
         reviewCount: true,
         inventory: true,
         productType: true,
+        purchaseType: true,
+        fulfillmentType: true,
         viewCount: true,
         likeCount: true,
         category: {
@@ -627,6 +643,8 @@ export class ProductsService {
         reviewCount: true,
         inventory: true,
         productType: true,
+        purchaseType: true,
+        fulfillmentType: true,
         category: {
           select: {
             id: true,

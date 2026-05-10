@@ -133,6 +133,8 @@ export interface Product {
   // Product type properties
   productType?: ProductType;
   purchaseType?: PurchaseType;
+  fulfillmentType?: string | null;
+  isAvailable?: boolean;
   status?: ProductStatus;
   contactRequired?: boolean;
   isPreOrder?: boolean;
