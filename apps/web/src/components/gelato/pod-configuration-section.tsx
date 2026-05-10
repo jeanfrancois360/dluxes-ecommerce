@@ -1,6 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  Package,
+  Printer,
+  Check,
+  AlertTriangle,
+  ArrowRight,
+  Info,
+  Image as ImageIcon,
+  Percent,
+} from 'lucide-react';
 import { GelatoProductSelector } from './gelato-product-selector';
 import { DesignUploader } from './design-uploader';
 import { GelatoProduct } from '@/lib/api/gelato';
@@ -14,10 +24,27 @@ interface PodConfigurationSectionProps {
   onChange: (field: string, value: any) => void;
   onGelatoProductSelect?: (productDetails: GelatoProduct) => void;
   disabled?: boolean;
+  /** Explicitly passed — true/false when resolved, undefined while loading */
+  isGelatoConfigured?: boolean;
+  gelatoAccountName?: string | null;
+  // Legacy props kept for backward compat (admin form)
   isGelatoAvailable?: boolean;
   storeSelected?: boolean;
-  isGelatoConfigured?: boolean; // Whether the seller has set up Gelato credentials
-  gelatoAccountName?: string | null; // Gelato account name if connected
+}
+
+const GOLD = '#CBB57B';
+const GOLD_DARK = '#A08840';
+
+function StepNumber({ n }: { n: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex-shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center"
+      style={{ backgroundColor: GOLD }}
+    >
+      {n}
+    </span>
+  );
 }
 
 export function PodConfigurationSection({
@@ -29,176 +56,182 @@ export function PodConfigurationSection({
   onChange,
   onGelatoProductSelect,
   disabled,
-  isGelatoAvailable = true,
-  storeSelected = true,
   isGelatoConfigured,
   gelatoAccountName,
+  isGelatoAvailable = true,
 }: PodConfigurationSectionProps) {
   const isPod = fulfillmentType === 'GELATO_POD';
   const hasProductImages = productImages.length > 0;
-  // If isGelatoConfigured is explicitly passed, use it; otherwise fall back to isGelatoAvailable
   const gelatoReady = isGelatoConfigured !== undefined ? isGelatoConfigured : isGelatoAvailable;
+  const isLoading = isGelatoConfigured === undefined;
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">Print-on-Demand (POD)</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Configure Gelato fulfillment for print-on-demand products
-        </p>
+    <div className="space-y-4">
+      {/* ── Fulfillment type selector ── */}
+      <div role="radiogroup" aria-label="Fulfillment type" className="grid grid-cols-2 gap-3">
+        {/* Self-Fulfilled */}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!isPod}
+          onClick={() => onChange('fulfillmentType', 'SELF_FULFILLED')}
+          disabled={disabled}
+          className={`relative text-left rounded-xl border-2 p-5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 group ${
+            !isPod
+              ? 'border-[#CBB57B] bg-[#CBB57B]/5 shadow-sm'
+              : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/60'
+          } ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+          style={{ ['--tw-ring-color' as any]: GOLD }}
+        >
+          {!isPod ? null : null}
+          <div
+            className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 transition-colors ${
+              !isPod ? 'bg-[#CBB57B]/20' : 'bg-gray-100 group-hover:bg-gray-200'
+            }`}
+          >
+            <Package
+              className={`w-4.5 h-4.5 ${!isPod ? 'text-[#A08840]' : 'text-gray-500'}`}
+              size={18}
+            />
+          </div>
 
-        {/* Dynamic status banner */}
-        {isGelatoConfigured === true ? (
-          <div className="mt-3 flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <svg
-              className="w-4 h-4 text-green-600 shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <p
+            className={`text-sm font-semibold leading-tight ${!isPod ? 'text-gray-900' : 'text-gray-700'}`}
+          >
+            Self-Fulfilled
+          </p>
+          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+            You package and ship from your own inventory.
+          </p>
+
+          {/* Selected indicator */}
+          {!isPod && (
+            <span
+              aria-hidden="true"
+              className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: GOLD }}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="text-xs text-green-700">
-              <strong>Gelato connected</strong>
-              {gelatoAccountName ? ` · ${gelatoAccountName}` : ''} — POD products will be printed &
-              shipped by Gelato automatically.
+              <Check size={11} strokeWidth={3} className="text-white" />
+            </span>
+          )}
+        </button>
+
+        {/* Gelato POD */}
+        {gelatoReady ? (
+          <button
+            type="button"
+            role="radio"
+            aria-checked={isPod}
+            onClick={() => onChange('fulfillmentType', 'GELATO_POD')}
+            disabled={disabled}
+            className={`relative text-left rounded-xl border-2 p-5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 group ${
+              isPod
+                ? 'border-[#CBB57B] bg-[#CBB57B]/5 shadow-sm'
+                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/60'
+            } ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+            style={{ ['--tw-ring-color' as any]: GOLD }}
+          >
+            <div
+              className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 transition-colors ${
+                isPod ? 'bg-[#CBB57B]/20' : 'bg-gray-100 group-hover:bg-gray-200'
+              }`}
+            >
+              <Printer className={`${isPod ? 'text-[#A08840]' : 'text-gray-500'}`} size={18} />
+            </div>
+
+            <p
+              className={`text-sm font-semibold leading-tight ${isPod ? 'text-gray-900' : 'text-gray-700'}`}
+            >
+              Gelato POD
             </p>
-          </div>
-        ) : isGelatoConfigured === false ? (
-          <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <svg
-              className="w-4 h-4 text-amber-600 shrink-0 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="text-xs text-amber-800">
-              <strong>Gelato not set up.</strong> Connect your Gelato account to enable
-              Print-on-Demand.{' '}
-              <Link
-                href="/seller/gelato-settings"
-                className="underline font-semibold hover:text-amber-900"
+            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+              {gelatoAccountName
+                ? `${gelatoAccountName} · Gelato prints & ships globally.`
+                : 'Gelato prints & ships directly to your customers worldwide.'}
+            </p>
+
+            {/* Selected indicator */}
+            {isPod && (
+              <span
+                aria-hidden="true"
+                className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: GOLD }}
               >
-                Set up now →
-              </Link>
-            </p>
-          </div>
+                <Check size={11} strokeWidth={3} className="text-white" />
+              </span>
+            )}
+
+            {/* Connected badge */}
+            {!isPod && !isLoading && (
+              <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                Connected
+              </span>
+            )}
+
+            {/* Loading skeleton for badge */}
+            {!isPod && isLoading && (
+              <span className="absolute top-3 right-3 w-16 h-4 rounded-full bg-gray-200 animate-pulse" />
+            )}
+          </button>
         ) : (
-          <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <svg
-              className="w-4 h-4 text-blue-600 shrink-0 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="text-xs text-blue-700">
-              <strong>Seller-managed fulfillment:</strong> POD products use your own Gelato account
-              for order processing and global shipping.{' '}
-              <Link href="/seller/gelato-settings" className="underline font-semibold">
-                Configure in Seller Settings →
-              </Link>
-            </p>
-          </div>
+          /* Not configured — link card instead of button */
+          <Link
+            href="/seller/gelato-settings"
+            className="relative text-left rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/60 p-5 transition-all duration-150 hover:bg-amber-50 hover:border-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 group block"
+          >
+            {/* Loading skeleton */}
+            {isLoading ? (
+              <div className="space-y-2 animate-pulse">
+                <div className="w-9 h-9 rounded-lg bg-gray-200 mb-3" />
+                <div className="h-3.5 w-24 bg-gray-200 rounded" />
+                <div className="h-3 w-40 bg-gray-200 rounded mt-1" />
+              </div>
+            ) : (
+              <>
+                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center mb-3 group-hover:bg-amber-200 transition-colors">
+                  <Printer className="text-amber-600" size={18} />
+                </div>
+
+                <p className="text-sm font-semibold text-gray-700 leading-tight">Gelato POD</p>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Connect your Gelato account to unlock print-on-demand.
+                </p>
+
+                <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 group-hover:text-amber-800 transition-colors">
+                  Set up Gelato
+                  <ArrowRight size={12} />
+                </span>
+
+                <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                  <AlertTriangle size={9} />
+                  Setup Required
+                </span>
+              </>
+            )}
+          </Link>
         )}
       </div>
 
-      {/* Fulfillment Type Toggle */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Fulfillment Type</label>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => onChange('fulfillmentType', 'SELF_FULFILLED')}
-            disabled={disabled}
-            className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
-              !isPod
-                ? 'border-[#CBB57B] bg-amber-50 text-gray-900'
-                : 'border-gray-200 text-gray-500 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-2 justify-center">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                />
-              </svg>
-              Self-Fulfilled
-            </div>
-            <p className="text-xs text-gray-400 mt-1 font-normal">Ship from your own inventory</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => gelatoReady && onChange('fulfillmentType', 'GELATO_POD')}
-            disabled={disabled || !gelatoReady}
-            className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
-              isPod
-                ? 'border-[#CBB57B] bg-amber-50 text-gray-900'
-                : !gelatoReady
-                  ? 'border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
-                  : 'border-gray-200 text-gray-500 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-2 justify-center">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                />
-              </svg>
-              Gelato POD
-              {isGelatoConfigured === true && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
-                  ● Connected
-                </span>
-              )}
-              {isGelatoConfigured === false && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">
-                  ⚠ Setup Required
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-gray-400 mt-1 font-normal">
-              {isGelatoConfigured === false
-                ? 'Not configured — set up first'
-                : 'Printed & shipped by Gelato'}
-            </p>
-          </button>
-        </div>
-      </div>
-
-      {/* POD Configuration Fields — only shown when POD is selected */}
+      {/* ── POD configuration steps ── */}
       {isPod && (
-        <div className="space-y-5 pt-2 border-t border-gray-100">
-          {/* Gelato Product */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Gelato Product <span className="text-red-500">*</span>
-            </label>
+        <div className="rounded-xl border border-gray-200 overflow-hidden divide-y divide-gray-100">
+          {/* Step 1 — Base product */}
+          <section className="bg-white p-5" aria-labelledby="pod-step-1-label">
+            <div className="flex items-start gap-3 mb-4">
+              <StepNumber n={1} />
+              <div>
+                <p
+                  id="pod-step-1-label"
+                  className="text-sm font-semibold text-gray-900 leading-tight"
+                >
+                  Choose base product <span className="text-red-500">*</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Select from Gelato's catalog — t-shirts, mugs, posters, and more.
+                </p>
+              </div>
+            </div>
             <GelatoProductSelector
               value={gelatoProductUid}
               onChange={(uid, name, productDetails) => {
@@ -209,38 +242,36 @@ export function PodConfigurationSection({
               }}
               disabled={disabled}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Select the base product from Gelato's catalog (e.g. unisex t-shirt, mug, poster)
-            </p>
-          </div>
+          </section>
 
-          {/* Design File */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium text-gray-700">
-                Design File <span className="text-gray-400 text-xs font-normal">(Optional)</span>
-              </label>
+          {/* Step 2 — Design file */}
+          <section className="bg-white p-5" aria-labelledby="pod-step-2-label">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex items-start gap-3">
+                <StepNumber n={2} />
+                <div>
+                  <p
+                    id="pod-step-2-label"
+                    className="text-sm font-semibold text-gray-900 leading-tight"
+                  >
+                    Upload design file{' '}
+                    <span className="text-xs font-normal text-gray-400">(optional)</span>
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Print-ready artwork sent to Gelato for production (PNG, PDF, TIFF — max 50 MB).
+                  </p>
+                </div>
+              </div>
               {hasProductImages && !designFileUrl && (
                 <button
                   type="button"
                   onClick={() => onChange('designFileUrl', productImages[0])}
                   disabled={disabled}
-                  className="text-xs text-[#CBB57B] hover:text-[#B89F63] font-medium flex items-center gap-1 transition-colors"
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 rounded"
+                  style={{ color: GOLD }}
                 >
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  Use Product Image
+                  <ImageIcon size={13} />
+                  Use product image
                 </button>
               )}
             </div>
@@ -249,48 +280,29 @@ export function PodConfigurationSection({
               onChange={(url) => onChange('designFileUrl', url)}
               disabled={disabled}
             />
-            <div className="mt-2 space-y-2">
-              <p className="text-xs text-gray-500">
-                Upload a print-ready design file for Gelato production, or leave empty for plain
-                products.
-              </p>
-              <div className="flex items-start gap-2 p-2 bg-blue-50 border border-blue-100 rounded text-xs">
-                <svg
-                  className="w-4 h-4 text-blue-600 shrink-0 mt-0.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+          </section>
+
+          {/* Step 3 — Markup */}
+          <section className="bg-white p-5" aria-labelledby="pod-step-3-label">
+            <div className="flex items-start gap-3 mb-4">
+              <StepNumber n={3} />
+              <div>
+                <p
+                  id="pod-step-3-label"
+                  className="text-sm font-semibold text-gray-900 leading-tight"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <div className="text-blue-700">
-                  <strong>Tip:</strong> Product images are for display on your store. Design files
-                  are sent to Gelato for printing.
-                  {hasProductImages && (
-                    <>
-                      {' '}
-                      Click "Use Product Image" above to use your uploaded product image as the
-                      design file.
-                    </>
-                  )}
-                </div>
+                  Set your markup
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Your margin on top of Gelato's production cost. Gelato ships directly to customers
+                  — factor shipping into your price.
+                </p>
               </div>
             </div>
-          </div>
-
-          {/* Markup & Shipping row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Markup Percentage
-              </label>
-              <div className="relative">
+            <div className="flex items-center gap-3">
+              <div className="relative w-40">
                 <input
+                  id="gelato-markup"
                   type="number"
                   min="0"
                   max="500"
@@ -303,58 +315,32 @@ export function PodConfigurationSection({
                     )
                   }
                   disabled={disabled}
-                  className="w-full pr-8 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  aria-label="Markup percentage"
                   placeholder="e.g. 30"
+                  className="w-full pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg text-sm bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B] disabled:opacity-60"
                 />
-                <span className="absolute right-3 top-2 text-gray-400 text-sm">%</span>
+                <Percent
+                  size={14}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Override global markup. Leave blank to use system default.
-              </p>
+              {gelatoMarkupPercent != null && gelatoMarkupPercent > 0 && (
+                <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1.5 rounded-lg">
+                  +{gelatoMarkupPercent}% margin
+                </span>
+              )}
+              {(!gelatoMarkupPercent || gelatoMarkupPercent === 0) && (
+                <span className="text-xs text-gray-400">Platform default applies</span>
+              )}
             </div>
-          </div>
+          </section>
 
-          {/* Shipping note */}
-          <div className="flex gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
-            <svg
-              className="w-5 h-5 text-amber-500 shrink-0 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"
-              />
-            </svg>
-            <p className="text-sm text-amber-800">
-              <span className="font-medium">Shipping note:</span> Gelato ships directly to customers
-              from their global network. Include estimated Gelato shipping costs in your product
-              price or markup. Platform shipping rates shown at checkout apply to non-POD items
-              only.
-            </p>
-          </div>
-
-          {/* Info banner */}
-          <div className="flex gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-            <svg
-              className="w-5 h-5 text-blue-500 shrink-0 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="text-sm text-blue-700">
-              When an order is placed and payment confirmed, Gelato will automatically receive the
-              order and begin production if auto-submit is enabled in system settings.
+          {/* Info footer */}
+          <div className="bg-gray-50 px-5 py-3.5 flex items-start gap-2.5">
+            <Info size={14} className="text-gray-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Orders go to Gelato automatically after payment. No inventory or shipping required on
+              your end.
             </p>
           </div>
         </div>

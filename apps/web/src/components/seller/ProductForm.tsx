@@ -584,9 +584,7 @@ export default function ProductForm({
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   });
-  const isGelatoConfigured = gelatoSettings
-    ? gelatoSettings.isEnabled && gelatoSettings.isVerified
-    : undefined;
+  const isGelatoConfigured = gelatoSettings ? gelatoSettings.isVerified : undefined;
 
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
