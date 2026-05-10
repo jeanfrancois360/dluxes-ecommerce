@@ -745,9 +745,13 @@ function SellerDetailContent() {
                   {payoutSettings.paymentMethod === 'bank_transfer' && (
                     <>
                       <InfoRow label="Bank" value={payoutSettings.bankName} />
-                      <InfoRow label="Account" value={payoutSettings.accountNumber} />
-                      <InfoRow label="Routing" value={payoutSettings.routingNumber} />
-                      <InfoRow label="Country" value={payoutSettings.bankCountry} />
+                      <InfoRow label="Account Holder" value={payoutSettings.accountHolderName} />
+                      <InfoRow label="Account No." value={payoutSettings.accountNumber} />
+                      <InfoRow label="Routing No." value={payoutSettings.routingNumber} />
+                      <InfoRow label="IBAN" value={payoutSettings.iban} />
+                      <InfoRow label="SWIFT / BIC" value={payoutSettings.swiftCode} />
+                      <InfoRow label="Bank Address" value={payoutSettings.bankAddress} />
+                      <InfoRow label="Bank Country" value={payoutSettings.bankCountry} />
                     </>
                   )}
                   {payoutSettings.paymentMethod === 'STRIPE_CONNECT' && (
@@ -780,17 +784,23 @@ function SellerDetailContent() {
                           {payoutSettings.paypalVerified ? 'Yes' : 'No'}
                         </span>
                       </div>
+                      <InfoRow label="Account Holder" value={payoutSettings.accountHolderName} />
                     </>
                   )}
                   {payoutSettings.paymentMethod === 'WISE' && (
                     <>
                       <InfoRow label="Wise Email" value={payoutSettings.wiseEmail} />
                       <InfoRow label="Recipient ID" value={payoutSettings.wiseRecipientId} />
+                      <InfoRow label="Account Holder" value={payoutSettings.accountHolderName} />
                     </>
                   )}
+                  {/* Tax & compliance — shown for all methods */}
                   {payoutSettings.taxId && <InfoRow label="Tax ID" value={payoutSettings.taxId} />}
                   {payoutSettings.taxFormType && (
                     <InfoRow label="Tax Form" value={payoutSettings.taxFormType} />
+                  )}
+                  {payoutSettings.taxCountry && (
+                    <InfoRow label="Tax Country" value={payoutSettings.taxCountry} />
                   )}
                 </div>
 
