@@ -1326,64 +1326,110 @@ export default function ProductForm({
               {/* Product Type */}
               <ProductTypeSelector
                 value={formData.productType}
-                onChange={(value) => setFormData({ ...formData, productType: value })}
+                onChange={(value) => {
+                  // Auto-set purchase type when product type changes
+                  const forcedPurchaseType =
+                    value === 'DIGITAL'
+                      ? 'INSTANT'
+                      : ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(value)
+                        ? 'INQUIRY'
+                        : formData.purchaseType; // PHYSICAL — keep current selection
+                  setFormData({
+                    ...formData,
+                    productType: value,
+                    purchaseType: forcedPurchaseType,
+                  });
+                }}
               />
 
               {/* Purchase Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Purchase Type <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    {
-                      value: 'INSTANT',
-                      label: 'Instant Purchase',
-                      desc: 'Buyer pays immediately',
-                      icon: Zap,
-                    },
-                    {
-                      value: 'INQUIRY',
-                      label: 'Inquiry Only',
-                      desc: 'Buyer contacts you first',
-                      icon: MessageSquare,
-                    },
-                  ].map(({ value, label, desc, icon: Icon }) => {
-                    const isSelected = formData.purchaseType === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, purchaseType: value })}
-                        className={`relative flex flex-col items-center gap-1.5 px-3 py-3.5 rounded-xl border-2 transition-all text-center ${
-                          isSelected
-                            ? 'border-[#CBB57B] bg-[#CBB57B]/8'
-                            : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {isSelected && (
-                          <CheckCircle2 className="absolute top-2 right-2 w-3.5 h-3.5 text-[#CBB57B]" />
-                        )}
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                            isSelected ? 'bg-[#CBB57B]/15' : 'bg-gray-100'
-                          }`}
-                        >
-                          <Icon
-                            className={`w-4 h-4 ${isSelected ? 'text-[#CBB57B]' : 'text-gray-500'}`}
-                          />
-                        </div>
-                        <span
-                          className={`text-xs font-semibold leading-tight ${isSelected ? 'text-[#CBB57B]' : 'text-gray-700'}`}
-                        >
-                          {label}
-                        </span>
-                        <span className="text-[10px] text-gray-400 leading-tight">{desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              {(() => {
+                const lockedInstant = formData.productType === 'DIGITAL';
+                const lockedInquiry = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(
+                  formData.productType
+                );
+                const lockReason = lockedInstant
+                  ? 'Digital products are purchased directly — no inquiry needed'
+                  : lockedInquiry
+                    ? {
+                        SERVICE: 'Services require contact to arrange',
+                        RENTAL: 'Rentals require contact to arrange',
+                        VEHICLE: 'Vehicles require a test-drive inquiry',
+                        REAL_ESTATE: 'Properties require a viewing inquiry',
+                      }[formData.productType as 'SERVICE' | 'RENTAL' | 'VEHICLE' | 'REAL_ESTATE'] ||
+                      'This type requires contact first'
+                    : null;
+
+                return (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Purchase Type <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        {
+                          value: 'INSTANT',
+                          label: 'Instant Purchase',
+                          desc: 'Buyer pays immediately',
+                          icon: Zap,
+                          disabled: lockedInquiry,
+                        },
+                        {
+                          value: 'INQUIRY',
+                          label: 'Inquiry Only',
+                          desc: 'Buyer contacts you first',
+                          icon: MessageSquare,
+                          disabled: lockedInstant,
+                        },
+                      ].map(({ value, label, desc, icon: Icon, disabled }) => {
+                        const isSelected = formData.purchaseType === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() =>
+                              !disabled && setFormData({ ...formData, purchaseType: value })
+                            }
+                            className={`relative flex flex-col items-center gap-1.5 px-3 py-3.5 rounded-xl border-2 transition-all text-center ${
+                              disabled
+                                ? 'border-gray-100 bg-gray-50 opacity-40 cursor-not-allowed'
+                                : isSelected
+                                  ? 'border-[#CBB57B] bg-[#CBB57B]/8'
+                                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {isSelected && !disabled && (
+                              <CheckCircle2 className="absolute top-2 right-2 w-3.5 h-3.5 text-[#CBB57B]" />
+                            )}
+                            <div
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                isSelected && !disabled ? 'bg-[#CBB57B]/15' : 'bg-gray-100'
+                              }`}
+                            >
+                              <Icon
+                                className={`w-4 h-4 ${isSelected && !disabled ? 'text-[#CBB57B]' : 'text-gray-500'}`}
+                              />
+                            </div>
+                            <span
+                              className={`text-xs font-semibold leading-tight ${isSelected && !disabled ? 'text-[#CBB57B]' : 'text-gray-700'}`}
+                            >
+                              {label}
+                            </span>
+                            <span className="text-[10px] text-gray-400 leading-tight">{desc}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {lockReason && (
+                      <p className="mt-2 flex items-center gap-1.5 text-xs text-[#6B5840]">
+                        <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                        {lockReason}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Category */}
               <div>
