@@ -103,52 +103,73 @@ export class SellerPayoutSettingsService {
       throw new BadRequestException('Seller must have a store to configure payout settings');
     }
 
-    // Validate payment method requirements
-    await this.validatePaymentMethod(data.paymentMethod, data);
-
     // Check if settings already exist
     const existing = await this.prisma.sellerPayoutSettings.findUnique({
       where: { sellerId },
     });
 
-    // Encrypt sensitive banking data before storing
-    const encryptedData = {
-      paymentMethod: data.paymentMethod,
-      bankName: data.bankName,
-      accountHolderName: data.accountHolderName,
-      accountNumber: this.encryptField(data.accountNumber),
-      routingNumber: this.encryptField(data.routingNumber),
-      iban: this.encryptField(data.iban),
-      swiftCode: this.encryptField(data.swiftCode),
-      bankAddress: data.bankAddress,
-      bankCountry: data.bankCountry,
-      stripeAccountId: data.stripeAccountId,
-      paypalEmail: data.paypalEmail,
-      wiseEmail: data.wiseEmail,
-      wiseRecipientId: data.wiseRecipientId,
-      taxId: data.taxId,
-      taxCountry: data.taxCountry,
-      taxFormType: data.taxFormType,
-      taxFormUrl: data.taxFormUrl,
-      payoutCurrency: data.payoutCurrency || 'USD',
-    };
+    const isNew = !existing;
+
+    // Validate payment method requirements (account number only required on first save)
+    await this.validatePaymentMethod(data.paymentMethod, data, isNew);
 
     if (existing) {
-      // Update existing settings
+      // Update existing settings — preserve existing encrypted values when field not provided
+      const updateData = {
+        paymentMethod: data.paymentMethod,
+        bankName: data.bankName ?? existing.bankName,
+        accountHolderName: data.accountHolderName ?? existing.accountHolderName,
+        bankAddress: data.bankAddress ?? existing.bankAddress,
+        bankCountry: data.bankCountry ?? existing.bankCountry,
+        stripeAccountId: data.stripeAccountId ?? existing.stripeAccountId,
+        paypalEmail: data.paypalEmail ?? existing.paypalEmail,
+        wiseEmail: data.wiseEmail ?? existing.wiseEmail,
+        wiseRecipientId: data.wiseRecipientId ?? existing.wiseRecipientId,
+        taxId: data.taxId ?? existing.taxId,
+        taxCountry: data.taxCountry ?? existing.taxCountry,
+        taxFormType: data.taxFormType ?? existing.taxFormType,
+        taxFormUrl: data.taxFormUrl ?? existing.taxFormUrl,
+        payoutCurrency: data.payoutCurrency || existing.payoutCurrency || 'USD',
+        // Encrypted fields: only re-encrypt and overwrite if a new value is provided
+        accountNumber: data.accountNumber
+          ? this.encryptField(data.accountNumber)
+          : existing.accountNumber,
+        routingNumber: data.routingNumber
+          ? this.encryptField(data.routingNumber)
+          : existing.routingNumber,
+        iban: data.iban ? this.encryptField(data.iban) : existing.iban,
+        swiftCode: data.swiftCode ? this.encryptField(data.swiftCode) : existing.swiftCode,
+        verified: false, // Reset verification on every update
+      };
+
       return this.prisma.sellerPayoutSettings.update({
         where: { sellerId },
-        data: {
-          ...encryptedData,
-          verified: false, // Reset verification on update
-        },
+        data: updateData,
       });
     } else {
-      // Create new settings
+      // Create new settings — encrypt all provided fields
       return this.prisma.sellerPayoutSettings.create({
         data: {
           sellerId,
           storeId: seller.store.id,
-          ...encryptedData,
+          paymentMethod: data.paymentMethod,
+          bankName: data.bankName,
+          accountHolderName: data.accountHolderName,
+          accountNumber: this.encryptField(data.accountNumber),
+          routingNumber: this.encryptField(data.routingNumber),
+          iban: this.encryptField(data.iban),
+          swiftCode: this.encryptField(data.swiftCode),
+          bankAddress: data.bankAddress,
+          bankCountry: data.bankCountry,
+          stripeAccountId: data.stripeAccountId,
+          paypalEmail: data.paypalEmail,
+          wiseEmail: data.wiseEmail,
+          wiseRecipientId: data.wiseRecipientId,
+          taxId: data.taxId,
+          taxCountry: data.taxCountry,
+          taxFormType: data.taxFormType,
+          taxFormUrl: data.taxFormUrl,
+          payoutCurrency: data.payoutCurrency || 'USD',
         },
       });
     }
@@ -335,13 +356,17 @@ export class SellerPayoutSettingsService {
   /**
    * Validate payment method requirements
    */
-  private async validatePaymentMethod(method: string, data: any) {
+  private async validatePaymentMethod(method: string, data: any, isNew: boolean) {
     switch (method) {
       case 'bank_transfer':
       case 'BANK_TRANSFER':
-        if (!data.bankName || !data.accountHolderName || !data.accountNumber) {
+        if (!data.bankName || !data.accountHolderName) {
+          throw new BadRequestException('Bank transfer requires: bankName, accountHolderName');
+        }
+        // Account number only mandatory on first save; updates preserve existing
+        if (isNew && !data.accountNumber) {
           throw new BadRequestException(
-            'Bank transfer requires: bankName, accountHolderName, accountNumber'
+            'Bank transfer requires an account number for initial setup'
           );
         }
         break;
