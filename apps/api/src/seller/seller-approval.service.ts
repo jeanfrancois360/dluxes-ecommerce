@@ -385,6 +385,7 @@ export class SellerApprovalService {
         where: { id: storeId },
         data: {
           status: StoreStatus.ACTIVE,
+          isActive: true,
           verified: true,
           verifiedAt: now,
         },
