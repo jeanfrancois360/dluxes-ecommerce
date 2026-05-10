@@ -1743,161 +1743,159 @@ export default function ProductForm({
         </div>
 
         {/* ─── RIGHT SIDEBAR ─── */}
-        <div className="h-full">
-          <div className="sticky top-20 space-y-4">
-            {/* Publish Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[#CBB57B]" />
-                Publish
-              </h3>
+        <div className="sticky top-20 self-start space-y-4">
+          {/* Publish Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-[#CBB57B]" />
+              Publish
+            </h3>
 
-              {/* Status options */}
-              <div className="space-y-2 mb-5">
-                {[
-                  {
-                    value: 'DRAFT',
-                    label: 'Draft',
-                    desc: 'Not visible to customers',
-                    icon: FileText,
-                  },
-                  {
-                    value: 'ACTIVE',
-                    label: 'Active',
-                    desc: 'Published in your store',
-                    icon: CheckCircle2,
-                  },
-                ].map(({ value, label, desc, icon: Icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, status: value })}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border-2 transition-all text-left ${
+            {/* Status options */}
+            <div className="space-y-2 mb-5">
+              {[
+                {
+                  value: 'DRAFT',
+                  label: 'Draft',
+                  desc: 'Not visible to customers',
+                  icon: FileText,
+                },
+                {
+                  value: 'ACTIVE',
+                  label: 'Active',
+                  desc: 'Published in your store',
+                  icon: CheckCircle2,
+                },
+              ].map(({ value, label, desc, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, status: value })}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border-2 transition-all text-left ${
+                    formData.status === value
+                      ? value === 'ACTIVE'
+                        ? 'border-green-400 bg-green-50'
+                        : 'border-[#CBB57B] bg-[#fdf9f0]'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <Icon
+                    className={`w-4 h-4 flex-shrink-0 ${
                       formData.status === value
                         ? value === 'ACTIVE'
-                          ? 'border-green-400 bg-green-50'
-                          : 'border-[#CBB57B] bg-[#fdf9f0]'
-                        : 'border-gray-200 hover:border-gray-300'
+                          ? 'text-green-600'
+                          : 'text-[#CBB57B]'
+                        : 'text-gray-400'
                     }`}
-                  >
-                    <Icon
-                      className={`w-4 h-4 flex-shrink-0 ${
-                        formData.status === value
-                          ? value === 'ACTIVE'
-                            ? 'text-green-600'
-                            : 'text-[#CBB57B]'
-                          : 'text-gray-400'
+                  />
+                  <div>
+                    <p
+                      className={`text-sm font-medium ${
+                        formData.status === value ? 'text-gray-900' : 'text-gray-600'
                       }`}
-                    />
-                    <div>
-                      <p
-                        className={`text-sm font-medium ${
-                          formData.status === value ? 'text-gray-900' : 'text-gray-600'
-                        }`}
-                      >
-                        {label}
-                      </p>
-                      <p className="text-xs text-gray-400">{desc}</p>
-                    </div>
-                  </button>
-                ))}
-                {formData.status === 'ARCHIVED' && (
-                  <div className="px-3 py-2 rounded-lg border-2 border-gray-400 bg-gray-50 text-sm text-gray-600">
-                    Archived — hidden from store
+                    >
+                      {label}
+                    </p>
+                    <p className="text-xs text-gray-400">{desc}</p>
+                  </div>
+                </button>
+              ))}
+              {formData.status === 'ARCHIVED' && (
+                <div className="px-3 py-2 rounded-lg border-2 border-gray-400 bg-gray-50 text-sm text-gray-600">
+                  Archived — hidden from store
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="space-y-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-[#CBB57B] text-black text-sm font-semibold rounded-lg hover:bg-[#a89158] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+              >
+                {loading && (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                )}
+                {loading ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={loading}
+                className="w-full py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          {/* Pricing Summary Card */}
+          {(formData.price > 0 || formData.compareAtPrice > 0) && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-[#CBB57B]" />
+                Pricing Summary
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Selling price</span>
+                  <span className="font-semibold text-gray-900">
+                    ${formData.price ? Number(formData.price).toFixed(2) : '—'}
+                  </span>
+                </div>
+                {formData.compareAtPrice > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Original price</span>
+                    <span className="text-gray-400 line-through">
+                      ${Number(formData.compareAtPrice).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                {hasDiscount && (
+                  <div className="flex justify-between pt-2 border-t border-gray-100">
+                    <span className="text-green-600 font-medium">Customer saves</span>
+                    <span className="text-green-600 font-semibold">
+                      {discountPct}% (${(formData.compareAtPrice - formData.price).toFixed(2)})
+                    </span>
                   </div>
                 )}
               </div>
-
-              {/* Action buttons */}
-              <div className="space-y-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-2.5 bg-[#CBB57B] text-black text-sm font-semibold rounded-lg hover:bg-[#a89158] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
-                >
-                  {loading && (
-                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                  )}
-                  {loading ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
-                </button>
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  disabled={loading}
-                  className="w-full py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
             </div>
+          )}
 
-            {/* Pricing Summary Card */}
-            {(formData.price > 0 || formData.compareAtPrice > 0) && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-[#CBB57B]" />
-                  Pricing Summary
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Selling price</span>
-                    <span className="font-semibold text-gray-900">
-                      ${formData.price ? Number(formData.price).toFixed(2) : '—'}
-                    </span>
-                  </div>
-                  {formData.compareAtPrice > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Original price</span>
-                      <span className="text-gray-400 line-through">
-                        ${Number(formData.compareAtPrice).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-                  {hasDiscount && (
-                    <div className="flex justify-between pt-2 border-t border-gray-100">
-                      <span className="text-green-600 font-medium">Customer saves</span>
-                      <span className="text-green-600 font-semibold">
-                        {discountPct}% (${(formData.compareAtPrice - formData.price).toFixed(2)})
-                      </span>
-                    </div>
-                  )}
+          {/* Checklist Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Listing Checklist</h3>
+            <div className="space-y-2">
+              {[
+                { label: 'Product name', done: formData.name?.length >= 3 },
+                { label: 'Description', done: formData.description?.length >= 10 },
+                { label: 'Category selected', done: !!formData.categoryId },
+                { label: 'Price set', done: formData.price > 0 },
+                {
+                  label: 'Images uploaded',
+                  done: formData.images?.length > 0,
+                },
+                ...(formData.productType === 'PHYSICAL'
+                  ? [{ label: 'Stock/inventory', done: formData.inventory > 0 }]
+                  : []),
+              ].map(({ label, done }) => (
+                <div key={label} className="flex items-center gap-2 text-sm">
+                  <span
+                    className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      done ? 'bg-green-100' : 'bg-gray-100'
+                    }`}
+                  >
+                    {done ? (
+                      <CheckCircle2 className="w-3 h-3 text-green-600" />
+                    ) : (
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                    )}
+                  </span>
+                  <span className={done ? 'text-gray-700' : 'text-gray-400'}>{label}</span>
                 </div>
-              </div>
-            )}
-
-            {/* Checklist Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Listing Checklist</h3>
-              <div className="space-y-2">
-                {[
-                  { label: 'Product name', done: formData.name?.length >= 3 },
-                  { label: 'Description', done: formData.description?.length >= 10 },
-                  { label: 'Category selected', done: !!formData.categoryId },
-                  { label: 'Price set', done: formData.price > 0 },
-                  {
-                    label: 'Images uploaded',
-                    done: formData.images?.length > 0,
-                  },
-                  ...(formData.productType === 'PHYSICAL'
-                    ? [{ label: 'Stock/inventory', done: formData.inventory > 0 }]
-                    : []),
-                ].map(({ label, done }) => (
-                  <div key={label} className="flex items-center gap-2 text-sm">
-                    <span
-                      className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        done ? 'bg-green-100' : 'bg-gray-100'
-                      }`}
-                    >
-                      {done ? (
-                        <CheckCircle2 className="w-3 h-3 text-green-600" />
-                      ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                      )}
-                    </span>
-                    <span className={done ? 'text-gray-700' : 'text-gray-400'}>{label}</span>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
         </div>
