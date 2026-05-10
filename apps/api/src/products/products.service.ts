@@ -399,6 +399,7 @@ export class ProductsService {
           sizes: true,
           materials: true,
           inventory: true,
+          productType: true,
           status: true,
           storeId: true,
           store: {
@@ -478,6 +479,7 @@ export class ProductsService {
         rating: true,
         reviewCount: true,
         inventory: true,
+        productType: true,
         category: {
           select: {
             id: true,
@@ -526,6 +528,7 @@ export class ProductsService {
         rating: true,
         reviewCount: true,
         inventory: true,
+        productType: true,
         badges: true,
         category: {
           select: {
@@ -572,6 +575,7 @@ export class ProductsService {
         rating: true,
         reviewCount: true,
         inventory: true,
+        productType: true,
         viewCount: true,
         likeCount: true,
         category: {
@@ -622,6 +626,7 @@ export class ProductsService {
         rating: true,
         reviewCount: true,
         inventory: true,
+        productType: true,
         category: {
           select: {
             id: true,
