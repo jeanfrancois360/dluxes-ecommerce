@@ -10,6 +10,7 @@ import { PrismaService } from '../database/prisma.service';
 import { PayoutStatus, CommissionStatus, PayoutFrequency, EscrowStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { StripeConnectService } from './integrations/stripe-connect.service';
+import { PayPalPayoutsService } from './integrations/paypal-payouts.service';
 import { SettingsService } from '../settings/settings.service';
 import { EmailService } from '../email/email.service';
 
@@ -27,6 +28,7 @@ export class PayoutSchedulerService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => StripeConnectService))
     private readonly stripeConnectService: StripeConnectService,
+    private readonly paypalPayoutsService: PayPalPayoutsService,
     private readonly settingsService: SettingsService,
     private readonly emailService: EmailService
   ) {}
@@ -744,15 +746,68 @@ export class PayoutSchedulerService {
             break;
 
           case 'PAYPAL':
-            // TODO: Implement PayPal Payouts API
-            this.logger.log(`Would process PayPal payout for ${payout.id}`);
-            await this.prisma.payout.update({
-              where: { id: payout.id },
-              data: {
-                status: PayoutStatus.PROCESSING,
-                notes: 'PayPal integration pending - manual processing required',
-              },
-            });
+          case 'paypal':
+            try {
+              if (!this.paypalPayoutsService.configured) {
+                this.logger.warn(
+                  `PayPal not configured — payout ${payout.id} requires manual processing`
+                );
+                await this.prisma.payout.update({
+                  where: { id: payout.id },
+                  data: {
+                    status: PayoutStatus.PROCESSING,
+                    notes: 'PayPal not configured — manual processing required',
+                  },
+                });
+                break;
+              }
+
+              // Resolve receiver email from payout settings
+              const paypalSettings = await this.prisma.sellerPayoutSettings.findUnique({
+                where: { sellerId: payout.sellerId },
+                select: { paypalEmail: true, paypalVerified: true },
+              });
+
+              if (!paypalSettings?.paypalEmail) {
+                throw new Error('Seller has no PayPal email configured in payout settings');
+              }
+
+              if (!paypalSettings.paypalVerified) {
+                throw new Error('Seller PayPal email is not verified');
+              }
+
+              // Create PayPal payout batch (1 item per payout record)
+              const result = await this.paypalPayoutsService.createPayout({
+                payoutId: payout.id,
+                receiver: paypalSettings.paypalEmail,
+                amount: payout.amount.toNumber(),
+                currency: currency,
+                note: `Seller payout for ${payout.commissionCount || 0} sale(s) via NextPik`,
+              });
+
+              // Mark as PROCESSING — batch is submitted; status will be polled
+              await this.prisma.payout.update({
+                where: { id: payout.id },
+                data: {
+                  status: PayoutStatus.PROCESSING,
+                  paymentReference: result.batchId,
+                  notes: `PayPal batch submitted: ${result.batchId} (status: ${result.batchStatus})`,
+                },
+              });
+
+              this.logger.log(
+                `PayPal payout submitted for ${payout.id} -> batch ${result.batchId} (${result.batchStatus})`
+              );
+            } catch (paypalError) {
+              this.logger.error(`PayPal payout failed for ${payout.id}:`, paypalError);
+              await this.prisma.payout.update({
+                where: { id: payout.id },
+                data: {
+                  status: PayoutStatus.PROCESSING,
+                  notes: `PayPal failed: ${paypalError instanceof Error ? paypalError.message : 'Unknown error'}. Manual processing required.`,
+                },
+              });
+            }
             break;
 
           case 'WISE':
@@ -962,6 +1017,7 @@ export class PayoutSchedulerService {
       },
       take: 100,
     });
+    // Note: Prisma findMany with include returns full payout fields including paymentReference
 
     let updatedCount = 0;
 
@@ -980,12 +1036,46 @@ export class PayoutSchedulerService {
             this.logger.log(`Would check Stripe Connect status for payout ${payout.id}`);
             break;
           case 'PAYPAL':
-            // const paypalStatus = await this.paypalPayoutService.getPayoutStatus(payout.id);
-            // if (paypalStatus === 'SUCCESS') {
-            //   await this.completePayout(payout.id, paypalStatus.batchId);
-            //   updatedCount++;
-            // }
-            this.logger.log(`Would check PayPal status for payout ${payout.id}`);
+          case 'paypal':
+            if (!payout.paymentReference) {
+              this.logger.warn(
+                `PayPal payout ${payout.id} has no batch ID stored — cannot check status`
+              );
+              break;
+            }
+
+            try {
+              if (!this.paypalPayoutsService.configured) {
+                break;
+              }
+
+              const batch = await this.paypalPayoutsService.getBatchStatus(payout.paymentReference);
+              const resolution = this.paypalPayoutsService.resolveInternalStatus(
+                batch.batchStatus,
+                batch.items
+              );
+
+              if (resolution === 'COMPLETED') {
+                const transactionId = batch.items[0]?.transactionId || batch.batchId;
+                await this.completePayout(
+                  payout.id,
+                  transactionId,
+                  `PayPal batch ${batch.batchId}`
+                );
+                updatedCount++;
+                this.logger.log(`PayPal payout ${payout.id} completed — batch ${batch.batchId}`);
+              } else if (resolution === 'FAILED') {
+                const failReason =
+                  batch.items[0]?.errors?.[0]?.message || `PayPal batch ${batch.batchStatus}`;
+                await this.failPayout(payout.id, failReason);
+                updatedCount++;
+                this.logger.warn(`PayPal payout ${payout.id} failed — ${failReason}`);
+              } else {
+                this.logger.log(`PayPal payout ${payout.id} still ${batch.batchStatus}`);
+              }
+            } catch (err) {
+              this.logger.error(`Failed to check PayPal status for payout ${payout.id}:`, err);
+            }
             break;
           case 'WISE':
             // const wiseStatus = await this.wisePayoutService.getTransferStatus(payout.id);

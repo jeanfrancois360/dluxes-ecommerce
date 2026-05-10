@@ -10,6 +10,7 @@ import {
   AdminPayoutSettingsController,
 } from './seller-payout-settings.controller';
 import { StripeConnectService } from './integrations/stripe-connect.service';
+import { PayPalPayoutsService } from './integrations/paypal-payouts.service';
 import { StripeConnectController } from './stripe-connect.controller';
 import { DatabaseModule } from '../database/database.module';
 import { SettingsModule } from '../settings/settings.module';
@@ -29,8 +30,14 @@ import { EmailModule } from '../email/email.module';
     PayoutCronService,
     SellerPayoutSettingsService,
     StripeConnectService,
+    PayPalPayoutsService,
     EncryptionService, // v2.11.1: Banking data encryption
   ],
-  exports: [PayoutSchedulerService, SellerPayoutSettingsService, StripeConnectService],
+  exports: [
+    PayoutSchedulerService,
+    SellerPayoutSettingsService,
+    StripeConnectService,
+    PayPalPayoutsService,
+  ],
 })
 export class PayoutModule {}
