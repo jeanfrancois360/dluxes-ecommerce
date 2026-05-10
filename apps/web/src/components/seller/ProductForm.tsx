@@ -1031,7 +1031,7 @@ export default function ProductForm({
     <form onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
         {/* ─── LEFT COLUMN: Main content ─── */}
-        <div className="xl:col-span-2 space-y-6">
+        <div className="xl:col-span-2 space-y-6 pb-24 xl:pb-0">
           {/* Fulfillment Method */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <SectionHeader
@@ -1900,6 +1900,43 @@ export default function ProductForm({
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile sticky bottom action bar — hidden on xl (sidebar handles it there) */}
+      <div className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+        <div className="flex items-center gap-3 px-4 py-3">
+          {/* Status chip */}
+          <select
+            value={formData.status}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            className="flex-none text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent bg-white"
+          >
+            <option value="DRAFT">Draft</option>
+            <option value="ACTIVE">Active</option>
+          </select>
+
+          {/* Cancel */}
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="flex-none px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-2.5 bg-[#CBB57B] text-black text-sm font-bold rounded-lg hover:bg-[#a89158] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+          >
+            {loading && (
+              <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+            )}
+            {loading ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
+          </button>
         </div>
       </div>
 
