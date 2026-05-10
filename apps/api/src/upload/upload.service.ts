@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -15,7 +16,10 @@ export class UploadService {
   private readonly logger = new Logger(UploadService.name);
   private readonly uploadDir = path.join(process.cwd(), 'public', 'uploads');
 
-  constructor(private readonly supabaseService: SupabaseService) {
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly configService: ConfigService
+  ) {
     // Ensure upload directories exist (for fallback)
     this.ensureDirectories();
 
@@ -68,9 +72,7 @@ export class UploadService {
       const allowedTypes = options?.allowPdf
         ? 'JPEG, PNG, WebP, GIF, and PDF'
         : 'JPEG, PNG, WebP, and GIF';
-      throw new BadRequestException(
-        `Invalid file type. Only ${allowedTypes} are allowed.`
-      );
+      throw new BadRequestException(`Invalid file type. Only ${allowedTypes} are allowed.`);
     }
 
     // Validate file size (max 10MB for PDFs, 5MB for images)
@@ -102,7 +104,7 @@ export class UploadService {
           file.buffer,
           fileName,
           folder,
-          file.mimetype,
+          file.mimetype
         );
         this.logger.log(`Supabase upload SUCCESS: ${publicUrl}`);
 
@@ -113,7 +115,9 @@ export class UploadService {
           mimeType: file.mimetype,
         };
       } catch (error) {
-        this.logger.error(`Supabase upload failed, falling back to local storage: ${error.message}`);
+        this.logger.error(
+          `Supabase upload failed, falling back to local storage: ${error.message}`
+        );
         this.logger.error(`Error stack: ${error.stack}`);
         // Fall through to local storage
       }
@@ -132,8 +136,10 @@ export class UploadService {
     // Save file
     fs.writeFileSync(filePath, file.buffer);
 
+    const port = this.configService.get<number>('PORT') || 4000;
+    const appUrl = this.configService.get<string>('APP_URL') || `http://localhost:${port}`;
     return {
-      url: `/uploads/${folder}/${fileName}`,
+      url: `${appUrl}/uploads/${folder}/${fileName}`,
       fileName,
       path: filePath,
       size: file.size,
@@ -164,7 +170,10 @@ export class UploadService {
         uploadedFiles.push(result);
       } catch (error) {
         // Continue with other files even if one fails
-        console.error(`Failed to upload file ${file.originalname}:`, error instanceof Error ? error.message : String(error));
+        console.error(
+          `Failed to upload file ${file.originalname}:`,
+          error instanceof Error ? error.message : String(error)
+        );
       }
     }
 
@@ -290,7 +299,9 @@ export class UploadService {
           storagePath: `${folder}/${baseFileName}.webp`,
         };
       } catch (error) {
-        this.logger.error(`Supabase upload failed, falling back to local storage: ${error.message}`);
+        this.logger.error(
+          `Supabase upload failed, falling back to local storage: ${error.message}`
+        );
         // Fall through to local storage fallback
       }
     }
