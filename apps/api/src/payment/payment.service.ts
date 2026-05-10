@@ -1238,6 +1238,11 @@ export class PaymentService {
 
       this.logger.log(`Order ${orderId} payment confirmed (transaction: ${transaction.id})`);
 
+      // Send digital download ready email — NON-BLOCKING, fire-and-forget
+      this.sendDigitalDownloadEmail(orderId).catch((err) => {
+        this.logger.warn(`Digital download email failed for order ${orderId}: ${err.message}`);
+      });
+
       // Referral System (v2.11.0) - Check buyer qualification (NON-BLOCKING)
       if (this.referralService) {
         this.referralService.checkBuyerQualification(orderId).catch((err) => {
@@ -3514,5 +3519,55 @@ export class PaymentService {
       },
       recentTransactions,
     };
+  }
+
+  /**
+   * Fetch order items with DIGITAL productType and send the download-ready email.
+   * Called non-blocking after payment is confirmed.
+   */
+  private async sendDigitalDownloadEmail(orderId: string): Promise<void> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        user: { select: { email: true, firstName: true, lastName: true } },
+        items: {
+          include: {
+            product: {
+              select: {
+                productType: true,
+                name: true,
+                digitalFileFormat: true,
+                digitalFileName: true,
+                digitalFileUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order?.user?.email) return;
+
+    const digitalItems = order.items.filter(
+      (item) => item.product?.productType === 'DIGITAL' && item.product.digitalFileUrl
+    );
+
+    if (digitalItems.length === 0) return;
+
+    const customerName =
+      [order.user.firstName, order.user.lastName].filter(Boolean).join(' ') || order.user.email;
+
+    const { EmailService } = await import('../email/email.service');
+    const emailService = new EmailService();
+    await emailService.sendDigitalDownloadReady(order.user.email, {
+      customerName,
+      orderNumber: order.orderNumber,
+      orderId: order.id,
+      items: digitalItems.map((item) => ({
+        name: item.product.name,
+        format: item.product.digitalFileFormat,
+        fileName: item.product.digitalFileName,
+      })),
+    });
   }
 }

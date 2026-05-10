@@ -5,7 +5,9 @@ import { getColorHex } from './color-mapping';
 /**
  * Transform API Product to QuickViewProduct format for UI components
  */
-export function transformToQuickViewProduct(product: any | null | undefined): QuickViewProduct | null {
+export function transformToQuickViewProduct(
+  product: any | null | undefined
+): QuickViewProduct | null {
   if (!product) return null;
 
   // Validate required fields
@@ -32,9 +34,7 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
   // Transform images - handle both formats
   let images: string[] = [];
   if (product.images?.length > 0) {
-    images = product.images.map((img: any) =>
-      typeof img === 'string' ? img : img.url
-    );
+    images = product.images.map((img: any) => (typeof img === 'string' ? img : img.url));
   } else if (product.heroImage) {
     images = [product.heroImage];
   }
@@ -111,7 +111,8 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
 
   try {
     if (product.price !== null && product.price !== undefined) {
-      const parsedPrice = typeof product.price === 'number' ? product.price : parseFloat(product.price);
+      const parsedPrice =
+        typeof product.price === 'number' ? product.price : parseFloat(product.price);
       price = isNaN(parsedPrice) ? undefined : parsedPrice;
     } else if (purchaseType === 'INSTANT') {
       // For INSTANT products, default to 0 if no price
@@ -126,7 +127,10 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
   let compareAtPrice = undefined;
   try {
     if (product.compareAtPrice !== null && product.compareAtPrice !== undefined) {
-      const parsedComparePrice = typeof product.compareAtPrice === 'number' ? product.compareAtPrice : parseFloat(product.compareAtPrice);
+      const parsedComparePrice =
+        typeof product.compareAtPrice === 'number'
+          ? product.compareAtPrice
+          : parseFloat(product.compareAtPrice);
       compareAtPrice = isNaN(parsedComparePrice) ? undefined : parsedComparePrice;
     }
   } catch (e) {
@@ -134,7 +138,8 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
   }
 
   // Ensure heroImage has a fallback - use a simple gray placeholder SVG data URL
-  const placeholderImage = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23f5f5f5"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="24" fill="%23999"%3ENo Image%3C/text%3E%3C/svg%3E';
+  const placeholderImage =
+    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect width="400" height="400" fill="%23f5f5f5"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="24" fill="%23999"%3ENo Image%3C/text%3E%3C/svg%3E';
   const heroImage = product.heroImage || images[0] || placeholderImage;
 
   return {
@@ -151,8 +156,9 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
     slug: product.slug,
     purchaseType,
     description: product.description ?? product.shortDescription,
-    inStock: trackInventory ? stock > 0 : true,
-    stockQuantity: trackInventory ? stock : undefined,
+    inStock: product.productType === 'DIGITAL' ? true : trackInventory ? stock > 0 : true,
+    stockQuantity:
+      product.productType === 'DIGITAL' ? undefined : trackInventory ? stock : undefined,
     lowStockThreshold,
     variants: Object.keys(variants || {}).length > 0 ? variants : undefined,
   };
@@ -161,11 +167,11 @@ export function transformToQuickViewProduct(product: any | null | undefined): Qu
 /**
  * Transform multiple products
  */
-export function transformToQuickViewProducts(products: Product[] | null | undefined): QuickViewProduct[] {
+export function transformToQuickViewProducts(
+  products: Product[] | null | undefined
+): QuickViewProduct[] {
   if (!products || !Array.isArray(products)) {
     return [];
   }
-  return products
-    .map(transformToQuickViewProduct)
-    .filter((p): p is QuickViewProduct => p !== null);
+  return products.map(transformToQuickViewProduct).filter((p): p is QuickViewProduct => p !== null);
 }

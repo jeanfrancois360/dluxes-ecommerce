@@ -344,6 +344,57 @@ export class UploadService {
   }
 
   /**
+   * Upload any file type — used for digital product files (ZIP, PDF, MP3, EXE, etc.)
+   * No MIME type restriction; size capped at 500MB
+   */
+  async uploadDigitalFile(file: Express.Multer.File, folder: string = 'digital-products') {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    const maxSize = 500 * 1024 * 1024; // 500 MB
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size exceeds 500MB limit');
+    }
+
+    const fileExtension = path.extname(file.originalname);
+    const fileName = `${uuidv4()}${fileExtension}`;
+
+    this.logger.log(`Digital file upload: ${file.originalname} (${file.size} bytes)`);
+
+    if (this.supabaseService.isConfigured()) {
+      try {
+        const publicUrl = await this.supabaseService.uploadFile(
+          file.buffer,
+          fileName,
+          folder,
+          file.mimetype
+        );
+        this.logger.log(`Digital file uploaded to Supabase: ${publicUrl}`);
+        return { url: publicUrl, fileName, size: file.size, mimeType: file.mimetype };
+      } catch (error) {
+        this.logger.error(`Supabase upload failed, falling back to local: ${error.message}`);
+      }
+    }
+
+    // Local storage fallback
+    const uploadPath = path.join(this.uploadDir, folder);
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    fs.writeFileSync(path.join(uploadPath, fileName), file.buffer);
+
+    const port = this.configService.get<number>('PORT') || 4000;
+    const appUrl = this.configService.get<string>('APP_URL') || `http://localhost:${port}`;
+    return {
+      url: `${appUrl}/uploads/${folder}/${fileName}`,
+      fileName,
+      size: file.size,
+      mimeType: file.mimetype,
+    };
+  }
+
+  /**
    * Get placeholder image URL
    */
   getPlaceholderImage(type: keyof typeof PLACEHOLDER_IMAGES = 'product'): string {

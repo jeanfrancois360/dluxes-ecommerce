@@ -287,11 +287,14 @@ export class ProductsService {
       where.featured = featured;
     }
 
-    // In Stock filter
+    // In Stock filter — digital products are always "in stock" (null inventory = unlimited)
     if (inStock !== undefined && inStock === true) {
-      where.inventory = {
-        gt: 0,
-      };
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [{ inventory: { gt: 0 } }, { productType: 'DIGITAL' }],
+        },
+      ];
     }
 
     // On Sale filter (has compareAtPrice)
@@ -825,8 +828,15 @@ export class ProductsService {
     // For INSTANT products, ensure price and inventory have defaults if not provided
     const finalPrice =
       price !== undefined ? price : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
+    // Digital products don't have finite stock — use null (unlimited)
     const finalInventory =
-      inventory !== undefined ? inventory : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
+      inventory !== undefined
+        ? inventory
+        : productData.productType === 'DIGITAL'
+          ? null
+          : finalPurchaseType === PurchaseType.INSTANT
+            ? 0
+            : null;
 
     // Validate category exists if provided
     if (categoryId && categoryId.trim() !== '') {
