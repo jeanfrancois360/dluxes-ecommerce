@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
 
 @Injectable()
-export class SupabaseService {
+export class SupabaseService implements OnModuleInit {
   private readonly logger = new Logger(SupabaseService.name);
   private supabase: SupabaseClient;
   private bucketName: string;
@@ -29,6 +29,10 @@ export class SupabaseService {
     this.logger.log('Supabase client initialized successfully');
   }
 
+  async onModuleInit() {
+    await this.ensureBucketExists();
+  }
+
   /**
    * Check if Supabase is configured
    */
@@ -48,7 +52,7 @@ export class SupabaseService {
     file: Buffer,
     fileName: string,
     folder: string = 'products',
-    contentType: string = 'image/jpeg',
+    contentType: string = 'image/jpeg'
   ): Promise<string> {
     if (!this.isConfigured()) {
       throw new Error('Supabase is not configured');
@@ -91,10 +95,10 @@ export class SupabaseService {
    */
   async uploadMultipleFiles(
     files: Array<{ buffer: Buffer; fileName: string; contentType: string }>,
-    folder: string = 'products',
+    folder: string = 'products'
   ): Promise<string[]> {
     const uploadPromises = files.map((file) =>
-      this.uploadFile(file.buffer, file.fileName, folder, file.contentType),
+      this.uploadFile(file.buffer, file.fileName, folder, file.contentType)
     );
 
     return Promise.all(uploadPromises);
@@ -111,9 +115,7 @@ export class SupabaseService {
     }
 
     try {
-      const { error } = await this.supabase.storage
-        .from(this.bucketName)
-        .remove([filePath]);
+      const { error } = await this.supabase.storage.from(this.bucketName).remove([filePath]);
 
       if (error) {
         this.logger.error(`Failed to delete file: ${error.message}`, error.stack);
@@ -139,9 +141,7 @@ export class SupabaseService {
     }
 
     try {
-      const { error } = await this.supabase.storage
-        .from(this.bucketName)
-        .remove(filePaths);
+      const { error } = await this.supabase.storage.from(this.bucketName).remove(filePaths);
 
       if (error) {
         this.logger.error(`Failed to delete files: ${error.message}`, error.stack);
@@ -196,12 +196,10 @@ export class SupabaseService {
     }
 
     try {
-      const { data, error } = await this.supabase.storage
-        .from(this.bucketName)
-        .list(folder, {
-          limit,
-          sortBy: { column: 'created_at', order: 'desc' },
-        });
+      const { data, error } = await this.supabase.storage.from(this.bucketName).list(folder, {
+        limit,
+        sortBy: { column: 'created_at', order: 'desc' },
+      });
 
       if (error) {
         this.logger.error(`Failed to list files: ${error.message}`, error.stack);
@@ -244,19 +242,13 @@ export class SupabaseService {
       format?: 'jpeg' | 'png' | 'webp';
     } = {}
   ): Promise<Buffer> {
-    const {
-      width = 1920,
-      height,
-      quality = 80,
-      format = 'webp',
-    } = options;
+    const { width = 1920, height, quality = 80, format = 'webp' } = options;
 
     try {
-      let pipeline = sharp(buffer)
-        .resize(width, height, {
-          fit: 'inside',
-          withoutEnlargement: true,
-        });
+      let pipeline = sharp(buffer).resize(width, height, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      });
 
       // Convert to specified format
       switch (format) {
@@ -392,10 +384,7 @@ export class SupabaseService {
    * @param size - Thumbnail size (default: 300x300)
    * @returns Thumbnail buffer
    */
-  async generateThumbnail(
-    buffer: Buffer,
-    size: number = 300
-  ): Promise<Buffer> {
+  async generateThumbnail(buffer: Buffer, size: number = 300): Promise<Buffer> {
     try {
       return await sharp(buffer)
         .resize(size, size, {
@@ -481,7 +470,8 @@ export class SupabaseService {
   }
 
   /**
-   * Check if bucket exists and create if it doesn't
+   * Ensure the storage bucket exists and is publicly readable.
+   * Called automatically on module init.
    */
   async ensureBucketExists(): Promise<void> {
     if (!this.isConfigured()) {
@@ -490,24 +480,36 @@ export class SupabaseService {
 
     try {
       const { data: buckets } = await this.supabase.storage.listBuckets();
-      const bucketExists = buckets?.some((bucket) => bucket.name === this.bucketName);
+      const existing = buckets?.find((b) => b.name === this.bucketName);
 
-      if (!bucketExists) {
-        this.logger.warn(`Bucket ${this.bucketName} does not exist. Creating...`);
+      if (!existing) {
+        this.logger.warn(`Bucket "${this.bucketName}" not found — creating as public...`);
         const { error } = await this.supabase.storage.createBucket(this.bucketName, {
           public: true,
-          fileSizeLimit: 5242880, // 5MB
+          fileSizeLimit: 10485760, // 10 MB
           allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
         });
-
         if (error) {
-          this.logger.error(`Failed to create bucket: ${error.message}`, error.stack);
+          this.logger.error(`Failed to create bucket: ${error.message}`);
         } else {
-          this.logger.log(`Bucket ${this.bucketName} created successfully`);
+          this.logger.log(`Bucket "${this.bucketName}" created and set to public`);
         }
+      } else if (!existing.public) {
+        // Bucket exists but is private — make it public so uploaded images are accessible
+        this.logger.warn(`Bucket "${this.bucketName}" is not public — updating...`);
+        const { error } = await this.supabase.storage.updateBucket(this.bucketName, {
+          public: true,
+        });
+        if (error) {
+          this.logger.error(`Failed to make bucket public: ${error.message}`);
+        } else {
+          this.logger.log(`Bucket "${this.bucketName}" updated to public`);
+        }
+      } else {
+        this.logger.log(`Bucket "${this.bucketName}" is ready (public)`);
       }
     } catch (error) {
-      this.logger.error(`Error ensuring bucket exists: ${error.message}`, error.stack);
+      this.logger.error(`Error checking bucket: ${error.message}`);
     }
   }
 }
