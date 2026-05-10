@@ -280,6 +280,29 @@ export class SellerApprovalService {
       throw new NotFoundException('Store not found');
     }
 
+    // KYC fields are not in the generated Prisma client (schema baseline recovery pending).
+    // Fetch them via raw SQL so they are always returned correctly.
+    const [kycRow] = await this.prisma.$queryRaw<
+      Array<{
+        businessType: string | null;
+        intendedCategories: string[] | null;
+        monthlyVolume: string | null;
+        applicationDocumentUrl: string | null;
+        applicationDocumentType: string | null;
+        applicationNotes: string | null;
+      }>
+    >`
+      SELECT
+        "businessType",
+        "intendedCategories",
+        "monthlyVolume",
+        "applicationDocumentUrl",
+        "applicationDocumentType",
+        "applicationNotes"
+      FROM stores
+      WHERE id = ${storeId}
+    `;
+
     return {
       success: true,
       data: {
@@ -308,13 +331,12 @@ export class SellerApprovalService {
           totalProducts: store.totalProducts,
           createdAt: store.createdAt,
           updatedAt: store.updatedAt,
-          // KYC fields — cast needed until prisma:generate runs after schema baseline recovery
-          businessType: (store as any).businessType,
-          intendedCategories: (store as any).intendedCategories || [],
-          monthlyVolume: (store as any).monthlyVolume,
-          applicationDocumentUrl: (store as any).applicationDocumentUrl,
-          applicationDocumentType: (store as any).applicationDocumentType,
-          applicationNotes: (store as any).applicationNotes,
+          businessType: kycRow?.businessType ?? null,
+          intendedCategories: kycRow?.intendedCategories ?? [],
+          monthlyVolume: kycRow?.monthlyVolume ?? null,
+          applicationDocumentUrl: kycRow?.applicationDocumentUrl ?? null,
+          applicationDocumentType: kycRow?.applicationDocumentType ?? null,
+          applicationNotes: kycRow?.applicationNotes ?? null,
         },
         owner: store.user,
         recentProducts: store.products,
