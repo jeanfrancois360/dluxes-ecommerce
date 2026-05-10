@@ -17,13 +17,15 @@ export function useGelatoCategories() {
   return { categories: data || [], error, isLoading };
 }
 
-export function useGelatoCatalog(params?: {
-  category?: string;
-  search?: string;
-  limit?: number;
-  offset?: number;
-}) {
-  const key = params ? `gelato-catalog-${JSON.stringify(params)}` : 'gelato-catalog';
+export function useGelatoCatalog(
+  params?: { category?: string; search?: string; limit?: number; offset?: number },
+  enabled = true
+) {
+  const key = enabled
+    ? params
+      ? `gelato-catalog-${JSON.stringify(params)}`
+      : 'gelato-catalog'
+    : null; // null key = SWR won't fetch
   const { data, error, isLoading, mutate } = useSWR(key, () => gelatoApi.getProducts(params), {
     revalidateOnFocus: false,
     dedupingInterval: 30000,

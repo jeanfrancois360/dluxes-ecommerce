@@ -26,6 +26,8 @@ interface PodConfigurationSectionProps {
   disabled?: boolean;
   /** Explicitly passed — true/false when resolved, undefined while loading */
   isGelatoConfigured?: boolean;
+  /** Whether the seller has toggled Gelato on (required for catalog access) */
+  isGelatoEnabled?: boolean;
   gelatoAccountName?: string | null;
   // Legacy props kept for backward compat (admin form)
   isGelatoAvailable?: boolean;
@@ -57,6 +59,7 @@ export function PodConfigurationSection({
   onGelatoProductSelect,
   disabled,
   isGelatoConfigured,
+  isGelatoEnabled,
   gelatoAccountName,
   isGelatoAvailable = true,
 }: PodConfigurationSectionProps) {
@@ -232,16 +235,36 @@ export function PodConfigurationSection({
                 </p>
               </div>
             </div>
-            <GelatoProductSelector
-              value={gelatoProductUid}
-              onChange={(uid, name, productDetails) => {
-                onChange('gelatoProductUid', uid);
-                if (productDetails && onGelatoProductSelect) {
-                  onGelatoProductSelect(productDetails);
-                }
-              }}
-              disabled={disabled}
-            />
+            {isGelatoConfigured && isGelatoEnabled === false ? (
+              <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-900">Gelato is disabled</p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Your account is connected but Gelato is turned off. Enable it in your settings
+                    to browse the catalog and process orders.
+                  </p>
+                  <Link
+                    href="/seller/gelato-settings"
+                    className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-amber-700 hover:text-amber-800 underline underline-offset-2 transition-colors"
+                  >
+                    Enable Gelato <ArrowRight size={11} />
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <GelatoProductSelector
+                value={gelatoProductUid}
+                onChange={(uid, name, productDetails) => {
+                  onChange('gelatoProductUid', uid);
+                  if (productDetails && onGelatoProductSelect) {
+                    onGelatoProductSelect(productDetails);
+                  }
+                }}
+                disabled={disabled}
+                gelatoEnabled={isGelatoEnabled !== false}
+              />
+            )}
           </section>
 
           {/* Step 2 — Design file */}

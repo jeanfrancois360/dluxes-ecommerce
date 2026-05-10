@@ -585,6 +585,7 @@ export default function ProductForm({
     shouldRetryOnError: false,
   });
   const isGelatoConfigured = gelatoSettings ? gelatoSettings.isVerified : undefined;
+  const isGelatoEnabled = gelatoSettings ? gelatoSettings.isEnabled : undefined;
 
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1242,6 +1243,7 @@ export default function ProductForm({
               onGelatoProductSelect={handleGelatoProductSelect}
               disabled={loading}
               isGelatoConfigured={isGelatoConfigured}
+              isGelatoEnabled={isGelatoEnabled}
               gelatoAccountName={gelatoSettings?.gelatoAccountName ?? null}
             />
           </div>
