@@ -1065,11 +1065,41 @@ export class PayoutSchedulerService {
                 updatedCount++;
                 this.logger.log(`PayPal payout ${payout.id} completed — batch ${batch.batchId}`);
               } else if (resolution === 'FAILED') {
+                const failedItem = batch.items[0];
                 const failReason =
-                  batch.items[0]?.errors?.[0]?.message || `PayPal batch ${batch.batchStatus}`;
+                  failedItem?.errors?.[0]?.message || `PayPal batch ${batch.batchStatus}`;
                 await this.failPayout(payout.id, failReason);
                 updatedCount++;
                 this.logger.warn(`PayPal payout ${payout.id} failed — ${failReason}`);
+
+                // Detect email-related failures and reset paypalVerified so the seller
+                // is prompted to correct their PayPal email before the next payout attempt.
+                // Triggers on:
+                //   • RETURNED  — funds sent back after claim period (email never registered/claimed)
+                //   • RECEIVER_UNREGISTERED — PayPal API: email has no PayPal account
+                const isEmailInvalid =
+                  failedItem?.transactionStatus === 'RETURNED' ||
+                  failedItem?.errors?.some((e) => e.name === 'RECEIVER_UNREGISTERED');
+
+                if (isEmailInvalid) {
+                  try {
+                    await this.prisma.sellerPayoutSettings.updateMany({
+                      where: { sellerId: payout.sellerId },
+                      data: {
+                        paypalVerified: false,
+                        rejectionNotes: `PayPal payout returned: ${failReason}. Please ensure your PayPal email is correct and registered with PayPal.`,
+                      },
+                    });
+                    this.logger.warn(
+                      `Reset paypalVerified=false for seller ${payout.sellerId} — email returned/unregistered`
+                    );
+                  } catch (updateErr) {
+                    this.logger.error(
+                      `Failed to reset paypalVerified for seller ${payout.sellerId}:`,
+                      updateErr
+                    );
+                  }
+                }
               } else {
                 this.logger.log(`PayPal payout ${payout.id} still ${batch.batchStatus}`);
               }
