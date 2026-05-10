@@ -1029,7 +1029,7 @@ export default function ProductForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* ─── LEFT COLUMN: Main content ─── */}
         <div className="xl:col-span-2 space-y-6 pb-24 xl:pb-0">
           {/* Fulfillment Method */}
