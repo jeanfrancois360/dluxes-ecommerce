@@ -2090,6 +2090,7 @@ export class OrdersService {
             price: 9.99,
             estimatedDays: 7,
             carrier: 'USPS',
+            source: 'manual',
           },
           {
             id: 'express',
@@ -2098,6 +2099,7 @@ export class OrdersService {
             price: 19.99,
             estimatedDays: 3,
             carrier: 'FedEx',
+            source: 'manual',
           },
         ];
       }
@@ -2190,6 +2192,7 @@ export class OrdersService {
           price: Math.round(convertPrice(opt.price) * 100) / 100,
           estimatedDays: opt.estimatedDays,
           carrier: opt.carrier,
+          source: opt.source,
         })),
         tax: {
           amount: Math.round(taxAmountInTargetCurrency * 100) / 100,
