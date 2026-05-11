@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame,
   ArrowLeft,
@@ -17,6 +17,9 @@ import {
   Loader2,
   Eye,
   TrendingUp,
+  Zap,
+  Calendar,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
@@ -32,23 +35,33 @@ import {
   UrgencyLevel,
 } from '@/lib/api/hot-deals';
 
-// Urgency left-border colors
-const URGENCY_BORDER: Record<UrgencyLevel, string> = {
-  NORMAL: 'border-l-gray-200',
-  URGENT: 'border-l-[#CBB57B]',
-  EMERGENCY: 'border-l-red-500',
+// ─── Urgency top-bar ─────────────────────────────────────────────────────────
+
+const URGENCY_BAR: Record<UrgencyLevel, string> = {
+  NORMAL: 'bg-gray-200',
+  URGENT: 'bg-gradient-to-r from-[#CBB57B] to-amber-400',
+  EMERGENCY: 'bg-gradient-to-r from-red-500 to-rose-400',
 };
+
+const URGENCY_BADGE: Record<UrgencyLevel, { bg: string; text: string }> = {
+  NORMAL: { bg: 'bg-gray-100', text: 'text-gray-600' },
+  URGENT: { bg: 'bg-amber-50', text: 'text-amber-700' },
+  EMERGENCY: { bg: 'bg-red-50', text: 'text-red-700' },
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getTimeRemaining(
   expiresAt: string,
   t: ReturnType<typeof useTranslations>
-): { text: string; isExpired: boolean } {
+): { text: string; isExpired: boolean; isShort: boolean } {
   const diff = new Date(expiresAt).getTime() - Date.now();
-  if (diff <= 0) return { text: t('expired'), isExpired: true };
+  if (diff <= 0) return { text: t('expired'), isExpired: true, isShort: true };
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
-  if (h > 0) return { text: t('hoursLeft', { hours: h, minutes: m }), isExpired: false };
-  return { text: t('minutesLeft', { minutes: m }), isExpired: false };
+  const isShort = diff < 2 * 3600000;
+  if (h > 0) return { text: t('hoursLeft', { hours: h, minutes: m }), isExpired: false, isShort };
+  return { text: t('minutesLeft', { minutes: m }), isExpired: false, isShort };
 }
 
 function formatDate(date: string): string {
@@ -58,6 +71,8 @@ function formatDate(date: string): string {
     year: 'numeric',
   });
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MyDealsPage() {
   const t = useTranslations('pages.hotDealsMyDeals');
@@ -123,20 +138,33 @@ export default function MyDealsPage() {
     }
   };
 
-  // Loading state — wait for auth init, then wait for deals to load
+  // Loading skeleton
   if (!isInitialized || (isLoading && isAuthenticated)) {
     return (
       <PageLayout showCategoryNav={false}>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-[#F8F7F4]">
+          <div style={{ backgroundColor: '#0D0D0D' }}>
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="h-6 w-24 bg-white/10 rounded animate-pulse mb-4" />
+              <div className="h-9 w-48 bg-white/10 rounded animate-pulse" />
+            </div>
+          </div>
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
-                <div className="flex gap-3 mb-3">
-                  <div className="h-6 w-16 bg-gray-200 rounded-full" />
-                  <div className="h-6 w-16 bg-gray-200 rounded-full" />
+              <div
+                key={i}
+                className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse"
+              >
+                <div className="h-1 bg-gray-200" />
+                <div className="p-5 space-y-3">
+                  <div className="flex gap-2">
+                    <div className="h-6 w-16 bg-gray-200 rounded-full" />
+                    <div className="h-6 w-16 bg-gray-200 rounded-full" />
+                  </div>
+                  <div className="h-5 w-3/4 bg-gray-200 rounded" />
+                  <div className="h-4 w-full bg-gray-100 rounded" />
+                  <div className="h-4 w-2/3 bg-gray-100 rounded" />
                 </div>
-                <div className="h-5 w-2/3 bg-gray-200 rounded mb-2" />
-                <div className="h-4 w-full bg-gray-200 rounded" />
               </div>
             ))}
           </div>
@@ -145,10 +173,9 @@ export default function MyDealsPage() {
     );
   }
 
-  // Redirect in progress
   if (!isAuthenticated) return null;
 
-  // Group deals
+  // Grouped
   const activeDeals = deals.filter((d) => d.status === 'ACTIVE');
   const pendingDeals = deals.filter((d) => d.status === 'PENDING');
   const pastDeals = deals.filter((d) => ['FULFILLED', 'EXPIRED', 'CANCELLED'].includes(d.status));
@@ -156,91 +183,112 @@ export default function MyDealsPage() {
 
   return (
     <PageLayout showCategoryNav={false}>
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white border-b">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
+      <div className="min-h-screen bg-[#F8F7F4]">
+        {/* ── Dark header ───────────────────────────────────────────────────── */}
+        <div style={{ backgroundColor: '#0D0D0D' }}>
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center justify-between gap-4">
+              {/* Left */}
               <div className="flex items-center gap-4">
                 <Link
                   href="/hot-deals"
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-700"
+                  className="flex items-center gap-1.5 text-sm font-medium transition-colors"
+                  style={{ color: 'rgba(255,255,255,0.5)' }}
                 >
-                  <ArrowLeft className="w-5 h-5" />
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline">Hot Deals</span>
                 </Link>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{t('myHotDeals')}</h1>
-                  <p className="text-sm text-gray-500">{t('manageRequests')}</p>
+
+                <div className="w-px h-5" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }} />
+
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{
+                      background: 'rgba(203,181,123,0.15)',
+                      border: '1.5px solid rgba(203,181,123,0.25)',
+                    }}
+                  >
+                    <Flame className="w-5 h-5" style={{ color: '#CBB57B' }} />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-black" style={{ color: '#ffffff' }}>
+                      {t('myHotDeals')}
+                    </h1>
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                      {t('manageRequests')}
+                    </p>
+                  </div>
                 </div>
               </div>
+
+              {/* CTA */}
               <Link
                 href="/hot-deals/new"
-                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium text-sm hover:bg-neutral-800 transition-colors"
+                className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0"
+                style={{ backgroundColor: '#CBB57B', color: '#000' }}
               >
                 <Plus className="w-4 h-4" />
                 {t('postNewDeal')}
               </Link>
             </div>
+
+            {/* Stats row */}
+            {deals.length > 0 && (
+              <div
+                className="flex items-center gap-6 mt-7 pt-6"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                {[
+                  {
+                    value: activeDeals.length,
+                    label: 'Active',
+                    color: '#4ade80',
+                    bg: 'rgba(74,222,128,0.12)',
+                  },
+                  {
+                    value: pendingDeals.length,
+                    label: 'Pending',
+                    color: '#fbbf24',
+                    bg: 'rgba(251,191,36,0.12)',
+                  },
+                  {
+                    value: totalResponses,
+                    label: 'Responses',
+                    color: '#CBB57B',
+                    bg: 'rgba(203,181,123,0.12)',
+                  },
+                  {
+                    value: pastDeals.length,
+                    label: 'Past',
+                    color: 'rgba(255,255,255,0.4)',
+                    bg: 'rgba(255,255,255,0.06)',
+                  },
+                ].map(({ value, label, color, bg }) => (
+                  <div key={label} className="flex items-center gap-2.5 flex-shrink-0">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center"
+                      style={{ backgroundColor: bg }}
+                    >
+                      <span className="text-sm font-black" style={{ color }}>
+                        {value}
+                      </span>
+                    </div>
+                    <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      {label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Stats strip */}
-        {deals.length > 0 && (
-          <div className="bg-white border-b">
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-              <div className="flex gap-6 overflow-x-auto">
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Flame className="w-4 h-4 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-gray-900 leading-none">
-                      {activeDeals.length}
-                    </p>
-                    <p className="text-xs text-gray-500">Active</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                    <AlertCircle className="w-4 h-4 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-gray-900 leading-none">
-                      {pendingDeals.length}
-                    </p>
-                    <p className="text-xs text-gray-500">Pending</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-gray-900 leading-none">{totalResponses}</p>
-                    <p className="text-xs text-gray-500">Responses</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Clock className="w-4 h-4 text-gray-500" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-gray-900 leading-none">
-                      {pastDeals.length}
-                    </p>
-                    <p className="text-xs text-gray-500">Past</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Content */}
+        {/* ── Content ───────────────────────────────────────────────────────── */}
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Error */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-5 mb-8 flex items-center gap-3">
+            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl mb-6">
               <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
               <p className="text-red-700 text-sm">{error}</p>
             </div>
@@ -248,88 +296,93 @@ export default function MyDealsPage() {
 
           {/* Empty state */}
           {deals.length === 0 && !isLoading && !error && (
-            <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-              <div className="w-16 h-16 bg-[#CBB57B]/15 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <Flame className="w-8 h-8 text-[#CBB57B]" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl border border-gray-100 shadow-sm py-20 px-8 text-center"
+            >
+              <div
+                className="w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, #CBB57B22, #FEF3C722)' }}
+              >
+                <Flame className="w-10 h-10" style={{ color: '#CBB57B' }} />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('noDealsYet')}</h2>
-              <p className="text-gray-500 mb-6 max-w-xs mx-auto text-sm">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">{t('noDealsYet')}</h2>
+              <p className="text-gray-400 text-sm mb-8 max-w-xs mx-auto leading-relaxed">
                 {t('noDealsDescription')}
               </p>
               <Link
                 href="/hot-deals/new"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl font-bold text-sm"
+                style={{ backgroundColor: '#CBB57B', color: '#000' }}
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
                 {t('postFirstDeal')}
               </Link>
-            </div>
+            </motion.div>
           )}
 
-          {/* Pending deals */}
+          {/* Pending */}
           {pendingDeals.length > 0 && (
-            <section className="mb-8">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-yellow-500" />
-                {t('pendingPayment', { count: pendingDeals.length })}
-              </h2>
-              <div className="space-y-3">
-                {pendingDeals.map((deal) => (
-                  <DealCard
-                    key={deal.id}
-                    deal={deal}
-                    actionLoading={actionLoading}
-                    onCancel={handleCancel}
-                    t={t}
-                  />
-                ))}
-              </div>
-            </section>
+            <Section
+              icon={<AlertCircle className="w-4 h-4 text-amber-500" />}
+              label={t('pendingPayment', { count: pendingDeals.length })}
+              accent="text-amber-600"
+            >
+              {pendingDeals.map((deal, i) => (
+                <DealCard
+                  key={deal.id}
+                  deal={deal}
+                  index={i}
+                  actionLoading={actionLoading}
+                  onCancel={handleCancel}
+                  t={t}
+                />
+              ))}
+            </Section>
           )}
 
-          {/* Active deals */}
+          {/* Active */}
           {activeDeals.length > 0 && (
-            <section className="mb-8">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
-                <Flame className="w-4 h-4 text-[#CBB57B]" />
-                {t('activeDeals', { count: activeDeals.length })}
-              </h2>
-              <div className="space-y-3">
-                {activeDeals.map((deal) => (
-                  <DealCard
-                    key={deal.id}
-                    deal={deal}
-                    actionLoading={actionLoading}
-                    onMarkFulfilled={handleMarkFulfilled}
-                    onCancel={handleCancel}
-                    t={t}
-                  />
-                ))}
-              </div>
-            </section>
+            <Section
+              icon={<Flame className="w-4 h-4" style={{ color: '#CBB57B' }} />}
+              label={t('activeDeals', { count: activeDeals.length })}
+              accent="text-gray-700"
+            >
+              {activeDeals.map((deal, i) => (
+                <DealCard
+                  key={deal.id}
+                  deal={deal}
+                  index={i}
+                  actionLoading={actionLoading}
+                  onMarkFulfilled={handleMarkFulfilled}
+                  onCancel={handleCancel}
+                  t={t}
+                />
+              ))}
+            </Section>
           )}
 
-          {/* Past deals */}
+          {/* Past */}
           {pastDeals.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-400" />
-                {t('pastDeals', { count: pastDeals.length })}
-              </h2>
-              <div className="space-y-3">
-                {pastDeals.map((deal) => (
-                  <DealCard key={deal.id} deal={deal} isPast t={t} />
-                ))}
-              </div>
-            </section>
+            <Section
+              icon={<Clock className="w-4 h-4 text-gray-400" />}
+              label={t('pastDeals', { count: pastDeals.length })}
+              accent="text-gray-500"
+            >
+              {pastDeals.map((deal, i) => (
+                <DealCard key={deal.id} deal={deal} index={i} isPast t={t} />
+              ))}
+            </Section>
           )}
         </div>
 
         {/* Mobile FAB */}
-        <div className="sm:hidden fixed bottom-6 right-6">
+        <div className="sm:hidden fixed bottom-6 right-6 z-30">
           <Link
             href="/hot-deals/new"
-            className="flex items-center justify-center w-14 h-14 bg-black text-white rounded-full shadow-lg hover:bg-neutral-800 transition-colors"
+            className="flex items-center justify-center w-14 h-14 rounded-full shadow-xl transition-all"
+            style={{ backgroundColor: '#CBB57B', color: '#000' }}
           >
             <Plus className="w-6 h-6" />
           </Link>
@@ -339,9 +392,35 @@ export default function MyDealsPage() {
   );
 }
 
-// Deal card component
+// ─── Section wrapper ──────────────────────────────────────────────────────────
+
+function Section({
+  icon,
+  label,
+  accent,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  accent: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mb-8">
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <h2 className={`text-xs font-bold uppercase tracking-widest ${accent}`}>{label}</h2>
+      </div>
+      <div className="space-y-4">{children}</div>
+    </section>
+  );
+}
+
+// ─── Deal card ────────────────────────────────────────────────────────────────
+
 function DealCard({
   deal,
+  index = 0,
   actionLoading,
   onMarkFulfilled,
   onCancel,
@@ -349,113 +428,153 @@ function DealCard({
   t,
 }: {
   deal: HotDeal;
+  index?: number;
   actionLoading?: string | null;
   onMarkFulfilled?: (id: string) => void;
   onCancel?: (id: string) => void;
   isPast?: boolean;
   t: ReturnType<typeof useTranslations>;
 }) {
-  const urgencyConfig = URGENCY_CONFIG[deal.urgency];
+  const urgencyBadge = URGENCY_BADGE[deal.urgency];
+  const urgencyBar = URGENCY_BAR[deal.urgency];
   const statusConfig = STATUS_CONFIG[deal.status];
   const timeInfo = getTimeRemaining(deal.expiresAt, t);
   const isThisDealLoading = actionLoading === deal.id;
   const responseCount = deal._count?.responses || 0;
+  const isEmergency = deal.urgency === 'EMERGENCY';
+  const isUrgent = deal.urgency === 'URGENT';
+
+  // Status pill styling
+  const statusPill: Record<string, { bg: string; text: string }> = {
+    ACTIVE: { bg: 'bg-green-50', text: 'text-green-700' },
+    PENDING: { bg: 'bg-amber-50', text: 'text-amber-700' },
+    FULFILLED: { bg: 'bg-blue-50', text: 'text-blue-700' },
+    EXPIRED: { bg: 'bg-gray-100', text: 'text-gray-500' },
+    CANCELLED: { bg: 'bg-red-50', text: 'text-red-600' },
+  };
+  const sp = statusPill[deal.status] ?? { bg: 'bg-gray-100', text: 'text-gray-600' };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-white rounded-xl border border-gray-200 border-l-4 ${URGENCY_BORDER[deal.urgency]} p-5 transition-all ${isPast ? 'opacity-60' : 'hover:shadow-md'}`}
+      transition={{ duration: 0.25, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
+      className={`group bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-300 ${
+        isPast ? 'opacity-60' : 'hover:shadow-lg hover:-translate-y-0.5'
+      }`}
     >
-      <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-        {/* Main content */}
-        <div className="flex-1 min-w-0">
-          {/* Status badges */}
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${statusConfig.bgColor} ${statusConfig.color}`}
-            >
-              {statusConfig.label}
-            </span>
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${urgencyConfig.bgColor} ${urgencyConfig.color}`}
-            >
-              {urgencyConfig.label}
-            </span>
-            <span className="text-xs text-gray-400">{CATEGORY_LABELS[deal.category]}</span>
-          </div>
+      {/* Top urgency bar */}
+      <div className={`h-1 w-full ${urgencyBar}`} />
 
-          <Link href={`/hot-deals/${deal.id}`}>
-            <h3 className="text-base font-semibold text-gray-900 hover:text-[#CBB57B] transition-colors mb-1 line-clamp-1">
-              {deal.title}
-            </h3>
-          </Link>
-
-          <p className="text-gray-500 text-sm mb-3 line-clamp-2 leading-relaxed">
-            {deal.description}
-          </p>
-
-          <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5" />
-              {deal.city}
-              {deal.state ? `, ${deal.state}` : ''}
-            </span>
-            <span className="flex items-center gap-1">
-              <MessageCircle className="w-3.5 h-3.5" />
-              {t('responsesCount', { count: responseCount })}
-            </span>
-            {deal.status === 'ACTIVE' && !timeInfo.isExpired && (
-              <span className="flex items-center gap-1 text-[#CBB57B] font-medium">
-                <Clock className="w-3.5 h-3.5" />
-                {timeInfo.text}
+      <div className="p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+          {/* Main content */}
+          <div className="flex-1 min-w-0">
+            {/* Badges row */}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span
+                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${sp.bg} ${sp.text}`}
+              >
+                {statusConfig.label}
               </span>
-            )}
-            <span className="flex items-center gap-1">
-              {t('posted')} {formatDate(deal.createdAt)}
-            </span>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${urgencyBadge.bg} ${urgencyBadge.text}`}
+              >
+                {isEmergency && (
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping flex-shrink-0" />
+                )}
+                {isUrgent && <Zap className="w-3 h-3 flex-shrink-0" />}
+                {URGENCY_CONFIG[deal.urgency].label}
+              </span>
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                {CATEGORY_LABELS[deal.category]}
+              </span>
+            </div>
+
+            {/* Title */}
+            <Link href={`/hot-deals/${deal.id}`}>
+              <h3 className="text-[15px] font-bold text-gray-900 group-hover:text-[#CBB57B] transition-colors mb-1.5 line-clamp-1">
+                {deal.title}
+              </h3>
+            </Link>
+
+            {/* Description */}
+            <p className="text-gray-500 text-sm mb-4 line-clamp-2 leading-relaxed">
+              {deal.description}
+            </p>
+
+            {/* Meta */}
+            <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                {deal.city}
+                {deal.state ? `, ${deal.state}` : ''}
+              </span>
+              <span
+                className={`flex items-center gap-1.5 ${responseCount > 0 ? 'font-semibold text-[#CBB57B]' : ''}`}
+              >
+                <MessageCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                {t('responsesCount', { count: responseCount })}
+              </span>
+              {deal.status === 'ACTIVE' && !timeInfo.isExpired && (
+                <span
+                  className={`flex items-center gap-1.5 font-semibold ${timeInfo.isShort ? 'text-red-500' : 'text-[#8B7355]'}`}
+                >
+                  <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                  {timeInfo.text}
+                </span>
+              )}
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                {formatDate(deal.createdAt)}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex sm:flex-col gap-2 sm:ml-2 flex-shrink-0">
-          <Link
-            href={`/hot-deals/${deal.id}`}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t('view')}</span>
-          </Link>
-
-          {deal.status === 'ACTIVE' && onMarkFulfilled && (
-            <button
-              onClick={() => onMarkFulfilled(deal.id)}
-              disabled={isThisDealLoading}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-green-700 border border-green-200 rounded-lg hover:bg-green-50 transition-colors disabled:opacity-50"
+          {/* Actions */}
+          <div className="flex sm:flex-col gap-2 flex-shrink-0 sm:min-w-[108px]">
+            {/* View */}
+            <Link
+              href={`/hot-deals/${deal.id}`}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 hover:border-gray-300 transition-all"
             >
-              {isThisDealLoading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <CheckCircle className="w-3.5 h-3.5" />
-              )}
-              <span className="hidden sm:inline">{t('fulfill')}</span>
-            </button>
-          )}
+              <Eye className="w-3.5 h-3.5" />
+              <span>{t('view')}</span>
+              <ChevronRight className="w-3 h-3 opacity-50" />
+            </Link>
 
-          {(deal.status === 'ACTIVE' || deal.status === 'PENDING') && onCancel && (
-            <button
-              onClick={() => onCancel(deal.id)}
-              disabled={isThisDealLoading}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
-            >
-              {isThisDealLoading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <XCircle className="w-3.5 h-3.5" />
-              )}
-              <span className="hidden sm:inline">{t('cancel')}</span>
-            </button>
-          )}
+            {/* Fulfill */}
+            {deal.status === 'ACTIVE' && onMarkFulfilled && (
+              <button
+                onClick={() => onMarkFulfilled(deal.id)}
+                disabled={isThisDealLoading}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 transition-all disabled:opacity-50"
+              >
+                {isThisDealLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-3.5 h-3.5" />
+                )}
+                <span>{t('fulfill')}</span>
+              </button>
+            )}
+
+            {/* Cancel */}
+            {(deal.status === 'ACTIVE' || deal.status === 'PENDING') && onCancel && (
+              <button
+                onClick={() => onCancel(deal.id)}
+                disabled={isThisDealLoading}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-all disabled:opacity-50"
+              >
+                {isThisDealLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <XCircle className="w-3.5 h-3.5" />
+                )}
+                <span>{t('cancel')}</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
