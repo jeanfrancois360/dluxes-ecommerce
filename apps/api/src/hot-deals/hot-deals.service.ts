@@ -78,6 +78,24 @@ export class HotDealsService {
   }
 
   /**
+   * Attach images (raw JSONB column invisible to stale Prisma client) to deal objects.
+   * Uses individual IN placeholders to avoid uuid[] cast issues with CUID primary keys.
+   */
+  private async attachImages<T extends { id: string }>(
+    deals: T[]
+  ): Promise<(T & { images: string[] })[]> {
+    if (deals.length === 0) return deals.map((d) => ({ ...d, images: [] }));
+    const ids = deals.map((d) => d.id);
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
+    const rows = await this.prisma.$queryRawUnsafe<{ id: string; images: string[] }[]>(
+      `SELECT id, images FROM hot_deals WHERE id IN (${placeholders})`,
+      ...ids
+    );
+    const map = new Map(rows.map((r) => [r.id, r.images ?? []]));
+    return deals.map((d) => ({ ...d, images: map.get(d.id) ?? [] }));
+  }
+
+  /**
    * Create a new hot deal (status: PENDING until payment is confirmed)
    */
   async create(userId: string, dto: CreateHotDealDto) {
@@ -121,7 +139,8 @@ export class HotDealsService {
     }
 
     this.logger.log(`Hot deal created: ${hotDeal.id} by user ${userId}`);
-    return hotDeal;
+    const [dealWithImages] = await this.attachImages([hotDeal]);
+    return dealWithImages;
   }
 
   /**
@@ -174,8 +193,10 @@ export class HotDealsService {
       this.hotDeal.count({ where }),
     ]);
 
+    const dealsWithImages = await this.attachImages(deals);
+
     return {
-      deals,
+      deals: dealsWithImages,
       pagination: {
         total,
         page,
@@ -228,7 +249,8 @@ export class HotDealsService {
       deal.responses = deal.responses.filter((r) => r.userId === requestingUserId);
     }
 
-    return deal;
+    const [dealWithImages] = await this.attachImages([deal]);
+    return dealWithImages;
   }
 
   /**
@@ -247,7 +269,7 @@ export class HotDealsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return deals;
+    return this.attachImages(deals);
   }
 
   /**
