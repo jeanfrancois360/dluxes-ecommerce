@@ -99,6 +99,7 @@ export class HotDealsService {
         city: dto.city,
         state: dto.state,
         zipCode: dto.zipCode,
+        images: dto.images ?? [],
         status: HotDealStatus.PENDING,
         paymentStatus: PaymentStatus.PENDING,
         expiresAt,
