@@ -16,6 +16,8 @@ import {
   Send,
   AlertCircle,
   Loader2,
+  Flame,
+  Share2,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -28,26 +30,47 @@ import {
   CATEGORY_LABELS,
   URGENCY_CONFIG,
   STATUS_CONFIG,
+  UrgencyLevel,
 } from '@/lib/api/hot-deals';
 
-// Calculate time remaining
-function getTimeRemaining(expiresAt: string, t: any): { text: string; isExpired: boolean } {
-  const now = new Date();
-  const expiry = new Date(expiresAt);
-  const diff = expiry.getTime() - now.getTime();
+// Urgency left-border colors
+const URGENCY_BORDER: Record<UrgencyLevel, string> = {
+  NORMAL: 'border-l-gray-200',
+  URGENT: 'border-l-[#CBB57B]',
+  EMERGENCY: 'border-l-red-500',
+};
 
-  if (diff <= 0) return { text: t('expired'), isExpired: true };
+// Live countdown hook
+function useCountdown(expiresAt: string, t: ReturnType<typeof useTranslations>) {
+  const [text, setText] = useState('');
+  const [isExpired, setIsExpired] = useState(false);
+  const [isShort, setIsShort] = useState(false);
 
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  useEffect(() => {
+    function update() {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setText(t('expired'));
+        setIsExpired(true);
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      setIsShort(diff < 2 * 3600000);
+      setText(
+        h > 0
+          ? t('hoursRemaining', { hours: h, minutes: m })
+          : t('minutesRemaining', { minutes: m })
+      );
+    }
+    update();
+    const id = setInterval(update, 60000);
+    return () => clearInterval(id);
+  }, [expiresAt, t]);
 
-  if (hours > 0) {
-    return { text: t('hoursRemaining', { hours, minutes }), isExpired: false };
-  }
-  return { text: t('minutesRemaining', { minutes }), isExpired: false };
+  return { text, isExpired, isShort };
 }
 
-// Format date
 function formatDate(date: string): string {
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short',
@@ -84,7 +107,6 @@ export default function HotDealDetailPage() {
     formState: { errors },
   } = useForm<ResponseFormData>();
 
-  // Fetch deal details
   useEffect(() => {
     async function fetchDeal() {
       setIsLoading(true);
@@ -101,20 +123,17 @@ export default function HotDealDetailPage() {
     fetchDeal();
   }, [dealId, t]);
 
-  // Handle response submission
   const onSubmitResponse = async (data: ResponseFormData) => {
     if (!isAuthenticated) {
       router.push(`/auth/login?redirect=/hot-deals/${dealId}`);
       return;
     }
-
     setIsSubmittingResponse(true);
     try {
       await hotDealsApi.respond(dealId, data);
       toast.success(t('responseSent'));
       reset();
       setShowResponseForm(false);
-      // Refresh deal to show the new response
       const updatedDeal = await hotDealsApi.getOne(dealId);
       setDeal(updatedDeal);
     } catch (err) {
@@ -124,10 +143,8 @@ export default function HotDealDetailPage() {
     }
   };
 
-  // Handle mark as fulfilled
   const handleMarkFulfilled = async () => {
     if (!deal) return;
-
     setIsMarkingFulfilled(true);
     try {
       await hotDealsApi.markFulfilled(dealId);
@@ -141,17 +158,35 @@ export default function HotDealDetailPage() {
     }
   };
 
-  const isOwner = user && deal && user.id === deal.user.id;
-  const hasResponded = deal?.responses?.some((r) => r.user.id === user?.id);
-  const canRespond = isAuthenticated && !isOwner && deal?.status === 'ACTIVE' && !hasResponded;
-  const timeInfo = deal ? getTimeRemaining(deal.expiresAt, t) : null;
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      await navigator.share({ title: deal?.title, url }).catch(() => {});
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied to clipboard');
+    }
+  };
 
   // Loading state
   if (isLoading) {
     return (
       <PageLayout showCategoryNav={false}>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-gold animate-spin" />
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 w-32 bg-gray-200 rounded" />
+              <div className="bg-white rounded-2xl p-6 space-y-4">
+                <div className="flex gap-2">
+                  <div className="h-7 w-20 bg-gray-200 rounded-full" />
+                  <div className="h-7 w-16 bg-gray-200 rounded-full" />
+                </div>
+                <div className="h-8 w-2/3 bg-gray-200 rounded" />
+                <div className="h-4 w-full bg-gray-200 rounded" />
+                <div className="h-4 w-5/6 bg-gray-200 rounded" />
+              </div>
+            </div>
+          </div>
         </div>
       </PageLayout>
     );
@@ -166,7 +201,7 @@ export default function HotDealDetailPage() {
             <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
               <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('notFound')}</h2>
-              <p className="text-gray-600 mb-6">{error || t('mayBeRemoved')}</p>
+              <p className="text-gray-500 mb-6">{error || t('mayBeRemoved')}</p>
               <Link
                 href="/hot-deals"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
@@ -183,44 +218,61 @@ export default function HotDealDetailPage() {
 
   const urgencyConfig = URGENCY_CONFIG[deal.urgency];
   const statusConfig = STATUS_CONFIG[deal.status];
+  const isEmergency = deal.urgency === 'EMERGENCY';
+  const isOwner = user && user.id === deal.user.id;
+  const hasResponded = deal.responses?.some((r) => r.user.id === user?.id);
+  const canRespond = isAuthenticated && !isOwner && deal.status === 'ACTIVE' && !hasResponded;
+  const responseCount = deal._count?.responses || 0;
 
   return (
     <PageLayout showCategoryNav={false}>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white border-b">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <Link
-              href="/hot-deals"
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {t('backToHotDeals')}
-            </Link>
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <Link
+                href="/hot-deals"
+                className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                {t('backToHotDeals')}
+              </Link>
+              <button
+                onClick={handleShare}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Share"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Content */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
+            {/* Main content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Deal Info Card */}
+              {/* Deal card */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl shadow-sm overflow-hidden"
+                className={`bg-white rounded-2xl shadow-sm overflow-hidden border-l-4 ${URGENCY_BORDER[deal.urgency]}${isEmergency ? ' ring-1 ring-red-100' : ''}`}
               >
-                {/* Header with badges */}
+                {/* Badges + title */}
                 <div className="p-6 border-b border-gray-100">
                   <div className="flex flex-wrap gap-2 mb-4">
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${urgencyConfig.bgColor} ${urgencyConfig.color}`}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${urgencyConfig.bgColor} ${urgencyConfig.color}`}
                     >
+                      {isEmergency && (
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />
+                      )}
                       {urgencyConfig.label}
                     </span>
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bgColor} ${statusConfig.color}`}
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${statusConfig.bgColor} ${statusConfig.color}`}
                     >
                       {statusConfig.label}
                     </span>
@@ -229,64 +281,75 @@ export default function HotDealDetailPage() {
                     </span>
                   </div>
 
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{deal.title}</h1>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-4 leading-tight">
+                    {deal.title}
+                  </h1>
 
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-gray-400" />
                       {deal.city}
                       {deal.state ? `, ${deal.state}` : ''}
                       {deal.zipCode ? ` ${deal.zipCode}` : ''}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {timeInfo?.text}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MessageCircle className="w-4 h-4" />
-                      {t('responsesCount', { count: deal._count?.responses || 0 })}
-                    </div>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <MessageCircle className="w-4 h-4 text-gray-400" />
+                      {t('responsesCount', { count: responseCount })}
+                    </span>
                   </div>
                 </div>
 
                 {/* Description */}
                 <div className="p-6 border-b border-gray-100">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-3">{t('description')}</h2>
-                  <p className="text-gray-600 whitespace-pre-wrap">{deal.description}</p>
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                    {t('description')}
+                  </h2>
+                  <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                    {deal.description}
+                  </p>
                 </div>
 
-                {/* Contact Info (only for logged-in users) */}
+                {/* Contact info */}
                 {isAuthenticated ? (
                   <div className="p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                    <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
                       {t('contactInformation')}
                     </h2>
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
-                        <User className="w-5 h-5 text-gray-400" />
-                        <span className="text-gray-700">{deal.contactName}</span>
+                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <User className="w-4 h-4 text-gray-500" />
+                        </div>
+                        <span className="text-gray-800 font-medium">{deal.contactName}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Phone className="w-5 h-5 text-gray-400" />
-                        <a href={`tel:${deal.contactPhone}`} className="text-gold hover:text-gold">
+                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Phone className="w-4 h-4 text-gray-500" />
+                        </div>
+                        <a
+                          href={`tel:${deal.contactPhone}`}
+                          className="text-[#CBB57B] hover:text-[#b9a369] font-medium transition-colors"
+                        >
                           {deal.contactPhone}
                         </a>
                         {deal.preferredContact === 'PHONE' && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
                             {t('preferred')}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-3">
-                        <Mail className="w-5 h-5 text-gray-400" />
+                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Mail className="w-4 h-4 text-gray-500" />
+                        </div>
                         <a
                           href={`mailto:${deal.contactEmail}`}
-                          className="text-gold hover:text-gold"
+                          className="text-[#CBB57B] hover:text-[#b9a369] font-medium transition-colors"
                         >
                           {deal.contactEmail}
                         </a>
                         {deal.preferredContact === 'EMAIL' && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
                             {t('preferred')}
                           </span>
                         )}
@@ -294,22 +357,22 @@ export default function HotDealDetailPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-6 bg-gray-50">
-                    <div className="text-center">
-                      <AlertCircle className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600 mb-4">{t('logInToSee')}</p>
-                      <Link
-                        href={`/auth/login?redirect=/hot-deals/${dealId}`}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
-                      >
-                        {t('logInToContinue')}
-                      </Link>
+                  <div className="p-6 bg-gray-50 text-center">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full mx-auto mb-3 flex items-center justify-center">
+                      <AlertCircle className="w-5 h-5 text-gray-500" />
                     </div>
+                    <p className="text-gray-600 mb-4 text-sm">{t('logInToSee')}</p>
+                    <Link
+                      href={`/auth/login?redirect=/hot-deals/${dealId}`}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors text-sm"
+                    >
+                      {t('logInToContinue')}
+                    </Link>
                   </div>
                 )}
               </motion.div>
 
-              {/* Response Form */}
+              {/* Response form */}
               {canRespond && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -330,7 +393,6 @@ export default function HotDealDetailPage() {
                       <h2 className="text-lg font-semibold text-gray-900 mb-4">
                         {t('sendYourResponse')}
                       </h2>
-
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -344,13 +406,12 @@ export default function HotDealDetailPage() {
                             })}
                             rows={4}
                             placeholder={t('messagePlaceholder')}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] outline-none resize-none"
                           />
                           {errors.message && (
                             <p className="mt-1 text-sm text-red-600">{errors.message.message}</p>
                           )}
                         </div>
-
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             {t('yourContactInfo')}
@@ -359,18 +420,17 @@ export default function HotDealDetailPage() {
                             {...register('contactInfo')}
                             rows={2}
                             placeholder={t('contactPlaceholder')}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] outline-none resize-none"
                           />
                         </div>
-
-                        <div className="flex gap-4">
+                        <div className="flex gap-3">
                           <button
                             type="button"
                             onClick={() => {
                               setShowResponseForm(false);
                               reset();
                             }}
-                            className="flex-1 px-6 py-3 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex-1 px-6 py-3 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                           >
                             {t('cancel')}
                           </button>
@@ -393,17 +453,17 @@ export default function HotDealDetailPage() {
                 </motion.div>
               )}
 
-              {/* Already Responded Message */}
+              {/* Already responded */}
               {hasResponded && (
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-green-700">
-                    <CheckCircle className="w-5 h-5" />
-                    <p className="font-medium">{t('alreadyResponded')}</p>
+                    <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                    <p className="font-medium text-sm">{t('alreadyResponded')}</p>
                   </div>
                 </div>
               )}
 
-              {/* Responses (visible to owner) */}
+              {/* Responses list (owner only) */}
               {isOwner && deal.responses && deal.responses.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -420,22 +480,24 @@ export default function HotDealDetailPage() {
                     {deal.responses.map((response) => (
                       <div key={response.id} className="p-6">
                         <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                             <User className="w-5 h-5 text-gray-500" />
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="font-medium text-gray-900">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-2 gap-2">
+                              <p className="font-semibold text-gray-900 text-sm">
                                 {response.user.firstName} {response.user.lastName}
                               </p>
-                              <p className="text-sm text-gray-500">
+                              <p className="text-xs text-gray-400 flex-shrink-0">
                                 {formatDate(response.createdAt)}
                               </p>
                             </div>
-                            <p className="text-gray-600 mb-3">{response.message}</p>
+                            <p className="text-gray-600 text-sm mb-3 leading-relaxed">
+                              {response.message}
+                            </p>
                             {response.contactInfo && (
-                              <div className="bg-gray-50 rounded-lg p-3">
-                                <p className="text-sm font-medium text-gray-700 mb-1">
+                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                                   {t('contactInfo')}
                                 </p>
                                 <p className="text-sm text-gray-600 whitespace-pre-wrap">
@@ -458,27 +520,32 @@ export default function HotDealDetailPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-white rounded-2xl shadow-sm p-6 sticky top-6"
+                className="bg-white rounded-2xl shadow-sm p-6 sticky top-6 space-y-6"
               >
-                {/* Posted By */}
-                <div className="mb-6">
-                  <p className="text-sm text-gray-500 mb-2">{t('postedBy')}</p>
+                {/* Posted by */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                    {t('postedBy')}
+                  </p>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
                       <User className="w-5 h-5 text-gray-500" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-semibold text-gray-900 text-sm">
                         {deal.user.firstName} {deal.user.lastName}
                       </p>
-                      <p className="text-sm text-gray-500">{formatDate(deal.createdAt)}</p>
+                      <p className="text-xs text-gray-400">{formatDate(deal.createdAt)}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Owner Actions */}
+                {/* Live countdown */}
+                {deal.status === 'ACTIVE' && <SidebarCountdown expiresAt={deal.expiresAt} t={t} />}
+
+                {/* Owner: mark fulfilled */}
                 {isOwner && deal.status === 'ACTIVE' && (
-                  <div className="pt-6 border-t border-gray-100">
+                  <div className="pt-2 border-t border-gray-100">
                     <button
                       onClick={handleMarkFulfilled}
                       disabled={isMarkingFulfilled}
@@ -491,18 +558,21 @@ export default function HotDealDetailPage() {
                       )}
                       {t('markAsFulfilled')}
                     </button>
-                    <p className="text-xs text-gray-500 text-center mt-2">{t('markHelper')}</p>
+                    <p className="text-xs text-gray-400 text-center mt-2">{t('markHelper')}</p>
                   </div>
                 )}
 
-                {/* Time Warning */}
-                {deal.status === 'ACTIVE' && timeInfo && !timeInfo.isExpired && (
-                  <div className="mt-6 p-4 bg-gold/10 rounded-xl">
-                    <div className="flex items-center gap-2 text-gold">
-                      <Clock className="w-5 h-5" />
-                      <p className="text-sm font-medium">{timeInfo.text}</p>
-                    </div>
-                    <p className="text-xs text-gold mt-1">{t('expiresAutomatically')}</p>
+                {/* Fulfilled / Expired status messages */}
+                {deal.status === 'FULFILLED' && (
+                  <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-xl p-3">
+                    <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-medium">{statusConfig.label}</span>
+                  </div>
+                )}
+                {deal.status === 'EXPIRED' && (
+                  <div className="flex items-center gap-2 text-gray-500 bg-gray-50 rounded-xl p-3">
+                    <Clock className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-medium">{statusConfig.label}</span>
                   </div>
                 )}
               </motion.div>
@@ -511,5 +581,32 @@ export default function HotDealDetailPage() {
         </div>
       </div>
     </PageLayout>
+  );
+}
+
+// Sidebar countdown component with live ticking
+function SidebarCountdown({
+  expiresAt,
+  t,
+}: {
+  expiresAt: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const { text, isExpired, isShort } = useCountdown(expiresAt, t);
+
+  if (isExpired) return null;
+
+  return (
+    <div
+      className={`rounded-xl p-4 ${isShort ? 'bg-red-50 border border-red-100' : 'bg-[#CBB57B]/10 border border-[#CBB57B]/20'}`}
+    >
+      <div className={`flex items-center gap-2 ${isShort ? 'text-red-600' : 'text-[#CBB57B]'}`}>
+        <Clock className="w-5 h-5 flex-shrink-0" />
+        <p className="text-sm font-semibold">{text}</p>
+      </div>
+      <p className={`text-xs mt-1 ${isShort ? 'text-red-400' : 'text-[#CBB57B]/70'}`}>
+        {t('expiresAutomatically')}
+      </p>
+    </div>
   );
 }
