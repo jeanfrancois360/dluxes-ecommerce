@@ -35,7 +35,7 @@ export class HotDealsService {
       if (!key) {
         throw new InternalServerErrorException('Stripe is not configured');
       }
-      this.stripe = new Stripe(key, { apiVersion: '2025-04-30.basil' });
+      this.stripe = new Stripe(key, { apiVersion: '2025-10-29.clover' });
     }
     return this.stripe;
   }
