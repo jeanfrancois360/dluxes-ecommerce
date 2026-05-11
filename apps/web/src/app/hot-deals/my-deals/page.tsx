@@ -315,8 +315,8 @@ export default function MyDealsPage() {
         {deals.length > 0 && (
           <div className="bg-white border-b border-gray-100 sticky top-0 z-20">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-3 py-3 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-                {/* Search */}
+              <div className="flex items-center gap-3 py-3">
+                {/* Search — always visible, never scrolls */}
                 <div className="relative flex-shrink-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                   <input
@@ -324,7 +324,7 @@ export default function MyDealsPage() {
                     placeholder="Search deals…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-44 pl-9 pr-8 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B]/50 focus:bg-white transition-all"
+                    className="w-40 pl-9 pr-8 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B]/50 focus:bg-white transition-all"
                   />
                   {search && (
                     <button
@@ -339,62 +339,94 @@ export default function MyDealsPage() {
                 {/* Divider */}
                 <div className="w-px h-5 bg-gray-200 flex-shrink-0" />
 
-                {/* Status pills */}
-                {(
-                  [
-                    { value: 'ALL', label: 'All', count: deals.length },
-                    { value: 'ACTIVE', label: 'Active', count: activeDeals.length },
-                    { value: 'PENDING', label: 'Pending', count: pendingDeals.length },
-                    {
-                      value: 'FULFILLED',
-                      label: 'Fulfilled',
-                      count: deals.filter((d) => d.status === 'FULFILLED').length,
-                    },
-                    {
-                      value: 'EXPIRED',
-                      label: 'Expired',
-                      count: deals.filter((d) => d.status === 'EXPIRED').length,
-                    },
-                    {
-                      value: 'CANCELLED',
-                      label: 'Cancelled',
-                      count: deals.filter((d) => d.status === 'CANCELLED').length,
-                    },
-                  ] as { value: HotDealStatus | 'ALL'; label: string; count: number }[]
-                ).map(({ value, label, count }) => {
-                  const isActive = statusFilter === value;
-                  return (
-                    <button
-                      key={value}
-                      onClick={() => setStatusFilter(value)}
-                      className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                        isActive
-                          ? 'bg-gray-900 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      {label}
-                      {count > 0 && (
-                        <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                            isActive ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-500'
-                          }`}
-                        >
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                {/* Scrollable pills — Clear button is OUTSIDE this scroll zone */}
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0">
+                  {(
+                    [
+                      {
+                        value: 'ALL',
+                        label: 'All',
+                        count: deals.length,
+                        activeClass: 'bg-gray-900 text-white',
+                        badgeClass: 'bg-white/20 text-white',
+                      },
+                      {
+                        value: 'ACTIVE',
+                        label: 'Active',
+                        count: activeDeals.length,
+                        activeClass: 'bg-green-600 text-white',
+                        badgeClass: 'bg-white/25 text-white',
+                      },
+                      {
+                        value: 'PENDING',
+                        label: 'Pending',
+                        count: pendingDeals.length,
+                        activeClass: 'bg-amber-500 text-white',
+                        badgeClass: 'bg-white/25 text-white',
+                      },
+                      {
+                        value: 'FULFILLED',
+                        label: 'Fulfilled',
+                        count: deals.filter((d) => d.status === 'FULFILLED').length,
+                        activeClass: 'bg-blue-600 text-white',
+                        badgeClass: 'bg-white/25 text-white',
+                      },
+                      {
+                        value: 'EXPIRED',
+                        label: 'Expired',
+                        count: deals.filter((d) => d.status === 'EXPIRED').length,
+                        activeClass: 'bg-gray-500 text-white',
+                        badgeClass: 'bg-white/25 text-white',
+                      },
+                      {
+                        value: 'CANCELLED',
+                        label: 'Cancelled',
+                        count: deals.filter((d) => d.status === 'CANCELLED').length,
+                        activeClass: 'bg-red-500 text-white',
+                        badgeClass: 'bg-white/25 text-white',
+                      },
+                    ] as {
+                      value: HotDealStatus | 'ALL';
+                      label: string;
+                      count: number;
+                      activeClass: string;
+                      badgeClass: string;
+                    }[]
+                  ).map(({ value, label, count, activeClass, badgeClass }) => {
+                    const isSelected = statusFilter === value;
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => setStatusFilter(value)}
+                        className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                          isSelected ? activeClass : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {label}
+                        {count > 0 && (
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                              isSelected
+                                ? badgeClass
+                                : 'bg-white text-gray-500 border border-gray-200'
+                            }`}
+                          >
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
 
-                {/* Clear filters */}
+                {/* Clear — always visible at the right, never inside scroll zone */}
                 {isFiltered && (
                   <button
                     onClick={() => {
                       setStatusFilter('ALL');
                       setSearch('');
                     }}
-                    className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors ml-auto"
+                    className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-100"
                   >
                     <X className="w-3 h-3" />
                     Clear
