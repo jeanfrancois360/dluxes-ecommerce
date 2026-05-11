@@ -111,7 +111,13 @@ const URGENCY_OPTIONS: Array<{
 ];
 
 // Main form component (must be inside Stripe Elements)
-function HotDealForm() {
+function HotDealForm({
+  stripeLoading,
+  stripeError,
+}: {
+  stripeLoading: boolean;
+  stripeError: string | null;
+}) {
   const t = useTranslations('pages.hotDealsNew');
   const router = useRouter();
   const { user } = useAuth();
@@ -285,19 +291,38 @@ function HotDealForm() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               {t('cardDetails')}
             </label>
-            <div className="border border-gray-200 rounded-xl p-4 focus-within:ring-2 focus-within:ring-[#CBB57B]/30 focus-within:border-[#CBB57B] transition-shadow">
-              <CardElement
-                options={{
-                  style: {
-                    base: {
-                      fontSize: '16px',
-                      color: '#1f2937',
-                      '::placeholder': { color: '#9ca3af' },
+            {stripeError ? (
+              <div className="border border-red-200 rounded-xl p-4 bg-red-50">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-700">Payment system unavailable</p>
+                    <p className="text-xs text-red-600 mt-1">{stripeError}</p>
+                  </div>
+                </div>
+              </div>
+            ) : stripeLoading ? (
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-4 h-4 text-[#CBB57B] animate-spin flex-shrink-0" />
+                  <div className="h-4 bg-gray-200 rounded animate-pulse flex-1" />
+                </div>
+              </div>
+            ) : (
+              <div className="border border-gray-200 rounded-xl p-4 focus-within:ring-2 focus-within:ring-[#CBB57B]/30 focus-within:border-[#CBB57B] transition-shadow">
+                <CardElement
+                  options={{
+                    style: {
+                      base: {
+                        fontSize: '16px',
+                        color: '#1f2937',
+                        '::placeholder': { color: '#9ca3af' },
+                      },
                     },
-                  },
-                }}
-              />
-            </div>
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">
@@ -315,15 +340,15 @@ function HotDealForm() {
             <button
               type="button"
               onClick={handlePayment}
-              disabled={isSubmitting || !stripe}
+              disabled={isSubmitting || !stripe || stripeLoading || !!stripeError}
               className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? (
+              {isSubmitting || stripeLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <CreditCard className="w-5 h-5" />
               )}
-              {t('payAmount')}
+              {stripeLoading ? 'Loading...' : t('payAmount')}
             </button>
           </div>
 
@@ -632,7 +657,25 @@ export default function NewHotDealPage() {
   const t = useTranslations('pages.hotDealsNew');
   const { isAuthenticated, isInitialized } = useAuth();
   const router = useRouter();
-  const [stripePromise] = useState(() => getStripe());
+  const [stripeInstance, setStripeInstance] = useState<import('@stripe/stripe-js').Stripe | null>(
+    null
+  );
+  const [stripeLoading, setStripeLoading] = useState(true);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getStripe()
+      .then((stripe) => {
+        setStripeInstance(stripe);
+        setStripeLoading(false);
+      })
+      .catch(() => {
+        setStripeError(
+          'Payment system is not configured. Please contact support or try again later.'
+        );
+        setStripeLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     if (isInitialized && !isAuthenticated) {
@@ -679,8 +722,8 @@ export default function NewHotDealPage() {
 
         {/* Form (StepProgress rendered inside HotDealForm) */}
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Elements stripe={stripePromise}>
-            <HotDealForm />
+          <Elements stripe={stripeInstance}>
+            <HotDealForm stripeLoading={stripeLoading} stripeError={stripeError} />
           </Elements>
         </div>
       </div>
