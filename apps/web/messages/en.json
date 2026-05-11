@@ -4084,6 +4084,20 @@
     "pageTitle": "Choose Your Plan",
     "pageSubtitle": "Unlock premium features to grow your business. All paid plans include a 14-day free trial.",
     "badge": "SUBSCRIPTION PLANS",
+    "header": {
+      "badge": "Subscription Plans",
+      "title": "Choose Your Plan",
+      "subtitle": "Unlock premium features to grow your business. All paid plans include a 14-day free trial."
+    },
+    "backToDashboard": "Back to Dashboard",
+    "currentPlanBadge": "Current Plan:",
+    "taglines": {
+      "FREE": "Get started for free",
+      "STARTER": "Perfect for growing sellers",
+      "PROFESSIONAL": "For serious businesses",
+      "BUSINESS": "Unlimited potential",
+      "default": "Powerful features"
+    },
     "breadcrumbs": {
       "backToDashboard": "Back to Dashboard"
     },
@@ -4091,7 +4105,9 @@
     "errors": {
       "fetchPlans": "Failed to fetch subscription plans",
       "noCheckoutUrl": "No checkout URL received",
-      "initiateFailed": "Failed to initiate upgrade"
+      "initiateFailed": "Failed to initiate upgrade",
+      "title": "Upgrade Error",
+      "upgrade": "Failed to initiate upgrade"
     },
     "currentPlan": {
       "label": "Current Plan:",
@@ -4102,9 +4118,11 @@
       "monthly": "Monthly",
       "yearly": "Yearly",
       "yearlyDiscount": "-20%",
+      "discount": "-20%",
       "year": "year",
       "month": "month",
-      "billedYearly": "billed yearly"
+      "billedYearly": "billed yearly",
+      "monthBilledYearly": "mo, billed yearly"
     },
     "planTiers": {
       "taglines": {
@@ -4129,7 +4147,8 @@
       "productTypes": "Product Types",
       "features": "Features",
       "moreFeatures": "+{count} more features",
-      "physicalOnly": "Physical products only"
+      "physicalOnly": "Physical products only",
+      "currentPlan": "Current Plan"
     },
     "productTypes": {
       "SERVICE": "Services",

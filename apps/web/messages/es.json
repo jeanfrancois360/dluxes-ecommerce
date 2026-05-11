@@ -4159,6 +4159,20 @@
     "pageTitle": "Elige Tu Plan",
     "pageSubtitle": "Desbloquea funciones premium para hacer crecer tu negocio. Todos los planes de pago incluyen una prueba gratuita de 14 días.",
     "badge": "PLANES DE SUSCRIPCIÓN",
+    "header": {
+      "badge": "Planes de Suscripción",
+      "title": "Elige Tu Plan",
+      "subtitle": "Desbloquea funciones premium para hacer crecer tu negocio. Todos los planes de pago incluyen una prueba gratuita de 14 días."
+    },
+    "backToDashboard": "Volver al Panel",
+    "currentPlanBadge": "Plan Actual:",
+    "taglines": {
+      "FREE": "Comienza gratis",
+      "STARTER": "Perfecto para vendedores en crecimiento",
+      "PROFESSIONAL": "Para negocios serios",
+      "BUSINESS": "Potencial ilimitado",
+      "default": "Funciones poderosas"
+    },
     "breadcrumbs": {
       "backToDashboard": "Volver al Panel de Control"
     },
@@ -4166,7 +4180,9 @@
     "errors": {
       "fetchPlans": "Error al obtener planes de suscripción",
       "noCheckoutUrl": "No se recibió URL de pago",
-      "initiateFailed": "Error al iniciar la actualización"
+      "initiateFailed": "Error al iniciar la actualización",
+      "title": "Error de actualización",
+      "upgrade": "Error al iniciar la actualización"
     },
     "currentPlan": {
       "label": "Plan Actual:",
@@ -4177,9 +4193,11 @@
       "monthly": "Mensual",
       "yearly": "Anual",
       "yearlyDiscount": "-20%",
+      "discount": "-20%",
       "year": "año",
       "month": "mes",
-      "billedYearly": "facturado anualmente"
+      "billedYearly": "facturado anualmente",
+      "monthBilledYearly": "mes, facturado anualmente"
     },
     "planTiers": {
       "taglines": {
@@ -4204,7 +4222,8 @@
       "productTypes": "Tipos de Productos",
       "features": "Funciones",
       "moreFeatures": "+{count} funciones más",
-      "physicalOnly": "Solo productos físicos"
+      "physicalOnly": "Solo productos físicos",
+      "currentPlan": "Plan Actual"
     },
     "productTypes": {
       "SERVICE": "Servicios",
