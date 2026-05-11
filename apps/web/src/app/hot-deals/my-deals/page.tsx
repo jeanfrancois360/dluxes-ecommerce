@@ -339,76 +339,70 @@ export default function MyDealsPage() {
                 {/* Divider */}
                 <div className="w-px h-5 bg-gray-200 flex-shrink-0" />
 
-                {/* Scrollable pills — Clear button is OUTSIDE this scroll zone */}
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0">
+                {/* All pills + Clear in one flat scrollable row */}
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide min-w-0">
                   {(
                     [
-                      {
-                        value: 'ALL',
-                        label: 'All',
-                        count: deals.length,
-                        activeClass: 'bg-gray-900 text-white',
-                        badgeClass: 'bg-white/20 text-white',
-                      },
+                      { value: 'ALL', label: 'All', count: deals.length, activeBg: '#111827' },
                       {
                         value: 'ACTIVE',
                         label: 'Active',
                         count: activeDeals.length,
-                        activeClass: 'bg-green-600 text-white',
-                        badgeClass: 'bg-white/25 text-white',
+                        activeBg: '#16a34a',
                       },
                       {
                         value: 'PENDING',
                         label: 'Pending',
                         count: pendingDeals.length,
-                        activeClass: 'bg-amber-500 text-white',
-                        badgeClass: 'bg-white/25 text-white',
+                        activeBg: '#d97706',
                       },
                       {
                         value: 'FULFILLED',
                         label: 'Fulfilled',
                         count: deals.filter((d) => d.status === 'FULFILLED').length,
-                        activeClass: 'bg-blue-600 text-white',
-                        badgeClass: 'bg-white/25 text-white',
+                        activeBg: '#2563eb',
                       },
                       {
                         value: 'EXPIRED',
                         label: 'Expired',
                         count: deals.filter((d) => d.status === 'EXPIRED').length,
-                        activeClass: 'bg-gray-500 text-white',
-                        badgeClass: 'bg-white/25 text-white',
+                        activeBg: '#6b7280',
                       },
                       {
                         value: 'CANCELLED',
                         label: 'Cancelled',
                         count: deals.filter((d) => d.status === 'CANCELLED').length,
-                        activeClass: 'bg-red-500 text-white',
-                        badgeClass: 'bg-white/25 text-white',
+                        activeBg: '#ef4444',
                       },
                     ] as {
                       value: HotDealStatus | 'ALL';
                       label: string;
                       count: number;
-                      activeClass: string;
-                      badgeClass: string;
+                      activeBg: string;
                     }[]
-                  ).map(({ value, label, count, activeClass, badgeClass }) => {
+                  ).map(({ value, label, count, activeBg }) => {
                     const isSelected = statusFilter === value;
                     return (
                       <button
                         key={value}
                         onClick={() => setStatusFilter(value)}
+                        style={
+                          isSelected ? { backgroundColor: activeBg, color: '#fff' } : undefined
+                        }
                         className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                          isSelected ? activeClass : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          isSelected ? '' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
                         {label}
                         {count > 0 && (
                           <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                            style={
                               isSelected
-                                ? badgeClass
-                                : 'bg-white text-gray-500 border border-gray-200'
+                                ? { backgroundColor: 'rgba(255,255,255,0.22)', color: '#fff' }
+                                : undefined
+                            }
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                              isSelected ? '' : 'bg-white text-gray-500 border border-gray-200'
                             }`}
                           >
                             {count}
@@ -417,21 +411,19 @@ export default function MyDealsPage() {
                       </button>
                     );
                   })}
+                  {isFiltered && (
+                    <button
+                      onClick={() => {
+                        setStatusFilter('ALL');
+                        setSearch('');
+                      }}
+                      className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-100"
+                    >
+                      <X className="w-3 h-3" />
+                      Clear
+                    </button>
+                  )}
                 </div>
-
-                {/* Clear — always visible at the right, never inside scroll zone */}
-                {isFiltered && (
-                  <button
-                    onClick={() => {
-                      setStatusFilter('ALL');
-                      setSearch('');
-                    }}
-                    className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-100"
-                  >
-                    <X className="w-3 h-3" />
-                    Clear
-                  </button>
-                )}
               </div>
             </div>
           </div>
