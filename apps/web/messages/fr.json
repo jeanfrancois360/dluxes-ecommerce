@@ -2067,7 +2067,10 @@
       "willExpire": "Cette offre expirera automatiquement",
       "notFound": "Offre Urgente Introuvable",
       "mayBeRemoved": "Cette offre urgente a peut-être été supprimée ou a expiré.",
-      "failedToLoad": "Échec du chargement de l'offre urgente"
+      "failedToLoad": "Échec du chargement de l'offre urgente",
+      "responsesCount": "{count} réponses",
+      "markHelper": "Marquez lorsque vous avez trouvé de l'aide pour votre demande",
+      "expiresAutomatically": "Cette offre expirera automatiquement"
     },
     "hotDealsMyDeals": {
       "title": "Mes Offres Urgentes",
@@ -2082,7 +2085,7 @@
       "view": "Voir",
       "fulfill": "Satisfaire",
       "cancel": "Annuler",
-      "posted": "Publié le {date}",
+      "posted": "Publié le",
       "hoursLeft": "{hours}h {minutes}m restantes",
       "minutesLeft": "{minutes}m restantes",
       "responses": "réponses",
@@ -2091,7 +2094,12 @@
       "dealCancelled": "Offre urgente annulée",
       "failedToCancel": "Échec de l'annulation de l'offre",
       "confirmCancel": "Êtes-vous sûr de vouloir annuler cette offre urgente ?",
-      "failedToLoadDeals": "Échec du chargement de vos offres"
+      "failedToLoadDeals": "Échec du chargement de vos offres",
+      "myHotDeals": "Mes Offres Urgentes",
+      "manageRequests": "Gérez vos demandes de service",
+      "responsesCount": "{count} réponses",
+      "expired": "Expiré",
+      "failedToLoad": "Échec du chargement de vos offres"
     }
   },
   "ads": {

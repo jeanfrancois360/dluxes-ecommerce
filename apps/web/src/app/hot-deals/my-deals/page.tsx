@@ -16,7 +16,7 @@ import {
   AlertCircle,
   Loader2,
   Eye,
-  Trash2,
+  TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
@@ -29,26 +29,28 @@ import {
   URGENCY_CONFIG,
   STATUS_CONFIG,
   HotDealStatus,
+  UrgencyLevel,
 } from '@/lib/api/hot-deals';
 
-// Calculate time remaining
-function getTimeRemaining(expiresAt: string, t: any): { text: string; isExpired: boolean } {
-  const now = new Date();
-  const expiry = new Date(expiresAt);
-  const diff = expiry.getTime() - now.getTime();
+// Urgency left-border colors
+const URGENCY_BORDER: Record<UrgencyLevel, string> = {
+  NORMAL: 'border-l-gray-200',
+  URGENT: 'border-l-[#CBB57B]',
+  EMERGENCY: 'border-l-red-500',
+};
 
+function getTimeRemaining(
+  expiresAt: string,
+  t: ReturnType<typeof useTranslations>
+): { text: string; isExpired: boolean } {
+  const diff = new Date(expiresAt).getTime() - Date.now();
   if (diff <= 0) return { text: t('expired'), isExpired: true };
-
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-  if (hours > 0) {
-    return { text: t('hoursLeft', { hours, minutes }), isExpired: false };
-  }
-  return { text: t('minutesLeft', { minutes }), isExpired: false };
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  if (h > 0) return { text: t('hoursLeft', { hours: h, minutes: m }), isExpired: false };
+  return { text: t('minutesLeft', { minutes: m }), isExpired: false };
 }
 
-// Format date
 function formatDate(date: string): string {
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short',
@@ -60,25 +62,22 @@ function formatDate(date: string): string {
 export default function MyDealsPage() {
   const t = useTranslations('pages.hotDealsMyDeals');
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [deals, setDeals] = useState<HotDeal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/auth/login?redirect=/hot-deals/my-deals');
     }
   }, [authLoading, isAuthenticated, router]);
 
-  // Fetch user's deals
   useEffect(() => {
     async function fetchMyDeals() {
       if (!isAuthenticated) return;
-
       setIsLoading(true);
       setError(null);
       try {
@@ -91,15 +90,13 @@ export default function MyDealsPage() {
       }
     }
     fetchMyDeals();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, t]);
 
-  // Handle mark as fulfilled
   const handleMarkFulfilled = async (dealId: string) => {
     setActionLoading(dealId);
     try {
       await hotDealsApi.markFulfilled(dealId);
       toast.success(t('markedFulfilled'));
-      // Update local state
       setDeals((prev) =>
         prev.map((d) => (d.id === dealId ? { ...d, status: 'FULFILLED' as HotDealStatus } : d))
       );
@@ -110,15 +107,12 @@ export default function MyDealsPage() {
     }
   };
 
-  // Handle cancel
   const handleCancel = async (dealId: string) => {
     if (!confirm(t('confirmCancel'))) return;
-
     setActionLoading(dealId);
     try {
       await hotDealsApi.cancel(dealId);
       toast.success(t('dealCancelled'));
-      // Update local state
       setDeals((prev) =>
         prev.map((d) => (d.id === dealId ? { ...d, status: 'CANCELLED' as HotDealStatus } : d))
       );
@@ -133,22 +127,31 @@ export default function MyDealsPage() {
   if (authLoading || (isLoading && isAuthenticated)) {
     return (
       <PageLayout showCategoryNav={false}>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-gold animate-spin" />
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
+                <div className="flex gap-3 mb-3">
+                  <div className="h-6 w-16 bg-gray-200 rounded-full" />
+                  <div className="h-6 w-16 bg-gray-200 rounded-full" />
+                </div>
+                <div className="h-5 w-2/3 bg-gray-200 rounded mb-2" />
+                <div className="h-4 w-full bg-gray-200 rounded" />
+              </div>
+            ))}
+          </div>
         </div>
       </PageLayout>
     );
   }
 
-  // Not authenticated
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
-  // Group deals by status
+  // Group deals
   const activeDeals = deals.filter((d) => d.status === 'ACTIVE');
   const pendingDeals = deals.filter((d) => d.status === 'PENDING');
   const pastDeals = deals.filter((d) => ['FULFILLED', 'EXPIRED', 'CANCELLED'].includes(d.status));
+  const totalResponses = deals.reduce((sum, d) => sum + (d._count?.responses || 0), 0);
 
   return (
     <PageLayout showCategoryNav={false}>
@@ -160,46 +163,98 @@ export default function MyDealsPage() {
               <div className="flex items-center gap-4">
                 <Link
                   href="/hot-deals"
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-700"
                 >
-                  <ArrowLeft className="w-5 h-5 text-gray-600" />
+                  <ArrowLeft className="w-5 h-5" />
                 </Link>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">{t('myHotDeals')}</h1>
-                  <p className="text-gray-600">{t('manageRequests')}</p>
+                  <p className="text-sm text-gray-500">{t('manageRequests')}</p>
                 </div>
               </div>
               <Link
                 href="/hot-deals/new"
-                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-neutral-800 transition-colors"
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium text-sm hover:bg-neutral-800 transition-colors"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
                 {t('postNewDeal')}
               </Link>
             </div>
           </div>
         </div>
 
+        {/* Stats strip */}
+        {deals.length > 0 && (
+          <div className="bg-white border-b">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              <div className="flex gap-6 overflow-x-auto">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Flame className="w-4 h-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-gray-900 leading-none">
+                      {activeDeals.length}
+                    </p>
+                    <p className="text-xs text-gray-500">Active</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <AlertCircle className="w-4 h-4 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-gray-900 leading-none">
+                      {pendingDeals.length}
+                    </p>
+                    <p className="text-xs text-gray-500">Pending</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-gray-900 leading-none">{totalResponses}</p>
+                    <p className="text-xs text-gray-500">Responses</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-gray-900 leading-none">
+                      {pastDeals.length}
+                    </p>
+                    <p className="text-xs text-gray-500">Past</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Error */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8">
-              <div className="flex items-center gap-2 text-red-700">
-                <AlertCircle className="w-5 h-5" />
-                <p>{error}</p>
-              </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-5 mb-8 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <p className="text-red-700 text-sm">{error}</p>
             </div>
           )}
 
-          {/* Empty State */}
+          {/* Empty state */}
           {deals.length === 0 && !isLoading && !error && (
             <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-              <div className="w-16 h-16 bg-gold/20 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <Flame className="w-8 h-8 text-gold" />
+              <div className="w-16 h-16 bg-[#CBB57B]/15 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <Flame className="w-8 h-8 text-[#CBB57B]" />
               </div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('noDealsYet')}</h2>
-              <p className="text-gray-600 mb-6">{t('noDealsDescription')}</p>
+              <p className="text-gray-500 mb-6 max-w-xs mx-auto text-sm">
+                {t('noDealsDescription')}
+              </p>
               <Link
                 href="/hot-deals/new"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
@@ -210,14 +265,14 @@ export default function MyDealsPage() {
             </div>
           )}
 
-          {/* Pending Deals */}
+          {/* Pending deals */}
           {pendingDeals.length > 0 && (
             <section className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-500" />
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-yellow-500" />
                 {t('pendingPayment', { count: pendingDeals.length })}
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {pendingDeals.map((deal) => (
                   <DealCard
                     key={deal.id}
@@ -231,14 +286,14 @@ export default function MyDealsPage() {
             </section>
           )}
 
-          {/* Active Deals */}
+          {/* Active deals */}
           {activeDeals.length > 0 && (
             <section className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Flame className="w-5 h-5 text-gold" />
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
+                <Flame className="w-4 h-4 text-[#CBB57B]" />
                 {t('activeDeals', { count: activeDeals.length })}
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {activeDeals.map((deal) => (
                   <DealCard
                     key={deal.id}
@@ -253,14 +308,14 @@ export default function MyDealsPage() {
             </section>
           )}
 
-          {/* Past Deals */}
+          {/* Past deals */}
           {pastDeals.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-gray-500" />
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-400" />
                 {t('pastDeals', { count: pastDeals.length })}
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {pastDeals.map((deal) => (
                   <DealCard key={deal.id} deal={deal} isPast t={t} />
                 ))}
@@ -283,7 +338,7 @@ export default function MyDealsPage() {
   );
 }
 
-// Deal Card Component
+// Deal card component
 function DealCard({
   deal,
   actionLoading,
@@ -297,75 +352,77 @@ function DealCard({
   onMarkFulfilled?: (id: string) => void;
   onCancel?: (id: string) => void;
   isPast?: boolean;
-  t: any;
+  t: ReturnType<typeof useTranslations>;
 }) {
   const urgencyConfig = URGENCY_CONFIG[deal.urgency];
   const statusConfig = STATUS_CONFIG[deal.status];
   const timeInfo = getTimeRemaining(deal.expiresAt, t);
   const isThisDealLoading = actionLoading === deal.id;
+  const responseCount = deal._count?.responses || 0;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-white rounded-xl border ${
-        isPast ? 'border-gray-200 opacity-75' : 'border-gray-200'
-      } p-5`}
+      className={`bg-white rounded-xl border border-gray-200 border-l-4 ${URGENCY_BORDER[deal.urgency]} p-5 transition-all ${isPast ? 'opacity-60' : 'hover:shadow-md'}`}
     >
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-        {/* Main Content */}
+        {/* Main content */}
         <div className="flex-1 min-w-0">
+          {/* Status badges */}
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${statusConfig.bgColor} ${statusConfig.color}`}
             >
               {statusConfig.label}
             </span>
             <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${urgencyConfig.bgColor} ${urgencyConfig.color}`}
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${urgencyConfig.bgColor} ${urgencyConfig.color}`}
             >
               {urgencyConfig.label}
             </span>
-            <span className="text-xs text-gray-500">{CATEGORY_LABELS[deal.category]}</span>
+            <span className="text-xs text-gray-400">{CATEGORY_LABELS[deal.category]}</span>
           </div>
 
           <Link href={`/hot-deals/${deal.id}`}>
-            <h3 className="text-lg font-semibold text-gray-900 hover:text-gold transition-colors mb-1 line-clamp-1">
+            <h3 className="text-base font-semibold text-gray-900 hover:text-[#CBB57B] transition-colors mb-1 line-clamp-1">
               {deal.title}
             </h3>
           </Link>
 
-          <p className="text-gray-600 text-sm mb-3 line-clamp-2">{deal.description}</p>
+          <p className="text-gray-500 text-sm mb-3 line-clamp-2 leading-relaxed">
+            {deal.description}
+          </p>
 
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-            <div className="flex items-center gap-1">
-              <MapPin className="w-4 h-4" />
+          <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
+            <span className="flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5" />
               {deal.city}
               {deal.state ? `, ${deal.state}` : ''}
-            </div>
-            <div className="flex items-center gap-1">
-              <MessageCircle className="w-4 h-4" />
-              {t('responsesCount', { count: deal._count?.responses || 0 })}
-            </div>
+            </span>
+            <span className="flex items-center gap-1">
+              <MessageCircle className="w-3.5 h-3.5" />
+              {t('responsesCount', { count: responseCount })}
+            </span>
             {deal.status === 'ACTIVE' && !timeInfo.isExpired && (
-              <div className="flex items-center gap-1 text-gold">
-                <Clock className="w-4 h-4" />
+              <span className="flex items-center gap-1 text-[#CBB57B] font-medium">
+                <Clock className="w-3.5 h-3.5" />
                 {timeInfo.text}
-              </div>
+              </span>
             )}
-            <div className="flex items-center gap-1">
+            <span className="flex items-center gap-1">
               {t('posted')} {formatDate(deal.createdAt)}
-            </div>
+            </span>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex sm:flex-col gap-2 sm:ml-4">
+        <div className="flex sm:flex-col gap-2 sm:ml-2 flex-shrink-0">
           <Link
             href={`/hot-deals/${deal.id}`}
-            className="flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t('view')}</span>
           </Link>
 
@@ -373,12 +430,12 @@ function DealCard({
             <button
               onClick={() => onMarkFulfilled(deal.id)}
               disabled={isThisDealLoading}
-              className="flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-green-700 border border-green-300 rounded-lg hover:bg-green-50 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-green-700 border border-green-200 rounded-lg hover:bg-green-50 transition-colors disabled:opacity-50"
             >
               {isThisDealLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <CheckCircle className="w-4 h-4" />
+                <CheckCircle className="w-3.5 h-3.5" />
               )}
               <span className="hidden sm:inline">{t('fulfill')}</span>
             </button>
@@ -388,12 +445,12 @@ function DealCard({
             <button
               onClick={() => onCancel(deal.id)}
               disabled={isThisDealLoading}
-              className="flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
             >
               {isThisDealLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <XCircle className="w-4 h-4" />
+                <XCircle className="w-3.5 h-3.5" />
               )}
               <span className="hidden sm:inline">{t('cancel')}</span>
             </button>

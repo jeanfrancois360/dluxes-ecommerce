@@ -2084,7 +2084,10 @@
       "willExpire": "This deal will expire automatically",
       "notFound": "Hot Deal Not Found",
       "mayBeRemoved": "This hot deal may have been removed or expired.",
-      "failedToLoad": "Failed to load hot deal"
+      "failedToLoad": "Failed to load hot deal",
+      "responsesCount": "{count} responses",
+      "markHelper": "Mark when you've found help for your request",
+      "expiresAutomatically": "This deal will expire automatically"
     },
     "hotDealsMyDeals": {
       "title": "My Hot Deals",
@@ -2099,7 +2102,7 @@
       "view": "View",
       "fulfill": "Fulfill",
       "cancel": "Cancel",
-      "posted": "Posted {date}",
+      "posted": "Posted",
       "hoursLeft": "{hours}h {minutes}m left",
       "minutesLeft": "{minutes}m left",
       "responses": "responses",
@@ -2108,7 +2111,12 @@
       "dealCancelled": "Hot deal cancelled",
       "failedToCancel": "Failed to cancel deal",
       "confirmCancel": "Are you sure you want to cancel this hot deal?",
-      "failedToLoadDeals": "Failed to load your deals"
+      "failedToLoadDeals": "Failed to load your deals",
+      "myHotDeals": "My Hot Deals",
+      "manageRequests": "Manage your service requests",
+      "responsesCount": "{count} responses",
+      "expired": "Expired",
+      "failedToLoad": "Failed to load your deals"
     }
   },
   "ads": {
