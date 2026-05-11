@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -555,12 +555,13 @@ export default function NewHotDealPage() {
   const [stripePromise] = useState(() => getStripe());
 
   // Redirect if not authenticated
-  if (!authLoading && !isAuthenticated) {
-    router.push('/auth/login?redirect=/hot-deals/new');
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/auth/login?redirect=/hot-deals/new');
+    }
+  }, [authLoading, isAuthenticated, router]);
 
-  if (authLoading) {
+  if (authLoading || (!authLoading && !isAuthenticated)) {
     return (
       <PageLayout showCategoryNav={false}>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
