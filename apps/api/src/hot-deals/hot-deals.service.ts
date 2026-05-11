@@ -4,9 +4,17 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  InternalServerErrorException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Stripe from 'stripe';
 import { PrismaService } from '../database/prisma.service';
-import { CreateHotDealDto, HotDealStatus, UrgencyLevel, ContactMethod } from './dto/create-hot-deal.dto';
+import {
+  CreateHotDealDto,
+  HotDealStatus,
+  UrgencyLevel,
+  ContactMethod,
+} from './dto/create-hot-deal.dto';
 import { RespondToDealDto } from './dto/respond-to-deal.dto';
 import { HotDealQueryDto } from './dto/hot-deal-query.dto';
 import { PaymentStatus } from '@prisma/client';
@@ -14,8 +22,50 @@ import { PaymentStatus } from '@prisma/client';
 @Injectable()
 export class HotDealsService {
   private readonly logger = new Logger(HotDealsService.name);
+  private stripe: Stripe | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService
+  ) {}
+
+  private getStripe(): Stripe {
+    if (!this.stripe) {
+      const key = this.configService.get<string>('STRIPE_SECRET_KEY');
+      if (!key) {
+        throw new InternalServerErrorException('Stripe is not configured');
+      }
+      this.stripe = new Stripe(key, { apiVersion: '2025-04-30.basil' });
+    }
+    return this.stripe;
+  }
+
+  /**
+   * Create a Stripe Payment Intent for the $1 hot deal posting fee
+   */
+  async createPaymentIntent(hotDealId: string, userId: string) {
+    const deal = await this.hotDeal.findUnique({ where: { id: hotDealId } });
+
+    if (!deal) {
+      throw new NotFoundException('Hot deal not found');
+    }
+    if (deal.userId !== userId) {
+      throw new ForbiddenException('Not authorized');
+    }
+    if (deal.status !== HotDealStatus.PENDING) {
+      throw new BadRequestException('This hot deal has already been paid for or cancelled');
+    }
+
+    const stripe = this.getStripe();
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 100, // $1.00 in cents
+      currency: 'usd',
+      description: `Hot Deal posting fee — ${deal.title}`,
+      metadata: { hotDealId, userId },
+    });
+
+    return { clientSecret: paymentIntent.client_secret };
+  }
 
   // Type assertion helper for HotDeal model (until migration is run)
   private get hotDeal() {
@@ -169,9 +219,7 @@ export class HotDealsService {
 
     // Filter responses: only show to owner or if user responded
     if (requestingUserId && requestingUserId !== deal.userId) {
-      deal.responses = deal.responses.filter(
-        (r) => r.userId === requestingUserId,
-      );
+      deal.responses = deal.responses.filter((r) => r.userId === requestingUserId);
     }
 
     return deal;
@@ -199,11 +247,7 @@ export class HotDealsService {
   /**
    * Respond to a hot deal
    */
-  async respondToDeal(
-    hotDealId: string,
-    userId: string,
-    dto: RespondToDealDto,
-  ) {
+  async respondToDeal(hotDealId: string, userId: string, dto: RespondToDealDto) {
     const deal = await this.hotDeal.findUnique({
       where: { id: hotDealId },
     });
@@ -254,9 +298,7 @@ export class HotDealsService {
       },
     });
 
-    this.logger.log(
-      `Response created for hot deal ${hotDealId} by user ${userId}`,
-    );
+    this.logger.log(`Response created for hot deal ${hotDealId} by user ${userId}`);
     return response;
   }
 
