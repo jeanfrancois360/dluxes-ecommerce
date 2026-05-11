@@ -13,6 +13,7 @@ import {
   AlertCircle,
   ChevronRight,
   X,
+  Zap,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
@@ -29,12 +30,12 @@ import {
 
 // Urgency left-border colors
 const URGENCY_BORDER: Record<UrgencyLevel, string> = {
-  NORMAL: 'border-l-gray-200',
+  NORMAL: 'border-l-gray-300',
   URGENT: 'border-l-[#CBB57B]',
   EMERGENCY: 'border-l-red-500',
 };
 
-// Live countdown that ticks every minute
+// Live countdown (ticks every 60s)
 function Countdown({ expiresAt, t }: { expiresAt: string; t: ReturnType<typeof useTranslations> }) {
   const [text, setText] = useState('');
   const [isShort, setIsShort] = useState(false);
@@ -72,73 +73,84 @@ function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
   const t = useTranslations('pages.hotDeals');
   const urgencyConfig = URGENCY_CONFIG[deal.urgency];
   const isEmergency = deal.urgency === 'EMERGENCY';
+  const isUrgent = deal.urgency === 'URGENT';
   const responseCount = deal._count?.responses || 0;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.04 }}
-      className={`group bg-white rounded-xl border border-gray-200 border-l-4 ${URGENCY_BORDER[deal.urgency]} p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300${isEmergency ? ' ring-1 ring-red-100' : ''}`}
+      transition={{ duration: 0.25, delay: index * 0.04 }}
+      className={`group relative bg-white rounded-2xl border border-gray-100 border-l-4 ${URGENCY_BORDER[deal.urgency]} shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
     >
-      {/* Top row */}
-      <div className="flex items-start justify-between mb-3 gap-2">
-        <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${urgencyConfig.bgColor} ${urgencyConfig.color}`}
-        >
-          {isEmergency && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />}
-          {urgencyConfig.label}
-        </span>
-        <Countdown expiresAt={deal.expiresAt} t={t} />
-      </div>
+      {/* Emergency glow */}
+      {isEmergency && (
+        <div className="absolute inset-0 rounded-2xl ring-1 ring-red-200 pointer-events-none" />
+      )}
 
-      {/* Title */}
-      <Link href={`/hot-deals/${deal.id}`}>
-        <h3 className="text-base font-semibold text-gray-900 mb-2 group-hover:text-[#CBB57B] transition-colors line-clamp-2 leading-snug">
-          {deal.title}
-        </h3>
-      </Link>
+      <div className="p-5">
+        {/* Top row */}
+        <div className="flex items-start justify-between mb-3 gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold tracking-wide ${urgencyConfig.bgColor} ${urgencyConfig.color}`}
+          >
+            {isEmergency && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />}
+            {isUrgent && <Zap className="w-3 h-3" />}
+            {urgencyConfig.label}
+          </span>
+          <Countdown expiresAt={deal.expiresAt} t={t} />
+        </div>
 
-      {/* Description */}
-      <p className="text-gray-500 text-sm mb-4 line-clamp-2 leading-relaxed">{deal.description}</p>
-
-      {/* Tags */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-          {CATEGORY_LABELS[deal.category]}
-        </span>
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-          <MapPin className="w-3 h-3" />
-          {deal.city}
-          {deal.state ? `, ${deal.state}` : ''}
-        </span>
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-        <span className="flex items-center gap-1 text-xs text-gray-400">
-          <MessageCircle className="w-3.5 h-3.5" />
-          {responseCount} {responseCount === 1 ? t('response') : t('responses')}
-        </span>
-        <Link
-          href={`/hot-deals/${deal.id}`}
-          className="flex items-center gap-0.5 text-xs font-semibold text-[#CBB57B] hover:text-[#b9a369] transition-colors"
-        >
-          {t('viewDetails')}
-          <ChevronRight className="w-3.5 h-3.5" />
+        {/* Title */}
+        <Link href={`/hot-deals/${deal.id}`}>
+          <h3 className="text-[15px] font-semibold text-gray-900 mb-2 group-hover:text-[#CBB57B] transition-colors line-clamp-2 leading-snug">
+            {deal.title}
+          </h3>
         </Link>
+
+        {/* Description */}
+        <p className="text-gray-500 text-sm mb-4 line-clamp-2 leading-relaxed">
+          {deal.description}
+        </p>
+
+        {/* Meta */}
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600">
+            {CATEGORY_LABELS[deal.category]}
+          </span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600">
+            <MapPin className="w-3 h-3" />
+            {deal.city}
+            {deal.state ? `, ${deal.state}` : ''}
+          </span>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <span className="flex items-center gap-1 text-xs text-gray-400">
+            <MessageCircle className="w-3.5 h-3.5" />
+            {responseCount} {responseCount === 1 ? t('response') : t('responses')}
+          </span>
+          <Link
+            href={`/hot-deals/${deal.id}`}
+            className="flex items-center gap-0.5 text-xs font-semibold text-[#CBB57B] hover:text-[#b9a369] transition-colors"
+          >
+            {t('viewDetails')}
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
     </motion.div>
   );
 }
 
-// Skeleton loading card
+// Skeleton card
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 border-l-4 border-l-gray-200 p-5 animate-pulse">
+    <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-gray-200 p-5 shadow-sm animate-pulse">
       <div className="flex justify-between mb-3">
         <div className="h-6 w-20 bg-gray-200 rounded-full" />
-        <div className="h-5 w-24 bg-gray-200 rounded" />
+        <div className="h-4 w-24 bg-gray-200 rounded" />
       </div>
       <div className="h-5 w-3/4 bg-gray-200 rounded mb-2" />
       <div className="h-4 w-full bg-gray-200 rounded mb-1" />
@@ -163,12 +175,7 @@ export default function HotDealsPage() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<HotDealFilters>({});
   const [citySearch, setCitySearch] = useState('');
-  const [pagination, setPagination] = useState({
-    total: 0,
-    page: 1,
-    limit: 20,
-    totalPages: 0,
-  });
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, totalPages: 0 });
 
   const categories = Object.entries(CATEGORY_LABELS) as [HotDealCategory, string][];
 
@@ -193,14 +200,14 @@ export default function HotDealsPage() {
     if (citySearch.trim()) {
       setFilters((prev) => ({ ...prev, city: citySearch.trim(), page: 1 }));
     } else {
-      const { city: _city, ...rest } = filters;
+      const { city: _c, ...rest } = filters;
       setFilters({ ...rest, page: 1 });
     }
   };
 
   const clearCityFilter = () => {
     setCitySearch('');
-    const { city: _city, ...rest } = filters;
+    const { city: _c, ...rest } = filters;
     setFilters(rest);
   };
 
@@ -222,52 +229,82 @@ export default function HotDealsPage() {
 
   return (
     <PageLayout showCategoryNav={false}>
-      <div className="min-h-screen bg-gray-50">
-        {/* Hero Header */}
-        <div className="bg-gradient-to-r from-[#CBB57B] to-[#9a8a5c] text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2.5 bg-white/20 rounded-xl">
-                    <Flame className="w-7 h-7" />
-                  </div>
-                  <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{t('title')}</h1>
+      <div className="min-h-screen bg-[#f8f8f6]">
+        {/* ── HERO ── dark, bold, urgent */}
+        <div className="bg-[#111] text-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-8">
+              <div className="max-w-xl">
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-white/80 mb-5">
+                  <span className="w-1.5 h-1.5 bg-[#CBB57B] rounded-full animate-pulse" />
+                  Urgent Services Marketplace
                 </div>
-                <p className="text-base text-white/85 max-w-lg leading-relaxed">{t('subtitle')}</p>
-                {!isLoading && pagination.total > 0 && (
-                  <p className="mt-2 text-sm text-white/70 font-medium">
-                    {pagination.total} active deal{pagination.total !== 1 ? 's' : ''} right now
-                  </p>
+
+                {/* Title */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2.5 bg-[#CBB57B]/20 rounded-xl border border-[#CBB57B]/30">
+                    <Flame className="w-7 h-7 text-[#CBB57B]" />
+                  </div>
+                  <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
+                    Hot <span className="text-[#CBB57B]">Deals</span>
+                  </h1>
+                </div>
+
+                <p className="text-gray-400 text-base leading-relaxed max-w-md">
+                  Post your urgent service needs, connect with local providers fast. Only $1 per
+                  post.
+                </p>
+
+                {/* Stats row */}
+                {!isLoading && (
+                  <div className="flex items-center gap-5 mt-5">
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-white">{pagination.total}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Active deals</p>
+                    </div>
+                    <div className="w-px h-8 bg-white/10" />
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-white">{categories.length}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Categories</p>
+                    </div>
+                    <div className="w-px h-8 bg-white/10" />
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-white">$1</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Per post</p>
+                    </div>
+                  </div>
                 )}
               </div>
+
+              {/* CTA — desktop */}
               <Link
                 href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
-                className="hidden sm:inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-md whitespace-nowrap"
+                className="hidden sm:inline-flex items-center gap-2.5 px-7 py-4 bg-[#CBB57B] text-black rounded-2xl font-bold text-sm hover:bg-[#b9a369] transition-colors shadow-lg shadow-[#CBB57B]/20 whitespace-nowrap flex-shrink-0"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
                 {t('postDeal')}
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Mobile CTA */}
-        <div className="sm:hidden px-4 py-3 bg-white border-b">
+        {/* ── MOBILE CTA ── */}
+        <div className="sm:hidden bg-[#111] px-4 pb-4">
           <Link
             href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-[#CBB57B] text-black rounded-xl font-bold text-sm hover:bg-[#b9a369] transition-colors"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             {t('postDeal')}
           </Link>
         </div>
 
-        {/* Sticky Filter Bar */}
-        <div className="bg-white border-b sticky top-0 z-10 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 space-y-3">
+        {/* ── FILTERS ── clean white bar */}
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 space-y-2.5">
             {/* Search row */}
-            <div className="flex gap-2 sm:gap-3">
+            <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 <input
@@ -276,42 +313,42 @@ export default function HotDealsPage() {
                   value={citySearch}
                   onChange={(e) => setCitySearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCitySearch()}
-                  className="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] outline-none transition-shadow"
+                  className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#CBB57B]/25 focus:border-[#CBB57B] focus:bg-white outline-none transition-all"
                 />
                 {citySearch && (
                   <button
                     onClick={clearCityFilter}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
               <button
                 onClick={handleCitySearch}
-                className="px-5 py-2.5 bg-black text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors flex-shrink-0"
+                className="px-5 py-2.5 bg-[#111] text-white rounded-xl text-sm font-semibold hover:bg-neutral-800 transition-colors flex-shrink-0"
               >
                 {t('search')}
               </button>
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="px-3 py-2.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors flex-shrink-0"
                   title={t('clear')}
+                  className="px-3 py-2.5 text-gray-400 hover:text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors flex-shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
 
-            {/* Category pills — horizontal scroll on mobile */}
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+            {/* Category pills — scrollable */}
+            <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
               <button
                 onClick={() => handleCategoryChange('')}
-                className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
                   !filters.category
-                    ? 'bg-[#CBB57B] text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-[#111] text-white'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
                 }`}
               >
                 {t('allCategories')}
@@ -320,10 +357,10 @@ export default function HotDealsPage() {
                 <button
                   key={key}
                   onClick={() => handleCategoryChange(filters.category === key ? '' : key)}
-                  className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                  className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
                     filters.category === key
-                      ? 'bg-[#CBB57B] text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-[#CBB57B] text-black'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
                   }`}
                 >
                   {label}
@@ -331,9 +368,9 @@ export default function HotDealsPage() {
               ))}
             </div>
 
-            {/* Active city filter tag */}
+            {/* Active city tag */}
             {filters.city && (
-              <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium border border-blue-100">
                   <MapPin className="w-3 h-3" />
                   {filters.city}
@@ -346,14 +383,14 @@ export default function HotDealsPage() {
           </div>
         </div>
 
-        {/* Main content */}
+        {/* ── CONTENT ── */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* My deals link */}
           {isAuthenticated && (
             <div className="mb-6 flex justify-end">
               <Link
                 href="/hot-deals/my-deals"
-                className="flex items-center gap-1 text-sm font-medium text-[#CBB57B] hover:text-[#b9a369] transition-colors"
+                className="flex items-center gap-1 text-sm font-semibold text-[#CBB57B] hover:text-[#b9a369] transition-colors"
               >
                 {t('viewMyDeals')}
                 <ChevronRight className="w-4 h-4" />
@@ -361,23 +398,23 @@ export default function HotDealsPage() {
             </div>
           )}
 
-          {/* Loading skeleton grid */}
+          {/* Skeleton */}
           {isLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {Array.from({ length: 6 }).map((_, i) => (
                 <SkeletonCard key={i} />
               ))}
             </div>
           )}
 
-          {/* Error state */}
+          {/* Error */}
           {!isLoading && error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
-              <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+              <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
               <p className="text-red-700 font-medium mb-4">{error}</p>
               <button
                 onClick={() => setFilters({ ...filters })}
-                className="px-5 py-2.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                className="px-5 py-2.5 bg-red-100 text-red-700 rounded-xl text-sm font-semibold hover:bg-red-200 transition-colors"
               >
                 {t('tryAgain')}
               </button>
@@ -386,19 +423,19 @@ export default function HotDealsPage() {
 
           {/* Empty state */}
           {!isLoading && !error && deals.length === 0 && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-              <div className="w-16 h-16 bg-orange-50 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <Flame className="w-8 h-8 text-orange-400" />
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-14 text-center">
+              <div className="w-16 h-16 bg-[#CBB57B]/10 rounded-2xl mx-auto mb-5 flex items-center justify-center">
+                <Flame className="w-8 h-8 text-[#CBB57B]" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('noDealsFound')}</h3>
-              <p className="text-gray-500 mb-6 max-w-xs mx-auto">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{t('noDealsFound')}</h3>
+              <p className="text-gray-400 mb-8 max-w-xs mx-auto text-sm leading-relaxed">
                 {hasActiveFilters ? t('noDealsMatch') : t('beFirstToPost')}
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 {hasActiveFilters && (
                   <button
                     onClick={clearFilters}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors"
                   >
                     <X className="w-4 h-4" />
                     {t('clear')}
@@ -406,7 +443,7 @@ export default function HotDealsPage() {
                 )}
                 <Link
                   href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl font-medium hover:bg-neutral-800 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#111] text-white rounded-xl font-semibold text-sm hover:bg-neutral-800 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   {t('postDealShort')}
@@ -415,10 +452,17 @@ export default function HotDealsPage() {
             </div>
           )}
 
-          {/* Deals grid — fixed condition (was inverted before) */}
+          {/* Deals grid */}
           {!isLoading && !error && deals.length > 0 && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Result count */}
+              <p className="text-xs text-gray-400 mb-4 font-medium">
+                {pagination.total} deal{pagination.total !== 1 ? 's' : ''} found
+                {filters.category && ` in ${CATEGORY_LABELS[filters.category]}`}
+                {filters.city && ` near ${filters.city}`}
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {deals.map((deal, index) => (
                   <HotDealCard key={deal.id} deal={deal} index={index} />
                 ))}
@@ -426,11 +470,11 @@ export default function HotDealsPage() {
 
               {/* Pagination */}
               {pagination.totalPages > 1 && (
-                <div className="flex justify-center items-center gap-3 mt-10">
+                <div className="flex justify-center items-center gap-2 mt-10">
                   <button
                     onClick={() => setFilters((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))}
                     disabled={pagination.page <= 1}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {t('previous')}
                   </button>
@@ -440,7 +484,7 @@ export default function HotDealsPage() {
                   <button
                     onClick={() => setFilters((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))}
                     disabled={pagination.page >= pagination.totalPages}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {t('next')}
                   </button>
