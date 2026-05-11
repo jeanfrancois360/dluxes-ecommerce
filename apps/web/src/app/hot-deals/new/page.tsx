@@ -630,17 +630,18 @@ function HotDealForm() {
 // Main page — auth guard + Stripe Elements wrapper
 export default function NewHotDealPage() {
   const t = useTranslations('pages.hotDealsNew');
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isInitialized } = useAuth();
   const router = useRouter();
   const [stripePromise] = useState(() => getStripe());
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (isInitialized && !isAuthenticated) {
       router.push('/auth/login?redirect=/hot-deals/new');
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [isInitialized, isAuthenticated, router]);
 
-  if (authLoading || (!authLoading && !isAuthenticated)) {
+  // Wait for auth to finish initializing before deciding
+  if (!isInitialized) {
     return (
       <PageLayout showCategoryNav={false}>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -648,6 +649,11 @@ export default function NewHotDealPage() {
         </div>
       </PageLayout>
     );
+  }
+
+  // Initialized but not authenticated — redirect is happening
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (

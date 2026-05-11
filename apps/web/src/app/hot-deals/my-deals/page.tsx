@@ -62,7 +62,7 @@ function formatDate(date: string): string {
 export default function MyDealsPage() {
   const t = useTranslations('pages.hotDealsMyDeals');
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isInitialized } = useAuth();
 
   const [deals, setDeals] = useState<HotDeal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,10 +70,10 @@ export default function MyDealsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (isInitialized && !isAuthenticated) {
       router.push('/auth/login?redirect=/hot-deals/my-deals');
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [isInitialized, isAuthenticated, router]);
 
   useEffect(() => {
     async function fetchMyDeals() {
@@ -123,8 +123,8 @@ export default function MyDealsPage() {
     }
   };
 
-  // Loading state
-  if (authLoading || (isLoading && isAuthenticated)) {
+  // Loading state — wait for auth init, then wait for deals to load
+  if (!isInitialized || (isLoading && isAuthenticated)) {
     return (
       <PageLayout showCategoryNav={false}>
         <div className="min-h-screen bg-gray-50">
@@ -145,6 +145,7 @@ export default function MyDealsPage() {
     );
   }
 
+  // Redirect in progress
   if (!isAuthenticated) return null;
 
   // Group deals
