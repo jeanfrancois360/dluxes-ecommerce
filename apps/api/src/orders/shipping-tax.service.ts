@@ -198,7 +198,7 @@ export class ShippingTaxService {
 
   /**
    * Calculate available shipping options based on address and cart
-   * CASCADE FALLBACK: Gelato (POD) → Self-Pickup → EasyPost → DHL → Zones → Manual
+   * CASCADE FALLBACK: Gelato (POD) → Self-Pickup → SendCloud → EasyPost → EasyShip → DHL → Zones → Manual
    *
    * - TIER 0 (Gelato): For POD items, gets real-time shipping quotes
    *   - Pure POD carts: Returns Gelato shipping only
@@ -206,9 +206,13 @@ export class ShippingTaxService {
    * - TIER 0.5 (Self-Pickup): If store has pickup enabled and customer is within radius
    *   - Returns immediately if available (no need to check other providers)
    *   - Simple radius check: same zip code or city+state match
-   * - TIER 1 (EasyPost): PRIMARY/DEFAULT provider - Multi-carrier rates (USPS, UPS, FedEx, DHL, etc.)
-   * - TIER 2 (DHL): DHL Express only (if mode is 'dhl_api' or 'hybrid')
-   * - TIER 3 (Zones/Manual): Final fallback based on settings
+   * - TIER 1 (SendCloud): EU-origin sellers (AT,BE,CZ,DK,FR,DE,IT,NL,PL,PT,ES,SE,GB)
+   *   - Geo-gated: only fires when seller country is in SendCloud's supported list
+   * - TIER 2 (EasyPost): US-origin sellers only (USPS, UPS, FedEx, DHL, etc.)
+   *   - Geo-gated: only fires when sellerCountry === 'US' (or unknown = platform default US)
+   * - TIER 3 (EasyShip): Global fallback for remaining seller countries (AU,BE,CA,FR,DE,HK,NL,SG,US,GB)
+   * - TIER 4 (DHL): DHL Express only (if dhl_enabled setting is true)
+   * - TIER 5 (Zones/Manual): Final fallback based on settings
    */
   async calculateShippingOptions(
     address: ShippingAddress,
@@ -357,10 +361,13 @@ export class ShippingTaxService {
       }
     }
 
-    // TIER 2: EasyPost (Primary global aggregator - 100+ carriers worldwide)
+    // TIER 2: EasyPost (US-origin carrier aggregator — USPS, UPS, FedEx, DHL, etc.)
+    // NOTE: EasyPost only returns rates when ship-FROM country is US.
+    // Skip for non-US sellers and let EasyShip/DHL handle them instead.
+    const isUsSeller = !sellerCountry || sellerCountry === 'US';
     const easypostEnabled = await getSetting('easypost_enabled');
-    if (isEnabled(easypostEnabled?.value)) {
-      this.logger.log('[EasyPost] Attempting to fetch rates (primary global provider)...');
+    if (isEnabled(easypostEnabled?.value) && isUsSeller) {
+      this.logger.log('[EasyPost] US seller — attempting to fetch rates...');
       try {
         const easypostOptions = await this.calculateEasyPostShippingOptions(
           address,
@@ -379,8 +386,12 @@ export class ShippingTaxService {
       } catch (error) {
         this.logger.warn(`[EasyPost] Failed: ${error.message}. Falling back to next provider...`);
       }
-    } else {
+    } else if (!isEnabled(easypostEnabled?.value)) {
       this.logger.log('[EasyPost] Disabled, skipping to next provider...');
+    } else {
+      this.logger.log(
+        `[EasyPost] Skipping — seller country ${sellerCountry} is not US (EasyPost is US-origin only)`
+      );
     }
 
     // TIER 3: EasyShip (Regional fallback for APAC markets: AU,BE,CA,FR,DE,HK,NL,SG,US,GB)
