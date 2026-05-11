@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame,
   ArrowLeft,
@@ -11,8 +11,6 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  Phone,
-  Mail,
   MapPin,
   Zap,
   Clock,
@@ -129,6 +127,13 @@ function HotDealForm({
   const [step, setStep] = useState<Step>('form');
   const [createdDealId, setCreatedDealId] = useState<string | null>(null);
   const [selectedUrgency, setSelectedUrgency] = useState<UrgencyLevel>('NORMAL');
+  const [cardComplete, setCardComplete] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+
+  const handleCardChange = (event: any) => {
+    setCardComplete(event.complete);
+    setCardError(event.error ? event.error.message : null);
+  };
 
   const {
     register,
@@ -257,17 +262,25 @@ function HotDealForm({
 
   // Payment screen
   if (step === 'payment') {
+    const payReady = !isSubmitting && !stripeLoading && !stripeError && !!stripe && cardComplete;
     return (
       <>
         <StepProgress step={step} />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-sm p-8"
+          className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-8 space-y-6"
         >
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('completePayment')}</h2>
+          {/* Header */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{t('completePayment')}</h2>
+            <p className="text-sm text-neutral-500 mt-1">
+              {t('cardDetails')} to complete your request
+            </p>
+          </div>
 
-          <div className="bg-[#CBB57B]/10 border border-[#CBB57B]/20 rounded-xl p-5 mb-6">
+          {/* Fee summary */}
+          <div className="bg-gradient-to-br from-[#CBB57B]/10 to-transparent border-2 border-[#CBB57B]/20 rounded-xl p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-gray-900">{t('postingFee')}</p>
@@ -277,8 +290,9 @@ function HotDealForm({
             </div>
           </div>
 
+          {/* API / payment error */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
               <div className="flex items-center gap-2 text-red-700">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <p className="text-sm">{error}</p>
@@ -286,10 +300,25 @@ function HotDealForm({
             </div>
           )}
 
-          <div className="mb-6">
+          {/* Card input section */}
+          <div>
+            {/* Accepted cards */}
+            <div className="flex items-center gap-2 text-xs text-neutral-500 mb-3">
+              <span>We accept:</span>
+              {['VISA', 'MC', 'AMEX', 'DISC'].map((brand) => (
+                <span
+                  key={brand}
+                  className="px-2 py-0.5 bg-neutral-100 rounded border border-neutral-200 font-semibold text-neutral-700"
+                >
+                  {brand}
+                </span>
+              ))}
+            </div>
+
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              {t('cardDetails')}
+              Card Information
             </label>
+
             {stripeError ? (
               <div className="border border-red-200 rounded-xl p-4 bg-red-50">
                 <div className="flex items-start gap-3">
@@ -308,23 +337,150 @@ function HotDealForm({
                 </div>
               </div>
             ) : (
-              <div className="border border-gray-200 rounded-xl p-4 focus-within:ring-2 focus-within:ring-[#CBB57B]/30 focus-within:border-[#CBB57B] transition-shadow">
-                <CardElement
-                  options={{
-                    style: {
-                      base: {
-                        fontSize: '16px',
-                        color: '#1f2937',
-                        '::placeholder': { color: '#9ca3af' },
+              <div className="relative">
+                <div
+                  className={`relative p-4 bg-white border-2 rounded-xl transition-all duration-300 ${
+                    cardError
+                      ? 'border-red-500 hd-shake'
+                      : cardComplete
+                        ? 'border-green-500 bg-green-50/20'
+                        : 'border-neutral-200 hover:border-neutral-300'
+                  } focus-within:border-[#CBB57B] focus-within:ring-4 focus-within:ring-[#CBB57B]/10`}
+                >
+                  <CardElement
+                    options={{
+                      style: {
+                        base: {
+                          fontSize: '16px',
+                          color: '#000000',
+                          fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
+                          backgroundColor: '#ffffff',
+                          '::placeholder': { color: '#737373' },
+                          iconColor: '#CBB57B',
+                        },
+                        invalid: { color: '#EF4444', iconColor: '#EF4444' },
                       },
-                    },
-                  }}
-                />
+                      hidePostalCode: true,
+                    }}
+                    onChange={handleCardChange}
+                  />
+
+                  {/* Green checkmark badge when complete */}
+                  <AnimatePresence>
+                    {cardComplete && !cardError && (
+                      <motion.div
+                        key="checkmark"
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0, rotate: -180 }}
+                        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                        className="absolute -right-2 -top-2 z-10 pointer-events-none"
+                      >
+                        <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                          <svg
+                            className="w-4 h-4 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2.5}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Real-time card error from Stripe */}
+                {cardError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg"
+                  >
+                    <p className="text-sm text-red-700 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      {cardError}
+                    </p>
+                  </motion.div>
+                )}
+
+                {/* Encryption tip */}
+                <p className="mt-2 text-xs text-neutral-500 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 flex-shrink-0" />
+                  Your payment info is encrypted end-to-end. We never see or store your full card
+                  details.
+                </p>
               </div>
             )}
           </div>
 
-          <div className="flex gap-3">
+          {/* Security trust badges */}
+          <div className="p-4 bg-gradient-to-br from-neutral-50 to-white border border-neutral-200 rounded-xl">
+            <div className="flex items-center justify-center gap-6 flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg
+                    className="w-5 h-5 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-neutral-900">SSL Encrypted</p>
+                  <p className="text-xs text-neutral-500">Secure Connection</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center">
+                  <svg
+                    className="w-5 h-5 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-neutral-900">PCI Compliant</p>
+                  <p className="text-xs text-neutral-500">Protected Payment</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 bg-purple-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-neutral-900">Powered by Stripe</p>
+                  <p className="text-xs text-neutral-500">Trusted Payments</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={() => {
@@ -332,30 +488,103 @@ function HotDealForm({
                 setStep('form');
                 setCreatedDealId(null);
               }}
-              className="flex-1 px-6 py-3 border border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex-1 px-6 py-4 border-2 border-neutral-200 rounded-xl font-semibold text-gray-700 hover:border-neutral-300 transition-colors"
             >
               {t('goBack')}
             </button>
             <button
               type="button"
               onClick={handlePayment}
-              disabled={isSubmitting || !stripe || stripeLoading || !!stripeError}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!payReady}
+              className={`flex-1 relative overflow-hidden flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold transition-all ${
+                payReady
+                  ? 'bg-gradient-to-r from-[#CBB57B] via-amber-500 to-[#CBB57B] bg-[length:200%_200%] hd-animate-gradient text-white shadow-lg shadow-[#CBB57B]/30 hover:shadow-xl hover:shadow-[#CBB57B]/40'
+                  : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+              }`}
             >
-              {isSubmitting || stripeLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <CreditCard className="w-5 h-5" />
+              {/* Shimmer when ready */}
+              {payReady && (
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                />
               )}
-              {stripeLoading ? 'Loading...' : t('payAmount')}
+              <span className="relative z-10 flex items-center gap-2">
+                {isSubmitting || stripeLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
+                  </svg>
+                )}
+                <span className="text-base">{stripeLoading ? 'Loading...' : t('payAmount')}</span>
+              </span>
             </button>
           </div>
 
-          <div className="flex items-center justify-center gap-1.5 mt-4 text-xs text-gray-400">
-            <Shield className="w-3.5 h-3.5" />
-            {t('securePayment')}
-          </div>
+          {/* Privacy notice */}
+          <p className="text-xs text-center text-neutral-400">
+            Your payment information is encrypted and secure.{' '}
+            <Link href="/terms" className="text-[#CBB57B] hover:underline">
+              Terms
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="text-[#CBB57B] hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </motion.div>
+
+        {/* Animations */}
+        <style jsx global>{`
+          @keyframes hd-shake {
+            0%,
+            100% {
+              transform: translateX(0);
+            }
+            10%,
+            30%,
+            50%,
+            70%,
+            90% {
+              transform: translateX(-2px);
+            }
+            20%,
+            40%,
+            60%,
+            80% {
+              transform: translateX(2px);
+            }
+          }
+          @keyframes hd-gradient {
+            0%,
+            100% {
+              background-position: 0% 50%;
+            }
+            50% {
+              background-position: 100% 50%;
+            }
+          }
+          .hd-shake {
+            animation: hd-shake 0.5s ease-in-out;
+          }
+          .hd-animate-gradient {
+            animation: hd-gradient 3s ease infinite;
+          }
+          .StripeElement input:-webkit-autofill,
+          .StripeElement input:-webkit-autofill:hover,
+          .StripeElement input:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 30px white inset !important;
+            -webkit-text-fill-color: #000000 !important;
+          }
+        `}</style>
       </>
     );
   }
