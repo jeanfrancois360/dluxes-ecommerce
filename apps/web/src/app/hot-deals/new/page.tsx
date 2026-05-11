@@ -19,6 +19,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CardElement, useStripe, useElements, Elements } from '@stripe/react-stripe-js';
+import type { Stripe } from '@stripe/stripe-js';
 import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAuth } from '@/hooks/use-auth';
@@ -882,9 +883,7 @@ export default function NewHotDealPage() {
   const t = useTranslations('pages.hotDealsNew');
   const { isAuthenticated, isInitialized } = useAuth();
   const router = useRouter();
-  const [stripeInstance, setStripeInstance] = useState<import('@stripe/stripe-js').Stripe | null>(
-    null
-  );
+  const [stripeInstance, setStripeInstance] = useState<Stripe | null>(null);
   const [stripeLoading, setStripeLoading] = useState(true);
   const [stripeError, setStripeError] = useState<string | null>(null);
 
