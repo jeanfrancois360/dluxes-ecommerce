@@ -77,6 +77,7 @@ export class EasyshipService {
       baseURL,
       headers: {
         'Content-Type': 'application/json',
+        Accept: 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       timeout: 30000, // EasyShip API can be slow — allow 30s
@@ -116,18 +117,34 @@ export class EasyshipService {
 
     try {
       // POST /2024-09/rates — v2024-09 format
+      // EasyShip requires 'state' for origins with states/provinces
+      const COUNTRY_DEFAULT_STATE: Record<string, { state: string; city: string; postal: string }> =
+        {
+          US: { state: 'NY', city: 'New York', postal: '10001' },
+          AU: { state: 'NSW', city: 'Sydney', postal: '2000' },
+          CA: { state: 'ON', city: 'Toronto', postal: 'M5H 2N2' },
+        };
+      const fromCountryUpper = request.fromCountry.toUpperCase();
+      const countryDefaults = COUNTRY_DEFAULT_STATE[fromCountryUpper];
+
       const originAddress: any = {
-        country_alpha2: request.fromCountry.toUpperCase(),
-        city: request.fromCity || 'New York',
-        postal_code: request.fromPostalCode || '10001',
-        // state is required by EasyShip for US origins; default to NY if not provided
-        state: request.fromState || (request.fromCountry.toUpperCase() === 'US' ? 'NY' : undefined),
+        country_alpha2: fromCountryUpper,
+        city: request.fromCity || countryDefaults?.city || 'City',
+        postal_code: request.fromPostalCode || countryDefaults?.postal || '1000',
+        ...(request.fromState
+          ? { state: request.fromState }
+          : countryDefaults
+            ? { state: countryDefaults.state }
+            : {}),
       };
 
+      const toCountryUpper = request.toCountry.toUpperCase();
       const destinationAddress: any = {
-        country_alpha2: request.toCountry.toUpperCase(),
-        city: request.toCity || 'City',
-        postal_code: request.toPostalCode || '1000',
+        country_alpha2: toCountryUpper,
+        city: request.toCity || (toCountryUpper === 'US' ? 'New York' : 'City'),
+        postal_code: request.toPostalCode || (toCountryUpper === 'US' ? '10001' : '1000'),
+        // state is also required by EasyShip when destination is US
+        ...(toCountryUpper === 'US' && { state: 'NY' }),
       };
 
       const response = await this.client.post('/rates', {
