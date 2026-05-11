@@ -591,7 +591,10 @@ export default function CheckoutPage() {
   // Pickup orders have $0 shipping cost (v2.10.0)
   const shippingCost = deliveryType === 'pickup' ? 0 : effectiveShipping;
   const taxAmount = calculatedTax;
-  const totalWithShipping = totals.subtotal + shippingCost + taxAmount;
+  // Only include shipping in the total once a method has been confirmed — avoids showing the
+  // hardcoded $10 fallback before the user has selected or confirmed any shipping method.
+  const shippingForTotal = shippingMethodConfirmed ? shippingCost : 0;
+  const totalWithShipping = totals.subtotal + shippingForTotal + taxAmount;
 
   if (items.length === 0) {
     return null; // Will redirect

@@ -119,7 +119,7 @@ export default function CartPage() {
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-white/80 flex items-center gap-2">
                 <span className="font-semibold text-gold">{items.length}</span>
-                <span>{items.length !== 1 ? t('itemsInCart') : t('itemInCart')}</span>
+                <span>{items.length !== 1 ? t('itemsInCart', { s: 's' }) : t('itemInCart')}</span>
               </p>
             </div>
           </motion.div>
