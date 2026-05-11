@@ -1550,21 +1550,22 @@ function HotDealFormInner({
             <div className="flex gap-3">
               <Link
                 href="/hot-deals"
-                className="flex items-center justify-center gap-2 px-5 py-3.5 border-2 border-gray-200 rounded-xl font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all text-sm"
+                className="flex-none flex items-center justify-center gap-2 px-5 py-3.5 border-2 border-gray-200 rounded-xl font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all text-sm"
               >
                 {t('cancel')}
               </Link>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-gray-900 hover:bg-gray-800 active:bg-gray-950 text-white rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-gray-900/20 hover:shadow-lg"
+                style={{ backgroundColor: '#111827', color: '#ffffff' }}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
               >
                 {isSubmitting ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <Flame className="w-5 h-5 text-[#CBB57B]" />
+                  <Flame className="w-5 h-5" style={{ color: '#CBB57B' }} />
                 )}
-                {isSubmitting ? 'Saving details…' : t('continueToPayment')}
+                <span>{isSubmitting ? 'Saving details…' : t('continueToPayment')}</span>
               </button>
             </div>
           </div>
