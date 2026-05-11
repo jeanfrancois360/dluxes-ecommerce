@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -111,6 +111,7 @@ export default function HotDealsPage() {
   const [filters, setFilters] = useState<HotDealFilters>({});
   const [citySearch, setCitySearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -137,6 +138,19 @@ export default function HotDealsPage() {
     }
     fetchDeals();
   }, [filters, t]);
+
+  // Close category dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target as Node)) {
+        setShowFilters(false);
+      }
+    }
+    if (showFilters) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
 
   // Handle city search
   const handleCitySearch = () => {
@@ -222,7 +236,7 @@ export default function HotDealsPage() {
               </div>
 
               {/* Category Dropdown */}
-              <div className="relative">
+              <div className="relative" ref={filterDropdownRef}>
                 <button
                   onClick={() => setShowFilters(!showFilters)}
                   className="w-full sm:w-auto flex items-center justify-between gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
