@@ -99,7 +99,6 @@ export class HotDealsService {
         city: dto.city,
         state: dto.state,
         zipCode: dto.zipCode,
-        images: dto.images ?? [],
         status: HotDealStatus.PENDING,
         paymentStatus: PaymentStatus.PENDING,
         expiresAt,
@@ -114,6 +113,12 @@ export class HotDealsService {
         },
       },
     });
+
+    // Store images via raw SQL (Prisma client not regenerated yet — schema baseline recovery pending)
+    if (dto.images && dto.images.length > 0) {
+      await this.prisma
+        .$executeRaw`UPDATE hot_deals SET images = ${JSON.stringify(dto.images)}::jsonb WHERE id = ${hotDeal.id}`;
+    }
 
     this.logger.log(`Hot deal created: ${hotDeal.id} by user ${userId}`);
     return hotDeal;
