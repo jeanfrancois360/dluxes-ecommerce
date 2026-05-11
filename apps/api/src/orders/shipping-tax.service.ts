@@ -219,6 +219,9 @@ export class ShippingTaxService {
     items: CartItem[],
     subtotal: number
   ): Promise<ShippingOption[]> {
+    // Normalize destination country to ISO 2-letter code (addresses may store full names)
+    address = { ...address, country: normalizeCountryCode(address.country) };
+
     // TIER 0: Try Gelato for POD items first (highest priority for POD)
     let gelatoCost = 0;
     let podItems: CartItem[] = [];
