@@ -27,6 +27,7 @@ import {
   Users,
   ArrowRight,
   Image as ImageIcon,
+  DollarSign,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
@@ -39,6 +40,7 @@ import {
   URGENCY_CONFIG,
   HotDealCategory,
   UrgencyLevel,
+  BudgetType,
 } from '@/lib/api/hot-deals';
 
 // ─── Category config ───────────────────────────────────────────────────────────
@@ -121,8 +123,10 @@ function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
   const isEmergency = deal.urgency === 'EMERGENCY';
   const isUrgent = deal.urgency === 'URGENT';
   const responseCount = deal._count?.responses ?? 0;
-  const images = (deal as any).images as string[] | undefined;
+  const images = deal.images as string[] | undefined;
   const firstImage = images?.[0];
+  const budget = deal.budget;
+  const budgetType = deal.budgetType as BudgetType | null | undefined;
 
   return (
     <motion.div
@@ -191,6 +195,16 @@ function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
             {deal.city}
             {deal.state ? `, ${deal.state}` : ''}
           </span>
+          {(budget || budgetType) && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-100">
+              <DollarSign className="w-3 h-3" />
+              {budget
+                ? `${budget % 1 === 0 ? budget : budget.toFixed(2)}${budgetType === 'HOURLY' ? '/hr' : ''}`
+                : budgetType === 'NEGOTIABLE'
+                  ? 'Negotiable'
+                  : ''}
+            </span>
+          )}
         </div>
 
         {/* Footer */}
