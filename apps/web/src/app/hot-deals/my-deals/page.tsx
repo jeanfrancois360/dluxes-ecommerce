@@ -20,6 +20,7 @@ import {
   Zap,
   Calendar,
   ChevronRight,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
@@ -443,6 +444,8 @@ function DealCard({
   const responseCount = deal._count?.responses || 0;
   const isEmergency = deal.urgency === 'EMERGENCY';
   const isUrgent = deal.urgency === 'URGENT';
+  const images = (deal as any).images as string[] | undefined;
+  const firstImage = images?.[0];
 
   // Status pill styling
   const statusPill: Record<string, { bg: string; text: string }> = {
@@ -468,6 +471,18 @@ function DealCard({
 
       <div className="p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+          {/* Thumbnail */}
+          {firstImage && (
+            <div className="relative w-full sm:w-24 h-20 sm:h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+              <img src={firstImage} alt={deal.title} className="w-full h-full object-cover" />
+              {images && images.length > 1 && (
+                <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/55 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  <ImageIcon className="w-2.5 h-2.5" />
+                  {images.length}
+                </div>
+              )}
+            </div>
+          )}
           {/* Main content */}
           <div className="flex-1 min-w-0">
             {/* Badges row */}
