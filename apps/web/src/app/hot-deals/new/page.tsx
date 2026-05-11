@@ -188,6 +188,14 @@ function HotDealForm({
       setError('Payment system not ready');
       return;
     }
+
+    // Grab card element BEFORE switching screens — setStep('processing') unmounts it
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
+      setError('Card element not found. Please refresh and try again.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
     setStep('processing');
@@ -195,9 +203,6 @@ function HotDealForm({
       const paymentResponse = await api.post(`/hot-deals/${createdDealId}/payment-intent`, {});
       const { clientSecret } = paymentResponse?.data ?? paymentResponse;
       if (!clientSecret) throw new Error('Failed to create payment intent');
-
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) throw new Error('Card element not found');
 
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: { card: cardElement },
