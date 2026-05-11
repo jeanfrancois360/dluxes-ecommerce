@@ -191,11 +191,8 @@ function HotDealForm({
     setError(null);
     setStep('processing');
     try {
-      const paymentResponse = await api.post('/payment/create-intent', {
-        amount: 100,
-        currency: 'usd',
-      });
-      const { clientSecret } = paymentResponse;
+      const paymentResponse = await api.post(`/hot-deals/${createdDealId}/payment-intent`, {});
+      const { clientSecret } = paymentResponse?.data ?? paymentResponse;
       if (!clientSecret) throw new Error('Failed to create payment intent');
 
       const cardElement = elements.getElement(CardElement);

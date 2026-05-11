@@ -137,17 +137,9 @@ export class HotDealsController {
   @Post(':id/respond')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
-  async respond(
-    @Param('id') id: string,
-    @Req() req: any,
-    @Body() dto: RespondToDealDto,
-  ) {
+  async respond(@Param('id') id: string, @Req() req: any, @Body() dto: RespondToDealDto) {
     try {
-      const response = await this.hotDealsService.respondToDeal(
-        id,
-        req.user.id,
-        dto,
-      );
+      const response = await this.hotDealsService.respondToDeal(id, req.user.id, dto);
       return {
         success: true,
         data: response,
@@ -156,6 +148,25 @@ export class HotDealsController {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to respond to hot deal',
+      };
+    }
+  }
+
+  /**
+   * Create a Stripe Payment Intent for the $1 hot deal posting fee
+   * @route POST /hot-deals/:id/payment-intent
+   */
+  @Post(':id/payment-intent')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async createPaymentIntent(@Param('id') id: string, @Req() req: any) {
+    try {
+      const result = await this.hotDealsService.createPaymentIntent(id, req.user.id);
+      return { success: true, data: result };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to create payment intent',
       };
     }
   }
@@ -170,14 +181,10 @@ export class HotDealsController {
   async confirmPayment(
     @Param('id') id: string,
     @Req() req: any,
-    @Body() body: { paymentIntentId: string },
+    @Body() body: { paymentIntentId: string }
   ) {
     try {
-      const deal = await this.hotDealsService.confirmPayment(
-        id,
-        req.user.id,
-        body.paymentIntentId,
-      );
+      const deal = await this.hotDealsService.confirmPayment(id, req.user.id, body.paymentIntentId);
       return {
         success: true,
         data: deal,
