@@ -469,6 +469,7 @@ const inputClass =
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function NewHotDealPage() {
+  const t = useTranslations('pages.hotDealsNew');
   const { isAuthenticated, isInitialized } = useAuth();
   const router = useRouter();
   const [stripeInstance, setStripeInstance] = useState<Stripe | null>(null);
