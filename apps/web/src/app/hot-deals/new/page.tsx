@@ -41,39 +41,52 @@ type Step = 'form' | 'payment' | 'processing' | 'success';
 // Step progress bar
 function StepProgress({ step }: { step: Step }) {
   const stepIndex = { form: 0, payment: 1, processing: 1, success: 2 }[step];
-  const steps = ['Details', 'Payment', 'Published'];
+  const steps = [
+    { label: 'Details', sub: 'Service request info' },
+    { label: 'Payment', sub: '$1.00 posting fee' },
+    { label: 'Published', sub: 'Live for 24 hours' },
+  ];
 
   return (
-    <div className="flex items-center gap-2 mb-8">
-      {steps.map((label, i) => (
-        <div key={label} className="flex items-center gap-2">
-          <div
-            className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors ${
-              i < stepIndex
-                ? 'bg-green-500 text-white'
-                : i === stepIndex
-                  ? 'bg-[#CBB57B] text-white'
-                  : 'bg-gray-200 text-gray-400'
-            }`}
-          >
-            {i < stepIndex ? <CheckCircle className="w-4 h-4" /> : i + 1}
-          </div>
-          <span
-            className={`text-sm font-medium hidden sm:inline transition-colors ${
-              i === stepIndex ? 'text-gray-900' : 'text-gray-400'
-            }`}
-          >
-            {label}
-          </span>
-          {i < steps.length - 1 && (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 mb-6">
+      <div className="flex items-start justify-between relative">
+        {/* Connecting line */}
+        <div className="absolute top-5 left-0 right-0 h-px bg-gray-200 mx-10 z-0" />
+        <div
+          className="absolute top-5 left-10 h-px bg-green-400 z-0 transition-all duration-500"
+          style={{ width: `calc(${stepIndex === 0 ? 0 : stepIndex === 1 ? 50 : 100}% - 5rem)` }}
+        />
+
+        {steps.map(({ label, sub }, i) => (
+          <div key={label} className="flex flex-col items-center gap-2 relative z-10 flex-1">
             <div
-              className={`h-px w-8 sm:w-16 transition-colors ${
-                i < stepIndex ? 'bg-green-400' : 'bg-gray-200'
+              className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm transition-all duration-300 ${
+                i < stepIndex
+                  ? 'bg-green-500 text-white shadow-md shadow-green-200'
+                  : i === stepIndex
+                    ? 'bg-[#CBB57B] text-white shadow-md shadow-[#CBB57B]/30 ring-4 ring-[#CBB57B]/20'
+                    : 'bg-gray-100 text-gray-400'
               }`}
-            />
-          )}
-        </div>
-      ))}
+            >
+              {i < stepIndex ? <CheckCircle className="w-5 h-5" /> : i + 1}
+            </div>
+            <div className="text-center">
+              <p
+                className={`text-sm font-semibold transition-colors ${
+                  i === stepIndex
+                    ? 'text-gray-900'
+                    : i < stepIndex
+                      ? 'text-green-600'
+                      : 'text-gray-400'
+                }`}
+              >
+                {label}
+              </p>
+              <p className="text-xs text-gray-400 hidden sm:block">{sub}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -130,6 +143,11 @@ function HotDealForm({
   const [selectedUrgency, setSelectedUrgency] = useState<UrgencyLevel>('NORMAL');
   const [cardComplete, setCardComplete] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
+
+  // Scroll to top whenever the step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
 
   const handleCardChange = (event: any) => {
     setCardComplete(event.complete);
