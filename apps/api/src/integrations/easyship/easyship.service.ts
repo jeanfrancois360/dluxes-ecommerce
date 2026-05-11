@@ -118,10 +118,11 @@ export class EasyshipService {
       // POST /2024-09/rates — v2024-09 format
       const originAddress: any = {
         country_alpha2: request.fromCountry.toUpperCase(),
-        city: request.fromCity || 'City',
-        postal_code: request.fromPostalCode || '1000',
+        city: request.fromCity || 'New York',
+        postal_code: request.fromPostalCode || '10001',
+        // state is required by EasyShip for US origins; default to NY if not provided
+        state: request.fromState || (request.fromCountry.toUpperCase() === 'US' ? 'NY' : undefined),
       };
-      if (request.fromState) originAddress.state = request.fromState;
 
       const destinationAddress: any = {
         country_alpha2: request.toCountry.toUpperCase(),
@@ -222,7 +223,12 @@ export class EasyshipService {
     try {
       // POST /2024-09/rates with minimal payload to validate API key (both sandbox and production)
       await this.client.post('/rates', {
-        origin_address: { country_alpha2: 'BE', city: 'Brussels', postal_code: '1000' },
+        origin_address: {
+          country_alpha2: 'US',
+          city: 'New York',
+          postal_code: '10001',
+          state: 'NY',
+        },
         destination_address: { country_alpha2: 'GB', city: 'London', postal_code: 'SW1A 1AA' },
         incoterms: 'DDU',
         parcels: [
