@@ -24,6 +24,7 @@ import {
   Search,
   X,
   SlidersHorizontal,
+  DollarSign,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
@@ -37,6 +38,7 @@ import {
   STATUS_CONFIG,
   HotDealStatus,
   UrgencyLevel,
+  BudgetType,
 } from '@/lib/api/hot-deals';
 
 // ─── Urgency top-bar ─────────────────────────────────────────────────────────
@@ -589,8 +591,10 @@ function DealCard({
   const responseCount = deal._count?.responses || 0;
   const isEmergency = deal.urgency === 'EMERGENCY';
   const isUrgent = deal.urgency === 'URGENT';
-  const images = (deal as any).images as string[] | undefined;
+  const images = deal.images as string[] | undefined;
   const firstImage = images?.[0];
+  const budget = deal.budget;
+  const budgetType = deal.budgetType as BudgetType | null | undefined;
 
   // Status pill styling
   const statusPill: Record<string, { bg: string; text: string }> = {
@@ -649,6 +653,14 @@ function DealCard({
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
                 {CATEGORY_LABELS[deal.category]}
               </span>
+              {(budget || budgetType) && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-100">
+                  <DollarSign className="w-3 h-3" />
+                  {budget
+                    ? `${budget % 1 === 0 ? budget : budget.toFixed(2)}${budgetType === 'HOURLY' ? '/hr' : ''}`
+                    : 'Negotiable'}
+                </span>
+              )}
             </div>
 
             {/* Title */}
