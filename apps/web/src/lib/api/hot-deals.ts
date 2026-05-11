@@ -71,6 +71,7 @@ export interface CreateHotDealData {
   city: string;
   state?: string;
   zipCode?: string;
+  images?: string[];
 }
 
 export interface HotDealFilters {

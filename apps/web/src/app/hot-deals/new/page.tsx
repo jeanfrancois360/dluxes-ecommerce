@@ -15,6 +15,9 @@ import {
   Zap,
   Clock,
   Shield,
+  ImagePlus,
+  X,
+  Camera,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -143,6 +146,30 @@ function HotDealForm({
   const [selectedUrgency, setSelectedUrgency] = useState<UrgencyLevel>('NORMAL');
   const [cardComplete, setCardComplete] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadingCount, setUploadingCount] = useState(0);
+
+  const handleImageFiles = async (files: FileList | null) => {
+    if (!files) return;
+    const toUpload = Array.from(files).slice(0, 3 - uploadedImages.length);
+    if (toUpload.length === 0) return;
+    setUploadingCount((c) => c + toUpload.length);
+    await Promise.all(
+      toUpload.map(async (file) => {
+        try {
+          const formData = new FormData();
+          formData.append('image', file);
+          const res = await api.post('/upload/image?folder=hot-deals', formData);
+          const url = res?.data?.url ?? res?.url;
+          if (url) setUploadedImages((prev) => [...prev, url]);
+        } catch {
+          toast.error(`Failed to upload ${file.name}`);
+        } finally {
+          setUploadingCount((c) => c - 1);
+        }
+      })
+    );
+  };
 
   // Scroll to top whenever the step changes
   useEffect(() => {
@@ -188,7 +215,11 @@ function HotDealForm({
     setError(null);
     setIsSubmitting(true);
     try {
-      const deal = await hotDealsApi.create({ ...data, urgency: selectedUrgency });
+      const deal = await hotDealsApi.create({
+        ...data,
+        urgency: selectedUrgency,
+        images: uploadedImages,
+      });
       setCreatedDealId(deal.id);
       setStep('payment');
       toast.info(t('dealCreated'));
@@ -654,6 +685,71 @@ function HotDealForm({
                 {errors.description && (
                   <p className="mt-1 text-xs text-red-600">{errors.description.message}</p>
                 )}
+              </div>
+
+              {/* Photos — optional */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                  <Camera className="w-4 h-4 text-gray-400" />
+                  Photos
+                  <span className="text-xs text-gray-400 font-normal">(optional, up to 3)</span>
+                </label>
+
+                <div className="flex flex-wrap gap-3">
+                  {/* Uploaded image previews */}
+                  {uploadedImages.map((url, i) => (
+                    <div
+                      key={url}
+                      className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group"
+                    >
+                      <img
+                        src={url}
+                        alt={`Upload ${i + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setUploadedImages((prev) => prev.filter((_, idx) => idx !== i))
+                        }
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                      >
+                        <X className="w-5 h-5 text-white" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Loading placeholders */}
+                  {Array.from({ length: uploadingCount }).map((_, i) => (
+                    <div
+                      key={`loading-${i}`}
+                      className="w-24 h-24 rounded-xl border border-dashed border-[#CBB57B]/50 bg-[#CBB57B]/5 flex items-center justify-center"
+                    >
+                      <Loader2 className="w-5 h-5 text-[#CBB57B] animate-spin" />
+                    </div>
+                  ))}
+
+                  {/* Upload button — show only if under 3 images */}
+                  {uploadedImages.length + uploadingCount < 3 && (
+                    <label className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 hover:border-[#CBB57B] hover:bg-[#CBB57B]/5 flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors group">
+                      <ImagePlus className="w-6 h-6 text-gray-400 group-hover:text-[#CBB57B] transition-colors" />
+                      <span className="text-xs text-gray-400 group-hover:text-[#CBB57B] transition-colors">
+                        Add photo
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleImageFiles(e.target.files)}
+                      />
+                    </label>
+                  )}
+                </div>
+                <p className="mt-1.5 text-xs text-gray-400">
+                  JPEG, PNG or WebP · max 5 MB each · helps service providers assess your request
+                  faster
+                </p>
               </div>
 
               {/* Category */}

@@ -6,6 +6,9 @@ import {
   MaxLength,
   IsEmail,
   Matches,
+  IsArray,
+  IsUrl,
+  ArrayMaxSize,
 } from 'class-validator';
 
 // Define enums locally until Prisma client is regenerated
@@ -92,4 +95,10 @@ export class CreateHotDealDto {
   @IsOptional()
   @Matches(/^\d{5}(-\d{4})?$/, { message: 'Invalid ZIP code format' })
   zipCode?: string;
+
+  @IsArray()
+  @IsOptional()
+  @ArrayMaxSize(3, { message: 'You can upload a maximum of 3 images' })
+  @IsUrl({}, { each: true, message: 'Each image must be a valid URL' })
+  images?: string[];
 }
