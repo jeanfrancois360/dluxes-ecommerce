@@ -19,6 +19,9 @@ export interface HotDeal {
   expiresAt: string;
   publishedAt?: string;
   createdAt: string;
+  budget?: number | null;
+  budgetType?: BudgetType | null;
+  images?: string[];
   user: {
     id: string;
     firstName: string;
@@ -58,6 +61,7 @@ export type HotDealCategory =
 export type UrgencyLevel = 'NORMAL' | 'URGENT' | 'EMERGENCY';
 export type ContactMethod = 'PHONE' | 'EMAIL' | 'BOTH';
 export type HotDealStatus = 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'FULFILLED' | 'CANCELLED';
+export type BudgetType = 'HOURLY' | 'FIXED' | 'NEGOTIABLE';
 
 export interface CreateHotDealData {
   title: string;
@@ -72,6 +76,8 @@ export interface CreateHotDealData {
   state?: string;
   zipCode?: string;
   images?: string[];
+  budget?: number;
+  budgetType?: BudgetType;
 }
 
 export interface HotDealFilters {
