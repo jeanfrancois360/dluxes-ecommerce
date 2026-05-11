@@ -21,6 +21,7 @@ export interface ShippingMethod {
   estimatedDays: string | number;
   icon?: React.ReactNode;
   carrier?: string;
+  source?: string;
 }
 
 interface ShippingMethodProps {
@@ -34,6 +35,7 @@ interface ShippingMethodProps {
   isLoadingOptions?: boolean;
   currency?: string; // Currency code (e.g., 'EUR', 'USD')
   freeShippingThreshold?: number; // From admin settings (overrides hardcoded default)
+  freeShippingEnabled?: boolean; // From admin settings — banner hidden when false
 }
 
 const SHIPPING_METHODS: ShippingMethod[] = [
@@ -90,6 +92,17 @@ const SHIPPING_METHODS: ShippingMethod[] = [
   },
 ];
 
+// Human-readable provider labels for the source badge
+const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
+  easypost: { label: 'EasyPost', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  sendcloud: { label: 'SendCloud', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  easyship: { label: 'EasyShip', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  dhl: { label: 'DHL', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+  zone: { label: 'Zone Rates', color: 'bg-green-50 text-green-700 border-green-200' },
+  manual: { label: 'Manual Rates', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+  gelato: { label: 'Gelato POD', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+};
+
 export function ShippingMethodSelector({
   selectedMethod = 'standard',
   onSelect,
@@ -101,6 +114,7 @@ export function ShippingMethodSelector({
   isLoadingOptions,
   currency = 'USD', // Default to USD if not provided
   freeShippingThreshold = FREE_SHIPPING_THRESHOLD, // Fall back to hardcoded if not provided
+  freeShippingEnabled = false, // Off by default — only show when admin enables it
 }: ShippingMethodProps) {
   const t = useTranslations('components.shippingMethod');
   const [selected, setSelected] = useState(selectedMethod);
@@ -138,6 +152,7 @@ export function ShippingMethodSelector({
             ? `${opt.estimatedDays} business days`
             : String(opt.estimatedDays),
         carrier: opt.carrier,
+        source: opt.source,
         icon: undefined, // Backend options don't have icons
       }));
     }
@@ -333,7 +348,16 @@ export function ShippingMethodSelector({
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-1">
-                      <h4 className="font-semibold text-black">{method.name}</h4>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-semibold text-black">{method.name}</h4>
+                        {method.source && SOURCE_LABELS[method.source] && (
+                          <span
+                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${SOURCE_LABELS[method.source].color}`}
+                          >
+                            {SOURCE_LABELS[method.source].label}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-right flex-shrink-0">
                         {shippingCalculations[method.id]?.isFree ? (
                           <div className="flex flex-col items-end">
@@ -425,72 +449,74 @@ export function ShippingMethodSelector({
         )}
       </div>
 
-      {/* Info Banner - Dynamic based on subtotal */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className={cn(
-          'p-4 border rounded-lg flex gap-3',
-          amountNeededForFreeShipping > 0
-            ? 'bg-amber-50 border-amber-200'
-            : 'bg-green-50 border-green-200'
-        )}
-      >
-        <svg
+      {/* Info Banner - Only shown when admin has enabled free shipping */}
+      {freeShippingEnabled && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
           className={cn(
-            'w-5 h-5 flex-shrink-0 mt-0.5',
-            amountNeededForFreeShipping > 0 ? 'text-amber-600' : 'text-green-600'
+            'p-4 border rounded-lg flex gap-3',
+            amountNeededForFreeShipping > 0
+              ? 'bg-amber-50 border-amber-200'
+              : 'bg-green-50 border-green-200'
           )}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d={
-              amountNeededForFreeShipping > 0
-                ? 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-                : 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
-            }
-          />
-        </svg>
-        <div className="text-sm">
-          {amountNeededForFreeShipping > 0 ? (
-            <>
-              <p className="text-amber-900 font-medium">
-                {t('addMoreForFreeShipping', {
-                  amount: `${currencySymbol}${formatCurrencyAmount(amountNeededForFreeShipping, 2)}`,
-                })}
-              </p>
-              <p className="text-amber-700 mt-1">
-                {t('freeShippingAvailable', {
-                  amount: `${currencySymbol}${formatCurrencyAmount(freeShippingThreshold, 2)}`,
-                })}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-green-900 font-medium">{t('qualifyForFreeShipping')}</p>
-              <p className="text-green-700 mt-1">
-                {t('orderMeetsMinimum', {
-                  amount: `${currencySymbol}${formatCurrencyAmount(freeShippingThreshold, 2)}`,
-                })}
-              </p>
-            </>
-          )}
-          <p
+          <svg
             className={cn(
-              'mt-1',
+              'w-5 h-5 flex-shrink-0 mt-0.5',
               amountNeededForFreeShipping > 0 ? 'text-amber-600' : 'text-green-600'
             )}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            {t('ordersInsured')}
-          </p>
-        </div>
-      </motion.div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d={
+                amountNeededForFreeShipping > 0
+                  ? 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                  : 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+              }
+            />
+          </svg>
+          <div className="text-sm">
+            {amountNeededForFreeShipping > 0 ? (
+              <>
+                <p className="text-amber-900 font-medium">
+                  {t('addMoreForFreeShipping', {
+                    amount: `${currencySymbol}${formatCurrencyAmount(amountNeededForFreeShipping, 2)}`,
+                  })}
+                </p>
+                <p className="text-amber-700 mt-1">
+                  {t('freeShippingAvailable', {
+                    amount: `${currencySymbol}${formatCurrencyAmount(freeShippingThreshold, 2)}`,
+                  })}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-green-900 font-medium">{t('qualifyForFreeShipping')}</p>
+                <p className="text-green-700 mt-1">
+                  {t('orderMeetsMinimum', {
+                    amount: `${currencySymbol}${formatCurrencyAmount(freeShippingThreshold, 2)}`,
+                  })}
+                </p>
+              </>
+            )}
+            <p
+              className={cn(
+                'mt-1',
+                amountNeededForFreeShipping > 0 ? 'text-amber-600' : 'text-green-600'
+              )}
+            >
+              {t('ordersInsured')}
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-4 pt-4">

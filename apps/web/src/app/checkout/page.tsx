@@ -203,7 +203,8 @@ export default function CheckoutPage() {
   const router = useRouter();
   const t = useTranslations('checkout');
   const { user, isLoading: authLoading, isInitialized } = useAuth();
-  const { items, totals, clearCart, cartCurrency, freeShippingThreshold } = useCart();
+  const { items, totals, clearCart, cartCurrency, freeShippingEnabled, freeShippingThreshold } =
+    useCart();
   const { convertPrice, selectedCurrency } = useCurrencyConverter();
   const {
     step,
@@ -855,6 +856,7 @@ export default function CheckoutPage() {
                             isLoadingOptions={isLoadingShippingOptions}
                             currency={cartCurrency}
                             freeShippingThreshold={freeShippingThreshold}
+                            freeShippingEnabled={freeShippingEnabled}
                           />
                         </motion.div>
                       )}

@@ -75,7 +75,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const { selectedCurrency, setSelectedCurrency } = useSelectedCurrency();
 
   // Shipping settings from backend (stored in USD)
-  const [freeShippingEnabled, setFreeShippingEnabled] = useState<boolean>(true);
+  const [freeShippingEnabled, setFreeShippingEnabled] = useState<boolean>(false);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(
     DEFAULT_FREE_SHIPPING_THRESHOLD
   );

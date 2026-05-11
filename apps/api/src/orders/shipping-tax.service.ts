@@ -90,6 +90,8 @@ export interface ShippingOption {
   price: number;
   estimatedDays: number;
   carrier?: string;
+  /** Which provider tier supplied this rate (easypost | sendcloud | easyship | dhl | zone | manual | gelato) */
+  source?: string;
 }
 
 export interface TaxCalculation {
@@ -244,6 +246,7 @@ export class ShippingTaxService {
               price: gelatoResult.amount,
               estimatedDays: 7,
               carrier: 'Gelato',
+              source: 'gelato',
             },
           ];
         } else {
@@ -469,6 +472,7 @@ export class ShippingTaxService {
               price: rate.price,
               estimatedDays: rate.estimatedDays,
               carrier: 'DHL Express',
+              source: 'dhl',
             }))
           );
         } else {
@@ -577,6 +581,7 @@ export class ShippingTaxService {
           estimatedDays:
             typeof zone.estimatedDays === 'object' ? zone.estimatedDays.max : zone.estimatedDays,
           carrier: (zone as any).zone || 'Standard',
+          source: 'zone',
         }));
       }
     } catch (error) {
@@ -697,6 +702,7 @@ export class ShippingTaxService {
         price: rate.rate,
         estimatedDays: rate.deliveryDays || 7,
         carrier: rate.carrier,
+        source: 'easypost',
       }));
     } catch (error) {
       this.logger.error('EasyPost rate fetch failed:', error.message);
@@ -744,6 +750,7 @@ export class ShippingTaxService {
         price: rate.totalCharge,
         estimatedDays: rate.maxDeliveryDays,
         carrier: rate.carrierName,
+        source: 'sendcloud',
       }));
     } catch (error) {
       this.logger.error('Sendcloud rate fetch failed:', error.message);
@@ -790,6 +797,7 @@ export class ShippingTaxService {
         price: rate.totalCharge,
         estimatedDays: rate.maxDeliveryDays,
         carrier: rate.carrierName,
+        source: 'easyship',
       }));
     } catch (error) {
       this.logger.error('Easyship rate fetch failed:', error.message);
@@ -853,6 +861,7 @@ export class ShippingTaxService {
       price: rate.price,
       estimatedDays: rate.estimatedDays,
       carrier: 'DHL Express',
+      source: 'dhl',
     }));
   }
 
@@ -991,6 +1000,7 @@ export class ShippingTaxService {
       price: isFreeShippingEligible ? 0 : standardPrice,
       estimatedDays: isInternational ? 15 : 7,
       carrier: 'USPS',
+      source: 'manual',
     });
 
     // Express Shipping
@@ -1006,6 +1016,7 @@ export class ShippingTaxService {
       price: expressPrice,
       estimatedDays: isInternational ? 7 : 3,
       carrier: 'FedEx',
+      source: 'manual',
     });
 
     // Overnight/Premium (domestic only)
@@ -1021,6 +1032,7 @@ export class ShippingTaxService {
         price: overnightPrice,
         estimatedDays: 1,
         carrier: 'UPS',
+        source: 'manual',
       });
     }
 

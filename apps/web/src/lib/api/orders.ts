@@ -76,6 +76,8 @@ export interface ShippingOption {
   price: number;
   estimatedDays: number;
   carrier?: string;
+  /** Provider tier that supplied this rate (easypost | sendcloud | easyship | dhl | zone | manual | gelato) */
+  source?: string;
 }
 
 export interface OrderCalculationResponse {
