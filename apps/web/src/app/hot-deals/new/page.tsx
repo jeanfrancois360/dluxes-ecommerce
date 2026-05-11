@@ -36,11 +36,11 @@ import {
 
 interface FormData extends CreateHotDealData {}
 
-type Step = 'form' | 'payment' | 'processing' | 'success';
+type Step = 'form' | 'payment' | 'success';
 
 // Step progress bar
 function StepProgress({ step }: { step: Step }) {
-  const stepIndex = { form: 0, payment: 1, processing: 1, success: 2 }[step];
+  const stepIndex = { form: 0, payment: 1, success: 2 }[step];
   const steps = [
     { label: 'Details', sub: 'Service request info' },
     { label: 'Payment', sub: '$1.00 posting fee' },
@@ -201,13 +201,16 @@ function HotDealForm({
   };
 
   // Step 2: Handle Stripe payment
+  // IMPORTANT: CardElement MUST remain mounted during the entire payment flow.
+  // Never call setStep('processing') before stripe.confirmCardPayment — it unmounts
+  // the element and causes "Element not ready" errors. Stay on 'payment' step until
+  // confirmCardPayment resolves, then switch to 'success' directly.
   const handlePayment = async () => {
     if (!stripe || !elements || !createdDealId) {
       setError('Payment system not ready');
       return;
     }
 
-    // Grab card element BEFORE switching screens — setStep('processing') unmounts it
     const cardElement = elements.getElement(CardElement);
     if (!cardElement) {
       setError('Card element not found. Please refresh and try again.');
@@ -216,12 +219,13 @@ function HotDealForm({
 
     setIsSubmitting(true);
     setError(null);
-    setStep('processing');
+    // Stay on 'payment' step — do NOT switch to 'processing' here
     try {
       const paymentResponse = await api.post(`/hot-deals/${createdDealId}/payment-intent`, {});
       const { clientSecret } = paymentResponse?.data ?? paymentResponse;
       if (!clientSecret) throw new Error('Failed to create payment intent');
 
+      // CardElement is still mounted here — safe to call confirmCardPayment
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: { card: cardElement },
       });
@@ -229,12 +233,12 @@ function HotDealForm({
       if (paymentIntent?.status !== 'succeeded') throw new Error('Payment was not successful');
 
       await hotDealsApi.confirmPayment(createdDealId, paymentIntent.id);
+      // Only switch step AFTER payment is fully confirmed
       setStep('success');
       toast.success(t('hotDealPublished'));
       setTimeout(() => router.push('/hot-deals'), 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('paymentFailed'));
-      setStep('payment');
       toast.error(t('paymentFailed'));
     } finally {
       setIsSubmitting(false);
@@ -263,20 +267,6 @@ function HotDealForm({
             {t('viewHotDeals')}
           </Link>
         </motion.div>
-      </>
-    );
-  }
-
-  // Processing screen
-  if (step === 'processing') {
-    return (
-      <>
-        <StepProgress step={step} />
-        <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
-          <Loader2 className="w-12 h-12 text-[#CBB57B] mx-auto mb-4 animate-spin" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('processingPayment')}</h2>
-          <p className="text-gray-500 text-sm">{t('pleaseWait')}</p>
-        </div>
       </>
     );
   }
