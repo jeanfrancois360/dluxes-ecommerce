@@ -34,6 +34,7 @@ import {
   Lock,
   Star,
   RefreshCw,
+  DollarSign,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -51,6 +52,7 @@ import {
   HotDealCategory,
   UrgencyLevel,
   ContactMethod,
+  BudgetType,
   URGENCY_CONFIG,
 } from '@/lib/api/hot-deals';
 
@@ -63,6 +65,7 @@ interface DraftState {
   formValues?: Partial<FormData>;
   selectedUrgency?: UrgencyLevel;
   selectedCategory?: HotDealCategory | '';
+  selectedBudgetType?: BudgetType | '';
   uploadedImages?: string[];
   step?: 'form' | 'payment';
   createdDealId?: string | null;
@@ -609,6 +612,7 @@ function HotDealFormInner({
   const [createdDealId, setCreatedDealId] = useState<string | null>(null);
   const [selectedUrgency, setSelectedUrgency] = useState<UrgencyLevel>('NORMAL');
   const [selectedCategory, setSelectedCategory] = useState<HotDealCategory | ''>('');
+  const [selectedBudgetType, setSelectedBudgetType] = useState<BudgetType | ''>('');
   const [cardComplete, setCardComplete] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
@@ -674,6 +678,7 @@ function HotDealFormInner({
         setSelectedCategory(draft.selectedCategory);
         setValue('category', draft.selectedCategory as HotDealCategory);
       }
+      if (draft.selectedBudgetType !== undefined) setSelectedBudgetType(draft.selectedBudgetType);
       if (draft.uploadedImages?.length) setUploadedImages(draft.uploadedImages);
       if (draft.step === 'payment' && draft.createdDealId) {
         setStep('payment');
@@ -691,7 +696,7 @@ function HotDealFormInner({
 
   useEffect(() => {
     if (!draftLoaded) return;
-    saveDraft({ selectedUrgency, selectedCategory, uploadedImages });
+    saveDraft({ selectedUrgency, selectedCategory, selectedBudgetType, uploadedImages });
   }, [selectedUrgency, selectedCategory, uploadedImages, draftLoaded]);
 
   useEffect(() => {
@@ -738,11 +743,20 @@ function HotDealFormInner({
     setError(null);
     setIsSubmitting(true);
     try {
+      const budgetValue =
+        selectedBudgetType &&
+        selectedBudgetType !== 'NEGOTIABLE' &&
+        data.budget &&
+        !isNaN(data.budget)
+          ? data.budget
+          : undefined;
       const deal = await hotDealsApi.create({
         ...data,
         category: selectedCategory as HotDealCategory,
         urgency: selectedUrgency,
         images: uploadedImages,
+        ...(selectedBudgetType ? { budgetType: selectedBudgetType } : {}),
+        ...(budgetValue !== undefined ? { budget: budgetValue } : {}),
       });
       setCreatedDealId(deal.id);
       setStep('payment');
@@ -1207,6 +1221,7 @@ function HotDealFormInner({
                   });
                   setSelectedUrgency('NORMAL');
                   setSelectedCategory('');
+                  setSelectedBudgetType('');
                   setUploadedImages([]);
                   setHasDraft(false);
                 }}
@@ -1520,6 +1535,83 @@ function HotDealFormInner({
                   className={inputClass}
                 />
               </Field>
+            </div>
+          </div>
+
+          {/* Budget */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <SectionHeader
+              icon={DollarSign}
+              title="Budget / Rate"
+              subtitle="Optional — helps providers understand your budget expectations"
+            />
+            <div className="space-y-4">
+              <Field label="Budget type">
+                <div className="flex gap-2">
+                  {(
+                    [
+                      { value: 'HOURLY', label: 'Hourly Rate', icon: '⏱' },
+                      { value: 'FIXED', label: 'Fixed Budget', icon: '💰' },
+                      { value: 'NEGOTIABLE', label: 'Negotiable', icon: '🤝' },
+                    ] as const
+                  ).map(({ value, label, icon }) => {
+                    const isSelected = selectedBudgetType === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setSelectedBudgetType(isSelected ? '' : value)}
+                        className={`flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
+                          isSelected
+                            ? 'bg-green-50 border-green-400 text-green-700'
+                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="text-base">{icon}</span>
+                        <span className="text-center leading-tight">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {!selectedBudgetType && (
+                  <p className="mt-2 text-xs text-gray-400">
+                    Select a type above, or leave blank to skip
+                  </p>
+                )}
+              </Field>
+
+              {selectedBudgetType && selectedBudgetType !== 'NEGOTIABLE' && (
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+                  <Field
+                    label={
+                      selectedBudgetType === 'HOURLY'
+                        ? 'Rate per hour (USD)'
+                        : 'Budget amount (USD)'
+                    }
+                    error={errors.budget?.message}
+                    hint={
+                      selectedBudgetType === 'HOURLY'
+                        ? 'e.g. 25 for $25/hour'
+                        : 'e.g. 150 for a $150 fixed budget'
+                    }
+                  >
+                    <div className="relative">
+                      <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...register('budget', {
+                          valueAsNumber: true,
+                          min: { value: 0.01, message: 'Budget must be greater than $0' },
+                        })}
+                        placeholder={selectedBudgetType === 'HOURLY' ? '25.00' : '100.00'}
+                        className={`${inputClass} pl-10`}
+                      />
+                    </div>
+                  </Field>
+                </motion.div>
+              )}
             </div>
           </div>
 

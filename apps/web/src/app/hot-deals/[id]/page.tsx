@@ -26,6 +26,7 @@ import {
   Image as ImageIcon,
   Lock,
   XCircle,
+  DollarSign,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -39,6 +40,7 @@ import {
   URGENCY_CONFIG,
   STATUS_CONFIG,
   UrgencyLevel,
+  BudgetType,
 } from '@/lib/api/hot-deals';
 
 // ─── Urgency config ────────────────────────────────────────────────────────────
@@ -457,7 +459,9 @@ export default function HotDealDetailPage() {
   const hasResponded = deal.responses?.some((r) => r.user.id === user?.id);
   const canRespond = isAuthenticated && !isOwner && deal.status === 'ACTIVE' && !hasResponded;
   const responseCount = deal._count?.responses || 0;
-  const images = (deal as any).images as string[] | undefined;
+  const images = deal.images as string[] | undefined;
+  const budget = deal.budget;
+  const budgetType = deal.budgetType as BudgetType | null | undefined;
 
   const initials =
     `${deal.user.firstName?.[0] ?? ''}${deal.user.lastName?.[0] ?? ''}`.toUpperCase();
@@ -528,6 +532,29 @@ export default function HotDealDetailPage() {
                     {deal.title}
                   </h1>
 
+                  {/* Budget pill */}
+                  {(budget || budgetType) && (
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-full">
+                        <DollarSign className="w-3.5 h-3.5 text-green-600" />
+                        <span className="text-sm font-bold text-green-700">
+                          {budget
+                            ? `$${budget.toFixed(2)}${budgetType === 'HOURLY' ? '/hr' : ''}`
+                            : ''}
+                        </span>
+                        {budgetType && (
+                          <span className="text-xs text-green-500 font-medium capitalize border-l border-green-200 pl-2 ml-0.5">
+                            {budgetType === 'HOURLY'
+                              ? 'Per hour'
+                              : budgetType === 'FIXED'
+                                ? 'Fixed budget'
+                                : 'Negotiable'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Meta row */}
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-500">
                     <span className="flex items-center gap-1.5">
@@ -591,71 +618,79 @@ export default function HotDealDetailPage() {
                   </h2>
 
                   {isAuthenticated ? (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {/* Name */}
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                        <div className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                          <User className="w-4 h-4 text-gray-500" />
+                      <div className="group flex items-center gap-3 p-3.5 bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-gray-200 to-gray-100">
+                          <User className="w-4.5 h-4.5 text-gray-500" />
                         </div>
-                        <div>
-                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
-                            Name
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+                            Contact Name
                           </p>
-                          <p className="text-sm font-semibold text-gray-800">{deal.contactName}</p>
+                          <p className="text-sm font-bold text-gray-800 truncate">
+                            {deal.contactName}
+                          </p>
                         </div>
                       </div>
 
                       {/* Phone */}
-                      <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                            <Phone className="w-4 h-4 text-gray-500" />
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
-                              Phone
-                            </p>
-                            <a
-                              href={`tel:${deal.contactPhone}`}
-                              className="text-sm font-semibold transition-colors"
-                              style={{ color: '#CBB57B' }}
-                            >
-                              {deal.contactPhone}
-                            </a>
-                          </div>
+                      <a
+                        href={`tel:${deal.contactPhone}`}
+                        className="group flex items-center gap-3 p-3.5 bg-gray-50 rounded-xl border border-gray-100 hover:border-[#CBB57B]/40 hover:bg-amber-50/30 transition-all block"
+                      >
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'linear-gradient(135deg, #CBB57B22, #CBB57B0D)' }}
+                        >
+                          <Phone className="w-4 h-4" style={{ color: '#CBB57B' }} />
                         </div>
-                        {deal.preferredContact === 'PHONE' && (
-                          <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold flex-shrink-0">
-                            {t('preferred')}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+                            Phone
+                          </p>
+                          <p className="text-sm font-bold truncate" style={{ color: '#8B7355' }}>
+                            {deal.contactPhone}
+                          </p>
+                        </div>
+                        {(deal.preferredContact === 'PHONE' ||
+                          deal.preferredContact === 'BOTH') && (
+                          <span
+                            className="flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                            style={{
+                              background: 'linear-gradient(135deg, #CBB57B22, #CBB57B11)',
+                              color: '#8B7355',
+                              border: '1px solid #CBB57B44',
+                            }}
+                          >
+                            ★ {t('preferred')}
                           </span>
                         )}
-                      </div>
+                      </a>
 
                       {/* Email */}
-                      <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                            <Mail className="w-4 h-4 text-gray-500" />
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
-                              Email
-                            </p>
-                            <a
-                              href={`mailto:${deal.contactEmail}`}
-                              className="text-sm font-semibold transition-colors"
-                              style={{ color: '#CBB57B' }}
-                            >
-                              {deal.contactEmail}
-                            </a>
-                          </div>
+                      <a
+                        href={`mailto:${deal.contactEmail}`}
+                        className="group flex items-center gap-3 p-3.5 bg-gray-50 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/20 transition-all block"
+                      >
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-100 to-blue-50">
+                          <Mail className="w-4 h-4 text-blue-500" />
                         </div>
-                        {deal.preferredContact === 'EMAIL' && (
-                          <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold flex-shrink-0">
-                            {t('preferred')}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+                            Email
+                          </p>
+                          <p className="text-sm font-bold text-blue-600 truncate">
+                            {deal.contactEmail}
+                          </p>
+                        </div>
+                        {(deal.preferredContact === 'EMAIL' ||
+                          deal.preferredContact === 'BOTH') && (
+                          <span className="flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 border border-blue-200">
+                            ★ {t('preferred')}
                           </span>
                         )}
-                      </div>
+                      </a>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center py-6 text-center">
@@ -802,38 +837,75 @@ export default function HotDealDetailPage() {
                     </h2>
                   </div>
                   <div className="divide-y divide-gray-50">
-                    {deal.responses.map((response) => (
-                      <div key={response.id} className="p-6 sm:p-7">
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 bg-gradient-to-br from-gray-200 to-gray-100 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold text-gray-600">
-                            {response.user.firstName?.[0]?.toUpperCase() ?? '?'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-3 mb-2">
-                              <p className="font-bold text-gray-900 text-sm">
-                                {response.user.firstName} {response.user.lastName}
-                              </p>
-                              <p className="text-xs text-gray-400 flex-shrink-0">
-                                {formatDate(response.createdAt)}
-                              </p>
+                    {deal.responses.map((response, idx) => {
+                      const isNew =
+                        Date.now() - new Date(response.createdAt).getTime() < 24 * 3600 * 1000;
+                      const avatarColors = [
+                        'from-[#CBB57B] to-amber-400',
+                        'from-violet-400 to-purple-500',
+                        'from-blue-400 to-cyan-400',
+                        'from-green-400 to-emerald-500',
+                        'from-rose-400 to-pink-500',
+                      ];
+                      const gradient = avatarColors[idx % avatarColors.length];
+                      return (
+                        <div key={response.id} className="p-6 sm:p-7">
+                          <div className="flex items-start gap-4">
+                            {/* Avatar */}
+                            <div
+                              className={`w-11 h-11 bg-gradient-to-br ${gradient} rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-black text-white shadow-sm`}
+                            >
+                              {response.user.firstName?.[0]?.toUpperCase() ?? '?'}
                             </div>
-                            <p className="text-gray-600 text-sm leading-relaxed mb-3">
-                              {response.message}
-                            </p>
-                            {response.contactInfo && (
-                              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">
-                                  {t('contactInfo')}
-                                </p>
-                                <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                                  {response.contactInfo}
+                            <div className="flex-1 min-w-0">
+                              {/* Header */}
+                              <div className="flex items-center justify-between gap-3 mb-2.5">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <p className="font-bold text-gray-900 text-sm truncate">
+                                    {response.user.firstName} {response.user.lastName}
+                                  </p>
+                                  {isNew && (
+                                    <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full">
+                                      New
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-400 flex-shrink-0">
+                                  {formatDate(response.createdAt)}
                                 </p>
                               </div>
-                            )}
+                              {/* Message */}
+                              <p className="text-gray-600 text-sm leading-relaxed mb-3">
+                                {response.message}
+                              </p>
+                              {/* Contact info sub-card */}
+                              {response.contactInfo && (
+                                <div
+                                  className="rounded-xl p-3.5 border"
+                                  style={{
+                                    background: 'linear-gradient(135deg, #CBB57B08, #CBB57B04)',
+                                    borderColor: '#CBB57B22',
+                                  }}
+                                >
+                                  <div className="flex items-center gap-1.5 mb-1.5">
+                                    <Phone className="w-3 h-3 text-[#CBB57B]" />
+                                    <p
+                                      className="text-[10px] font-bold uppercase tracking-widest"
+                                      style={{ color: '#8B7355' }}
+                                    >
+                                      {t('contactInfo')}
+                                    </p>
+                                  </div>
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap font-medium">
+                                    {response.contactInfo}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </motion.div>
               )}
@@ -932,17 +1004,44 @@ export default function HotDealDetailPage() {
                 )}
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="bg-gray-50 rounded-xl p-3 text-center">
-                    <p className="text-xl font-black text-gray-900">{responseCount}</p>
-                    <p className="text-[11px] text-gray-400 font-medium mt-0.5">Responses</p>
+                <div
+                  className={`grid gap-3 pt-1 ${budget || budgetType ? 'grid-cols-1' : 'grid-cols-2'}`}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gray-50 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-gray-900">{responseCount}</p>
+                      <p className="text-[11px] text-gray-400 font-medium mt-0.5">Responses</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black" style={{ color: '#CBB57B' }}>
+                        $1
+                      </p>
+                      <p className="text-[11px] text-gray-400 font-medium mt-0.5">Posted for</p>
+                    </div>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-3 text-center">
-                    <p className="text-xl font-black" style={{ color: '#CBB57B' }}>
-                      $1
-                    </p>
-                    <p className="text-[11px] text-gray-400 font-medium mt-0.5">Posted for</p>
-                  </div>
+                  {(budget || budgetType) && (
+                    <div
+                      className="rounded-xl p-3 text-center border"
+                      style={{
+                        background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+                        borderColor: '#bbf7d0',
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                        <DollarSign className="w-4 h-4 text-green-600" />
+                        <p className="text-xl font-black text-green-700">
+                          {budget ? `$${budget % 1 === 0 ? budget : budget.toFixed(2)}` : '—'}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-green-600 font-medium">
+                        {budgetType === 'HOURLY'
+                          ? 'Per hour'
+                          : budgetType === 'FIXED'
+                            ? 'Fixed budget'
+                            : 'Negotiable'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>

@@ -78,21 +78,36 @@ export class HotDealsService {
   }
 
   /**
-   * Attach images (raw JSONB column invisible to stale Prisma client) to deal objects.
+   * Attach raw fields (images JSONB, budget, budget_type) invisible to stale Prisma client.
    * Uses individual IN placeholders to avoid uuid[] cast issues with CUID primary keys.
    */
   private async attachImages<T extends { id: string }>(
     deals: T[]
-  ): Promise<(T & { images: string[] })[]> {
-    if (deals.length === 0) return deals.map((d) => ({ ...d, images: [] }));
+  ): Promise<(T & { images: string[]; budget: number | null; budgetType: string | null })[]> {
+    if (deals.length === 0)
+      return deals.map((d) => ({ ...d, images: [], budget: null, budgetType: null }));
     const ids = deals.map((d) => d.id);
     const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
-    const rows = await this.prisma.$queryRawUnsafe<{ id: string; images: string[] }[]>(
-      `SELECT id, images FROM hot_deals WHERE id IN (${placeholders})`,
+    const rows = await this.prisma.$queryRawUnsafe<
+      { id: string; images: string[]; budget: string | null; budget_type: string | null }[]
+    >(
+      `SELECT id, images, budget, budget_type FROM hot_deals WHERE id IN (${placeholders})`,
       ...ids
     );
-    const map = new Map(rows.map((r) => [r.id, r.images ?? []]));
-    return deals.map((d) => ({ ...d, images: map.get(d.id) ?? [] }));
+    const map = new Map(
+      rows.map((r) => [
+        r.id,
+        {
+          images: r.images ?? [],
+          budget: r.budget !== null ? parseFloat(r.budget) : null,
+          budgetType: r.budget_type,
+        },
+      ])
+    );
+    return deals.map((d) => {
+      const raw = map.get(d.id) ?? { images: [], budget: null, budgetType: null };
+      return { ...d, ...raw };
+    });
   }
 
   /**
@@ -132,10 +147,17 @@ export class HotDealsService {
       },
     });
 
-    // Store images via raw SQL (Prisma client not regenerated yet — schema baseline recovery pending)
-    if (dto.images && dto.images.length > 0) {
-      await this.prisma
-        .$executeRaw`UPDATE hot_deals SET images = ${JSON.stringify(dto.images)}::jsonb WHERE id = ${hotDeal.id}`;
+    // Store raw fields (images, budget) via raw SQL — Prisma client not regenerated yet
+    const hasImages = dto.images && dto.images.length > 0;
+    const hasBudget = dto.budget !== undefined;
+    if (hasImages || hasBudget || dto.budgetType) {
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE hot_deals SET images = $1::jsonb, budget = $2, budget_type = $3 WHERE id = $4`,
+        hasImages ? JSON.stringify(dto.images) : null,
+        hasBudget ? dto.budget : null,
+        dto.budgetType ?? null,
+        hotDeal.id
+      );
     }
 
     this.logger.log(`Hot deal created: ${hotDeal.id} by user ${userId}`);
