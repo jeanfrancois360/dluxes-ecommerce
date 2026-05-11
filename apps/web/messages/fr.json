@@ -3777,6 +3777,20 @@
     "pageTitle": "Choisissez Votre Plan",
     "pageSubtitle": "Débloquez des fonctionnalités premium pour développer votre entreprise. Tous les plans payants incluent un essai gratuit de 14 jours.",
     "badge": "PLANS D'ABONNEMENT",
+    "header": {
+      "badge": "Plans d'Abonnement",
+      "title": "Choisissez Votre Plan",
+      "subtitle": "Débloquez des fonctionnalités premium pour développer votre entreprise. Tous les plans payants incluent un essai gratuit de 14 jours."
+    },
+    "backToDashboard": "Retour au Tableau de Bord",
+    "currentPlanBadge": "Plan Actuel:",
+    "taglines": {
+      "FREE": "Commencez gratuitement",
+      "STARTER": "Parfait pour les vendeurs en croissance",
+      "PROFESSIONAL": "Pour les entreprises sérieuses",
+      "BUSINESS": "Potentiel illimité",
+      "default": "Fonctionnalités puissantes"
+    },
     "breadcrumbs": {
       "backToDashboard": "Retour au Tableau de Bord"
     },
@@ -3784,7 +3798,9 @@
     "errors": {
       "fetchPlans": "Échec de la récupération des plans d'abonnement",
       "noCheckoutUrl": "Aucune URL de paiement reçue",
-      "initiateFailed": "Échec du lancement de la mise à niveau"
+      "initiateFailed": "Échec du lancement de la mise à niveau",
+      "title": "Erreur de mise à niveau",
+      "upgrade": "Échec du lancement de la mise à niveau"
     },
     "currentPlan": {
       "label": "Plan Actuel:",
@@ -3795,9 +3811,11 @@
       "monthly": "Mensuel",
       "yearly": "Annuel",
       "yearlyDiscount": "-20%",
+      "discount": "-20%",
       "year": "an",
       "month": "mois",
-      "billedYearly": "facturé annuellement"
+      "billedYearly": "facturé annuellement",
+      "monthBilledYearly": "mois, facturé annuellement"
     },
     "planTiers": {
       "taglines": {
@@ -3822,7 +3840,8 @@
       "productTypes": "Types de Produits",
       "features": "Fonctionnalités",
       "moreFeatures": "+{count} fonctionnalités supplémentaires",
-      "physicalOnly": "Produits physiques uniquement"
+      "physicalOnly": "Produits physiques uniquement",
+      "currentPlan": "Plan Actuel"
     },
     "productTypes": {
       "SERVICE": "Services",

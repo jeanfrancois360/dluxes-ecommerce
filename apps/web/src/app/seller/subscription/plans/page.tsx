@@ -4,10 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from '@/lib/utils/toast';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { subscriptionApi, type SubscriptionPlan } from '@/lib/api/subscription';
+import { subscriptionApi } from '@/lib/api/subscription';
 import { useMySubscription } from '@/hooks/use-subscription';
 import {
   Check,
@@ -16,8 +15,12 @@ import {
   Zap,
   Building2,
   ArrowRight,
-  HelpCircle,
   ChevronLeft,
+  ChevronDown,
+  Shield,
+  RotateCcw,
+  Timer,
+  Minus,
 } from 'lucide-react';
 
 interface PlanDisplay {
@@ -36,23 +39,371 @@ interface PlanDisplay {
   badge?: string;
 }
 
-// Icons for each tier
-const tierIcons: Record<string, React.ReactNode> = {
-  FREE: <Sparkles className="w-6 h-6" />,
-  STARTER: <Zap className="w-6 h-6" />,
-  PROFESSIONAL: <Crown className="w-6 h-6" />,
-  BUSINESS: <Building2 className="w-6 h-6" />,
+const TIER_ICONS: Record<string, React.ReactNode> = {
+  FREE: <Sparkles className="w-5 h-5" />,
+  STARTER: <Zap className="w-5 h-5" />,
+  PROFESSIONAL: <Crown className="w-5 h-5" />,
+  BUSINESS: <Building2 className="w-5 h-5" />,
 };
+
+const FAQ_KEYS = ['changePlan', 'paymentMethods', 'freeTrial', 'productTypes', 'refunds'] as const;
+
+// ─── Plan Card ───────────────────────────────────────────────────────────────
+
+interface PlanCardProps {
+  plan: PlanDisplay;
+  index: number;
+  isCurrent: boolean;
+  isUpgrade: boolean;
+  selectedInterval: 'MONTHLY' | 'YEARLY';
+  checkoutLoading: string | null;
+  onUpgrade: (id: string, name: string, price: number, tier: string) => void;
+  t: ReturnType<typeof useTranslations<'sellerSubscriptionPlans'>>;
+}
+
+function PlanCard({
+  plan,
+  index,
+  isCurrent,
+  isUpgrade,
+  selectedInterval,
+  checkoutLoading,
+  onUpgrade,
+  t,
+}: PlanCardProps) {
+  const currentPrice = selectedInterval === 'YEARLY' ? plan.yearlyPrice : plan.price;
+  const monthlyEquivalent = selectedInterval === 'YEARLY' ? plan.yearlyPrice / 12 : plan.price;
+  const yearlySavings =
+    selectedInterval === 'YEARLY' && plan.price > 0
+      ? Math.round(plan.price * 12 - plan.yearlyPrice)
+      : 0;
+
+  const isLoading = checkoutLoading === plan.id;
+
+  const cardVariant = plan.isPopular ? 'popular' : isCurrent ? 'current' : 'default';
+
+  const borderClass = {
+    popular: 'ring-2 ring-[#CBB57B] shadow-xl shadow-[#CBB57B]/10',
+    current: 'ring-2 ring-green-500 shadow-lg shadow-green-500/10',
+    default: 'border border-neutral-200 shadow-sm hover:shadow-md hover:-translate-y-0.5',
+  }[cardVariant];
+
+  const accentClass = {
+    popular: 'bg-gradient-to-r from-[#CBB57B] via-[#e2c97a] to-[#CBB57B]',
+    current: 'bg-green-500',
+    default: 'bg-neutral-100',
+  }[cardVariant];
+
+  const iconBg = {
+    popular: 'bg-[#CBB57B]/15 text-[#CBB57B]',
+    current: 'bg-green-50 text-green-600',
+    default: 'bg-neutral-100 text-neutral-500',
+  }[cardVariant];
+
+  const ctaClass = {
+    popular:
+      'bg-[#CBB57B] text-black hover:bg-[#b9a369] shadow-md hover:shadow-lg active:scale-[0.98]',
+    current: 'bg-green-50 text-green-700 border border-green-200 cursor-default',
+    default:
+      currentPrice === 0
+        ? 'bg-neutral-100 text-neutral-400 cursor-default'
+        : 'bg-neutral-900 text-white hover:bg-neutral-800 shadow-md hover:shadow-lg active:scale-[0.98]',
+  }[cardVariant];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 28 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.08 + index * 0.09, duration: 0.45 }}
+      className={`relative flex flex-col bg-white rounded-2xl overflow-hidden transition-all duration-300 ${borderClass}`}
+    >
+      {/* Top accent bar */}
+      <div className={`h-1 w-full ${accentClass}`} />
+
+      {/* Tier badge */}
+      {(plan.badge || isCurrent) && (
+        <div className="absolute top-5 right-4 z-10">
+          {isCurrent && !plan.isPopular ? (
+            <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wide">
+              <Check className="w-3 h-3" />
+              {t('currentPlan.current')}
+            </span>
+          ) : plan.isPopular ? (
+            <span className="bg-[#CBB57B] text-black text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wide">
+              {t('badges.mostPopular')}
+            </span>
+          ) : plan.badge === 'Enterprise' ? (
+            <span className="bg-neutral-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wide">
+              {t('badges.enterprise')}
+            </span>
+          ) : null}
+        </div>
+      )}
+
+      <div className="flex flex-col flex-1 p-6">
+        {/* Plan header */}
+        <div className="flex items-center gap-3 mb-5 pr-16">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}
+          >
+            {TIER_ICONS[plan.tier]}
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-gray-900 leading-tight truncate">
+              {plan.name}
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">{plan.tagline}</p>
+          </div>
+        </div>
+
+        {/* Pricing */}
+        <div className="mb-5 min-h-[72px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${plan.id}-${selectedInterval}`}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.15 }}
+            >
+              {currentPrice === 0 ? (
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-gray-900 tracking-tight">
+                    {t('planCard.free')}
+                  </span>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold text-gray-900 tracking-tight">
+                      {formatCurrencyAmount(monthlyEquivalent)}
+                    </span>
+                    <span className="text-sm text-gray-400 font-medium">/{t('billing.month')}</span>
+                  </div>
+                  {selectedInterval === 'YEARLY' && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {formatCurrencyAmount(currentPrice)}/{t('billing.year')} &mdash;{' '}
+                      {t('billing.billedYearly')}
+                    </p>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Yearly savings pill */}
+          <AnimatePresence>
+            {yearlySavings > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ duration: 0.2 }}
+                className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-700 border border-green-100 rounded-lg text-[11px] font-bold"
+              >
+                <Check className="w-3 h-3 flex-shrink-0" />
+                Save {formatCurrencyAmount(yearlySavings)}/year
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* CTA Button */}
+        <button
+          onClick={() => onUpgrade(plan.id, plan.name, currentPrice, plan.tier)}
+          disabled={isLoading || isCurrent}
+          className={`w-full py-3 px-4 rounded-xl font-bold text-sm transition-all duration-200 mb-5 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${ctaClass}`}
+        >
+          {isLoading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              {t('planCard.processing')}
+            </>
+          ) : isCurrent ? (
+            <>
+              <Check className="w-4 h-4" />
+              {t('planCard.currentPlan')}
+            </>
+          ) : currentPrice === 0 ? (
+            t('planCard.freeForever')
+          ) : (
+            <>
+              {isUpgrade ? t('planCard.upgrade') : t('planCard.getStarted')}
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </button>
+
+        {/* Key Stats */}
+        <div className="grid grid-cols-2 gap-2 mb-5">
+          <div className="bg-neutral-50 rounded-xl p-3 text-center">
+            <p className="text-[22px] font-extrabold text-gray-900 leading-none mb-1">
+              {plan.maxActiveListings === -1 ? '∞' : plan.maxActiveListings}
+            </p>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+              {t('planCard.listings')}
+            </p>
+          </div>
+          <div className="bg-neutral-50 rounded-xl p-3 text-center">
+            <p className="text-[22px] font-extrabold text-gray-900 leading-none mb-1">
+              {plan.monthlyCredits}
+            </p>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+              {t('planCard.creditsPerMonth')}
+            </p>
+          </div>
+        </div>
+
+        {/* Product Types */}
+        {plan.allowedProductTypes.length > 0 && (
+          <div className="mb-5">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+              {t('planCard.productTypes')}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {plan.allowedProductTypes.map((type) => (
+                <span
+                  key={type}
+                  className="px-2 py-0.5 bg-[#CBB57B]/10 text-[#9a8a5c] rounded-md text-[10px] font-semibold"
+                >
+                  {t(`productTypes.${type}` as any) || type}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Features */}
+        <div className="mt-auto">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+            {t('planCard.features')}
+          </p>
+          <ul className="space-y-2">
+            {plan.features.slice(0, 6).map((feature, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <div
+                  className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    plan.isPopular ? 'bg-[#CBB57B]/15' : 'bg-neutral-100'
+                  }`}
+                >
+                  <Check
+                    className={`w-2.5 h-2.5 ${plan.isPopular ? 'text-[#CBB57B]' : 'text-gray-500'}`}
+                  />
+                </div>
+                <span className="text-gray-600 text-xs leading-relaxed">{feature}</span>
+              </li>
+            ))}
+            {plan.features.length > 6 && (
+              <li className="text-xs text-[#CBB57B] font-semibold pl-6">
+                +{plan.features.length - 6} more features
+              </li>
+            )}
+          </ul>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── FAQ Item ────────────────────────────────────────────────────────────────
+
+interface FaqItemProps {
+  question: string;
+  answer: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  index: number;
+}
+
+function FaqItem({ question, answer, isOpen, onToggle, index }: FaqItemProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.65 + index * 0.04 }}
+      className="bg-white border border-neutral-200 rounded-xl overflow-hidden"
+    >
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-neutral-50 transition-colors"
+        aria-expanded={isOpen}
+      >
+        <span className="font-semibold text-gray-800 text-sm pr-4 leading-snug">{question}</span>
+        <div
+          className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+            isOpen ? 'bg-[#CBB57B]/15 text-[#CBB57B]' : 'bg-neutral-100 text-gray-400'
+          }`}
+        >
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          />
+        </div>
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <p className="px-5 pb-4 text-sm text-gray-500 leading-relaxed border-t border-neutral-100 pt-3">
+              {answer}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+// ─── Loading Skeleton ────────────────────────────────────────────────────────
+
+function PlansSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+          <div className="h-1 bg-neutral-100" />
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 animate-pulse" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-4 bg-neutral-100 rounded animate-pulse w-3/4" />
+                <div className="h-3 bg-neutral-100 rounded animate-pulse w-1/2" />
+              </div>
+            </div>
+            <div className="h-10 bg-neutral-100 rounded animate-pulse w-2/3" />
+            <div className="h-11 bg-neutral-100 rounded-xl animate-pulse" />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="h-16 bg-neutral-100 rounded-xl animate-pulse" />
+              <div className="h-16 bg-neutral-100 rounded-xl animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              {[...Array(4)].map((_, j) => (
+                <div key={j} className="h-3 bg-neutral-100 rounded animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function SellerPlansPage() {
   const t = useTranslations('sellerSubscriptionPlans');
-  const router = useRouter();
   const [plans, setPlans] = useState<PlanDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   const {
-    subscription,
     plan: currentPlan,
     tier: currentTier,
     isLoading: subLoading,
@@ -61,7 +412,6 @@ export default function SellerPlansPage() {
 
   useEffect(() => {
     fetchPlans();
-    // Also refresh subscription data to ensure we have the latest
     refreshSubscription();
   }, [refreshSubscription]);
 
@@ -69,34 +419,26 @@ export default function SellerPlansPage() {
     setLoading(true);
     try {
       const response = await subscriptionApi.getPlans();
-
-      // Transform API plans to display format
-      const transformedPlans: PlanDisplay[] = response
-        .filter((plan) => plan.isActive)
+      const transformed: PlanDisplay[] = response
+        .filter((p) => p.isActive)
         .sort((a, b) => a.displayOrder - b.displayOrder)
-        .map((plan) => ({
-          id: plan.id,
-          tier: plan.tier,
-          name: plan.name,
-          tagline: getTagline(plan.tier),
-          description: plan.description || `${plan.tier} tier subscription`,
-          price: plan.monthlyPrice,
-          yearlyPrice: plan.yearlyPrice,
-          maxActiveListings: plan.maxActiveListings,
-          monthlyCredits: plan.monthlyCredits,
-          allowedProductTypes: plan.allowedProductTypes || [],
-          features: plan.features || [],
-          isPopular: plan.isPopular,
-          badge: plan.isPopular
-            ? 'Most Popular'
-            : plan.tier === 'BUSINESS'
-              ? 'Enterprise'
-              : undefined,
+        .map((p) => ({
+          id: p.id,
+          tier: p.tier,
+          name: p.name,
+          tagline: getTagline(p.tier),
+          description: p.description || '',
+          price: p.monthlyPrice,
+          yearlyPrice: p.yearlyPrice,
+          maxActiveListings: p.maxActiveListings,
+          monthlyCredits: p.monthlyCredits,
+          allowedProductTypes: p.allowedProductTypes || [],
+          features: p.features || [],
+          isPopular: p.isPopular,
+          badge: p.isPopular ? 'Most Popular' : p.tier === 'BUSINESS' ? 'Enterprise' : undefined,
         }));
-
-      setPlans(transformedPlans);
-    } catch (error) {
-      console.error('Error fetching subscription plans:', error);
+      setPlans(transformed);
+    } catch {
       toast.error(t('errors.fetchPlans'));
     } finally {
       setLoading(false);
@@ -104,37 +446,29 @@ export default function SellerPlansPage() {
   };
 
   const getTagline = (tier: string): string => {
-    const taglines: Record<string, string> = {
+    const map: Record<string, string> = {
       FREE: t('taglines.FREE'),
       STARTER: t('taglines.STARTER'),
       PROFESSIONAL: t('taglines.PROFESSIONAL'),
       BUSINESS: t('taglines.BUSINESS'),
     };
-    return taglines[tier] || t('taglines.default');
+    return map[tier] || t('taglines.default');
   };
 
   const handleUpgrade = async (planId: string, planName: string, price: number, tier: string) => {
     try {
       setCheckoutLoading(planId);
 
-      // Handle FREE plan separately
       if (price === 0) {
         toast.info(t('toasts.freePlanActive'));
-        setCheckoutLoading(null);
         return;
       }
-
-      // Check if user is trying to select their current plan
       if (tier === currentTier) {
         toast.info(t('toasts.alreadySubscribed'));
-        setCheckoutLoading(null);
         return;
       }
 
-      // Create Stripe checkout session
       const { url } = await subscriptionApi.createCheckout(planId, selectedInterval);
-
-      // Redirect to Stripe checkout
       if (url) {
         toast.success(t('toasts.redirecting'));
         window.location.href = url;
@@ -142,367 +476,200 @@ export default function SellerPlansPage() {
         throw new Error('No checkout URL received');
       }
     } catch (error: any) {
-      console.error('Error initiating upgrade:', error);
       const message = error?.response?.data?.message || error?.message || t('errors.upgrade');
       toast.error(t('errors.title'), message);
-      setCheckoutLoading(null);
+    } finally {
+      // Only clear if we didn't redirect
+      setCheckoutLoading((prev) => (prev === planId ? null : prev));
     }
   };
 
-  // Only show current plan indicator if subscription data is fully loaded
   const isCurrentPlan = (tier: string) => {
-    // Don't show any plan as "current" if subscription data is still loading
     if (subLoading || !currentPlan) return false;
     return tier === currentTier;
   };
 
-  // Wait for both plans AND subscription data to load
-  if (loading || subLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-neutral-50">
-        <div className="text-center">
-          <div className="relative w-16 h-16 mx-auto mb-6">
-            <div className="absolute inset-0 rounded-full border-4 border-neutral-200"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-[#CBB57B] border-t-transparent animate-spin"></div>
-          </div>
-          <p className="text-gray-600 font-medium">{t('loading')}</p>
-        </div>
-      </div>
-    );
-  }
+  const isPageLoading = loading || subLoading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-[#CBB57B]/5">
+    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
       {/* Back Button */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
         <Link
           href="/seller"
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors group"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           <span className="font-medium">{t('backToDashboard')}</span>
         </Link>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        {/* ── Header ── */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          transition={{ duration: 0.5 }}
+          className="text-center mb-10 pt-6"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#CBB57B]/10 text-[#9a8a5c] rounded-full text-sm font-semibold mb-6">
-            <Crown className="w-4 h-4" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#CBB57B]/10 text-[#9a8a5c] rounded-full text-[11px] font-bold tracking-widest uppercase mb-5">
+            <Crown className="w-3.5 h-3.5" />
             {t('header.badge')}
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">{t('header.title')}</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">{t('header.subtitle')}</p>
 
-          {/* Current Plan Badge */}
-          {currentPlan && !subLoading && (
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-full text-sm mb-8">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              {t('currentPlanBadge')}: <span className="font-semibold">{currentPlan.name}</span>
-            </div>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight mb-4 leading-tight">
+            {t('header.title')}
+          </h1>
+          <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-7">{t('header.subtitle')}</p>
+
+          {/* Current plan indicator */}
+          {!subLoading && currentPlan && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-full text-sm mb-7"
+            >
+              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              {t('currentPlanBadge')}{' '}
+              <span className="font-semibold ml-0.5">{currentPlan.name}</span>
+            </motion.div>
           )}
 
-          {/* Interval Toggle */}
-          <div className="inline-flex items-center bg-white border border-neutral-200 rounded-2xl p-1.5 shadow-sm">
+          {/* Billing toggle */}
+          <div className="inline-flex items-center bg-white border border-neutral-200 rounded-2xl p-1 shadow-sm">
             <button
               onClick={() => setSelectedInterval('MONTHLY')}
-              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+              className={`px-7 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 selectedInterval === 'MONTHLY'
-                  ? 'bg-neutral-900 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-neutral-900 text-white shadow'
+                  : 'text-gray-500 hover:text-gray-800'
               }`}
             >
               {t('billing.monthly')}
             </button>
             <button
               onClick={() => setSelectedInterval('YEARLY')}
-              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 relative ${
+              className={`relative px-7 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 selectedInterval === 'YEARLY'
-                  ? 'bg-neutral-900 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-neutral-900 text-white shadow'
+                  : 'text-gray-500 hover:text-gray-800'
               }`}
             >
               {t('billing.yearly')}
-              <span className="absolute -top-2.5 -right-3 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+              <span className="absolute -top-2.5 -right-2.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">
                 {t('billing.discount')}
               </span>
             </button>
           </div>
         </motion.div>
 
-        {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          {plans.map((plan, index) => {
-            const currentPrice = selectedInterval === 'YEARLY' ? plan.yearlyPrice : plan.price;
-            const monthlyEquivalent =
-              selectedInterval === 'YEARLY' ? plan.yearlyPrice / 12 : plan.price;
-            const isCurrent = isCurrentPlan(plan.tier);
-            const isUpgrade = !isCurrent && currentTier !== 'FREE' && plan.price > 0;
+        {/* ── Trust Strip ── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mb-10"
+        >
+          {[
+            { icon: <Timer className="w-4 h-4 text-[#CBB57B]" />, label: '14-day free trial' },
+            {
+              icon: <RotateCcw className="w-4 h-4 text-[#CBB57B]" />,
+              label: '30-day money-back guarantee',
+            },
+            { icon: <Shield className="w-4 h-4 text-[#CBB57B]" />, label: 'Cancel anytime' },
+          ].map(({ icon, label }) => (
+            <div key={label} className="flex items-center gap-1.5 text-sm text-gray-500">
+              {icon}
+              <span className="font-medium">{label}</span>
+            </div>
+          ))}
+        </motion.div>
 
-            return (
-              <motion.div
-                key={plan.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`relative bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl ${
-                  plan.isPopular
-                    ? 'ring-2 ring-[#CBB57B] shadow-lg'
-                    : isCurrent
-                      ? 'ring-2 ring-green-500 shadow-lg'
-                      : 'border border-neutral-200 shadow-sm hover:-translate-y-1'
-                }`}
-              >
-                {/* Badge */}
-                {plan.badge && (
-                  <div
-                    className={`absolute top-4 right-4 ${
-                      plan.isPopular ? 'bg-[#CBB57B] text-black' : 'bg-neutral-900 text-white'
-                    } px-3 py-1 rounded-full font-semibold text-xs`}
-                  >
-                    {plan.badge === 'Most Popular'
-                      ? t('badges.mostPopular')
-                      : plan.badge === 'Enterprise'
-                        ? t('badges.enterprise')
-                        : plan.badge}
-                  </div>
-                )}
-                {isCurrent && !plan.badge && (
-                  <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full font-semibold text-xs flex items-center gap-1">
-                    <Check className="w-3 h-3" />
-                    Current
-                  </div>
-                )}
+        {/* ── Plans Grid ── */}
+        {isPageLoading ? (
+          <PlansSkeleton />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-14">
+            {plans.map((plan, index) => {
+              const isCurrent = isCurrentPlan(plan.tier);
+              const isUpgrade = !isCurrent && currentTier !== 'FREE' && plan.price > 0;
+              return (
+                <PlanCard
+                  key={plan.id}
+                  plan={plan}
+                  index={index}
+                  isCurrent={isCurrent}
+                  isUpgrade={isUpgrade}
+                  selectedInterval={selectedInterval}
+                  checkoutLoading={checkoutLoading}
+                  onUpgrade={handleUpgrade}
+                  t={t}
+                />
+              );
+            })}
+          </div>
+        )}
 
-                <div className="p-6">
-                  {/* Plan Icon & Name */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                        plan.isPopular
-                          ? 'bg-[#CBB57B]/10 text-[#CBB57B]'
-                          : 'bg-neutral-100 text-neutral-600'
-                      }`}
-                    >
-                      {tierIcons[plan.tier]}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
-                      <p className="text-sm text-gray-500">{plan.tagline}</p>
-                    </div>
-                  </div>
-
-                  {/* Pricing */}
-                  <div className="mb-6">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-gray-900">
-                        {currentPrice === 0
-                          ? t('planCard.free')
-                          : formatCurrencyAmount(currentPrice)}
-                      </span>
-                      {currentPrice > 0 && (
-                        <span className="text-gray-500 text-sm">
-                          /{selectedInterval === 'YEARLY' ? t('billing.year') : t('billing.month')}
-                        </span>
-                      )}
-                    </div>
-                    {selectedInterval === 'YEARLY' && currentPrice > 0 && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        {formatCurrencyAmount(monthlyEquivalent)}/{t('billing.monthBilledYearly')}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* CTA Button */}
-                  <button
-                    onClick={() => handleUpgrade(plan.id, plan.name, currentPrice, plan.tier)}
-                    disabled={checkoutLoading === plan.id || isCurrent}
-                    className={`w-full py-3.5 px-4 rounded-xl font-bold transition-all duration-200 mb-6 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
-                      isCurrent
-                        ? 'bg-green-50 text-green-700 border-2 border-green-200'
-                        : plan.isPopular
-                          ? 'bg-[#CBB57B] text-black hover:bg-[#b9a369] shadow-md hover:shadow-lg'
-                          : currentPrice === 0
-                            ? 'bg-neutral-100 text-neutral-500'
-                            : 'bg-neutral-900 text-white hover:bg-neutral-800 shadow-md hover:shadow-lg'
-                    }`}
-                  >
-                    {checkoutLoading === plan.id ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        {t('planCard.processing')}
-                      </>
-                    ) : isCurrent ? (
-                      <>
-                        <Check className="w-5 h-5" />
-                        {t('planCard.currentPlan')}
-                      </>
-                    ) : currentPrice === 0 ? (
-                      t('planCard.freeForever')
-                    ) : (
-                      <>
-                        {isUpgrade ? t('planCard.upgrade') : t('planCard.getStarted')}
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-
-                  {/* Key Stats */}
-                  <div className="grid grid-cols-2 gap-3 mb-6">
-                    <div className="bg-neutral-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-gray-900">
-                        {plan.maxActiveListings === -1 ? '∞' : plan.maxActiveListings}
-                      </p>
-                      <p className="text-xs text-gray-500">{t('planCard.listings')}</p>
-                    </div>
-                    <div className="bg-neutral-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-gray-900">{plan.monthlyCredits}</p>
-                      <p className="text-xs text-gray-500">{t('planCard.creditsPerMonth')}</p>
-                    </div>
-                  </div>
-
-                  {/* Allowed Product Types */}
-                  <div className="mb-6">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                      {t('planCard.productTypes')}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {plan.allowedProductTypes.length > 0 ? (
-                        plan.allowedProductTypes.map((type) => (
-                          <span
-                            key={type}
-                            className="px-2 py-1 bg-[#CBB57B]/10 text-[#9a8a5c] rounded text-xs font-medium"
-                          >
-                            {t(`productTypes.${type}`) || type}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-gray-400">{t('planCard.physicalOnly')}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Features */}
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                      {t('planCard.features')}
-                    </p>
-                    <ul className="space-y-2">
-                      {plan.features.slice(0, 5).map((feature, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm">
-                          <Check className="w-4 h-4 text-[#CBB57B] flex-shrink-0 mt-0.5" />
-                          <span className="text-gray-600">{feature}</span>
-                        </li>
-                      ))}
-                      {plan.features.length > 5 && (
-                        <li className="text-sm text-[#CBB57B] font-medium">
-                          +{plan.features.length - 5} more features
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Feature Comparison Note */}
+        {/* ── Help Banner ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="bg-neutral-900 rounded-2xl p-8 mb-16"
+          className="rounded-2xl bg-neutral-900 px-8 py-8 flex flex-col md:flex-row items-center justify-between gap-6 mb-14"
         >
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="text-center md:text-left">
-              <h3 className="text-2xl font-bold text-white mb-2">
-                Need help choosing the right plan?
-              </h3>
-              <p className="text-neutral-400">
-                Compare features or contact our team for personalized recommendations.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button className="px-6 py-3 bg-white text-neutral-900 rounded-xl font-semibold hover:bg-neutral-100 transition-colors">
-                Compare Plans
-              </button>
-              <button className="px-6 py-3 bg-[#CBB57B] text-black rounded-xl font-semibold hover:bg-[#b9a369] transition-colors">
-                Contact Sales
-              </button>
-            </div>
+          <div className="text-center md:text-left">
+            <h3 className="text-xl font-bold text-white mb-1">{t('helpSection.title')}</h3>
+            <p className="text-neutral-400 text-sm max-w-md">{t('helpSection.subtitle')}</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+            <button className="px-6 py-2.5 bg-white text-neutral-900 rounded-xl font-semibold text-sm hover:bg-neutral-100 transition-colors">
+              {t('helpSection.comparePlans')}
+            </button>
+            <button className="px-6 py-2.5 bg-[#CBB57B] text-black rounded-xl font-semibold text-sm hover:bg-[#b9a369] transition-colors">
+              {t('helpSection.contactSales')}
+            </button>
           </div>
         </motion.div>
 
-        {/* FAQ Section */}
+        {/* ── FAQ ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="max-w-3xl mx-auto"
+          className="max-w-2xl mx-auto mb-14"
         >
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">{t('helpSection.title')}</h2>
-            <p className="text-gray-600">{t('helpSection.subtitle')}</p>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('faq.title')}</h2>
+            <p className="text-gray-500 text-sm">{t('faq.subtitle')}</p>
           </div>
 
-          <div className="space-y-4">
-            {[
-              {
-                q: t('helpSection.faq.q1'),
-                a: t('helpSection.faq.a1'),
-              },
-              {
-                q: t('helpSection.faq.q2'),
-                a: t('helpSection.faq.a2'),
-              },
-              {
-                q: t('helpSection.faq.q3'),
-                a: t('helpSection.faq.a3'),
-              },
-              {
-                q: t('helpSection.faq.q4'),
-                a: t('helpSection.faq.a4'),
-              },
-              {
-                q: t('helpSection.faq.q5'),
-                a: t('helpSection.faq.a5'),
-              },
-            ].map((faq, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 + idx * 0.05 }}
-                className="bg-white rounded-xl p-5 border border-neutral-200 hover:border-[#CBB57B]/30 transition-colors"
-              >
-                <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-2">
-                  <HelpCircle className="w-5 h-5 text-[#CBB57B]" />
-                  {faq.q}
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed pl-7">{faq.a}</p>
-              </motion.div>
+          <div className="space-y-2">
+            {FAQ_KEYS.map((key, idx) => (
+              <FaqItem
+                key={key}
+                index={idx}
+                question={t(`faq.questions.${key}.q` as any)}
+                answer={t(`faq.questions.${key}.a` as any)}
+                isOpen={openFaq === idx}
+                onToggle={() => setOpenFaq(openFaq === idx ? null : idx)}
+              />
             ))}
           </div>
         </motion.div>
 
-        {/* Bottom CTA */}
+        {/* ── Bottom CTA ── */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1 }}
-          className="mt-16 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="text-center"
         >
-          <p className="text-gray-500 mb-4">{t('helpSection.cta.message')}</p>
+          <p className="text-gray-400 text-sm mb-2">{t('bottomCta.message')}</p>
           <Link
             href="/help"
-            className="text-[#CBB57B] hover:text-[#b9a369] font-semibold inline-flex items-center gap-1 transition-colors"
+            className="text-[#CBB57B] hover:text-[#b9a369] font-semibold text-sm inline-flex items-center gap-1 transition-colors"
           >
-            {t('helpSection.cta.linkText')}
+            {t('bottomCta.linkText')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </motion.div>
