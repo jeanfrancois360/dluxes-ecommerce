@@ -79,7 +79,7 @@ export class EasyshipService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      timeout: 10000,
+      timeout: 30000, // EasyShip API can be slow — allow 30s
     });
 
     this.logger.log(`Easyship client initialized (${isSandbox ? 'sandbox' : 'production'})`);
