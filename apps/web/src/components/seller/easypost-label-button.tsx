@@ -88,7 +88,7 @@ export function EasyPostLabelButton({
   const fetchRates = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/v1/easypost/rates', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/easypost/rates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -125,7 +125,7 @@ export function EasyPostLabelButton({
 
     setIsPurchasing(true);
     try {
-      const response = await fetch('/api/v1/easypost/purchase', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/easypost/purchase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
