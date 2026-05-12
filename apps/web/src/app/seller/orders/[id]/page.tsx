@@ -343,6 +343,7 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   const [shippingCarrier, setShippingCarrier] = useState('');
   const [showPackingSlip, setShowPackingSlip] = useState(false);
   const [showMarkAsShippedModal, setShowMarkAsShippedModal] = useState(false);
+  const [autoGenerating, setAutoGenerating] = useState(false);
   const [showConfirmPickupModal, setShowConfirmPickupModal] = useState(false);
   const packingSlipRef = useRef<HTMLDivElement>(null);
 
@@ -412,6 +413,37 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
       toast.error(err?.message || 'Failed to mark order as shipped');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  // Auto-generate shipment label via the platform's shipping provider account
+  const handleAutoGenerateShipment = async () => {
+    if (!order || !storeData) return;
+    try {
+      setAutoGenerating(true);
+      const API_URL = process.env.NEXT_PUBLIC_API_URL;
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/shipments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          orderId: order.id,
+          storeId: storeData.id,
+          itemIds: order.items.map((i) => i.id),
+          autoGenerate: true,
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Failed to create shipment');
+      }
+      toast.success('Shipment created — tracking number generated automatically');
+      mutateShipments();
+      mutate();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to auto-generate shipment');
+    } finally {
+      setAutoGenerating(false);
     }
   };
 
@@ -1184,12 +1216,12 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                                     sellerId={user.id}
                                     storeId={storeData.id}
                                     fromAddress={{
-                                      street1: storeData.address?.street || '123 Seller St',
-                                      city: storeData.address?.city || 'San Francisco',
-                                      state: storeData.address?.state || 'CA',
-                                      zip: storeData.address?.zipCode || '94107',
-                                      country: storeData.address?.country || 'US',
-                                      name: storeData.name || 'Store',
+                                      street1: storeData.address?.street ?? '',
+                                      city: storeData.address?.city ?? '',
+                                      state: storeData.address?.state ?? '',
+                                      zip: storeData.address?.zipCode ?? '',
+                                      country: storeData.address?.country ?? 'US',
+                                      name: storeData.name,
                                     }}
                                     toAddress={{
                                       street1: order.shippingAddress.street || '',
@@ -1203,9 +1235,19 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                                       length: 12,
                                       width: 8,
                                       height: 6,
-                                      weight: order.items.reduce(
-                                        (sum, item) => sum + item.quantity * 16,
-                                        0
+                                      weight: Math.max(
+                                        1,
+                                        Math.round(
+                                          order.items.reduce(
+                                            (sum, item) =>
+                                              sum +
+                                              item.quantity *
+                                                (item.product.weight
+                                                  ? Number(item.product.weight) * 35.274
+                                                  : 17.6),
+                                            0
+                                          )
+                                        )
                                       ),
                                     }}
                                   />
@@ -1231,22 +1273,22 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
 
                               {/* Provider-specific guidance */}
                               {order.shippingProvider === 'SENDCLOUD' && (
-                                <div className="flex items-start gap-2 p-2.5 bg-violet-50 border border-violet-100 rounded-lg mb-3 ml-0">
-                                  <Info className="w-3.5 h-3.5 text-violet-500 flex-shrink-0 mt-0.5" />
+                                <div className="flex items-start gap-2 p-2.5 bg-violet-50 border border-violet-100 rounded-lg mb-3">
+                                  <BadgeCheck className="w-3.5 h-3.5 text-violet-600 flex-shrink-0 mt-0.5" />
                                   <p className="text-[10px] text-violet-700 leading-relaxed">
-                                    This order was routed via <strong>SendCloud (EU)</strong>.
-                                    Create the parcel in your SendCloud dashboard, then paste the
-                                    tracking number below.
+                                    NextPik will automatically create the parcel in{' '}
+                                    <strong>SendCloud</strong> and return the tracking number. Click
+                                    the button below.
                                   </p>
                                 </div>
                               )}
                               {order.shippingProvider === 'EASYSHIP' && (
                                 <div className="flex items-start gap-2 p-2.5 bg-cyan-50 border border-cyan-100 rounded-lg mb-3">
-                                  <Info className="w-3.5 h-3.5 text-cyan-500 flex-shrink-0 mt-0.5" />
+                                  <BadgeCheck className="w-3.5 h-3.5 text-cyan-600 flex-shrink-0 mt-0.5" />
                                   <p className="text-[10px] text-cyan-700 leading-relaxed">
-                                    This order was routed via{' '}
-                                    <strong>EasyShip (APAC/Global)</strong>. Create the shipment in
-                                    your EasyShip dashboard, then paste the tracking number below.
+                                    NextPik will automatically create the shipment in{' '}
+                                    <strong>EasyShip</strong> and return the tracking number. Click
+                                    the button below.
                                   </p>
                                 </div>
                               )}
@@ -1261,14 +1303,32 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                                 </div>
                               )}
 
-                              <button
-                                onClick={() => setShowMarkAsShippedModal(true)}
-                                disabled={updating}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black hover:bg-gray-900 text-white rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md disabled:opacity-50"
-                              >
-                                <Truck className="w-4 h-4" />
-                                Enter Tracking / Create Shipment
-                              </button>
+                              {/* Auto-generate for platform-managed providers; manual entry for others */}
+                              {['SENDCLOUD', 'EASYSHIP'].includes(order.shippingProvider ?? '') ? (
+                                <button
+                                  onClick={handleAutoGenerateShipment}
+                                  disabled={autoGenerating}
+                                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black hover:bg-gray-900 text-white rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+                                >
+                                  {autoGenerating ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Truck className="w-4 h-4" />
+                                  )}
+                                  {autoGenerating
+                                    ? 'Generating tracking…'
+                                    : `Create Shipment via ${SHIPPING_PROVIDER_CONFIG[order.shippingProvider ?? '']?.label ?? order.shippingProvider}`}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setShowMarkAsShippedModal(true)}
+                                  disabled={updating}
+                                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black hover:bg-gray-900 text-white rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+                                >
+                                  <Truck className="w-4 h-4" />
+                                  Enter Tracking / Create Shipment
+                                </button>
+                              )}
                             </div>
                           </div>
                         </>
