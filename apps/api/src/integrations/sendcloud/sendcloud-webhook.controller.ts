@@ -85,6 +85,26 @@ export class SendcloudWebhookController {
       return;
     }
 
+    // Idempotency: skip if this parcel+status combination was already processed.
+    // Reuses EasyPostWebhookLog as a shared webhook dedup table with a source prefix.
+    const dedupKey = `sendcloud:${parcel.id}:${statusId}`;
+    const alreadyProcessed = await this.prisma.easyPostWebhookLog.findUnique({
+      where: { eventId: dedupKey },
+    });
+    if (alreadyProcessed) {
+      this.logger.log(`Duplicate SendCloud webhook skipped: ${dedupKey}`);
+      return;
+    }
+    await this.prisma.easyPostWebhookLog.create({
+      data: {
+        eventId: dedupKey,
+        eventType: `sendcloud.parcel_status_changed.${statusId}`,
+        status: 'PROCESSED',
+        payload: parcel as any,
+        processedAt: new Date(),
+      },
+    });
+
     await this.sendBuyerEmail(orderReference, trackingNumber, internalStatus, parcel);
   }
 
