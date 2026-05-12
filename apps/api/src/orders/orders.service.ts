@@ -1302,11 +1302,31 @@ export class OrdersService {
                 0
               );
 
-              // Find commission for this store
+              // Commissions are created by the payment webhook (after payment), so they
+              // won't exist yet at order-creation time. Use the commission record if present,
+              // otherwise fall back to the configured global_commission_rate setting.
               const commission = fullOrder.commissions?.find((c: any) => c.storeId === storeId);
-              const commissionAmount = commission ? Number(commission.commissionAmount) : 0;
-              const commissionRate =
-                sellerSubtotal > 0 ? (commissionAmount / sellerSubtotal) * 100 : 10;
+              let commissionRate = 10; // default 10 %
+              let commissionAmount = 0;
+
+              if (commission && Number(commission.commissionAmount) > 0) {
+                // Commission already recorded (e.g. re-send after payment)
+                commissionAmount = Number(commission.commissionAmount);
+                commissionRate =
+                  sellerSubtotal > 0 ? (commissionAmount / sellerSubtotal) * 100 : 10;
+              } else {
+                // Commission not yet recorded — look up configured rate
+                try {
+                  const rateSetting = await this.prisma.systemSetting.findUnique({
+                    where: { key: 'global_commission_rate' },
+                  });
+                  commissionRate = rateSetting?.value ? Number(rateSetting.value) : 10;
+                } catch {
+                  commissionRate = 10;
+                }
+                commissionAmount = sellerSubtotal * (commissionRate / 100);
+              }
+
               const netPayout = sellerSubtotal - commissionAmount;
 
               const sellerName =
