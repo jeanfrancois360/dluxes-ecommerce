@@ -7,6 +7,7 @@ import { ShippingSettingsSection } from './shipping-settings';
 import { EasyPostSettingsSection } from './easypost-settings';
 import { SendCloudSettingsSection } from './sendcloud-settings';
 import { EasyShipSettingsSection } from './easyship-settings';
+import { DhlSettingsSection } from './dhl-settings';
 import { ShippingCascadeSettings } from './shipping-cascade-settings';
 
 /**
@@ -29,14 +30,14 @@ export function UnifiedShippingSettingsSection() {
 
       {/* Sub-tabs for different shipping methods */}
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="cascade" className="gap-2">
             <ArrowDownUp className="h-4 w-4" />
-            Cascade Overview
+            Cascade
           </TabsTrigger>
           <TabsTrigger value="rates" className="gap-2">
             <Package className="h-4 w-4" />
-            Manual Rates
+            Manual
           </TabsTrigger>
           <TabsTrigger value="easypost" className="gap-2">
             <Truck className="h-4 w-4" />
@@ -49,6 +50,10 @@ export function UnifiedShippingSettingsSection() {
           <TabsTrigger value="easyship" className="gap-2">
             <Ship className="h-4 w-4" />
             EasyShip
+          </TabsTrigger>
+          <TabsTrigger value="dhl" className="gap-2">
+            <Truck className="h-4 w-4" />
+            DHL
           </TabsTrigger>
         </TabsList>
 
@@ -70,6 +75,10 @@ export function UnifiedShippingSettingsSection() {
 
         <TabsContent value="easyship" className="mt-6">
           <EasyShipSettingsSection />
+        </TabsContent>
+
+        <TabsContent value="dhl" className="mt-6">
+          <DhlSettingsSection />
         </TabsContent>
       </Tabs>
     </div>
