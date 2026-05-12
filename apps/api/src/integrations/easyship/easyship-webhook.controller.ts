@@ -77,10 +77,13 @@ export class EasyshipWebhookController {
 
     switch (event) {
       // Label was successfully created → buyer email: "being prepared"
-      case 'shipment.label.created':
+      case 'shipment.label.created': {
         if (!trackingNumber) return;
+        const labelDedupKey = `easyship:${event}:${trackingNumber}`;
+        if (await this.isDuplicate(labelDedupKey, event, shipmentData)) return;
         await this.sendBuyerEmail(trackingNumber, 'label_purchased', shipmentData);
         break;
+      }
 
       // Tracking status changed → map to out_for_delivery or delivered
       case 'shipment.tracking.status.changed':
@@ -93,6 +96,8 @@ export class EasyshipWebhookController {
           this.logger.log(`Ignoring EasyShip status: ${rawStatus}`);
           return;
         }
+        const trackingDedupKey = `easyship:${event}:${trackingNumber}:${rawStatus}`;
+        if (await this.isDuplicate(trackingDedupKey, event, shipmentData)) return;
         await this.sendBuyerEmail(trackingNumber, internalStatus, shipmentData);
         break;
       }
@@ -100,6 +105,30 @@ export class EasyshipWebhookController {
       default:
         this.logger.log(`Unhandled EasyShip event: ${event}`);
     }
+  }
+
+  /**
+   * Idempotency check — reuses EasyPostWebhookLog as a shared dedup table.
+   * Returns true if this event was already processed (caller should skip).
+   */
+  private async isDuplicate(dedupKey: string, eventType: string, payload: any): Promise<boolean> {
+    const existing = await this.prisma.easyPostWebhookLog.findUnique({
+      where: { eventId: dedupKey },
+    });
+    if (existing) {
+      this.logger.log(`Duplicate EasyShip webhook skipped: ${dedupKey}`);
+      return true;
+    }
+    await this.prisma.easyPostWebhookLog.create({
+      data: {
+        eventId: dedupKey,
+        eventType: `easyship.${eventType}`,
+        status: 'PROCESSED',
+        payload: payload as any,
+        processedAt: new Date(),
+      },
+    });
+    return false;
   }
 
   private async sendBuyerEmail(

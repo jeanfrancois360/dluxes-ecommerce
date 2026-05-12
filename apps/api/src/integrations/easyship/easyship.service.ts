@@ -158,7 +158,9 @@ export class EasyshipService {
               quantity: item.quantity,
               declared_currency: 'USD',
               declared_customs_value: item.value,
-              hs_code: '621790', // Generic HS code for miscellaneous goods
+              // hs_code intentionally omitted — a wrong code (e.g. garments for electronics)
+              // produces incorrect duty estimates. EasyShip returns rates without duty breakdown
+              // when hs_code is absent, which is safer for a multi-category marketplace.
               dimensions: { length: 10, width: 10, height: 10 },
             })),
           },
