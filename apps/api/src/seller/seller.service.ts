@@ -858,7 +858,7 @@ export class SellerService {
     }
 
     // Validate allowed status transitions
-    const allowedStatuses = ['PROCESSING', 'SHIPPED', 'DELIVERED'];
+    const allowedStatuses = ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
     if (!allowedStatuses.includes(status)) {
       throw new ForbiddenException(
         `Sellers can only update order status to: ${allowedStatuses.join(', ')}`
