@@ -5,6 +5,7 @@ import { EasyPostRatesService } from '../integrations/easypost/easypost-rates.se
 import { SendcloudService } from '../integrations/sendcloud/sendcloud.service';
 import { EasyshipService } from '../integrations/easyship/easyship.service';
 import { ShippingService } from '../shipping/shipping.service';
+import { ShippingCacheService } from '../shipping/shipping-cache.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import { PrismaService } from '../database/prisma.service';
 
@@ -126,6 +127,7 @@ export class ShippingTaxService {
     private readonly sendcloudService: SendcloudService,
     private readonly easyshipService: EasyshipService,
     private readonly shippingService: ShippingService,
+    private readonly shippingCache: ShippingCacheService,
     private readonly gelatoOrdersService: GelatoOrdersService,
     private readonly prisma: PrismaService
   ) {}
@@ -347,11 +349,25 @@ export class ShippingTaxService {
     ) {
       this.logger.log(`[SendCloud] Seller country ${sellerCountry} supported, attempting rates...`);
       try {
-        const sendcloudOptions = await this.calculateSendcloudShippingOptions(
-          address,
-          itemsForShipping,
-          totalWeightGrams
+        const scCacheKey = this.shippingCache.buildKey(
+          'sendcloud',
+          sellerCountry,
+          address.country,
+          address.postalCode || '',
+          totalWeightOz
         );
+        let sendcloudOptions = await this.shippingCache.get<ShippingOption[]>(scCacheKey);
+        if (sendcloudOptions) {
+          this.logger.log('[SendCloud] Cache hit — skipping API call');
+        } else {
+          sendcloudOptions = await this.calculateSendcloudShippingOptions(
+            address,
+            itemsForShipping,
+            totalWeightGrams
+          );
+          if (sendcloudOptions.length > 0)
+            await this.shippingCache.set(scCacheKey, sendcloudOptions);
+        }
 
         if (sendcloudOptions.length > 0) {
           this.logger.log(
@@ -382,11 +398,24 @@ export class ShippingTaxService {
         `[EasyPost] Seller country ${sellerCountry || 'unknown'} — attempting to fetch rates...`
       );
       try {
-        const easypostOptions = await this.calculateEasyPostShippingOptions(
-          address,
-          itemsForShipping,
+        const epCacheKey = this.shippingCache.buildKey(
+          'easypost',
+          sellerCountry || 'unknown',
+          address.country,
+          address.postalCode || '',
           totalWeightOz
         );
+        let easypostOptions = await this.shippingCache.get<ShippingOption[]>(epCacheKey);
+        if (easypostOptions) {
+          this.logger.log('[EasyPost] Cache hit — skipping API call');
+        } else {
+          easypostOptions = await this.calculateEasyPostShippingOptions(
+            address,
+            itemsForShipping,
+            totalWeightOz
+          );
+          if (easypostOptions.length > 0) await this.shippingCache.set(epCacheKey, easypostOptions);
+        }
 
         if (easypostOptions.length > 0) {
           this.logger.log(
@@ -412,11 +441,24 @@ export class ShippingTaxService {
     ) {
       this.logger.log(`[EasyShip] Seller country ${sellerCountry} supported, attempting rates...`);
       try {
-        const easyshipOptions = await this.calculateEasyshipShippingOptions(
-          address,
-          itemsForShipping,
-          totalWeightKg
+        const esCacheKey = this.shippingCache.buildKey(
+          'easyship',
+          sellerCountry,
+          address.country,
+          address.postalCode || '',
+          totalWeightOz
         );
+        let easyshipOptions = await this.shippingCache.get<ShippingOption[]>(esCacheKey);
+        if (easyshipOptions) {
+          this.logger.log('[EasyShip] Cache hit — skipping API call');
+        } else {
+          easyshipOptions = await this.calculateEasyshipShippingOptions(
+            address,
+            itemsForShipping,
+            totalWeightKg
+          );
+          if (easyshipOptions.length > 0) await this.shippingCache.set(esCacheKey, easyshipOptions);
+        }
 
         if (easyshipOptions.length > 0) {
           this.logger.log(
@@ -470,33 +512,44 @@ export class ShippingTaxService {
           }
         }
 
-        const dhlRates = await this.dhlRatesService.getSimplifiedRates({
-          originCountryCode: originCountry,
-          originPostalCode: originPostalCode,
-          originCityName: originCity,
-          destinationCountryCode: address.country,
-          destinationPostalCode: address.postalCode || '',
-          destinationCityName: address.city,
-          weight: Math.max(0.5, totalWeightKg), // Minimum 0.5kg
-        });
+        const dhlCacheKey = this.shippingCache.buildKey(
+          'dhl',
+          originCountry,
+          address.country,
+          address.postalCode || '',
+          totalWeightOz
+        );
+        let dhlMapped = await this.shippingCache.get<ShippingOption[]>(dhlCacheKey);
+        if (dhlMapped) {
+          this.logger.log('[DHL] Cache hit — skipping API call');
+        } else {
+          const dhlRates = await this.dhlRatesService.getSimplifiedRates({
+            originCountryCode: originCountry,
+            originPostalCode: originPostalCode,
+            originCityName: originCity,
+            destinationCountryCode: address.country,
+            destinationPostalCode: address.postalCode || '',
+            destinationCityName: address.city,
+            weight: Math.max(0.5, totalWeightKg), // Minimum 0.5kg
+          });
+          dhlMapped =
+            dhlRates?.map((rate) => ({
+              id: rate.id,
+              name: rate.name,
+              description: rate.description,
+              price: rate.price,
+              estimatedDays: rate.estimatedDays,
+              carrier: 'DHL Express',
+              source: 'dhl',
+            })) ?? [];
+          if (dhlMapped.length > 0) await this.shippingCache.set(dhlCacheKey, dhlMapped);
+        }
 
-        if (dhlRates && dhlRates.length > 0) {
+        if (dhlMapped.length > 0) {
           this.logger.log(
-            `[DHL] ✅ SUCCESS - Using DHL Express rates (${dhlRates.length} options)`
+            `[DHL] ✅ SUCCESS - Using DHL Express rates (${dhlMapped.length} options)`
           );
-          return addGelatoCost(
-            applyFreeShipping(
-              dhlRates.map((rate) => ({
-                id: rate.id,
-                name: rate.name,
-                description: rate.description,
-                price: rate.price,
-                estimatedDays: rate.estimatedDays,
-                carrier: 'DHL Express',
-                source: 'dhl',
-              }))
-            )
-          );
+          return addGelatoCost(applyFreeShipping(dhlMapped));
         } else {
           this.logger.warn('[DHL] No rates available, falling back to next provider...');
         }
