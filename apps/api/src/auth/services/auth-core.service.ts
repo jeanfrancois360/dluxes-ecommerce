@@ -29,7 +29,8 @@ const ENFORCED_ROLES = new Set(['SELLER', 'ADMIN', 'SUPER_ADMIN', 'DELIVERY_PART
 
 @Injectable()
 export class AuthCoreService {
-  private readonly MAX_LOGIN_ATTEMPTS_DEFAULT = 5; // fallback when setting unavailable
+  private readonly MAX_LOGIN_ATTEMPTS_DEFAULT = 5; // per-email fallback
+  private readonly MAX_IP_ATTEMPTS = 50; // per-IP threshold (shared NAT tolerance)
   private readonly LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 
   constructor(
@@ -509,41 +510,63 @@ export class AuthCoreService {
   }
 
   /**
-   * Check rate limiting for login attempts
+   * Check rate limiting for login attempts.
+   *
+   * Two independent checks — they must never be combined with OR:
+   *
+   *  1. Per-email: 5 failures (admin-configurable) within 15 min → lock that account.
+   *     Prevents password brute-force against a specific user.
+   *
+   *  2. Per-IP: 50 failures within 15 min → block that IP.
+   *     Prevents credential-stuffing from a single origin.
+   *     Threshold is high to avoid disrupting legitimate users behind shared NAT/VPN.
+   *
+   * Combining them with OR (the previous behaviour) caused User A's failures to
+   * immediately lock out every other user on the same IP — the bug being fixed here.
    */
   private async checkRateLimit(email: string, ipAddress: string) {
-    let maxLoginAttempts = this.MAX_LOGIN_ATTEMPTS_DEFAULT;
+    let maxEmailAttempts = this.MAX_LOGIN_ATTEMPTS_DEFAULT;
     try {
       const setting = await this.settingsService.getSetting('max_login_attempts');
       if (setting?.value !== null && setting?.value !== undefined) {
         const parsed = Number(setting.value);
         if (!isNaN(parsed) && parsed > 0) {
-          maxLoginAttempts = parsed;
+          maxEmailAttempts = parsed;
         }
       }
     } catch {
       // Use fallback silently
     }
 
-    const recentAttempts = await this.prisma.loginAttempt.findMany({
-      where: {
-        OR: [{ email }, { ipAddress }],
-        createdAt: {
-          gte: new Date(Date.now() - this.LOCKOUT_DURATION),
-        },
-      },
+    const since = new Date(Date.now() - this.LOCKOUT_DURATION);
+
+    // ── 1. Per-email check ──────────────────────────────────────────────────
+    const emailFailures = await this.prisma.loginAttempt.count({
+      where: { email, success: false, createdAt: { gte: since } },
     });
 
-    const failedAttempts = recentAttempts.filter((attempt) => !attempt.success);
-
-    if (failedAttempts.length >= maxLoginAttempts) {
-      const oldestAttempt = failedAttempts[0];
-      const timeRemaining = Math.ceil(
-        (oldestAttempt.createdAt.getTime() + this.LOCKOUT_DURATION - Date.now()) / 1000 / 60
-      );
+    if (emailFailures >= maxEmailAttempts) {
+      const oldest = await this.prisma.loginAttempt.findFirst({
+        where: { email, success: false },
+        orderBy: { createdAt: 'asc' },
+      });
+      const timeRemaining = oldest
+        ? Math.ceil((oldest.createdAt.getTime() + this.LOCKOUT_DURATION - Date.now()) / 60000)
+        : 15;
 
       throw new TooManyRequestsException(
         `Too many failed login attempts. Please try again in ${timeRemaining} minutes.`
+      );
+    }
+
+    // ── 2. Per-IP check (high threshold — shared NAT tolerance) ────────────
+    const ipFailures = await this.prisma.loginAttempt.count({
+      where: { ipAddress, success: false, createdAt: { gte: since } },
+    });
+
+    if (ipFailures >= this.MAX_IP_ATTEMPTS) {
+      throw new TooManyRequestsException(
+        `Too many login attempts from your network. Please try again in 15 minutes.`
       );
     }
   }
