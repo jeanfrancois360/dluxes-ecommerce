@@ -8,6 +8,9 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { SellerShipment, ShipmentStatus, OrderStatus, UserRole, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { SendcloudService } from '../integrations/sendcloud/sendcloud.service';
+import { EasyshipService } from '../integrations/easyship/easyship.service';
+import { DhlShipmentService } from '../integrations/dhl/dhl-shipment.service';
 
 interface CreateShipmentDto {
   orderId: string;
@@ -20,6 +23,8 @@ interface CreateShipmentDto {
   shippingCost?: number;
   weight?: number;
   notes?: string;
+  // Auto-generation flags
+  autoGenerate?: boolean; // trigger provider API to create label
 }
 
 interface UpdateShipmentDto {
@@ -37,7 +42,12 @@ interface UpdateShipmentDto {
 export class ShipmentsService {
   private readonly logger = new Logger(ShipmentsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly sendcloudService: SendcloudService,
+    private readonly easyshipService: EasyshipService,
+    private readonly dhlShipmentService: DhlShipmentService
+  ) {}
 
   /**
    * Create a new shipment for seller's order items
@@ -86,6 +96,143 @@ export class ShipmentsService {
     if (existingShipmentItems.length > 0) {
       const duplicateItems = existingShipmentItems.map((si) => si.orderItemId).join(', ');
       throw new BadRequestException(`Items already in shipment: ${duplicateItems}`);
+    }
+
+    // ── Auto-generate label via shipping provider API ──────────────────────────
+    // If autoGenerate=true, delegate to the provider that was used at checkout.
+    // The provider's createLabel/createShipment method persists the SellerShipment
+    // itself and returns the tracking info, so we return early here.
+    if (dto.autoGenerate) {
+      const order = await this.prisma.order.findUnique({
+        where: { id: dto.orderId },
+        include: {
+          shippingAddress: true,
+          items: { include: { product: true } },
+          user: true,
+        },
+      });
+
+      if (!order) throw new NotFoundException('Order not found');
+
+      const provider = order.shippingProvider as string | null;
+      const providerData = order.shippingProviderData as any;
+      const addr = order.shippingAddress as any;
+
+      if (provider === 'SENDCLOUD') {
+        const weightGrams = order.items.reduce((sum: number, item: any) => {
+          const kg = item.product?.weight ? Number(item.product.weight) : 0.5;
+          return sum + item.quantity * kg * 1000;
+        }, 0);
+
+        const serviceCode = providerData?.rateId || providerData?.serviceCode;
+        if (!serviceCode) {
+          throw new BadRequestException(
+            'Cannot auto-generate: SendCloud service code not recorded on this order. Use manual tracking entry instead.'
+          );
+        }
+
+        const result = await this.sendcloudService.createLabel({
+          orderId: dto.orderId,
+          storeId: dto.storeId,
+          serviceCode: String(serviceCode),
+          toAddress: {
+            name:
+              `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim() || 'Customer',
+            address: addr?.address1 || addr?.street || '',
+            city: addr?.city || '',
+            postalCode: addr?.postalCode || addr?.zipCode || '',
+            country: addr?.country || 'BE',
+            phone: addr?.phone || undefined,
+          },
+          fromAddress: {
+            name: store.name || 'NextPik',
+            address: '',
+            city: '',
+            postalCode: '',
+            country: 'BE',
+          },
+          weightGrams: Math.max(10, Math.round(weightGrams)),
+          orderNumber: order.orderNumber,
+        });
+
+        // Add shipment items to the created shipment
+        await this.prisma.shipmentItem.createMany({
+          data: orderItems.map((item) => ({
+            shipmentId: result.sellerShipmentId,
+            orderItemId: item.id,
+            quantity: item.quantity,
+          })),
+          skipDuplicates: true,
+        });
+
+        await this.updateOrderStatusAfterShipmentChange(dto.orderId);
+        return this.prisma.sellerShipment.findUniqueOrThrow({
+          where: { id: result.sellerShipmentId },
+          include: { order: true, store: true },
+        });
+      }
+
+      if (provider === 'EASYSHIP') {
+        const totalWeightKg = order.items.reduce((sum: number, item: any) => {
+          const kg = item.product?.weight ? Number(item.product.weight) : 0.5;
+          return sum + item.quantity * kg;
+        }, 0);
+
+        const courierId = providerData?.rateId || providerData?.courierId;
+        if (!courierId) {
+          throw new BadRequestException(
+            'Cannot auto-generate: EasyShip courier ID not recorded on this order. Use manual tracking entry instead.'
+          );
+        }
+
+        const result = await this.easyshipService.createShipment({
+          orderId: dto.orderId,
+          storeId: dto.storeId,
+          courierId: String(courierId),
+          toAddress: {
+            name:
+              `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim() || 'Customer',
+            street: addr?.address1 || addr?.street || '',
+            city: addr?.city || '',
+            postalCode: addr?.postalCode || addr?.zipCode || '',
+            country: addr?.country || 'US',
+            phone: addr?.phone || undefined,
+          },
+          fromAddress: {
+            name: store.name || 'NextPik',
+            street: '',
+            city: '',
+            postalCode: '',
+            country: 'US',
+          },
+          items: order.items.map((item: any) => ({
+            description: item.product?.name || 'Item',
+            quantity: item.quantity,
+            value: Number(item.price),
+            weightKg: item.product?.weight ? Number(item.product.weight) : 0.5,
+          })),
+          totalWeightKg: Math.max(0.01, totalWeightKg),
+          orderNumber: order.orderNumber,
+        });
+
+        await this.prisma.shipmentItem.createMany({
+          data: orderItems.map((item) => ({
+            shipmentId: result.sellerShipmentId,
+            orderItemId: item.id,
+            quantity: item.quantity,
+          })),
+          skipDuplicates: true,
+        });
+
+        await this.updateOrderStatusAfterShipmentChange(dto.orderId);
+        return this.prisma.sellerShipment.findUniqueOrThrow({
+          where: { id: result.sellerShipmentId },
+          include: { order: true, store: true },
+        });
+      }
+
+      // For other providers (DHL, ZONE, MANUAL) fall through to manual creation
+      // but still generate the shipment record (they can paste tracking later)
     }
 
     // Generate unique shipment number
