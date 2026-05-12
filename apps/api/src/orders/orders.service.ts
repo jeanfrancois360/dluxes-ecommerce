@@ -532,7 +532,20 @@ export class OrdersService {
           pickupStoreId,
           pickupCode,
           pickupInstructions,
-          shippingProvider: isPickup ? 'SELF_PICKUP' : undefined,
+          shippingProvider: isPickup
+            ? 'SELF_PICKUP'
+            : selectedShipping?.source?.toUpperCase() || undefined,
+          shippingProviderData: isPickup
+            ? undefined
+            : selectedShipping
+              ? {
+                  source: selectedShipping.source,
+                  carrier: selectedShipping.carrier,
+                  name: selectedShipping.name,
+                  price: selectedShipping.price,
+                  estimatedDays: selectedShipping.estimatedDays,
+                }
+              : undefined,
 
           // Store idempotency key to prevent duplicate orders
           metadata: idempotencyKey ? { idempotencyKey } : null,
@@ -1045,7 +1058,20 @@ export class OrdersService {
           pickupStoreId,
           pickupCode,
           pickupInstructions,
-          shippingProvider: isPickup ? 'SELF_PICKUP' : undefined,
+          shippingProvider: isPickup
+            ? 'SELF_PICKUP'
+            : selectedShipping?.source?.toUpperCase() || undefined,
+          shippingProviderData: isPickup
+            ? undefined
+            : selectedShipping
+              ? {
+                  source: selectedShipping.source,
+                  carrier: selectedShipping.carrier,
+                  name: selectedShipping.name,
+                  price: selectedShipping.price,
+                  estimatedDays: selectedShipping.estimatedDays,
+                }
+              : undefined,
           // Store idempotency key to prevent duplicate orders
           metadata: idempotencyKey ? { idempotencyKey } : null,
           items: {
