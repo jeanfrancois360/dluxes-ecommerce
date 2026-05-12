@@ -190,6 +190,10 @@ export class EasyshipService {
         origin_address: originAddress,
         destination_address: destinationAddress,
         incoterms: 'DDU',
+        // Normalize all returned rates to USD so they are consistent with
+        // EasyPost and SendCloud rates.  The final per-buyer currency conversion
+        // is applied later by CurrencyService when building the order totals.
+        output_currency: 'USD',
         parcels: [
           {
             total_actual_weight: request.weightKg,

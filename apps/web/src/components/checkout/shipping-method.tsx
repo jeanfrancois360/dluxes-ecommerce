@@ -8,8 +8,6 @@ import {
   calculateShippingCost,
   getEstimatedDeliveryDate,
   FREE_SHIPPING_THRESHOLD,
-  getAmountNeededForFreeShipping,
-  SHIPPING_METHODS as SHIPPING_CONFIG,
 } from '@/lib/shipping-config';
 import { useTranslations } from 'next-intl';
 
