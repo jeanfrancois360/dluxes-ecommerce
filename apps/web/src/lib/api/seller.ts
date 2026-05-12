@@ -253,6 +253,7 @@ export interface SellerOrderDetail {
       name: string;
       slug: string;
       heroImage: string | null;
+      weight?: number | null; // kg — may be present if backend includes it
     };
   }>;
   shippingAddress: {
