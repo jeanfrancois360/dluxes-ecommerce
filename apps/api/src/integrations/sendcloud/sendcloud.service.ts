@@ -42,6 +42,37 @@ export interface SendcloudGetRatesRequest {
   }>;
 }
 
+export interface SendcloudAddress {
+  name: string;
+  company?: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string; // ISO 2
+  phone?: string;
+  email?: string;
+}
+
+export interface SendcloudPurchaseLabelDto {
+  orderId: string;
+  storeId: string;
+  serviceCode: string; // shipping method ID from getRates (string form of numeric ID)
+  toAddress: SendcloudAddress;
+  fromAddress: SendcloudAddress;
+  weightGrams: number;
+  orderNumber?: string;
+}
+
+export interface SendcloudLabelResult {
+  sellerShipmentId: string;
+  trackingNumber: string;
+  trackingUrl: string | null;
+  labelUrl: string | null; // PDF for thermal printer
+  labelUrlA4: string | null; // A4 format
+  sendcloudParcelId: number;
+  carrier: string;
+}
+
 @Injectable()
 export class SendcloudService {
   private readonly logger = new Logger(SendcloudService.name);
@@ -171,6 +202,111 @@ export class SendcloudService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Purchase a shipping label from Sendcloud.
+   * Creates a parcel via POST /parcels and stores the result in SellerShipment.
+   */
+  async createLabel(dto: SendcloudPurchaseLabelDto): Promise<SendcloudLabelResult> {
+    if (!this.client) {
+      throw new Error('Sendcloud is not configured');
+    }
+
+    // POST /parcels — single parcel creation
+    const parcelPayload = {
+      parcel: {
+        name: dto.toAddress.name,
+        company_name: dto.toAddress.company || '',
+        address: dto.toAddress.address,
+        city: dto.toAddress.city,
+        postal_code: dto.toAddress.postalCode,
+        country: { iso_2: dto.toAddress.country.toUpperCase() },
+        telephone: dto.toAddress.phone || '',
+        email: dto.toAddress.email || '',
+        // Weight must be a string in kg with 3 decimal places per SendCloud docs
+        weight: (dto.weightGrams / 1000).toFixed(3),
+        shipment: { id: parseInt(dto.serviceCode, 10) },
+        order_number: dto.orderNumber || dto.orderId,
+        request_label: true,
+      },
+    };
+
+    let parcel: any;
+    try {
+      const response = await this.client.post('/parcels', parcelPayload);
+      parcel = response.data?.parcel;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        this.logger.error(
+          `Sendcloud parcel creation failed: ${error.response?.status} - ${JSON.stringify(error.response?.data)}`
+        );
+        throw new Error(
+          `Sendcloud label creation failed: ${error.response?.data?.error?.message || error.message}`
+        );
+      }
+      throw error;
+    }
+
+    if (!parcel) {
+      throw new Error('Sendcloud returned an empty parcel response');
+    }
+
+    const trackingNumber: string = parcel.tracking_number || '';
+    const trackingUrl: string | null = parcel.tracking_url || null;
+    const labelUrl: string | null = parcel.label?.label_printer || null;
+    const labelUrlA4: string | null = parcel.label?.normal_printer || null;
+    const carrier: string = parcel.carrier?.code || 'sendcloud';
+
+    // Generate a short shipment number
+    const shipmentNumber = `SC-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+    // Persist in SellerShipment (metadata holds provider-specific fields)
+    const sellerShipment = await this.prisma.sellerShipment.create({
+      data: {
+        orderId: dto.orderId,
+        storeId: dto.storeId,
+        shipmentNumber,
+        status: 'LABEL_CREATED',
+        carrier,
+        trackingNumber: trackingNumber || null,
+        trackingUrl,
+        metadata: {
+          provider: 'SENDCLOUD',
+          sendcloudParcelId: parcel.id,
+          serviceCode: dto.serviceCode,
+          labelUrl,
+          labelUrlA4,
+          weightGrams: dto.weightGrams,
+        } as any,
+      },
+    });
+
+    // Persist shipping provider on the order so the cascade remembers which provider won
+    await this.prisma.order.update({
+      where: { id: dto.orderId },
+      data: {
+        shippingProvider: 'SENDCLOUD',
+        shippingProviderData: {
+          shipmentId: sellerShipment.id,
+          sendcloudParcelId: parcel.id,
+          trackingNumber,
+          carrier,
+        } as any,
+      },
+    });
+
+    this.logger.log(`[Sendcloud] Label created — parcel ${parcel.id}, tracking ${trackingNumber}`);
+
+    return {
+      sellerShipmentId: sellerShipment.id,
+      trackingNumber,
+      trackingUrl,
+      labelUrl,
+      labelUrlA4,
+      sendcloudParcelId: parcel.id,
+      carrier,
+    };
   }
 
   /**

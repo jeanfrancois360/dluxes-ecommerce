@@ -44,6 +44,43 @@ export interface EasyshipGetRatesRequest {
   }>;
 }
 
+export interface EasyshipAddress {
+  name: string;
+  company?: string;
+  street: string;
+  city: string;
+  state?: string;
+  postalCode: string;
+  country: string; // ISO 2
+  phone?: string;
+  email?: string;
+}
+
+export interface EasyshipPurchaseLabelDto {
+  orderId: string;
+  storeId: string;
+  courierId: string; // from getRates serviceCode (courier_service.id)
+  toAddress: EasyshipAddress;
+  fromAddress: EasyshipAddress;
+  items: Array<{
+    description: string;
+    quantity: number;
+    value: number; // declared customs value per unit (USD)
+    weightKg: number;
+  }>;
+  totalWeightKg: number;
+  orderNumber?: string;
+}
+
+export interface EasyshipLabelResult {
+  sellerShipmentId: string;
+  easyshipShipmentId: string;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  labelUrl: string | null;
+  courierName: string;
+}
+
 @Injectable()
 export class EasyshipService {
   private readonly logger = new Logger(EasyshipService.name);
@@ -202,6 +239,163 @@ export class EasyshipService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Purchase a shipping label from EasyShip.
+   * Creates a shipment via POST /shipments, then fetches the label PDF URL.
+   * Stores the result in SellerShipment.
+   */
+  async createShipment(dto: EasyshipPurchaseLabelDto): Promise<EasyshipLabelResult> {
+    if (!this.client) {
+      throw new Error('EasyShip is not configured');
+    }
+
+    // Build origin address
+    const COUNTRY_DEFAULT_STATE: Record<string, { state: string; city: string; postal: string }> = {
+      US: { state: 'NY', city: 'New York', postal: '10001' },
+      AU: { state: 'NSW', city: 'Sydney', postal: '2000' },
+      CA: { state: 'ON', city: 'Toronto', postal: 'M5H 2N2' },
+    };
+    const fromCountry = dto.fromAddress.country.toUpperCase();
+    const countryDefaults = COUNTRY_DEFAULT_STATE[fromCountry];
+
+    const originAddress: any = {
+      country_alpha2: fromCountry,
+      city: dto.fromAddress.city || countryDefaults?.city || 'City',
+      postal_code: dto.fromAddress.postalCode || countryDefaults?.postal || '1000',
+      address_line_1: dto.fromAddress.street,
+      contact_name: dto.fromAddress.name,
+      company_name: dto.fromAddress.company || dto.fromAddress.name,
+      phone_number: dto.fromAddress.phone || '',
+      email: dto.fromAddress.email || '',
+      ...(dto.fromAddress.state
+        ? { state: dto.fromAddress.state }
+        : countryDefaults
+          ? { state: countryDefaults.state }
+          : {}),
+    };
+
+    const toCountry = dto.toAddress.country.toUpperCase();
+    const destinationAddress: any = {
+      country_alpha2: toCountry,
+      city: dto.toAddress.city,
+      postal_code: dto.toAddress.postalCode,
+      address_line_1: dto.toAddress.street,
+      contact_name: dto.toAddress.name,
+      company_name: dto.toAddress.company || dto.toAddress.name,
+      phone_number: dto.toAddress.phone || '',
+      email: dto.toAddress.email || '',
+      ...(dto.toAddress.state ? { state: dto.toAddress.state } : {}),
+      ...(toCountry === 'US' && !dto.toAddress.state ? { state: 'NY' } : {}),
+    };
+
+    // POST /shipments — create and book in one step
+    let shipmentData: any;
+    try {
+      const response = await this.client.post('/shipments', {
+        origin_address: originAddress,
+        destination_address: destinationAddress,
+        courier_id: dto.courierId,
+        incoterms: 'DDU',
+        order_data: {
+          platform_order_number: dto.orderNumber || dto.orderId,
+        },
+        parcels: [
+          {
+            total_actual_weight: dto.totalWeightKg,
+            items: dto.items.map((item) => ({
+              description: item.description,
+              quantity: item.quantity,
+              declared_currency: 'USD',
+              declared_customs_value: item.value,
+              actual_weight: item.weightKg,
+              dimensions: { length: 10, width: 10, height: 10 },
+            })),
+          },
+        ],
+      });
+      shipmentData = response.data?.shipment ?? response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        this.logger.error(
+          `EasyShip shipment creation failed: ${error.response?.status} - ${JSON.stringify(error.response?.data)}`
+        );
+        throw new Error(
+          `EasyShip label creation failed: ${error.response?.data?.error?.message || error.response?.data?.message || error.message}`
+        );
+      }
+      throw error;
+    }
+
+    if (!shipmentData) {
+      throw new Error('EasyShip returned an empty shipment response');
+    }
+
+    const easyshipShipmentId: string = shipmentData.easyship_shipment_id || shipmentData.id;
+    const trackingNumber: string | null = shipmentData.tracking_number || null;
+    const trackingUrl: string | null = shipmentData.tracking_page_url || null;
+    const courierName: string = shipmentData.selected_courier?.name || dto.courierId;
+
+    // Fetch label URL — EasyShip generates label asynchronously; poll /label endpoint
+    let labelUrl: string | null = null;
+    try {
+      const labelResponse = await this.client.get(`/shipments/${easyshipShipmentId}/label`, {
+        params: { format: 'pdf' },
+      });
+      labelUrl = labelResponse.data?.label_url || labelResponse.data?.labels?.[0]?.url || null;
+    } catch (labelError) {
+      // Non-fatal — label may not be ready yet; seller can retry later
+      this.logger.warn(
+        `[EasyShip] Label not yet available for shipment ${easyshipShipmentId}: ${labelError.message}`
+      );
+    }
+
+    const shipmentNumber = `ES-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+    const sellerShipment = await this.prisma.sellerShipment.create({
+      data: {
+        orderId: dto.orderId,
+        storeId: dto.storeId,
+        shipmentNumber,
+        status: 'LABEL_CREATED',
+        carrier: courierName,
+        trackingNumber,
+        trackingUrl,
+        metadata: {
+          provider: 'EASYSHIP',
+          easyshipShipmentId,
+          courierId: dto.courierId,
+          labelUrl,
+        } as any,
+      },
+    });
+
+    await this.prisma.order.update({
+      where: { id: dto.orderId },
+      data: {
+        shippingProvider: 'EASYSHIP',
+        shippingProviderData: {
+          shipmentId: sellerShipment.id,
+          easyshipShipmentId,
+          trackingNumber,
+          carrier: courierName,
+        } as any,
+      },
+    });
+
+    this.logger.log(
+      `[EasyShip] Shipment created — ${easyshipShipmentId}, tracking ${trackingNumber}`
+    );
+
+    return {
+      sellerShipmentId: sellerShipment.id,
+      easyshipShipmentId,
+      trackingNumber,
+      trackingUrl,
+      labelUrl,
+      courierName,
+    };
   }
 
   /**

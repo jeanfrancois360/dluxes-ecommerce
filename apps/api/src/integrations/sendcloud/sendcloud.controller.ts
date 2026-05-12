@@ -3,7 +3,11 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { SendcloudService, SendcloudGetRatesRequest } from './sendcloud.service';
+import {
+  SendcloudService,
+  SendcloudGetRatesRequest,
+  SendcloudPurchaseLabelDto,
+} from './sendcloud.service';
 
 @Controller('sendcloud')
 export class SendcloudController {
@@ -17,6 +21,17 @@ export class SendcloudController {
   @UseGuards(JwtAuthGuard)
   async getRates(@Body() request: SendcloudGetRatesRequest) {
     return this.sendcloudService.getRates(request);
+  }
+
+  /**
+   * Purchase a shipping label from Sendcloud.
+   * Only sellers and admins may purchase labels.
+   */
+  @Post('purchase')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async purchaseLabel(@Body() dto: SendcloudPurchaseLabelDto) {
+    return this.sendcloudService.createLabel(dto);
   }
 
   /**
