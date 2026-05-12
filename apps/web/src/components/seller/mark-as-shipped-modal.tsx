@@ -287,23 +287,26 @@ export function MarkAsShippedModal({
                     </div>
                   </div>
 
-                  {/* Auto-Generate Toggle */}
-                  <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={useAutoGenerate}
-                        onChange={(e) => setUseAutoGenerate(e.target.checked)}
-                        className="w-5 h-5 text-gold focus:ring-gold border-neutral-300 rounded"
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium text-blue-900">{t('generateTracking')}</p>
-                        <p className="text-sm text-blue-700 mt-0.5">
-                          Auto-generate via carrier API (DHL Express, EasyShip, SendCloud)
-                        </p>
-                      </div>
-                    </label>
-                  </div>
+                  {/* Auto-Generate Toggle — only relevant for EasyPost/Zone/Manual orders.
+                      SendCloud / EasyShip / DHL sellers create labels in their own dashboards. */}
+                  {isEasyPost && (
+                    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={useAutoGenerate}
+                          onChange={(e) => setUseAutoGenerate(e.target.checked)}
+                          className="w-5 h-5 text-gold focus:ring-gold border-neutral-300 rounded"
+                        />
+                        <div className="flex-1">
+                          <p className="font-medium text-blue-900">{t('generateTracking')}</p>
+                          <p className="text-sm text-blue-700 mt-0.5">
+                            Auto-generate via carrier API (DHL Express)
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  )}
 
                   {/* Provider context banner */}
                   {shippingProvider && shippingProvider !== 'EASYPOST' && (

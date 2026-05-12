@@ -503,9 +503,8 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
   }
 
   const canUpdateStatus = !['DELIVERED', 'CANCELLED', 'REFUNDED'].includes(order.status);
-  const canShip =
-    order.status === 'PROCESSING' &&
-    (order.paymentStatus === 'PAID' || order.paymentStatus === 'PENDING');
+  // Only allow label creation / shipment for paid orders
+  const canShip = order.status === 'PROCESSING' && order.paymentStatus === 'PAID';
 
   const sellerTotals = (order as any).sellerTotals || {
     subtotal: order.items.reduce((sum, item) => sum + Number(item.total), 0),
@@ -1035,9 +1034,18 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                         disabled={updating}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] disabled:opacity-50 disabled:cursor-not-allowed appearance-none transition-all"
                       >
-                        <option value="PENDING">Pending</option>
-                        <option value="CONFIRMED">Confirmed</option>
-                        <option value="PROCESSING">Processing</option>
+                        {/* Always show current status */}
+                        <option value={order.status}>
+                          {ORDER_STATUS_CONFIG[order.status]?.label ?? order.status}
+                        </option>
+                        {/* Only show valid forward transitions */}
+                        {order.status === 'PENDING' && <option value="CONFIRMED">Confirmed</option>}
+                        {order.status === 'PENDING' && (
+                          <option value="PROCESSING">Processing</option>
+                        )}
+                        {order.status === 'CONFIRMED' && (
+                          <option value="PROCESSING">Processing</option>
+                        )}
                       </select>
                       {updating && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -1272,10 +1280,17 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                       <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center">
                         <Truck className="w-5 h-5 text-gray-300" />
                       </div>
-                      <p className="text-xs text-gray-500 leading-relaxed">
-                        Order must be in <strong className="text-gray-700">Processing</strong>{' '}
-                        status to create a shipment.
-                      </p>
+                      {order.paymentStatus !== 'PAID' && order.status === 'PROCESSING' ? (
+                        <p className="text-xs text-amber-600 leading-relaxed">
+                          Waiting for <strong>payment confirmation</strong> before shipment can be
+                          created.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                          Order must be in <strong className="text-gray-700">Processing</strong>{' '}
+                          status to create a shipment.
+                        </p>
+                      )}
                     </div>
                   )}
 
