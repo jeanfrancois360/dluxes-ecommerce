@@ -53,7 +53,7 @@ import { PaymentForm } from '@/components/checkout/payment-form';
 import { OrderSummary } from '@/components/checkout/order-summary';
 import { ShippingSummaryCard } from '@/components/checkout/shipping-summary-card';
 import { CheckoutSkeleton } from '@/components/loading/skeleton';
-import { calculateShippingCost, getShippingMethodById } from '@/lib/shipping-config';
+import { getShippingMethodById } from '@/lib/shipping-config';
 import { CheckoutUpsellAd } from '@/components/ads';
 
 /**
