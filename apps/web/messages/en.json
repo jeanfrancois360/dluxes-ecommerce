@@ -4007,7 +4007,8 @@
         "paid": "Paid",
         "pending": "Pending",
         "failed": "Failed",
-        "refunded": "Refunded"
+        "refunded": "Refunded",
+        "cancelled": "Cancelled"
       },
       "dateRange": {
         "today": "Today",

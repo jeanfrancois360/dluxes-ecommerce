@@ -4344,7 +4344,8 @@
         "paid": "Payée",
         "pending": "En attente",
         "failed": "Échouée",
-        "refunded": "Remboursée"
+        "refunded": "Remboursée",
+        "cancelled": "Annulé"
       },
       "dateRange": {
         "today": "Aujourd'hui",

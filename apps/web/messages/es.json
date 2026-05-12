@@ -4726,7 +4726,8 @@
         "paid": "Pagado",
         "pending": "Pendiente",
         "failed": "Fallido",
-        "refunded": "Reembolsado"
+        "refunded": "Reembolsado",
+        "cancelled": "Cancelado"
       },
       "dateRange": {
         "today": "Hoy",
