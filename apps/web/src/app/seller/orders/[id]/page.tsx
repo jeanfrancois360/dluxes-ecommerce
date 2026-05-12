@@ -1587,6 +1587,23 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
           shippingProvider={order.shippingProvider ?? undefined}
           prefillCarrier={order.shippingProviderData?.carrier ?? undefined}
           prefillServiceName={order.shippingProviderData?.name ?? undefined}
+          prefillWeight={
+            order.items.reduce(
+              (sum, item) =>
+                sum + item.quantity * (item.product.weight ? Number(item.product.weight) : 0.5),
+              0
+            ) || undefined
+          }
+          prefillEstimatedDays={
+            order.shippingProviderData?.estimatedDays != null
+              ? Number(order.shippingProviderData.estimatedDays)
+              : undefined
+          }
+          prefillShippingCost={
+            order.shippingProviderData?.price != null
+              ? Number(order.shippingProviderData.price)
+              : undefined
+          }
           onSuccess={() => {
             mutateShipments();
             mutate();

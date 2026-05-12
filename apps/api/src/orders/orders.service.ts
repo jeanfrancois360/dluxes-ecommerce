@@ -540,6 +540,7 @@ export class OrdersService {
             : selectedShipping
               ? {
                   source: selectedShipping.source,
+                  serviceCode: selectedShipping.id, // provider's rate/method ID (serviceCode for SendCloud/EasyShip)
                   carrier: selectedShipping.carrier,
                   name: selectedShipping.name,
                   price: selectedShipping.price,
@@ -1066,6 +1067,7 @@ export class OrdersService {
             : selectedShipping
               ? {
                   source: selectedShipping.source,
+                  serviceCode: selectedShipping.id, // provider's rate/method ID (serviceCode for SendCloud/EasyShip)
                   carrier: selectedShipping.carrier,
                   name: selectedShipping.name,
                   price: selectedShipping.price,

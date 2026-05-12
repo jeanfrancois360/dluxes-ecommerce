@@ -299,6 +299,7 @@ export interface SellerOrderDetail {
   shippingProvider?: string | null;
   shippingProviderData?: {
     source?: string;
+    serviceCode?: string; // provider rate/method ID saved at checkout
     carrier?: string;
     name?: string;
     price?: number;
