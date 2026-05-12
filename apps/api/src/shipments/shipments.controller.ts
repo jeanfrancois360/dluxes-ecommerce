@@ -105,6 +105,11 @@ class CreateShipmentDto {
   @IsString()
   trackingUrl?: string;
 
+  // Auto-generation flag — triggers provider API (SendCloud, EasyShip, etc.)
+  @IsOptional()
+  @IsBoolean()
+  autoGenerate?: boolean;
+
   // DHL Auto-generation fields
   @IsOptional()
   @IsBoolean()
