@@ -50,8 +50,16 @@ export class EasyPostShipmentService {
       throw new BadRequestException('Selected rate not found');
     }
 
-    // Buy the shipment
-    const boughtShipment = await client.Shipment.buy(shipment.id, dto.rateId);
+    // Buy the shipment (30 s timeout — EasyPost label purchase can be slow)
+    const boughtShipment = await Promise.race([
+      client.Shipment.buy(shipment.id, dto.rateId),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('EasyPost label purchase timed out after 30 seconds')),
+          30_000
+        )
+      ),
+    ]);
 
     // Store in database
     const easypostShipment = await this.prisma.easyPostShipment.create({
