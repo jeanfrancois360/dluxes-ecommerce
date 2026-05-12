@@ -221,7 +221,7 @@ export class SendcloudService {
         address: dto.toAddress.address,
         city: dto.toAddress.city,
         postal_code: dto.toAddress.postalCode,
-        country: { iso_2: dto.toAddress.country.toUpperCase() },
+        country: dto.toAddress.country.toUpperCase(), // SendCloud expects plain ISO-2 string
         telephone: dto.toAddress.phone || '',
         email: dto.toAddress.email || '',
         // Weight must be a string in kg with 3 decimal places per SendCloud docs
@@ -238,14 +238,35 @@ export class SendcloudService {
       parcel = response.data?.parcel;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const errMsg = error.response?.data?.error?.message || error.message;
         this.logger.error(
-          `Sendcloud parcel creation failed: ${error.response?.status} - ${JSON.stringify(error.response?.data)}`
+          `Sendcloud parcel creation failed: ${status} - ${JSON.stringify(error.response?.data)}`
         );
-        throw new Error(
-          `Sendcloud label creation failed: ${error.response?.data?.error?.message || error.message}`
-        );
+
+        // 412 = carrier account not configured for label generation.
+        // Try again without request_label to at least register the parcel.
+        if (status === 412) {
+          this.logger.warn(
+            'Sendcloud label generation not available (412) — creating parcel without label.'
+          );
+          try {
+            const fallbackResponse = await this.client.post('/parcels', {
+              parcel: { ...parcelPayload.parcel, request_label: false },
+            });
+            parcel = fallbackResponse.data?.parcel;
+            if (!parcel) throw new Error('empty');
+          } catch (fallbackErr) {
+            throw new Error(
+              `Sendcloud label creation failed: ${errMsg}. Label generation requires carrier contracts in your SendCloud account.`
+            );
+          }
+        } else {
+          throw new Error(`Sendcloud label creation failed: ${errMsg}`);
+        }
+      } else {
+        throw error;
       }
-      throw error;
     }
 
     if (!parcel) {
@@ -267,7 +288,7 @@ export class SendcloudService {
         orderId: dto.orderId,
         storeId: dto.storeId,
         shipmentNumber,
-        status: 'LABEL_CREATED',
+        status: trackingNumber ? 'LABEL_CREATED' : 'PROCESSING',
         carrier,
         trackingNumber: trackingNumber || null,
         trackingUrl,
