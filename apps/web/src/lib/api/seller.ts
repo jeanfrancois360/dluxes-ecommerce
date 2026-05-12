@@ -294,6 +294,16 @@ export interface SellerOrderDetail {
     name: string;
     pickupAddress?: string | null;
   } | null;
+  // Shipping provider — persisted from checkout cascade selection
+  shippingProvider?: string | null;
+  shippingProviderData?: {
+    source?: string;
+    carrier?: string;
+    name?: string;
+    price?: number;
+    estimatedDays?: string | number;
+    rateId?: string;
+  } | null;
 }
 
 // Inquiry Types

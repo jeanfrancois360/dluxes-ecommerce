@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
 import { DhlRatesService } from '../integrations/dhl/dhl-rates.service';
 import { EasyPostRatesService } from '../integrations/easypost/easypost-rates.service';
@@ -121,7 +120,6 @@ export class ShippingTaxService {
   private readonly logger = new Logger(ShippingTaxService.name);
 
   constructor(
-    private readonly configService: ConfigService,
     private readonly settingsService: SettingsService,
     private readonly dhlRatesService: DhlRatesService,
     private readonly easyPostRatesService: EasyPostRatesService,
@@ -280,9 +278,6 @@ export class ShippingTaxService {
     );
     const totalWeightKg = totalWeightGrams / 1000;
     const totalWeightOz = totalWeightGrams / 28.35; // Convert to ounces for EasyPost
-
-    // Get shipping mode from settings
-    const shippingMode = await this.settingsService.getShippingMode();
 
     // Helper function to add Gelato cost to shipping options (for mixed carts)
     const addGelatoCost = (options: ShippingOption[]): ShippingOption[] => {
@@ -501,55 +496,7 @@ export class ShippingTaxService {
       }
     }
 
-    // TIER 3 (LEGACY): Try DHL API if mode is 'dhl_api' or 'hybrid' — worldwide via Third Country service
-    if (shippingMode === 'dhl_api' || shippingMode === 'hybrid') {
-      try {
-        const dhlOptions = await this.calculateDhlShippingOptions(
-          address,
-          itemsForShipping,
-          subtotal
-        );
-
-        if (dhlOptions.length > 0) {
-          // DHL API succeeded
-          if (shippingMode === 'dhl_api') {
-            // DHL-only mode: return DHL rates only
-            this.logger.log(`[DHL API] Using DHL Express rates (${dhlOptions.length} options)`);
-            return addGelatoCost(dhlOptions);
-          } else {
-            // Hybrid mode: combine DHL with zones/manual fallback
-            const fallbackOptions = await this.getZonesOrManualRates(
-              address,
-              subtotal,
-              totalWeightKg
-            );
-            this.logger.log(
-              `[Hybrid] ${dhlOptions.length} DHL + ${fallbackOptions.length} fallback options`
-            );
-            return addGelatoCost([...dhlOptions, ...fallbackOptions]);
-          }
-        } else {
-          // DHL returned no options
-          if (shippingMode === 'dhl_api') {
-            // DHL-only mode: no fallback allowed
-            this.logger.error(`[DHL API] No shipping options available for this destination`);
-            return []; // Return empty array - frontend should show error to user
-          }
-          // Hybrid mode: fall through to manual rates
-          this.logger.warn(`[Hybrid] DHL returned no options, falling back to zones/manual`);
-        }
-      } catch (error) {
-        if (shippingMode === 'dhl_api') {
-          // DHL-only mode: no fallback allowed
-          this.logger.error(`[DHL API] Failed with error: ${error.message}`);
-          return []; // Return empty array - frontend should show error to user
-        }
-        // Hybrid mode: fall through to manual rates
-        this.logger.warn(`[Hybrid] DHL API failed, falling back to zones/manual: ${error.message}`);
-      }
-    }
-
-    // STEP 2: Try Shipping Zones or Manual Rates (fallback chain)
+    // TIER 5: Zones / Manual (final fallback)
     // Only reaches here if: mode is 'manual', OR mode is 'hybrid' and DHL failed
     const fallbackOptions = await this.getZonesOrManualRates(address, subtotal, totalWeightKg);
     return addGelatoCost(fallbackOptions);
@@ -813,66 +760,6 @@ export class ShippingTaxService {
       this.logger.error('Easyship rate fetch failed:', error.message);
       throw new Error(`Failed to fetch Easyship rates: ${error.message}`);
     }
-  }
-
-  /**
-   * Calculate shipping options using DHL Express API
-   * SECURITY: Uses environment variables only
-   */
-  private async calculateDhlShippingOptions(
-    address: ShippingAddress,
-    items: CartItem[],
-    subtotal: number
-  ): Promise<ShippingOption[]> {
-    // Check if DHL API is enabled (checks .env only)
-    const isEnabled = this.dhlRatesService.isApiEnabled();
-    if (!isEnabled) {
-      this.logger.debug('DHL API is not configured in .env');
-      return [];
-    }
-
-    // Get origin address from settings
-    let originCountry = 'US';
-    let originPostalCode = '10001';
-
-    try {
-      const countrySetting = await this.settingsService.getSetting('origin_country');
-      const postalSetting = await this.settingsService.getSetting('origin_postal_code');
-      originCountry = String(countrySetting.value) || 'US';
-      originPostalCode = String(postalSetting.value) || '10001';
-    } catch (error) {
-      // Fallback to env variables if settings not found
-      originCountry = this.configService.get<string>('ORIGIN_COUNTRY', 'US');
-      originPostalCode = this.configService.get<string>('ORIGIN_POSTAL_CODE', '10001');
-    }
-
-    // Calculate total weight in KG (items are in grams)
-    const totalWeightGrams = items.reduce(
-      (sum, item) => sum + (item.weight || 500) * item.quantity,
-      0
-    );
-    const totalWeightKg = totalWeightGrams / 1000;
-
-    // Request DHL rates
-    const dhlRates = await this.dhlRatesService.getSimplifiedRates({
-      originCountryCode: originCountry,
-      originPostalCode: originPostalCode,
-      destinationCountryCode: address.country,
-      destinationPostalCode: address.postalCode || '',
-      destinationCityName: address.city,
-      weight: Math.max(0.5, totalWeightKg), // Minimum 0.5kg
-    });
-
-    // Convert DHL rates to our ShippingOption format
-    return dhlRates.map((rate) => ({
-      id: rate.id,
-      name: rate.name,
-      description: rate.description,
-      price: rate.price,
-      estimatedDays: rate.estimatedDays,
-      carrier: 'DHL Express',
-      source: 'dhl',
-    }));
   }
 
   /**
