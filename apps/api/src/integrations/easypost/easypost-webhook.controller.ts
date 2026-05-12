@@ -3,11 +3,14 @@ import {
   Post,
   Body,
   Headers,
+  Req,
+  RawBodyRequest,
   Logger,
   HttpCode,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { PrismaService } from '../../database/prisma.service';
 import { EasyPostTrackingService } from './easypost-tracking.service';
 import { ConfigService } from '@nestjs/config';
@@ -29,7 +32,11 @@ export class EasyPostWebhookController {
 
   @Post()
   @HttpCode(200)
-  async handleWebhook(@Body() payload: any, @Headers('x-hmac-signature') signature: string) {
+  async handleWebhook(
+    @Body() payload: any,
+    @Headers('x-hmac-signature') signature: string,
+    @Req() req: RawBodyRequest<Request>
+  ) {
     const eventId = payload.id;
     const eventType = payload.description;
 
@@ -38,7 +45,7 @@ export class EasyPostWebhookController {
     // Verify signature if configured
     const webhookSecret = await this.getWebhookSecret();
     if (webhookSecret && signature) {
-      const isValid = this.verifySignature(payload, signature, webhookSecret);
+      const isValid = this.verifySignature((req as any).rawBody, signature, webhookSecret);
       if (!isValid) {
         this.logger.warn('Invalid webhook signature');
         throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
@@ -220,9 +227,9 @@ export class EasyPostWebhookController {
     }
   }
 
-  private verifySignature(payload: any, signature: string, secret: string): boolean {
+  private verifySignature(rawBody: Buffer, signature: string, secret: string): boolean {
     const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(JSON.stringify(payload));
+    hmac.update(rawBody);
     const expectedSignature = hmac.digest('hex');
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
   }
