@@ -209,7 +209,7 @@ export class ShippingTaxService {
    * - TIER 1 (SendCloud): EU-origin sellers (AT,BE,CZ,DK,FR,DE,IT,NL,PL,PT,ES,SE,GB)
    *   - Geo-gated: only fires when seller country is in SendCloud's supported list
    * - TIER 2 (EasyPost): Global multi-carrier (USPS, UPS, FedEx, DHL, Canada Post, etc.)
-   *   - Geo-gated: only fires when sellerCountry === 'US' (or unknown = platform default US)
+   *   - No geo-gate: fires for all seller origins, falls back gracefully if no rates returned
    * - TIER 3 (EasyShip): Global fallback for remaining seller countries (AU,BE,CA,FR,DE,HK,NL,SG,US,GB)
    * - TIER 4 (DHL): DHL Express only (if dhl_enabled setting is true)
    * - TIER 5 (Zones/Manual): Final fallback based on settings
