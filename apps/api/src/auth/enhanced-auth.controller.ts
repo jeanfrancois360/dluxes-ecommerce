@@ -18,6 +18,7 @@ import { Request, Response } from 'express';
 import { EmailOTPType } from '@prisma/client';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { LoginThrottlerGuard } from './guards/login-throttler.guard';
 // New refactored services
 import { AuthCoreService } from './services/auth-core.service';
 import { PasswordService } from './services/password.service';
@@ -89,6 +90,7 @@ export class EnhancedAuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(LoginThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 900000 } })
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'Login successful or 2FA required' })
