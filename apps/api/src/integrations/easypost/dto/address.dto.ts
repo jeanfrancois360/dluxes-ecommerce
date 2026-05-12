@@ -27,8 +27,9 @@ export class AddressDto {
   @IsString()
   city: string;
 
+  @IsOptional()
   @IsString()
-  state: string;
+  state?: string;
 
   @IsString()
   zip: string;

@@ -2,7 +2,7 @@ import { Type } from 'class-transformer';
 import { IsOptional, ValidateNested, IsArray, IsString } from 'class-validator';
 import { AddressDto } from './address.dto';
 import { ParcelDto } from './parcel.dto';
-import { CustomsItemDto } from './customs-info.dto';
+import { CustomsInfoDto } from './customs-info.dto';
 
 export class GetRatesDto {
   @ValidateNested()
@@ -19,14 +19,8 @@ export class GetRatesDto {
 
   @IsOptional()
   @ValidateNested()
-  customsInfo?: {
-    contentsType?: string;
-    contentsExplanation?: string;
-    signer?: string;
-    eelPfc?: string;
-    nonDeliveryOption?: string;
-    items?: CustomsItemDto[];
-  };
+  @Type(() => CustomsInfoDto)
+  customsInfo?: CustomsInfoDto;
 
   @IsOptional()
   @IsArray()
