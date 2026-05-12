@@ -1550,25 +1550,24 @@ function HotDealFormInner({
                 <div className="flex gap-2">
                   {(
                     [
-                      { value: 'HOURLY', label: 'Hourly Rate', icon: '⏱' },
-                      { value: 'FIXED', label: 'Fixed Budget', icon: '💰' },
-                      { value: 'NEGOTIABLE', label: 'Negotiable', icon: '🤝' },
+                      { value: 'HOURLY', label: 'Hourly Rate' },
+                      { value: 'FIXED', label: 'Fixed Budget' },
+                      { value: 'NEGOTIABLE', label: 'Negotiable' },
                     ] as const
-                  ).map(({ value, label, icon }) => {
+                  ).map(({ value, label }) => {
                     const isSelected = selectedBudgetType === value;
                     return (
                       <button
                         key={value}
                         type="button"
                         onClick={() => setSelectedBudgetType(isSelected ? '' : value)}
-                        className={`flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
+                        className={`flex-1 flex items-center justify-center py-3 px-2 rounded-xl border-2 text-sm font-semibold transition-all ${
                           isSelected
                             ? 'bg-green-50 border-green-400 text-green-700'
                             : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                         }`}
                       >
-                        <span className="text-base">{icon}</span>
-                        <span className="text-center leading-tight">{label}</span>
+                        {label}
                       </button>
                     );
                   })}
