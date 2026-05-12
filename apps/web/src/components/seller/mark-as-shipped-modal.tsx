@@ -38,6 +38,9 @@ interface MarkAsShippedModalProps {
   shippingProvider?: string; // e.g. SENDCLOUD, EASYPOST, DHL, EASYSHIP
   prefillCarrier?: string; // carrier name from shippingProviderData
   prefillServiceName?: string; // service name from shippingProviderData
+  prefillWeight?: number; // total package weight in kg (computed from order items)
+  prefillEstimatedDays?: number; // estimated transit days (from shippingProviderData)
+  prefillShippingCost?: number; // shipping cost paid at checkout
 }
 
 export function MarkAsShippedModal({
@@ -51,6 +54,9 @@ export function MarkAsShippedModal({
   shippingProvider,
   prefillCarrier,
   prefillServiceName,
+  prefillWeight,
+  prefillEstimatedDays,
+  prefillShippingCost,
 }: MarkAsShippedModalProps) {
   const t = useTranslations('components.markAsShippedModal');
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>(items.map((item) => item.id));
@@ -78,9 +84,18 @@ export function MarkAsShippedModal({
   const [serviceType, setServiceType] = useState('express');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingUrl, setTrackingUrl] = useState('');
-  const [estimatedDelivery, setEstimatedDelivery] = useState('');
-  const [shippingCost, setShippingCost] = useState('');
-  const [weight, setWeight] = useState('');
+  const [estimatedDelivery, setEstimatedDelivery] = useState(() => {
+    if (!prefillEstimatedDays) return '';
+    const d = new Date();
+    d.setDate(d.getDate() + prefillEstimatedDays);
+    return d.toISOString().split('T')[0];
+  });
+  const [shippingCost, setShippingCost] = useState(() =>
+    prefillShippingCost != null ? String(prefillShippingCost) : ''
+  );
+  const [weight, setWeight] = useState(() =>
+    prefillWeight != null ? String(Math.round(prefillWeight * 100) / 100) : ''
+  );
   const [length, setLength] = useState('');
   const [width, setWidth] = useState('');
   const [height, setHeight] = useState('');

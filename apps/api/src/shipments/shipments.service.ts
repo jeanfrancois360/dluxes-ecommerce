@@ -124,7 +124,7 @@ export class ShipmentsService {
           return sum + item.quantity * kg * 1000;
         }, 0);
 
-        const serviceCode = providerData?.rateId || providerData?.serviceCode;
+        const serviceCode = providerData?.serviceCode || providerData?.rateId || providerData?.id;
         if (!serviceCode) {
           throw new BadRequestException(
             'Cannot auto-generate: SendCloud service code not recorded on this order. Use manual tracking entry instead.'
@@ -178,7 +178,11 @@ export class ShipmentsService {
           return sum + item.quantity * kg;
         }, 0);
 
-        const courierId = providerData?.rateId || providerData?.courierId;
+        const courierId =
+          providerData?.serviceCode ||
+          providerData?.courierId ||
+          providerData?.rateId ||
+          providerData?.id;
         if (!courierId) {
           throw new BadRequestException(
             'Cannot auto-generate: EasyShip courier ID not recorded on this order. Use manual tracking entry instead.'
