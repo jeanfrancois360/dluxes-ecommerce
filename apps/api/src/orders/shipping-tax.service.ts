@@ -291,6 +291,21 @@ export class ShippingTaxService {
       }));
     };
 
+    // Helper: apply free-shipping threshold to API-sourced rates.
+    // When the order qualifies, the cheapest option is set to $0 (standard tier).
+    // Express / premium options remain at cost — same behaviour as manual rates.
+    const isFreeShippingEnabled = await this.shippingService.isFreeShippingEnabled();
+    const freeShippingThreshold = isFreeShippingEnabled
+      ? await this.shippingService.getFreeShippingThreshold()
+      : Infinity;
+    const isFreeShippingEligible = isFreeShippingEnabled && subtotal >= freeShippingThreshold;
+
+    const applyFreeShipping = (options: ShippingOption[]): ShippingOption[] => {
+      if (!isFreeShippingEligible || options.length === 0) return options;
+      const minPrice = Math.min(...options.map((o) => o.price));
+      return options.map((o) => (o.price === minPrice ? { ...o, price: 0 } : o));
+    };
+
     // TIER 0.5: Try Self-Pickup (if stores have pickup enabled)
     try {
       const pickupOptions = await this.calculatePickupOptions(address, items, subtotal);
@@ -342,7 +357,7 @@ export class ShippingTaxService {
           this.logger.log(
             `[SendCloud] ✅ SUCCESS - Using SendCloud rates (${sendcloudOptions.length} options)`
           );
-          return addGelatoCost(sendcloudOptions);
+          return addGelatoCost(applyFreeShipping(sendcloudOptions));
         } else {
           this.logger.warn('[SendCloud] No rates returned, falling back to next provider...');
         }
@@ -377,7 +392,7 @@ export class ShippingTaxService {
           this.logger.log(
             `[EasyPost] ✅ SUCCESS - Using EasyPost rates (${easypostOptions.length} options)`
           );
-          return addGelatoCost(easypostOptions);
+          return addGelatoCost(applyFreeShipping(easypostOptions));
         } else {
           this.logger.warn('[EasyPost] No rates returned, falling back to next provider...');
         }
@@ -407,7 +422,7 @@ export class ShippingTaxService {
           this.logger.log(
             `[EasyShip] ✅ SUCCESS - Using EasyShip rates (${easyshipOptions.length} options)`
           );
-          return addGelatoCost(easyshipOptions);
+          return addGelatoCost(applyFreeShipping(easyshipOptions));
         } else {
           this.logger.warn('[EasyShip] No rates returned, falling back to next provider...');
         }
@@ -470,15 +485,17 @@ export class ShippingTaxService {
             `[DHL] ✅ SUCCESS - Using DHL Express rates (${dhlRates.length} options)`
           );
           return addGelatoCost(
-            dhlRates.map((rate) => ({
-              id: rate.id,
-              name: rate.name,
-              description: rate.description,
-              price: rate.price,
-              estimatedDays: rate.estimatedDays,
-              carrier: 'DHL Express',
-              source: 'dhl',
-            }))
+            applyFreeShipping(
+              dhlRates.map((rate) => ({
+                id: rate.id,
+                name: rate.name,
+                description: rate.description,
+                price: rate.price,
+                estimatedDays: rate.estimatedDays,
+                carrier: 'DHL Express',
+                source: 'dhl',
+              }))
+            )
           );
         } else {
           this.logger.warn('[DHL] No rates available, falling back to next provider...');
@@ -573,41 +590,52 @@ export class ShippingTaxService {
       return [];
     }
 
-    // Get seller's real origin address (CRITICAL FIX)
+    // Build fromAddress — priority: seller address → platform settings → emergency fallback
     const sellerAddress = await this.getSellerOriginAddress(items);
 
-    // Build fromAddress - use seller address if available, fallback to platform settings
-    let fromAddress = {
-      street1: '123 Main St',
-      city: 'New York',
-      state: 'NY',
-      zip: '10001',
-      country: 'US',
-    };
+    let fromAddress: { street1: string; city: string; state: string; zip: string; country: string };
 
     if (sellerAddress) {
-      // Use actual seller address
       fromAddress = sellerAddress;
       this.logger.log(
         `[EasyPost] Using seller address: ${sellerAddress.city}, ${sellerAddress.country}`
       );
     } else {
-      // Fallback to platform settings
-      this.logger.log('[EasyPost] Using platform default address (no seller address found)');
+      // Try platform origin settings (configured in System Settings → Shipping)
+      this.logger.log('[EasyPost] No seller address — reading platform origin settings...');
       try {
-        const street1Setting = await this.settingsService.getSetting('origin_street1');
-        const citySetting = await this.settingsService.getSetting('origin_city');
-        const stateSetting = await this.settingsService.getSetting('origin_state');
-        const postalSetting = await this.settingsService.getSetting('origin_postal_code');
-        const countrySetting = await this.settingsService.getSetting('origin_country');
+        const [street1S, cityS, stateS, postalS, countryS] = await Promise.all([
+          this.settingsService.getSetting('origin_street1'),
+          this.settingsService.getSetting('origin_city'),
+          this.settingsService.getSetting('origin_state'),
+          this.settingsService.getSetting('origin_postal_code'),
+          this.settingsService.getSetting('origin_country'),
+        ]);
 
-        if (street1Setting?.value) fromAddress.street1 = String(street1Setting.value);
-        if (citySetting?.value) fromAddress.city = String(citySetting.value);
-        if (stateSetting?.value) fromAddress.state = String(stateSetting.value);
-        if (postalSetting?.value) fromAddress.zip = String(postalSetting.value);
-        if (countrySetting?.value) fromAddress.country = String(countrySetting.value);
+        if (countryS?.value) {
+          fromAddress = {
+            street1: String(street1S?.value || '1 Platform St'),
+            city: String(cityS?.value || ''),
+            state: String(stateS?.value || ''),
+            zip: String(postalS?.value || ''),
+            country: String(countryS.value),
+          };
+          this.logger.log(
+            `[EasyPost] Using platform origin: ${fromAddress.city}, ${fromAddress.country}`
+          );
+        } else {
+          // Absolute last resort — log prominently so ops can fix settings
+          this.logger.warn(
+            '[EasyPost] origin_country not configured in System Settings. ' +
+              'Rate quotes will use US as origin — configure origin_country to fix this.'
+          );
+          fromAddress = { street1: '1 Platform St', city: '', state: '', zip: '', country: 'US' };
+        }
       } catch (error) {
-        this.logger.warn('Failed to get origin address from settings, using hardcoded defaults');
+        this.logger.warn(
+          `[EasyPost] Could not read platform origin settings: ${error.message}. Using US fallback.`
+        );
+        fromAddress = { street1: '1 Platform St', city: '', state: '', zip: '', country: 'US' };
       }
     }
 
@@ -896,7 +924,7 @@ export class ShippingTaxService {
       description: isInternational ? '10-15 business days' : '5-7 business days',
       price: isFreeShippingEligible ? 0 : standardPrice,
       estimatedDays: isInternational ? 15 : 7,
-      carrier: 'USPS',
+      carrier: 'Standard',
       source: 'manual',
     });
 
@@ -912,7 +940,7 @@ export class ShippingTaxService {
       description: isInternational ? '5-7 business days' : '2-3 business days',
       price: expressPrice,
       estimatedDays: isInternational ? 7 : 3,
-      carrier: 'FedEx',
+      carrier: 'Express',
       source: 'manual',
     });
 
@@ -928,7 +956,7 @@ export class ShippingTaxService {
         description: 'Next business day',
         price: overnightPrice,
         estimatedDays: 1,
-        carrier: 'UPS',
+        carrier: 'Premium',
         source: 'manual',
       });
     }
