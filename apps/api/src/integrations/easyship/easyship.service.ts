@@ -186,28 +186,36 @@ export class EasyshipService {
         ...(toCountryUpper === 'US' && { state: 'NY' }),
       };
 
+      // Estimate box dimensions from total weight
+      const totalGrams = (request.weightKg || 0.5) * 1000;
+      const boxDims = estimateItemDimensionsCm(totalGrams);
+
       const response = await this.client.post('/rates', {
         origin_address: originAddress,
         destination_address: destinationAddress,
         incoterms: 'DDU',
-        // Normalize all returned rates to USD so they are consistent with
-        // EasyPost and SendCloud rates.  The final per-buyer currency conversion
-        // is applied later by CurrencyService when building the order totals.
-        output_currency: 'USD',
+        // output_currency not supported in 2024-09 API spec — omitted intentionally
         parcels: [
           {
-            total_actual_weight: request.weightKg,
-            items: request.items.map((item) => ({
-              quantity: item.quantity,
-              declared_currency: 'USD',
-              declared_customs_value: item.value,
-              // hs_code intentionally omitted — a wrong code (e.g. garments for electronics)
-              // produces incorrect duty estimates. EasyShip returns rates without duty breakdown
-              // when hs_code is absent, which is safer for a multi-category marketplace.
-              // Dimensions estimated from item weight; avoids DIM weight overcharges on
-              // light/bulky items when a flat 10×10×10 default is used for everything.
-              dimensions: estimateItemDimensionsCm(item.weightGrams ?? 500),
-            })),
+            box: {
+              slug: 'custom',
+              length: boxDims.length,
+              width: boxDims.width,
+              height: boxDims.height,
+            },
+            items: request.items.map((item) => {
+              const itemDims = estimateItemDimensionsCm(item.weightGrams ?? 500);
+              return {
+                description: item.name || 'General Merchandise',
+                quantity: item.quantity,
+                declared_currency: 'USD',
+                declared_customs_value: item.value || 1,
+                // hs_code "999999" = generic catch-all — safer than a wrong product-specific code
+                hs_code: '999999',
+                actual_weight: item.weightGrams ? item.weightGrams / 1000 : 0.5,
+                dimensions: itemDims,
+              };
+            }),
           },
         ],
       });
@@ -311,13 +319,14 @@ export class EasyshipService {
         },
         parcels: [
           {
-            total_actual_weight: dto.totalWeightKg,
+            box: { slug: 'custom', length: 20, width: 15, height: 10 },
             items: dto.items.map((item) => ({
-              description: item.description,
+              description: item.description || 'General Merchandise',
               quantity: item.quantity,
               declared_currency: 'USD',
-              declared_customs_value: item.value,
-              actual_weight: item.weightKg,
+              declared_customs_value: item.value || 1,
+              hs_code: '999999',
+              actual_weight: item.weightKg || 0.5,
               dimensions: { length: 10, width: 10, height: 10 },
             })),
           },
@@ -454,13 +463,15 @@ export class EasyshipService {
         incoterms: 'DDU',
         parcels: [
           {
-            total_actual_weight: 0.5,
+            box: { slug: 'custom', length: 10, width: 10, height: 10 },
             items: [
               {
+                description: 'Health check item',
                 quantity: 1,
                 declared_currency: 'USD',
                 declared_customs_value: 10,
-                category: 'gifts',
+                hs_code: '999999',
+                actual_weight: 0.5,
                 dimensions: { length: 10, width: 10, height: 10 },
               },
             ],
