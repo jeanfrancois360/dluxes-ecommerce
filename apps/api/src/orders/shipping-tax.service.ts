@@ -656,6 +656,26 @@ export class ShippingTaxService {
       weight: Math.max(1, weightOz), // Minimum 1oz
     };
 
+    // For international shipments, pass customs info so EasyPost returns accurate
+    // rates and doesn't drop carriers that require it (e.g. DHL International).
+    // We use generic descriptions — product names are not available in CartItem.
+    const isInternational = fromAddress.country !== toAddress.country;
+    const customsInfo = isInternational
+      ? {
+          contentsType: 'merchandise' as const,
+          eelPfc: 'NOEEI 30.37(a)',
+          nonDeliveryOption: 'return',
+          items: items.map((item) => ({
+            description: 'Merchandise',
+            quantity: item.quantity,
+            value: item.price,
+            // EasyPost expects weight in ounces; CartItem stores grams
+            weight: Math.max(1, Math.round((item.weight || 500) / 28.35)),
+            originCountry: fromAddress.country || 'US',
+          })),
+        }
+      : undefined;
+
     try {
       // Get rates from EasyPost with 10-second timeout (for testing)
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -668,6 +688,7 @@ export class ShippingTaxService {
             fromAddress,
             toAddress,
             parcel,
+            customsInfo,
           },
           undefined, // no carrier filter
           undefined // no service filter
