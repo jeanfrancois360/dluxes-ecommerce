@@ -208,7 +208,7 @@ export class ShippingTaxService {
    *   - Simple radius check: same zip code or city+state match
    * - TIER 1 (SendCloud): EU-origin sellers (AT,BE,CZ,DK,FR,DE,IT,NL,PL,PT,ES,SE,GB)
    *   - Geo-gated: only fires when seller country is in SendCloud's supported list
-   * - TIER 2 (EasyPost): US-origin sellers only (USPS, UPS, FedEx, DHL, etc.)
+   * - TIER 2 (EasyPost): Global multi-carrier (USPS, UPS, FedEx, DHL, Canada Post, etc.)
    *   - Geo-gated: only fires when sellerCountry === 'US' (or unknown = platform default US)
    * - TIER 3 (EasyShip): Global fallback for remaining seller countries (AU,BE,CA,FR,DE,HK,NL,SG,US,GB)
    * - TIER 4 (DHL): DHL Express only (if dhl_enabled setting is true)
@@ -364,13 +364,13 @@ export class ShippingTaxService {
       }
     }
 
-    // TIER 2: EasyPost (US-origin carrier aggregator — USPS, UPS, FedEx, DHL, etc.)
-    // NOTE: EasyPost only returns rates when ship-FROM country is US.
-    // Skip for non-US sellers and let EasyShip/DHL handle them instead.
-    const isUsSeller = !sellerCountry || sellerCountry === 'US';
+    // TIER 2: EasyPost (global multi-carrier — USPS, UPS, FedEx, DHL, Canada Post, etc.)
+    // Works for any origin country served by EasyPost carriers. Falls back gracefully if no rates.
     const easypostEnabled = await getSetting('easypost_enabled');
-    if (isEnabled(easypostEnabled?.value) && isUsSeller) {
-      this.logger.log('[EasyPost] US seller — attempting to fetch rates...');
+    if (isEnabled(easypostEnabled?.value)) {
+      this.logger.log(
+        `[EasyPost] Seller country ${sellerCountry || 'unknown'} — attempting to fetch rates...`
+      );
       try {
         const easypostOptions = await this.calculateEasyPostShippingOptions(
           address,
@@ -389,12 +389,8 @@ export class ShippingTaxService {
       } catch (error) {
         this.logger.warn(`[EasyPost] Failed: ${error.message}. Falling back to next provider...`);
       }
-    } else if (!isEnabled(easypostEnabled?.value)) {
-      this.logger.log('[EasyPost] Disabled, skipping to next provider...');
     } else {
-      this.logger.log(
-        `[EasyPost] Skipping — seller country ${sellerCountry} is not US (EasyPost is US-origin only)`
-      );
+      this.logger.log('[EasyPost] Disabled, skipping to next provider...');
     }
 
     // TIER 3: EasyShip (Regional fallback for APAC markets: AU,BE,CA,FR,DE,HK,NL,SG,US,GB)
