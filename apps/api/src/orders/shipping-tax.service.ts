@@ -6,6 +6,7 @@ import { SendcloudService } from '../integrations/sendcloud/sendcloud.service';
 import { EasyshipService } from '../integrations/easyship/easyship.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { ShippingCacheService } from '../shipping/shipping-cache.service';
+import { estimateParcelInches } from '../shipping/parcel-estimator';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import { PrismaService } from '../database/prisma.service';
 
@@ -701,11 +702,13 @@ export class ShippingTaxService {
       country: address.country || 'US',
     };
 
-    // Prepare parcel (default dimensions for rate shopping)
+    // Estimate parcel dimensions from total weight.
+    // Using realistic tier-based box sizes prevents carriers from applying
+    // dimensional weight penalties silently when the flat 10×8×4 default
+    // is smaller than what the actual weight implies.
+    const parcelDims = estimateParcelInches(weightOz);
     const parcel = {
-      length: 10,
-      width: 8,
-      height: 4,
+      ...parcelDims,
       weight: Math.max(1, weightOz), // Minimum 1oz
     };
 
@@ -845,6 +848,7 @@ export class ShippingTaxService {
           quantity: item.quantity,
           value: item.price,
           name: `Item ${item.productId}`,
+          weightGrams: item.weight ?? 500, // carry weight for dimension estimation
         })),
       });
 

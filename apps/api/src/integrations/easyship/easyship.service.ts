@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import axios, { AxiosInstance } from 'axios';
+import { estimateItemDimensionsCm } from '../../shipping/parcel-estimator';
 
 // Easyship supported ship-from countries
 export const EASYSHIP_SUPPORTED_COUNTRIES = [
@@ -41,6 +42,7 @@ export interface EasyshipGetRatesRequest {
     quantity: number;
     value: number;
     name: string;
+    weightGrams?: number; // used to estimate per-item box dimensions
   }>;
 }
 
@@ -198,7 +200,9 @@ export class EasyshipService {
               // hs_code intentionally omitted — a wrong code (e.g. garments for electronics)
               // produces incorrect duty estimates. EasyShip returns rates without duty breakdown
               // when hs_code is absent, which is safer for a multi-category marketplace.
-              dimensions: { length: 10, width: 10, height: 10 },
+              // Dimensions estimated from item weight; avoids DIM weight overcharges on
+              // light/bulky items when a flat 10×10×10 default is used for everything.
+              dimensions: estimateItemDimensionsCm(item.weightGrams ?? 500),
             })),
           },
         ],
