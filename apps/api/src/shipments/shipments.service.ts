@@ -11,6 +11,8 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { SendcloudService } from '../integrations/sendcloud/sendcloud.service';
 import { EasyshipService } from '../integrations/easyship/easyship.service';
 import { DhlShipmentService } from '../integrations/dhl/dhl-shipment.service';
+import { EasyPostShipmentService } from '../integrations/easypost/easypost-shipment.service';
+import { EasyPostService } from '../integrations/easypost/easypost.service';
 
 interface CreateShipmentDto {
   orderId: string;
@@ -46,7 +48,9 @@ export class ShipmentsService {
     private prisma: PrismaService,
     private readonly sendcloudService: SendcloudService,
     private readonly easyshipService: EasyshipService,
-    private readonly dhlShipmentService: DhlShipmentService
+    private readonly dhlShipmentService: DhlShipmentService,
+    private readonly easyPostShipmentService: EasyPostShipmentService,
+    private readonly easyPostService: EasyPostService
   ) {}
 
   /**
@@ -233,6 +237,219 @@ export class ShipmentsService {
           where: { id: result.sellerShipmentId },
           include: { order: true, store: true },
         });
+      }
+
+      if (provider === 'EASYPOST') {
+        const totalWeightOz = order.items.reduce((sum: number, item: any) => {
+          const kg = item.product?.weight ? Number(item.product.weight) : 0.5;
+          return sum + item.quantity * kg * 35.274; // kg → oz
+        }, 0);
+
+        // Build fromAddress from store or platform settings
+        // Use platform-configured shipping origin (not store's physical address,
+        // which may be in a country unsupported by the EasyPost account)
+        const originSettings = await this.prisma.systemSetting.findMany({
+          where: {
+            key: {
+              in: [
+                'origin_street1',
+                'origin_city',
+                'origin_state',
+                'origin_postal_code',
+                'origin_country',
+                'origin_company_name',
+              ],
+            },
+          },
+        });
+        const originMap = Object.fromEntries(
+          originSettings.map((s) => [s.key, (s.value as string)?.replace(/^"|"$/g, '')])
+        );
+        const platformFrom = {
+          name: originMap['origin_company_name'] || store.name || 'NextPik',
+          street1: originMap['origin_street1'] || '417 Montgomery St',
+          city: originMap['origin_city'] || 'San Francisco',
+          state: originMap['origin_state'] || 'CA',
+          zip: originMap['origin_postal_code'] || '94104',
+          country: originMap['origin_country'] || 'US',
+          phone: '+14155550100', // Required by DHL and some other carriers
+        };
+
+        const toCountry = addr?.country || 'US';
+        const toAddress = {
+          name: `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim() || 'Customer',
+          street1: addr?.address1 || addr?.street || '',
+          city: addr?.city || '',
+          // EasyPost only uses state codes for US/CA; omit for other countries to avoid 0-rate responses
+          state: ['US', 'CA'].includes(toCountry) ? addr?.province || addr?.state || '' : undefined,
+          zip: addr?.postalCode || addr?.zipCode || '',
+          country: toCountry,
+          phone: addr?.phone || undefined,
+        };
+
+        // Get fresh rates from EasyPost
+        const client = this.easyPostService.getClient();
+        const isInternational = toCountry !== platformFrom.country;
+        const customsInfo = isInternational
+          ? {
+              contents_type: 'merchandise',
+              customs_certify: true,
+              customs_signer: platformFrom.name,
+              eel_pfc: 'NOEEI 30.37(a)',
+              non_delivery_option: 'return',
+              restriction_type: 'none',
+              customs_items: order.items.map((item: any) => ({
+                description: (item.product?.name || 'Item').substring(0, 60),
+                quantity: item.quantity,
+                value: Number(item.price),
+                weight: Math.max(
+                  1,
+                  Math.round(
+                    (item.product?.weight ? Number(item.product.weight) : 0.5) *
+                      item.quantity *
+                      35.274
+                  )
+                ),
+                origin_country: 'US',
+              })),
+            }
+          : undefined;
+
+        const epShipment = await client.Shipment.create({
+          to_address: toAddress,
+          from_address: platformFrom,
+          parcel: {
+            length: 20,
+            width: 15,
+            height: 10,
+            weight: Math.max(1, Math.round(totalWeightOz)),
+          },
+          customs_info: customsInfo,
+          options: { label_format: 'PNG', label_size: '4x6' },
+        });
+
+        this.logger.debug(
+          `[EasyPost] Shipment ${epShipment.id} — rates: ${epShipment.rates?.length ?? 0}, messages: ${JSON.stringify(epShipment.messages ?? [])}`
+        );
+
+        if (!epShipment.rates || epShipment.rates.length === 0) {
+          throw new BadRequestException(
+            'EasyPost returned no rates — cannot auto-generate label. Use manual tracking entry instead.'
+          );
+        }
+
+        // Pick cheapest rate; for international prefer DHLExpress over USPS (USPS international
+        // labels often fail without full customs certification in test/sandbox accounts)
+        const preferredCarrier = providerData?.carrier;
+        const sortedRates = [...epShipment.rates].sort(
+          (a: any, b: any) => parseFloat(a.rate) - parseFloat(b.rate)
+        );
+        const preferredRate =
+          (preferredCarrier &&
+            sortedRates.find(
+              (r: any) => r.carrier?.toUpperCase() === preferredCarrier?.toUpperCase()
+            )) ||
+          (isInternational && sortedRates.find((r: any) => r.carrier === 'DHLExpress')) ||
+          sortedRates[0];
+
+        // Purchase label
+        this.logger.debug(
+          `[EasyPost] Buying rate ${preferredRate.id} (${preferredRate.carrier} ${preferredRate.service} $${preferredRate.rate})`
+        );
+        let boughtShipment: any;
+        try {
+          boughtShipment = await client.Shipment.buy(epShipment.id, preferredRate.id);
+        } catch (buyErr: any) {
+          this.logger.error(
+            `[EasyPost] Label purchase failed: ${JSON.stringify(buyErr?.message || buyErr)}`
+          );
+          throw new BadRequestException(
+            `EasyPost label purchase failed (${preferredRate.carrier} ${preferredRate.service}): ${buyErr?.message || 'unknown error'}. Try a different carrier or use manual tracking.`
+          );
+        }
+
+        const trackingNumber: string = boughtShipment.tracking_code || '';
+        const trackingUrl: string | null = boughtShipment.tracker?.public_url || null;
+        const labelUrl: string | null = boughtShipment.postage_label?.label_url || null;
+
+        const shipmentNumber = `EP-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+        // Persist SellerShipment
+        const sellerShipment = await this.prisma.sellerShipment.create({
+          data: {
+            orderId: dto.orderId,
+            storeId: dto.storeId,
+            shipmentNumber,
+            status: trackingNumber ? ShipmentStatus.LABEL_CREATED : ShipmentStatus.PROCESSING,
+            carrier: preferredRate.carrier || 'USPS',
+            trackingNumber: trackingNumber || null,
+            trackingUrl,
+            shippingCost: preferredRate.rate ? new Decimal(String(preferredRate.rate)) : undefined,
+            metadata: {
+              provider: 'EASYPOST',
+              easypostShipmentId: epShipment.id,
+              rateId: preferredRate.id,
+              service: preferredRate.service,
+              labelUrl,
+            } as any,
+          },
+          include: { order: true, store: true },
+        });
+
+        // Also store in EasyPostShipment table for webhook tracking
+        await this.prisma.easyPostShipment.create({
+          data: {
+            orderId: dto.orderId,
+            sellerId,
+            storeId: dto.storeId,
+            easypostShipmentId: epShipment.id,
+            easypostRateId: preferredRate.id,
+            easypostTrackerId: boughtShipment.tracker?.id || null,
+            carrier: preferredRate.carrier,
+            service: preferredRate.service,
+            rate: parseFloat(String(preferredRate.rate)),
+            currency: preferredRate.currency || 'USD',
+            labelUrl: boughtShipment.postage_label?.label_url || null,
+            labelFormat: 'PNG',
+            trackingNumber: trackingNumber || null,
+            trackingUrl,
+            status: 'PURCHASED',
+            fromAddress: platformFrom as any,
+            toAddress: toAddress as any,
+            parcel: { weight: Math.max(1, Math.round(totalWeightOz)) } as any,
+            purchasedAt: new Date(),
+          },
+        });
+
+        await this.prisma.shipmentItem.createMany({
+          data: orderItems.map((item) => ({
+            shipmentId: sellerShipment.id,
+            orderItemId: item.id,
+            quantity: item.quantity,
+          })),
+          skipDuplicates: true,
+        });
+
+        await this.prisma.order.update({
+          where: { id: dto.orderId },
+          data: {
+            shippingProvider: 'EASYPOST',
+            shippingProviderData: {
+              ...(providerData || {}),
+              shipmentId: sellerShipment.id,
+              trackingNumber,
+              carrier: preferredRate.carrier,
+            } as any,
+          },
+        });
+
+        await this.updateOrderStatusAfterShipmentChange(dto.orderId);
+
+        this.logger.log(
+          `[EasyPost] Auto-generated label — ${preferredRate.carrier} ${preferredRate.service}, tracking ${trackingNumber}`
+        );
+
+        return sellerShipment;
       }
 
       // For other providers (DHL, ZONE, MANUAL) fall through to manual creation

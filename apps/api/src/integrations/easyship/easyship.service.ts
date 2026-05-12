@@ -276,15 +276,16 @@ export class EasyshipService {
     const fromCountry = dto.fromAddress.country.toUpperCase();
     const countryDefaults = COUNTRY_DEFAULT_STATE[fromCountry];
 
+    // EasyShip 2024-09 API field names
     const originAddress: any = {
       country_alpha2: fromCountry,
       city: dto.fromAddress.city || countryDefaults?.city || 'City',
       postal_code: dto.fromAddress.postalCode || countryDefaults?.postal || '1000',
-      address_line_1: dto.fromAddress.street,
+      line_1: dto.fromAddress.street || '417 Montgomery St',
       contact_name: dto.fromAddress.name,
       company_name: dto.fromAddress.company || dto.fromAddress.name,
-      phone_number: dto.fromAddress.phone || '',
-      email: dto.fromAddress.email || '',
+      contact_phone: dto.fromAddress.phone || '+14155550100',
+      contact_email: dto.fromAddress.email || 'shipping@nextpik.com',
       ...(dto.fromAddress.state
         ? { state: dto.fromAddress.state }
         : countryDefaults
@@ -297,22 +298,21 @@ export class EasyshipService {
       country_alpha2: toCountry,
       city: dto.toAddress.city,
       postal_code: dto.toAddress.postalCode,
-      address_line_1: dto.toAddress.street,
+      line_1: dto.toAddress.street || dto.toAddress.city,
       contact_name: dto.toAddress.name,
       company_name: dto.toAddress.company || dto.toAddress.name,
-      phone_number: dto.toAddress.phone || '',
-      email: dto.toAddress.email || '',
+      contact_phone: dto.toAddress.phone || '+10000000000',
+      contact_email: dto.toAddress.email || 'customer@nextpik.com',
       ...(dto.toAddress.state ? { state: dto.toAddress.state } : {}),
       ...(toCountry === 'US' && !dto.toAddress.state ? { state: 'NY' } : {}),
     };
 
-    // POST /shipments — create and book in one step
+    // POST /shipments — create shipment (2024-09 API: courier_id is no longer a root field)
     let shipmentData: any;
     try {
       const response = await this.client.post('/shipments', {
         origin_address: originAddress,
         destination_address: destinationAddress,
-        courier_id: dto.courierId,
         incoterms: 'DDU',
         order_data: {
           platform_order_number: dto.orderNumber || dto.orderId,
@@ -343,6 +343,34 @@ export class EasyshipService {
         );
       }
       throw error;
+    }
+
+    // Step 2 (2024-09): Confirm with selected_courier_id if provided, else cheapest from rates
+    const shipmentId: string = shipmentData?.easyship_shipment_id || shipmentData?.id;
+    if (shipmentId && dto.courierId) {
+      try {
+        // Try to pick the cheapest available rate or the specified courier
+        const ratesData = shipmentData?.rates || [];
+        const selectedRate =
+          ratesData.find(
+            (r: any) => r.courier_id === dto.courierId || r.easyship_courier_id === dto.courierId
+          ) ||
+          (ratesData.length > 0
+            ? ratesData.sort((a: any, b: any) => (a.total_charge || 0) - (b.total_charge || 0))[0]
+            : null);
+
+        if (selectedRate) {
+          const confirmResponse = await this.client.post(`/shipments/${shipmentId}/confirm`, {
+            selected_courier_id: selectedRate.courier_id || selectedRate.easyship_courier_id,
+          });
+          shipmentData = confirmResponse.data?.shipment ?? confirmResponse.data ?? shipmentData;
+        }
+      } catch (confirmErr: any) {
+        this.logger.warn(
+          `EasyShip confirm step failed (using creation response): ${confirmErr?.message}`
+        );
+        // Fall through — use the shipment data from creation step
+      }
     }
 
     if (!shipmentData) {
