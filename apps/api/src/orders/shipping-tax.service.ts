@@ -7,6 +7,7 @@ import { EasyshipService } from '../integrations/easyship/easyship.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { ShippingCacheService } from '../shipping/shipping-cache.service';
 import { estimateParcelInches } from '../shipping/parcel-estimator';
+import { withRetry } from '../shipping/retry';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import { PrismaService } from '../database/prisma.service';
 
@@ -524,15 +525,19 @@ export class ShippingTaxService {
         if (dhlMapped) {
           this.logger.log('[DHL] Cache hit — skipping API call');
         } else {
-          const dhlRates = await this.dhlRatesService.getSimplifiedRates({
-            originCountryCode: originCountry,
-            originPostalCode: originPostalCode,
-            originCityName: originCity,
-            destinationCountryCode: address.country,
-            destinationPostalCode: address.postalCode || '',
-            destinationCityName: address.city,
-            weight: Math.max(0.5, totalWeightKg), // Minimum 0.5kg
-          });
+          const dhlRates = await withRetry(
+            () =>
+              this.dhlRatesService.getSimplifiedRates({
+                originCountryCode: originCountry,
+                originPostalCode: originPostalCode,
+                originCityName: originCity,
+                destinationCountryCode: address.country,
+                destinationPostalCode: address.postalCode || '',
+                destinationCityName: address.city,
+                weight: Math.max(0.5, totalWeightKg), // Minimum 0.5kg
+              }),
+            { label: 'DHL' }
+          );
           dhlMapped =
             dhlRates?.map((rate) => ({
               id: rate.id,
@@ -733,24 +738,24 @@ export class ShippingTaxService {
       : undefined;
 
     try {
-      // Get rates from EasyPost with 10-second timeout (for testing)
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('EasyPost request timed out after 10 seconds')), 10000);
-      });
+      // Get rates from EasyPost with 10-second timeout + 1 retry on transient errors.
+      // The timeout applies per-attempt so a single hung connection can add at most
+      // 10s + 300ms backoff + 10s = ~20.3s before falling through to the next tier.
+      const fetchWithTimeout = () => {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('EasyPost request timed out after 10 seconds')), 10000);
+        });
+        return Promise.race([
+          this.easyPostRatesService.getLowestRate(
+            { fromAddress, toAddress, parcel, customsInfo },
+            undefined, // no carrier filter
+            undefined // no service filter
+          ),
+          timeoutPromise,
+        ]);
+      };
 
-      const easypostResult = await Promise.race([
-        this.easyPostRatesService.getLowestRate(
-          {
-            fromAddress,
-            toAddress,
-            parcel,
-            customsInfo,
-          },
-          undefined, // no carrier filter
-          undefined // no service filter
-        ),
-        timeoutPromise,
-      ]);
+      const easypostResult = await withRetry(fetchWithTimeout, { label: 'EasyPost' });
 
       // Return top 3 rates (cheapest to most expensive)
       const topRates = easypostResult.allRates.slice(0, 3);
@@ -793,16 +798,20 @@ export class ShippingTaxService {
     }
 
     try {
-      const rates = await this.sendcloudService.getRates({
-        fromCountry: sellerCountry,
-        toCountry: address.country,
-        weightGrams: Math.max(100, weightGrams), // Minimum 100g
-        items: items.map((item) => ({
-          name: `Item ${item.productId}`,
-          quantity: item.quantity,
-          value: item.price,
-        })),
-      });
+      const rates = await withRetry(
+        () =>
+          this.sendcloudService.getRates({
+            fromCountry: sellerCountry,
+            toCountry: address.country,
+            weightGrams: Math.max(100, weightGrams), // Minimum 100g
+            items: items.map((item) => ({
+              name: `Item ${item.productId}`,
+              quantity: item.quantity,
+              value: item.price,
+            })),
+          }),
+        { label: 'SendCloud' }
+      );
 
       // Map Sendcloud rates to ShippingOption format
       return rates.map((rate) => ({
@@ -840,17 +849,21 @@ export class ShippingTaxService {
     }
 
     try {
-      const rates = await this.easyshipService.getRates({
-        fromCountry: sellerCountry,
-        toCountry: address.country,
-        weightKg: Math.max(0.1, weightKg), // Minimum 0.1kg
-        items: items.map((item) => ({
-          quantity: item.quantity,
-          value: item.price,
-          name: `Item ${item.productId}`,
-          weightGrams: item.weight ?? 500, // carry weight for dimension estimation
-        })),
-      });
+      const rates = await withRetry(
+        () =>
+          this.easyshipService.getRates({
+            fromCountry: sellerCountry,
+            toCountry: address.country,
+            weightKg: Math.max(0.1, weightKg), // Minimum 0.1kg
+            items: items.map((item) => ({
+              quantity: item.quantity,
+              value: item.price,
+              name: `Item ${item.productId}`,
+              weightGrams: item.weight ?? 500, // carry weight for dimension estimation
+            })),
+          }),
+        { label: 'EasyShip' }
+      );
 
       // Map Easyship rates to ShippingOption format
       return rates.map((rate) => ({
