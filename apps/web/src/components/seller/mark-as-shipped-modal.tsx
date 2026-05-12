@@ -35,6 +35,9 @@ interface MarkAsShippedModalProps {
   items: OrderItem[];
   currency: string;
   onSuccess?: () => void;
+  shippingProvider?: string; // e.g. SENDCLOUD, EASYPOST, DHL, EASYSHIP
+  prefillCarrier?: string; // carrier name from shippingProviderData
+  prefillServiceName?: string; // service name from shippingProviderData
 }
 
 export function MarkAsShippedModal({
@@ -45,11 +48,33 @@ export function MarkAsShippedModal({
   items,
   currency,
   onSuccess,
+  shippingProvider,
+  prefillCarrier,
+  prefillServiceName,
 }: MarkAsShippedModalProps) {
   const t = useTranslations('components.markAsShippedModal');
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>(items.map((item) => item.id));
-  const [useAutoGenerate, setUseAutoGenerate] = useState(true); // Auto-generate by default
-  const [carrier, setCarrier] = useState('DHL');
+  // Auto-generate only makes sense for EasyPost; all other providers use manual tracking entry
+  const isEasyPost = shippingProvider === 'EASYPOST';
+  const [useAutoGenerate, setUseAutoGenerate] = useState(isEasyPost);
+  // Map prefill carrier (e.g. "dpd") to a select-option value
+  const resolveCarrier = (raw?: string): string => {
+    if (!raw) return 'DHL';
+    const lower = raw.toLowerCase();
+    if (lower.includes('dpd')) return 'DPD';
+    if (lower.includes('bpost')) return 'Bpost';
+    if (lower.includes('postnl')) return 'PostNL';
+    if (lower.includes('colissimo')) return 'Colissimo';
+    if (lower.includes('hermes') || lower.includes('evri')) return 'Hermes';
+    if (lower.includes('gls')) return 'GLS';
+    if (lower.includes('usps')) return 'USPS';
+    if (lower.includes('ups')) return 'UPS';
+    if (lower.includes('fedex')) return 'FedEx';
+    if (lower.includes('aramex')) return 'Aramex';
+    if (lower.includes('easyship')) return 'EasyShip';
+    return 'DHL';
+  };
+  const [carrier, setCarrier] = useState(() => resolveCarrier(prefillCarrier));
   const [serviceType, setServiceType] = useState('express');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackingUrl, setTrackingUrl] = useState('');
@@ -279,6 +304,29 @@ export function MarkAsShippedModal({
                       </div>
                     </label>
                   </div>
+
+                  {/* Provider context banner */}
+                  {shippingProvider && shippingProvider !== 'EASYPOST' && (
+                    <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+                      <span className="mt-0.5">ℹ️</span>
+                      <span>
+                        This order was fulfilled via{' '}
+                        <strong>
+                          {shippingProvider.charAt(0) + shippingProvider.slice(1).toLowerCase()}
+                        </strong>
+                        .
+                        {prefillServiceName && (
+                          <>
+                            {' '}
+                            Customer selected: <strong>{prefillServiceName}</strong>.
+                          </>
+                        )}{' '}
+                        Enter the tracking number you receive from your{' '}
+                        {shippingProvider.charAt(0) + shippingProvider.slice(1).toLowerCase()}{' '}
+                        dashboard below.
+                      </span>
+                    </div>
+                  )}
 
                   {/* Carrier */}
                   <div>
