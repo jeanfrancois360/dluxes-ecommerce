@@ -1152,55 +1152,58 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                             </p>
                           </div>
 
-                          {/* ── Tier 1: EasyPost — Multi-carrier (primary) ── */}
-                          {order.shippingAddress && user && storeData && (
-                            <div className="rounded-xl border border-[#CBB57B]/30 bg-gradient-to-br from-white to-amber-50/30 overflow-hidden">
-                              <div className="px-4 pt-3 pb-3">
-                                <div className="flex items-center gap-2 mb-0.5">
-                                  <span className="w-4 h-4 rounded-full bg-[#CBB57B] text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">
-                                    1
-                                  </span>
-                                  <p className="text-xs font-bold text-gray-800">
-                                    Multi-Carrier — Compare Rates & Buy Label
+                          {/* ── Tier 1: EasyPost — Multi-carrier (primary, only for EasyPost-routed orders) ── */}
+                          {order.shippingProvider === 'EASYPOST' &&
+                            order.shippingAddress &&
+                            user &&
+                            storeData && (
+                              <div className="rounded-xl border border-[#CBB57B]/30 bg-gradient-to-br from-white to-amber-50/30 overflow-hidden">
+                                <div className="px-4 pt-3 pb-3">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <span className="w-4 h-4 rounded-full bg-[#CBB57B] text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">
+                                      1
+                                    </span>
+                                    <p className="text-xs font-bold text-gray-800">
+                                      Multi-Carrier — Compare Rates & Buy Label
+                                    </p>
+                                  </div>
+                                  <p className="text-[10px] text-gray-500 mb-3 pl-6">
+                                    USPS · UPS · FedEx · DHL · Canada Post · 100+ carriers via
+                                    EasyPost
                                   </p>
+                                  <EasyPostLabelButton
+                                    orderId={order.id}
+                                    sellerId={user.id}
+                                    storeId={storeData.id}
+                                    fromAddress={{
+                                      street1: storeData.address?.street || '123 Seller St',
+                                      city: storeData.address?.city || 'San Francisco',
+                                      state: storeData.address?.state || 'CA',
+                                      zip: storeData.address?.zipCode || '94107',
+                                      country: storeData.address?.country || 'US',
+                                      name: storeData.name || 'Store',
+                                    }}
+                                    toAddress={{
+                                      street1: order.shippingAddress.street || '',
+                                      city: order.shippingAddress.city,
+                                      state: order.shippingAddress.state || '',
+                                      zip: order.shippingAddress.zipCode || '',
+                                      country: order.shippingAddress.country || 'US',
+                                      name: customerName,
+                                    }}
+                                    parcel={{
+                                      length: 12,
+                                      width: 8,
+                                      height: 6,
+                                      weight: order.items.reduce(
+                                        (sum, item) => sum + item.quantity * 16,
+                                        0
+                                      ),
+                                    }}
+                                  />
                                 </div>
-                                <p className="text-[10px] text-gray-500 mb-3 pl-6">
-                                  USPS · UPS · FedEx · DHL · Canada Post · 100+ carriers via
-                                  EasyPost
-                                </p>
-                                <EasyPostLabelButton
-                                  orderId={order.id}
-                                  sellerId={user.id}
-                                  storeId={storeData.id}
-                                  fromAddress={{
-                                    street1: storeData.address?.street || '123 Seller St',
-                                    city: storeData.address?.city || 'San Francisco',
-                                    state: storeData.address?.state || 'CA',
-                                    zip: storeData.address?.zipCode || '94107',
-                                    country: storeData.address?.country || 'US',
-                                    name: storeData.name || 'Store',
-                                  }}
-                                  toAddress={{
-                                    street1: order.shippingAddress.street || '',
-                                    city: order.shippingAddress.city,
-                                    state: order.shippingAddress.state || '',
-                                    zip: order.shippingAddress.zipCode || '',
-                                    country: order.shippingAddress.country || 'US',
-                                    name: customerName,
-                                  }}
-                                  parcel={{
-                                    length: 12,
-                                    width: 8,
-                                    height: 6,
-                                    weight: order.items.reduce(
-                                      (sum, item) => sum + item.quantity * 16,
-                                      0
-                                    ),
-                                  }}
-                                />
                               </div>
-                            </div>
-                          )}
+                            )}
 
                           {/* ── Tier 2: Manual / Other Carrier (DHL direct, EasyShip, SendCloud, custom) ── */}
                           <div className="rounded-xl border border-gray-100 bg-gray-50/60 overflow-hidden">
@@ -1506,6 +1509,9 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
           storeId={storeData.id}
           items={order.items}
           currency={order.currency}
+          shippingProvider={order.shippingProvider ?? undefined}
+          prefillCarrier={order.shippingProviderData?.carrier ?? undefined}
+          prefillServiceName={order.shippingProviderData?.name ?? undefined}
           onSuccess={() => {
             mutateShipments();
             mutate();
