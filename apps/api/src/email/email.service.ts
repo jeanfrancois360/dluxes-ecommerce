@@ -1527,9 +1527,9 @@ export class EmailService {
         </head>
         <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F9FAFB;">
           <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-            <div style="background: linear-gradient(135deg, #000000 0%, #1A1A1A 100%); padding: 40px; text-align: center; border-radius: 16px 16px 0 0;">
+            <div style="background: linear-gradient(135deg, #D97706 0%, #B45309 100%); padding: 40px; text-align: center; border-radius: 16px 16px 0 0;">
               <h1 style="color: #FFFFFF; font-size: 28px; margin: 0; font-weight: 700;">📦 Your Order Is Being Prepared</h1>
-              <p style="color: #A3A3A3; font-size: 16px; margin: 12px 0 0;">Order #${data.orderNumber}</p>
+              <p style="color: #FDE68A; font-size: 16px; margin: 12px 0 0;">Order #${data.orderNumber}</p>
             </div>
             <div style="background-color: #FFFFFF; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);">
               <p style="color: #525252; font-size: 16px; line-height: 1.6;">Hello ${data.customerName},</p>
@@ -1539,19 +1539,19 @@ export class EmailService {
               ${
                 data.trackingNumber
                   ? `
-              <div style="background-color: #FAFAFA; border-left: 4px solid #D4AF37; padding: 20px; border-radius: 8px; margin: 24px 0;">
-                <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">Tracking Information</p>
-                <p style="color: #525252; font-size: 14px; margin: 0;">
+              <div style="background-color: #FFFBEB; border-left: 4px solid #D97706; padding: 20px; border-radius: 8px; margin: 24px 0;">
+                <p style="color: #92400E; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">Tracking Information</p>
+                <p style="color: #92400E; font-size: 14px; margin: 0;">
                   ${data.carrier ? `Carrier: <strong>${data.carrier}</strong><br>` : ''}
                   Tracking Number: <strong>${data.trackingNumber}</strong>
                 </p>
-                ${data.trackingUrl ? `<a href="${data.trackingUrl}" style="color: #3B82F6; font-size: 14px; text-decoration: none; display: inline-block; margin-top: 8px;">Track with carrier →</a>` : ''}
+                ${data.trackingUrl ? `<a href="${data.trackingUrl}" style="color: #D97706; font-size: 14px; text-decoration: none; display: inline-block; margin-top: 8px;">Track with carrier →</a>` : ''}
               </div>
               `
                   : ''
               }
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${orderUrl}" style="display: inline-block; background: linear-gradient(135deg, #000000 0%, #262626 100%); color: #FFFFFF; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 600; font-size: 16px;">
+                <a href="${orderUrl}" style="display: inline-block; background: linear-gradient(135deg, #D97706 0%, #B45309 100%); color: #FFFFFF; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 600; font-size: 16px;">
                   View Order Details
                 </a>
               </div>
