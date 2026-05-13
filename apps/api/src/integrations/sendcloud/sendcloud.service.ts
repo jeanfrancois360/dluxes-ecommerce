@@ -61,6 +61,13 @@ export interface SendcloudPurchaseLabelDto {
   fromAddress: SendcloudAddress;
   weightGrams: number;
   orderNumber?: string;
+  items?: Array<{
+    description: string;
+    quantity: number;
+    weight: number; // kg per unit
+    value: number; // monetary value per unit
+    sku?: string;
+  }>;
 }
 
 export interface SendcloudLabelResult {
@@ -229,6 +236,18 @@ export class SendcloudService {
         shipment: { id: parseInt(dto.serviceCode, 10) },
         order_number: dto.orderNumber || dto.orderId,
         request_label: true,
+        // Parcel items — required by some carriers and displayed in SendCloud dashboard
+        ...(dto.items && dto.items.length > 0
+          ? {
+              parcel_items: dto.items.map((item) => ({
+                description: item.description,
+                quantity: item.quantity,
+                weight: item.weight.toFixed(3),
+                value: item.value.toFixed(2),
+                sku: item.sku || '',
+              })),
+            }
+          : {}),
       },
     };
 
