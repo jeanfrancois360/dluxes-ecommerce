@@ -182,15 +182,21 @@ export class OrdersController {
    * @route POST /orders
    */
   @Post()
-  async create(@Request() req, @Body() createOrderDto: CreateOrderDto) {
+  async create(
+    @Request() req,
+    @Body() createOrderDto: CreateOrderDto,
+    @Res({ passthrough: true }) res: Response
+  ) {
     try {
       const data = await this.ordersService.create(req.user.userId, createOrderDto);
+      res.status(201);
       return {
         success: true,
         data,
         message: 'Order created successfully',
       };
     } catch (error) {
+      res.status(400);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'An error occurred',
@@ -249,7 +255,7 @@ export class OrdersController {
    * @route POST /orders/:id/cancel
    */
   @Post(':id/cancel')
-  async cancel(@Param('id') id: string, @Request() req) {
+  async cancel(@Param('id') id: string, @Request() req, @Res({ passthrough: true }) res: Response) {
     try {
       const data = await this.ordersService.cancel(id, req.user.userId, { role: req.user.role });
       return {
@@ -258,6 +264,7 @@ export class OrdersController {
         message: 'Order cancelled successfully',
       };
     } catch (error) {
+      res.status(400);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'An error occurred',
