@@ -833,29 +833,84 @@ export class PaymentService {
           break;
 
         // Payout Events - Stripe platform payouts to bank account
-        case 'payout.created':
+        case 'payout.created': {
+          const createdPayout = event.data.object as Stripe.Payout;
           this.logger.log(
-            `[Payout] Created: ${(event.data.object as Stripe.Payout).id} — ${(event.data.object as Stripe.Payout).amount / 100} ${(event.data.object as Stripe.Payout).currency.toUpperCase()}`
+            `[Payout] Created: ${createdPayout.id} — ${createdPayout.amount / 100} ${createdPayout.currency.toUpperCase()}`
           );
           break;
+        }
 
-        case 'payout.paid':
-          this.logger.log(
-            `[Payout] Paid (arrived in bank): ${(event.data.object as Stripe.Payout).id}`
-          );
+        case 'payout.paid': {
+          const paidPayout = event.data.object as Stripe.Payout;
+          this.logger.log(`[Payout] Paid (arrived in bank): ${paidPayout.id}`);
+          const adminEmail = process.env.ADMIN_EMAIL;
+          if (adminEmail) {
+            const { EmailService } = await import('../email/email.service');
+            const emailService = new EmailService();
+            await emailService
+              .sendPlatformPayoutAlert(adminEmail, {
+                payoutId: paidPayout.id,
+                amount: paidPayout.amount / 100,
+                currency: paidPayout.currency,
+                status: 'paid',
+                arrivalDate: paidPayout.arrival_date,
+                method: paidPayout.method,
+              })
+              .catch((err) => this.logger.error('[Payout] Failed to send paid alert email', err));
+          }
           break;
+        }
 
         case 'payout.failed': {
           const failedPayout = event.data.object as Stripe.Payout;
           this.logger.error(
             `[Payout] Failed: ${failedPayout.id} — reason: ${failedPayout.failure_message || failedPayout.failure_code || 'unknown'}`
           );
+          const adminEmailFailed = process.env.ADMIN_EMAIL;
+          if (adminEmailFailed) {
+            const { EmailService } = await import('../email/email.service');
+            const emailService = new EmailService();
+            await emailService
+              .sendPlatformPayoutAlert(adminEmailFailed, {
+                payoutId: failedPayout.id,
+                amount: failedPayout.amount / 100,
+                currency: failedPayout.currency,
+                status: 'failed',
+                failureReason:
+                  failedPayout.failure_message ||
+                  failedPayout.failure_code ||
+                  'Unknown failure reason',
+                method: failedPayout.method,
+              })
+              .catch((err) =>
+                this.logger.error('[Payout] Failed to send failure alert email', err)
+              );
+          }
           break;
         }
 
-        case 'payout.canceled':
-          this.logger.warn(`[Payout] Canceled: ${(event.data.object as Stripe.Payout).id}`);
+        case 'payout.canceled': {
+          const canceledPayout = event.data.object as Stripe.Payout;
+          this.logger.warn(`[Payout] Canceled: ${canceledPayout.id}`);
+          const adminEmailCanceled = process.env.ADMIN_EMAIL;
+          if (adminEmailCanceled) {
+            const { EmailService } = await import('../email/email.service');
+            const emailService = new EmailService();
+            await emailService
+              .sendPlatformPayoutAlert(adminEmailCanceled, {
+                payoutId: canceledPayout.id,
+                amount: canceledPayout.amount / 100,
+                currency: canceledPayout.currency,
+                status: 'canceled',
+                method: canceledPayout.method,
+              })
+              .catch((err) =>
+                this.logger.error('[Payout] Failed to send canceled alert email', err)
+              );
+          }
           break;
+        }
 
         case 'payout.updated':
           this.logger.log(
