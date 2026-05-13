@@ -832,6 +832,43 @@ export class PaymentService {
           }
           break;
 
+        // Payout Events - Stripe platform payouts to bank account
+        case 'payout.created':
+          this.logger.log(
+            `[Payout] Created: ${(event.data.object as Stripe.Payout).id} — ${(event.data.object as Stripe.Payout).amount / 100} ${(event.data.object as Stripe.Payout).currency.toUpperCase()}`
+          );
+          break;
+
+        case 'payout.paid':
+          this.logger.log(
+            `[Payout] Paid (arrived in bank): ${(event.data.object as Stripe.Payout).id}`
+          );
+          break;
+
+        case 'payout.failed': {
+          const failedPayout = event.data.object as Stripe.Payout;
+          this.logger.error(
+            `[Payout] Failed: ${failedPayout.id} — reason: ${failedPayout.failure_message || failedPayout.failure_code || 'unknown'}`
+          );
+          break;
+        }
+
+        case 'payout.canceled':
+          this.logger.warn(`[Payout] Canceled: ${(event.data.object as Stripe.Payout).id}`);
+          break;
+
+        case 'payout.updated':
+          this.logger.log(
+            `[Payout] Updated: ${(event.data.object as Stripe.Payout).id} — status: ${(event.data.object as Stripe.Payout).status}`
+          );
+          break;
+
+        case 'payout.reconciliation_completed':
+          this.logger.log(
+            `[Payout] Reconciliation completed: ${(event.data.object as Stripe.Payout).id}`
+          );
+          break;
+
         default:
           this.logger.log(`Unhandled event type: ${event.type}`);
           await this.prisma.webhookEvent.update({
