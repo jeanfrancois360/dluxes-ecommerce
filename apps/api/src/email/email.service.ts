@@ -28,6 +28,7 @@ import { pickupReadyTemplate } from './templates/pickup-ready.template';
 import { pickupConfirmedTemplate } from './templates/pickup-confirmed.template';
 import { sellerDispatchReminderTemplate } from './templates/seller-dispatch-reminder.template';
 import { productInquiryTemplate } from './templates/product-inquiry.template';
+import { platformPayoutAlertTemplate } from './templates/platform-payout-alert.template';
 
 @Injectable()
 export class EmailService {
@@ -1577,6 +1578,54 @@ export class EmailService {
       } catch (err) {
         this.logger.error(`Error sending grace period warning to ${store.ownerEmail}`, err);
       }
+    }
+  }
+
+  /**
+   * Send platform-level payout alert to admin (Stripe bank settlement events)
+   */
+  async sendPlatformPayoutAlert(
+    adminEmail: string,
+    data: {
+      payoutId: string;
+      amount: number;
+      currency: string;
+      status: 'paid' | 'failed' | 'canceled';
+      failureReason?: string;
+      arrivalDate?: number;
+      method: string;
+    }
+  ): Promise<void> {
+    try {
+      const stripePayoutUrl = `https://dashboard.stripe.com/payouts/${data.payoutId}`;
+      const html = platformPayoutAlertTemplate({
+        ...data,
+        stripePayoutUrl,
+        frontendUrl: this.frontendUrl,
+      });
+
+      const subjectMap = {
+        paid: `Platform payout of ${data.currency.toUpperCase()} ${data.amount.toFixed(2)} arrived in bank`,
+        failed: `ACTION REQUIRED: Platform payout of ${data.currency.toUpperCase()} ${data.amount.toFixed(2)} failed`,
+        canceled: `Platform payout of ${data.currency.toUpperCase()} ${data.amount.toFixed(2)} canceled`,
+      };
+
+      const { error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: adminEmail,
+        subject: subjectMap[data.status],
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send platform payout alert email', error);
+      } else {
+        this.logger.log(
+          `Platform payout alert (${data.status}) sent to ${adminEmail} for payout ${data.payoutId}`
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error sending platform payout alert email', error);
     }
   }
 }
