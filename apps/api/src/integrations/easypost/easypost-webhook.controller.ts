@@ -231,6 +231,9 @@ export class EasyPostWebhookController {
     const hmac = crypto.createHmac('sha256', secret);
     hmac.update(rawBody);
     const expectedSignature = hmac.digest('hex');
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+    // EasyPost sends "hmac-sha256-hex=<digest>" — strip the prefix before comparing
+    const digest = signature.replace(/^hmac-sha256-hex=/, '');
+    if (digest.length !== expectedSignature.length) return false;
+    return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(expectedSignature));
   }
 }

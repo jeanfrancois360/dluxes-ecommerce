@@ -88,9 +88,13 @@ export class EasyPostShipmentService {
           : null,
         deliveryDays: rate.delivery_days,
         status: 'PURCHASED',
-        fromAddress: this.easyPostService.formatAddress(dto.fromAddress) as any,
-        toAddress: this.easyPostService.formatAddress(dto.toAddress) as any,
-        parcel: dto.parcel as any,
+        fromAddress: (dto.fromAddress
+          ? this.easyPostService.formatAddress(dto.fromAddress)
+          : shipment.from_address) as any,
+        toAddress: (dto.toAddress
+          ? this.easyPostService.formatAddress(dto.toAddress)
+          : shipment.to_address) as any,
+        parcel: (dto.parcel ?? shipment.parcel) as any,
         customsInfo: dto.customsInfo as any,
         insuredAmount: dto.insuranceAmount,
         insuranceFee: boughtShipment.fees?.find((f) => f.type === 'InsuranceFee')?.amount

@@ -26,17 +26,20 @@ export class PurchaseLabelDto {
   @IsString()
   rateId: string;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => AddressDto)
-  fromAddress: AddressDto;
+  fromAddress?: AddressDto;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => AddressDto)
-  toAddress: AddressDto;
+  toAddress?: AddressDto;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => ParcelDto)
-  parcel: ParcelDto;
+  parcel?: ParcelDto;
 
   @IsOptional()
   customsInfo?: any;
