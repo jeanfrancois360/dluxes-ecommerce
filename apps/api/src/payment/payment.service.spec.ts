@@ -52,6 +52,7 @@ describe('PaymentService', () => {
       findFirst: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       count: jest.fn(),
       aggregate: jest.fn(),
     },
@@ -549,6 +550,7 @@ describe('PaymentService', () => {
         amount: 10000,
         status: 'succeeded',
       });
+      mockStripe.paymentIntents.retrieve.mockResolvedValue({ status: 'succeeded' });
 
       // Set stripe client directly on service
       service['stripe'] = mockStripe as any;
@@ -606,6 +608,7 @@ describe('PaymentService', () => {
         amount: 5000,
         status: 'succeeded',
       });
+      mockStripe.paymentIntents.retrieve.mockResolvedValue({ status: 'succeeded' });
 
       // Set stripe client directly on service
       service['stripe'] = mockStripe as any;
@@ -656,6 +659,118 @@ describe('PaymentService', () => {
       await expect(service['validateCurrency']('usd')).resolves.not.toThrow();
 
       await expect(service['validateCurrency']('USD')).resolves.not.toThrow();
+    });
+  });
+
+  describe('getPaymentHealthMetrics - disputed count', () => {
+    it('should include disputed transactions count', async () => {
+      mockPrismaService.paymentTransaction.count
+        .mockResolvedValueOnce(200) // total
+        .mockResolvedValueOnce(150) // successful
+        .mockResolvedValueOnce(30) // failed
+        .mockResolvedValueOnce(5); // disputed
+      mockPrismaService.paymentTransaction.aggregate.mockResolvedValue({
+        _sum: { amount: 15000 },
+        _avg: { amount: 100 },
+      });
+      mockPrismaService.paymentTransaction.findMany.mockResolvedValue([]);
+
+      const metrics = await service.getPaymentHealthMetrics(30);
+
+      expect(metrics.transactions.disputed).toBe(5);
+      expect(metrics.transactions.disputed).not.toBe(0);
+    });
+
+    it('should query with DISPUTED status filter', async () => {
+      mockPrismaService.paymentTransaction.count.mockResolvedValue(0);
+      mockPrismaService.paymentTransaction.aggregate.mockResolvedValue({
+        _sum: { amount: null },
+        _avg: { amount: null },
+      });
+      mockPrismaService.paymentTransaction.findMany.mockResolvedValue([]);
+
+      await service.getPaymentHealthMetrics(30);
+
+      // Verify that count was called with DISPUTED status at some point
+      const countCalls = mockPrismaService.paymentTransaction.count.mock.calls;
+      const disputedCall = countCalls.find((call: any[]) => call[0]?.where?.status === 'DISPUTED');
+      expect(disputedCall).toBeDefined();
+    });
+  });
+
+  describe('handlePaymentFailed - email notification', () => {
+    it('should update order and transaction status on payment failure', async () => {
+      const orderId = 'order-failed-123';
+      const mockOrder = {
+        id: orderId,
+        orderNumber: 'ORD-FAILED-001',
+        total: 99.99,
+        currency: 'USD',
+        user: { email: 'buyer@test.com', firstName: 'John', lastName: 'Doe' },
+      };
+
+      mockPrismaService.paymentTransaction.updateMany.mockResolvedValue({ count: 1 });
+      mockPrismaService.order.update.mockResolvedValue({ ...mockOrder, paymentStatus: 'FAILED' });
+      mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
+
+      const mockPaymentIntent = {
+        id: 'pi_failed_123',
+        metadata: { orderId },
+        last_payment_error: { code: 'card_declined', message: 'Your card was declined.' },
+      };
+
+      // Should not throw even if email fails (no RESEND_API_KEY in test env)
+      await expect(service['handlePaymentFailed'](mockPaymentIntent as any)).resolves.not.toThrow();
+
+      expect(mockPrismaService.paymentTransaction.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { stripePaymentIntentId: 'pi_failed_123' },
+          data: expect.objectContaining({ status: 'FAILED' }),
+        })
+      );
+      expect(mockPrismaService.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: orderId },
+          data: expect.objectContaining({ paymentStatus: 'FAILED' }),
+        })
+      );
+    });
+  });
+
+  describe('handlePaymentCanceled - email notification', () => {
+    it('should update order status and attempt buyer notification', async () => {
+      const orderId = 'order-cancelled-123';
+      const mockOrder = {
+        id: orderId,
+        orderNumber: 'ORD-CANCELLED-001',
+        total: 150.0,
+        currency: 'USD',
+        user: { email: 'buyer@test.com' },
+      };
+
+      mockPrismaService.paymentTransaction.updateMany.mockResolvedValue({ count: 1 });
+      mockPrismaService.order.update.mockResolvedValue({
+        ...mockOrder,
+        paymentStatus: 'CANCELLED',
+      });
+      mockPrismaService.orderTimeline.create.mockResolvedValue({ id: 'tl-1' });
+      mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
+
+      const mockPaymentIntent = {
+        id: 'pi_cancelled_123',
+        metadata: { orderId },
+      };
+
+      await expect(
+        service['handlePaymentCanceled'](mockPaymentIntent as any)
+      ).resolves.not.toThrow();
+
+      expect(mockPrismaService.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: orderId },
+          data: expect.objectContaining({ paymentStatus: 'CANCELLED' }),
+        })
+      );
     });
   });
 });
