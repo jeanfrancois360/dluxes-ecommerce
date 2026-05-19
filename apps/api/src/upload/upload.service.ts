@@ -56,7 +56,7 @@ export class UploadService {
   async uploadFile(
     file: Express.Multer.File,
     folder: string = 'images',
-    options?: { allowPdf?: boolean }
+    options?: { allowPdf?: boolean; skipSizeCheck?: boolean }
   ) {
     if (!file) {
       throw new BadRequestException('No file provided');
@@ -76,11 +76,14 @@ export class UploadService {
     }
 
     // Validate file size (max 10MB for PDFs, 5MB for images)
-    const maxSize = options?.allowPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      throw new BadRequestException(
-        `File size exceeds ${options?.allowPdf ? '10MB' : '5MB'} limit`
-      );
+    // skipSizeCheck bypasses this for internal server-to-server operations (e.g. Gelato image caching)
+    if (!options?.skipSizeCheck) {
+      const maxSize = options?.allowPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        throw new BadRequestException(
+          `File size exceeds ${options?.allowPdf ? '10MB' : '5MB'} limit`
+        );
+      }
     }
 
     const fileExtension = path.extname(file.originalname);

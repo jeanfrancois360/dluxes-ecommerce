@@ -581,14 +581,6 @@ export class GelatoProductsService {
         return 0;
       }
 
-      // Delete existing cached Gelato images for this product
-      await this.prisma.productImage.deleteMany({
-        where: {
-          productId,
-          alt: 'gelato-cached',
-        },
-      });
-
       // Process images in batches of 5 to avoid overwhelming the system
       const batchSize = 5;
       const createdImages = [];
@@ -598,7 +590,7 @@ export class GelatoProductsService {
 
         const batchResults = await Promise.allSettled(
           batch.map(async (img) => {
-            // Check if permanent URL already exists
+            // Check if a permanent (non-S3) URL already exists for this slot
             const existing = await this.prisma.productImage.findFirst({
               where: {
                 productId,
@@ -651,9 +643,11 @@ export class GelatoProductsService {
                 size: buffer.length,
               } as Express.Multer.File;
 
-              // Upload to Supabase
+              // Upload to Supabase (skipSizeCheck: internal op, Gelato images can exceed 5MB)
               this.logger.debug(`Uploading to Supabase: ${folder}/${filename}`);
-              const uploadResult = await this.uploadService.uploadFile(file, folder);
+              const uploadResult = await this.uploadService.uploadFile(file, folder, {
+                skipSizeCheck: true,
+              });
 
               // Store in database with permanent Supabase URL
               const created = await this.prisma.productImage.create({
@@ -708,6 +702,16 @@ export class GelatoProductsService {
           }
         });
       }
+
+      // Remove any remaining temporary S3 URL records that were not replaced by permanent uploads
+      // (permanent URLs were either pre-existing or just uploaded above)
+      await this.prisma.productImage.deleteMany({
+        where: {
+          productId,
+          alt: 'gelato-cached',
+          url: { contains: 'amazonaws.com' },
+        },
+      });
 
       this.logger.log(
         `✅ Cached ${createdImages.length} images for product ${productId} (Gelato: ${gelatoProduct.uid || 'unknown'})`
@@ -958,7 +962,9 @@ export class GelatoProductsService {
                 size: buffer.length,
               } as Express.Multer.File;
 
-              const uploadResult = await this.uploadService.uploadFile(file, folder);
+              const uploadResult = await this.uploadService.uploadFile(file, folder, {
+                skipSizeCheck: true,
+              });
 
               // Update database with new URL
               await this.prisma.productImage.update({
