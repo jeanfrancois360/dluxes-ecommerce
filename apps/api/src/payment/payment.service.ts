@@ -13,6 +13,7 @@ import {
   PaymentMethod,
   WebhookStatus,
   OrderStatus,
+  InventoryTransactionType,
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { assertOrderAccess, AuthenticatedUser } from '../common/authorization/order-access.helper';
@@ -1872,7 +1873,50 @@ export class PaymentService {
       this.logger.log(`Refund processed for charge ${charge.id}: ${refundAmount}`);
 
       // TODO: Send refund confirmation email
-      // TODO: Restore inventory
+
+      // Restore inventory on full refund
+      if (isFullRefund) {
+        try {
+          const orderWithItems = await this.prisma.order.findUnique({
+            where: { id: transaction.orderId },
+            include: { items: true },
+          });
+
+          if (orderWithItems && orderWithItems.items.length > 0) {
+            const { InventoryService } = await import('../inventory/inventory.service');
+            const inventoryService = new InventoryService(this.prisma);
+
+            for (const item of orderWithItems.items) {
+              try {
+                await inventoryService.recordTransaction({
+                  productId: item.productId,
+                  variantId: item.variantId || undefined,
+                  type: InventoryTransactionType.RETURN,
+                  quantity: item.quantity,
+                  orderId: transaction.orderId,
+                  reason: 'refund',
+                  notes: `Full refund for charge ${charge.id}`,
+                });
+              } catch (invItemError) {
+                this.logger.error(
+                  `Error restoring inventory for product ${item.productId} on refund:`,
+                  invItemError
+                );
+              }
+            }
+
+            this.logger.log(
+              `Inventory restored for ${orderWithItems.items.length} item(s) on refund of order ${transaction.orderId}`
+            );
+          }
+        } catch (inventoryError) {
+          this.logger.error(
+            `Error restoring inventory for refunded order ${transaction.orderId}:`,
+            inventoryError
+          );
+          // Don't fail the refund webhook if inventory restoration fails
+        }
+      }
     } catch (error) {
       this.logger.error(`Error processing refund for charge ${charge.id}:`, error);
       throw error;
@@ -2331,9 +2375,75 @@ export class PaymentService {
 
       this.logger.log(`Order ${transaction.orderId} marked as disputed`);
 
-      // TODO: Alert admin immediately about dispute
-      // TODO: Gather evidence for dispute response
-      // TODO: Notify seller about dispute
+      // Alert admin and notify affected sellers
+      try {
+        const { EmailService } = await import('../email/email.service');
+        const emailService = new EmailService();
+
+        const disputeEmailData = {
+          disputeId: dispute.id,
+          chargeId: dispute.charge as string,
+          amount: dispute.amount / 100,
+          currency: dispute.currency,
+          reason: dispute.reason,
+          orderNumber: transaction.order.orderNumber,
+          orderId: transaction.orderId,
+          evidenceDueBy: dispute.evidence_details?.due_by ?? null,
+          stripeDisputeUrl: `https://dashboard.stripe.com/disputes/${dispute.id}`,
+        };
+
+        // Alert admin immediately
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (adminEmail) {
+          await emailService.sendDisputeAlert(adminEmail, disputeEmailData);
+        }
+
+        // Notify each affected seller
+        const orderWithSellers = await this.prisma.order.findUnique({
+          where: { id: transaction.orderId },
+          include: {
+            items: {
+              include: { product: { include: { store: true } } },
+            },
+          },
+        });
+
+        if (orderWithSellers) {
+          const sellerUserIds = [
+            ...new Set(
+              orderWithSellers.items
+                .map((item) => item.product?.store?.userId)
+                .filter((id): id is string => !!id)
+            ),
+          ];
+
+          for (const sellerId of sellerUserIds) {
+            try {
+              const seller = await this.prisma.user.findUnique({
+                where: { id: sellerId },
+                select: { email: true },
+              });
+              if (seller?.email) {
+                await emailService.sendDisputeAlert(seller.email, {
+                  ...disputeEmailData,
+                  isSeller: true,
+                });
+              }
+            } catch (sellerEmailError) {
+              this.logger.error(
+                `Failed to send dispute alert to seller ${sellerId}:`,
+                sellerEmailError
+              );
+            }
+          }
+        }
+      } catch (emailError) {
+        this.logger.error(
+          `Failed to send dispute alert emails for dispute ${dispute.id}:`,
+          emailError
+        );
+        // Don't fail the webhook if email sending fails
+      }
     } catch (error) {
       this.logger.error(`Error handling dispute created ${dispute.id}:`, error);
       throw error;
@@ -2431,7 +2541,73 @@ export class PaymentService {
 
       this.logger.log(`Order ${transaction.orderId} dispute closed: ${isWon ? 'WON' : 'LOST'}`);
 
-      // TODO: Send dispute resolution notification
+      // Notify admin and sellers of dispute outcome
+      try {
+        const order = await this.prisma.order.findUnique({
+          where: { id: transaction.orderId },
+          include: {
+            items: {
+              include: { product: { include: { store: true } } },
+            },
+          },
+        });
+
+        if (order) {
+          const { EmailService } = await import('../email/email.service');
+          const emailService = new EmailService();
+
+          const resolutionData = {
+            disputeId: dispute.id,
+            amount: dispute.amount / 100,
+            currency: dispute.currency,
+            isWon,
+            orderNumber: order.orderNumber,
+            orderId: transaction.orderId,
+            stripeDisputeUrl: `https://dashboard.stripe.com/disputes/${dispute.id}`,
+          };
+
+          // Notify admin
+          const adminEmail = process.env.ADMIN_EMAIL;
+          if (adminEmail) {
+            await emailService.sendDisputeResolution(adminEmail, resolutionData);
+          }
+
+          // Notify affected sellers
+          const sellerUserIds = [
+            ...new Set(
+              order.items
+                .map((item) => item.product?.store?.userId)
+                .filter((id): id is string => !!id)
+            ),
+          ];
+
+          for (const sellerId of sellerUserIds) {
+            try {
+              const seller = await this.prisma.user.findUnique({
+                where: { id: sellerId },
+                select: { email: true },
+              });
+              if (seller?.email) {
+                await emailService.sendDisputeResolution(seller.email, {
+                  ...resolutionData,
+                  isSeller: true,
+                });
+              }
+            } catch (sellerEmailError) {
+              this.logger.error(
+                `Failed to send dispute resolution to seller ${sellerId}:`,
+                sellerEmailError
+              );
+            }
+          }
+        }
+      } catch (emailError) {
+        this.logger.error(
+          `Failed to send dispute resolution emails for dispute ${dispute.id}:`,
+          emailError
+        );
+        // Don't fail the webhook if email sending fails
+      }
     } catch (error) {
       this.logger.error(`Error handling dispute closed ${dispute.id}:`, error);
       throw error;
