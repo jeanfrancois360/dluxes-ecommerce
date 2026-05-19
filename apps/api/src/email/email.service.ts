@@ -29,6 +29,8 @@ import { pickupConfirmedTemplate } from './templates/pickup-confirmed.template';
 import { sellerDispatchReminderTemplate } from './templates/seller-dispatch-reminder.template';
 import { productInquiryTemplate } from './templates/product-inquiry.template';
 import { platformPayoutAlertTemplate } from './templates/platform-payout-alert.template';
+import { disputeAlertTemplate } from './templates/dispute-alert.template';
+import { disputeResolutionTemplate } from './templates/dispute-resolution.template';
 
 @Injectable()
 export class EmailService {
@@ -1626,6 +1628,89 @@ export class EmailService {
       }
     } catch (error) {
       this.logger.error('Error sending platform payout alert email', error);
+    }
+  }
+
+  /**
+   * Send dispute created alert to admin or seller
+   */
+  async sendDisputeAlert(
+    recipientEmail: string,
+    data: {
+      disputeId: string;
+      chargeId: string;
+      amount: number;
+      currency: string;
+      reason: string;
+      orderNumber: string;
+      orderId: string;
+      evidenceDueBy?: number | null;
+      stripeDisputeUrl: string;
+      isSeller?: boolean;
+    }
+  ): Promise<void> {
+    try {
+      const html = disputeAlertTemplate({ ...data, frontendUrl: this.frontendUrl });
+      const subject = data.isSeller
+        ? `Payment dispute filed on order #${data.orderNumber}`
+        : `ACTION REQUIRED: Chargeback on order #${data.orderNumber} — ${data.currency.toUpperCase()} ${data.amount.toFixed(2)}`;
+
+      const { error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: recipientEmail,
+        subject,
+        html,
+      });
+
+      if (error) {
+        this.logger.error(`Failed to send dispute alert to ${recipientEmail}`, error);
+      } else {
+        this.logger.log(`Dispute alert sent to ${recipientEmail} for dispute ${data.disputeId}`);
+      }
+    } catch (error) {
+      this.logger.error('Error sending dispute alert email', error);
+    }
+  }
+
+  /**
+   * Send dispute resolution notification to admin or seller
+   */
+  async sendDisputeResolution(
+    recipientEmail: string,
+    data: {
+      disputeId: string;
+      amount: number;
+      currency: string;
+      isWon: boolean;
+      orderNumber: string;
+      orderId: string;
+      stripeDisputeUrl: string;
+      isSeller?: boolean;
+    }
+  ): Promise<void> {
+    try {
+      const html = disputeResolutionTemplate({ ...data, frontendUrl: this.frontendUrl });
+      const outcome = data.isWon ? 'WON' : 'LOST';
+      const subject = data.isSeller
+        ? `Dispute ${outcome.toLowerCase()} — order #${data.orderNumber}`
+        : `Dispute ${outcome}: order #${data.orderNumber} — ${data.currency.toUpperCase()} ${data.amount.toFixed(2)}`;
+
+      const { error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: recipientEmail,
+        subject,
+        html,
+      });
+
+      if (error) {
+        this.logger.error(`Failed to send dispute resolution to ${recipientEmail}`, error);
+      } else {
+        this.logger.log(
+          `Dispute resolution (${outcome}) sent to ${recipientEmail} for dispute ${data.disputeId}`
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error sending dispute resolution email', error);
     }
   }
 }
