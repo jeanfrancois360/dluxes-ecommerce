@@ -31,6 +31,10 @@ import { productInquiryTemplate } from './templates/product-inquiry.template';
 import { platformPayoutAlertTemplate } from './templates/platform-payout-alert.template';
 import { disputeAlertTemplate } from './templates/dispute-alert.template';
 import { disputeResolutionTemplate } from './templates/dispute-resolution.template';
+import { paymentFailedTemplate } from './templates/payment-failed.template';
+import { paymentCancelledTemplate } from './templates/payment-cancelled.template';
+import { paymentActionRequiredTemplate } from './templates/payment-action-required.template';
+import { chargeCapturedSellerTemplate } from './templates/charge-captured-seller.template';
 
 @Injectable()
 export class EmailService {
@@ -1711,6 +1715,146 @@ export class EmailService {
       }
     } catch (error) {
       this.logger.error('Error sending dispute resolution email', error);
+    }
+  }
+
+  /**
+   * Send payment failed notification to buyer
+   */
+  async sendPaymentFailedNotification(
+    email: string,
+    data: {
+      orderNumber: string;
+      amount: number;
+      currency: string;
+      failureReason?: string;
+      retryUrl: string;
+    }
+  ): Promise<void> {
+    try {
+      const html = paymentFailedTemplate({ ...data, frontendUrl: this.frontendUrl });
+
+      const { error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `Payment failed for order #${data.orderNumber}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error(`Failed to send payment failed email to ${email}`, error);
+      } else {
+        this.logger.log(
+          `Payment failed notification sent to ${email} for order ${data.orderNumber}`
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error sending payment failed email', error);
+    }
+  }
+
+  /**
+   * Send payment cancelled notification to buyer
+   */
+  async sendPaymentCancelledNotification(
+    email: string,
+    data: {
+      orderNumber: string;
+      amount: number;
+      currency: string;
+      ordersUrl: string;
+    }
+  ): Promise<void> {
+    try {
+      const html = paymentCancelledTemplate({ ...data, frontendUrl: this.frontendUrl });
+
+      const { error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `Payment cancelled for order #${data.orderNumber}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error(`Failed to send payment cancelled email to ${email}`, error);
+      } else {
+        this.logger.log(
+          `Payment cancelled notification sent to ${email} for order ${data.orderNumber}`
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error sending payment cancelled email', error);
+    }
+  }
+
+  /**
+   * Send payment action required (3D Secure) notification to buyer
+   */
+  async sendPaymentActionRequired(
+    email: string,
+    data: {
+      orderNumber: string;
+      amount: number;
+      currency: string;
+      actionUrl: string;
+    }
+  ): Promise<void> {
+    try {
+      const html = paymentActionRequiredTemplate({ ...data, frontendUrl: this.frontendUrl });
+
+      const { error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `ACTION REQUIRED: Complete payment for order #${data.orderNumber}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error(`Failed to send payment action required email to ${email}`, error);
+      } else {
+        this.logger.log(
+          `Payment action required email sent to ${email} for order ${data.orderNumber}`
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error sending payment action required email', error);
+    }
+  }
+
+  /**
+   * Send charge captured notification to seller
+   */
+  async sendChargeCapturedSeller(
+    email: string,
+    data: {
+      sellerName: string;
+      storeName: string;
+      orderNumber: string;
+      amount: number;
+      currency: string;
+      orderId: string;
+      dashboardUrl: string;
+    }
+  ): Promise<void> {
+    try {
+      const html = chargeCapturedSellerTemplate({ ...data, frontendUrl: this.frontendUrl });
+
+      const { error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `Funds captured for order #${data.orderNumber}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error(`Failed to send charge captured email to ${email}`, error);
+      } else {
+        this.logger.log(
+          `Charge captured notification sent to ${email} for order ${data.orderNumber}`
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error sending charge captured seller email', error);
     }
   }
 }

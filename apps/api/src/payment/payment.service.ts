@@ -1709,7 +1709,8 @@ export class PaymentService {
         // Don't fail the payment if invoice email fails
       }
 
-      // TODO: Trigger inventory reservation
+      // Inventory was already decremented via InventoryService.recordTransaction(SALE)
+      // in orders.service.ts at order creation time. No action required here.
     } catch (error) {
       this.logger.error(`Error processing payment success for order ${orderId}:`, error);
       throw error;
@@ -1775,7 +1776,27 @@ export class PaymentService {
 
       this.logger.log(`Order ${orderId} payment failed`);
 
-      // TODO: Send payment failed notification email
+      // Notify buyer of payment failure
+      try {
+        const failedOrder = await this.prisma.order.findUnique({
+          where: { id: orderId },
+          include: { user: true },
+        });
+        if (failedOrder?.user?.email) {
+          const { EmailService } = await import('../email/email.service');
+          const emailService = new EmailService();
+          await emailService.sendPaymentFailedNotification(failedOrder.user.email, {
+            orderNumber: failedOrder.orderNumber,
+            amount: Number(failedOrder.total),
+            currency: failedOrder.currency || 'USD',
+            failureReason: paymentIntent.last_payment_error?.message,
+            retryUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders/${orderId}`,
+          });
+          this.logger.log(`Payment failed notification sent to ${failedOrder.user.email}`);
+        }
+      } catch (emailError) {
+        this.logger.error(`Failed to send payment failed email for order ${orderId}:`, emailError);
+      }
     } catch (error) {
       this.logger.error(`Error updating failed payment for order ${orderId}:`, error);
     }
@@ -1967,7 +1988,29 @@ export class PaymentService {
 
       this.logger.log(`Order ${orderId} payment canceled`);
 
-      // TODO: Send payment canceled notification email
+      // Notify buyer of payment cancellation
+      try {
+        const cancelledOrder = await this.prisma.order.findUnique({
+          where: { id: orderId },
+          include: { user: true },
+        });
+        if (cancelledOrder?.user?.email) {
+          const { EmailService } = await import('../email/email.service');
+          const emailService = new EmailService();
+          await emailService.sendPaymentCancelledNotification(cancelledOrder.user.email, {
+            orderNumber: cancelledOrder.orderNumber,
+            amount: Number(cancelledOrder.total),
+            currency: cancelledOrder.currency || 'USD',
+            ordersUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders`,
+          });
+          this.logger.log(`Payment cancelled notification sent to ${cancelledOrder.user.email}`);
+        }
+      } catch (emailError) {
+        this.logger.error(
+          `Failed to send payment cancelled email for order ${orderId}:`,
+          emailError
+        );
+      }
     } catch (error) {
       this.logger.error(`Error handling payment cancellation for order ${orderId}:`, error);
       throw error;
@@ -1998,7 +2041,32 @@ export class PaymentService {
 
       this.logger.log(`Order ${orderId} payment requires action (e.g., 3D Secure)`);
 
-      // TODO: Send customer action required email with payment link
+      // Email buyer with action URL to complete 3D Secure
+      try {
+        const actionUrl = paymentIntent.next_action?.redirect_to_url?.url;
+        if (actionUrl) {
+          const actionOrder = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: { user: true },
+          });
+          if (actionOrder?.user?.email) {
+            const { EmailService } = await import('../email/email.service');
+            const emailService = new EmailService();
+            await emailService.sendPaymentActionRequired(actionOrder.user.email, {
+              orderNumber: actionOrder.orderNumber,
+              amount: Number(actionOrder.total),
+              currency: actionOrder.currency || 'USD',
+              actionUrl,
+            });
+            this.logger.log(`Payment action required email sent to ${actionOrder.user.email}`);
+          }
+        }
+      } catch (emailError) {
+        this.logger.error(
+          `Failed to send payment action required email for order ${orderId}:`,
+          emailError
+        );
+      }
     } catch (error) {
       this.logger.error(`Error handling payment requires action for order ${orderId}:`, error);
     }
@@ -2183,7 +2251,58 @@ export class PaymentService {
         this.logger.log(`Escrow transaction ${escrowTransaction.id} updated with capture info`);
       }
 
-      // TODO: Notify seller that payment has been captured
+      // Notify sellers that funds have been captured
+      try {
+        const capturedOrder = await this.prisma.order.findUnique({
+          where: { id: transaction.orderId },
+          include: {
+            items: { include: { product: { include: { store: true } } } },
+          },
+        });
+        if (capturedOrder) {
+          const { EmailService } = await import('../email/email.service');
+          const emailService = new EmailService();
+          const sellerIds = [
+            ...new Set(
+              capturedOrder.items
+                .map((item) => item.product?.store?.userId)
+                .filter((id): id is string => !!id)
+            ),
+          ];
+          for (const sellerId of sellerIds) {
+            try {
+              const seller = await this.prisma.user.findUnique({
+                where: { id: sellerId },
+                select: { email: true, firstName: true, lastName: true },
+              });
+              const store = capturedOrder.items.find((i) => i.product?.store?.userId === sellerId)
+                ?.product?.store;
+              if (seller?.email) {
+                await emailService.sendChargeCapturedSeller(seller.email, {
+                  sellerName:
+                    `${seller.firstName || ''} ${seller.lastName || ''}`.trim() || 'Seller',
+                  storeName: store?.name || 'your store',
+                  orderNumber: capturedOrder.orderNumber,
+                  amount: charge.amount_captured / 100,
+                  currency: charge.currency,
+                  orderId: transaction.orderId,
+                  dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/seller/orders/${transaction.orderId}`,
+                });
+              }
+            } catch (sellerErr) {
+              this.logger.error(
+                `Failed to send capture notification to seller ${sellerId}:`,
+                sellerErr
+              );
+            }
+          }
+        }
+      } catch (captureEmailError) {
+        this.logger.error(
+          `Failed to send charge captured notifications for order ${transaction.orderId}:`,
+          captureEmailError
+        );
+      }
     } catch (error) {
       this.logger.error(`Error handling charge captured ${charge.id}:`, error);
       throw error;
@@ -2305,8 +2424,31 @@ export class PaymentService {
 
         this.logger.log(`Transaction ${transaction.id} updated with refund failure info`);
 
-        // TODO: Alert admin about failed refund
-        // TODO: Send notification to customer service
+        // Alert admin about failed refund
+        try {
+          const adminEmail = process.env.ADMIN_EMAIL;
+          if (adminEmail) {
+            const failedRefundOrder = await this.prisma.order.findUnique({
+              where: { id: transaction.orderId },
+              select: { orderNumber: true },
+            });
+            const { EmailService } = await import('../email/email.service');
+            const emailService = new EmailService();
+            await emailService.sendDisputeAlert(adminEmail, {
+              disputeId: refund.id,
+              chargeId: refund.charge as string,
+              amount: refund.amount / 100,
+              currency: refund.currency || 'USD',
+              reason: `Refund failed: ${refund.failure_reason || 'unknown reason'}`,
+              orderNumber: failedRefundOrder?.orderNumber || transaction.orderId,
+              orderId: transaction.orderId,
+              stripeDisputeUrl: `https://dashboard.stripe.com/payments/${refund.charge}`,
+            });
+            this.logger.log(`Failed refund alert sent to admin for refund ${refund.id}`);
+          }
+        } catch (alertError) {
+          this.logger.error(`Failed to send refund failure alert:`, alertError);
+        }
       }
     } catch (error) {
       this.logger.error(`Error handling refund failed ${refund.id}:`, error);
@@ -3703,6 +3845,7 @@ export class PaymentService {
       totalTransactions,
       successfulTransactions,
       failedTransactions,
+      disputedTransactions,
       totalRevenue,
       averageTransactionValue,
       recentTransactions,
@@ -3725,6 +3868,14 @@ export class PaymentService {
         where: {
           createdAt: { gte: since },
           status: PaymentTransactionStatus.FAILED,
+        },
+      }),
+
+      // Disputed transactions
+      this.prisma.paymentTransaction.count({
+        where: {
+          createdAt: { gte: since },
+          status: PaymentTransactionStatus.DISPUTED,
         },
       }),
 
@@ -3778,7 +3929,7 @@ export class PaymentService {
         total: totalTransactions,
         successful: successfulTransactions,
         failed: failedTransactions,
-        disputed: 0, // TODO: Add DISPUTED status to database enum
+        disputed: disputedTransactions,
         successRate: `${successRate}%`,
       },
       revenue: {

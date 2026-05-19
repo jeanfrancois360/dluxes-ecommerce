@@ -317,14 +317,6 @@ export class PayPalService {
     const client = this.getClient();
 
     try {
-      // TODO: PayPal refund audit trail — no local DB write currently records
-      // the refund. Ideally we would: (1) look up the PaymentTransaction via
-      // metadata.captureId using a JSON path query (slow, non-indexed), (2)
-      // update its status to REFUNDED and store the refundId in metadata, (3)
-      // update the linked Order's paymentStatus. For now, admin-only access
-      // via RolesGuard prevents unauthorized use; audit trail will be added
-      // in a follow-up once the PaymentTransaction schema is normalized to
-      // include a first-class paypalCaptureId column.
       const request = new paypal.payments.CapturesRefundRequest(captureId);
       request.requestBody(
         amount && currency
@@ -339,6 +331,61 @@ export class PayPalService {
 
       const response = await client.execute(request);
       this.logger.log(`PayPal refund created: ${response.result.id} for capture: ${captureId}`);
+
+      // Write audit trail: update PaymentTransaction status and Order.paymentStatus
+      try {
+        const txn = await this.prisma.paymentTransaction.findFirst({
+          where: {
+            paymentMethod: PaymentMethod.PAYPAL,
+            metadata: {
+              path: ['captureId'],
+              equals: captureId,
+            },
+          },
+          include: { order: true },
+        });
+        if (txn) {
+          const isFullRefund = !amount || amount >= Number(txn.amount);
+          await this.prisma.paymentTransaction.update({
+            where: { id: txn.id },
+            data: {
+              status: isFullRefund
+                ? PaymentTransactionStatus.REFUNDED
+                : PaymentTransactionStatus.PARTIALLY_REFUNDED,
+              refundedAmount: amount ? new Decimal(amount) : txn.amount,
+              refundedAt: new Date(),
+              metadata: {
+                ...(txn.metadata as any),
+                refundId: response.result.id,
+                refundedAt: new Date().toISOString(),
+                refundAmount: amount ?? 'full',
+              } as any,
+            },
+          });
+          await this.prisma.order.update({
+            where: { id: txn.orderId },
+            data: {
+              paymentStatus: isFullRefund
+                ? PaymentStatus.REFUNDED
+                : PaymentStatus.PARTIALLY_REFUNDED,
+            },
+          });
+          this.logger.log(
+            `PayPal refund audit trail written for transaction ${txn.id}, order ${txn.orderId}`
+          );
+        } else {
+          this.logger.warn(
+            `PayPal refund ${response.result.id}: no PaymentTransaction found for captureId ${captureId}`
+          );
+        }
+      } catch (auditError) {
+        this.logger.error(
+          `PayPal refund audit trail failed for captureId ${captureId}:`,
+          auditError
+        );
+        // Don't fail the refund response if audit write fails
+      }
+
       return response.result;
     } catch (error) {
       this.logger.error('PayPal refund failed:', error);
