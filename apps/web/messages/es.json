@@ -4736,7 +4736,7 @@
     "pagination": {
       "previous": "[ES-TODO] Previous",
       "next": "[ES-TODO] Next",
-      "showing": "[ES-TODO] Showing {start} to {end} of {total} results",
+      "showing": "[ES-TODO] Showing <b>{start}</b> to <b>{end}</b> of <b>{total}</b> results",
       "ariaLabel": "[ES-TODO] Pagination"
     }
   },

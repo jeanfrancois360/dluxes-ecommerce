@@ -4358,7 +4358,7 @@
     "pagination": {
       "previous": "Previous",
       "next": "Next",
-      "showing": "Showing {start} to {end} of {total} results",
+      "showing": "Showing <b>{start}</b> to <b>{end}</b> of <b>{total}</b> results",
       "ariaLabel": "Pagination"
     }
   },
