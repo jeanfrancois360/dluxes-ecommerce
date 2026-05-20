@@ -333,10 +333,11 @@ export default function AdminReferralsPage() {
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-gray-700">
-                    {t('pagination.showing', {
+                    {t.rich('pagination.showing', {
                       start: formatNumber((filters.page - 1) * filters.limit + 1),
                       end: formatNumber(Math.min(filters.page * filters.limit, pagination.total)),
                       total: formatNumber(pagination.total),
+                      b: (chunks) => <span className="font-medium">{chunks}</span>,
                     })}
                   </p>
                 </div>

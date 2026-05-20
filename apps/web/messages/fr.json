@@ -4354,7 +4354,7 @@
     "pagination": {
       "previous": "[FR-TODO] Previous",
       "next": "[FR-TODO] Next",
-      "showing": "[FR-TODO] Showing {start} to {end} of {total} results",
+      "showing": "[FR-TODO] Showing <b>{start}</b> to <b>{end}</b> of <b>{total}</b> results",
       "ariaLabel": "[FR-TODO] Pagination"
     }
   },

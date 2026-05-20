@@ -125,3 +125,44 @@ cross-layer coupling and a heavy CI requirement.
 
 _Added: May 8, 2026_
 _Deferred from: v2.12.0 mandatory 2FA enforcement_
+
+---
+
+## i18n & Phase C.1 follow-ups (2026-05-20)
+
+Captured during Phase C.1 (adminReferrals i18n backfill). Address opportunistically as Phase C progresses.
+
+### Localized enum display in table rows
+
+Table bodies on /admin/referrals (and several other admin pages) render raw API enum values like BUYER, SELLER, PENDING, QUALIFIED directly to the screen. The filter dropdowns above them DO use localized labels via status.\* and filters.roleBuyer/roleSeller. To unify display, add:
+
+- roles.\* group (e.g., roles.buyer, roles.seller, roles.deliveryPartner, etc.)
+- Extend usage of status.\* to row-body badges, not just the breakdown section and filter dropdown
+
+Pattern to apply uniformly across all admin pages that render UserRole or ReferralStatus enum values.
+
+### Dead imports in other admin pages
+
+During C.1, three unused imports were found and removed from apps/web/src/app/admin/referrals/page.tsx (useEffect, referralApi, Search icon). A quick sweep across other admin pages may surface similar dead code. Suggested command:
+
+```bash
+grep -rn "^import.*Search.*lucide" apps/web/src/app/admin/ | head
+grep -rn "^import.*useEffect.*react" apps/web/src/app/admin/ | head -20
+```
+
+Run during routine cleanup; not blocking for Phase C feature work.
+
+### Translation backlog metric
+
+Phase C.1 introduced [FR-TODO]/[ES-TODO] markers. As of commit 72599c7:
+
+```bash
+grep -ro "FR-TODO" apps/web/messages/fr.json | wc -l   # 32
+grep -ro "ES-TODO" apps/web/messages/es.json | wc -l   # 32
+```
+
+This count grows predictably with each Phase C namespace addition. Useful as a translator handoff metric. Target: count drops to 0 after a translation pass.
+
+### Rich-text patterns in pagination strings
+
+The pagination.showing key was extended in Phase C.1 to use `<b>{x}</b>` markup interpolated via `t.rich()` to restore visual emphasis on numbers. New paginated admin pages (affiliate, blog comments, newsletter subscribers) should adopt this pattern from the start rather than the flat ICU pattern.
