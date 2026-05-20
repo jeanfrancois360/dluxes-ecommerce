@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useReferralStatistics, useAllReferrals, useReferralSettings } from '@/hooks/use-referral';
-import { referralApi } from '@/lib/api/referral';
-import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { formatDate } from '@/lib/utils/date-format';
 import {
   Gift,
@@ -12,7 +12,6 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
-  Search,
   Filter,
   Download,
 } from 'lucide-react';
@@ -25,6 +24,8 @@ import type { ReferralStatus } from '@/lib/api/types';
  */
 
 export default function AdminReferralsPage() {
+  const t = useTranslations('adminReferrals');
+
   const [filters, setFilters] = useState({
     status: '',
     role: '',
@@ -40,19 +41,19 @@ export default function AdminReferralsPage() {
 
   const statCards = [
     {
-      title: 'Total Referrals',
+      title: t('stats.totalReferrals'),
       value: statistics?.total?.count || 0,
       icon: Users,
       color: 'blue',
     },
     {
-      title: 'Total Rewards Paid',
+      title: t('stats.totalRewardsPaid'),
       value: formatCurrencyAmount(statistics?.total?.rewardsPaid || 0, settings?.currency || 'USD'),
       icon: DollarSign,
       color: 'green',
     },
     {
-      title: 'Buyer Referrals',
+      title: t('stats.buyerReferrals'),
       value: statistics?.buyers?.count || 0,
       subtitle: formatCurrencyAmount(
         statistics?.buyers?.rewardsPaid || 0,
@@ -62,7 +63,7 @@ export default function AdminReferralsPage() {
       color: 'purple',
     },
     {
-      title: 'Seller Referrals',
+      title: t('stats.sellerReferrals'),
       value: statistics?.sellers?.count || 0,
       subtitle: formatCurrencyAmount(
         statistics?.sellers?.rewardsPaid || 0,
@@ -110,15 +111,15 @@ export default function AdminReferralsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Referral Program</h1>
-            <p className="text-gray-500 mt-1">Manage and monitor your referral system</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('pageTitle')}</h1>
+            <p className="text-gray-500 mt-1">{t('pageDescription')}</p>
           </div>
           <button
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={() => alert('Export functionality coming soon')}
+            onClick={() => alert(t('header.exportComingSoon'))}
           >
             <Download className="w-4 h-4" />
-            Export Report
+            {t('header.exportButton')}
           </button>
         </div>
 
@@ -136,7 +137,9 @@ export default function AdminReferralsPage() {
                 <h3 className="text-sm font-medium text-gray-600 mb-1">{stat.title}</h3>
                 <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                 {stat.subtitle && (
-                  <p className="text-xs text-gray-500 mt-1">{stat.subtitle} paid</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {t('stats.totalRewardsPaidValue', { amount: stat.subtitle })}
+                  </p>
                 )}
               </div>
             );
@@ -145,9 +148,9 @@ export default function AdminReferralsPage() {
 
         {/* Status Breakdown */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Status Breakdown</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('statusBreakdown.title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {['pending', 'qualified', 'paid', 'expired', 'cancelled'].map((status) => {
+            {(['pending', 'qualified', 'paid', 'expired', 'cancelled'] as const).map((status) => {
               const data = statistics?.byStatus?.[status as keyof typeof statistics.byStatus];
               const icons = {
                 pending: Clock,
@@ -156,13 +159,15 @@ export default function AdminReferralsPage() {
                 expired: Clock,
                 cancelled: Clock,
               };
-              const Icon = icons[status as keyof typeof icons];
+              const Icon = icons[status];
 
               return (
                 <div key={status} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Icon className="w-4 h-4 text-gray-600" />
-                    <span className="text-xs font-medium text-gray-600 uppercase">{status}</span>
+                    <span className="text-xs font-medium text-gray-600 uppercase">
+                      {t(`status.${status}`)}
+                    </span>
                   </div>
                   <p className="text-xl font-bold text-gray-900">{data?.count || 0}</p>
                   <p className="text-xs text-gray-500 mt-1">
@@ -179,35 +184,35 @@ export default function AdminReferralsPage() {
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">Filters:</span>
+              <span className="text-sm font-medium text-gray-700">{t('filters.label')}</span>
             </div>
             <select
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Statuses</option>
-              <option value="PENDING">Pending</option>
-              <option value="QUALIFIED">Qualified</option>
-              <option value="PAID">Paid</option>
-              <option value="EXPIRED">Expired</option>
-              <option value="CANCELLED">Cancelled</option>
+              <option value="">{t('filters.allStatuses')}</option>
+              <option value="PENDING">{t('status.pending')}</option>
+              <option value="QUALIFIED">{t('status.qualified')}</option>
+              <option value="PAID">{t('status.paid')}</option>
+              <option value="EXPIRED">{t('status.expired')}</option>
+              <option value="CANCELLED">{t('status.cancelled')}</option>
             </select>
             <select
               value={filters.role}
               onChange={(e) => handleFilterChange('role', e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Roles</option>
-              <option value="BUYER">Buyers</option>
-              <option value="SELLER">Sellers</option>
+              <option value="">{t('filters.allRoles')}</option>
+              <option value="BUYER">{t('filters.roleBuyer')}</option>
+              <option value="SELLER">{t('filters.roleSeller')}</option>
             </select>
             {(filters.status || filters.role) && (
               <button
                 onClick={() => setFilters({ status: '', role: '', page: 1, limit: 20 })}
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
-                Clear Filters
+                {t('filters.clearFilters')}
               </button>
             )}
           </div>
@@ -220,22 +225,22 @@ export default function AdminReferralsPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Referrer
+                    {t('table.referrer')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Referred User
+                    {t('table.referredUser')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
+                    {t('table.type')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Reward
+                    {t('table.reward')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    {t('table.status')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
+                    {t('table.date')}
                   </th>
                 </tr>
               </thead>
@@ -251,7 +256,7 @@ export default function AdminReferralsPage() {
                 ) : referrals.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                      No referrals found
+                      {t('table.noReferrals')}
                     </td>
                   </tr>
                 ) : (
@@ -315,38 +320,37 @@ export default function AdminReferralsPage() {
                   disabled={filters.page === 1}
                   className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
-                  Previous
+                  {t('pagination.previous')}
                 </button>
                 <button
                   onClick={() => handlePageChange(filters.page + 1)}
                   disabled={filters.page === pagination.totalPages}
                   className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
-                  Next
+                  {t('pagination.next')}
                 </button>
               </div>
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-gray-700">
-                    Showing{' '}
-                    <span className="font-medium">{(filters.page - 1) * filters.limit + 1}</span> to{' '}
-                    <span className="font-medium">
-                      {Math.min(filters.page * filters.limit, pagination.total)}
-                    </span>{' '}
-                    of <span className="font-medium">{pagination.total}</span> results
+                    {t('pagination.showing', {
+                      start: formatNumber((filters.page - 1) * filters.limit + 1),
+                      end: formatNumber(Math.min(filters.page * filters.limit, pagination.total)),
+                      total: formatNumber(pagination.total),
+                    })}
                   </p>
                 </div>
                 <div>
                   <nav
                     className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                    aria-label="Pagination"
+                    aria-label={t('pagination.ariaLabel')}
                   >
                     <button
                       onClick={() => handlePageChange(filters.page - 1)}
                       disabled={filters.page === 1}
                       className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                     >
-                      Previous
+                      {t('pagination.previous')}
                     </button>
                     {[...Array(pagination.totalPages)].map((_, i) => {
                       const page = i + 1;
@@ -376,7 +380,7 @@ export default function AdminReferralsPage() {
                       disabled={filters.page === pagination.totalPages}
                       className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                     >
-                      Next
+                      {t('pagination.next')}
                     </button>
                   </nav>
                 </div>

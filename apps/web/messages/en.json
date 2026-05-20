@@ -4314,6 +4314,54 @@
       "bulkUpdateError": "Failed to update products"
     }
   },
+  "adminReferrals": {
+    "pageTitle": "Referral Program",
+    "pageDescription": "Manage and monitor your referral system",
+    "header": {
+      "exportButton": "Export Report",
+      "exportComingSoon": "Export functionality coming soon"
+    },
+    "stats": {
+      "totalReferrals": "Total Referrals",
+      "totalRewardsPaid": "Total Rewards Paid",
+      "buyerReferrals": "Buyer Referrals",
+      "sellerReferrals": "Seller Referrals",
+      "totalRewardsPaidValue": "{amount} paid"
+    },
+    "statusBreakdown": {
+      "title": "Status Breakdown"
+    },
+    "status": {
+      "pending": "Pending",
+      "qualified": "Qualified",
+      "paid": "Paid",
+      "expired": "Expired",
+      "cancelled": "Cancelled"
+    },
+    "filters": {
+      "label": "Filters:",
+      "allStatuses": "All Statuses",
+      "allRoles": "All Roles",
+      "roleBuyer": "Buyers",
+      "roleSeller": "Sellers",
+      "clearFilters": "Clear Filters"
+    },
+    "table": {
+      "referrer": "Referrer",
+      "referredUser": "Referred User",
+      "type": "Type",
+      "reward": "Reward",
+      "status": "Status",
+      "date": "Date",
+      "noReferrals": "No referrals found"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "showing": "Showing {start} to {end} of {total} results",
+      "ariaLabel": "Pagination"
+    }
+  },
   "adminSellers": {
     "pageTitle": "Seller Management",
     "pageDescription": "Manage seller applications and accounts",

@@ -4692,6 +4692,54 @@
       "bulkUpdateError": "Error al actualizar productos"
     }
   },
+  "adminReferrals": {
+    "pageTitle": "[ES-TODO] Referral Program",
+    "pageDescription": "[ES-TODO] Manage and monitor your referral system",
+    "header": {
+      "exportButton": "[ES-TODO] Export Report",
+      "exportComingSoon": "[ES-TODO] Export functionality coming soon"
+    },
+    "stats": {
+      "totalReferrals": "[ES-TODO] Total Referrals",
+      "totalRewardsPaid": "[ES-TODO] Total Rewards Paid",
+      "buyerReferrals": "[ES-TODO] Buyer Referrals",
+      "sellerReferrals": "[ES-TODO] Seller Referrals",
+      "totalRewardsPaidValue": "[ES-TODO] {amount} paid"
+    },
+    "statusBreakdown": {
+      "title": "[ES-TODO] Status Breakdown"
+    },
+    "status": {
+      "pending": "[ES-TODO] Pending",
+      "qualified": "[ES-TODO] Qualified",
+      "paid": "[ES-TODO] Paid",
+      "expired": "[ES-TODO] Expired",
+      "cancelled": "[ES-TODO] Cancelled"
+    },
+    "filters": {
+      "label": "[ES-TODO] Filters:",
+      "allStatuses": "[ES-TODO] All Statuses",
+      "allRoles": "[ES-TODO] All Roles",
+      "roleBuyer": "[ES-TODO] Buyers",
+      "roleSeller": "[ES-TODO] Sellers",
+      "clearFilters": "[ES-TODO] Clear Filters"
+    },
+    "table": {
+      "referrer": "[ES-TODO] Referrer",
+      "referredUser": "[ES-TODO] Referred User",
+      "type": "[ES-TODO] Type",
+      "reward": "[ES-TODO] Reward",
+      "status": "[ES-TODO] Status",
+      "date": "[ES-TODO] Date",
+      "noReferrals": "[ES-TODO] No referrals found"
+    },
+    "pagination": {
+      "previous": "[ES-TODO] Previous",
+      "next": "[ES-TODO] Next",
+      "showing": "[ES-TODO] Showing {start} to {end} of {total} results",
+      "ariaLabel": "[ES-TODO] Pagination"
+    }
+  },
   "adminOrders": {
     "pageTitle": "Pedidos",
     "pageDescription": "Gestionar pedidos de clientes",

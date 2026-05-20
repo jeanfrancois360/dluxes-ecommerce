@@ -4310,6 +4310,54 @@
       "bulkUpdateError": "Échec de la mise à jour des produits"
     }
   },
+  "adminReferrals": {
+    "pageTitle": "[FR-TODO] Referral Program",
+    "pageDescription": "[FR-TODO] Manage and monitor your referral system",
+    "header": {
+      "exportButton": "[FR-TODO] Export Report",
+      "exportComingSoon": "[FR-TODO] Export functionality coming soon"
+    },
+    "stats": {
+      "totalReferrals": "[FR-TODO] Total Referrals",
+      "totalRewardsPaid": "[FR-TODO] Total Rewards Paid",
+      "buyerReferrals": "[FR-TODO] Buyer Referrals",
+      "sellerReferrals": "[FR-TODO] Seller Referrals",
+      "totalRewardsPaidValue": "[FR-TODO] {amount} paid"
+    },
+    "statusBreakdown": {
+      "title": "[FR-TODO] Status Breakdown"
+    },
+    "status": {
+      "pending": "[FR-TODO] Pending",
+      "qualified": "[FR-TODO] Qualified",
+      "paid": "[FR-TODO] Paid",
+      "expired": "[FR-TODO] Expired",
+      "cancelled": "[FR-TODO] Cancelled"
+    },
+    "filters": {
+      "label": "[FR-TODO] Filters:",
+      "allStatuses": "[FR-TODO] All Statuses",
+      "allRoles": "[FR-TODO] All Roles",
+      "roleBuyer": "[FR-TODO] Buyers",
+      "roleSeller": "[FR-TODO] Sellers",
+      "clearFilters": "[FR-TODO] Clear Filters"
+    },
+    "table": {
+      "referrer": "[FR-TODO] Referrer",
+      "referredUser": "[FR-TODO] Referred User",
+      "type": "[FR-TODO] Type",
+      "reward": "[FR-TODO] Reward",
+      "status": "[FR-TODO] Status",
+      "date": "[FR-TODO] Date",
+      "noReferrals": "[FR-TODO] No referrals found"
+    },
+    "pagination": {
+      "previous": "[FR-TODO] Previous",
+      "next": "[FR-TODO] Next",
+      "showing": "[FR-TODO] Showing {start} to {end} of {total} results",
+      "ariaLabel": "[FR-TODO] Pagination"
+    }
+  },
   "adminOrders": {
     "pageTitle": "Commandes",
     "pageDescription": "Gérer les commandes clients",
