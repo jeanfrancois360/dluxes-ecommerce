@@ -253,7 +253,7 @@ model Store {
 
   // KYC / Seller Application
   businessType            String?  // individual | sole_proprietor | llc | corporation | registered_business
-  intendedCategories      String[] // Product categories seller intends to list
+  intendedCategories      String[] @default([]) // Product categories seller intends to list
   monthlyVolume           String?  // Expected monthly revenue range
   applicationDocumentUrl  String?  // URL to uploaded verification document
   applicationDocumentType String?  // government_id | business_registration | tax_certificate | other
@@ -3627,6 +3627,10 @@ model HotDeal {
   paymentIntentId String?       @unique
   paidAmount      Float         @default(1.00)
 
+  // Budget (optional — set by user when creating the deal)
+  budget     Decimal? @db.Decimal(10, 2)
+  budgetType String?  @db.VarChar(20) @map("budget_type")  // 'HOURLY' | 'FIXED' | 'NEGOTIABLE'
+
   // Status & Timestamps
   status      HotDealStatus @default(PENDING)
   expiresAt   DateTime
@@ -4032,4 +4036,20 @@ model TrustedDevice {
   @@index([tokenHash])
   @@index([expiresAt])
   @@map("trusted_devices")
+}
+
+// =============================================================================
+// Digital downloads — log table (used by downloads.service.ts)
+// =============================================================================
+model DownloadLog {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  orderId      String   @map("order_id")
+  productId    String   @map("product_id")
+  ipAddress    String?  @map("ip_address")
+  downloadedAt DateTime @default(now()) @map("downloaded_at")
+
+  @@index([userId, orderId, productId], map: "download_logs_user_id_order_id_product_id_idx")
+  @@index([downloadedAt], map: "download_logs_downloaded_at_idx")
+  @@map("download_logs")
 }
