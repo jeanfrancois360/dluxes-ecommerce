@@ -114,19 +114,19 @@ CREATE INDEX "gelato_webhook_events_status_idx" ON "gelato_webhook_events"("stat
 CREATE INDEX "gelato_webhook_events_createdAt_idx" ON "gelato_webhook_events"("createdAt");
 
 -- AddForeignKey
-ALTER TABLE "SellerGelatoSettings" ADD CONSTRAINT "SellerGelatoSettings_sellerId_fkey" FOREIGN KEY ("sellerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SellerGelatoSettings" ADD CONSTRAINT "SellerGelatoSettings_sellerId_fkey" FOREIGN KEY ("sellerId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "SellerGelatoSettings" ADD CONSTRAINT "SellerGelatoSettings_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SellerGelatoSettings" ADD CONSTRAINT "SellerGelatoSettings_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "stores"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "gelato_pod_orders" ADD CONSTRAINT "gelato_pod_orders_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "gelato_pod_orders" ADD CONSTRAINT "gelato_pod_orders_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "gelato_pod_orders" ADD CONSTRAINT "gelato_pod_orders_orderItemId_fkey" FOREIGN KEY ("orderItemId") REFERENCES "OrderItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "gelato_pod_orders" ADD CONSTRAINT "gelato_pod_orders_orderItemId_fkey" FOREIGN KEY ("orderItemId") REFERENCES "order_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "gelato_pod_orders" ADD CONSTRAINT "gelato_pod_orders_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "gelato_pod_orders" ADD CONSTRAINT "gelato_pod_orders_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "gelato_webhook_events" ADD CONSTRAINT "gelato_webhook_events_podOrderId_fkey" FOREIGN KEY ("podOrderId") REFERENCES "gelato_pod_orders"("id") ON DELETE SET NULL ON UPDATE CASCADE;
