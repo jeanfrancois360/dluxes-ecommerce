@@ -138,6 +138,11 @@ model User {
   @@index([deliveryProviderId])
   @@index([referredById])
   @@map("users")
+
+  // Affiliate (Phase C)
+  affiliateProductsCreated         AffiliateProduct[]              @relation("AffiliateProductCreator")
+  affiliateClickLogs               AffiliateClickLog[]             @relation("AffiliateClickUser")
+  affiliateTranslationReviews      AffiliateProductTranslation[]   @relation("AffiliateProductTranslationReviewer")
 }
 
 enum UserRole {
@@ -4036,6 +4041,176 @@ model TrustedDevice {
   @@index([tokenHash])
   @@index([expiresAt])
   @@map("trusted_devices")
+}
+
+// =============================================================================
+// AFFILIATE (Awin Publisher integration — Phase C)
+// Manual-curation only in v1. Feed import deferred (see FUTURE_CONSIDERATIONS.md).
+// =============================================================================
+
+enum AffiliateAdvertiserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAUSED
+}
+
+enum AffiliateCommissionStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  PAID
+}
+
+enum TranslationStatus {
+  ORIGINAL           // Human-written in original language
+  MACHINE_TRANSLATED // MT output, not yet reviewed
+  HUMAN_REVIEWED     // A human approved it
+  PUBLISHED          // Approved AND released to public
+}
+
+model AffiliateAdvertiser {
+  id                    String                    @id @default(cuid())
+  awinMerchantId        String                    @unique
+  name                  String
+  websiteUrl            String?
+  logoUrl               String?
+  approvalStatus        AffiliateAdvertiserStatus @default(PENDING)
+  defaultCommissionRate Float?                    // Informational only — Awin owns truth
+  notes                 String?                   @db.Text
+  isActive              Boolean                   @default(true)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  deletedAt             DateTime?
+
+  products       AffiliateProduct[]
+  clickLogs      AffiliateClickLog[]
+  commissions    AffiliateCommission[]
+
+  @@index([approvalStatus])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("affiliate_advertisers")
+}
+
+model AffiliateProduct {
+  id                  String   @id @default(cuid())
+  slug                String   @unique // URL-safe; generated from default-locale title
+  advertiserId        String
+  awinDeepLink        String   @db.Text // The full Awin tracked URL
+  imageUrl            String   @db.Text // Primary image
+  galleryUrls         String[] // Optional additional images
+
+  // Display-only pricing (Awin is source of truth)
+  displayPrice        Float?
+  displayCurrency     String?  @default("EUR")
+  originalPrice       Float?   // For showing discount
+
+  // Categorization (soft links — arrays of IDs from existing Category model)
+  productCategoryIds  String[] // Links to Category (existing model)
+  tags                String[] // Free-form tags
+
+  // State
+  isActive            Boolean  @default(true)
+  isFeatured          Boolean  @default(false) // Homepage feature
+  displayOrder        Int      @default(0)
+
+  // Denormalized analytics (truth lives in AffiliateClickLog + AffiliateCommission)
+  clickCount          Int      @default(0)
+  conversionCount     Int      @default(0)
+
+  // Audit
+  createdById         String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  deletedAt           DateTime?
+
+  // Relations
+  advertiser   AffiliateAdvertiser           @relation(fields: [advertiserId], references: [id])
+  createdBy    User                          @relation("AffiliateProductCreator", fields: [createdById], references: [id])
+  translations AffiliateProductTranslation[]
+  clickLogs    AffiliateClickLog[]
+  commissions  AffiliateCommission[]
+
+  @@index([advertiserId])
+  @@index([isActive, isFeatured])
+  @@index([isActive, displayOrder])
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("affiliate_products")
+}
+
+model AffiliateProductTranslation {
+  id                 String            @id @default(cuid())
+  affiliateProductId String
+  locale             String            // Locale code: 'en', 'fr', 'es'
+  title              String
+  description        String            @db.Text
+  longDescription    String?           @db.Text
+  seoTitle           String?
+  seoDescription     String?
+  translationStatus  TranslationStatus @default(ORIGINAL)
+  isOriginal         Boolean           @default(false) // Exactly one per product
+  reviewedById       String?
+  reviewedAt         DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  affiliateProduct AffiliateProduct @relation(fields: [affiliateProductId], references: [id], onDelete: Cascade)
+  reviewedBy       User?            @relation("AffiliateProductTranslationReviewer", fields: [reviewedById], references: [id])
+
+  @@unique([affiliateProductId, locale])
+  @@index([translationStatus])
+  @@index([locale])
+  @@map("affiliate_product_translations")
+}
+
+model AffiliateClickLog {
+  id                 String   @id @default(cuid())
+  affiliateProductId String
+  advertiserId       String
+  userId             String?  // Null for anonymous clicks
+  sessionId          String?  // For tying to user session if logged in
+  ipAddress          String?
+  userAgent          String?  @db.Text
+  referrer           String?  @db.Text
+  locale             String?  // Which locale page led to the click
+  createdAt          DateTime @default(now())
+
+  affiliateProduct AffiliateProduct    @relation(fields: [affiliateProductId], references: [id], onDelete: Cascade)
+  advertiser       AffiliateAdvertiser @relation(fields: [advertiserId], references: [id])
+  user             User?               @relation("AffiliateClickUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([affiliateProductId, createdAt])
+  @@index([advertiserId, createdAt])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("affiliate_click_logs")
+}
+
+model AffiliateCommission {
+  id                 String                    @id @default(cuid())
+  affiliateProductId String?                   // May not always be resolvable
+  advertiserId       String?
+  awinTransactionId  String                    @unique
+  awinClickRef       String?                   // Links to AffiliateClickLog when matchable
+  saleAmount         Float
+  commissionAmount   Float
+  currency           String
+  status             AffiliateCommissionStatus
+  transactionDate    DateTime
+  validationDate     DateTime?
+  paymentDate        DateTime?
+  rawPayload         Json                      // Full Awin payload for audit
+  syncedAt           DateTime                  @default(now())
+
+  affiliateProduct AffiliateProduct?    @relation(fields: [affiliateProductId], references: [id])
+  advertiser       AffiliateAdvertiser? @relation(fields: [advertiserId], references: [id])
+
+  @@index([status, transactionDate])
+  @@index([advertiserId, transactionDate])
+  @@index([affiliateProductId])
+  @@map("affiliate_commissions")
 }
 
 // =============================================================================
