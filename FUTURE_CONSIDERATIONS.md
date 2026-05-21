@@ -206,3 +206,23 @@ Now that `DownloadLog` model and `HotDeal.budget`/`budgetType` fields are proper
 ### Promote HotDeal.budgetType to a Prisma enum
 
 Currently declared as `String? @db.VarChar(20) @map("budget_type")` with documented values `'HOURLY' | 'FIXED' | 'NEGOTIABLE'`. The DTO layer already has a `BudgetType` enum. Promoting to a database-level enum (`enum BudgetType { HOURLY FIXED NEGOTIABLE }`) would add type-safety and constraint enforcement. Requires a small ALTER COLUMN migration.
+
+### Historical backfill orchestration (Phase C.4 closeout — 2026-05-21)
+
+Awin's `/transactions/` endpoint enforces a 31-day maximum date range per
+request. The current commission sync (Phase C.4) handles ranges ≤31 days
+cleanly via server-side validation on the manual sync endpoint, but does not
+auto-chunk larger ranges.
+
+When historical backfill is needed (e.g., importing 12 months of past
+commissions after first connecting to Awin), build a chunked orchestrator
+that:
+
+- Splits the date range into 31-day windows
+- Calls `syncCommissionsFromAwin` per window sequentially
+- Spaces requests to respect Awin's 20 req/min rate limit
+- Accumulates and returns combined counts
+
+Estimated work: ~30 lines in `AffiliateService`, no schema changes. Can be
+added as a separate admin endpoint `POST /affiliate/admin/commissions/awin-backfill`
+to keep the simple sync endpoint focused on normal operations.
