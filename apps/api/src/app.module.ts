@@ -50,6 +50,7 @@ import { HealthModule } from './health/health.module';
 import { HotDealsModule } from './hot-deals/hot-deals.module';
 import { GelatoModule } from './gelato/gelato.module';
 import { ReferralModule } from './referral/referral.module';
+import { AffiliateModule } from './affiliate/affiliate.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { TwoFactorEnforcementGuard } from './auth/guards/two-factor-enforcement.guard';
 import { SellerCreditsCronService } from './cron/seller-credits.cron';
@@ -119,6 +120,7 @@ import { EmailModule } from './email/email.module';
     HotDealsModule,
     GelatoModule,
     ReferralModule,
+    AffiliateModule,
     EmailModule,
   ],
   providers: [
