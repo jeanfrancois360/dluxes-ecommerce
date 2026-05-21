@@ -58,7 +58,7 @@ export class AffiliateController {
   @Get('products')
   async listProducts(@Query() query: ListProductsQueryDto) {
     const result = await this.affiliateService.listProducts(query);
-    return { success: true, ...result };
+    return { success: true, data: result };
   }
 
   /**
@@ -117,7 +117,7 @@ export class AffiliateController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   async listAdvertisers(@Query() query: ListAdvertisersQueryDto) {
     const result = await this.affiliateService.listAdvertisers(query);
-    return { success: true, ...result };
+    return { success: true, data: result };
   }
 
   /**
@@ -182,7 +182,7 @@ export class AffiliateController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   async adminListProducts(@Query() query: AdminListProductsQueryDto) {
     const result = await this.affiliateService.adminListProducts(query);
-    return { success: true, ...result };
+    return { success: true, data: result };
   }
 
   /**
@@ -310,7 +310,7 @@ export class AffiliateController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   async listCommissions(@Query() query: ListCommissionsQueryDto) {
     const result = await this.affiliateService.listCommissions(query);
-    return { success: true, ...result };
+    return { success: true, data: result };
   }
 
   /**
@@ -376,6 +376,6 @@ export class AffiliateController {
   @Roles('ADMIN', 'SUPER_ADMIN')
   async listClickLogs(@Query() query: ClickAnalyticsQueryDto) {
     const result = await this.affiliateService.listClickLogs(query);
-    return { success: true, ...result };
+    return { success: true, data: result };
   }
 }
