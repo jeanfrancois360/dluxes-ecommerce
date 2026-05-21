@@ -13,6 +13,7 @@ import {
   HttpStatus,
   Redirect,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request as ExpressRequest } from 'express';
@@ -32,6 +33,7 @@ import {
   UpdateTranslationDto,
   RecordClickDto,
   SyncCommissionDto,
+  SyncCommissionsRequestDto,
   ListCommissionsQueryDto,
   ClickAnalyticsQueryDto,
 } from './dto/affiliate.dto';
@@ -309,6 +311,44 @@ export class AffiliateController {
   async listCommissions(@Query() query: ListCommissionsQueryDto) {
     const result = await this.affiliateService.listCommissions(query);
     return { success: true, ...result };
+  }
+
+  /**
+   * POST /affiliate/admin/commissions/awin-sync
+   * Manually trigger an Awin commission sync for a date range (ADMIN).
+   * Defaults to last 7 days if startDate/endDate are omitted.
+   * Note: POST /affiliate/admin/commissions/sync is the single-record manual
+   * sync from C.3 (SyncCommissionDto). This endpoint is the Awin API pull.
+   */
+  @Post('admin/commissions/awin-sync')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async syncCommissionsFromAwin(@Body() dto: SyncCommissionsRequestDto) {
+    const endDate = dto.endDate ? new Date(dto.endDate) : new Date();
+    const startDate = dto.startDate
+      ? new Date(dto.startDate)
+      : new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Enforce Awin's API constraint: /transactions/ rejects ranges > 31 days.
+    // Better to fail fast here with a clean 400 than let Awin return a 400
+    // that surfaces as a confusing 500 to the caller.
+    const MAX_RANGE_DAYS = 31;
+    const rangeMs = endDate.getTime() - startDate.getTime();
+    const rangeDays = rangeMs / (1000 * 60 * 60 * 24);
+    if (rangeMs < 0) {
+      throw new BadRequestException('endDate must be after startDate.');
+    }
+    if (rangeDays > MAX_RANGE_DAYS) {
+      throw new BadRequestException(
+        `Date range cannot exceed ${MAX_RANGE_DAYS} days (Awin API limit). ` +
+          `Received range: ${rangeDays.toFixed(1)} days. ` +
+          `For larger backfills, run multiple sync requests with chunked date ranges.`
+      );
+    }
+
+    const result = await this.affiliateService.syncCommissionsFromAwin({ startDate, endDate });
+    return { success: true, data: result };
   }
 
   /**

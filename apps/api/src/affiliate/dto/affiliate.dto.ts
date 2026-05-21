@@ -11,6 +11,7 @@ import {
   Max,
   MaxLength,
   IsPositive,
+  IsDateString,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import {
@@ -438,6 +439,24 @@ export class ListCommissionsQueryDto {
   @Min(1)
   @Max(100)
   limit?: number = 20;
+}
+
+// ============================================================================
+// AWIN SYNC DTOs (Phase C.4)
+// ============================================================================
+
+/**
+ * Body for POST /affiliate/admin/commissions/awin-sync
+ * Both fields are optional — defaults to last 7 days if omitted.
+ */
+export class SyncCommissionsRequestDto {
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
 }
 
 // ============================================================================

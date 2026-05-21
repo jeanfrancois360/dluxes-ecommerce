@@ -12,6 +12,7 @@ import {
   AffiliateCommissionStatus,
   TranslationStatus,
 } from '@prisma/client';
+import { AwinApiClient, AwinTransaction, AwinTransactionFilters } from './awin-api.service';
 import {
   CreateAdvertiserDto,
   UpdateAdvertiserDto,
@@ -36,7 +37,10 @@ import {
 export class AffiliateService {
   private readonly logger = new Logger(AffiliateService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly awinClient: AwinApiClient
+  ) {}
 
   // ============================================================================
   // ADVERTISERS
@@ -637,5 +641,155 @@ export class AffiliateService {
       data: logs,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  // ============================================================================
+  // AWIN COMMISSION SYNC (Phase C.4)
+  // ============================================================================
+
+  /**
+   * Sync commissions from the Awin Publisher API for the given date range.
+   * Idempotent on awinTransactionId — upserts existing records.
+   *
+   * Called by:
+   *   - AwinCronService (nightly at 3am, syncs last 48h)
+   *   - POST /affiliate/admin/commissions/awin-sync (manual trigger)
+   *
+   * Limitations (documented for Phase C.17 follow-up):
+   *   - affiliateProductId is always null — AffiliateClickLog has no awinClickRef
+   *     column yet, so click-to-commission linking is deferred.
+   *   - insert vs update are not distinguished in the returned counts (upsert
+   *     does not expose which path was taken); updated is always 0.
+   */
+  async syncCommissionsFromAwin(filters: AwinTransactionFilters): Promise<{
+    fetched: number;
+    inserted: number;
+    updated: number;
+    skipped: number;
+    errors: number;
+  }> {
+    if (!this.awinClient.isConfigured()) {
+      this.logger.warn('Awin credentials not configured — sync skipped.');
+      return { fetched: 0, inserted: 0, updated: 0, skipped: 0, errors: 0 };
+    }
+
+    let transactions: AwinTransaction[];
+    try {
+      transactions = await this.awinClient.fetchTransactions(filters);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Awin API call failed: ${msg}`,
+        err instanceof Error ? err.stack : undefined
+      );
+      throw err;
+    }
+
+    let inserted = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const tx of transactions) {
+      try {
+        // Look up our AffiliateAdvertiser by Awin's numeric advertiserId
+        const advertiser = await this.prisma.affiliateAdvertiser.findUnique({
+          where: { awinMerchantId: String(tx.advertiserId) },
+        });
+
+        if (!advertiser) {
+          this.logger.warn(
+            `No AffiliateAdvertiser found for Awin advertiserId=${tx.advertiserId} — ` +
+              `commission ${tx.id} skipped. Create the advertiser via POST /affiliate/admin/advertisers ` +
+              `with awinMerchantId="${tx.advertiserId}".`
+          );
+          skipped++;
+          continue;
+        }
+
+        const commissionAmt = this.extractAmount(tx.commissionAmount);
+        const saleAmt = this.extractAmount(tx.saleAmount);
+        const status = this.mapAwinStatus(tx.commissionStatus);
+
+        await this.prisma.affiliateCommission.upsert({
+          where: { awinTransactionId: String(tx.id) },
+          create: {
+            awinTransactionId: String(tx.id),
+            awinClickRef: tx.clickRefs?.[0] ?? null,
+            advertiserId: advertiser.id,
+            // affiliateProductId: null — AffiliateClickLog.awinClickRef not yet implemented.
+            // Deferred to Phase C.17 (E2E tests + schema expansion).
+            affiliateProductId: null,
+            saleAmount: saleAmt.amount,
+            commissionAmount: commissionAmt.amount,
+            currency: commissionAmt.currency,
+            status,
+            transactionDate: new Date(tx.transactionDate),
+            validationDate: tx.validationDate ? new Date(tx.validationDate) : null,
+            paymentDate: tx.paymentDate ? new Date(tx.paymentDate) : null,
+            rawPayload: tx as unknown as Prisma.InputJsonValue,
+            syncedAt: new Date(),
+          },
+          update: {
+            status,
+            saleAmount: saleAmt.amount,
+            commissionAmount: commissionAmt.amount,
+            currency: commissionAmt.currency,
+            validationDate: tx.validationDate ? new Date(tx.validationDate) : undefined,
+            paymentDate: tx.paymentDate ? new Date(tx.paymentDate) : undefined,
+            rawPayload: tx as unknown as Prisma.InputJsonValue,
+            syncedAt: new Date(),
+          },
+        });
+
+        inserted++;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Failed to upsert Awin commission ${tx.id}: ${msg}`);
+        errors++;
+      }
+    }
+
+    this.logger.log(
+      `Awin sync complete: fetched=${transactions.length}, processed=${inserted}, skipped=${skipped}, errors=${errors}`
+    );
+
+    return { fetched: transactions.length, inserted, updated: 0, skipped, errors };
+  }
+
+  /**
+   * Defensive amount extractor.
+   * Handles both the nested { amount, currency } shape (awin-py / expected)
+   * and a flat numeric value (fallback if the live API differs from documented shape).
+   * If the live API returns a flat shape, extend this helper — do not change the interface.
+   */
+  private extractAmount(raw: unknown): { amount: number; currency: string } {
+    if (raw !== null && typeof raw === 'object' && 'amount' in (raw as object)) {
+      const obj = raw as { amount: unknown; currency?: unknown };
+      return {
+        amount: Number(obj.amount) || 0,
+        currency: typeof obj.currency === 'string' ? obj.currency : 'EUR',
+      };
+    }
+    // Flat shape: raw is a bare number
+    return { amount: Number(raw) || 0, currency: 'EUR' };
+  }
+
+  /**
+   * Maps Awin's commissionStatus string to our AffiliateCommissionStatus enum.
+   * Note: Awin's 'PAID' is a separate payment event, not a transaction status —
+   * it does not appear in the transactions endpoint response.
+   */
+  private mapAwinStatus(awinStatus: string): AffiliateCommissionStatus {
+    switch (awinStatus.toLowerCase()) {
+      case 'pending':
+        return AffiliateCommissionStatus.PENDING;
+      case 'approved':
+        return AffiliateCommissionStatus.APPROVED;
+      case 'declined':
+        return AffiliateCommissionStatus.DECLINED;
+      default:
+        this.logger.warn(`Unknown Awin commissionStatus: "${awinStatus}" — defaulting to PENDING.`);
+        return AffiliateCommissionStatus.PENDING;
+    }
   }
 }
