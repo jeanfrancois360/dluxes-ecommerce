@@ -166,3 +166,43 @@ This count grows predictably with each Phase C namespace addition. Useful as a t
 ### Rich-text patterns in pagination strings
 
 The pagination.showing key was extended in Phase C.1 to use `<b>{x}</b>` markup interpolated via `t.rich()` to restore visual emphasis on numbers. New paginated admin pages (affiliate, blog comments, newsletter subscribers) should adopt this pattern from the start rather than the flat ICU pattern.
+
+## Phase C.3 closeout follow-ups (2026-05-21)
+
+Captured during Phase C.3 affiliate backend module closeout. Address opportunistically.
+
+### Honest integration tests for AffiliateService and AffiliateController
+
+C.3 was built with shallow Prisma-mocked unit tests that were deleted before commit because they verified call shapes rather than downstream effects (violates project principle: "Honest tests are non-negotiable"). The right pattern is `@nestjs/testing` + a real test database (Postgres or in-memory SQLite via Prisma) that lets the test assert e.g. `expect(await prisma.affiliateClickLog.count()).toBe(1)` after calling `affiliateService.logClick(...)`.
+
+Plan: implement in Phase C.17 (E2E tests) as part of the full backend test suite. Will require setting up a test DB infrastructure for `@nestjs/testing` integration tests, which doesn't currently exist in the codebase. Scope:
+
+- Real DB-backed tests for all 19 AffiliateController endpoints
+- Honest verification of click log writes, counter increments, commission upserts
+- Auth tests (public vs admin endpoints)
+- Pagination/filter correctness on list endpoints
+
+### Click handler optimizations for high volume
+
+The C.3 click endpoint is synchronous + best-effort counter:
+
+- AffiliateClickLog write is critical-path (~5-20ms added per click)
+- AffiliateProduct.clickCount increment is fire-and-forget after the log write
+
+This is fine for pre-launch and early production. If click volume becomes high (>1,000 clicks/min sustained), consider:
+
+- Background queue (BullMQ) for click log writes — return 302 immediately, queue the log
+- Batch counter updates every minute instead of per-click
+- Materialize the counter from `COUNT(AffiliateClickLog)` on a schedule rather than incrementing
+
+### GET variant for click handler
+
+C.3 implements `POST /affiliate/products/:id/click`. A GET variant (e.g., `GET /go/:id` or `GET /affiliate/redirect/:id`) would be friendlier for right-click → copy link, link previews, plain `<a href>` usage from emails/social. Worth adding if affiliate links need to work in those contexts. Deferred to keep v1 simple.
+
+### Replace raw SQL in downloads.service.ts and hot-deals.service.ts
+
+Now that `DownloadLog` model and `HotDeal.budget`/`budgetType` fields are properly declared in schema.prisma (Phase A.1.6), the raw SQL workarounds in `apps/api/src/downloads/downloads.service.ts` and `apps/api/src/hot-deals/hot-deals.service.ts` should be replaced with proper Prisma client calls. Cleaner code, type-safety, less surface area for bugs.
+
+### Promote HotDeal.budgetType to a Prisma enum
+
+Currently declared as `String? @db.VarChar(20) @map("budget_type")` with documented values `'HOURLY' | 'FIXED' | 'NEGOTIABLE'`. The DTO layer already has a `BudgetType` enum. Promoting to a database-level enum (`enum BudgetType { HOURLY FIXED NEGOTIABLE }`) would add type-safety and constraint enforcement. Requires a small ALTER COLUMN migration.
