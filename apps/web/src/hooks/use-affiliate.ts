@@ -3,9 +3,12 @@ import {
   affiliateApi,
   type AffiliateAdvertiser,
   type AffiliateAdvertiserStatus,
+  type AffiliateCommission,
+  type AffiliateCommissionStatus,
   type AffiliateProduct,
   type AffiliateProductTranslation,
   type AffiliateClickLog,
+  type CommissionStats,
 } from '@/lib/api/affiliate';
 
 /**
@@ -200,4 +203,92 @@ export function useAffiliateProductTranslations(productId: string) {
   }, [fetchAll]);
 
   return { product, translations, loading, error, refetch: fetchAll };
+}
+
+// ---------------------------------------------------------------------------
+// Commissions
+// ---------------------------------------------------------------------------
+
+export function useAffiliateCommissions(params?: {
+  page?: number;
+  limit?: number;
+  status?: AffiliateCommissionStatus;
+  advertiserId?: string;
+  affiliateProductId?: string;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const [commissions, setCommissions] = useState<AffiliateCommission[]>([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Memoize individual param values to prevent infinite re-render loops
+  const memoizedParams = useMemo(
+    () => params,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      params?.page,
+      params?.limit,
+      params?.status,
+      params?.advertiserId,
+      params?.affiliateProductId,
+      params?.startDate,
+      params?.endDate,
+    ]
+  );
+
+  const fetchCommissions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await affiliateApi.listCommissions(memoizedParams);
+      setCommissions(result.data);
+      setPagination(result.pagination);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch commissions');
+    } finally {
+      setLoading(false);
+    }
+  }, [memoizedParams]);
+
+  useEffect(() => {
+    fetchCommissions();
+  }, [fetchCommissions]);
+
+  return { commissions, pagination, loading, error, refetch: fetchCommissions };
+}
+
+// ---------------------------------------------------------------------------
+// Commission Stats
+// ---------------------------------------------------------------------------
+
+export function useCommissionStats(advertiserId?: string) {
+  const [stats, setStats] = useState<CommissionStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await affiliateApi.getCommissionStats(advertiserId);
+      setStats(result);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch commission stats');
+    } finally {
+      setLoading(false);
+    }
+  }, [advertiserId]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  return { stats, loading, error, refetch: fetchStats };
 }

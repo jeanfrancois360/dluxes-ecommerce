@@ -128,14 +128,20 @@ export interface AwinSyncResult {
   endDate: string;
 }
 
+export interface CommissionStatsBucket {
+  count: number;
+  commissionAmount: number;
+  saleAmount: number;
+}
+
 export interface CommissionStats {
-  totalCommissions: number;
-  approvedCommissions: number;
-  pendingCommissions: number;
-  declinedCommissions: number;
-  totalAmount: number;
-  approvedAmount: number;
-  currency: string;
+  total: CommissionStatsBucket;
+  byStatus: {
+    PENDING?: CommissionStatsBucket;
+    APPROVED?: CommissionStatsBucket;
+    DECLINED?: CommissionStatsBucket;
+    PAID?: CommissionStatsBucket;
+  };
 }
 
 // ---------------------------------------------------------------------------
