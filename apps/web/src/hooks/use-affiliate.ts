@@ -4,6 +4,7 @@ import {
   type AffiliateAdvertiser,
   type AffiliateAdvertiserStatus,
   type AffiliateProduct,
+  type AffiliateClickLog,
 } from '@/lib/api/affiliate';
 
 /**
@@ -106,4 +107,61 @@ export function useAffiliateProducts(params?: {
   }, [fetchProducts]);
 
   return { products, pagination, loading, error, refetch: fetchProducts };
+}
+
+// ---------------------------------------------------------------------------
+// Click Logs
+// ---------------------------------------------------------------------------
+
+export function useAffiliateClickLogs(params?: {
+  page?: number;
+  limit?: number;
+  affiliateProductId?: string;
+  advertiserId?: string;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const [clickLogs, setClickLogs] = useState<AffiliateClickLog[]>([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Memoize individual param values to prevent infinite re-render loops
+  const memoizedParams = useMemo(
+    () => params,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      params?.page,
+      params?.limit,
+      params?.affiliateProductId,
+      params?.advertiserId,
+      params?.startDate,
+      params?.endDate,
+    ]
+  );
+
+  const fetchClickLogs = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await affiliateApi.listClickLogs(memoizedParams);
+      setClickLogs(result.data);
+      setPagination(result.pagination);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch click logs');
+    } finally {
+      setLoading(false);
+    }
+  }, [memoizedParams]);
+
+  useEffect(() => {
+    fetchClickLogs();
+  }, [fetchClickLogs]);
+
+  return { clickLogs, pagination, loading, error, refetch: fetchClickLogs };
 }
