@@ -143,6 +143,10 @@ model User {
   affiliateProductsCreated         AffiliateProduct[]              @relation("AffiliateProductCreator")
   affiliateClickLogs               AffiliateClickLog[]             @relation("AffiliateClickUser")
   affiliateTranslationReviews      AffiliateProductTranslation[]   @relation("AffiliateProductTranslationReviewer")
+
+  // Blog (Phase C.7)
+  blogPostsAuthored          BlogPost[]            @relation("BlogAuthor")
+  blogTranslationReviews     BlogPostTranslation[] @relation("BlogTranslationReviewer")
 }
 
 enum UserRole {
@@ -4211,6 +4215,62 @@ model AffiliateCommission {
   @@index([advertiserId, transactionDate])
   @@index([affiliateProductId])
   @@map("affiliate_commissions")
+}
+
+// =============================================================================
+// Blog (Phase C.7)
+// =============================================================================
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model BlogPost {
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  status        BlogPostStatus @default(DRAFT)
+  coverImageUrl String?
+  authorId      String
+  tags          String[]       @default([])
+  publishedAt   DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  author       User                  @relation("BlogAuthor", fields: [authorId], references: [id])
+  translations BlogPostTranslation[]
+
+  @@index([status, publishedAt])
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("blog_posts")
+}
+
+model BlogPostTranslation {
+  id                String            @id @default(cuid())
+  blogPostId        String
+  locale            String
+  title             String
+  excerpt           String?           @db.Text
+  body              String            @db.Text
+  seoTitle          String?
+  seoDescription    String?
+  translationStatus TranslationStatus @default(ORIGINAL)
+  isOriginal        Boolean           @default(false)
+  reviewedById      String?
+  reviewedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  reviewer User?    @relation("BlogTranslationReviewer", fields: [reviewedById], references: [id])
+
+  @@unique([blogPostId, locale])
+  @@index([translationStatus])
+  @@index([locale])
+  @@map("blog_post_translations")
 }
 
 // =============================================================================
