@@ -226,3 +226,33 @@ that:
 Estimated work: ~30 lines in `AffiliateService`, no schema changes. Can be
 added as a separate admin endpoint `POST /affiliate/admin/commissions/awin-backfill`
 to keep the simple sync endpoint focused on normal operations.
+
+## Phase C.5 closeout follow-ups (affiliate admin UI)
+
+Captured during the Phase C.5 build. None blocking; address opportunistically.
+
+### 1. i18n backfill for affiliate admin UI
+
+C.5 shipped all 5 affiliate admin pages (Advertisers, Products, Translations, Clicks, Commissions) with English-inline text. Only the sidebar nav got i18n keys. Per the project i18n pattern (Phase C.1 adminReferrals), FR/ES need backfilling.
+
+Scope: ~2.5 hours. Define namespaces (adminAffiliateAdvertisers, adminAffiliateProducts, adminAffiliateTranslations, adminAffiliateClicks, adminAffiliateCommissions), add English master keys, add [FR-TODO]/[ES-TODO] placeholders, wrap all UI strings in t(). Note: this is UI-chrome i18n only — the affiliate product _content_ translations are a separate, already-built feature (AffiliateProductTranslation + the Translations sub-page).
+
+### 2. Product category picker (productCategoryIds)
+
+The affiliate Products create/edit form does not set productCategoryIds — there's no category-picker component readily available, so products are created with an empty category array. If affiliate products need categorization (for public-facing filtering in C.6), add a category multi-select to the product form.
+
+### 3. Server-side relation includes on click-log and commission lists
+
+Both listClickLogs and listCommissions return bare FK IDs (no advertiser/product relations). The admin UI resolves names via client-side lookup maps capped at 100 advertisers + 100 products. For large catalogs this cap would miss items (falls back to showing raw IDs). Fix: add advertiser + product includes to these two service queries so names resolve server-side, uncapped. Small backend change (select clauses), deferred because backend was locked during C.5.
+
+### 4. Advertiser search filter
+
+ListAdvertisersQueryDto supports approvalStatus + isActive but no text search. The Advertisers admin page has no search box as a result. If admins need to find advertisers by name/merchantId in a large list, add a search param to the DTO + service where-clause, then a search input to the page.
+
+### 5. Translation original-language designation (isOriginal / ORIGINAL)
+
+The Translations sub-page defaults manual saves to HUMAN_REVIEWED (preserving PUBLISHED if already published). It does not manage the isOriginal flag or the ORIGINAL status — there's no UI to designate which locale is the source-language master. If that distinction matters operationally, add a way to mark one locale as original. Related: the future DeepL integration (Phase C.15) will produce MACHINE_TRANSLATED entries that the "Mark as Human Reviewed" button is designed to promote.
+
+### 6. Commissions page modal extraction (minor refactor)
+
+apps/web/src/app/admin/affiliate/commissions/page.tsx is ~900 lines — the largest page file in C.5 — because it holds the list, stats cards, and two inline modals (Sync Now, Manual Entry). If this page needs future maintenance, extract the two modals into separate component files for readability. Not urgent; the page builds and works.
