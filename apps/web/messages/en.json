@@ -9,6 +9,7 @@
       "financials": "Financials",
       "delivery": "Delivery",
       "marketing": "Marketing",
+      "affiliate": "Affiliate",
       "system": "System"
     },
     "items": {
@@ -39,6 +40,10 @@
       "advertisementPlans": "Advertisement Plans",
       "announcements": "Announcements",
       "referrals": "Referrals",
+      "affiliateAdvertisers": "Advertisers",
+      "affiliateProducts": "Products",
+      "affiliateCommissions": "Commissions",
+      "affiliateClicks": "Click Analytics",
       "settings": "Settings",
       "security": "Security",
       "profile": "My Profile"

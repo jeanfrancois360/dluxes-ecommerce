@@ -27,6 +27,10 @@ import {
   Bell,
   Gift,
   Wallet,
+  Building2,
+  Tag,
+  TrendingUp,
+  MousePointerClick,
 } from 'lucide-react';
 
 interface NavItem {
@@ -100,6 +104,15 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'advertisementPlans', href: '/admin/advertisement-plans', icon: CreditCard },
       { nameKey: 'announcements', href: '/admin/announcements', icon: Bell },
       { nameKey: 'referrals', href: '/admin/referrals', icon: Gift },
+    ],
+  },
+  {
+    titleKey: 'affiliate',
+    items: [
+      { nameKey: 'affiliateAdvertisers', href: '/admin/affiliate/advertisers', icon: Building2 },
+      { nameKey: 'affiliateProducts', href: '/admin/affiliate/products', icon: Tag },
+      { nameKey: 'affiliateCommissions', href: '/admin/affiliate/commissions', icon: TrendingUp },
+      { nameKey: 'affiliateClicks', href: '/admin/affiliate/clicks', icon: MousePointerClick },
     ],
   },
   {

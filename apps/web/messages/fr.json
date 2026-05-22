@@ -9,6 +9,7 @@
       "financials": "Finances",
       "delivery": "Livraison",
       "marketing": "Marketing",
+      "affiliate": "[FR-TODO] Affiliate",
       "system": "Système"
     },
     "items": {
@@ -35,6 +36,10 @@
       "deliveryProviders": "Fournisseurs de Livraison",
       "deliveryPayouts": "Paiements de Livraison",
       "advertisements": "Publicités",
+      "affiliateAdvertisers": "[FR-TODO] Advertisers",
+      "affiliateProducts": "[FR-TODO] Products",
+      "affiliateCommissions": "[FR-TODO] Commissions",
+      "affiliateClicks": "[FR-TODO] Click Analytics",
       "settings": "Paramètres",
       "security": "Sécurité",
       "profile": "Mon Profil"
