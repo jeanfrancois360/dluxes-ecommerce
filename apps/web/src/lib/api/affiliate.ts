@@ -174,12 +174,8 @@ const listProducts = async (params?: {
   );
 };
 
-const getProductBySlug = async (slug: string, locale?: string) => {
-  const { data } = await api.get<{ data: AffiliateProduct }>(
-    `/affiliate/products/${slug}${buildQueryString({ locale })}`
-  );
-  return data;
-};
+const getProductBySlug = async (slug: string, locale?: string) =>
+  api.get<AffiliateProduct>(`/affiliate/products/${slug}${buildQueryString({ locale })}`);
 
 // ---------------------------------------------------------------------------
 // Admin — Advertisers

@@ -314,6 +314,36 @@ export function useAffiliateCommissions(params?: {
 }
 
 // ---------------------------------------------------------------------------
+// Single Public Product (detail page)
+// ---------------------------------------------------------------------------
+
+export function useAffiliateProduct(slug: string, locale?: string) {
+  const [product, setProduct] = useState<AffiliateProduct | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProduct = useCallback(async () => {
+    if (!slug) return;
+    try {
+      setLoading(true);
+      const result = await affiliateApi.getProductBySlug(slug, locale);
+      setProduct(result);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch product');
+    } finally {
+      setLoading(false);
+    }
+  }, [slug, locale]);
+
+  useEffect(() => {
+    fetchProduct();
+  }, [fetchProduct]);
+
+  return { product, loading, error, refetch: fetchProduct };
+}
+
+// ---------------------------------------------------------------------------
 // Commission Stats
 // ---------------------------------------------------------------------------
 
