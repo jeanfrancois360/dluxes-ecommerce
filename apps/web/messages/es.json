@@ -9,6 +9,7 @@
       "financials": "Finanzas",
       "delivery": "Entrega",
       "marketing": "Marketing",
+      "affiliate": "[ES-TODO] Affiliate",
       "system": "Sistema"
     },
     "items": {
@@ -35,6 +36,10 @@
       "deliveryProviders": "Proveedores de Entrega",
       "deliveryPayouts": "Pagos de Entrega",
       "advertisements": "Anuncios",
+      "affiliateAdvertisers": "[ES-TODO] Advertisers",
+      "affiliateProducts": "[ES-TODO] Products",
+      "affiliateCommissions": "[ES-TODO] Commissions",
+      "affiliateClicks": "[ES-TODO] Click Analytics",
       "settings": "Configuración",
       "security": "Seguridad",
       "profile": "Mi Perfil"
