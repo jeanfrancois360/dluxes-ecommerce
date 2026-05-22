@@ -3,6 +3,7 @@ import {
   affiliateApi,
   type AffiliateAdvertiser,
   type AffiliateAdvertiserStatus,
+  type AffiliateProduct,
 } from '@/lib/api/affiliate';
 
 /**
@@ -56,4 +57,53 @@ export function useAffiliateAdvertisers(params?: {
   }, [fetchAdvertisers]);
 
   return { advertisers, pagination, loading, error, refetch: fetchAdvertisers };
+}
+
+// ---------------------------------------------------------------------------
+// Products
+// ---------------------------------------------------------------------------
+
+export function useAffiliateProducts(params?: {
+  page?: number;
+  limit?: number;
+  advertiserId?: string;
+  isActive?: boolean;
+  isFeatured?: boolean;
+}) {
+  const [products, setProducts] = useState<AffiliateProduct[]>([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Memoize individual param values to prevent infinite re-render loops
+  const memoizedParams = useMemo(
+    () => params,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [params?.page, params?.limit, params?.advertiserId, params?.isActive, params?.isFeatured]
+  );
+
+  const fetchProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await affiliateApi.adminListProducts(memoizedParams);
+      setProducts(result.data);
+      setPagination(result.pagination);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch products');
+    } finally {
+      setLoading(false);
+    }
+  }, [memoizedParams]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  return { products, pagination, loading, error, refetch: fetchProducts };
 }
