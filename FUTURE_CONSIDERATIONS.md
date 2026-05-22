@@ -256,3 +256,21 @@ The Translations sub-page defaults manual saves to HUMAN_REVIEWED (preserving PU
 ### 6. Commissions page modal extraction (minor refactor)
 
 apps/web/src/app/admin/affiliate/commissions/page.tsx is ~900 lines — the largest page file in C.5 — because it holds the list, stats cards, and two inline modals (Sync Now, Manual Entry). If this page needs future maintenance, extract the two modals into separate component files for readability. Not urgent; the page builds and works.
+
+### 7. Logged-in affiliate click attribution (C.6 known limitation)
+
+**Verified (2026-05-22):** Anonymous click logging works end-to-end. Logged-in clicks land correctly on the deep link but `userId` is always NULL.
+
+**Why:** The CTA is a plain `<a target="_blank">` anchor. Browser navigation does not attach an `Authorization: Bearer` header — that only travels on explicit `fetch()`/XHR calls. The JWT lives in `localStorage` (inaccessible server-side). The route handler at `apps/web/src/app/api/affiliate/redirect/[id]/route.ts` forwards whatever `Authorization` header arrives; for anchor navigations, none arrives.
+
+**Fix:** In the route handler, read the auth cookie (`nextpik_ecommerce_access_token`) as a fallback when no `Authorization` header is present:
+
+```ts
+const authHeader =
+  request.headers.get('authorization') ||
+  (request.cookies.get('nextpik_ecommerce_access_token')?.value
+    ? `Bearer ${request.cookies.get('nextpik_ecommerce_access_token')!.value}`
+    : '');
+```
+
+This requires no schema change — the backend already accepts the JWT in the `Authorization` header and attributes the click to `req.user?.id`.
