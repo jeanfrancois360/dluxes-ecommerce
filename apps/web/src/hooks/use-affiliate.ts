@@ -4,6 +4,7 @@ import {
   type AffiliateAdvertiser,
   type AffiliateAdvertiserStatus,
   type AffiliateProduct,
+  type AffiliateProductTranslation,
   type AffiliateClickLog,
 } from '@/lib/api/affiliate';
 
@@ -164,4 +165,39 @@ export function useAffiliateClickLogs(params?: {
   }, [fetchClickLogs]);
 
   return { clickLogs, pagination, loading, error, refetch: fetchClickLogs };
+}
+
+// ---------------------------------------------------------------------------
+// Product Translations
+// ---------------------------------------------------------------------------
+
+export function useAffiliateProductTranslations(productId: string) {
+  const [product, setProduct] = useState<AffiliateProduct | null>(null);
+  const [translations, setTranslations] = useState<AffiliateProductTranslation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAll = useCallback(async () => {
+    if (!productId) return;
+    try {
+      setLoading(true);
+      const [prod, trans] = await Promise.all([
+        affiliateApi.getProductById(productId),
+        affiliateApi.listTranslations(productId),
+      ]);
+      setProduct(prod);
+      setTranslations(trans);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load translations');
+    } finally {
+      setLoading(false);
+    }
+  }, [productId]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  return { product, translations, loading, error, refetch: fetchAll };
 }
