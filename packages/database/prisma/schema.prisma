@@ -4135,6 +4135,7 @@ model AffiliateProduct {
   translations AffiliateProductTranslation[]
   clickLogs    AffiliateClickLog[]
   commissions  AffiliateCommission[]
+  blogFeatures BlogPostProduct[]
 
   @@index([advertiserId])
   @@index([isActive, isFeatured])
@@ -4239,8 +4240,9 @@ model BlogPost {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  author       User                  @relation("BlogAuthor", fields: [authorId], references: [id])
-  translations BlogPostTranslation[]
+  author           User                  @relation("BlogAuthor", fields: [authorId], references: [id])
+  translations     BlogPostTranslation[]
+  featuredProducts BlogPostProduct[]
 
   @@index([status, publishedAt])
   @@index([slug])
@@ -4271,6 +4273,22 @@ model BlogPostTranslation {
   @@index([translationStatus])
   @@index([locale])
   @@map("blog_post_translations")
+}
+
+model BlogPostProduct {
+  id                 String   @id @default(cuid())
+  blogPostId         String
+  affiliateProductId String
+  position           Int      @default(0)
+  createdAt          DateTime @default(now())
+
+  blogPost         BlogPost         @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  affiliateProduct AffiliateProduct @relation(fields: [affiliateProductId], references: [id], onDelete: Cascade)
+
+  @@unique([blogPostId, affiliateProductId])
+  @@index([blogPostId])
+  @@index([affiliateProductId])
+  @@map("blog_post_products")
 }
 
 // =============================================================================
