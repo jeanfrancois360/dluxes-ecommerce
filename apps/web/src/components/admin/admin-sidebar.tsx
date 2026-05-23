@@ -31,6 +31,7 @@ import {
   Tag,
   TrendingUp,
   MousePointerClick,
+  FileText,
 } from 'lucide-react';
 
 interface NavItem {
@@ -114,6 +115,10 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'affiliateCommissions', href: '/admin/affiliate/commissions', icon: TrendingUp },
       { nameKey: 'affiliateClicks', href: '/admin/affiliate/clicks', icon: MousePointerClick },
     ],
+  },
+  {
+    titleKey: 'blog',
+    items: [{ nameKey: 'blogPosts', href: '/admin/blog', icon: FileText }],
   },
   {
     titleKey: 'system',

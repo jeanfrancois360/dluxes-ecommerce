@@ -7,7 +7,17 @@ import { ModernTable } from '@/components/admin/modern-table';
 import { useAffiliateAdvertisers } from '@/hooks/use-affiliate';
 import { affiliateApi } from '@/lib/api/affiliate';
 import { formatDate } from '@/lib/utils/date-format';
-import { Building2, Filter, X } from 'lucide-react';
+import {
+  Building2,
+  Filter,
+  X,
+  Pencil,
+  Trash2,
+  PauseCircle,
+  PlayCircle,
+  CheckCircle,
+  XCircle,
+} from 'lucide-react';
 import type { AffiliateAdvertiser, AffiliateAdvertiserStatus } from '@/lib/api/affiliate';
 
 // ---------------------------------------------------------------------------
@@ -144,51 +154,56 @@ function buildColumns(
       key: 'actions',
       label: '',
       render: (item: AffiliateAdvertiser) => (
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1">
           {item.approvalStatus === 'PENDING' && (
             <>
               <button
                 onClick={() => onStatusChange(item, 'APPROVED')}
-                className="text-xs font-medium text-green-700 hover:text-green-900"
+                title="Approve"
+                className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
               >
-                Approve
+                <CheckCircle className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onStatusChange(item, 'REJECTED')}
-                className="text-xs font-medium text-red-600 hover:text-red-800"
+                title="Reject"
+                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
               >
-                Reject
+                <XCircle className="w-4 h-4" />
               </button>
             </>
           )}
           {item.approvalStatus === 'APPROVED' && (
             <button
               onClick={() => onStatusChange(item, 'PAUSED')}
-              className="text-xs font-medium text-amber-600 hover:text-amber-800"
+              title="Pause"
+              className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
             >
-              Pause
+              <PauseCircle className="w-4 h-4" />
             </button>
           )}
           {item.approvalStatus === 'PAUSED' && (
             <button
               onClick={() => onStatusChange(item, 'APPROVED')}
-              className="text-xs font-medium text-green-700 hover:text-green-900"
+              title="Reactivate"
+              className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
             >
-              Reactivate
+              <PlayCircle className="w-4 h-4" />
             </button>
           )}
-          <span className="text-gray-200">|</span>
           <button
             onClick={() => onEdit(item)}
-            className="text-xs font-medium text-blue-600 hover:text-blue-800"
+            title="Edit"
+            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            Edit
+            <Pencil className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(item)}
-            className="text-xs font-medium text-red-600 hover:text-red-800"
+            title="Delete"
+            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
           >
-            Delete
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       ),
@@ -210,7 +225,7 @@ function FieldError({ msg }: { msg?: string }) {
 }
 
 const inputCls =
-  'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+  'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]';
 const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
 
 function AdvertiserForm({
@@ -357,7 +372,7 @@ function AdvertiserForm({
           type="checkbox"
           checked={data.isActive}
           onChange={(e) => onChange({ isActive: e.target.checked })}
-          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="h-4 w-4 rounded border-gray-300 accent-black focus:ring-[#CBB57B]"
         />
         <label htmlFor="advertiser-active" className="text-sm text-gray-700">
           Active
@@ -378,7 +393,7 @@ function AdvertiserForm({
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+          className="px-4 py-2 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 disabled:opacity-50"
         >
           {submitting ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Advertiser'}
         </button>
@@ -569,7 +584,7 @@ function AdvertisersContent() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -580,7 +595,7 @@ function AdvertisersContent() {
         </div>
         <button
           onClick={openCreate}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+          className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800"
         >
           + Create Advertiser
         </button>
@@ -601,7 +616,7 @@ function AdvertisersContent() {
               setApprovalStatus(e.target.value as AffiliateAdvertiserStatus | '');
               handleFilterChange();
             }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
           >
             <option value="">All statuses</option>
             <option value="PENDING">Pending</option>
@@ -617,7 +632,7 @@ function AdvertisersContent() {
               setIsActiveFilter(e.target.value as 'all' | 'active' | 'inactive');
               handleFilterChange();
             }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
           >
             <option value="all">Active &amp; inactive</option>
             <option value="active">Active only</option>
@@ -627,7 +642,7 @@ function AdvertisersContent() {
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
             >
               <X className="w-3 h-3" />
               Clear filters
@@ -698,7 +713,7 @@ function AdvertisersContent() {
                       onClick={() => setPage(p)}
                       className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                         p === page
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          ? 'z-10 bg-gray-100 border-gray-900 text-gray-900'
                           : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                       }`}
                     >
@@ -743,7 +758,7 @@ function AdvertisersContent() {
           }}
           tabIndex={0}
         >
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Create Advertiser</h2>
               <button
@@ -781,7 +796,7 @@ function AdvertisersContent() {
           }}
           tabIndex={0}
         >
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
                 Edit Advertiser —{' '}

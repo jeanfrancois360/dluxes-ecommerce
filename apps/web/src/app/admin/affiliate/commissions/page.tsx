@@ -53,7 +53,7 @@ const STATUS_COLORS: Record<AffiliateCommissionStatus, string> = {
   PENDING: 'bg-yellow-100 text-yellow-700',
   APPROVED: 'bg-green-100 text-green-700',
   DECLINED: 'bg-red-100 text-red-700',
-  PAID: 'bg-blue-100 text-blue-700',
+  PAID: 'bg-gray-100 text-gray-700',
 };
 
 // ---------------------------------------------------------------------------
@@ -178,7 +178,7 @@ function SyncNowModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Sync Now from Awin</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -219,7 +219,7 @@ function SyncNowModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
               )}
               <button
                 onClick={handleDone}
-                className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+                className="w-full px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800"
               >
                 Done
               </button>
@@ -237,14 +237,14 @@ function SyncNowModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
                   />
                   <span className="text-gray-400">–</span>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
                   />
                 </div>
                 {rangeError && <p className="mt-1.5 text-xs text-red-600">{rangeError}</p>}
@@ -259,7 +259,7 @@ function SyncNowModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                 <button
                   onClick={handleSync}
                   disabled={syncing || !!rangeError || !startDate || !endDate}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
                 >
                   {syncing && <Loader2 className="w-3 h-3 animate-spin" />}
                   {syncing ? 'Syncing…' : 'Sync'}
@@ -364,7 +364,7 @@ function ManualEntryModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
           <h2 className="text-lg font-semibold text-gray-900">Manual Commission Entry</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -382,7 +382,7 @@ function ManualEntryModal({
               type="text"
               {...field('awinTransactionId')}
               placeholder="e.g. 123456789"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
             />
             {errors.awinTransactionId && (
               <p className="mt-1 text-xs text-red-600">{errors.awinTransactionId}</p>
@@ -400,7 +400,7 @@ function ManualEntryModal({
                 min="0.01"
                 step="0.01"
                 {...field('saleAmount')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
               />
               {errors.saleAmount && (
                 <p className="mt-1 text-xs text-red-600">{errors.saleAmount}</p>
@@ -415,7 +415,7 @@ function ManualEntryModal({
                 min="0.01"
                 step="0.01"
                 {...field('commissionAmount')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
               />
               {errors.commissionAmount && (
                 <p className="mt-1 text-xs text-red-600">{errors.commissionAmount}</p>
@@ -434,7 +434,7 @@ function ManualEntryModal({
                 {...field('currency')}
                 maxLength={3}
                 placeholder="USD"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B] uppercase"
               />
               {errors.currency && <p className="mt-1 text-xs text-red-600">{errors.currency}</p>}
             </div>
@@ -444,7 +444,7 @@ function ManualEntryModal({
               </label>
               <select
                 {...field('status')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
               >
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>
@@ -463,7 +463,7 @@ function ManualEntryModal({
             <input
               type="date"
               {...field('transactionDate')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
             />
             {errors.transactionDate && (
               <p className="mt-1 text-xs text-red-600">{errors.transactionDate}</p>
@@ -475,7 +475,7 @@ function ManualEntryModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">Advertiser</label>
             <select
               {...field('advertiserId')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
             >
               <option value="">None</option>
               {advertisers.map((a) => (
@@ -491,7 +491,7 @@ function ManualEntryModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
             <select
               {...field('affiliateProductId')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
             >
               <option value="">None</option>
               {products.map((p) => (
@@ -513,7 +513,7 @@ function ManualEntryModal({
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
           >
             {saving && <Loader2 className="w-3 h-3 animate-spin" />}
             Save
@@ -685,7 +685,7 @@ function CommissionsContent() {
   }, [refetch, refetchStats]);
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -703,7 +703,7 @@ function CommissionsContent() {
           </button>
           <button
             onClick={() => setShowSync(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+            className="flex items-center gap-2 px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800"
           >
             <RefreshCw className="w-4 h-4" />
             Sync Now from Awin
@@ -731,7 +731,7 @@ function CommissionsContent() {
                 setStartDate(e.target.value);
                 handleFilterChange();
               }}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
             />
             <span className="text-gray-400 text-sm">–</span>
             <input
@@ -741,7 +741,7 @@ function CommissionsContent() {
                 setEndDate(e.target.value);
                 handleFilterChange();
               }}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
             />
           </div>
 
@@ -752,7 +752,7 @@ function CommissionsContent() {
               setStatusFilter(e.target.value);
               handleFilterChange();
             }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
           >
             <option value="">All statuses</option>
             {STATUS_OPTIONS.map((s) => (
@@ -770,7 +770,7 @@ function CommissionsContent() {
               handleFilterChange();
             }}
             disabled={advertisersLoading}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B] disabled:opacity-50"
           >
             <option value="">All advertisers</option>
             {advertisers.map((a) => (
@@ -788,7 +788,7 @@ function CommissionsContent() {
               handleFilterChange();
             }}
             disabled={productsLoading}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B] disabled:opacity-50"
           >
             <option value="">All products</option>
             {products.map((p) => (
@@ -801,7 +801,7 @@ function CommissionsContent() {
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
             >
               <X className="w-3 h-3" />
               Clear filters
@@ -876,7 +876,7 @@ function CommissionsContent() {
                       onClick={() => setPage(p)}
                       className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                         p === page
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          ? 'z-10 bg-gray-100 border-gray-900 text-gray-900'
                           : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                       }`}
                     >

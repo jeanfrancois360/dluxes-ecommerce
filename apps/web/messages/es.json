@@ -10,6 +10,7 @@
       "delivery": "Entrega",
       "marketing": "Marketing",
       "affiliate": "[ES-TODO] Affiliate",
+      "blog": "Blog",
       "system": "Sistema"
     },
     "items": {
@@ -40,6 +41,7 @@
       "affiliateProducts": "[ES-TODO] Products",
       "affiliateCommissions": "[ES-TODO] Commissions",
       "affiliateClicks": "[ES-TODO] Click Analytics",
+      "blogPosts": "[ES-TODO] Blog Posts",
       "settings": "Configuración",
       "security": "Seguridad",
       "profile": "Mi Perfil"

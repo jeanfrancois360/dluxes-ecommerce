@@ -10,6 +10,7 @@
       "delivery": "Delivery",
       "marketing": "Marketing",
       "affiliate": "Affiliate",
+      "blog": "Blog",
       "system": "System"
     },
     "items": {
@@ -44,6 +45,7 @@
       "affiliateProducts": "Products",
       "affiliateCommissions": "Commissions",
       "affiliateClicks": "Click Analytics",
+      "blogPosts": "Blog Posts",
       "settings": "Settings",
       "security": "Security",
       "profile": "My Profile"
