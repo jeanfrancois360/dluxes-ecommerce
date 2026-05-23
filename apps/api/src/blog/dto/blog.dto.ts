@@ -80,6 +80,22 @@ export class AdminListPostsQueryDto extends ListPostsQueryDto {
 }
 
 // ============================================================================
+// FEATURED PRODUCTS DTOs
+// ============================================================================
+
+export class AttachProductsDto {
+  @IsArray()
+  @IsString({ each: true })
+  productIds!: string[];
+}
+
+export class ReorderProductsDto {
+  @IsArray()
+  @IsString({ each: true })
+  productIds!: string[];
+}
+
+// ============================================================================
 // TRANSLATION DTOs
 // ============================================================================
 

@@ -21,6 +21,8 @@ import {
   UpdatePostDto,
   ListPostsQueryDto,
   AdminListPostsQueryDto,
+  AttachProductsDto,
+  ReorderProductsDto,
   UpsertTranslationDto,
   UpdateTranslationDto,
 } from './dto/blog.dto';
@@ -161,6 +163,61 @@ export class BlogController {
   async archivePost(@Param('id') id: string) {
     const post = await this.blogService.archivePost(id);
     return { success: true, data: post };
+  }
+
+  // ============================================================================
+  // ADMIN ENDPOINTS — FEATURED PRODUCTS
+  // ============================================================================
+
+  /**
+   * GET /blog/admin/posts/:id/products
+   * List currently featured products on a post (ADMIN)
+   */
+  @Get('admin/posts/:id/products')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getFeaturedProducts(@Param('id') id: string) {
+    const items = await this.blogService.getFeaturedProducts(id);
+    return { success: true, data: items };
+  }
+
+  /**
+   * POST /blog/admin/posts/:id/products
+   * Attach affiliate products to a post (ADMIN)
+   * Rejects if any productId is invalid or inactive.
+   * Already-attached products are no-op (not re-appended).
+   */
+  @Post('admin/posts/:id/products')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async attachProducts(@Param('id') id: string, @Body() dto: AttachProductsDto) {
+    const items = await this.blogService.attachProducts(id, dto);
+    return { success: true, data: items };
+  }
+
+  /**
+   * DELETE /blog/admin/posts/:id/products/:productId
+   * Detach a single featured product from a post (ADMIN). No-op if not attached.
+   */
+  @Delete('admin/posts/:id/products/:productId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async detachProduct(@Param('id') id: string, @Param('productId') productId: string) {
+    const items = await this.blogService.detachProduct(id, productId);
+    return { success: true, data: items };
+  }
+
+  /**
+   * PATCH /blog/admin/posts/:id/products/reorder
+   * Set featured product order by providing the full ordered productId array (ADMIN)
+   */
+  @Patch('admin/posts/:id/products/reorder')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async reorderProducts(@Param('id') id: string, @Body() dto: ReorderProductsDto) {
+    const items = await this.blogService.reorderProducts(id, dto);
+    return { success: true, data: items };
   }
 
   // ============================================================================

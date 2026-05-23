@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma, BlogPostStatus, TranslationStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import {
@@ -6,6 +6,8 @@ import {
   UpdatePostDto,
   ListPostsQueryDto,
   AdminListPostsQueryDto,
+  AttachProductsDto,
+  ReorderProductsDto,
   UpsertTranslationDto,
   UpdateTranslationDto,
 } from './dto/blog.dto';
@@ -67,6 +69,18 @@ export class BlogService {
       include: {
         author: { select: { id: true, firstName: true, lastName: true } },
         translations: locale ? { where: { locale } } : { where: { isOriginal: true } },
+        featuredProducts: {
+          where: { affiliateProduct: { isActive: true, deletedAt: null } },
+          orderBy: { position: 'asc' },
+          include: {
+            affiliateProduct: {
+              include: {
+                advertiser: { select: { id: true, name: true, logoUrl: true } },
+                translations: locale ? { where: { locale } } : { where: { isOriginal: true } },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -223,6 +237,118 @@ export class BlogService {
     });
     this.logger.log(`Archived blog post: ${id}`);
     return updated;
+  }
+
+  // ============================================================================
+  // ADMIN METHODS — FEATURED PRODUCTS
+  // ============================================================================
+
+  /**
+   * Returns a helper include block for resolving affiliate products in the
+   * featured-products context (mirrors the public affiliate endpoint shape).
+   */
+  private featuredProductInclude(locale?: string) {
+    return {
+      affiliateProduct: {
+        include: {
+          advertiser: { select: { id: true, name: true, logoUrl: true } },
+          translations: locale ? { where: { locale } } : { where: { isOriginal: true } },
+        },
+      },
+    };
+  }
+
+  async getFeaturedProducts(postId: string) {
+    await this.adminGetPost(postId);
+    return this.prisma.blogPostProduct.findMany({
+      where: { blogPostId: postId },
+      orderBy: { position: 'asc' },
+      include: this.featuredProductInclude(),
+    });
+  }
+
+  async attachProducts(postId: string, dto: AttachProductsDto) {
+    await this.adminGetPost(postId);
+
+    // Validate every requested product exists and is active — REJECT the whole
+    // call if any id is invalid or inactive, naming the offending id clearly.
+    for (const productId of dto.productIds) {
+      const product = await this.prisma.affiliateProduct.findFirst({
+        where: { id: productId, isActive: true, deletedAt: null },
+      });
+      if (!product) {
+        throw new BadRequestException(
+          `Affiliate product '${productId}' not found or is not active`
+        );
+      }
+    }
+
+    // Determine current max position so appended products follow existing ones
+    const existing = await this.prisma.blogPostProduct.findMany({
+      where: { blogPostId: postId },
+      orderBy: { position: 'desc' },
+      take: 1,
+    });
+    let nextPosition = existing.length > 0 ? existing[0].position + 1 : 0;
+
+    // Upsert each join row — @@unique([blogPostId, affiliateProductId]) means
+    // an already-attached product is a no-op (update with its current position).
+    for (const productId of dto.productIds) {
+      const alreadyAttached = await this.prisma.blogPostProduct.findUnique({
+        where: {
+          blogPostId_affiliateProductId: { blogPostId: postId, affiliateProductId: productId },
+        },
+      });
+      if (!alreadyAttached) {
+        await this.prisma.blogPostProduct.create({
+          data: { blogPostId: postId, affiliateProductId: productId, position: nextPosition++ },
+        });
+      }
+    }
+
+    this.logger.log(`Attached ${dto.productIds.length} product(s) to post ${postId}`);
+    return this.getFeaturedProducts(postId);
+  }
+
+  async detachProduct(postId: string, productId: string) {
+    await this.adminGetPost(postId);
+    // No-op if the join row does not exist
+    await this.prisma.blogPostProduct.deleteMany({
+      where: { blogPostId: postId, affiliateProductId: productId },
+    });
+    this.logger.log(`Detached product ${productId} from post ${postId}`);
+    return this.getFeaturedProducts(postId);
+  }
+
+  async reorderProducts(postId: string, dto: ReorderProductsDto) {
+    await this.adminGetPost(postId);
+
+    // Validate that every provided id is currently attached to this post
+    for (const productId of dto.productIds) {
+      const join = await this.prisma.blogPostProduct.findUnique({
+        where: {
+          blogPostId_affiliateProductId: { blogPostId: postId, affiliateProductId: productId },
+        },
+      });
+      if (!join) {
+        throw new BadRequestException(`Product '${productId}' is not attached to post '${postId}'`);
+      }
+    }
+
+    // Set each join row's position to its index in the provided array
+    await this.prisma.$transaction(
+      dto.productIds.map((productId, index) =>
+        this.prisma.blogPostProduct.update({
+          where: {
+            blogPostId_affiliateProductId: { blogPostId: postId, affiliateProductId: productId },
+          },
+          data: { position: index },
+        })
+      )
+    );
+
+    this.logger.log(`Reordered ${dto.productIds.length} product(s) on post ${postId}`);
+    return this.getFeaturedProducts(postId);
   }
 
   // ============================================================================
