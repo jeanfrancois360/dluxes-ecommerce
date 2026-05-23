@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, BlogPostStatus, TranslationStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import {
@@ -10,6 +16,7 @@ import {
   ReorderProductsDto,
   UpsertTranslationDto,
   UpdateTranslationDto,
+  CreateCommentDto,
 } from './dto/blog.dto';
 
 @Injectable()
@@ -429,5 +436,139 @@ export class BlogService {
 
     this.logger.log(`Updated translation locale=${locale} for post=${postId}`);
     return translation;
+  }
+
+  // ============================================================================
+  // ENGAGEMENT — VIEWS
+  // ============================================================================
+
+  /** Fire-and-forget view record. Deduplicates by userId (logged in) or ipHash (anon). */
+  async recordView(postId: string, userId?: string, ipHash?: string) {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    if (userId) {
+      const recent = await this.prisma.blogPostView.findFirst({
+        where: { postId, userId, createdAt: { gte: oneDayAgo } },
+      });
+      if (recent) return; // Already counted today
+      await this.prisma.blogPostView.create({ data: { postId, userId } });
+    } else if (ipHash) {
+      const recent = await this.prisma.blogPostView.findFirst({
+        where: { postId, ipHash, createdAt: { gte: oneDayAgo } },
+      });
+      if (recent) return;
+      await this.prisma.blogPostView.create({ data: { postId, ipHash } });
+    } else {
+      await this.prisma.blogPostView.create({ data: { postId } });
+    }
+  }
+
+  // ============================================================================
+  // ENGAGEMENT — LIKES
+  // ============================================================================
+
+  async getEngagement(postId: string, userId?: string) {
+    const [viewCount, likeCount, commentCount, liked] = await Promise.all([
+      this.prisma.blogPostView.count({ where: { postId } }),
+      this.prisma.blogPostLike.count({ where: { postId } }),
+      this.prisma.blogPostComment.count({ where: { postId, isDeleted: false } }),
+      userId
+        ? this.prisma.blogPostLike.findUnique({
+            where: { postId_userId: { postId, userId } },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    return { viewCount, likeCount, commentCount, liked: liked !== null };
+  }
+
+  async toggleLike(postId: string, userId: string) {
+    const existing = await this.prisma.blogPostLike.findUnique({
+      where: { postId_userId: { postId, userId } },
+    });
+
+    if (existing) {
+      await this.prisma.blogPostLike.delete({ where: { postId_userId: { postId, userId } } });
+    } else {
+      await this.prisma.blogPostLike.create({ data: { postId, userId } });
+    }
+
+    return this.getEngagement(postId, userId);
+  }
+
+  // ============================================================================
+  // ENGAGEMENT — COMMENTS
+  // ============================================================================
+
+  private commentUserSelect = {
+    id: true,
+    firstName: true,
+    lastName: true,
+    avatar: true,
+  } as const;
+
+  async listComments(postId: string) {
+    // Fetch top-level comments with nested replies (2 levels deep)
+    const comments = await this.prisma.blogPostComment.findMany({
+      where: { postId, parentId: null, isDeleted: false },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: { select: this.commentUserSelect },
+        replies: {
+          where: { isDeleted: false },
+          orderBy: { createdAt: 'asc' },
+          include: {
+            user: { select: this.commentUserSelect },
+          },
+        },
+      },
+    });
+
+    return comments;
+  }
+
+  async createComment(postId: string, dto: CreateCommentDto, userId: string) {
+    if (dto.parentId) {
+      const parent = await this.prisma.blogPostComment.findFirst({
+        where: { id: dto.parentId, postId, isDeleted: false },
+      });
+      if (!parent) throw new BadRequestException('Parent comment not found');
+      // Only one level of nesting — prevent reply-to-reply
+      if (parent.parentId) throw new BadRequestException('Cannot reply to a reply');
+    }
+
+    const comment = await this.prisma.blogPostComment.create({
+      data: { postId, userId, body: dto.body, parentId: dto.parentId ?? null },
+      include: {
+        user: { select: this.commentUserSelect },
+        replies: { include: { user: { select: this.commentUserSelect } } },
+      },
+    });
+
+    this.logger.log(`Comment created on post ${postId} by user ${userId}`);
+    return comment;
+  }
+
+  async deleteComment(commentId: string, userId: string, isAdmin: boolean) {
+    const comment = await this.prisma.blogPostComment.findUnique({
+      where: { id: commentId },
+    });
+
+    if (!comment || comment.isDeleted) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    if (!isAdmin && comment.userId !== userId) {
+      throw new ForbiddenException('You can only delete your own comments');
+    }
+
+    // Soft-delete: replace body with tombstone, keep structure for reply threading
+    await this.prisma.blogPostComment.update({
+      where: { id: commentId },
+      data: { isDeleted: true, body: '[deleted]' },
+    });
+
+    this.logger.log(`Comment ${commentId} soft-deleted by user ${userId}`);
   }
 }

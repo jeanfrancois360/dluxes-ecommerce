@@ -5361,5 +5361,8 @@
       "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet avis ?",
       "confirmBulkDelete": "Êtes-vous sûr de vouloir supprimer {count} avis ?"
     }
+  },
+  "blog": {
+    "featuredProducts": "[FR-TODO]"
   }
 }

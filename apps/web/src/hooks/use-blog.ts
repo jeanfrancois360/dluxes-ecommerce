@@ -4,6 +4,8 @@ import {
   type BlogPost,
   type BlogPostStatus,
   type BlogPostTranslation,
+  type BlogEngagement,
+  type BlogComment,
 } from '@/lib/api/blog';
 
 /**
@@ -166,4 +168,127 @@ export function useBlogPost(id: string) {
   }, [fetchPost]);
 
   return { post, translations, loading, error, refetch: fetchPost };
+}
+
+// ---------------------------------------------------------------------------
+// Engagement (views, likes, comment count)
+// ---------------------------------------------------------------------------
+
+export function useBlogEngagement(postId: string) {
+  const [engagement, setEngagement] = useState<BlogEngagement>({
+    viewCount: 0,
+    likeCount: 0,
+    commentCount: 0,
+    liked: false,
+  });
+  const [likeLoading, setLikeLoading] = useState(false);
+
+  const fetchEngagement = useCallback(async () => {
+    if (!postId) return;
+    try {
+      const data = await blogApi.getEngagement(postId);
+      setEngagement(data);
+    } catch {
+      // silent — engagement failing should not break the page
+    }
+  }, [postId]);
+
+  useEffect(() => {
+    fetchEngagement();
+  }, [fetchEngagement]);
+
+  const handleToggleLike = useCallback(async () => {
+    if (likeLoading) return;
+    try {
+      setLikeLoading(true);
+      // Optimistic update
+      setEngagement((prev) => ({
+        ...prev,
+        liked: !prev.liked,
+        likeCount: prev.liked ? prev.likeCount - 1 : prev.likeCount + 1,
+      }));
+      const updated = await blogApi.toggleLike(postId);
+      setEngagement(updated);
+    } catch {
+      // Revert optimistic update on error
+      fetchEngagement();
+    } finally {
+      setLikeLoading(false);
+    }
+  }, [postId, likeLoading, fetchEngagement]);
+
+  return { engagement, likeLoading, toggleLike: handleToggleLike };
+}
+
+// ---------------------------------------------------------------------------
+// Comments
+// ---------------------------------------------------------------------------
+
+export function useBlogComments(postId: string) {
+  const [comments, setComments] = useState<BlogComment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchComments = useCallback(async () => {
+    if (!postId) return;
+    try {
+      setLoading(true);
+      const data = await blogApi.listComments(postId);
+      setComments(data);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, [postId]);
+
+  useEffect(() => {
+    fetchComments();
+  }, [fetchComments]);
+
+  const submitComment = useCallback(
+    async (body: string, parentId?: string) => {
+      try {
+        setSubmitting(true);
+        const comment = await blogApi.createComment(postId, body, parentId);
+        if (parentId) {
+          // Inject reply into the correct parent
+          setComments((prev) =>
+            prev.map((c) =>
+              c.id === parentId ? { ...c, replies: [...(c.replies ?? []), comment] } : c
+            )
+          );
+        } else {
+          setComments((prev) => [...prev, comment]);
+        }
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [postId]
+  );
+
+  const removeComment = useCallback(async (commentId: string, parentId?: string) => {
+    await blogApi.deleteComment(commentId);
+    if (parentId) {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === parentId
+            ? {
+                ...c,
+                replies: c.replies.map((r) =>
+                  r.id === commentId ? { ...r, isDeleted: true, body: '[deleted]' } : r
+                ),
+              }
+            : c
+        )
+      );
+    } else {
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, isDeleted: true, body: '[deleted]' } : c))
+      );
+    }
+  }, []);
+
+  return { comments, loading, submitting, submitComment, removeComment, refetch: fetchComments };
 }

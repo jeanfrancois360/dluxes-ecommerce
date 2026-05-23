@@ -7,7 +7,13 @@ import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { TiptapEditor } from '@/components/blog/tiptap-editor';
 import { useBlogPost } from '@/hooks/use-blog';
-import { blogApi, type BlogPostStatus, type BlogTranslationStatus } from '@/lib/api/blog';
+import {
+  blogApi,
+  type BlogPostStatus,
+  type BlogTranslationStatus,
+  type BlogPostProduct,
+} from '@/lib/api/blog';
+import { affiliateApi, type AffiliateProduct } from '@/lib/api/affiliate';
 import { api } from '@/lib/api/client';
 import { formatDate } from '@/lib/utils/date-format';
 import { toast } from '@/lib/utils/toast';
@@ -23,6 +29,12 @@ import {
   RotateCcw,
   Trash2,
   Save,
+  ShoppingBag,
+  ChevronUp,
+  ChevronDown,
+  X as XIcon,
+  Search,
+  Plus,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -74,6 +86,266 @@ const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
 // ---------------------------------------------------------------------------
 // Main content
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Featured Products Picker
+// ---------------------------------------------------------------------------
+
+function FeaturedProductsPicker({ postId }: { postId: string }) {
+  const [items, setItems] = useState<BlogPostProduct[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(true);
+  const [pickerSaving, setPickerSaving] = useState(false);
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<AffiliateProduct[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const loadItems = useCallback(async () => {
+    try {
+      setPickerLoading(true);
+      const data = await blogApi.getFeaturedProducts(postId);
+      setItems(data);
+    } catch {
+      toast.error('Failed to load featured products');
+    } finally {
+      setPickerLoading(false);
+    }
+  }, [postId]);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        setSearching(true);
+        const result = await affiliateApi.listProducts({ locale: 'en', limit: 20 });
+        const q = query.toLowerCase();
+        const attachedIds = new Set(items.map((i) => i.affiliateProductId));
+        setSearchResults(
+          result.data.filter((p) => {
+            if (attachedIds.has(p.id)) return false;
+            const title = p.translations?.[0]?.title?.toLowerCase() ?? '';
+            return p.slug.toLowerCase().includes(q) || title.includes(q);
+          })
+        );
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query, items]);
+
+  const handleAttach = async (product: AffiliateProduct) => {
+    try {
+      setPickerSaving(true);
+      const updated = await blogApi.attachProducts(postId, [product.id]);
+      setItems(updated);
+      setQuery('');
+      setSearchResults([]);
+      const title = product.translations?.[0]?.title ?? product.slug;
+      toast.success(`"${title}" added`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to attach product');
+    } finally {
+      setPickerSaving(false);
+    }
+  };
+
+  const handleDetach = async (productId: string) => {
+    try {
+      setPickerSaving(true);
+      const updated = await blogApi.detachProduct(postId, productId);
+      setItems(updated);
+    } catch {
+      toast.error('Failed to remove product');
+    } finally {
+      setPickerSaving(false);
+    }
+  };
+
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
+    const newItems = [...items];
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (target < 0 || target >= newItems.length) return;
+    [newItems[index], newItems[target]] = [newItems[target], newItems[index]];
+    try {
+      setPickerSaving(true);
+      const updated = await blogApi.reorderProducts(
+        postId,
+        newItems.map((i) => i.affiliateProductId)
+      );
+      setItems(updated);
+    } catch {
+      toast.error('Failed to reorder products');
+    } finally {
+      setPickerSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+          <ShoppingBag className="w-3.5 h-3.5" />
+          Featured Products
+          {!pickerLoading && items.length > 0 && (
+            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded-full leading-none">
+              {items.length}
+            </span>
+          )}
+        </h2>
+        {pickerSaving && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+      </div>
+
+      <div className="p-4 space-y-3">
+        {/* Attached list */}
+        {pickerLoading ? (
+          <div className="py-6 flex justify-center">
+            <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
+          </div>
+        ) : items.length === 0 ? (
+          <div className="py-6 flex flex-col items-center gap-2 text-center">
+            <ShoppingBag className="w-7 h-7 text-gray-200" />
+            <p className="text-xs font-medium text-gray-400">No products attached</p>
+            <p className="text-[11px] text-gray-300 leading-snug">Search below to add products</p>
+          </div>
+        ) : (
+          <ul className="space-y-1.5">
+            {items.map((item, index) => {
+              const p = item.affiliateProduct;
+              const title = p.translations?.[0]?.title ?? p.slug;
+              return (
+                <li
+                  key={item.id}
+                  className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg px-2 py-2 group"
+                >
+                  {/* Position badge */}
+                  <span className="w-4 shrink-0 text-center text-[10px] font-semibold text-gray-300 tabular-nums">
+                    {index + 1}
+                  </span>
+                  {/* Thumbnail */}
+                  <div className="w-8 h-8 shrink-0 rounded-md overflow-hidden bg-neutral-100 border border-neutral-200 flex items-center justify-center">
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt={title} className="w-full h-full object-cover" />
+                    ) : (
+                      <ShoppingBag className="w-3 h-3 text-neutral-400" />
+                    )}
+                  </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-700 truncate leading-tight">
+                      {title}
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {p.displayPrice != null
+                        ? `${p.displayCurrency ?? 'EUR'} ${p.displayPrice}`
+                        : '—'}
+                    </p>
+                  </div>
+                  {/* Reorder — visible on row hover */}
+                  <div className="flex flex-col gap-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleMove(index, 'up')}
+                      disabled={index === 0 || pickerSaving}
+                      className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Move up"
+                    >
+                      <ChevronUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => handleMove(index, 'down')}
+                      disabled={index === items.length - 1 || pickerSaving}
+                      className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Move down"
+                    >
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                  </div>
+                  {/* Remove */}
+                  <button
+                    onClick={() => handleDetach(item.affiliateProductId)}
+                    disabled={pickerSaving}
+                    className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-30 shrink-0"
+                    title="Remove"
+                  >
+                    <XIcon className="w-3 h-3" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {/* Divider when there are attached items */}
+        {!pickerLoading && items.length > 0 && <div className="border-t border-gray-100" />}
+
+        {/* Search input */}
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search products to add…"
+            className="w-full pl-8 pr-8 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#CBB57B] bg-gray-50"
+          />
+          {searching && (
+            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 animate-spin text-gray-400" />
+          )}
+        </div>
+
+        {/* Search results */}
+        {searchResults.length > 0 && (
+          <ul className="border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100 bg-white shadow-sm">
+            {searchResults.map((p) => {
+              const title = p.translations?.[0]?.title ?? p.slug;
+              return (
+                <li key={p.id}>
+                  <button
+                    onClick={() => handleAttach(p)}
+                    disabled={pickerSaving}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-gray-50 transition-colors disabled:opacity-50 group"
+                  >
+                    <div className="w-7 h-7 shrink-0 rounded-md overflow-hidden bg-neutral-100 border border-neutral-200 flex items-center justify-center">
+                      {p.imageUrl ? (
+                        <img src={p.imageUrl} alt={title} className="w-full h-full object-cover" />
+                      ) : (
+                        <ShoppingBag className="w-2.5 h-2.5 text-neutral-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-gray-800 truncate">{title}</p>
+                      <p className="text-[10px] text-gray-400">
+                        {p.displayPrice != null
+                          ? `${p.displayCurrency ?? 'EUR'} ${p.displayPrice}`
+                          : '—'}
+                      </p>
+                    </div>
+                    <span className="shrink-0 w-5 h-5 rounded-full bg-gray-100 group-hover:bg-black flex items-center justify-center transition-colors">
+                      <Plus className="w-2.5 h-2.5 text-gray-500 group-hover:text-white transition-colors" />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {query.trim() && !searching && searchResults.length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-1">No active products match.</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function BlogPostEditContent() {
   const params = useParams<{ id: string }>();
@@ -544,6 +816,9 @@ function BlogPostEditContent() {
               </div>
             </div>
           </div>
+
+          {/* Featured Products */}
+          <FeaturedProductsPicker postId={post.id} />
         </div>
       </div>
     </div>

@@ -11,7 +11,9 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Ip,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { BlogService } from './blog.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -25,7 +27,9 @@ import {
   ReorderProductsDto,
   UpsertTranslationDto,
   UpdateTranslationDto,
+  CreateCommentDto,
 } from './dto/blog.dto';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
 /**
  * Blog Controller (Phase C.7)
@@ -267,5 +271,88 @@ export class BlogController {
   async listTranslations(@Param('id') id: string) {
     const translations = await this.blogService.listTranslations(id);
     return { success: true, data: translations };
+  }
+
+  // ============================================================================
+  // ENGAGEMENT ENDPOINTS (public + auth-gated)
+  // ============================================================================
+
+  /**
+   * POST /blog/posts/:postId/view
+   * Record a page view — deduped per user (24 h window) or IP hash.
+   * Public endpoint, fire-and-forget.
+   */
+  @Post('posts/:postId/view')
+  @UseGuards(OptionalJwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async recordView(@Param('postId') postId: string, @Request() req: any, @Ip() ip: string) {
+    const userId: string | undefined = req.user?.id;
+    const ipHash = crypto
+      .createHash('sha256')
+      .update(ip || '')
+      .digest('hex');
+    await this.blogService.recordView(postId, userId, ipHash);
+  }
+
+  /**
+   * GET /blog/posts/:postId/engagement
+   * Return { viewCount, likeCount, commentCount, liked } for the current viewer.
+   * Public; optional auth to resolve `liked`.
+   */
+  @Get('posts/:postId/engagement')
+  @UseGuards(OptionalJwtAuthGuard)
+  async getEngagement(@Param('postId') postId: string, @Request() req: any) {
+    const userId: string | undefined = req.user?.id;
+    const data = await this.blogService.getEngagement(postId, userId);
+    return { success: true, data };
+  }
+
+  /**
+   * POST /blog/posts/:postId/like
+   * Toggle like on/off for the authenticated user.
+   */
+  @Post('posts/:postId/like')
+  @UseGuards(JwtAuthGuard)
+  async toggleLike(@Param('postId') postId: string, @Request() req: any) {
+    const data = await this.blogService.toggleLike(postId, req.user.id);
+    return { success: true, data };
+  }
+
+  /**
+   * GET /blog/posts/:postId/comments
+   * List top-level comments + replies. Public.
+   */
+  @Get('posts/:postId/comments')
+  async listComments(@Param('postId') postId: string) {
+    const data = await this.blogService.listComments(postId);
+    return { success: true, data };
+  }
+
+  /**
+   * POST /blog/posts/:postId/comments
+   * Create a new comment (or reply). Auth required.
+   */
+  @Post('posts/:postId/comments')
+  @UseGuards(JwtAuthGuard)
+  async createComment(
+    @Param('postId') postId: string,
+    @Body() dto: CreateCommentDto,
+    @Request() req: any
+  ) {
+    const data = await this.blogService.createComment(postId, dto, req.user.id);
+    return { success: true, data };
+  }
+
+  /**
+   * DELETE /blog/comments/:id
+   * Soft-delete a comment. Own comment or admin.
+   */
+  @Delete('comments/:id')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async deleteComment(@Param('id') id: string, @Request() req: any) {
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.user.role);
+    await this.blogService.deleteComment(id, req.user.id, isAdmin);
+    return { success: true };
   }
 }

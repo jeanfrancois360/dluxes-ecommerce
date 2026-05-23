@@ -40,7 +40,35 @@ export interface BlogPost {
   createdAt: string;
   updatedAt: string;
   translations?: BlogPostTranslation[];
+  featuredProducts?: BlogPostProduct[];
   _count?: { translations: number };
+}
+
+export interface BlogEngagement {
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  liked: boolean;
+}
+
+export interface BlogCommentUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatar?: string;
+}
+
+export interface BlogComment {
+  id: string;
+  postId: string;
+  userId: string;
+  user: BlogCommentUser;
+  parentId?: string;
+  body: string;
+  isDeleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+  replies: BlogComment[];
 }
 
 export interface BlogPostTranslation {
@@ -58,6 +86,43 @@ export interface BlogPostTranslation {
   reviewedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Minimal affiliate product shape returned inside featuredProducts
+// (mirrors the public /affiliate/products payload — same shape AffiliateProductCard needs)
+export interface FeaturedAffiliateProduct {
+  id: string;
+  slug: string;
+  advertiserId: string;
+  advertiser?: { id: string; name: string; logoUrl?: string };
+  awinDeepLink: string;
+  imageUrl: string;
+  galleryUrls: string[];
+  displayPrice?: number;
+  displayCurrency?: string;
+  originalPrice?: number;
+  tags: string[];
+  isActive: boolean;
+  isFeatured: boolean;
+  displayOrder: number;
+  clickCount: number;
+  conversionCount: number;
+  translations?: Array<{
+    id: string;
+    locale: string;
+    title: string;
+    description: string;
+    isOriginal: boolean;
+  }>;
+}
+
+export interface BlogPostProduct {
+  id: string;
+  blogPostId: string;
+  affiliateProductId: string;
+  position: number;
+  createdAt: string;
+  affiliateProduct: FeaturedAffiliateProduct;
 }
 
 export interface PaginatedResponse<T> {
@@ -85,6 +150,35 @@ function buildQueryString(params?: Record<string, any>): string {
 
 // ---------------------------------------------------------------------------
 // Public endpoints
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Engagement
+// ---------------------------------------------------------------------------
+
+const recordView = (postId: string) =>
+  fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/blog/posts/${postId}/view`,
+    {
+      method: 'POST',
+      credentials: 'include',
+    }
+  ).catch(() => {}); // fire-and-forget — never throw
+
+const getEngagement = (postId: string) =>
+  api.get<BlogEngagement>(`/blog/posts/${postId}/engagement`);
+
+const toggleLike = (postId: string) => api.post<BlogEngagement>(`/blog/posts/${postId}/like`, {});
+
+const listComments = (postId: string) => api.get<BlogComment[]>(`/blog/posts/${postId}/comments`);
+
+const createComment = (postId: string, body: string, parentId?: string) =>
+  api.post<BlogComment>(`/blog/posts/${postId}/comments`, { body, ...(parentId && { parentId }) });
+
+const deleteComment = (commentId: string) => api.delete(`/blog/comments/${commentId}`);
+
+// ---------------------------------------------------------------------------
+// Public posts
 // ---------------------------------------------------------------------------
 
 const listPublishedPosts = (params?: {
@@ -165,10 +259,33 @@ const listTranslations = (postId: string) =>
   api.get<BlogPostTranslation[]>(`/blog/admin/posts/${postId}/translations`);
 
 // ---------------------------------------------------------------------------
+// Admin — Featured Products
+// ---------------------------------------------------------------------------
+
+const getFeaturedProducts = (postId: string) =>
+  api.get<BlogPostProduct[]>(`/blog/admin/posts/${postId}/products`);
+
+const attachProducts = (postId: string, productIds: string[]) =>
+  api.post<BlogPostProduct[]>(`/blog/admin/posts/${postId}/products`, { productIds });
+
+const detachProduct = (postId: string, productId: string) =>
+  api.delete<BlogPostProduct[]>(`/blog/admin/posts/${postId}/products/${productId}`);
+
+const reorderProducts = (postId: string, productIds: string[]) =>
+  api.patch<BlogPostProduct[]>(`/blog/admin/posts/${postId}/products/reorder`, { productIds });
+
+// ---------------------------------------------------------------------------
 // Named export
 // ---------------------------------------------------------------------------
 
 export const blogApi = {
+  // Engagement
+  recordView,
+  getEngagement,
+  toggleLike,
+  listComments,
+  createComment,
+  deleteComment,
   // Public
   listPublishedPosts,
   getPublishedPostBySlug,
@@ -186,4 +303,9 @@ export const blogApi = {
   upsertTranslation,
   updateTranslation,
   listTranslations,
+  // Featured products
+  getFeaturedProducts,
+  attachProducts,
+  detachProduct,
+  reorderProducts,
 };

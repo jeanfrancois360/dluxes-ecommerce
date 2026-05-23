@@ -5482,5 +5482,8 @@
         "messages": "Messages"
       }
     }
+  },
+  "blog": {
+    "featuredProducts": "Featured products"
   }
 }

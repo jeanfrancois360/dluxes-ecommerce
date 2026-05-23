@@ -144,9 +144,12 @@ model User {
   affiliateClickLogs               AffiliateClickLog[]             @relation("AffiliateClickUser")
   affiliateTranslationReviews      AffiliateProductTranslation[]   @relation("AffiliateProductTranslationReviewer")
 
-  // Blog (Phase C.7)
+  // Blog (Phase C.7 / C.8)
   blogPostsAuthored          BlogPost[]            @relation("BlogAuthor")
   blogTranslationReviews     BlogPostTranslation[] @relation("BlogTranslationReviewer")
+  blogPostViews              BlogPostView[]        @relation("BlogPostViews")
+  blogPostLikes              BlogPostLike[]        @relation("BlogPostLikes")
+  blogPostComments           BlogPostComment[]     @relation("BlogPostComments")
 }
 
 enum UserRole {
@@ -4243,6 +4246,9 @@ model BlogPost {
   author           User                  @relation("BlogAuthor", fields: [authorId], references: [id])
   translations     BlogPostTranslation[]
   featuredProducts BlogPostProduct[]
+  views            BlogPostView[]
+  likes            BlogPostLike[]
+  comments         BlogPostComment[]
 
   @@index([status, publishedAt])
   @@index([slug])
@@ -4289,6 +4295,56 @@ model BlogPostProduct {
   @@index([blogPostId])
   @@index([affiliateProductId])
   @@map("blog_post_products")
+}
+
+// =============================================================================
+// Blog engagement — views, likes, comments (Phase C.8)
+// =============================================================================
+
+model BlogPostView {
+  id        String    @id @default(cuid())
+  postId    String
+  post      BlogPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?     @relation("BlogPostViews", fields: [userId], references: [id], onDelete: SetNull)
+  ipHash    String?
+  createdAt DateTime  @default(now())
+
+  @@index([postId])
+  @@index([userId])
+  @@map("blog_post_views")
+}
+
+model BlogPostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("BlogPostLikes", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@map("blog_post_likes")
+}
+
+model BlogPostComment {
+  id        String           @id @default(cuid())
+  postId    String
+  post      BlogPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation("BlogPostComments", fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    BlogPostComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   BlogPostComment[] @relation("CommentReplies")
+  body      String           @db.Text
+  isDeleted Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([postId])
+  @@index([parentId])
+  @@map("blog_post_comments")
 }
 
 // =============================================================================

@@ -5361,5 +5361,8 @@
       "fieldExists": "Ya existe una categoría con este {field}.",
       "databaseConstraint": "Error al guardar la categoría debido a una restricción de base de datos."
     }
+  },
+  "blog": {
+    "featuredProducts": "[ES-TODO]"
   }
 }
