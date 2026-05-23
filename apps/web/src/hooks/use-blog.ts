@@ -59,6 +59,36 @@ export function usePublishedBlogPosts(params?: {
 }
 
 // ---------------------------------------------------------------------------
+// Public single post (by slug)
+// ---------------------------------------------------------------------------
+
+export function usePublishedBlogPost(slug: string, locale?: string) {
+  const [post, setPost] = useState<BlogPost | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPost = useCallback(async () => {
+    if (!slug) return;
+    try {
+      setLoading(true);
+      const result = await blogApi.getPublishedPostBySlug(slug, locale);
+      setPost(result);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load post');
+    } finally {
+      setLoading(false);
+    }
+  }, [slug, locale]);
+
+  useEffect(() => {
+    fetchPost();
+  }, [fetchPost]);
+
+  return { post, loading, error };
+}
+
+// ---------------------------------------------------------------------------
 // Admin post list
 // ---------------------------------------------------------------------------
 
