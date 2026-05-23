@@ -48,27 +48,21 @@ export default function AdminReferralsPage() {
     },
     {
       title: t('stats.totalRewardsPaid'),
-      value: formatCurrencyAmount(statistics?.total?.rewardsPaid || 0, settings?.currency || 'USD'),
+      value: formatCurrencyAmount(statistics?.total?.rewardsPaid || 0),
       icon: DollarSign,
       color: 'green',
     },
     {
       title: t('stats.buyerReferrals'),
       value: statistics?.buyers?.count || 0,
-      subtitle: formatCurrencyAmount(
-        statistics?.buyers?.rewardsPaid || 0,
-        settings?.currency || 'USD'
-      ),
+      subtitle: formatCurrencyAmount(statistics?.buyers?.rewardsPaid || 0),
       icon: Gift,
       color: 'purple',
     },
     {
       title: t('stats.sellerReferrals'),
       value: statistics?.sellers?.count || 0,
-      subtitle: formatCurrencyAmount(
-        statistics?.sellers?.rewardsPaid || 0,
-        settings?.currency || 'USD'
-      ),
+      subtitle: formatCurrencyAmount(statistics?.sellers?.rewardsPaid || 0),
       icon: TrendingUp,
       color: 'orange',
     },
@@ -171,7 +165,7 @@ export default function AdminReferralsPage() {
                   </div>
                   <p className="text-xl font-bold text-gray-900">{data?.count || 0}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {formatCurrencyAmount(data?.amount || 0, settings?.currency || 'USD')}
+                    {formatCurrencyAmount(data?.amount || 0)}
                   </p>
                 </div>
               );
@@ -289,7 +283,7 @@ export default function AdminReferralsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {formatCurrencyAmount(referral.rewardAmount, referral.rewardCurrency)}
+                          {formatCurrencyAmount(referral.rewardAmount)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

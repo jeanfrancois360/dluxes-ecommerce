@@ -463,7 +463,7 @@ function BlogPostsContent() {
       {/* ── Table ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         {/* Table header */}
-        <div className="hidden md:grid grid-cols-[minmax(0,2.5fr)_120px_110px_90px_110px_auto] px-5 py-3 bg-gray-50 border-b border-gray-200">
+        <div className="hidden md:grid grid-cols-[minmax(0,2.5fr)_120px_110px_90px_110px_132px] px-5 py-3 bg-gray-50 border-b border-gray-200">
           {['Post', 'Status', 'Published', 'Locales', 'Created', ''].map((h) => (
             <div key={h} className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
               {h}
@@ -508,7 +508,7 @@ function BlogPostsContent() {
             return (
               <div
                 key={post.id}
-                className="grid grid-cols-1 md:grid-cols-[minmax(0,2.5fr)_120px_110px_90px_110px_auto] px-5 py-4 border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors items-center gap-y-2"
+                className="grid grid-cols-1 md:grid-cols-[minmax(0,2.5fr)_120px_110px_90px_110px_132px] px-5 py-4 border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors items-center gap-y-2"
               >
                 {/* Post */}
                 <div className="flex items-center gap-3 min-w-0">
