@@ -38,7 +38,7 @@ export function Navbar({ className }: NavbarProps) {
     { label: t('nav.shop'), href: '/products', hasMegaMenu: true, megaMenuType: 'shop' },
     { label: t('nav.stores'), href: '/stores' },
     { label: t('nav.hotDeals'), href: '/hot-deals' },
-    { label: t('nav.contact'), href: '/contact' },
+    { label: t('nav.blog'), href: '/blog' },
   ];
 
   return (
