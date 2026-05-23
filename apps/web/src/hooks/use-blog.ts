@@ -12,6 +12,53 @@ import {
  */
 
 // ---------------------------------------------------------------------------
+// Public post list
+// ---------------------------------------------------------------------------
+
+export function usePublishedBlogPosts(params?: {
+  page?: number;
+  limit?: number;
+  tag?: string;
+  locale?: string;
+}) {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 12,
+    total: 0,
+    totalPages: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const memoizedParams = useMemo(
+    () => params,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [params?.page, params?.limit, params?.tag, params?.locale]
+  );
+
+  const fetchPosts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await blogApi.listPublishedPosts(memoizedParams);
+      setPosts(result.data);
+      setPagination(result.pagination);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch posts');
+    } finally {
+      setLoading(false);
+    }
+  }, [memoizedParams]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
+  return { posts, pagination, loading, error };
+}
+
+// ---------------------------------------------------------------------------
 // Admin post list
 // ---------------------------------------------------------------------------
 
