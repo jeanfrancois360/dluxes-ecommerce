@@ -11,7 +11,18 @@ import { api } from '@/lib/api/client';
 import { formatDate } from '@/lib/utils/date-format';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { toast } from '@/lib/utils/toast';
-import { Filter, Tag, X, Upload, ImageIcon } from 'lucide-react';
+import {
+  Filter,
+  Tag,
+  X,
+  Upload,
+  ImageIcon,
+  Pencil,
+  Trash2,
+  Eye,
+  EyeOff,
+  Languages,
+} from 'lucide-react';
 import type { AffiliateProduct } from '@/lib/api/affiliate';
 
 // ---------------------------------------------------------------------------
@@ -75,7 +86,7 @@ function ProductThumbnail({ imageUrl, alt }: { imageUrl: string; alt: string }) 
 // ---------------------------------------------------------------------------
 
 const inputCls =
-  'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+  'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]';
 const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
 
 function FieldError({ msg }: { msg?: string }) {
@@ -485,7 +496,7 @@ function ProductForm({
             type="checkbox"
             checked={data.isActive}
             onChange={(e) => onChange({ isActive: e.target.checked })}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 rounded border-gray-300 accent-black focus:ring-[#CBB57B]"
           />
           <label htmlFor="product-active" className="text-sm text-gray-700">
             Active
@@ -497,7 +508,7 @@ function ProductForm({
             type="checkbox"
             checked={data.isFeatured}
             onChange={(e) => onChange({ isFeatured: e.target.checked })}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 rounded border-gray-300 accent-black focus:ring-[#CBB57B]"
           />
           <label htmlFor="product-featured" className="text-sm text-gray-700">
             Featured
@@ -519,7 +530,7 @@ function ProductForm({
           type="button"
           onClick={onSubmit}
           disabled={submitting || imageUploading}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+          className="px-4 py-2 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 disabled:opacity-50"
         >
           {submitting ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Product'}
         </button>
@@ -624,40 +635,44 @@ function buildColumns(
       key: 'actions',
       label: '',
       render: (item: AffiliateProduct) => (
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1">
           {item.isActive ? (
             <button
               onClick={() => onStatusToggle(item)}
-              className="text-xs font-medium text-amber-600 hover:text-amber-800"
+              title="Deactivate"
+              className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
             >
-              Deactivate
+              <EyeOff className="w-4 h-4" />
             </button>
           ) : (
             <button
               onClick={() => onStatusToggle(item)}
-              className="text-xs font-medium text-green-700 hover:text-green-900"
+              title="Activate"
+              className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
             >
-              Activate
+              <Eye className="w-4 h-4" />
             </button>
           )}
-          <span className="text-gray-200">|</span>
           <button
             onClick={() => onTranslations(item.id)}
-            className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+            title="Translations"
+            className="p-1.5 text-gray-400 hover:text-[#CBB57B] hover:bg-amber-50 rounded-lg transition-colors"
           >
-            Translations
+            <Languages className="w-4 h-4" />
           </button>
           <button
             onClick={() => onEdit(item)}
-            className="text-xs font-medium text-blue-600 hover:text-blue-800"
+            title="Edit"
+            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            Edit
+            <Pencil className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(item)}
-            className="text-xs font-medium text-red-600 hover:text-red-800"
+            title="Delete"
+            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
           >
-            Delete
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       ),
@@ -882,7 +897,7 @@ function AffiliateProductsContent() {
   const handleFilterChange = () => setPage(1);
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -893,7 +908,7 @@ function AffiliateProductsContent() {
         </div>
         <button
           onClick={openCreate}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+          className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800"
         >
           + Create Product
         </button>
@@ -915,7 +930,7 @@ function AffiliateProductsContent() {
               handleFilterChange();
             }}
             disabled={advertisersLoading}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B] disabled:opacity-50"
           >
             <option value="">All advertisers</option>
             {approvedAdvertisers.map((a) => (
@@ -932,7 +947,7 @@ function AffiliateProductsContent() {
               setIsActiveFilter(e.target.value as 'all' | 'active' | 'inactive');
               handleFilterChange();
             }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
           >
             <option value="all">Active &amp; inactive</option>
             <option value="active">Active only</option>
@@ -946,7 +961,7 @@ function AffiliateProductsContent() {
               setIsFeaturedFilter(e.target.value as 'all' | 'featured');
               handleFilterChange();
             }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
           >
             <option value="all">All products</option>
             <option value="featured">Featured only</option>
@@ -955,7 +970,7 @@ function AffiliateProductsContent() {
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
             >
               <X className="w-3 h-3" />
               Clear filters
@@ -1026,7 +1041,7 @@ function AffiliateProductsContent() {
                       onClick={() => setPage(p)}
                       className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                         p === page
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          ? 'z-10 bg-gray-100 border-gray-900 text-gray-900'
                           : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                       }`}
                     >
@@ -1071,7 +1086,7 @@ function AffiliateProductsContent() {
           }}
           tabIndex={0}
         >
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Create Product</h2>
               <button
@@ -1111,7 +1126,7 @@ function AffiliateProductsContent() {
           }}
           tabIndex={0}
         >
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
                 Edit Product —{' '}
