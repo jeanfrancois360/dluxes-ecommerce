@@ -8,6 +8,7 @@ import {
   Min,
   Max,
   MaxLength,
+  MinLength,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { BlogPostStatus, TranslationStatus } from '@prisma/client';
@@ -77,6 +78,25 @@ export class AdminListPostsQueryDto extends ListPostsQueryDto {
   @Transform(({ value }) => value === 'true')
   @IsBoolean()
   includeDeleted?: boolean;
+}
+
+// ============================================================================
+// FEATURED PRODUCTS DTOs
+// ============================================================================
+
+// ============================================================================
+// ENGAGEMENT DTOs
+// ============================================================================
+
+export class CreateCommentDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  body!: string;
+
+  @IsOptional()
+  @IsString()
+  parentId?: string;
 }
 
 // ============================================================================
