@@ -988,7 +988,53 @@ export class OrdersService {
     }
 
     const tax = new Decimal(taxCalc.amount);
-    const total = subtotal.add(shipping).add(tax);
+
+    // Fetch exchange rate BEFORE computing totals so all amounts are stored in target currency
+    const currency = orderCurrency || 'USD';
+    const baseCurrency = 'USD';
+    let exchangeRate: Decimal | null = null;
+    let exchangeRateNum = 1;
+
+    if (currency !== baseCurrency) {
+      try {
+        const currencyRate = await this.currencyService.getRateByCode(currency);
+        exchangeRateNum = Number(currencyRate.rate);
+        exchangeRate = new Decimal(exchangeRateNum);
+        this.logger.log(`💱 Converting order amounts to ${currency} (rate: ${exchangeRateNum})`);
+      } catch (error) {
+        this.logger.error(`Failed to get exchange rate for currency ${currency}:`, error);
+      }
+    }
+
+    // Shipping may be in a non-USD source currency (e.g. EUR from SendCloud/DHL).
+    // Two-step: price / srcRate = USD equiv; * exchangeRateNum = target currency.
+    let shippingSourceRate = 1;
+    const shippingSourceCurrency = (selectedShipping as any)?.sourceCurrency as string | undefined;
+    if (shippingSourceCurrency && shippingSourceCurrency !== 'USD') {
+      try {
+        const srcRate = await this.currencyService.getRateByCode(shippingSourceCurrency);
+        shippingSourceRate = Number(srcRate.rate);
+      } catch {
+        this.logger.warn(
+          `Could not get rate for shipping source currency ${shippingSourceCurrency} — treating as USD`
+        );
+      }
+    }
+
+    // All amounts stored in target currency (product prices and tax are always USD)
+    const subtotalConverted = subtotal.mul(exchangeRateNum);
+    const shippingConverted = shipping.div(shippingSourceRate).mul(exchangeRateNum);
+    const taxConverted = tax.mul(exchangeRateNum);
+    const gelatoCostUsdOrder = (selectedShipping as any)?.gelatoCostUsd as number | undefined;
+    const gelatoConverted = gelatoCostUsdOrder
+      ? new Decimal(gelatoCostUsdOrder).mul(exchangeRateNum)
+      : new Decimal(0);
+    const total = subtotalConverted.add(shippingConverted).add(taxConverted).add(gelatoConverted);
+
+    this.logger.log(
+      `💰 Order totals (${currency}): subtotal=${subtotalConverted.toFixed(2)}, ` +
+        `shipping=${shippingConverted.toFixed(2)}, tax=${taxConverted.toFixed(2)}, total=${total.toFixed(2)}`
+    );
 
     // Generate order number
     const orderNumber = `ORD-${Date.now()}`;
@@ -1021,22 +1067,6 @@ export class OrdersService {
       }
     }
 
-    // Get currency and exchange rate for order
-    const currency = orderCurrency || 'USD';
-    const baseCurrency = 'USD';
-    let exchangeRate: Decimal | null = null;
-
-    // Get the exchange rate at time of order if currency is different from base
-    if (currency !== baseCurrency) {
-      try {
-        const currencyRate = await this.currencyService.getRateByCode(currency);
-        exchangeRate = new Decimal(Number(currencyRate.rate));
-      } catch (error) {
-        this.logger.error(`Failed to get exchange rate for currency ${currency}:`, error);
-        // Continue with order creation without exchange rate
-      }
-    }
-
     // Create order with transaction
     const order = await this.prisma.$transaction(async (prisma) => {
       // Create order
@@ -1044,9 +1074,9 @@ export class OrdersService {
         data: {
           orderNumber,
           userId,
-          subtotal,
-          shipping,
-          tax,
+          subtotal: subtotalConverted,
+          shipping: shippingConverted,
+          tax: taxConverted,
           total,
           currency,
           exchangeRate,
