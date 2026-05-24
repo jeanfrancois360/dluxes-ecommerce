@@ -23,6 +23,11 @@ import { ScrollToTop } from '@/components/scroll-to-top';
 import { navigateWithLoading } from '@/lib/navigation';
 import { StructuredData } from '@/components/seo/structured-data';
 import { generateItemListSchema } from '@/lib/seo';
+import useSWR from 'swr';
+import { settingsApi } from '@/lib/api/settings';
+import { useLocale } from '@/contexts/locale-context';
+import { useAffiliatePublicProducts } from '@/hooks/use-affiliate';
+import { AffiliateProductsSection } from '@/components/affiliate/affiliate-products-section';
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -49,6 +54,25 @@ export default function ProductsPage() {
   // Get currency symbol
   const { currency } = useSelectedCurrency();
   const currencySymbol = currency?.symbol || '$';
+
+  // Locale for affiliate cards
+  const { language: locale } = useLocale();
+
+  // Public settings (SWR deduplicates with use-currency's identical key)
+  const { data: publicSettings } = useSWR('/settings/public', settingsApi.getPublicSettings, {
+    revalidateOnFocus: false,
+  });
+  const affiliatePageEnabled =
+    (publicSettings?.find((s) => s.key === 'affiliate_products_page_enabled')?.value ?? true) !==
+    false;
+  const affiliateCount = Number(
+    publicSettings?.find((s) => s.key === 'affiliate_products_per_section')?.value ?? 6
+  );
+
+  // Affiliate products for between-grid section
+  const { products: affiliateProducts } = useAffiliatePublicProducts(
+    affiliatePageEnabled ? { limit: affiliateCount, isFeatured: true, locale } : undefined
+  );
 
   // Parse URL parameters
   const [filters, setFilters] = useState<SearchFilters>({
@@ -1275,6 +1299,13 @@ export default function ProductsPage() {
                   loading={false}
                   currencySymbol={currencySymbol}
                 />
+
+                {/* Affiliate products — between grid and pagination */}
+                {affiliatePageEnabled && affiliateProducts.length > 0 && (
+                  <div className="mt-10">
+                    <AffiliateProductsSection products={affiliateProducts} locale={locale} />
+                  </div>
+                )}
 
                 {/* Pagination */}
                 {totalPages > 1 && !isLoading && (

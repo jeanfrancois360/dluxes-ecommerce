@@ -5362,6 +5362,9 @@
       "databaseConstraint": "Error al guardar la categoría debido a una restricción de base de datos."
     }
   },
+  "affiliate": {
+    "fromOurPartners": "[ES-TODO]"
+  },
   "blog": {
     "featuredProducts": "[ES-TODO]",
     "featuredProductsDisclosure": "[ES-TODO]"

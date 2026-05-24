@@ -2800,6 +2800,55 @@ async function main() {
   console.log(`✅ Created ${subscriptionSettings.length} subscription settings`);
 
   // ============================================================================
+  // AFFILIATE SETTINGS
+  // ============================================================================
+  console.log('🔗 Creating affiliate settings...');
+
+  const affiliateSettings = [
+    {
+      key: 'affiliate_homepage_enabled',
+      value: true,
+      valueType: 'BOOLEAN',
+      category: 'affiliate',
+      label: 'Show Affiliate Products on Home Page',
+      description: 'Display the "From our partners" affiliate product row on the home page.',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'affiliate_products_per_section',
+      value: 6,
+      valueType: 'NUMBER',
+      category: 'affiliate',
+      label: 'Affiliate Products Per Section',
+      description:
+        'Number of affiliate products to show in each section (home, products page). Recommended: 3–6.',
+      isPublic: true,
+      isEditable: true,
+    },
+    {
+      key: 'affiliate_products_page_enabled',
+      value: true,
+      valueType: 'BOOLEAN',
+      category: 'affiliate',
+      label: 'Show Affiliate Products on Products Page',
+      description:
+        'Display the affiliate product section between the grid and pagination on the products page.',
+      isPublic: true,
+      isEditable: true,
+    },
+  ];
+
+  for (const setting of affiliateSettings) {
+    await prisma.systemSetting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
+    });
+  }
+  console.log(`✅ Created ${affiliateSettings.length} affiliate settings`);
+
+  // ============================================================================
   // SUBSCRIPTION PLANS
   // ============================================================================
   console.log('📦 Creating subscription plans...');

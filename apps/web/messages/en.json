@@ -5483,6 +5483,9 @@
       }
     }
   },
+  "affiliate": {
+    "fromOurPartners": "From our partners"
+  },
   "blog": {
     "featuredProducts": "Featured products",
     "featuredProductsDisclosure": "We may earn a commission when you buy through these links, at no extra cost to you."
