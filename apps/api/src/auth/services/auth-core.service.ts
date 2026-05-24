@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { Prisma } from '@prisma/client';
+import { Prisma, EmailOTPType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { SessionService } from './session.service';
 import { EmailVerificationService } from './email-verification.service';
@@ -15,6 +15,8 @@ import { TwoFactorService } from './two-factor.service';
 import { TrustedDeviceService } from './trusted-device.service';
 import { LoggerService } from '../../logger/logger.service';
 import { SettingsService } from '../../settings/settings.service';
+import { EmailOTPService } from '../email-otp.service';
+import { EmailService } from '../../email/email.service';
 import { RegisterDto, LoginDto } from '../dto/auth.dto';
 import { SETTING_DEFAULTS } from '../../settings/settings.defaults';
 
@@ -41,7 +43,9 @@ export class AuthCoreService {
     private twoFactorService: TwoFactorService,
     private trustedDeviceService: TrustedDeviceService,
     private logger: LoggerService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private emailOTPService: EmailOTPService,
+    private emailService: EmailService
   ) {}
 
   /**
@@ -261,7 +265,41 @@ export class AuthCoreService {
       );
     }
 
-    // Check 2FA
+    // Check Email OTP 2FA (opt-in, user-enabled)
+    if (user.emailOTPEnabled) {
+      if (!dto.emailOTPCode) {
+        // Invalidate stale codes and create a fresh one
+        await this.emailOTPService.invalidateUserOTPs(user.id, EmailOTPType.TWO_FACTOR_BACKUP);
+        const { code } = await this.emailOTPService.createEmailOTP(
+          user.id,
+          EmailOTPType.TWO_FACTOR_BACKUP,
+          ipAddress,
+          userAgent
+        );
+        // Non-blocking send — quota errors must never lock users out
+        this.emailService
+          .sendEmailOTP(user.email, user.firstName, code, EmailOTPType.TWO_FACTOR_BACKUP, ipAddress)
+          .catch((err) => {
+            this.logger.error('Failed to send login email OTP (email quota/config issue)', err);
+          });
+        // Dev: log the code so it can be used even when email is unavailable
+        if (process.env.NODE_ENV !== 'production') {
+          this.logger.log(`[DEV] Email OTP code for ${user.email}: ${code}`);
+        }
+        return {
+          requiresEmailOTP: true,
+          userId: user.id,
+        };
+      }
+      // Verify the submitted code — throws UnauthorizedException on failure
+      await this.emailOTPService.verifyEmailOTP(
+        user.id,
+        dto.emailOTPCode,
+        EmailOTPType.TWO_FACTOR_BACKUP
+      );
+    }
+
+    // Check TOTP 2FA
     let deviceAlreadyTrusted = false;
     if (user.twoFactorEnabled) {
       if (!dto.twoFactorCode && !dto.backupCode) {
@@ -422,7 +460,7 @@ export class AuthCoreService {
     graceDaysRemaining?: number;
   }> {
     if (!ENFORCED_ROLES.has(user.role)) return { hardBlock: false };
-    if (user.twoFactorEnabled) return { hardBlock: false };
+    if (user.twoFactorEnabled || user.emailOTPEnabled) return { hardBlock: false };
 
     const required = await this.isRequiredForRole(user.role);
     if (!required) return { hardBlock: false };
