@@ -5363,6 +5363,7 @@
     }
   },
   "blog": {
-    "featuredProducts": "[ES-TODO]"
+    "featuredProducts": "[ES-TODO]",
+    "featuredProductsDisclosure": "[ES-TODO]"
   }
 }

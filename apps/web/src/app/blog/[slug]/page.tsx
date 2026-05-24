@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { PageLayout } from '@/components/layout/page-layout';
 import { usePublishedBlogPost, useBlogEngagement, useBlogComments } from '@/hooks/use-blog';
+import { useTranslations } from 'next-intl';
 import { useLocale } from '@/contexts/locale-context';
 import { useAuth } from '@/hooks/use-auth';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -335,15 +336,19 @@ function CommentsSection({ postId }: { postId: string }) {
 // ---------------------------------------------------------------------------
 
 function FeaturedStrip({ items, locale }: { items: BlogPostProduct[]; locale: string }) {
+  const t = useTranslations('blog');
   if (items.length === 0) return null;
   return (
     <section className="space-y-5">
-      <div className="flex items-center gap-3">
-        <span className="w-1 h-5 bg-[#CBB57B] rounded-full shrink-0" />
-        <h2 className="text-base font-semibold text-neutral-900">Featured products</h2>
-        <span className="px-2 py-0.5 bg-neutral-100 text-neutral-500 text-xs font-medium rounded-full">
-          {items.length}
-        </span>
+      <div>
+        <div className="flex items-center gap-3">
+          <span className="w-1 h-5 bg-[#CBB57B] rounded-full shrink-0" />
+          <h2 className="text-base font-semibold text-neutral-900">{t('featuredProducts')}</h2>
+          <span className="px-2 py-0.5 bg-neutral-100 text-neutral-500 text-xs font-medium rounded-full">
+            {items.length}
+          </span>
+        </div>
+        <p className="mt-1 ml-4 text-xs text-neutral-400">{t('featuredProductsDisclosure')}</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => {
