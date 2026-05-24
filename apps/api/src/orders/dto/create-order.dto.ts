@@ -6,6 +6,7 @@ import {
   ValidateNested,
   IsNumber,
   IsInt,
+  IsBoolean,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -68,4 +69,8 @@ export class CreateOrderDto {
   @Min(1)
   @Type(() => Number)
   servicePointId?: number; // SendCloud service point ID for DPD Shop / parcel pickup methods
+
+  @IsOptional()
+  @IsBoolean()
+  useStoreCredit?: boolean; // Apply available store credit as a discount
 }

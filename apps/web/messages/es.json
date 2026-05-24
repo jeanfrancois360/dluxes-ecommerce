@@ -1405,6 +1405,62 @@
         "returnSuccess": "Solicitud de devolución enviada. Revisaremos tu solicitud y te contactaremos pronto",
         "returnError": "No se pudo enviar la solicitud de devolución. Por favor, inténtalo de nuevo."
       }
+    },
+    "referrals": {
+      "title": "Referencias",
+      "subtitle": "Invita amigos y gana crédito en la tienda",
+      "breadcrumb": "Referencias",
+      "yourCode": "Tu Código de Referencia",
+      "shareDesc": "Comparte tu código y gana recompensas cuando tus amigos hagan su primera compra",
+      "copy": "Copiar",
+      "copied": "¡Copiado!",
+      "share": "Compartir",
+      "generateCode": "Generar Mi Código de Referencia",
+      "generating": "Generando...",
+      "noCodeYet": "Aún no tienes un código de referencia",
+      "generateDesc": "Genera tu código único para empezar a ganar recompensas",
+      "stats": {
+        "totalReferrals": "Total Referencias",
+        "pending": "Pendiente",
+        "earned": "Ganado",
+        "storeCredit": "Crédito en Tienda"
+      },
+      "history": {
+        "title": "Historial de Referencias",
+        "empty": "Sin referencias aún",
+        "emptyDesc": "Comparte tu código y tus referencias aparecerán aquí",
+        "name": "Nombre",
+        "role": "Rol",
+        "status": "Estado",
+        "reward": "Recompensa",
+        "date": "Fecha"
+      },
+      "status": {
+        "PENDING": "Pendiente",
+        "QUALIFIED": "Calificado",
+        "PAID": "Pagado",
+        "EXPIRED": "Expirado"
+      },
+      "role": {
+        "BUYER": "Comprador",
+        "SELLER": "Vendedor"
+      },
+      "howItWorks": {
+        "title": "Cómo Funciona",
+        "step1Title": "Comparte Tu Código",
+        "step1Desc": "Comparte tu código único con amigos",
+        "step2Title": "El Amigo Se Registra",
+        "step2Desc": "Se registran usando tu código de referencia",
+        "step3Title": "Se Califican",
+        "step3Desc": "El amigo completa un pedido o publica un producto",
+        "step4Title": "Ganas",
+        "step4Desc": "El crédito en tienda se añade automáticamente"
+      },
+      "toast": {
+        "codeCopied": "¡Código de referencia copiado!",
+        "generateError": "Error al generar el código de referencia",
+        "loadError": "Error al cargar los datos de referencia"
+      }
     }
   },
   "components": {
@@ -4559,6 +4615,7 @@
       "reviews": "Reseñas",
       "followingStores": "Tiendas Seguidas",
       "downloads": "Descargas",
+      "referrals": "Referencias",
       "messages": "Mensajes",
       "notifications": "Notificaciones",
       "preferences": "Preferencias"

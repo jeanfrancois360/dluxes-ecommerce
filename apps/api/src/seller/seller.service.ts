@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -14,6 +15,7 @@ import { SettingsService } from '../settings/settings.service';
 import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import { CurrencyService } from '../currency/currency.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
+import { ReferralService } from '../referral/referral.service';
 import { ProductStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -29,7 +31,8 @@ export class SellerService {
     private dhlTrackingService: DhlTrackingService,
     private settingsService: SettingsService,
     private currencyService: CurrencyService,
-    private gelatoOrdersService: GelatoOrdersService
+    private gelatoOrdersService: GelatoOrdersService,
+    @Optional() private referralService?: ReferralService
   ) {}
 
   /**
@@ -1395,6 +1398,13 @@ export class SellerService {
         // Return the product with a warning flag so the frontend can notify the user.
         return { ...product, _imagesSaveFailed: true };
       }
+    }
+
+    // Trigger seller referral qualification (NON-BLOCKING: first product creation)
+    if (this.referralService) {
+      this.referralService.checkSellerQualification(store.id).catch((err) => {
+        this.logger.warn(`Referral seller qualification check failed: ${err.message}`);
+      });
     }
 
     return product;

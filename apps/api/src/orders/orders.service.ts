@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Logger,
   Inject,
+  Optional,
   forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
@@ -19,6 +20,7 @@ import { CartService } from '../cart/cart.service';
 import { PaymentService } from '../payment/payment.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import PDFDocument from 'pdfkit';
+import { ReferralService } from '../referral/referral.service';
 
 /**
  * Orders Service
@@ -38,7 +40,8 @@ export class OrdersService {
     @Inject(forwardRef(() => CartService))
     private readonly cartService: CartService,
     private readonly paymentService: PaymentService,
-    private readonly gelatoOrdersService: GelatoOrdersService
+    private readonly gelatoOrdersService: GelatoOrdersService,
+    @Optional() private readonly referralService?: ReferralService
   ) {
     this.inventoryService = new InventoryService(prisma);
   }
@@ -751,6 +754,7 @@ export class OrdersService {
       currency: orderCurrency,
       idempotencyKey,
       servicePointId,
+      useStoreCredit,
     } = createOrderDto;
 
     // 1. Check for duplicate order (idempotency protection)
@@ -1029,11 +1033,33 @@ export class OrdersService {
     const gelatoConverted = gelatoCostUsdOrder
       ? new Decimal(gelatoCostUsdOrder).mul(exchangeRateNum)
       : new Decimal(0);
-    const total = subtotalConverted.add(shippingConverted).add(taxConverted).add(gelatoConverted);
+    const preCreditTotal = subtotalConverted
+      .add(shippingConverted)
+      .add(taxConverted)
+      .add(gelatoConverted);
+
+    // Fetch user referral data and apply store credit if requested
+    const userReferralData = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { referredById: true, storeCredit: true },
+    });
+    const referredById = userReferralData?.referredById ?? null;
+    let appliedStoreCredit = new Decimal(0);
+    if (
+      useStoreCredit &&
+      userReferralData?.storeCredit &&
+      Number(userReferralData.storeCredit) > 0
+    ) {
+      const creditUsd = Number(userReferralData.storeCredit);
+      const creditConverted = new Decimal(creditUsd).mul(exchangeRateNum);
+      appliedStoreCredit = creditConverted.gte(preCreditTotal) ? preCreditTotal : creditConverted;
+    }
+    const total = preCreditTotal.sub(appliedStoreCredit);
 
     this.logger.log(
       `💰 Order totals (${currency}): subtotal=${subtotalConverted.toFixed(2)}, ` +
-        `shipping=${shippingConverted.toFixed(2)}, tax=${taxConverted.toFixed(2)}, total=${total.toFixed(2)}`
+        `shipping=${shippingConverted.toFixed(2)}, tax=${taxConverted.toFixed(2)}, ` +
+        `storeCredit=-${appliedStoreCredit.toFixed(2)}, total=${total.toFixed(2)}`
     );
 
     // Generate order number
@@ -1108,6 +1134,8 @@ export class OrdersService {
                   servicePointId: servicePointId ?? null,
                 }
               : undefined,
+          // Referral tracking
+          referrerId: referredById ?? undefined,
           // Store idempotency key to prevent duplicate orders
           metadata: idempotencyKey ? { idempotencyKey } : null,
           items: {
@@ -1148,6 +1176,24 @@ export class OrdersService {
 
       return newOrder;
     });
+
+    // Deduct store credit if applied (convert back to USD for storage)
+    if (appliedStoreCredit.gt(0)) {
+      const creditUsdUsed =
+        exchangeRateNum > 0 ? appliedStoreCredit.div(exchangeRateNum) : appliedStoreCredit;
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { storeCredit: { decrement: creditUsdUsed } },
+      });
+      this.logger.log(`💳 Deducted $${creditUsdUsed.toFixed(2)} store credit from user ${userId}`);
+    }
+
+    // Fire-and-forget: check if buyer referral qualifies for reward
+    if (this.referralService) {
+      this.referralService.checkBuyerQualification(order.id).catch((err) => {
+        this.logger.warn(`Referral buyer qualification check failed: ${err.message}`);
+      });
+    }
 
     // Record inventory transactions outside the main transaction
     // This creates proper audit trail
@@ -2216,13 +2262,18 @@ export class OrdersService {
       const couponDetails = null;
 
       if (dto.couponCode) {
-        // TODO: Implement coupon validation
-        // For now, just log that a coupon was provided
         this.logger.log(
           `Coupon code '${dto.couponCode}' provided but coupon system not yet implemented`
         );
         warnings.push('Coupon system not yet implemented. Coupon code will be ignored.');
       }
+
+      // 6.5 Fetch user store credit balance (referral rewards)
+      const userCredit = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { storeCredit: true },
+      });
+      const storeCreditUsd = Number(userCredit?.storeCredit || 0);
 
       // 7. Get currency and exchange rate
       const targetCurrency = dto.currency || 'USD';
@@ -2291,11 +2342,18 @@ export class OrdersService {
       const taxAmount = taxCalc.amount;
       const taxAmountInTargetCurrency = convertPrice(taxAmount);
       const discountInTargetCurrency = convertPrice(discount);
-      const total =
+
+      // Store credit: convert USD balance → target currency, cap at order pre-credit total
+      const storeCreditInTargetCurrency = storeCreditUsd * exchangeRate;
+      const preCreditTotal =
         subtotalInTargetCurrency +
         shippingCostInTargetCurrency +
         taxAmountInTargetCurrency -
         discountInTargetCurrency;
+      const appliedCreditInTargetCurrency = dto.useStoreCredit
+        ? Math.min(storeCreditInTargetCurrency, preCreditTotal)
+        : 0;
+      const total = preCreditTotal - appliedCreditInTargetCurrency;
 
       // 9. Return detailed calculation in target currency
       return {
@@ -2330,13 +2388,19 @@ export class OrdersService {
         },
         discount: Math.round(discountInTargetCurrency * 100) / 100,
         coupon: couponDetails,
+        storeCredit: {
+          available: Math.round(storeCreditInTargetCurrency * 100) / 100,
+          applied: Math.round(appliedCreditInTargetCurrency * 100) / 100,
+        },
         total: Math.round(total * 100) / 100,
         currency: targetCurrency,
         breakdown: {
           subtotal: Math.round(subtotalInTargetCurrency * 100) / 100,
           shipping: Math.round(shippingCostInTargetCurrency * 100) / 100,
           tax: Math.round(taxAmountInTargetCurrency * 100) / 100,
-          discount: Math.round(-discountInTargetCurrency * 100) / 100,
+          discount:
+            Math.round(-(discountInTargetCurrency + appliedCreditInTargetCurrency) * 100) / 100,
+          storeCredit: Math.round(-appliedCreditInTargetCurrency * 100) / 100,
           total: Math.round(total * 100) / 100,
         },
         ...(warnings.length > 0 && { warnings }),
