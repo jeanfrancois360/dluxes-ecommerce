@@ -1422,6 +1422,62 @@
         "returnError": "Failed to submit return request. Please try again.",
         "invoiceError": "Failed to download invoice. Please try again."
       }
+    },
+    "referrals": {
+      "title": "Referrals",
+      "subtitle": "Invite friends and earn store credit",
+      "breadcrumb": "Referrals",
+      "yourCode": "Your Referral Code",
+      "shareDesc": "Share your code and earn rewards when friends make their first purchase",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "share": "Share",
+      "generateCode": "Generate My Referral Code",
+      "generating": "Generating...",
+      "noCodeYet": "You don't have a referral code yet",
+      "generateDesc": "Generate your unique referral code to start earning rewards",
+      "stats": {
+        "totalReferrals": "Total Referrals",
+        "pending": "Pending",
+        "earned": "Earned",
+        "storeCredit": "Store Credit"
+      },
+      "history": {
+        "title": "Referral History",
+        "empty": "No referrals yet",
+        "emptyDesc": "Share your code and your referrals will appear here",
+        "name": "Name",
+        "role": "Role",
+        "status": "Status",
+        "reward": "Reward",
+        "date": "Date"
+      },
+      "status": {
+        "PENDING": "Pending",
+        "QUALIFIED": "Qualified",
+        "PAID": "Paid",
+        "EXPIRED": "Expired"
+      },
+      "role": {
+        "BUYER": "Buyer",
+        "SELLER": "Seller"
+      },
+      "howItWorks": {
+        "title": "How It Works",
+        "step1Title": "Share Your Code",
+        "step1Desc": "Share your unique referral code with friends",
+        "step2Title": "Friend Signs Up",
+        "step2Desc": "They register using your referral code",
+        "step3Title": "They Qualify",
+        "step3Desc": "Friend completes a qualifying order or lists a product",
+        "step4Title": "You Earn",
+        "step4Desc": "Store credit is added to your account automatically"
+      },
+      "toast": {
+        "codeCopied": "Referral code copied!",
+        "generateError": "Failed to generate referral code",
+        "loadError": "Failed to load referral data"
+      }
     }
   },
   "components": {
@@ -5445,6 +5501,7 @@
       "reviews": "Reviews",
       "followingStores": "Following Stores",
       "downloads": "Downloads",
+      "referrals": "Referrals",
       "messages": "Messages",
       "notifications": "Notifications",
       "preferences": "Preferences"

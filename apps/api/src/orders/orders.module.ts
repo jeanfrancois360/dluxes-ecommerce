@@ -15,6 +15,7 @@ import { EasyshipModule } from '../integrations/easyship/easyship.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { GelatoModule } from '../gelato/gelato.module';
 import { AuthorizationModule } from '../common/authorization/authorization.module';
+import { ReferralModule } from '../referral/referral.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { AuthorizationModule } from '../common/authorization/authorization.modul
     ShippingModule,
     GelatoModule,
     AuthorizationModule,
+    ReferralModule,
   ],
   providers: [OrdersService, ShippingTaxService],
   controllers: [OrdersController],

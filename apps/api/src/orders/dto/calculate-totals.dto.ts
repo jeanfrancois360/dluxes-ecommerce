@@ -4,6 +4,7 @@ import {
   IsArray,
   ValidateNested,
   IsNumber,
+  IsBoolean,
   Min,
   IsEnum,
 } from 'class-validator';
@@ -53,6 +54,10 @@ export class CalculateTotalsDto {
   @IsOptional()
   @IsString()
   couponCode?: string; // For future coupon feature
+
+  @IsOptional()
+  @IsBoolean()
+  useStoreCredit?: boolean; // Preview store credit application
 }
 
 /**
@@ -97,7 +102,12 @@ export interface OrderCalculationResponse {
     shipping: number;
     tax: number;
     discount: number;
+    storeCredit?: number;
     total: number;
+  };
+  storeCredit?: {
+    available: number;
+    applied: number;
   };
   warnings?: string[];
 }

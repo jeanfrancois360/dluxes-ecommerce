@@ -1405,6 +1405,62 @@
         "returnSuccess": "Demande de retour soumise. Nous examinerons votre demande et vous recontacterons bientôt",
         "returnError": "Impossible de soumettre la demande de retour. Veuillez réessayer."
       }
+    },
+    "referrals": {
+      "title": "Parrainages",
+      "subtitle": "Invitez des amis et gagnez du crédit boutique",
+      "breadcrumb": "Parrainages",
+      "yourCode": "Votre Code de Parrainage",
+      "shareDesc": "Partagez votre code et gagnez des récompenses quand vos amis font leur premier achat",
+      "copy": "Copier",
+      "copied": "Copié !",
+      "share": "Partager",
+      "generateCode": "Générer Mon Code de Parrainage",
+      "generating": "Génération...",
+      "noCodeYet": "Vous n'avez pas encore de code de parrainage",
+      "generateDesc": "Générez votre code unique pour commencer à gagner des récompenses",
+      "stats": {
+        "totalReferrals": "Total Parrainages",
+        "pending": "En Attente",
+        "earned": "Gagné",
+        "storeCredit": "Crédit Boutique"
+      },
+      "history": {
+        "title": "Historique des Parrainages",
+        "empty": "Aucun parrainage pour l'instant",
+        "emptyDesc": "Partagez votre code et vos parrainages apparaîtront ici",
+        "name": "Nom",
+        "role": "Rôle",
+        "status": "Statut",
+        "reward": "Récompense",
+        "date": "Date"
+      },
+      "status": {
+        "PENDING": "En Attente",
+        "QUALIFIED": "Qualifié",
+        "PAID": "Payé",
+        "EXPIRED": "Expiré"
+      },
+      "role": {
+        "BUYER": "Acheteur",
+        "SELLER": "Vendeur"
+      },
+      "howItWorks": {
+        "title": "Comment Ça Marche",
+        "step1Title": "Partagez Votre Code",
+        "step1Desc": "Partagez votre code unique avec vos amis",
+        "step2Title": "L'Ami S'inscrit",
+        "step2Desc": "Il s'inscrit avec votre code de parrainage",
+        "step3Title": "Il Se Qualifie",
+        "step3Desc": "L'ami passe une commande ou publie un produit",
+        "step4Title": "Vous Gagnez",
+        "step4Desc": "Le crédit boutique est ajouté automatiquement"
+      },
+      "toast": {
+        "codeCopied": "Code de parrainage copié !",
+        "generateError": "Impossible de générer le code de parrainage",
+        "loadError": "Impossible de charger les données de parrainage"
+      }
     }
   },
   "components": {
@@ -4177,6 +4233,7 @@
       "reviews": "Avis",
       "followingStores": "Boutiques Suivies",
       "downloads": "Téléchargements",
+      "referrals": "Parrainages",
       "messages": "Messages",
       "notifications": "Notifications",
       "preferences": "Préférences"

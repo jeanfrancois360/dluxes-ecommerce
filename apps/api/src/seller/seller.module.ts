@@ -14,6 +14,7 @@ import { CurrencyModule } from '../currency/currency.module';
 import { PaymentModule } from '../payment/payment.module';
 import { EmailModule } from '../email/email.module';
 import { GelatoModule } from '../gelato/gelato.module';
+import { ReferralModule } from '../referral/referral.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { GelatoModule } from '../gelato/gelato.module';
     PaymentModule,
     EmailModule,
     GelatoModule,
+    ReferralModule,
   ],
   controllers: [SellerController, SellerCreditsController],
   providers: [SellerService, SellerApprovalService, SellerCreditsService, CanPublishGuard],

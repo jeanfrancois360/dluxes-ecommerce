@@ -22,6 +22,7 @@ import {
   Download,
   Star,
   Store,
+  Gift,
 } from 'lucide-react';
 
 interface NavItem {
@@ -78,6 +79,7 @@ export default function BuyerSidebar({ onNavigate }: BuyerSidebarProps) {
         { name: t('items.reviews'), href: '/account/reviews', icon: Star },
         { name: t('items.followingStores'), href: '/account/following', icon: Store },
         { name: t('items.downloads'), href: '/account/downloads', icon: Download },
+        { name: t('items.referrals'), href: '/account/referrals', icon: Gift },
       ],
     },
     {
