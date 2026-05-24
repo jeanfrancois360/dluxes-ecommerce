@@ -29,6 +29,7 @@ export interface SendcloudRate {
   currency: string; // 'EUR'
   minDeliveryDays: number;
   maxDeliveryDays: number;
+  requiresServicePoint: boolean; // true for DPD Shop / parcel pickup methods
 }
 
 export interface SendcloudGetRatesRequest {
@@ -61,6 +62,7 @@ export interface SendcloudPurchaseLabelDto {
   fromAddress: SendcloudAddress;
   weightGrams: number;
   orderNumber?: string;
+  servicePointId?: number; // Required for DPD Shop and other parcel pickup methods
   items?: Array<{
     description: string;
     quantity: number;
@@ -192,6 +194,7 @@ export class SendcloudService {
           currency: 'EUR',
           minDeliveryDays: method.min_delivery_time || 3,
           maxDeliveryDays: method.max_delivery_time || 7,
+          requiresServicePoint: Boolean(method.requires_service_point),
         });
       }
 
@@ -236,6 +239,11 @@ export class SendcloudService {
         shipment: { id: parseInt(dto.serviceCode, 10) },
         order_number: dto.orderNumber || dto.orderId,
         request_label: true,
+        // Disable automatic shipping rule application to avoid mandatory return-label
+        // validation when no return carrier contracts are configured on the account.
+        apply_shipping_rules: false,
+        // Service point — required for DPD Shop and other parcel-pickup methods
+        ...(dto.servicePointId ? { to_service_point: dto.servicePointId } : {}),
         // Parcel items — required by some carriers and displayed in SendCloud dashboard
         ...(dto.items && dto.items.length > 0
           ? {
@@ -315,6 +323,7 @@ export class SendcloudService {
           provider: 'SENDCLOUD',
           sendcloudParcelId: parcel.id,
           serviceCode: dto.serviceCode,
+          servicePointId: dto.servicePointId ?? null,
           labelUrl,
           labelUrlA4,
           weightGrams: dto.weightGrams,

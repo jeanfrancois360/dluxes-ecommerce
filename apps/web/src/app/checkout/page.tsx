@@ -993,6 +993,7 @@ export default function CheckoutPage() {
                                     }
                                   : undefined
                               }
+                              currency={cartCurrency || 'USD'}
                             />
 
                             {/* Payment Method Selector */}

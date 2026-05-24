@@ -94,6 +94,16 @@ export interface ShippingOption {
   carrier?: string;
   /** Which provider tier supplied this rate (easypost | sendcloud | easyship | dhl | zone | manual | gelato) */
   source?: string;
+  /** True when the method requires the customer to select a service point (e.g. DPD Shop) */
+  requiresServicePoint?: boolean;
+  /** Native currency the provider returned this rate in (e.g. 'EUR' for SendCloud/DHL, 'USD' for EasyPost/EasyShip/Manual) */
+  sourceCurrency?: string;
+  /**
+   * For mixed carts (Gelato POD + physical items): the Gelato portion of the shipping cost,
+   * always in USD. Kept separate so it can be converted independently from the physical
+   * shipping rate (which may be in a different source currency such as EUR).
+   */
+  gelatoCostUsd?: number;
 }
 
 export interface TaxCalculation {
@@ -283,7 +293,10 @@ export class ShippingTaxService {
     const totalWeightKg = totalWeightGrams / 1000;
     const totalWeightOz = totalWeightGrams / 28.35; // Convert to ounces for EasyPost
 
-    // Helper function to add Gelato cost to shipping options (for mixed carts)
+    // Helper function to tag shipping options with the Gelato POD cost for mixed carts.
+    // The Gelato cost is always in USD, so we store it separately (gelatoCostUsd) instead of
+    // baking it into price — this lets calculateTotals convert the two amounts independently
+    // before summing (avoids adding USD to EUR when the carrier rate is EUR-denominated).
     const addGelatoCost = (options: ShippingOption[]): ShippingOption[] => {
       if (gelatoCost === 0) return options;
 
@@ -291,7 +304,8 @@ export class ShippingTaxService {
         ...option,
         name: `${option.name} + Gelato POD`,
         description: `${option.description} (includes POD shipping)`,
-        price: option.price + gelatoCost,
+        // price stays in its native sourceCurrency; gelatoCostUsd is always USD
+        gelatoCostUsd: (option.gelatoCostUsd || 0) + gelatoCost,
       }));
     };
 
@@ -547,6 +561,7 @@ export class ShippingTaxService {
               estimatedDays: rate.estimatedDays,
               carrier: 'DHL Express',
               source: 'dhl',
+              sourceCurrency: rate.currency || 'EUR',
             })) ?? [];
           if (dhlMapped.length > 0) await this.shippingCache.set(dhlCacheKey, dhlMapped);
         }
@@ -770,6 +785,7 @@ export class ShippingTaxService {
         estimatedDays: rate.deliveryDays || 7,
         carrier: rate.carrier,
         source: 'easypost',
+        sourceCurrency: 'USD',
       }));
     } catch (error) {
       this.logger.error('EasyPost rate fetch failed:', error.message);
@@ -822,6 +838,8 @@ export class ShippingTaxService {
         estimatedDays: rate.maxDeliveryDays,
         carrier: rate.carrierName,
         source: 'sendcloud',
+        requiresServicePoint: rate.requiresServicePoint,
+        sourceCurrency: 'EUR',
       }));
     } catch (error) {
       this.logger.error('Sendcloud rate fetch failed:', error.message);
@@ -874,6 +892,7 @@ export class ShippingTaxService {
         estimatedDays: rate.maxDeliveryDays,
         carrier: rate.carrierName,
         source: 'easyship',
+        sourceCurrency: rate.currency || 'USD',
       }));
     } catch (error) {
       this.logger.error('Easyship rate fetch failed:', error.message);

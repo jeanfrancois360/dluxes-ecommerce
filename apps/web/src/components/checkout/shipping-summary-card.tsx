@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 
@@ -17,9 +18,30 @@ interface ShippingSummaryCardProps {
     state: string;
     postalCode: string;
   };
+  currency?: string; // e.g. 'USD', 'EUR', 'RWF'
 }
 
-export function ShippingSummaryCard({ shippingMethod, shippingAddress }: ShippingSummaryCardProps) {
+export function ShippingSummaryCard({
+  shippingMethod,
+  shippingAddress,
+  currency = 'USD',
+}: ShippingSummaryCardProps) {
+  const currencySymbol = useMemo(() => {
+    try {
+      return (
+        new Intl.NumberFormat('en', {
+          style: 'currency',
+          currency,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        })
+          .formatToParts(0)
+          .find((p) => p.type === 'currency')?.value ?? '$'
+      );
+    } catch {
+      return '$';
+    }
+  }, [currency]);
   if (!shippingMethod && !shippingAddress) return null;
 
   return (
@@ -50,7 +72,9 @@ export function ShippingSummaryCard({ shippingMethod, shippingAddress }: Shippin
               <p className="text-xs text-neutral-500 mt-0.5">{shippingMethod.estimatedDays}</p>
             </div>
             <p className="text-sm font-semibold text-gold">
-              {shippingMethod.price === 0 ? 'Free' : `$${formatCurrencyAmount(shippingMethod.price, 2)}`}
+              {shippingMethod.price === 0
+                ? 'Free'
+                : `${currencySymbol}${formatCurrencyAmount(shippingMethod.price, 2)}`}
             </p>
           </div>
         </div>
