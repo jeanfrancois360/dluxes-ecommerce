@@ -399,15 +399,32 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
     }
   };
 
+  // Statuses that mean the shipment exists but the parcel hasn't left yet
+  const PENDING_SHIPMENT_STATUSES = ['PENDING', 'PROCESSING', 'LABEL_CREATED', 'PICKED_UP'];
+
+  const hasPendingShipments =
+    Array.isArray(shipments) &&
+    shipments.some((s: any) => PENDING_SHIPMENT_STATUSES.includes(s.status));
+
+  /**
+   * Mark as shipped — updates existing provider shipments to IN_TRANSIT instead of
+   * creating a new one (avoids double-shipment → PARTIALLY_SHIPPED cascade bug).
+   */
   const handleMarkAsShipped = async () => {
     if (!order) return;
     try {
       setUpdating(true);
-      await sellerAPI.markAsShipped(order.id, {
-        trackingNumber: trackingNumber.trim() || undefined,
-        shippingCarrier: shippingCarrier.trim() || undefined,
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`${API_URL}/shipments/order/${order.id}/mark-shipped`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({}),
       });
-      await mutate();
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to mark as shipped');
+      }
+      await Promise.all([mutate(), mutateShipments()]);
       toast.success('Order marked as shipped');
     } catch (err: any) {
       toast.error(err?.message || 'Failed to mark order as shipped');
@@ -1125,13 +1142,38 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
                           )}
                         </div>
                       </div>
+                      {/* Primary action: update existing pending shipments to IN_TRANSIT */}
+                      {hasPendingShipments ? (
+                        <button
+                          onClick={handleMarkAsShipped}
+                          disabled={updating}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black hover:bg-gray-900 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                        >
+                          {updating ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Truck className="w-4 h-4" />
+                          )}
+                          Mark as Shipped
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setShowMarkAsShippedModal(true)}
+                          disabled={updating}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black hover:bg-gray-900 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                        >
+                          <Truck className="w-4 h-4" />
+                          Mark as Shipped
+                        </button>
+                      )}
+                      {/* Secondary: add a separate shipment for a different package */}
                       <button
                         onClick={() => setShowMarkAsShippedModal(true)}
                         disabled={updating}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-medium transition-colors disabled:opacity-50"
                       >
                         <Package className="w-4 h-4" />
-                        Create Another Shipment
+                        Add Another Shipment
                       </button>
                     </>
                   ) : canShip ? (

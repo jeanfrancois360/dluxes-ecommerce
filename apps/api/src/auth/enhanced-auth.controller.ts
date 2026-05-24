@@ -253,6 +253,50 @@ export class EnhancedAuthController {
     return this.twoFactorService.disable2FA(req.user.id, dto.code);
   }
 
+  @Post('2fa/email/setup')
+  @SkipTwoFactorCheck()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Send a 6-digit OTP to email to begin email-OTP 2FA setup' })
+  @ApiResponse({ status: 200, description: 'OTP sent; returns maskedEmail and expiresAt' })
+  async setupEmailOTP(@Req() req: any) {
+    return this.twoFactorService.setupEmailOTP(req.user.id);
+  }
+
+  @Post('2fa/email/enable')
+  @SkipTwoFactorCheck()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Enable email-OTP 2FA after verifying the emailed code' })
+  @ApiResponse({ status: 200, description: 'Email OTP 2FA enabled' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
+  async enable2FAEmail(@Body() dto: Enable2FADto, @Req() req: any) {
+    return this.twoFactorService.enableEmailOTP(req.user.id, dto.code);
+  }
+
+  @Post('2fa/email/disable')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Disable email-OTP 2FA (requires a fresh OTP from /2fa/email/setup)' })
+  @ApiResponse({ status: 200, description: 'Email OTP 2FA disabled' })
+  @ApiResponse({ status: 400, description: 'Email OTP not enabled or invalid code' })
+  async disable2FAEmail(@Body() dto: Verify2FADto, @Req() req: any) {
+    return this.twoFactorService.disableEmailOTP(req.user.id, dto.code);
+  }
+
+  @Get('2fa/email/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check if email-OTP 2FA is enabled for current user' })
+  @ApiResponse({ status: 200, description: 'Returns { enabled: boolean }' })
+  async get2FAEmailStatus(@Req() req: any) {
+    const enabled = await this.twoFactorService.isEmailOTPEnabled(req.user.id);
+    return { enabled };
+  }
+
   @Post('2fa/regenerate-backup-codes')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
