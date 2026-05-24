@@ -199,11 +199,13 @@ export class ReferralService {
         return;
       }
 
-      // Get reward amount based on referred user's role
+      // Get reward amount and currency based on referred user's role (fetch BEFORE transaction)
       const rewardAmount =
         referredUser.role === 'SELLER'
           ? await this.getReferralSellerReward()
           : await this.getReferralBuyerReward();
+
+      const rewardCurrency = await this.getReferralRewardCurrency();
 
       // Create referral record and update user/code in transaction
       await this.prisma.$transaction(async (prisma) => {
@@ -214,7 +216,7 @@ export class ReferralService {
             referredId: newUserId,
             referredUserRole: referredUser.role,
             rewardAmount: new Decimal(rewardAmount),
-            rewardCurrency: await this.getReferralRewardCurrency(),
+            rewardCurrency,
             status: ReferralStatus.PENDING,
           },
         });

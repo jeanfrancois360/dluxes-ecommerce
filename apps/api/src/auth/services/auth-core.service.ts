@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Optional,
   UnauthorizedException,
   ConflictException,
   HttpException,
@@ -17,6 +18,7 @@ import { LoggerService } from '../../logger/logger.service';
 import { SettingsService } from '../../settings/settings.service';
 import { EmailOTPService } from '../email-otp.service';
 import { EmailService } from '../../email/email.service';
+import { ReferralService } from '../../referral/referral.service';
 import { RegisterDto, LoginDto } from '../dto/auth.dto';
 import { SETTING_DEFAULTS } from '../../settings/settings.defaults';
 
@@ -45,7 +47,8 @@ export class AuthCoreService {
     private logger: LoggerService,
     private settingsService: SettingsService,
     private emailOTPService: EmailOTPService,
-    private emailService: EmailService
+    private emailService: EmailService,
+    @Optional() private referralService?: ReferralService
   ) {}
 
   /**
@@ -126,6 +129,13 @@ export class AuthCoreService {
           isActive: autoApprove,
           verified: autoApprove,
         },
+      });
+    }
+
+    // Apply referral code if provided (non-blocking)
+    if (data.referralCode && this.referralService) {
+      this.referralService.applyReferralCode(data.referralCode, user.id).catch((err) => {
+        this.logger.warn(`Failed to apply referral code ${data.referralCode}: ${err.message}`);
       });
     }
 
