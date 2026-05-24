@@ -8,9 +8,6 @@ import type { AffiliateProduct } from '@/lib/api/affiliate';
 interface AffiliateProductCardProps {
   product: AffiliateProduct;
   locale: string;
-  /** Override the card link href. Default: /affiliate/[slug] (detail page).
-   *  Blog featured strip passes /api/affiliate/redirect/[id] to track clicks. */
-  hrefOverride?: string;
 }
 
 function formatPrice(amount: number, currencyCode: string, locale: string): string {
@@ -26,7 +23,7 @@ function formatPrice(amount: number, currencyCode: string, locale: string): stri
   }
 }
 
-export function AffiliateProductCard({ product, locale, hrefOverride }: AffiliateProductCardProps) {
+export function AffiliateProductCard({ product, locale }: AffiliateProductCardProps) {
   const title = product.translations?.[0]?.title ?? product.slug;
   const currency = product.displayCurrency || 'USD';
   const hasPrice = product.displayPrice != null && product.displayPrice > 0;
@@ -97,11 +94,12 @@ export function AffiliateProductCard({ product, locale, hrefOverride }: Affiliat
           )}
         </div>
 
-        {/* CTA */}
+        {/* CTA — always opens the deep link in a new tab via our redirect route (records click) */}
         <Link
-          href={hrefOverride ?? `/affiliate/${product.slug}`}
+          href={`/api/affiliate/redirect/${product.id}?locale=${locale}`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="mt-2 block w-full text-center py-2 px-4 rounded-xl bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-700 transition-colors duration-150"
-          {...(hrefOverride ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
         >
           Shop Now
         </Link>

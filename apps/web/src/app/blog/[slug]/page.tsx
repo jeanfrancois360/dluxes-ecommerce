@@ -353,15 +353,7 @@ function FeaturedStrip({ items, locale }: { items: BlogPostProduct[]; locale: st
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => {
           const product = item.affiliateProduct as unknown as AffiliateProduct;
-          const redirectHref = `/api/affiliate/redirect/${product.id}?locale=${locale}`;
-          return (
-            <AffiliateProductCard
-              key={item.id}
-              product={product}
-              locale={locale}
-              hrefOverride={redirectHref}
-            />
-          );
+          return <AffiliateProductCard key={item.id} product={product} locale={locale} />;
         })}
       </div>
     </section>
