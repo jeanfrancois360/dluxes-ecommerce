@@ -5362,6 +5362,9 @@
       "confirmBulkDelete": "Êtes-vous sûr de vouloir supprimer {count} avis ?"
     }
   },
+  "affiliate": {
+    "fromOurPartners": "[FR-TODO]"
+  },
   "blog": {
     "featuredProducts": "[FR-TODO]",
     "featuredProductsDisclosure": "[FR-TODO]"

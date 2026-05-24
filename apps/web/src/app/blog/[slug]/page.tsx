@@ -27,7 +27,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { formatDate } from '@/lib/utils/date-format';
 import { ScrollToTop } from '@/components/scroll-to-top';
-import { AffiliateProductCard } from '@/components/affiliate/affiliate-product-card';
+import { AffiliateProductsSection } from '@/components/affiliate/affiliate-products-section';
 import { blogApi } from '@/lib/api/blog';
 import { toast } from '@/lib/utils/toast';
 import type { BlogPostProduct, BlogComment } from '@/lib/api/blog';
@@ -337,26 +337,9 @@ function CommentsSection({ postId }: { postId: string }) {
 
 function FeaturedStrip({ items, locale }: { items: BlogPostProduct[]; locale: string }) {
   const t = useTranslations('blog');
-  if (items.length === 0) return null;
+  const products = items.map((item) => item.affiliateProduct as unknown as AffiliateProduct);
   return (
-    <section className="space-y-5">
-      <div>
-        <div className="flex items-center gap-3">
-          <span className="w-1 h-5 bg-[#CBB57B] rounded-full shrink-0" />
-          <h2 className="text-base font-semibold text-neutral-900">{t('featuredProducts')}</h2>
-          <span className="px-2 py-0.5 bg-neutral-100 text-neutral-500 text-xs font-medium rounded-full">
-            {items.length}
-          </span>
-        </div>
-        <p className="mt-1 ml-4 text-xs text-neutral-400">{t('featuredProductsDisclosure')}</p>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((item) => {
-          const product = item.affiliateProduct as unknown as AffiliateProduct;
-          return <AffiliateProductCard key={item.id} product={product} locale={locale} />;
-        })}
-      </div>
-    </section>
+    <AffiliateProductsSection products={products} title={t('featuredProducts')} locale={locale} />
   );
 }
 

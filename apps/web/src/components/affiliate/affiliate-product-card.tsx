@@ -8,6 +8,10 @@ import type { AffiliateProduct } from '@/lib/api/affiliate';
 interface AffiliateProductCardProps {
   product: AffiliateProduct;
   locale: string;
+  /** Show a "Partner" badge (top-right) to visually distinguish affiliate cards when
+   *  rendered alongside marketplace products. Default false — existing /affiliate page
+   *  usage is UNCHANGED (cards are already in context there). */
+  showPartnerBadge?: boolean;
 }
 
 function formatPrice(amount: number, currencyCode: string, locale: string): string {
@@ -23,7 +27,11 @@ function formatPrice(amount: number, currencyCode: string, locale: string): stri
   }
 }
 
-export function AffiliateProductCard({ product, locale }: AffiliateProductCardProps) {
+export function AffiliateProductCard({
+  product,
+  locale,
+  showPartnerBadge = false,
+}: AffiliateProductCardProps) {
   const title = product.translations?.[0]?.title ?? product.slug;
   const currency = product.displayCurrency || 'USD';
   const hasPrice = product.displayPrice != null && product.displayPrice > 0;
@@ -51,6 +59,13 @@ export function AffiliateProductCard({ product, locale }: AffiliateProductCardPr
           <div className="absolute top-2 left-2 flex items-center gap-0.5 bg-amber-400 text-amber-900 text-xs font-semibold px-2 py-0.5 rounded-full">
             <Star className="w-3 h-3 fill-amber-900" />
             Featured
+          </div>
+        )}
+
+        {/* Partner badge — shown when rendered outside the /affiliate page */}
+        {showPartnerBadge && (
+          <div className="absolute top-2 right-2 bg-white/90 text-neutral-500 text-xs font-medium px-2 py-0.5 rounded-full border border-neutral-200 backdrop-blur-sm">
+            Partner
           </div>
         )}
       </div>
