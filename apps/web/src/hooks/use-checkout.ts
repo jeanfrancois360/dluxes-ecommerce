@@ -153,7 +153,7 @@ export function useCheckout() {
   // Create order and then payment intent (CORRECT FLOW)
   // 🔒 UPDATED: Uses locked prices and currency from cart
   const createOrderAndPaymentIntent = useCallback(
-    async (cartItems: any[], totals: any, cartCurrency?: string) => {
+    async (cartItems: any[], totals: any, cartCurrency?: string, useStoreCredit?: boolean) => {
       setIsLoading(true);
       setError(null);
 
@@ -222,6 +222,7 @@ export function useCheckout() {
             paymentMethod: 'STRIPE',
             notes: '',
             idempotencyKey, // Prevents duplicate orders if called twice
+            useStoreCredit: useStoreCredit || false,
           },
           {
             headers: {
