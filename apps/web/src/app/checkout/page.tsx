@@ -210,6 +210,7 @@ export default function CheckoutPage() {
     step,
     completedSteps,
     shippingAddress,
+    shippingAddressId: savedShippingAddressId,
     shippingMethod,
     clientSecret,
     orderId,
@@ -226,6 +227,7 @@ export default function CheckoutPage() {
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>('standard');
   const [isProcessing, setIsProcessing] = useState(false);
   const [shippingMethodConfirmed, setShippingMethodConfirmed] = useState(false);
+  const [useStoreCredit, setUseStoreCredit] = useState(false);
 
   // Payment method selection (Stripe or PayPal)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType>('stripe');
@@ -260,7 +262,7 @@ export default function CheckoutPage() {
 
   // Fetch shipping options and tax from backend after address is entered
   const fetchShippingOptionsAndTax = useCallback(
-    async (addressId: string) => {
+    async (addressId: string, applyStoreCredit?: boolean) => {
       if (!addressId || items.length === 0) return;
 
       setIsLoadingShippingOptions(true);
@@ -275,6 +277,7 @@ export default function CheckoutPage() {
           shippingAddressId: addressId,
           shippingMethod: selectedShippingMethod,
           currency: cartCurrency,
+          useStoreCredit: applyStoreCredit,
         });
 
         // API client auto-unwraps { success, data } responses
@@ -311,7 +314,7 @@ export default function CheckoutPage() {
         setIsLoadingShippingOptions(false);
       }
     },
-    [items, selectedShippingMethod, cartCurrency, t]
+    [items, selectedShippingMethod, cartCurrency, useStoreCredit, t]
   );
 
   // Fetch available pickup stores (v2.10.0)
@@ -403,13 +406,15 @@ export default function CheckoutPage() {
       };
 
       // Pass cart's locked currency to ensure payment uses same currency
-      createOrderAndPaymentIntent(items, checkoutTotals, cartCurrency).catch((err) => {
-        // Use longer duration for stock errors (they may contain multiple items)
-        const duration = err.message?.includes('Insufficient stock') ? 8000 : 5000;
-        toast.error(err.message || t('failedInitCheckout'), { duration });
-        setShippingMethodConfirmed(false);
-        goToStep('shipping');
-      });
+      createOrderAndPaymentIntent(items, checkoutTotals, cartCurrency, useStoreCredit).catch(
+        (err) => {
+          // Use longer duration for stock errors (they may contain multiple items)
+          const duration = err.message?.includes('Insufficient stock') ? 8000 : 5000;
+          toast.error(err.message || t('failedInitCheckout'), { duration });
+          setShippingMethodConfirmed(false);
+          goToStep('shipping');
+        }
+      );
     }
   }, [
     step,
@@ -425,6 +430,7 @@ export default function CheckoutPage() {
     goToStep,
     user,
     cartCurrency,
+    useStoreCredit,
     t,
   ]);
 
@@ -479,7 +485,7 @@ export default function CheckoutPage() {
       const addressId = savedAddress?.id || selectedSavedAddressId;
       if (addressId) {
         console.log('Fetching shipping options for address:', addressId);
-        await fetchShippingOptionsAndTax(addressId);
+        await fetchShippingOptionsAndTax(addressId, useStoreCredit);
       }
     } catch (error: any) {
       console.error('Error saving shipping address:', error);
@@ -595,7 +601,14 @@ export default function CheckoutPage() {
   // Only include shipping in the total once a method has been confirmed — avoids showing the
   // hardcoded $10 fallback before the user has selected or confirmed any shipping method.
   const shippingForTotal = shippingMethodConfirmed ? shippingCost : 0;
-  const totalWithShipping = totals.subtotal + shippingForTotal + taxAmount;
+  const appliedStoreCredit =
+    useStoreCredit && backendCalculation?.storeCredit?.applied
+      ? Number(backendCalculation.storeCredit.applied)
+      : 0;
+  const totalWithShipping = Math.max(
+    0,
+    totals.subtotal + shippingForTotal + taxAmount - appliedStoreCredit
+  );
 
   if (items.length === 0) {
     return null; // Will redirect
@@ -1062,6 +1075,40 @@ export default function CheckoutPage() {
               {/* Checkout Upsell Ad */}
               <CheckoutUpsellAd />
 
+              {/* Store Credit */}
+              {backendCalculation?.storeCredit && backendCalculation.storeCredit.available > 0 && (
+                <div className="bg-white border border-neutral-200 rounded-lg p-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useStoreCredit}
+                      onChange={async (e) => {
+                        const checked = e.target.checked;
+                        setUseStoreCredit(checked);
+                        if (savedShippingAddressId) {
+                          await fetchShippingOptionsAndTax(savedShippingAddressId, checked);
+                        }
+                      }}
+                      className="mt-0.5 w-4 h-4 text-black rounded border-neutral-300 focus:ring-black"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-neutral-900">Use Store Credit</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        Available:{' '}
+                        <span className="font-medium text-green-600">
+                          ${Number(backendCalculation.storeCredit.available).toFixed(2)}
+                        </span>
+                        {useStoreCredit && backendCalculation.storeCredit.applied > 0 && (
+                          <span className="ml-2 text-green-600">
+                            (−${Number(backendCalculation.storeCredit.applied).toFixed(2)} applied)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
+
               {/* Order Summary */}
               <OrderSummary
                 items={items}
@@ -1069,6 +1116,7 @@ export default function CheckoutPage() {
                 shipping={shippingCost}
                 tax={taxAmount}
                 total={totalWithShipping}
+                discount={appliedStoreCredit}
                 cartCurrency={cartCurrency} // Pass locked currency to prevent double conversion
                 shippingMethod={{
                   name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',

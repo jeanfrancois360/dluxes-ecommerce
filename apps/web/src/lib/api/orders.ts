@@ -68,6 +68,7 @@ export interface CalculateTotalsRequest {
   shippingMethod?: string;
   currency?: string;
   couponCode?: string;
+  useStoreCredit?: boolean;
 }
 
 export interface ShippingOption {
@@ -106,6 +107,10 @@ export interface OrderCalculationResponse {
     discount: number;
     type: 'PERCENTAGE' | 'FIXED';
   } | null;
+  storeCredit?: {
+    available: number;
+    applied: number;
+  };
   total: number;
   currency: string;
   breakdown: {
@@ -113,6 +118,7 @@ export interface OrderCalculationResponse {
     shipping: number;
     tax: number;
     discount: number;
+    storeCredit?: number;
     total: number;
   };
   warnings?: string[];
