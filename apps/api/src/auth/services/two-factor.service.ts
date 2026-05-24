@@ -2,8 +2,10 @@ import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { randomBytes, createHash } from 'crypto';
+import { EmailOTPType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { EmailService } from '../../email/email.service';
+import { EmailOTPService } from '../email-otp.service';
 import { SessionService } from './session.service';
 import { LoggerService } from '../../logger/logger.service';
 
@@ -12,6 +14,7 @@ export class TwoFactorService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    private emailOTPService: EmailOTPService,
     private sessionService: SessionService,
     private logger: LoggerService
   ) {}
@@ -64,7 +67,7 @@ export class TwoFactorService {
 
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: { twoFactorEnabled: true },
+      data: { twoFactorEnabled: true, emailOTPEnabled: false },
     });
 
     // Record enforcement timestamp (v2.12.0 audit trail)
@@ -229,5 +232,113 @@ export class TwoFactorService {
     });
 
     return user?.twoFactorEnabled || false;
+  }
+
+  // ============================================================================
+  // Email OTP 2FA Methods
+  // ============================================================================
+
+  /**
+   * Send a verification OTP to the user's email to begin email-OTP 2FA setup.
+   * Returns masked email and expiry — does NOT enable email OTP yet.
+   */
+  async setupEmailOTP(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, firstName: true },
+    });
+
+    if (!user) throw new UnauthorizedException('User not found');
+
+    // Invalidate any pending OTPs of this type
+    await this.emailOTPService.invalidateUserOTPs(userId, EmailOTPType.TWO_FACTOR_BACKUP);
+
+    const { code, expiresAt } = await this.emailOTPService.createEmailOTP(
+      userId,
+      EmailOTPType.TWO_FACTOR_BACKUP
+    );
+
+    await this.emailService.sendEmailOTP(
+      user.email,
+      user.firstName ?? 'User',
+      code,
+      EmailOTPType.TWO_FACTOR_BACKUP
+    );
+
+    // Mask the email for display (e.g. us••••@gmail.com)
+    const maskedEmail = user.email.replace(/^(.{2})([^@]*)(@.*)$/, (_m, a, b, c) => {
+      return a + '•'.repeat(Math.min(b.length, 5)) + c;
+    });
+
+    return {
+      message: `A 6-digit verification code has been sent to ${maskedEmail}`,
+      maskedEmail,
+      expiresAt,
+    };
+  }
+
+  /**
+   * Verify the emailed OTP and set emailOTPEnabled = true.
+   */
+  async enableEmailOTP(userId: string, code: string) {
+    // verifyEmailOTP throws UnauthorizedException if invalid/expired
+    await this.emailOTPService.verifyEmailOTP(userId, code, EmailOTPType.TWO_FACTOR_BACKUP);
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        emailOTPEnabled: true,
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        backupCodes: null,
+      },
+    });
+
+    this.logger.logAuthEvent('2fa_enable', userId, { email: user.email, method: 'email_otp' });
+
+    this.emailService.send2FAEnabledNotification(user.email, user.firstName).catch(() => {});
+
+    return { message: 'Email OTP two-factor authentication enabled successfully' };
+  }
+
+  /**
+   * Verify the emailed OTP and set emailOTPEnabled = false.
+   * Caller must first call setupEmailOTP() to get a fresh code.
+   */
+  async disableEmailOTP(userId: string, code: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, firstName: true, emailOTPEnabled: true },
+    });
+
+    if (!user?.emailOTPEnabled) {
+      throw new BadRequestException('Email OTP 2FA is not enabled');
+    }
+
+    // Verify the OTP — throws if invalid
+    await this.emailOTPService.verifyEmailOTP(userId, code, EmailOTPType.TWO_FACTOR_BACKUP);
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { emailOTPEnabled: false },
+    });
+
+    // Invalidate any remaining unused OTPs
+    await this.emailOTPService.invalidateUserOTPs(userId);
+
+    this.logger.logAuthEvent('2fa_disable', userId, { email: updated.email, method: 'email_otp' });
+
+    return { message: 'Email OTP two-factor authentication disabled' };
+  }
+
+  /**
+   * Check if email OTP 2FA is enabled for a user.
+   */
+  async isEmailOTPEnabled(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { emailOTPEnabled: true },
+    });
+    return user?.emailOTPEnabled ?? false;
   }
 }
