@@ -5,6 +5,7 @@ import {
   IsArray,
   ValidateNested,
   IsNumber,
+  IsInt,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -61,4 +62,10 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   idempotencyKey?: string; // Client-generated unique key (e.g., cart_<cartId>_<timestamp>) to prevent duplicate orders
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  servicePointId?: number; // SendCloud service point ID for DPD Shop / parcel pickup methods
 }

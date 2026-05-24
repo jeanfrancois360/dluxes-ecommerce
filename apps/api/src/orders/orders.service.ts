@@ -354,7 +354,8 @@ export class OrdersService {
     billingAddressId?: string,
     notes?: string,
     idempotencyKey?: string,
-    shippingMethodId?: string
+    shippingMethodId?: string,
+    servicePointId?: number
   ) {
     // 1. Check for duplicate order (idempotency)
     if (idempotencyKey) {
@@ -545,6 +546,7 @@ export class OrdersService {
                   name: selectedShipping.name,
                   price: selectedShipping.price,
                   estimatedDays: selectedShipping.estimatedDays,
+                  servicePointId: servicePointId ?? null,
                 }
               : undefined,
 
@@ -748,6 +750,7 @@ export class OrdersService {
       shippingMethodId,
       currency: orderCurrency,
       idempotencyKey,
+      servicePointId,
     } = createOrderDto;
 
     // 1. Check for duplicate order (idempotency protection)
@@ -1072,6 +1075,7 @@ export class OrdersService {
                   name: selectedShipping.name,
                   price: selectedShipping.price,
                   estimatedDays: selectedShipping.estimatedDays,
+                  servicePointId: servicePointId ?? null,
                 }
               : undefined,
           // Store idempotency key to prevent duplicate orders
@@ -2210,11 +2214,50 @@ export class OrdersService {
       }
 
       // 8. Convert all prices to target currency
+      // Product prices and tax are always in USD — simple multiply.
       const convertPrice = (usdPrice: number) => usdPrice * exchangeRate;
 
+      // Shipping rates may be in a non-USD source currency (e.g. EUR from SendCloud/DHL).
+      // Pre-fetch rates for any non-USD source currencies so we can do a two-step conversion:
+      //   sourceCurrency → USD  (divide by sourceCurrencyRate)
+      //   USD → targetCurrency  (multiply by exchangeRate)
+      const sourceCurrencyRates: Record<string, number> = { USD: 1 };
+      const nonUsdSources = new Set(
+        shippingOptions
+          .map((o) => (o as any).sourceCurrency as string | undefined)
+          .filter((c): c is string => !!c && c !== 'USD')
+      );
+      for (const srcCurrency of nonUsdSources) {
+        try {
+          const srcRate = await this.currencyService.getRateByCode(srcCurrency);
+          sourceCurrencyRates[srcCurrency] = Number(srcRate.rate); // units of srcCurrency per 1 USD
+          this.logger.log(
+            `💱 Source currency rate fetched: 1 USD = ${sourceCurrencyRates[srcCurrency]} ${srcCurrency}`
+          );
+        } catch (e) {
+          this.logger.warn(
+            `Could not get rate for shipping source currency ${srcCurrency} — treating as USD`
+          );
+          sourceCurrencyRates[srcCurrency] = 1;
+        }
+      }
+
+      // Converts a shipping price from its native source currency to the target display currency
+      const convertShippingPrice = (price: number, sourceCurrency?: string): number => {
+        const src = sourceCurrency || 'USD';
+        const srcRate = sourceCurrencyRates[src] ?? 1;
+        // price / srcRate = equivalent USD amount; then * exchangeRate = target currency amount
+        return (price / srcRate) * exchangeRate;
+      };
+
       const subtotalInTargetCurrency = convertPrice(subtotal);
+      // For mixed Gelato + physical carts, the carrier price and the Gelato cost may be in
+      // different source currencies (e.g. EUR + USD). Convert each portion independently.
       const shippingCost = selectedShipping.price;
-      const shippingCostInTargetCurrency = convertPrice(shippingCost);
+      const gelatoCostUsd = (selectedShipping as any).gelatoCostUsd as number | undefined;
+      const shippingCostInTargetCurrency =
+        convertShippingPrice(shippingCost, (selectedShipping as any).sourceCurrency) +
+        convertPrice(gelatoCostUsd || 0);
       const taxAmount = taxCalc.amount;
       const taxAmountInTargetCurrency = convertPrice(taxAmount);
       const discountInTargetCurrency = convertPrice(discount);
@@ -2234,14 +2277,21 @@ export class OrdersService {
           estimatedDays: selectedShipping.estimatedDays,
           carrier: selectedShipping.carrier,
         },
-        shippingOptions: shippingOptions.map((opt) => ({
-          id: opt.id,
-          name: opt.name,
-          price: Math.round(convertPrice(opt.price) * 100) / 100,
-          estimatedDays: opt.estimatedDays,
-          carrier: opt.carrier,
-          source: opt.source,
-        })),
+        shippingOptions: shippingOptions.map((opt) => {
+          const optGelatoCostUsd = (opt as any).gelatoCostUsd as number | undefined;
+          const convertedPrice =
+            convertShippingPrice(opt.price, (opt as any).sourceCurrency) +
+            convertPrice(optGelatoCostUsd || 0);
+          return {
+            id: opt.id,
+            name: opt.name,
+            price: Math.round(convertedPrice * 100) / 100,
+            estimatedDays: opt.estimatedDays,
+            carrier: opt.carrier,
+            source: opt.source,
+            requiresServicePoint: opt.requiresServicePoint ?? false,
+          };
+        }),
         tax: {
           amount: Math.round(taxAmountInTargetCurrency * 100) / 100,
           rate: taxCalc.rate,

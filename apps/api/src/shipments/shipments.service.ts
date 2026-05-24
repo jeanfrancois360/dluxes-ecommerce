@@ -139,6 +139,9 @@ export class ShipmentsService {
           orderId: dto.orderId,
           storeId: dto.storeId,
           serviceCode: String(serviceCode),
+          servicePointId: providerData?.servicePointId
+            ? Number(providerData.servicePointId)
+            : undefined,
           toAddress: {
             name:
               `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim() || 'Customer',
