@@ -475,6 +475,10 @@ export class ShipmentsService {
       .substring(2, 8)
       .toUpperCase()}`;
 
+    // If the seller provides a tracking number the parcel is already with the carrier.
+    // Start at IN_TRANSIT so the order cascade immediately sets the order to SHIPPED.
+    const initialStatus = dto.trackingNumber ? ShipmentStatus.IN_TRANSIT : ShipmentStatus.PENDING;
+
     // Create shipment with items in a transaction
     const shipment = await this.prisma.$transaction(async (tx) => {
       // Create shipment
@@ -483,7 +487,7 @@ export class ShipmentsService {
           orderId: dto.orderId,
           storeId: dto.storeId,
           shipmentNumber,
-          status: ShipmentStatus.PENDING,
+          status: initialStatus,
           carrier: dto.carrier,
           trackingNumber: dto.trackingNumber,
           trackingUrl: dto.trackingUrl,
@@ -491,6 +495,7 @@ export class ShipmentsService {
           shippingCost: dto.shippingCost ? new Decimal(dto.shippingCost) : undefined,
           weight: dto.weight ? new Decimal(dto.weight) : undefined,
           notes: dto.notes,
+          shippedAt: dto.trackingNumber ? new Date() : undefined,
         },
         include: {
           order: true,
@@ -511,9 +516,13 @@ export class ShipmentsService {
       await tx.shipmentEvent.create({
         data: {
           shipmentId: newShipment.id,
-          status: ShipmentStatus.PENDING,
-          title: 'Shipment Created',
-          description: `Shipment created by ${store.name}`,
+          status: initialStatus,
+          title:
+            initialStatus === ShipmentStatus.IN_TRANSIT ? 'Marked as Shipped' : 'Shipment Created',
+          description:
+            initialStatus === ShipmentStatus.IN_TRANSIT
+              ? `Order marked as shipped by ${store.name}${dto.trackingNumber ? ` — tracking: ${dto.trackingNumber}` : ''}`
+              : `Shipment created by ${store.name}`,
         },
       });
 
@@ -874,6 +883,85 @@ export class ShipmentsService {
       pageSize: limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  /**
+   * Mark all non-shipped shipments for an order as IN_TRANSIT.
+   * Called when a seller clicks "Mark as Shipped" on an order that already has
+   * provider-generated shipments (SendCloud, EasyPost, DHL…). Updating the
+   * existing shipments avoids creating a duplicate that would confuse the cascade.
+   */
+  async markOrderShipments(
+    orderId: string,
+    sellerId: string,
+    trackingNumber?: string,
+    trackingUrl?: string
+  ): Promise<{ updated: number }> {
+    // Verify seller owns at least one item in this order (or is admin)
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { product: { include: { store: true } } } } },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    const isSeller = order.items.some((item) => item.product.store?.userId === sellerId);
+    if (!isSeller) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: sellerId },
+        select: { role: true },
+      });
+      if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+        throw new ForbiddenException('You do not own this order');
+      }
+    }
+
+    const pendingStatuses: ShipmentStatus[] = [
+      ShipmentStatus.PENDING,
+      ShipmentStatus.PROCESSING,
+      ShipmentStatus.LABEL_CREATED,
+      ShipmentStatus.PICKED_UP,
+    ];
+
+    const pendingShipments = await this.prisma.sellerShipment.findMany({
+      where: { orderId, status: { in: pendingStatuses } },
+    });
+
+    if (pendingShipments.length === 0) {
+      throw new BadRequestException('No pending shipments to mark as shipped');
+    }
+
+    const now = new Date();
+    await this.prisma.sellerShipment.updateMany({
+      where: { id: { in: pendingShipments.map((s) => s.id) } },
+      data: {
+        status: ShipmentStatus.IN_TRANSIT,
+        shippedAt: now,
+        ...(trackingNumber ? { trackingNumber } : {}),
+        ...(trackingUrl ? { trackingUrl } : {}),
+      },
+    });
+
+    // Create a shipment event for each updated shipment
+    await this.prisma.shipmentEvent.createMany({
+      data: pendingShipments.map((s) => ({
+        shipmentId: s.id,
+        status: ShipmentStatus.IN_TRANSIT,
+        title: 'Marked as Shipped',
+        description: trackingNumber
+          ? `Seller marked as shipped — tracking: ${trackingNumber}`
+          : 'Seller manually marked as shipped',
+      })),
+    });
+
+    // Cascade order status (should become SHIPPED)
+    await this.updateOrderStatusAfterShipmentChange(orderId);
+
+    this.logger.log(
+      `[markOrderShipments] ${pendingShipments.length} shipment(s) marked IN_TRANSIT for order ${orderId}`
+    );
+
+    return { updated: pendingShipments.length };
   }
 
   /**

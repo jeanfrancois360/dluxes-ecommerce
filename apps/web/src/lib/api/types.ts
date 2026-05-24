@@ -9,6 +9,7 @@ export interface User {
   role: 'BUYER' | 'SELLER' | 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN' | 'DELIVERY_PARTNER';
   emailVerified: boolean;
   twoFactorEnabled: boolean;
+  emailOTPEnabled?: boolean;
   authProvider?: 'LOCAL' | 'GOOGLE';
   googleId?: string;
   createdAt: string;
@@ -36,6 +37,7 @@ export interface LoginCredentials {
   password: string;
   rememberMe?: boolean;
   twoFactorCode?: string; // TOTP code from authenticator app
+  emailOTPCode?: string; // Email OTP code (when email-OTP 2FA is enabled)
   trustDevice?: boolean; // Trust this device for N days (skips 2FA on future logins)
 }
 

@@ -11,15 +11,17 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { ShipmentStatus, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { EmailService } from '../../email/email.service';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
-// SendCloud parcel status IDs → internal meaning
+// SendCloud parcel status IDs → internal ShipmentStatus
 // https://support.sendcloud.com/hc/en-us/articles/360024674971
-const STATUS_LABEL_PURCHASED = new Set([1, 2000, 2001]); // Announced, Being sorted
-const STATUS_OUT_FOR_DELIVERY = new Set([80, 2300]); // At sorting facility / out for delivery
+const STATUS_LABEL_CREATED = new Set([1, 2, 2000, 2001]); // Announced / being sorted (label exists, not picked up yet)
+const STATUS_IN_TRANSIT = new Set([3, 4, 5, 6]); // In transit toward destination
+const STATUS_OUT_FOR_DELIVERY = new Set([80, 2300]); // Out for delivery / at sorting facility
 const STATUS_DELIVERED = new Set([11, 2100]); // Delivered
 
 @Controller('webhooks/sendcloud')
@@ -79,8 +81,8 @@ export class SendcloudWebhookController {
 
     if (!orderReference && !trackingNumber) return;
 
-    const internalStatus = this.mapStatus(statusId);
-    if (!internalStatus) {
+    const shipmentStatus = this.mapShipmentStatus(statusId);
+    if (!shipmentStatus) {
       this.logger.log(`Ignoring SendCloud status id ${statusId}`);
       return;
     }
@@ -105,14 +107,111 @@ export class SendcloudWebhookController {
       },
     });
 
-    await this.sendBuyerEmail(orderReference, trackingNumber, internalStatus, parcel);
+    // 1. Find the SellerShipment by sendcloudParcelId stored in metadata
+    const shipment = await this.prisma.sellerShipment.findFirst({
+      where: {
+        metadata: {
+          path: ['sendcloudParcelId'],
+          equals: parcel.id,
+        },
+      },
+    });
+
+    if (shipment) {
+      // 2. Update shipment status + timestamps
+      const updateData: Record<string, any> = { status: shipmentStatus };
+      if (trackingNumber && !shipment.trackingNumber) updateData.trackingNumber = trackingNumber;
+      if (
+        shipmentStatus === ShipmentStatus.IN_TRANSIT ||
+        shipmentStatus === ShipmentStatus.OUT_FOR_DELIVERY
+      ) {
+        if (!shipment.shippedAt) updateData.shippedAt = new Date();
+      }
+      if (shipmentStatus === ShipmentStatus.DELIVERED) {
+        updateData.deliveredAt = new Date();
+      }
+
+      await this.prisma.sellerShipment.update({
+        where: { id: shipment.id },
+        data: updateData,
+      });
+
+      this.logger.log(
+        `[SendCloud Webhook] Shipment ${shipment.shipmentNumber} → ${shipmentStatus} (parcel ${parcel.id})`
+      );
+
+      // 3. Cascade order status based on all shipments for this order
+      await this.updateOrderStatus(shipment.orderId);
+    } else {
+      this.logger.warn(
+        `[SendCloud Webhook] No SellerShipment found for sendcloudParcelId=${parcel.id}`
+      );
+    }
+
+    // 4. Send buyer notification email
+    const emailStatus = this.mapEmailStatus(shipmentStatus);
+    if (emailStatus) {
+      await this.sendBuyerEmail(orderReference, trackingNumber, emailStatus, parcel);
+    }
   }
 
-  private mapStatus(statusId: number): 'label_purchased' | 'out_for_delivery' | 'delivered' | null {
-    if (STATUS_LABEL_PURCHASED.has(statusId)) return 'label_purchased';
-    if (STATUS_OUT_FOR_DELIVERY.has(statusId)) return 'out_for_delivery';
-    if (STATUS_DELIVERED.has(statusId)) return 'delivered';
+  /** Map SendCloud statusId to internal ShipmentStatus */
+  private mapShipmentStatus(statusId: number): ShipmentStatus | null {
+    if (STATUS_LABEL_CREATED.has(statusId)) return ShipmentStatus.LABEL_CREATED;
+    if (STATUS_IN_TRANSIT.has(statusId)) return ShipmentStatus.IN_TRANSIT;
+    if (STATUS_OUT_FOR_DELIVERY.has(statusId)) return ShipmentStatus.OUT_FOR_DELIVERY;
+    if (STATUS_DELIVERED.has(statusId)) return ShipmentStatus.DELIVERED;
     return null;
+  }
+
+  /** Map ShipmentStatus to the email notification type */
+  private mapEmailStatus(
+    status: ShipmentStatus
+  ): 'label_purchased' | 'out_for_delivery' | 'delivered' | null {
+    if (status === ShipmentStatus.LABEL_CREATED) return 'label_purchased';
+    if (status === ShipmentStatus.OUT_FOR_DELIVERY) return 'out_for_delivery';
+    if (status === ShipmentStatus.DELIVERED) return 'delivered';
+    return null;
+  }
+
+  /**
+   * Re-evaluate and update the order status based on all its shipments.
+   * Mirrors the logic in ShipmentsService.updateOrderStatusAfterShipmentChange
+   * (duplicated here to avoid a circular module dependency).
+   */
+  private async updateOrderStatus(orderId: string): Promise<void> {
+    const shipments = await this.prisma.sellerShipment.findMany({ where: { orderId } });
+    if (shipments.length === 0) return;
+
+    const allDelivered = shipments.every((s) => s.status === ShipmentStatus.DELIVERED);
+    const someDelivered = shipments.some((s) => s.status === ShipmentStatus.DELIVERED);
+    const transitStatuses: ShipmentStatus[] = [
+      ShipmentStatus.IN_TRANSIT,
+      ShipmentStatus.OUT_FOR_DELIVERY,
+      ShipmentStatus.DELIVERED,
+    ];
+    const allShipped = shipments.every((s) => transitStatuses.includes(s.status));
+    const someShipped = shipments.some((s) => transitStatuses.includes(s.status));
+
+    let newStatus: OrderStatus | null = null;
+    if (allDelivered) {
+      newStatus = OrderStatus.DELIVERED;
+    } else if (someDelivered || (someShipped && shipments.length > 1)) {
+      newStatus = OrderStatus.PARTIALLY_SHIPPED;
+    } else if (allShipped) {
+      newStatus = OrderStatus.SHIPPED;
+    }
+
+    if (!newStatus) return;
+
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { status: true },
+    });
+    if (order && order.status !== newStatus) {
+      await this.prisma.order.update({ where: { id: orderId }, data: { status: newStatus } });
+      this.logger.log(`[SendCloud Webhook] Order ${orderId} status → ${newStatus}`);
+    }
   }
 
   private async sendBuyerEmail(
