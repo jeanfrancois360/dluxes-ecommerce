@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [show2FA, setShow2FA] = useState(false);
+  const [otpMode, setOtpMode] = useState<'totp' | 'emailOtp'>('totp');
   const [otpValue, setOtpValue] = useState('');
   const [trustDevice, setTrustDevice] = useState(false);
   const [localError, setLocalError] = useState('');
@@ -138,15 +139,28 @@ export default function LoginPage() {
     try {
       const credentials: Parameters<typeof login>[0] = { email, password, rememberMe };
       if (show2FA && otpValue) {
-        credentials.twoFactorCode = otpValue;
-        credentials.trustDevice = trustDevice;
+        if (otpMode === 'emailOtp') {
+          credentials.emailOTPCode = otpValue;
+        } else {
+          credentials.twoFactorCode = otpValue;
+          credentials.trustDevice = trustDevice;
+        }
       }
 
       const result = await login(credentials);
 
-      // Check if 2FA is required
+      // Check if email OTP 2FA is required
+      if (result && (result as any).requiresEmailOTP) {
+        setShow2FA(true);
+        setOtpMode('emailOtp');
+        toast.info('Check your email for a 6-digit verification code.');
+        return;
+      }
+
+      // Check if TOTP 2FA is required
       if (result && (result as any).requires2FA) {
         setShow2FA(true);
+        setOtpMode('totp');
         toast.info(t('enter2FACode'));
         return;
       }
@@ -173,6 +187,10 @@ export default function LoginPage() {
             onClick: () => handleResendVerification(errorData.email || email),
           },
         });
+      } else if (errorData?.code === '2FA_GRACE_EXPIRED' && errorData?.setupToken) {
+        // Grace period expired — redirect to security page with a short-lived setup token
+        sessionStorage.setItem('2fa_setup_token', errorData.setupToken);
+        router.push(errorData.setupUrl || '/seller/security');
       } else {
         // Use enhanced auth error handler with actionable links
         showAuthError(err, router);
@@ -413,7 +431,11 @@ export default function LoginPage() {
               <h3 className="text-lg font-semibold text-black mb-2">
                 {t('enterVerificationCode')}
               </h3>
-              <p className="text-sm text-neutral-600">{t('enter6DigitCode')}</p>
+              <p className="text-sm text-neutral-600">
+                {otpMode === 'emailOtp'
+                  ? 'Enter the 6-digit code sent to your email address.'
+                  : t('enter6DigitCode')}
+              </p>
             </div>
 
             <OTPInput length={6} value={otpValue} onChange={setOtpValue} />
@@ -435,16 +457,18 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Trust this device — skips 2FA for N days on this browser */}
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={trustDevice}
-                onChange={(e) => setTrustDevice(e.target.checked)}
-                className="w-4 h-4 rounded border-neutral-300 text-gold accent-gold"
-              />
-              <span className="text-sm text-neutral-600">Trust this device for 30 days</span>
-            </label>
+            {/* Trust this device — only applicable for TOTP, not email OTP */}
+            {otpMode === 'totp' && (
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={trustDevice}
+                  onChange={(e) => setTrustDevice(e.target.checked)}
+                  className="w-4 h-4 rounded border-neutral-300 text-gold accent-gold"
+                />
+                <span className="text-sm text-neutral-600">Trust this device for 30 days</span>
+              </label>
+            )}
 
             <Button
               type="submit"

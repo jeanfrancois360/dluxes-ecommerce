@@ -87,6 +87,9 @@ export default function AdminSecurityPage() {
   const [emailOtpError, setEmailOtpError] = useState('');
   const [isEmailOtpLoading, setIsEmailOtpLoading] = useState(false);
 
+  // Setup-only mode — entered when grace period expired at login
+  const [setupOnlyMode, setSetupOnlyMode] = useState(false);
+
   const { data: sessionsData, mutate: mutateSessions } = useSWR<UserSession[]>(
     isAuthenticated ? '/auth/sessions' : null,
     () => api.get<UserSession[]>('/auth/sessions'),
@@ -109,6 +112,15 @@ export default function AdminSecurityPage() {
       router.push('/auth/login?redirect=/admin/account/security');
     }
   }, [authLoading, isInitialized, isAuthenticated, router]);
+
+  // Setup-only mode: grace period expired at login — use the short-lived setup token
+  useEffect(() => {
+    const token = sessionStorage.getItem('2fa_setup_token');
+    if (token) {
+      TokenManager.setAccessToken(token);
+      setSetupOnlyMode(true);
+    }
+  }, []);
 
   useEffect(() => {
     const password = formData.newPassword;
@@ -245,6 +257,13 @@ export default function AdminSecurityPage() {
       await refreshUser();
       setEmailOtpEnabled(false);
       setEmailOtpStep('idle');
+      if (setupOnlyMode) {
+        sessionStorage.removeItem('2fa_setup_token');
+        TokenManager.clearTokens();
+        toast.success('2FA set up successfully! Please log in to continue.');
+        router.push('/auth/login');
+        return;
+      }
     } catch (err: any) {
       setTwoFaError(err.message || 'Verification failed.');
     } finally {
@@ -302,6 +321,13 @@ export default function AdminSecurityPage() {
       setEmailOtpStep('idle');
       setEmailOtpCode('');
       await refreshUser();
+      if (setupOnlyMode) {
+        sessionStorage.removeItem('2fa_setup_token');
+        TokenManager.clearTokens();
+        toast.success('2FA set up successfully! Please log in to continue.');
+        router.push('/auth/login');
+        return;
+      }
     } catch (err: any) {
       setEmailOtpError(err?.response?.data?.message || err.message || 'Verification failed');
     } finally {
@@ -949,6 +975,30 @@ export default function AdminSecurityPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Setup-only mode banner */}
+              {setupOnlyMode && (
+                <div className="mb-6 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <svg
+                    className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div>
+                    <p className="font-semibold text-red-800">2FA setup required</p>
+                    <p className="text-sm text-red-700 mt-0.5">
+                      Your grace period has expired. Set up two-factor authentication below to
+                      regain access to your account.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Neither method active — method selection */}
               {!user.twoFactorEnabled &&
