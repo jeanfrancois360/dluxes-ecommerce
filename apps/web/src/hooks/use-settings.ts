@@ -48,6 +48,12 @@ export function useSettingsUpdate() {
       const data = await settingsApi.updateSetting(key, value, reason);
       return data;
     } catch (err: any) {
+      // 404 means the setting row doesn't exist in the DB yet — skip silently
+      // so one missing key doesn't abort the entire save loop.
+      if (err.status === 404 || err.statusCode === 404) {
+        console.warn(`[settings] Key "${key}" not found in DB — skipping`);
+        return null;
+      }
       const errorMessage = err.message || 'Failed to update setting';
       toast.error(errorMessage);
       throw err;

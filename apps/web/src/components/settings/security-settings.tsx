@@ -401,7 +401,7 @@ export function SecuritySettingsSection() {
       {/* Footer with Reset and Save buttons */}
       <SettingsFooter
         onReset={() => form.reset()}
-        onSave={() => {}} // Form submission handled by form onSubmit
+        onSave={() => form.handleSubmit(onSubmit)()}
         isLoading={updating}
         isDirty={isDirty}
       />
