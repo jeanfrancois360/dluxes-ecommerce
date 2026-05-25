@@ -2515,6 +2515,25 @@ async function main() {
     }),
 
     prisma.systemSetting.upsert({
+      where: { key: 'referral_reward_type' },
+      update: {},
+      create: {
+        key: 'referral_reward_type',
+        category: 'referral',
+        value: 'store_credit',
+        valueType: 'STRING',
+        label: 'Reward Type',
+        description:
+          'How referral rewards are delivered: store_credit (platform wallet), coupon (single-use code), flat_commission (real cash payout queued for admin).',
+        isPublic: false,
+        isEditable: true,
+        requiresRestart: false,
+        defaultValue: 'store_credit',
+        lastUpdatedBy: superAdmin.id,
+      },
+    }),
+
+    prisma.systemSetting.upsert({
       where: { key: 'referral_reward_currency' },
       update: {},
       create: {
