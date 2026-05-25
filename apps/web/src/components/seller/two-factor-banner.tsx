@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ShieldAlert, ShieldCheck, X } from 'lucide-react';
+import useSWR from 'swr';
 import { useAuth } from '@/hooks/use-auth';
+import { api } from '@/lib/api/client';
 
 const ENFORCED_ROLES = new Set(['SELLER', 'ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER']);
 
@@ -23,8 +25,14 @@ export default function TwoFactorBanner({
   setupUrl = '/seller/security',
   graceDaysRemaining,
 }: TwoFactorBannerProps) {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [dismissed, setDismissed] = useState(false);
+
+  const { data: emailOtpStatus } = useSWR(
+    isAuthenticated ? '/auth/2fa/email/status' : null,
+    () => api.get<{ enabled: boolean }>('/auth/2fa/email/status'),
+    { revalidateOnFocus: false }
+  );
 
   // Re-show if the user navigates away and comes back
   useEffect(() => {
@@ -33,7 +41,7 @@ export default function TwoFactorBanner({
 
   if (!user) return null;
   if (!ENFORCED_ROLES.has(user.role)) return null;
-  if (user.twoFactorEnabled) return null;
+  if (user.twoFactorEnabled || emailOtpStatus?.enabled) return null;
   if (dismissed) return null;
 
   const isUrgent =
