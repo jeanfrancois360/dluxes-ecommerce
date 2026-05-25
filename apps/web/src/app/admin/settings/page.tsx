@@ -28,6 +28,7 @@ import {
   PackageCheck,
   Store,
   Box,
+  Gift,
 } from 'lucide-react';
 import { GeneralSettingsSection } from '@/components/settings/general-settings';
 import { PaymentSettingsSection } from '@/components/settings/payment-settings';
@@ -42,6 +43,7 @@ import { NotificationSettingsSection } from '@/components/settings/notification-
 import { SeoSettingsSection } from '@/components/settings/seo-settings';
 import { InventorySettingsSection } from '@/components/settings/inventory-settings';
 import { SellerSettingsSection } from '@/components/settings/seller-settings';
+import { ReferralSettingsSection } from '@/components/settings/referral-settings';
 import { AuditLogViewer } from '@/components/settings/audit-log-viewer';
 import { SettingsValidationAlert } from '@/components/settings/settings-validation-alert';
 import { SettingsOverviewDashboard } from '@/components/settings/settings-overview-dashboard';
@@ -136,6 +138,12 @@ function SettingsPageContent() {
       label: t('tabs.seo.label'),
       icon: Search,
       description: t('tabs.seo.description'),
+    },
+    {
+      value: 'referral',
+      label: 'Referral',
+      icon: Gift,
+      description: 'Configure reward amounts, code settings, and qualification rules',
     },
   ];
 
@@ -298,6 +306,10 @@ function SettingsPageContent() {
 
             <TabsContent value="seo" className="mt-0">
               <SeoSettingsSection />
+            </TabsContent>
+
+            <TabsContent value="referral" className="mt-0">
+              <ReferralSettingsSection />
             </TabsContent>
           </motion.div>
         </AnimatePresence>

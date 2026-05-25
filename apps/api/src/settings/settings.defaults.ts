@@ -120,6 +120,7 @@ export const SETTING_DEFAULTS = {
   // --------------------------------------------------------------------------
   referral: {
     enabled: true,
+    reward_type: 'store_credit' as 'store_credit' | 'coupon',
     buyer_reward: 10.0,
     seller_reward: 50.0,
     min_order_value: 25.0,

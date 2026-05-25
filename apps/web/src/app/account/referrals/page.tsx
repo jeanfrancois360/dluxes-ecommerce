@@ -17,6 +17,7 @@ import {
   CreditCard,
   Share2,
   ChevronRight,
+  Ticket,
 } from 'lucide-react';
 
 interface ReferralSummary {
@@ -36,6 +37,7 @@ interface ReferralRecord {
   id: string;
   status: 'PENDING' | 'QUALIFIED' | 'PAID' | 'EXPIRED';
   rewardAmount: number | string;
+  couponCode: string | null;
   createdAt: string;
   referredUserRole: string;
   referred: {
@@ -61,6 +63,7 @@ export default function ReferralsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [redeemingCoupon, setRedeemingCoupon] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -114,6 +117,19 @@ export default function ReferralsPage() {
       toast.error(t('toast.generateError'));
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleRedeemCoupon = async (code: string) => {
+    try {
+      setRedeemingCoupon(code);
+      const result = await referralApi.redeemCoupon(code);
+      toast.success(result.message || 'Coupon redeemed successfully');
+      await load();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to redeem coupon');
+    } finally {
+      setRedeemingCoupon(null);
     }
   };
 
@@ -283,6 +299,9 @@ export default function ReferralsPage() {
                       {t(`history.${col}`)}
                     </th>
                   ))}
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                    Coupon
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
@@ -309,6 +328,25 @@ export default function ReferralsPage() {
                       </td>
                       <td className="px-6 py-3 text-neutral-500">
                         {new Date(ref.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-3">
+                        {ref.couponCode ? (
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1 text-xs font-mono bg-neutral-100 px-2 py-1 rounded border border-neutral-200">
+                              <Ticket className="w-3 h-3 text-neutral-500" />
+                              {ref.couponCode}
+                            </span>
+                            <button
+                              onClick={() => handleRedeemCoupon(ref.couponCode!)}
+                              disabled={redeemingCoupon === ref.couponCode}
+                              className="text-xs font-medium bg-black text-white px-2.5 py-1 rounded hover:bg-neutral-800 disabled:opacity-50 transition-colors"
+                            >
+                              {redeemingCoupon === ref.couponCode ? 'Redeeming…' : 'Redeem'}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-neutral-400">—</span>
+                        )}
                       </td>
                     </tr>
                   );

@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { SETTING_DEFAULTS } from '../settings/settings.defaults';
-import { Prisma, ReferralStatus, UserRole } from '@prisma/client';
+import { Prisma, ReferralCouponStatus, ReferralStatus, UserRole } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 /**
@@ -434,8 +434,10 @@ export class ReferralService {
   }
 
   /**
-   * Grant referral reward to referrer
-   * Adds store credit to referrer's account and updates referral status to PAID
+   * Grant referral reward to referrer.
+   * Branches on referral_reward_type setting:
+   *  - 'store_credit': increments User.storeCredit immediately
+   *  - 'coupon': creates a ReferralCoupon record the referrer redeems manually
    */
   async grantReferralReward(referralId: string): Promise<void> {
     try {
@@ -455,38 +457,134 @@ export class ReferralService {
         return;
       }
 
-      // Grant reward in transaction
-      await this.prisma.$transaction(async (prisma) => {
-        // Add store credit to referrer
-        await prisma.user.update({
-          where: { id: referral.referrerId },
-          data: {
-            storeCredit: {
-              increment: referral.rewardAmount,
+      const rewardType = await this.getReferralRewardType();
+
+      if (rewardType === 'coupon') {
+        // --- COUPON PATH ---
+        const couponCode = await this.generateUniqueCouponCode();
+        const rewardCurrency = referral.rewardCurrency || 'USD';
+
+        // Get optional expiration (use buyer expiration days as a proxy)
+        const expirationDays = await this.getReferralBuyerExpirationDays();
+        const expiresAt =
+          expirationDays > 0 ? new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000) : null;
+
+        await this.prisma.$transaction(async (prisma) => {
+          // Create coupon record
+          await prisma.referralCoupon.create({
+            data: {
+              referralId,
+              referrerId: referral.referrerId,
+              code: couponCode,
+              amount: referral.rewardAmount,
+              currency: rewardCurrency,
+              status: ReferralCouponStatus.ACTIVE,
+              ...(expiresAt && { expiresAt }),
             },
-            totalReferrals: {
-              increment: 1,
+          });
+
+          // Stamp coupon code on referral and mark PAID
+          await prisma.referral.update({
+            where: { id: referralId },
+            data: {
+              status: ReferralStatus.PAID,
+              paidAt: new Date(),
+              couponCode,
             },
-          },
+          });
+
+          // totalReferrals counter still increments for leaderboard accuracy
+          await prisma.user.update({
+            where: { id: referral.referrerId },
+            data: { totalReferrals: { increment: 1 } },
+          });
         });
 
-        // Update referral to PAID
-        await prisma.referral.update({
-          where: { id: referralId },
-          data: {
-            status: ReferralStatus.PAID,
-            paidAt: new Date(),
-          },
-        });
-      });
+        this.logger.log(
+          `✅ Issued coupon ${couponCode} ($${referral.rewardAmount}) to user ${referral.referrerId} for referral ${referralId}`
+        );
+      } else {
+        // --- STORE CREDIT PATH (default) ---
+        await this.prisma.$transaction(async (prisma) => {
+          await prisma.user.update({
+            where: { id: referral.referrerId },
+            data: {
+              storeCredit: { increment: referral.rewardAmount },
+              totalReferrals: { increment: 1 },
+            },
+          });
 
-      this.logger.log(
-        `✅ Granted $${referral.rewardAmount} reward to user ${referral.referrerId} for referral ${referralId}`
-      );
+          await prisma.referral.update({
+            where: { id: referralId },
+            data: { status: ReferralStatus.PAID, paidAt: new Date() },
+          });
+        });
+
+        this.logger.log(
+          `✅ Granted $${referral.rewardAmount} store credit to user ${referral.referrerId} for referral ${referralId}`
+        );
+      }
     } catch (error) {
       this.logger.error(`Failed to grant referral reward: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+  /**
+   * Redeem a referral coupon — converts it to store credit for the owner.
+   * Called by the user from their referrals page.
+   */
+  async redeemReferralCoupon(
+    userId: string,
+    code: string
+  ): Promise<{ amount: Decimal; currency: string }> {
+    const coupon = await this.prisma.referralCoupon.findUnique({
+      where: { code: code.toUpperCase() },
+    });
+
+    if (!coupon) {
+      throw new NotFoundException('Coupon code not found');
+    }
+
+    if (coupon.referrerId !== userId) {
+      throw new BadRequestException('This coupon does not belong to you');
+    }
+
+    if (coupon.status !== ReferralCouponStatus.ACTIVE) {
+      throw new BadRequestException(
+        coupon.status === ReferralCouponStatus.REDEEMED
+          ? 'This coupon has already been redeemed'
+          : 'This coupon has expired'
+      );
+    }
+
+    if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+      // Mark expired if not already done
+      await this.prisma.referralCoupon.update({
+        where: { id: coupon.id },
+        data: { status: ReferralCouponStatus.EXPIRED },
+      });
+      throw new BadRequestException('This coupon has expired');
+    }
+
+    // Atomically redeem: add store credit + mark coupon REDEEMED
+    await this.prisma.$transaction(async (prisma) => {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { storeCredit: { increment: coupon.amount } },
+      });
+
+      await prisma.referralCoupon.update({
+        where: { id: coupon.id },
+        data: { status: ReferralCouponStatus.REDEEMED, redeemedAt: new Date() },
+      });
+    });
+
+    this.logger.log(
+      `✅ Coupon ${code} redeemed by user ${userId} — $${coupon.amount} added to store credit`
+    );
+
+    return { amount: coupon.amount, currency: coupon.currency };
   }
 
   // ============================================================================
@@ -857,6 +955,10 @@ export class ReferralService {
 
       return {
         enabled: map['referral_enabled'] != null ? Boolean(map['referral_enabled']) : D.enabled,
+        rewardType:
+          map['referral_reward_type'] != null
+            ? (String(map['referral_reward_type']) as 'store_credit' | 'coupon')
+            : D.reward_type,
         buyerReward:
           map['referral_buyer_reward'] != null
             ? Number(map['referral_buyer_reward'])
@@ -906,6 +1008,7 @@ export class ReferralService {
       this.logger.warn('Failed to get referral settings, using fallback defaults');
       return {
         enabled: D.enabled,
+        rewardType: D.reward_type,
         buyerReward: D.buyer_reward,
         sellerReward: D.seller_reward,
         minOrderValue: D.min_order_value,
@@ -1017,5 +1120,37 @@ export class ReferralService {
       // DB unavailable or setting missing
     }
     return SETTING_DEFAULTS.referral.reward_currency;
+  }
+
+  private async getReferralRewardType(): Promise<'store_credit' | 'coupon'> {
+    try {
+      const setting = await this.settingsService.getSetting('referral_reward_type');
+      const val = setting?.value != null ? String(setting.value) : null;
+      if (val === 'coupon') return 'coupon';
+    } catch {
+      // DB unavailable or setting missing
+    }
+    return SETTING_DEFAULTS.referral.reward_type;
+  }
+
+  /**
+   * Generate a unique coupon code in the format CPN-XXXXXXXX
+   */
+  private async generateUniqueCouponCode(): Promise<string> {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    let attempts = 0;
+
+    while (attempts < 10) {
+      let code = 'CPN-';
+      for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+
+      const existing = await this.prisma.referralCoupon.findUnique({ where: { code } });
+      if (!existing) return code;
+      attempts++;
+    }
+
+    throw new Error('Unable to generate unique coupon code');
   }
 }

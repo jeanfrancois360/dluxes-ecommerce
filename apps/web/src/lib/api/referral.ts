@@ -123,6 +123,14 @@ export const getReferralSettingsAdmin = async () => {
 };
 
 /**
+ * Redeem a referral coupon for store credit
+ */
+export const redeemCoupon = async (code: string) => {
+  const { data } = await api.post('/referral/redeem-coupon', { code });
+  return data;
+};
+
+/**
  * Manually grant referral reward (Admin only)
  */
 export const grantRewardAdmin = async (referralId: string) => {
@@ -138,6 +146,7 @@ export const referralApi = {
   getReferralHistory,
   getReferralSettings,
   getLeaderboard,
+  redeemCoupon,
 
   // Admin endpoints
   getAllReferrals,
