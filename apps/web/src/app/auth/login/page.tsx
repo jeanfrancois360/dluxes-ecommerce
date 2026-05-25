@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
@@ -452,60 +452,196 @@ export default function LoginPage() {
             animate={{ opacity: 1, x: 0 }}
             className="space-y-6"
           >
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gold/10 rounded-full mb-4">
-                <svg
-                  className="w-8 h-8 text-gold"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
+            {/* Header — morphs between idle and verifying states */}
+            <div className="text-center mb-2">
+              <div className="relative inline-flex items-center justify-center w-16 h-16 mb-4">
+                {/* Background ring */}
+                <AnimatePresence mode="wait">
+                  {submitting2FA ? (
+                    <motion.div
+                      key="spinner-ring"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="absolute inset-0 rounded-full border-2 border-gold/20"
+                    />
+                  ) : (
+                    <motion.div
+                      key="idle-ring"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 rounded-full bg-gold/10"
+                    />
+                  )}
+                </AnimatePresence>
+
+                {/* Spinning arc when verifying */}
+                {submitting2FA && (
+                  <svg
+                    className="absolute inset-0 w-16 h-16 -rotate-90 animate-spin"
+                    viewBox="0 0 64 64"
+                    fill="none"
+                  >
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="#CBB57B"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeDasharray="44 132"
+                    />
+                  </svg>
+                )}
+
+                {/* Icon */}
+                <AnimatePresence mode="wait">
+                  {submitting2FA ? (
+                    <motion.svg
+                      key="check"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      className="w-7 h-7 text-gold relative z-10"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                      />
+                    </motion.svg>
+                  ) : (
+                    <motion.svg
+                      key="lock"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      className="w-8 h-8 text-gold relative z-10"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </motion.svg>
+                  )}
+                </AnimatePresence>
               </div>
-              <h3 className="text-lg font-semibold text-black mb-2">
-                {t('enterVerificationCode')}
-              </h3>
-              <p className="text-sm text-neutral-600">
-                {otpMode === 'emailOtp'
-                  ? 'Enter the 6-digit code sent to your email address.'
-                  : t('enter6DigitCode')}
-              </p>
+
+              <AnimatePresence mode="wait">
+                {submitting2FA ? (
+                  <motion.div
+                    key="verifying-text"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                  >
+                    <h3 className="text-lg font-semibold text-black mb-1">Verifying…</h3>
+                    <p className="text-sm text-neutral-500">Checking your code, please wait.</p>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="idle-text"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                  >
+                    <h3 className="text-lg font-semibold text-black mb-1">
+                      {t('enterVerificationCode')}
+                    </h3>
+                    <p className="text-sm text-neutral-500">
+                      {otpMode === 'emailOtp'
+                        ? 'Enter the 6-digit code sent to your email address.'
+                        : t('enter6DigitCode')}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            <OTPInput
-              length={6}
-              value={otpValue}
-              onChange={setOtpValue}
-              onComplete={handleComplete2FA}
-              disabled={isLoading}
-            />
-
-            {error && (
-              <div className="flex items-start gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                <svg
-                  className="w-4 h-4 flex-shrink-0 mt-0.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
+            {/* OTP boxes ↔ bouncing dots loader */}
+            <AnimatePresence mode="wait">
+              {submitting2FA ? (
+                <motion.div
+                  key="loader"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex items-center justify-center gap-2 py-10"
                 >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-2.5 h-2.5 rounded-full bg-gold"
+                      animate={{ y: [0, -10, 0], opacity: [0.4, 1, 0.4] }}
+                      transition={{
+                        delay: i * 0.1,
+                        duration: 0.7,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      }}
+                    />
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="otp"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <OTPInput
+                    length={6}
+                    value={otpValue}
+                    onChange={setOtpValue}
+                    onComplete={handleComplete2FA}
+                    disabled={isLoading}
                   />
-                </svg>
-                <span>{error}</span>
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Error */}
+            <AnimatePresence>
+              {error && !submitting2FA && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="flex items-start gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"
+                >
+                  <svg
+                    className="w-4 h-4 flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>{error}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Trust this device — only applicable for TOTP, not email OTP */}
-            {otpMode === 'totp' && (
-              <label className="flex items-center gap-2 cursor-pointer select-none">
+            {otpMode === 'totp' && !submitting2FA && (
+              <motion.label
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-2 cursor-pointer select-none"
+              >
                 <input
                   type="checkbox"
                   checked={trustDevice}
@@ -513,43 +649,38 @@ export default function LoginPage() {
                   className="w-4 h-4 rounded border-neutral-300 text-gold accent-gold"
                 />
                 <span className="text-sm text-neutral-600">Trust this device for 30 days</span>
-              </label>
+              </motion.label>
             )}
 
-            <Button
-              type="submit"
-              className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold"
-            >
-              {t('verifySignIn')}
-            </Button>
-
-            <div className="text-center space-y-2">
-              {!googlePendingToken && (
-                <button
-                  type="button"
-                  onClick={() => setShow2FA(false)}
-                  className="w-full text-center text-sm text-neutral-600 hover:text-gold transition-colors"
+            {/* Back links — hidden while verifying */}
+            {!submitting2FA && (
+              <div className="text-center space-y-2 pt-1">
+                {!googlePendingToken && (
+                  <button
+                    type="button"
+                    onClick={() => setShow2FA(false)}
+                    className="w-full text-center text-sm text-neutral-500 hover:text-gold transition-colors"
+                  >
+                    {t('useDifferentMethod')}
+                  </button>
+                )}
+                {googlePendingToken && (
+                  <button
+                    type="button"
+                    onClick={() => router.push('/auth/login')}
+                    className="w-full text-center text-sm text-neutral-500 hover:text-gold transition-colors"
+                  >
+                    Use a different account
+                  </button>
+                )}
+                <Link
+                  href="/auth/2fa-email"
+                  className="block text-sm text-gold hover:text-accent-700 transition-colors"
                 >
-                  {t('useDifferentMethod')}
-                </button>
-              )}
-              {googlePendingToken && (
-                <button
-                  type="button"
-                  onClick={() => router.push('/auth/login')}
-                  className="w-full text-center text-sm text-neutral-600 hover:text-gold transition-colors"
-                >
-                  Use a different account
-                </button>
-              )}
-
-              <Link
-                href="/auth/2fa-email"
-                className="block text-sm text-gold hover:text-accent-700 transition-colors"
-              >
-                {t('cantAccessAuthenticator')}
-              </Link>
-            </div>
+                  {t('cantAccessAuthenticator')}
+                </Link>
+              </div>
+            )}
           </motion.div>
         )}
 
