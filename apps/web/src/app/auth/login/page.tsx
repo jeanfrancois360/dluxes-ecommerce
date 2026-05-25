@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [otpValue, setOtpValue] = useState('');
   const [trustDevice, setTrustDevice] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [submitting2FA, setSubmitting2FA] = useState(false);
   const [googlePendingToken, setGooglePendingToken] = useState('');
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
@@ -92,7 +93,46 @@ export default function LoginPage() {
   }, [searchParams]);
 
   const error = authError || localError;
-  const isLoading = authLoading;
+  const isLoading = authLoading || submitting2FA;
+
+  // Called automatically when all OTP boxes are filled
+  const handleComplete2FA = async (code: string) => {
+    if (isLoading) return;
+    setLocalError('');
+    clearError();
+    setSubmitting2FA(true);
+    try {
+      // Google OAuth 2FA path
+      if (googlePendingToken) {
+        const result: any = await api.post('/auth/google/verify-2fa', {
+          pendingToken: googlePendingToken,
+          code,
+        });
+        TokenManager.setAccessToken(result.accessToken);
+        if (result.sessionToken) {
+          localStorage.setItem('nextpik_session_token', result.sessionToken);
+        }
+        storeUser(result.user);
+        setTokenExpiry(7 * 24 * 60 * 60);
+        router.replace(getAuthRedirectUrl(result.user));
+        return;
+      }
+      // Standard email/password 2FA path
+      const credentials: Parameters<typeof login>[0] = { email, password, rememberMe };
+      if (otpMode === 'emailOtp') {
+        credentials.emailOTPCode = code;
+      } else {
+        credentials.twoFactorCode = code;
+        credentials.trustDevice = trustDevice;
+      }
+      await login(credentials);
+    } catch (err: any) {
+      setOtpValue('');
+      showAuthError(err, router);
+    } finally {
+      setSubmitting2FA(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -438,7 +478,13 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <OTPInput length={6} value={otpValue} onChange={setOtpValue} />
+            <OTPInput
+              length={6}
+              value={otpValue}
+              onChange={setOtpValue}
+              onComplete={handleComplete2FA}
+              disabled={isLoading}
+            />
 
             {error && (
               <div className="flex items-start gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
