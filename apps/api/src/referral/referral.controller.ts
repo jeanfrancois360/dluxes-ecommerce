@@ -1,4 +1,5 @@
 import {
+  Patch,
   Controller,
   Get,
   Post,
@@ -16,6 +17,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { GetReferralHistoryDto, GetAllReferralsDto } from './dto/referral.dto';
+import { ReferralPayoutStatus } from '@prisma/client';
 
 /**
  * Referral Controller (v2.11.0)
@@ -278,5 +280,51 @@ export class ReferralController {
       success: true,
       message: 'Reward granted successfully',
     };
+  }
+
+  // ============================================================================
+  // FLAT COMMISSION PAYOUT ENDPOINTS (Admin)
+  // ============================================================================
+
+  /**
+   * List referral payout records
+   * GET /api/v1/referral/admin/payouts?status=PENDING&page=1&limit=20
+   */
+  @Get('admin/payouts')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getReferralPayouts(
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ) {
+    const result = await this.referralService.getReferralPayouts({
+      status: status as ReferralPayoutStatus | undefined,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+    });
+    return { success: true, ...result };
+  }
+
+  /**
+   * Update a referral payout record (mark as PROCESSING / PAID / FAILED)
+   * PATCH /api/v1/referral/admin/payouts/:payoutId
+   */
+  @Patch('admin/payouts/:payoutId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async updateReferralPayout(
+    @Param('payoutId') payoutId: string,
+    @Body()
+    body: {
+      status: ReferralPayoutStatus;
+      paymentMethod?: string;
+      paymentReference?: string;
+      notes?: string;
+    }
+  ) {
+    if (!body.status) throw new BadRequestException('status is required');
+    const updated = await this.referralService.updateReferralPayout(payoutId, body);
+    return { success: true, data: updated };
   }
 }

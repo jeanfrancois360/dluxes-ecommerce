@@ -313,7 +313,7 @@ export const seoSettingsSchema = z.object({
 export const referralSettingsSchema = z
   .object({
     referral_enabled: z.boolean(),
-    referral_reward_type: z.enum(['store_credit', 'coupon']),
+    referral_reward_type: z.enum(['store_credit', 'coupon', 'flat_commission']),
     referral_buyer_reward: z.number().min(0, 'Buyer reward cannot be negative'),
     referral_seller_reward: z.number().min(0, 'Seller reward cannot be negative'),
     referral_reward_currency: z

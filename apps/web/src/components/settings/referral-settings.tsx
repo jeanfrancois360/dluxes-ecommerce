@@ -5,7 +5,17 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@nextpik/ui';
 import { Input } from '@nextpik/ui';
-import { Loader2, Gift, DollarSign, Users, Code2, Info, AlertCircle, Ticket } from 'lucide-react';
+import {
+  Loader2,
+  Gift,
+  DollarSign,
+  Users,
+  Code2,
+  Info,
+  AlertCircle,
+  Ticket,
+  Banknote,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { referralSettingsSchema, type ReferralSettings } from '@/lib/validations/settings';
@@ -48,7 +58,11 @@ export function ReferralSettingsSection() {
         const resetData: ReferralSettings = {
           referral_enabled: raw['referral_enabled'] ?? true,
           referral_reward_type:
-            raw['referral_reward_type'] === 'coupon' ? 'coupon' : 'store_credit',
+            raw['referral_reward_type'] === 'coupon'
+              ? 'coupon'
+              : raw['referral_reward_type'] === 'flat_commission'
+                ? 'flat_commission'
+                : 'store_credit',
           referral_buyer_reward: Number(raw['referral_buyer_reward'] ?? 10),
           referral_seller_reward: Number(raw['referral_seller_reward'] ?? 50),
           referral_reward_currency: String(raw['referral_reward_currency'] ?? 'USD'),
@@ -176,20 +190,26 @@ export function ReferralSettingsSection() {
         title="Reward Type"
         description="Choose how referral rewards are delivered to the referrer"
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {(
             [
               {
                 value: 'store_credit',
                 label: 'Store Credit',
-                desc: 'Rewards are added as store credit (wallet balance). Referrers can spend it on future orders at checkout.',
+                desc: "Reward added to the referrer's platform wallet. Redeemable at checkout.",
                 icon: DollarSign,
               },
               {
                 value: 'coupon',
                 label: 'Discount Coupon',
-                desc: 'A single-use discount coupon is issued for the reward amount. Useful for first-time discount incentives.',
+                desc: 'A single-use coupon for the reward amount. Useful for first-time incentives.',
                 icon: Ticket,
+              },
+              {
+                value: 'flat_commission',
+                label: 'Flat Commission',
+                desc: 'Real cash payout queued for admin to transfer (bank, Stripe, PayPal).',
+                icon: Banknote,
               },
             ] as const
           ).map((opt) => {
@@ -511,7 +531,12 @@ export function ReferralSettingsSection() {
             { label: 'Status', value: enabled ? '✅ Active' : '⏸ Disabled' },
             {
               label: 'Reward Type',
-              value: rewardType === 'store_credit' ? 'Store Credit' : 'Coupon',
+              value:
+                rewardType === 'store_credit'
+                  ? 'Store Credit'
+                  : rewardType === 'coupon'
+                    ? 'Coupon'
+                    : 'Flat Commission',
             },
             {
               label: 'Buyer Reward',

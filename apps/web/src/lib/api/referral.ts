@@ -138,6 +138,38 @@ export const grantRewardAdmin = async (referralId: string) => {
   return data;
 };
 
+/**
+ * List referral payout records (Admin — flat_commission reward type)
+ */
+export const getReferralPayouts = async (params?: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const query = new URLSearchParams();
+  if (params?.status) query.set('status', params.status);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const { data } = await api.get(`/referral/admin/payouts?${query.toString()}`);
+  return data;
+};
+
+/**
+ * Update a referral payout record status (Admin)
+ */
+export const updateReferralPayout = async (
+  payoutId: string,
+  body: {
+    status: string;
+    paymentMethod?: string;
+    paymentReference?: string;
+    notes?: string;
+  }
+) => {
+  const { data } = await api.patch(`/referral/admin/payouts/${payoutId}`, body);
+  return data;
+};
+
 export const referralApi = {
   // User endpoints
   generateReferralCode,
@@ -154,4 +186,6 @@ export const referralApi = {
   getTopReferrersAdmin,
   getReferralSettingsAdmin,
   grantRewardAdmin,
+  getReferralPayouts,
+  updateReferralPayout,
 };

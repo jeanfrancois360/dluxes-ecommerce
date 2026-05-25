@@ -2,7 +2,14 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { SETTING_DEFAULTS } from '../settings/settings.defaults';
-import { Prisma, ReferralCouponStatus, ReferralStatus, UserRole } from '@prisma/client';
+import {
+  Prisma,
+  ReferralCouponStatus,
+  ReferralPayoutStatus,
+  ReferralRewardType,
+  ReferralStatus,
+  UserRole,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 /**
@@ -199,13 +206,20 @@ export class ReferralService {
         return;
       }
 
-      // Get reward amount and currency based on referred user's role (fetch BEFORE transaction)
+      // Get reward amount, currency, and type based on referred user's role (fetch BEFORE transaction)
       const rewardAmount =
         referredUser.role === 'SELLER'
           ? await this.getReferralSellerReward()
           : await this.getReferralBuyerReward();
 
       const rewardCurrency = await this.getReferralRewardCurrency();
+      const rewardTypeSetting = await this.getReferralRewardType();
+      const rewardType =
+        rewardTypeSetting === 'coupon'
+          ? ReferralRewardType.COUPON
+          : rewardTypeSetting === 'flat_commission'
+            ? ReferralRewardType.FLAT_COMMISSION
+            : ReferralRewardType.STORE_CREDIT;
 
       // Create referral record and update user/code in transaction
       await this.prisma.$transaction(async (prisma) => {
@@ -217,6 +231,7 @@ export class ReferralService {
             referredUserRole: referredUser.role,
             rewardAmount: new Decimal(rewardAmount),
             rewardCurrency,
+            rewardType,
             status: ReferralStatus.PENDING,
           },
         });
@@ -457,9 +472,47 @@ export class ReferralService {
         return;
       }
 
-      const rewardType = await this.getReferralRewardType();
+      const rewardTypeSetting = await this.getReferralRewardType();
+      // Prefer the value stamped on the referral record (set at registration time)
+      // so changing the global setting mid-flight doesn't affect in-flight referrals.
+      const effectiveRewardType = referral.rewardType ?? ReferralRewardType.STORE_CREDIT;
+      const rewardType =
+        effectiveRewardType === ReferralRewardType.COUPON
+          ? 'coupon'
+          : effectiveRewardType === ReferralRewardType.FLAT_COMMISSION
+            ? 'flat_commission'
+            : rewardTypeSetting; // fall back to global setting for legacy rows without rewardType
 
-      if (rewardType === 'coupon') {
+      if (rewardType === 'flat_commission') {
+        // --- FLAT COMMISSION PATH ---
+        // Queue a cash payout record; admin processes it via the referral payout panel.
+        await this.prisma.$transaction(async (prisma) => {
+          await prisma.referralPayoutRecord.create({
+            data: {
+              referralId,
+              referrerId: referral.referrerId,
+              amount: referral.rewardAmount,
+              currency: referral.rewardCurrency || 'USD',
+              status: ReferralPayoutStatus.PENDING,
+            },
+          });
+
+          await prisma.referral.update({
+            where: { id: referralId },
+            data: { status: ReferralStatus.PAID, paidAt: new Date() },
+          });
+
+          // Increment totalReferrals for leaderboard accuracy
+          await prisma.user.update({
+            where: { id: referral.referrerId },
+            data: { totalReferrals: { increment: 1 } },
+          });
+        });
+
+        this.logger.log(
+          `✅ Queued flat commission payout of $${referral.rewardAmount} for user ${referral.referrerId} (referral ${referralId})`
+        );
+      } else if (rewardType === 'coupon') {
         // --- COUPON PATH ---
         const couponCode = await this.generateUniqueCouponCode();
         const rewardCurrency = referral.rewardCurrency || 'USD';
@@ -957,7 +1010,7 @@ export class ReferralService {
         enabled: map['referral_enabled'] != null ? Boolean(map['referral_enabled']) : D.enabled,
         rewardType:
           map['referral_reward_type'] != null
-            ? (String(map['referral_reward_type']) as 'store_credit' | 'coupon')
+            ? (String(map['referral_reward_type']) as 'store_credit' | 'coupon' | 'flat_commission')
             : D.reward_type,
         buyerReward:
           map['referral_buyer_reward'] != null
@@ -1122,15 +1175,105 @@ export class ReferralService {
     return SETTING_DEFAULTS.referral.reward_currency;
   }
 
-  private async getReferralRewardType(): Promise<'store_credit' | 'coupon'> {
+  private async getReferralRewardType(): Promise<'store_credit' | 'coupon' | 'flat_commission'> {
     try {
       const setting = await this.settingsService.getSetting('referral_reward_type');
       const val = setting?.value != null ? String(setting.value) : null;
       if (val === 'coupon') return 'coupon';
+      if (val === 'flat_commission') return 'flat_commission';
     } catch {
       // DB unavailable or setting missing
     }
     return SETTING_DEFAULTS.referral.reward_type;
+  }
+
+  // ============================================================================
+  // FLAT COMMISSION PAYOUT MANAGEMENT (Admin)
+  // ============================================================================
+
+  /**
+   * List all referral payout records with optional filters (Admin)
+   */
+  async getReferralPayouts(filters?: {
+    status?: ReferralPayoutStatus;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ReferralPayoutRecordWhereInput = {
+      ...(filters?.status && { status: filters.status }),
+    };
+
+    const [records, total] = await Promise.all([
+      this.prisma.referralPayoutRecord.findMany({
+        where,
+        include: {
+          referrer: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          referral: {
+            select: {
+              id: true,
+              referredUserRole: true,
+              rewardAmount: true,
+              createdAt: true,
+              referred: { select: { email: true, firstName: true, lastName: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.referralPayoutRecord.count({ where }),
+    ]);
+
+    return {
+      data: records,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  /**
+   * Update a referral payout record status (Admin)
+   * Used to move PENDING → PROCESSING → PAID or FAILED
+   */
+  async updateReferralPayout(
+    payoutId: string,
+    update: {
+      status: ReferralPayoutStatus;
+      paymentMethod?: string;
+      paymentReference?: string;
+      notes?: string;
+    }
+  ) {
+    const payout = await this.prisma.referralPayoutRecord.findUnique({
+      where: { id: payoutId },
+    });
+
+    if (!payout) {
+      throw new NotFoundException(`Referral payout record ${payoutId} not found`);
+    }
+
+    const data: Prisma.ReferralPayoutRecordUpdateInput = {
+      status: update.status,
+      ...(update.paymentMethod && { paymentMethod: update.paymentMethod }),
+      ...(update.paymentReference && { paymentReference: update.paymentReference }),
+      ...(update.notes && { notes: update.notes }),
+      ...(update.status === ReferralPayoutStatus.PAID && { paidAt: new Date() }),
+    };
+
+    const updated = await this.prisma.referralPayoutRecord.update({
+      where: { id: payoutId },
+      data,
+    });
+
+    this.logger.log(`✅ Referral payout ${payoutId} updated to ${update.status} by admin`);
+
+    return updated;
   }
 
   /**
