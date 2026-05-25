@@ -109,7 +109,7 @@ export default function AdminReferralsPage() {
             <p className="text-gray-500 mt-1">{t('pageDescription')}</p>
           </div>
           <button
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-neutral-800 transition-colors"
             onClick={() => alert(t('header.exportComingSoon'))}
           >
             <Download className="w-4 h-4" />
@@ -183,7 +183,7 @@ export default function AdminReferralsPage() {
             <select
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
             >
               <option value="">{t('filters.allStatuses')}</option>
               <option value="PENDING">{t('status.pending')}</option>
@@ -195,7 +195,7 @@ export default function AdminReferralsPage() {
             <select
               value={filters.role}
               onChange={(e) => handleFilterChange('role', e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
             >
               <option value="">{t('filters.allRoles')}</option>
               <option value="BUYER">{t('filters.roleBuyer')}</option>
@@ -204,7 +204,7 @@ export default function AdminReferralsPage() {
             {(filters.status || filters.role) && (
               <button
                 onClick={() => setFilters({ status: '', role: '', page: 1, limit: 20 })}
-                className="text-sm text-blue-600 hover:text-blue-700"
+                className="text-sm text-neutral-600 hover:text-black underline"
               >
                 {t('filters.clearFilters')}
               </button>
@@ -243,7 +243,7 @@ export default function AdminReferralsPage() {
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center">
                       <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
                       </div>
                     </td>
                   </tr>
@@ -360,7 +360,7 @@ export default function AdminReferralsPage() {
                             onClick={() => handlePageChange(page)}
                             className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                               page === filters.page
-                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                ? 'z-10 bg-black border-black text-white'
                                 : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                             }`}
                           >

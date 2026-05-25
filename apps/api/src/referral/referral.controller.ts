@@ -9,6 +9,7 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { ReferralService } from './referral.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -101,6 +102,31 @@ export class ReferralController {
   }
 
   /**
+   * Redeem a referral coupon for store credit
+   * POST /api/v1/referral/redeem-coupon
+   */
+  @Post('redeem-coupon')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async redeemCoupon(@Request() req: any, @Body('code') code: string) {
+    if (!code) {
+      throw new BadRequestException('Coupon code is required');
+    }
+
+    const result = await this.referralService.redeemReferralCoupon(
+      req.user.id,
+      code.trim().toUpperCase()
+    );
+
+    return {
+      success: true,
+      message: `Coupon redeemed — $${result.amount} ${result.currency} added to your store credit`,
+      amount: result.amount,
+      currency: result.currency,
+    };
+  }
+
+  /**
    * Get referral settings (public info for frontend)
    * GET /api/v1/referral/settings
    */
@@ -113,6 +139,7 @@ export class ReferralController {
       success: true,
       data: {
         enabled: settings.enabled,
+        rewardType: settings.rewardType,
         buyerReward: settings.buyerReward,
         sellerReward: settings.sellerReward,
         minOrderValue: settings.minOrderValue,

@@ -308,6 +308,49 @@ export const seoSettingsSchema = z.object({
 });
 
 // ============================================================================
+// REFERRAL SETTINGS
+// ============================================================================
+export const referralSettingsSchema = z
+  .object({
+    referral_enabled: z.boolean(),
+    referral_reward_type: z.enum(['store_credit', 'coupon']),
+    referral_buyer_reward: z.number().min(0, 'Buyer reward cannot be negative'),
+    referral_seller_reward: z.number().min(0, 'Seller reward cannot be negative'),
+    referral_reward_currency: z
+      .string()
+      .min(1, 'Currency is required')
+      .max(3, 'Use a 3-letter currency code'),
+    referral_min_order_value: z.number().min(0, 'Min order value cannot be negative'),
+    referral_min_payout_amount: z.number().min(0, 'Min payout cannot be negative'),
+    referral_buyer_expiration_days: z
+      .number()
+      .int()
+      .min(0, 'Use 0 for no expiry, or a positive number of days'),
+    referral_seller_expiration_days: z
+      .number()
+      .int()
+      .min(0, 'Use 0 for no expiry, or a positive number of days'),
+    referral_code_prefix: z.string().max(4, 'Prefix cannot exceed 4 characters'),
+    referral_code_length: z
+      .number()
+      .int()
+      .min(6, 'Minimum code length is 6')
+      .max(12, 'Maximum code length is 12'),
+    referral_max_usage_per_code: z
+      .number()
+      .int()
+      .min(0, 'Use 0 for unlimited, or a positive number'),
+    referral_auto_generate_code: z.boolean(),
+    referral_show_leaderboard: z.boolean(),
+  })
+  .refine((d) => d.referral_buyer_reward > 0 || d.referral_seller_reward > 0, {
+    message: 'At least one reward amount must be greater than 0',
+    path: ['referral_buyer_reward'],
+  });
+
+export type ReferralSettings = z.infer<typeof referralSettingsSchema>;
+
+// ============================================================================
 // COMBINED SETTINGS SCHEMA (for full validation)
 // ============================================================================
 export const allSettingsSchema = z.object({
