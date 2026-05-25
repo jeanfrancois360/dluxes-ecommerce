@@ -31,6 +31,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Textarea,
 } from '@nextpik/ui';
 import { toast } from 'sonner';
 import {
@@ -43,9 +44,12 @@ import {
   Search,
   X,
   Download,
-  Printer,
   AlertTriangle,
   Settings,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  FileText,
 } from 'lucide-react';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -104,6 +108,183 @@ interface BackendStats {
 
 type Decimal = { toNumber?: () => number };
 
+// ─── Skeleton loading row ──────────────────────────────────────────────────
+function TableRowSkeleton() {
+  const pulse = 'bg-neutral-200 rounded animate-pulse';
+  return (
+    <TableRow>
+      <TableCell>
+        <div className={`w-4 h-4 ${pulse}`} />
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1.5">
+          <div className={`h-4 w-32 ${pulse}`} />
+          <div className="h-3 w-24 bg-neutral-100 rounded animate-pulse" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className={`h-4 w-20 ${pulse}`} />
+      </TableCell>
+      <TableCell>
+        <div className={`h-4 w-28 ${pulse}`} />
+      </TableCell>
+      <TableCell>
+        <div className={`h-4 w-8 ${pulse}`} />
+      </TableCell>
+      <TableCell>
+        <div className={`h-5 w-16 ${pulse}`} />
+      </TableCell>
+      <TableCell>
+        <div className={`h-5 w-20 ${pulse}`} />
+      </TableCell>
+      <TableCell>
+        <div className={`h-4 w-20 ${pulse}`} />
+      </TableCell>
+      <TableCell>
+        <div className="flex gap-1.5">
+          <div className={`h-8 w-8 ${pulse}`} />
+          <div className={`h-8 w-16 ${pulse}`} />
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+// ─── Payout Detail Flyout ──────────────────────────────────────────────────
+function PayoutDetailFlyout({ payout, onClose }: { payout: Payout; onClose: () => void }) {
+  const sellerName =
+    `${payout.seller.firstName || ''} ${payout.seller.lastName || ''}`.trim() ||
+    payout.seller.email;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white shadow-2xl flex flex-col h-full overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10">
+          <div>
+            <h2 className="text-base font-semibold text-neutral-900">Payout Details</h2>
+            <p className="text-xs text-muted-foreground font-mono">{payout.id.slice(0, 16)}…</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="flex-1 px-6 py-5 space-y-5">
+          {/* Status + Amount */}
+          <div className="rounded-xl border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <StatusBadge status={payout.status} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Amount</span>
+              <span className="text-lg font-bold">
+                {formatCurrencyAmount(payout.amount)} {payout.currency}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Commissions</span>
+              <span className="font-medium">{payout.commissionCount}</span>
+            </div>
+          </div>
+
+          {/* Seller & Store */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Seller
+            </p>
+            <div className="rounded-xl border p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Name</span>
+                <span className="font-medium">{sellerName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Email</span>
+                <span className="font-medium">{payout.seller.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Store</span>
+                <span className="font-medium">{payout.store.name}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Info */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Payment
+            </p>
+            <div className="rounded-xl border p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Method</span>
+                <span className="font-medium">{payout.paymentMethod || '—'}</span>
+              </div>
+              {payout.paymentReference && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Reference</span>
+                  <span className="font-mono text-xs bg-neutral-100 px-2 py-0.5 rounded max-w-[180px] truncate">
+                    {payout.paymentReference}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Scheduled</span>
+                <span>{new Date(payout.scheduledAt).toLocaleString()}</span>
+              </div>
+              {payout.processedAt && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Processed</span>
+                  <span>{new Date(payout.processedAt).toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Period</span>
+                <span>
+                  {new Date(payout.periodStart).toLocaleDateString()} –{' '}
+                  {new Date(payout.periodEnd).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          {payout.notes && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Notes
+              </p>
+              <div className="rounded-xl border p-4 text-sm text-neutral-700 leading-relaxed bg-neutral-50">
+                {payout.notes}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Status Badge (extracted for reuse) ────────────────────────────────────
+function StatusBadge({ status }: { status: PayoutStatus }) {
+  const config: Record<PayoutStatus, { variant: any; icon: React.ElementType; label: string }> = {
+    PENDING: { variant: 'secondary', icon: Clock, label: 'Pending' },
+    PROCESSING: { variant: 'default', icon: TrendingUp, label: 'Processing' },
+    COMPLETED: { variant: 'default', icon: CheckCircle, label: 'Completed' },
+    FAILED: { variant: 'destructive', icon: XCircle, label: 'Failed' },
+    CANCELLED: { variant: 'destructive', icon: XCircle, label: 'Cancelled' },
+  };
+  const { variant, icon: Icon, label } = config[status] ?? config.PENDING;
+  return (
+    <Badge variant={variant} className="gap-1">
+      <Icon className="h-3 w-3" />
+      {label}
+    </Badge>
+  );
+}
+
+// ─── Main page ─────────────────────────────────────────────────────────────
 function PayoutsContent() {
   const t = useTranslations('adminPayouts');
   const [payouts, setPayouts] = useState<Payout[]>([]);
@@ -122,6 +303,21 @@ function PayoutsContent() {
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // Detail flyout
+  const [detailPayout, setDetailPayout] = useState<Payout | null>(null);
+
+  // Expanded notes (inline row expansion)
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  // Date range filter
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  // Last-updated timestamp (set after every successful fetch)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Complete dialog
   const [completeDialog, setCompleteDialog] = useState<{
     open: boolean;
     payout: Payout | null;
@@ -129,6 +325,19 @@ function PayoutsContent() {
     proof: string;
   }>({ open: false, payout: null, reference: '', proof: '' });
 
+  // Fail dialog — replaces browser prompt()
+  const [failDialog, setFailDialog] = useState<{
+    open: boolean;
+    payoutId: string | null;
+    reason: string;
+    isBulk: boolean;
+    bulkIds: string[];
+  }>({ open: false, payoutId: null, reason: '', isBulk: false, bulkIds: [] });
+
+  // Process-all confirmation dialog — replaces browser confirm()
+  const [processAllDialog, setProcessAllDialog] = useState(false);
+
+  // Schedule dialog
   const [scheduleDialog, setScheduleDialog] = useState<{
     open: boolean;
     frequency: string;
@@ -174,9 +383,17 @@ function PayoutsContent() {
     try {
       const data = await api.get('/payouts/admin/statistics');
       setBackendStats(data);
+      setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching payout statistics:', error);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setLoading(true);
+    await Promise.all([fetchPayouts(), fetchSchedule(), fetchBackendStats()]);
+    setRefreshing(false);
   };
 
   const openScheduleDialog = () => {
@@ -213,6 +430,7 @@ function PayoutsContent() {
         typeof v === 'object' && v?.toNumber ? v.toNumber() : Number(v || 0);
       return {
         total: toNum(backendStats.total.amount),
+        totalCount: backendStats.total.count,
         pending: toNum(backendStats.pending.amount),
         pendingCount: backendStats.pending.count,
         processing: toNum(backendStats.processing.amount),
@@ -220,15 +438,16 @@ function PayoutsContent() {
         completed: toNum(backendStats.completed.amount),
         completedCount: backendStats.completed.count,
         failed: backendStats.failed.count,
+        failedAmount: toNum(backendStats.failed.amount),
       };
     }
-    // Fallback: compute from loaded payouts
     const pending = payouts.filter((p) => p.status === 'PENDING');
     const processing = payouts.filter((p) => p.status === 'PROCESSING');
     const completed = payouts.filter((p) => p.status === 'COMPLETED');
     const failed = payouts.filter((p) => p.status === 'FAILED');
     return {
       total: payouts.reduce((sum, p) => sum + Number(p.amount), 0),
+      totalCount: payouts.length,
       pending: pending.reduce((sum, p) => sum + Number(p.amount), 0),
       pendingCount: pending.length,
       processing: processing.reduce((sum, p) => sum + Number(p.amount), 0),
@@ -236,6 +455,7 @@ function PayoutsContent() {
       completed: completed.reduce((sum, p) => sum + Number(p.amount), 0),
       completedCount: completed.length,
       failed: failed.length,
+      failedAmount: failed.reduce((sum, p) => sum + Number(p.amount), 0),
     };
   }, [payouts, backendStats]);
 
@@ -252,7 +472,15 @@ function PayoutsContent() {
   const filteredPayouts = useMemo(() => {
     let filtered = [...payouts];
 
-    // Search filter
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      filtered = filtered.filter((p) => new Date(p.scheduledAt) >= from);
+    }
+    if (dateTo) {
+      const to = new Date(dateTo + 'T23:59:59');
+      filtered = filtered.filter((p) => new Date(p.scheduledAt) <= to);
+    }
+
     if (debouncedSearch) {
       const search = debouncedSearch.toLowerCase();
       filtered = filtered.filter(
@@ -264,17 +492,14 @@ function PayoutsContent() {
       );
     }
 
-    // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter((p) => p.status === statusFilter);
     }
 
-    // Method filter
     if (methodFilter !== 'all') {
       filtered = filtered.filter((p) => p.paymentMethod === methodFilter);
     }
 
-    // Sort
     switch (sortBy) {
       case 'oldest':
         filtered.sort(
@@ -316,19 +541,33 @@ function PayoutsContent() {
     setSelectedIds(newSelected);
   };
 
-  // Active filters
+  const toggleNotes = (id: string) => {
+    setExpandedNotes((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const hasActiveFilters =
-    statusFilter !== 'all' || methodFilter !== 'all' || debouncedSearch !== '';
+    statusFilter !== 'all' ||
+    methodFilter !== 'all' ||
+    debouncedSearch !== '' ||
+    dateFrom !== '' ||
+    dateTo !== '';
 
   const clearAllFilters = () => {
     setStatusFilter('all');
     setMethodFilter('all');
     setSearchQuery('');
+    setDateFrom('');
+    setDateTo('');
   };
 
-  const handleProcessAll = async () => {
-    if (!confirm(t('dialog.processAllConfirm'))) return;
+  // ── Actions ────────────────────────────────────────────────────────────
 
+  const handleProcessAll = async () => {
+    setProcessAllDialog(false);
     setProcessing(true);
     try {
       const result = await api.post('/payouts/admin/process', {});
@@ -359,7 +598,6 @@ function PayoutsContent() {
 
   const handleCompletePayout = async () => {
     if (!completeDialog.payout) return;
-
     try {
       await api.put(`/payouts/admin/${completeDialog.payout.id}/complete`, {
         paymentReference: completeDialog.reference,
@@ -375,24 +613,62 @@ function PayoutsContent() {
     }
   };
 
-  const handleFailPayout = async (payoutId: string) => {
-    const reason = prompt(t('dialog.failPrompt'));
-    if (!reason) return;
-
-    try {
-      await api.put(`/payouts/admin/${payoutId}/fail`, { reason });
-      toast.success(t('toast.failSuccess'));
-      fetchPayouts();
-      fetchBackendStats();
-    } catch (error) {
-      console.error('Error failing payout:', error);
-      toast.error(t('toast.failFailed'));
-    }
+  const openFailDialog = (payoutId: string) => {
+    setFailDialog({ open: true, payoutId, reason: '', isBulk: false, bulkIds: [] });
   };
 
-  // Bulk actions
+  const openBulkFailDialog = () => {
+    const eligible = filteredPayouts.filter(
+      (p) => selectedIds.has(p.id) && (p.status === 'PENDING' || p.status === 'PROCESSING')
+    );
+    if (eligible.length === 0) {
+      toast.error(t('bulk.notPendingError'));
+      return;
+    }
+    setFailDialog({
+      open: true,
+      payoutId: null,
+      reason: '',
+      isBulk: true,
+      bulkIds: eligible.map((p) => p.id),
+    });
+  };
+
+  const handleConfirmFail = async () => {
+    if (!failDialog.reason.trim()) return;
+
+    if (failDialog.isBulk) {
+      let success = 0;
+      let failed = 0;
+      for (const id of failDialog.bulkIds) {
+        try {
+          await api.put(`/payouts/admin/${id}/fail`, { reason: failDialog.reason });
+          success++;
+        } catch {
+          failed++;
+        }
+      }
+      toast.success(t('bulk.failSuccess', { success, failed }));
+      setSelectedIds(new Set());
+    } else {
+      try {
+        await api.put(`/payouts/admin/${failDialog.payoutId}/fail`, {
+          reason: failDialog.reason,
+        });
+        toast.success(t('toast.failSuccess'));
+      } catch (error) {
+        console.error('Error failing payout:', error);
+        toast.error(t('toast.failFailed'));
+      }
+    }
+
+    setFailDialog({ open: false, payoutId: null, reason: '', isBulk: false, bulkIds: [] });
+    fetchPayouts();
+    fetchBackendStats();
+  };
+
+  // Bulk export (CSV download)
   const handleBulkExport = () => {
-    // Build CSV from selected payouts
     const selected = filteredPayouts.filter((p) => selectedIds.has(p.id));
     const rows = [
       ['ID', 'Seller', 'Store', 'Amount', 'Currency', 'Method', 'Status', 'Scheduled', 'Reference'],
@@ -422,17 +698,13 @@ function PayoutsContent() {
 
   const handleBulkComplete = async () => {
     const eligible = filteredPayouts.filter((p) => selectedIds.has(p.id) && p.status === 'PENDING');
-
     if (eligible.length === 0) {
       toast.error(t('bulk.notPendingError'));
       return;
     }
 
-    if (!confirm(t('bulk.completeConfirm', { count: eligible.length }))) return;
-
     let success = 0;
     let failed = 0;
-
     for (const p of eligible) {
       try {
         await api.put(`/payouts/admin/${p.id}/complete`, { paymentReference: 'bulk-complete' });
@@ -441,56 +713,10 @@ function PayoutsContent() {
         failed++;
       }
     }
-
     toast.success(t('bulk.failSuccess', { success, failed }));
     setSelectedIds(new Set());
     fetchPayouts();
     fetchBackendStats();
-  };
-
-  const handleBulkFail = async () => {
-    const reason = prompt(t('bulk.failPrompt', { count: selectedIds.size }));
-    if (!reason) return;
-
-    let success = 0;
-    let failed = 0;
-
-    for (const id of selectedIds) {
-      const payout = filteredPayouts.find((p) => p.id === id);
-      if (payout && (payout.status === 'PENDING' || payout.status === 'PROCESSING')) {
-        try {
-          await api.put(`/payouts/admin/${id}/fail`, { reason });
-          success++;
-        } catch {
-          failed++;
-        }
-      }
-    }
-
-    toast.success(t('bulk.failSuccess', { success, failed }));
-    setSelectedIds(new Set());
-    fetchPayouts();
-    fetchBackendStats();
-  };
-
-  const getStatusBadge = (status: PayoutStatus) => {
-    const variants: Record<PayoutStatus, { variant: any; icon: any }> = {
-      PENDING: { variant: 'secondary', icon: Clock },
-      PROCESSING: { variant: 'default', icon: TrendingUp },
-      COMPLETED: { variant: 'default', icon: CheckCircle },
-      FAILED: { variant: 'destructive', icon: XCircle },
-      CANCELLED: { variant: 'destructive', icon: XCircle },
-    };
-
-    const config = variants[status];
-    const Icon = config.icon;
-
-    return (
-      <Badge variant={config.variant as any} className="gap-1">
-        <Icon className="h-3 w-3" />
-        {t(`status.${status.toLowerCase()}` as any)}
-      </Badge>
-    );
   };
 
   return (
@@ -499,13 +725,29 @@ function PayoutsContent() {
 
       <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div className="flex justify-end items-center gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground hidden sm:block">
+              Updated {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="gap-2"
+            title="Refresh"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
           <Link href="/admin/payout-settings">
             <Button variant="outline" className="gap-2">
               <Settings className="h-4 w-4" />
               {t('buttons.payoutSettings')}
             </Button>
           </Link>
-          <Button onClick={handleProcessAll} disabled={processing}>
+          <Button onClick={() => setProcessAllDialog(true)} disabled={processing}>
             <DollarSign className="h-4 w-4 mr-2" />
             {processing ? t('buttons.processing') : t('buttons.processAll')}
           </Button>
@@ -519,9 +761,9 @@ function PayoutsContent() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${formatCurrencyAmount(stats.total, 2)}</div>
+              <div className="text-2xl font-bold">{formatCurrencyAmount(stats.total)}</div>
               <p className="text-xs text-muted-foreground">
-                {t('stats.transactions', { count: payouts.length })}
+                {t('stats.transactions', { count: stats.totalCount })}
               </p>
             </CardContent>
           </Card>
@@ -541,7 +783,7 @@ function PayoutsContent() {
               <div
                 className={`text-2xl font-bold ${stats.pendingCount > 0 ? 'text-amber-700' : ''}`}
               >
-                ${formatCurrencyAmount(stats.pending, 2)}
+                {formatCurrencyAmount(stats.pending)}
               </div>
               <p
                 className={`text-xs ${stats.pendingCount > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}
@@ -558,7 +800,7 @@ function PayoutsContent() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                ${formatCurrencyAmount(stats.processing, 2)}
+                {formatCurrencyAmount(stats.processing)}
               </div>
               <p className="text-xs text-muted-foreground">
                 {t('stats.inProgress', { count: stats.processingCount })}
@@ -573,7 +815,7 @@ function PayoutsContent() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                ${formatCurrencyAmount(stats.completed, 2)}
+                {formatCurrencyAmount(stats.completed)}
               </div>
               <p className="text-xs text-muted-foreground">
                 {t('stats.paidOut', { count: stats.completedCount })}
@@ -625,7 +867,7 @@ function PayoutsContent() {
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">{t('schedule.minAmount')}</div>
-                <div className="font-medium">${schedule.minPayoutAmount}</div>
+                <div className="font-medium">{formatCurrencyAmount(schedule.minPayoutAmount)}</div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">{t('schedule.holdPeriod')}</div>
@@ -648,7 +890,6 @@ function PayoutsContent() {
         {/* Filter Bar */}
         <div className="rounded-lg border p-4 bg-white space-y-4">
           <div className="flex flex-wrap gap-4">
-            {/* Search */}
             <div className="flex-1 min-w-[250px]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -661,7 +902,6 @@ function PayoutsContent() {
               </div>
             </div>
 
-            {/* Status Filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder={t('filters.statusLabel')} />
@@ -676,7 +916,6 @@ function PayoutsContent() {
               </SelectContent>
             </Select>
 
-            {/* Method Filter */}
             <Select value={methodFilter} onValueChange={setMethodFilter}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder={t('filters.paymentMethod')} />
@@ -691,7 +930,6 @@ function PayoutsContent() {
               </SelectContent>
             </Select>
 
-            {/* Sort */}
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder={t('filters.sortBy')} />
@@ -703,9 +941,27 @@ function PayoutsContent() {
                 <SelectItem value="amount_low">{t('filters.amountLow')}</SelectItem>
               </SelectContent>
             </Select>
+
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-[150px]"
+                title="From date"
+              />
+              <span className="text-muted-foreground text-sm">–</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-[150px]"
+                title="To date"
+              />
+            </div>
           </div>
 
-          {/* Active Filter Pills */}
           {hasActiveFilters && (
             <div className="flex flex-wrap gap-2 items-center">
               <span className="text-sm text-muted-foreground">{t('filters.activeFilters')}</span>
@@ -742,6 +998,22 @@ function PayoutsContent() {
                   </button>
                 </Badge>
               )}
+              {dateFrom && (
+                <Badge variant="secondary" className="gap-1">
+                  From: {dateFrom}
+                  <button onClick={() => setDateFrom('')} className="ml-1 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {dateTo && (
+                <Badge variant="secondary" className="gap-1">
+                  To: {dateTo}
+                  <button onClick={() => setDateTo('')} className="ml-1 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
               <Button variant="ghost" size="sm" onClick={clearAllFilters}>
                 {t('filters.clearAll')}
               </Button>
@@ -753,7 +1025,11 @@ function PayoutsContent() {
         <Card>
           <CardHeader>
             <CardTitle>{t('table.title')}</CardTitle>
-            <CardDescription>{t('table.description')}</CardDescription>
+            <CardDescription>
+              {formatNumber(filteredPayouts.length)} payout
+              {filteredPayouts.length !== 1 ? 's' : ''}
+              {hasActiveFilters ? ' (filtered)' : ''}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
@@ -782,104 +1058,158 @@ function PayoutsContent() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8">
-                        {t('table.loading')}
-                      </TableCell>
-                    </TableRow>
+                    Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} />)
                   ) : filteredPayouts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                        {t('table.noResults')}
+                      <TableCell colSpan={9} className="py-16">
+                        <div className="flex flex-col items-center gap-3 text-center">
+                          <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center">
+                            <DollarSign className="h-6 w-6 text-neutral-400" />
+                          </div>
+                          <p className="text-sm font-medium text-neutral-700">
+                            {hasActiveFilters ? 'No payouts match your filters' : 'No payouts yet'}
+                          </p>
+                          {hasActiveFilters && (
+                            <button
+                              onClick={clearAllFilters}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Clear all filters
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredPayouts.map((payout) => (
-                      <TableRow
-                        key={payout.id}
-                        className={selectedIds.has(payout.id) ? 'bg-muted/50' : ''}
-                      >
-                        <TableCell>
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(payout.id)}
-                            onChange={() => toggleSelect(payout.id)}
-                            className="w-4 h-4 rounded border-neutral-300"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Link
-                            href={`/admin/sellers/${payout.sellerId}`}
-                            className="hover:underline"
-                          >
-                            <div className="font-medium">{payout.store.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {payout.seller.email}
-                            </div>
-                          </Link>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          ${formatCurrencyAmount(payout.amount, 2)} {payout.currency}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {new Date(payout.periodStart).toLocaleDateString()} -{' '}
-                          {new Date(payout.periodEnd).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>{payout.commissionCount}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{payout.paymentMethod || 'N/A'}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div>{getStatusBadge(payout.status)}</div>
-                          {payout.paymentReference && (
-                            <div
-                              className="text-xs text-muted-foreground mt-1 font-mono truncate max-w-[120px]"
-                              title={payout.paymentReference}
+                      <>
+                        <TableRow
+                          key={payout.id}
+                          className={selectedIds.has(payout.id) ? 'bg-muted/50' : ''}
+                        >
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(payout.id)}
+                              onChange={() => toggleSelect(payout.id)}
+                              className="w-4 h-4 rounded border-neutral-300"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Link
+                              href={`/admin/sellers/${payout.sellerId}`}
+                              className="hover:underline"
                             >
-                              {payout.paymentReference}
+                              <div className="font-medium">{payout.store.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {payout.seller.email}
+                              </div>
+                            </Link>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {formatCurrencyAmount(payout.amount)} {payout.currency}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {new Date(payout.periodStart).toLocaleDateString()} –{' '}
+                            {new Date(payout.periodEnd).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>{payout.commissionCount}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{payout.paymentMethod || 'N/A'}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={payout.status} />
+                            {payout.paymentReference && (
+                              <div
+                                className="text-xs text-muted-foreground mt-1 font-mono truncate max-w-[120px]"
+                                title={payout.paymentReference}
+                              >
+                                {payout.paymentReference}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>{new Date(payout.scheduledAt).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1.5 flex-wrap">
+                              {/* Detail button — always visible */}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setDetailPayout(payout)}
+                                title="View details"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+
+                              {/* Notes toggle — only when notes exist */}
+                              {payout.notes && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => toggleNotes(payout.id)}
+                                  title={expandedNotes.has(payout.id) ? 'Hide notes' : 'Show notes'}
+                                >
+                                  {expandedNotes.has(payout.id) ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-amber-500" />
+                                  )}
+                                </Button>
+                              )}
+
+                              {payout.status === 'PENDING' && (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() =>
+                                    setCompleteDialog({
+                                      open: true,
+                                      payout,
+                                      reference: '',
+                                      proof: '',
+                                    })
+                                  }
+                                >
+                                  {t('actions.complete')}
+                                </Button>
+                              )}
+                              {(payout.status === 'PENDING' || payout.status === 'PROCESSING') && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => openFailDialog(payout.id)}
+                                >
+                                  {t('actions.fail')}
+                                </Button>
+                              )}
+                              {(payout.status === 'FAILED' || payout.status === 'PROCESSING') && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleTriggerSeller(payout.sellerId)}
+                                  className="gap-1"
+                                >
+                                  <RefreshCw className="h-3 w-3" />
+                                  {t('actions.retry')}
+                                </Button>
+                              )}
                             </div>
-                          )}
-                        </TableCell>
-                        <TableCell>{new Date(payout.scheduledAt).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            {payout.status === 'PENDING' && (
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() =>
-                                  setCompleteDialog({
-                                    open: true,
-                                    payout,
-                                    reference: '',
-                                    proof: '',
-                                  })
-                                }
-                              >
-                                {t('actions.complete')}
-                              </Button>
-                            )}
-                            {(payout.status === 'PENDING' || payout.status === 'PROCESSING') && (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleFailPayout(payout.id)}
-                              >
-                                {t('actions.fail')}
-                              </Button>
-                            )}
-                            {payout.status === 'FAILED' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleTriggerSeller(payout.sellerId)}
-                              >
-                                {t('actions.retry')}
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Inline notes expansion row */}
+                        {expandedNotes.has(payout.id) && payout.notes && (
+                          <TableRow key={`${payout.id}-notes`} className="bg-amber-50">
+                            <TableCell />
+                            <TableCell colSpan={8} className="py-2">
+                              <div className="flex items-start gap-2 text-sm text-amber-800">
+                                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" />
+                                <span className="leading-relaxed">{payout.notes}</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     ))
                   )}
                 </TableBody>
@@ -895,6 +1225,13 @@ function PayoutsContent() {
               <span className="font-medium">
                 {t('table.selected', { count: selectedIds.size })}
               </span>
+              <span className="text-slate-400 text-sm hidden sm:inline">
+                {formatCurrencyAmount(
+                  filteredPayouts
+                    .filter((p) => selectedIds.has(p.id))
+                    .reduce((sum, p) => sum + Number(p.amount), 0)
+                )}
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -909,10 +1246,6 @@ function PayoutsContent() {
                 <Download className="h-4 w-4" />
                 {t('actions.export')}
               </Button>
-              <Button variant="secondary" size="sm" onClick={handleBulkComplete} className="gap-2">
-                <Printer className="h-4 w-4" />
-                {t('actions.printReport')}
-              </Button>
               <Button
                 size="sm"
                 onClick={handleBulkComplete}
@@ -921,7 +1254,12 @@ function PayoutsContent() {
                 <CheckCircle className="h-4 w-4" />
                 {t('actions.complete')}
               </Button>
-              <Button variant="destructive" size="sm" onClick={handleBulkFail} className="gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={openBulkFailDialog}
+                className="gap-2"
+              >
                 <XCircle className="h-4 w-4" />
                 {t('actions.fail')}
               </Button>
@@ -929,7 +1267,89 @@ function PayoutsContent() {
           </div>
         )}
 
-        {/* Complete Payout Dialog */}
+        {/* ── Process All Confirmation Dialog ─────────────────────────────── */}
+        <Dialog open={processAllDialog} onOpenChange={setProcessAllDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Process All Pending Payouts</DialogTitle>
+              <DialogDescription>
+                This will attempt to process all{' '}
+                <span className="font-semibold text-foreground">{stats.pendingCount} pending</span>{' '}
+                payout{stats.pendingCount !== 1 ? 's' : ''} totalling{' '}
+                <span className="font-semibold text-foreground">
+                  {formatCurrencyAmount(stats.pending)}
+                </span>
+                . Stripe and PayPal payouts will be submitted automatically. Bank transfers will be
+                moved to <em>Processing</em> for manual completion.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setProcessAllDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleProcessAll}>Confirm — Process All</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Fail Payout Dialog ───────────────────────────────────────────── */}
+        <Dialog
+          open={failDialog.open}
+          onOpenChange={(open) =>
+            setFailDialog((d) => ({ ...d, open, reason: open ? d.reason : '' }))
+          }
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {failDialog.isBulk
+                  ? `Fail ${failDialog.bulkIds.length} Payout${failDialog.bulkIds.length !== 1 ? 's' : ''}`
+                  : 'Mark Payout as Failed'}
+              </DialogTitle>
+              <DialogDescription>
+                Provide a reason. The seller will be notified and their commissions will be unlinked
+                so they are included in the next payout cycle.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="fail-reason">
+                Reason <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="fail-reason"
+                placeholder="e.g. Invalid bank account number, PayPal email not verified…"
+                value={failDialog.reason}
+                onChange={(e) => setFailDialog((d) => ({ ...d, reason: e.target.value }))}
+                rows={3}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setFailDialog({
+                    open: false,
+                    payoutId: null,
+                    reason: '',
+                    isBulk: false,
+                    bulkIds: [],
+                  })
+                }
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmFail}
+                disabled={!failDialog.reason.trim()}
+              >
+                {failDialog.isBulk ? 'Fail All Selected' : 'Mark as Failed'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Complete Payout Dialog ───────────────────────────────────────── */}
         <Dialog
           open={completeDialog.open}
           onOpenChange={(open) => setCompleteDialog({ ...completeDialog, open })}
@@ -954,7 +1374,7 @@ function PayoutsContent() {
                       {t('dialog.complete.amount')}
                     </span>
                     <span className="font-medium">
-                      ${formatCurrencyAmount(completeDialog.payout.amount, 2)}{' '}
+                      {formatCurrencyAmount(completeDialog.payout.amount)}{' '}
                       {completeDialog.payout.currency}
                     </span>
                   </div>
@@ -1002,7 +1422,7 @@ function PayoutsContent() {
           </DialogContent>
         </Dialog>
 
-        {/* Schedule Edit Dialog */}
+        {/* ── Schedule Edit Dialog ─────────────────────────────────────────── */}
         <Dialog
           open={scheduleDialog.open}
           onOpenChange={(open) => setScheduleDialog((s) => ({ ...s, open }))}
@@ -1085,6 +1505,11 @@ function PayoutsContent() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* ── Payout Detail Flyout ──────────────────────────────────────────── */}
+      {detailPayout && (
+        <PayoutDetailFlyout payout={detailPayout} onClose={() => setDetailPayout(null)} />
+      )}
     </>
   );
 }
